@@ -1,0 +1,4 @@
+/**
+\namespace linalg
+\brief Basic linear algebra library
+*/
