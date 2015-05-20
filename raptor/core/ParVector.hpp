@@ -15,7 +15,8 @@ class ParVector
         ~ParVector();
 
         double norm(double p);
-
+        VectorXd* getLocalVector()
+            { return local; }
         void axpy(ParVector* x, double alpha) 
             { local += x->local * alpha; }
         void scale(double alpha)
