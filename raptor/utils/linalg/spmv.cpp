@@ -12,13 +12,13 @@ void ParMatrix::spmv(ParVector *x, ParVector *b, double alpha, double beta)
 	//TODO must enforce that b and x are not aliased, or this will NOT work
 	//    or we could use blocking sends as long as we post the iRecvs first
 
-	MPI::Request *send_requests, *recv_requests;
+	MPI_Request *send_requests, *recv_requests;
 	double *recv_data;
 
 	//TODO we do not want to malloc these every time
 	recv_data = malloc(sizeof(double)*this.globalCols);
-	send_requests = malloc(sizeof(MPI::Request)*send_structure.size);
-	recv_requests = malloc(sizeof(MPI::Request)*recv_structure.size);
+	send_requests = malloc(sizeof(MPI_Request)*send_structure.size);
+	recv_requests = malloc(sizeof(MPI_Request)*recv_structure.size);
 
 	for (int i = 0; i < this.globalCols; i++)
 	{
@@ -29,14 +29,14 @@ void ParMatrix::spmv(ParVector *x, ParVector *b, double alpha, double beta)
 	double* local = x.getLocalVector()->data();
 	for (send_thing in send_structure)
 	{
-		MPI::Isend(&(local[send_thing]), size_of_send, MPI::DOUBLE,
-				  receiving_proc, 0, MPI::COMM_WORLD,
+		MPI_Isend(&(local[send_thing]), size_of_send, MPI_DOUBLE,
+				  receiving_proc, 0, MPI_COMM_WORLD,
 				  &(send_requests[index_of_request]));
 	}
 	for (recv_thing in recv_structure)
 	{
-		MPI::Irecv(&(recv_data[recv_thing]), size_of_recv, MPI::DOUBLE,
-				  sending_proc, 0, MPI::COMM_WORLD,
+		MPI_Irecv(&(recv_data[recv_thing]), size_of_recv, MPI_DOUBLE,
+				  sending_proc, 0, MPI_COMM_WORLD,
 				  &(recv_requests[index_of_request]));
 	}
 
@@ -49,11 +49,11 @@ void ParMatrix::spmv(ParVector *x, ParVector *b, double alpha, double beta)
 	// Once data is available, add contribution of off-diagonals
 	// TODO Deal with new entries as they become available
 	// TODO Add an error check on the status
-	MPI::Request::Waitall(num_recvs, recv_requests);
+	MPI_Waitall(num_recvs, recv_requests);
 	Eigen::Map<VectorXd> received_vec(recv_data);
 	b->axpy(*(this.offd) * received_vec, 1.0);
 
 	// Be sure sends finish
 	// TODO Add an error check on the status
-	MPI::Request::Waitall(num_sends, send_requests);
+	MPI_Waitall(num_sends, send_requests);
 }
