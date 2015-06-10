@@ -51,7 +51,7 @@ void parallelSPMV(ParallelMatrix* A, ParVector* x, ParVector* y, double alpha, d
 	// TODO Deal with new entries as they become available
 	// TODO Add an error check on the status
 	MPI_Waitall(num_recvs, recv_requests);
-	Vector received_vec(recv_data);
+	Vector received_vec(recv_data, A->globalCols);
     sequentialSPMV(A->offd, received_vec, y->getLocalVector(), alpha, 1.0); 
 
 	// Be sure sends finish
