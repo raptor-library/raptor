@@ -17,9 +17,7 @@ class ParMatrix
         ParMatrix(ParMatrix* A);
         ~ParMatrix();
 
-        void spmv(ParVector *x, ParVector *b, double alpha, double beta);
-    
-    private:
+    //private:
         int globalRows;
         int globalCols;
         Matrix* diag;
