@@ -9,26 +9,25 @@ using Eigen::VectorXd;
 
 class ParVector
 {
-    public:
-        ParVector(N, n);
-        ParVector(ParVector* x);
-        ~ParVector();
+  public:
+    ParVector(N, n);
+    ParVector(ParVector* x);
+    ~ParVector();
 
-        double norm(double p);
-        VectorXd* getLocalVector()
-            { return local; }
-        void axpy(ParVector* x, double alpha) 
-            { local += x->local * alpha; }
-        void scale(double alpha)
-            { local *= alpha; }
-        void setConstValue(double alpha)
-            { local = VectorXd::Constant(alpha); }
-        void setValues(double* values)
-            { local << values; }
+    double norm(double p);
+    VectorXd* getLocalVector()
+        { return local; }
+    void axpy(ParVector* x, double alpha) 
+        { local += x->local * alpha; }
+    void scale(double alpha)
+        { local *= alpha; }
+    void setConstValue(double alpha)
+        { local = VectorXd::Constant(alpha); }
+    void setValues(double* values)
+        { local << values; }
 
-    //private:
-        int globalN;
-        int localN;
-        Vector* local;
+    int globalN;
+    int localN;
+    Vector* local;
 };
 #endif
