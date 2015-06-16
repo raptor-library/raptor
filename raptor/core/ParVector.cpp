@@ -5,7 +5,7 @@ ParVector::ParVector(int gblN, int lclN)
 {
     this.globalN = N;
     this.localN = n;
-    this.local = new VectoXd(n);
+    this.local = new VectorXd(n);
 }
 
 ParVector::ParVector(ParVector* x)

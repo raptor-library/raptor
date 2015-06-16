@@ -2,41 +2,57 @@
 #define CSR_MATRIX_H
 
 #include <Eigen/Dense>
-using Eigen::VectorXd;
+#include <Eigen/Sparse>
+typedef Eigen::SparseMatrix<double, RowMajor> SpMat;
+typedef Eigen::Triplet<double> Triplet;
 
 class Matrix {
-    public:
-        virtual void spmv(VectorXd* x, VectorXd* y, double alpha, double beta);
 };
 
 class CSR_Matrix : public Matrix {
 
     public:
-        CSR_MATRIX(VectorXd* _rowPtr, VectorXd* _cols, VectorXd* _data, 
-                    int _nRows, int _nCols)
+        CSR_Matrix(std::vector<Triplet>* _triplets, int _nRows, int _nCols)
             {
-                rowPtr = _rowPtr; cols = _cols;   data = _data; 
-                nRows = _nRows;   nCols = _nCols;
+                m = new SpMat (_nRows, _nCols);
+                m->setFromTriplets(_triplets->begin(), _triplets->end());
+                nRows = _nRows;
+                nCols = _nCols;
+                nnz = _triplests->size();
             }
-
-        void spmv(VectorXd* x, VectorXd* y, double alpha, double beta)
+        CSR_Matrix(int* I, int* J, double* data, int _nRows, int _nCols, unsigned long _nnz)
         {
-            // y = \alpha * Ax + \beta * b
-            double sum;
-            for(int i = 0; i < nRows; i++) {
-                sum = 0;
-                for(int jj = rowPtr[i]; jj < rowPtr[i+1]; jj++) {
-                    sum += data[jj] * x[cols[jj]];
-                }
-                y[i] = alpha * sum + beta * y[i];
+            m = new SpMat (_nRows, _nCols);
+            std::vector<Triplet> _triplets(_nnz);
+
+            // assumes COO format
+            for (int i = 0; i < _nnz)
+            {
+                _triplets.push_back(Triplet(I[i], J[i], data[i]));
             }
+            m->setFromTriplets(_triplets.begin(), _triplets.end());
+            
+            // TODO: allow for CSR format
+            /*  1.) reserve approx nnz per row
+            m->reserve(VectorXi::Constant(_nRows, nnzRow));
+                2.) direct insertion
+            for(int i = 0; i < _nRows; i++) {
+                for(int jj = I[i]; jj < I[i+1]; jj++) {
+                    m->insert(i, J[jj]) = data[jj];
+                }
+            }
+            */
+            nRows = _nRows;
+            nCols = _nCols;
+            nnz = _nnz;
+            
         }
+        ~CSR_Matrix() { delete m; }
     private:
-        VectorXd* rowPtr;
-        VectorXd* cols;
-        VectorXd* data;
+        SpMat* m;
         int nRows;
         int nCols;
+        unsigned long nnz;
 };
 
 

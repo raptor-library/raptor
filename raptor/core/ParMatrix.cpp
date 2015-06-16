@@ -24,8 +24,3 @@ ParMatrix::~ParMatrix()
     delete this->offd;
 }
 
-void ParMatrix::spmv(ParVector* x, ParVector* b, double alpha, double beta)
-{
-    // b = \alpha Ax + \beta b
-
-}
