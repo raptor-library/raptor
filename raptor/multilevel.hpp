@@ -1,3 +1,5 @@
+// Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
+// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #ifndef MULTILEVEL_HPP
 #define MULTILEVEL_HPP
 
@@ -6,7 +8,8 @@
 #include "ParMatrix.hpp"
 #include "ParVector.hpp"
 
-class level {
+class level
+{
   public:
     // Constructor
     level();
@@ -17,7 +20,7 @@ class level {
     ParCSRMatrix* A;
     ParCSRMatrix* R;
     ParCSRMatrix* P;
-}
+};
 
 class multilevel
 {
