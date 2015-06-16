@@ -25,6 +25,7 @@ class ParVector
             { local = VectorXd::Constant(alpha); }
         void setValues(double* values)
             { local << values; }
+
     //private:
         int globalN;
         int localN;
