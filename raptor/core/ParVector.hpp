@@ -1,33 +1,39 @@
-#ifndef PARVECTOR_HPP
-#define PARVECTOR_HPP
+#ifndef RAPTOR_CORE_PARVECTOR_HPP
+#define RAPTOR_CORE_PARVECTOR_HPP
 
 #include <mpi.h>
 #include <math.h>
 
-#include <Eigen/Dense>
-using Eigen::VectorXd;
+#include "Types.hpp"
+#include "Vector.hpp"
+
+namespace raptor
+{
 
 class ParVector
 {
-  public:
-    ParVector(N, n);
-    ParVector(ParVector* x);
-    ~ParVector();
+public:
+     ParVector(len_t N, len_t n);
+     ParVector(ParVector&& x);
+     ~ParVector();
 
-    double norm(double p);
-    VectorXd* getLocalVector()
-        { return local; }
-    void axpy(ParVector* x, double alpha) 
-        { local += x->local * alpha; }
-    void scale(double alpha)
-        { local *= alpha; }
-    void setConstValue(double alpha)
-        { local = VectorXd::Constant(alpha); }
-    void setValues(double* values)
-        { local << values; }
+     template<int p> data_t norm() const;
+     Vector & getLocalVector()
+          { return local; }
+     const Vector & getLocalVector() const
+          { return local; }
+     void axpy(const ParVector & x, data_t alpha) 
+          { local += x.getLocalVector() * alpha; }
+     void scale(data_t alpha)
+          { local *= alpha; }
+     void setConstValue(data_t alpha)
+          { local = Vector::Constant(localN, alpha); }
 
-    int globalN;
-    int localN;
-    Vector* local;
+protected:
+     Vector local;
+     int globalN;
+     int localN;
 };
+
+}
 #endif

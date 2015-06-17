@@ -1,29 +1,22 @@
 /******** ParVector.cpp **********/
 #include "ParVector.hpp"
 
-ParVector::ParVector(int gblN, int lclN)
+using namespace raptor;
+
+ParVector::ParVector(len_t gblN, len_t lclN):
+	globalN(gblN), localN(lclN)
 {
-    this.globalN = N;
-    this.localN = n;
-    this.local = new VectorXd(n);
+	local.resize(lclN);
 }
 
-ParVector::ParVector(ParVector* x)
-{
-    this.globalN = x->globalN;
-    this.localN = x->localN;
-    this.local = new VectorXd(x->localN);
-}
+ParVector::ParVector(ParVector&& v) = default;
 
-ParVector::~ParVector()
+template<int p>
+data_t ParVector::norm() const
 {
-    delete local;
-}
-double ParVector::norm(double p)
-{
-    double result = local->lpNorm<p>();
-    
-    result = pow(tmp, p); // undoing root of p from local operation
+    data_t result = local.lpNorm<p>();
+
+    result = pow(result, p); // undoing root of p from local operation
     MPI_Allreduce(MPI_IN_PLACE, &result, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     return pow(result, 1./p);
 }

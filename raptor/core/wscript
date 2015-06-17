@@ -1,3 +1,5 @@
 def build(bld):
-    bld.shlib(source=bld.path.ant_glob('*.cpp'),
+    # bld.shlib(source=bld.path.ant_glob('*.cpp'),
+    #           target='core', use='eigen')
+    bld.shlib(source=['ParVector.cpp'],
               target='core', use='eigen')
