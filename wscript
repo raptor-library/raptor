@@ -16,7 +16,8 @@ def configure(cfg):
 
 
 def build(bld):
-    bld.recurse('raptor')
+    bld.recurse('raptor/src')
     bld.recurse('external')
+    bld.recurse('examples')
     from waflib.Tools import waf_unit_test
     bld.add_post_fun(waf_unit_test.summary)
