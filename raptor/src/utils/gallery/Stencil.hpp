@@ -3,7 +3,7 @@
 
 
 #include <mpi.h>
-#include <math.h>
+#include <cmath>
 #include <Eigen/Dense>
 using Eigen::VectorXd;
 
