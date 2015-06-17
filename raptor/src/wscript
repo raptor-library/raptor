@@ -1,0 +1,5 @@
+def build(bld):
+	bld.stlib(source=['core/ParVector.cpp'],
+                  target='raptor', use='eigen',
+                  export_includes='../..', name='raptor')
+    #bld.recurse('tests')
