@@ -47,6 +47,7 @@ Thumbs.db
 *.toc
 
 *~
+.*.swp
 
 # waf
 .lock-waf*
