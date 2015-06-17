@@ -1,8 +1,11 @@
-#ifndef VECTOR_HPP
-#define VECTOR_HPP
-
+#ifndef RAPTOR_CORE_VECTOR_HPP
+#define RAPTOR_CORE_VECTOR_HPP
 
 #include <Eigen/Dense>
-typedef Eigen::Map<VectorXd> Vector;
+
+namespace raptor
+{
+	using Vector = Eigen::VectorXd;
+}
 
 #endif
