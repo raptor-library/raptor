@@ -1,20 +1,22 @@
+// Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
+// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #ifndef PARMATRIX_HPP
 #define PARMATRIX_HPP
-
 
 #include <mpi.h>
 #include <math.h>
 #include <Eigen/Dense>
-using Eigen::VectorXd;
 
 #include "Matrix.hpp"
 
+using Eigen::VectorXd;
 
 class ParMatrix
 {
-  public:
+public:
     ParMatrix(_GlobRows, _GlobCols, Matrix* _diag, Matrix* _offd);
-    ParMatrix(_GlobRows, _GlobCols, std:vector<int> ptr, std:vector<int> idx, std:vector<double> data, int* globalRowStarts)
+    ParMatrix(_GlobRows, _GlobCols, std:vector<int> ptr, std:vector<int> idx,
+              std:vector<double> data, int* globalRowStarts)
     {
         int myID = MPI::COMM_WORLD.Get_rank( );
 
@@ -22,12 +24,12 @@ class ParMatrix
         int localNumRows = globalRowStarts[myID+1] - firstColDiag;
         int lastColDiag = firstColDiag + localNumRows - 1;
 
-        std:vector<int> diagI;
-        std:vector<int> diagJ;
-        std:vector<double> diagData;
-        std:vector<int> offdI;
-        std:vector<int> offdJ;
-        std:vector<double> offdData;
+        std::vector<int> diagI;
+        std::vector<int> diagJ;
+        std::vector<double> diagData;
+        std::vector<int> offdI;
+        std::vector<int> offdJ;
+        std::vector<double> offdData;
         int diagCtr = 0;
         int offdCtr = 0;
 
@@ -60,14 +62,16 @@ class ParMatrix
             offdI.push(offdCtr);
         }
 
-        //Create localToGlobal map and convert offd 
+        //Create localToGlobal map and convert offd
         // cols to local (currently global)
         int offdNNZ = OffdJ.size();
 
         //New vector containing offdCols
         int* offdCols[offdNNZ];
         for (int i = 0; i < offdI[localNumRows+1]; i++)
-           offdCols[i] = offdJ[i]
+        {
+            offdCols[i] = offdJ[i]
+        }
 
         //Sort columns
         qsort0(offdCols, 0, offdNNZ - 1);
@@ -77,7 +81,9 @@ class ParMatrix
         for (int i = 0; i < offdNNZ-1; i++)
         {
             if (offdCols[i+1] > offdCols[i])
-               offdCols[offdNumCols++] = offdCols[i+1];
+            {
+                offdCols[offdNumCols++] = offdCols[i+1];
+            }
         }
 
         //Map global columns to indices: 0 - offdNumCols
@@ -104,7 +110,7 @@ class ParMatrix
         diag = CSR_MATRIX(diagI, diagJ, diagData,
                           localNumRows, localNumRows);
 
-}
+    }
     ParMatrix(ParMatrix* A);
     ~ParMatrix();
 
@@ -112,7 +118,7 @@ class ParMatrix
     int globalCols;
     Matrix* diag;
     Matrix* offd;
-    std:vector<int> localToGlobal;
+std:vector<int> localToGlobal;
     map<int, int> globalToLocal;
 };
 #endif
