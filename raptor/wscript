@@ -1,5 +1,15 @@
 def build(bld):
-	bld.stlib(source=['core/ParVector.cpp'],
-                  target='raptor', use='eigen',
-                  export_includes='../..', name='raptor')
-    #bld.recurse('tests')
+    if bld.options.shared or not bld.options.static:
+        print "building shared"
+        bld.shlib(source=['core/ParVector.cpp'],
+                  target='raptor',
+                  export_includes="..",
+                  use='eigen',
+                  name='raptor')
+    elif bld.options.static:
+        print "building static"
+        bld.stlib(source=['core/ParVector.cpp'],
+                  target='raptor',
+                  export_includes="..",
+                  use='eigen',
+                  name='raptor')

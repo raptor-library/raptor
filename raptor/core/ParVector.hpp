@@ -15,7 +15,7 @@ namespace raptor
     class ParVector
     {
     public:
-        ParVector(len_t N, len_t n);
+        ParVector(index_t N, index_t n);
         ParVector(ParVector&& x);
         ~ParVector() {};
 
