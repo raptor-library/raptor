@@ -26,8 +26,6 @@ public:
         int localNumRows = globalRowStarts[rank+1] - firstColDiag;
         int lastColDiag = firstColDiag + localNumRows - 1;
 
-        printf("FirstColDiag = %d\tLastColDiag = %d\tLocalNumRows = %d\n", firstColDiag, lastColDiag, localNumRows);
-
         std::vector<int> diagI;
         std::vector<int> diagJ;
         std::vector<double> diagData;
@@ -44,11 +42,9 @@ public:
         {
             int rowStart = ptr[i];
             int rowEnd = ptr[i+1];
-            printf("rowStart = %d\trowEnd = %d\n", rowStart, rowEnd);
             for (int j = rowStart; j < rowEnd; j++)
             {
                 int globalCol = idx[j];
-                printf("globalCol = %d\n", globalCol);
 
                 //In offd block
                 if (globalCol < firstColDiag || globalCol > lastColDiag)
@@ -59,7 +55,6 @@ public:
                 }
                 else //in diag block
                 {
-                    printf("localCol = %d\n", globalCol - firstColDiag);
                     diagCtr++;
                     diagJ.push_back(globalCol - firstColDiag);
                     diagData.push_back(data[j]);

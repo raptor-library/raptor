@@ -35,24 +35,20 @@ public:
         std::vector<Triplet> _triplets(_nnz);
 
         // assumes COO format
-        for (int i = 0; i < _nnz; i++)
-        {
-            _triplets.push_back(Triplet(I[i], J[i], data[i]));
-        }
-        m->setFromTriplets(_triplets.begin(), _triplets.end());
+        //for (int i = 0; i < _nnz; i++)
+        //{
+        //    _triplets.push_back(Triplet(I[i], J[i], data[i]));
+        //}
 
-        // TODO: allow for CSR format
-        //  1.) reserve approx nnz per row
-        // TODO: guess the NNZ per row
-        m->reserve(Eigen::VectorXi::Constant(_nRows, 10));
-        //    2.) direct insertion
-        for(int i = 0; i < _nRows; i++)
+        //Assumes CSR Format
+        for (int i = 0; i < _nRows; i++)
         {
-            for(int jj = I[i]; jj < I[i+1]; jj++)
+            for (int j = I[i]; j < I[i+1]; j++)
             {
-                m->insert(i, J[jj]) = data[jj];
+                _triplets.push_back(Triplet(i, J[j], data[j]));
             }
         }
+        m->setFromTriplets(_triplets.begin(), _triplets.end());
         nRows = _nRows;
         nCols = _nCols;
         nnz = _nnz;
