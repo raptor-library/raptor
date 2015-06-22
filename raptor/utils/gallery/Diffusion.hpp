@@ -76,12 +76,12 @@ double* diffusion_stencil_2d(double eps = 1.0, double theta = 0.0)
     stencil[0] = val1;
     stencil[1] = val2;
     stencil[2] = val3;
-    stencil[4] = val4;
-    stencil[5] = val5;
-    stencil[6] = val4;
-    stencil[7] = val3;
-    stencil[8] = val2;
-    stencil[9] = val1;
+    stencil[3] = val4;
+    stencil[4] = val5;
+    stencil[5] = val4;
+    stencil[6] = val3;
+    stencil[7] = val2;
+    stencil[8] = val1;
 
     return stencil;
 }

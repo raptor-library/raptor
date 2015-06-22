@@ -54,15 +54,15 @@ public:
                 if (globalCol < firstColDiag || globalCol > lastColDiag)
                 {
                     offdCtr++;
-                    //offdJ.push_back(globalCol);
-                    //offdData.push_back(data[j]);
+                    offdJ.push_back(globalCol);
+                    offdData.push_back(data[j]);
                 }
                 else //in diag block
                 {
                     printf("localCol = %d\n", globalCol - firstColDiag);
                     diagCtr++;
-                    //diagJ.push_back(globalCol - firstColDiag);
-                    //diagData.push_back(data[j]);
+                    diagJ.push_back(globalCol - firstColDiag);
+                    diagData.push_back(data[j]);
                 }
             }
             diagI.push_back(diagCtr);
@@ -112,9 +112,9 @@ public:
         }
 
         //Initialize two matrices (offd and diag)
-        offd = CSR_Matrix(offdI.data(), offdJ.data(), offdData.data(),
+        offd = new CSR_Matrix(offdI.data(), offdJ.data(), offdData.data(),
                           localNumRows, offdNumCols, offdData.size());
-        diag = CSR_Matrix(diagI.data(), diagJ.data(), diagData.data(),
+        diag = new CSR_Matrix(diagI.data(), diagJ.data(), diagData.data(),
                           localNumRows, localNumRows, diagData.size());
 
 
@@ -125,8 +125,8 @@ public:
     int globalRows;
     int globalCols;
     int localRows;
-    Matrix diag;
-    Matrix offd;
+    Matrix* diag;
+    Matrix* offd;
     std::vector<int> localToGlobal;
     std::map<int, int> globalToLocal;
 };
