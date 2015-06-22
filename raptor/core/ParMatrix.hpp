@@ -14,11 +14,12 @@ using Eigen::VectorXd;
 class ParMatrix
 {
 public:
-    ParMatrix(_GlobRows, _GlobCols, Matrix* _diag, Matrix* _offd);
-    ParMatrix(_GlobRows, _GlobCols, std:vector<int> ptr, std:vector<int> idx,
-              std:vector<double> data, int* globalRowStarts)
+    ParMatrix(int _GlobRows, int _GlobCols, Matrix* _diag, Matrix* _offd);
+    ParMatrix(int _GlobRows, int _GlobCols, std::vector<int> ptr, std::vector<int> idx,
+              std::vector<double> data, int* globalRowStarts)
     {
-        int myID = MPI::COMM_WORLD.Get_rank( );
+        int myID;
+        MPI_Comm_rank(MPI_COMM_WORLD, &myID);
 
         int firstColDiag = globalRowStarts[myID];
         int localNumRows = globalRowStarts[myID+1] - firstColDiag;
@@ -89,8 +90,8 @@ public:
         //Map global columns to indices: 0 - offdNumCols
         for (int i = 0; i < offdNumCols; i++)
         {
-            this.localToGlobal.push(offdCols[i]);
-            this.globalToLocal[offdCols[i]] = i;
+            this->localToGlobal.push(offdCols[i]);
+            this->globalToLocal[offdCols[i]] = i;
         }
 
         //Convert offd cols to local
@@ -105,9 +106,9 @@ public:
         }
 
         //Initialize two matrices (offd and diag)
-        offd = CSR_MATRIX(offdI, offdJ, offdData,
+        offd = CSR_Matrix(offdI, offdJ, offdData,
                           localNumRows, offdNumCols);
-        diag = CSR_MATRIX(diagI, diagJ, diagData,
+        diag = CSR_Matrix(diagI, diagJ, diagData,
                           localNumRows, localNumRows);
 
     }
@@ -118,7 +119,7 @@ public:
     int globalCols;
     Matrix* diag;
     Matrix* offd;
-std:vector<int> localToGlobal;
+std::vector<int> localToGlobal;
     map<int, int> globalToLocal;
 };
 #endif
