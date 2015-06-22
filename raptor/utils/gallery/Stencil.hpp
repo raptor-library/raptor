@@ -1,9 +1,10 @@
-#ifndef PARMATRIX_HPP
-#define PARMATRIX_HPP
-
+// Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
+// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
+#ifndef STENCIL_HPP
+#define STENCIL_HPP
 
 #include <mpi.h>
-#include <cmath>
+#include <math.h>
 #include <Eigen/Dense>
 using Eigen::VectorXd;
 
@@ -13,7 +14,7 @@ ParMatrix* stencil_grid(double* stencil, int* grid, int dim)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Commm_size(MPI_COMM_WORLD, &num_procs);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     //double is never 0.0 ... need zero tolerance
     double zero_tol = 1e-6;
@@ -214,3 +215,4 @@ ParMatrix* stencil_grid(double* stencil, int* grid, int dim)
     
 } 
 
+#endif

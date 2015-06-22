@@ -15,15 +15,18 @@ class ParMatrix
 {
 public:
     ParMatrix(int _GlobRows, int _GlobCols, Matrix* _diag, Matrix* _offd);
-    ParMatrix(int _GlobRows, int _GlobCols, std::vector<int> ptr, std::vector<int> idx,
-              std::vector<double> data, int* globalRowStarts)
+    ParMatrix(int _GlobRows, int _GlobCols, int* ptr, int* idx,
+             double* data, int* globalRowStarts)
     {
-        int myID;
-        MPI_Comm_rank(MPI_COMM_WORLD, &myID);
+        int rank, num_procs;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-        int firstColDiag = globalRowStarts[myID];
-        int localNumRows = globalRowStarts[myID+1] - firstColDiag;
+        int firstColDiag = globalRowStarts[rank];
+        int localNumRows = globalRowStarts[rank+1] - firstColDiag;
         int lastColDiag = firstColDiag + localNumRows - 1;
+
+        printf("FirstColDiag = %d\tLastColDiag = %d\tLocalNumRows = %d\n", firstColDiag, lastColDiag, localNumRows);
 
         std::vector<int> diagI;
         std::vector<int> diagJ;
@@ -35,47 +38,50 @@ public:
         int offdCtr = 0;
 
         //Split ParMat into diag and offd matrices
-        diagI.push(0);
-        offdI.push(0);
+        diagI.push_back(0);
+        offdI.push_back(0);
         for (int i = 0; i < localNumRows; i++)
         {
             int rowStart = ptr[i];
             int rowEnd = ptr[i+1];
+            printf("rowStart = %d\trowEnd = %d\n", rowStart, rowEnd);
             for (int j = rowStart; j < rowEnd; j++)
             {
                 int globalCol = idx[j];
+                printf("globalCol = %d\n", globalCol);
 
                 //In offd block
                 if (globalCol < firstColDiag || globalCol > lastColDiag)
                 {
                     offdCtr++;
-                    offdJ.push(globalCol);
-                    offdData.push(data[j]);
+                    //offdJ.push_back(globalCol);
+                    //offdData.push_back(data[j]);
                 }
                 else //in diag block
                 {
+                    printf("localCol = %d\n", globalCol - firstColDiag);
                     diagCtr++;
-                    diagJ.push(globalCol - firstColDiag);
-                    diagData.push(data[j]);
+                    //diagJ.push_back(globalCol - firstColDiag);
+                    //diagData.push_back(data[j]);
                 }
             }
-            diagI.push(diagCtr);
-            offdI.push(offdCtr);
+            diagI.push_back(diagCtr);
+            offdI.push_back(offdCtr);
         }
 
         //Create localToGlobal map and convert offd
         // cols to local (currently global)
-        int offdNNZ = OffdJ.size();
+        int offdNNZ = offdJ.size();
 
         //New vector containing offdCols
-        int* offdCols[offdNNZ];
+        std::vector<int> offdCols;
         for (int i = 0; i < offdI[localNumRows+1]; i++)
         {
-            offdCols[i] = offdJ[i]
+            offdCols.push_back(offdJ[i]);
         }
 
         //Sort columns
-        qsort0(offdCols, 0, offdNNZ - 1);
+        std::sort(offdCols.begin(), offdCols.end());
 
         //Count columns with nonzeros in offd
         int offdNumCols = 1;
@@ -90,7 +96,7 @@ public:
         //Map global columns to indices: 0 - offdNumCols
         for (int i = 0; i < offdNumCols; i++)
         {
-            this->localToGlobal.push(offdCols[i]);
+            this->localToGlobal.push_back(offdCols[i]);
             this->globalToLocal[offdCols[i]] = i;
         }
 
@@ -106,10 +112,11 @@ public:
         }
 
         //Initialize two matrices (offd and diag)
-        offd = CSR_Matrix(offdI, offdJ, offdData,
-                          localNumRows, offdNumCols);
-        diag = CSR_Matrix(diagI, diagJ, diagData,
-                          localNumRows, localNumRows);
+        offd = CSR_Matrix(offdI.data(), offdJ.data(), offdData.data(),
+                          localNumRows, offdNumCols, offdData.size());
+        diag = CSR_Matrix(diagI.data(), diagJ.data(), diagData.data(),
+                          localNumRows, localNumRows, diagData.size());
+
 
     }
     ParMatrix(ParMatrix* A);
@@ -117,9 +124,10 @@ public:
 
     int globalRows;
     int globalCols;
-    Matrix* diag;
-    Matrix* offd;
-std::vector<int> localToGlobal;
-    map<int, int> globalToLocal;
+    int localRows;
+    Matrix diag;
+    Matrix offd;
+    std::vector<int> localToGlobal;
+    std::map<int, int> globalToLocal;
 };
 #endif
