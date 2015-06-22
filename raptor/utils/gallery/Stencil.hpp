@@ -29,9 +29,9 @@ ParMatrix* stencil_grid(double* stencil, int* grid, int dim)
     }
 
     //n_v is local number of rows
-    int extra = N_v % num_procs
-    int* globalRowStarts = (int) calloc(num_procs+1, sizeof(int));
-    for (i = 0; i < num_procs; i++)
+    int extra = N_v % num_procs;
+    int* globalRowStarts = (int*) calloc(num_procs+1, sizeof(int));
+    for (int i = 0; i < num_procs; i++)
     {
         int size = (N_v / num_procs) + (extra/(i+1));
         globalRowStarts[i+1] = globalRowStarts[i] + size;
@@ -135,36 +135,25 @@ ParMatrix* stencil_grid(double* stencil, int* grid, int dim)
 
             int pos = 0;
             int current_step = 0;
-            int next_step = 0;
+            int next_pos = 0;
 
             //zeros at beginning
             if (idx > 0)
             {
-                pos = firstLocalRow % step;
-                current_step = firstLocalRow / step;
-                next_pos = step * (current_step + 1);
+                current_step = step * (firstLocalRow / step);
 
-                //If firstLocalRow is in the middle of a boundary
-                if (pos < len)
-                {
-                    for (l = pos; l < len; l++)
-                    {
-                        if (firstLocalRow + (l-pos) > lastLocalRow)
-                        {
-                            break;
-                        }
-                        data[init_step + (l-pos)] = 0;
-                    }
-                }
-            
-                //If next boundary lies on processor
-                for (int k = next_pos; k < lastLocalRow+1; k+=step)
+                //If previous boundary lies on processor
+                for (int k = current_step; k < lastLocalRow+1; k+=step)
                 {
                     for (int l = 0; l < len; l++)
                     {
                         if (k+l > lastLocalRow)
                         {
                             break;
+                        }
+                        if (k+l < firstLocalRow)
+                        {
+                            continue;
                         }
                         data[init_step + (k-firstLocalRow) + l] = 0;
                     }
@@ -174,33 +163,22 @@ ParMatrix* stencil_grid(double* stencil, int* grid, int dim)
             //zeros at end
             else if (idx < 0)
             {
-                pos = lastLocalRow % step;
-                current_step = lastLocalRow / step;
-                next_pos = step * (current_step - 1);
-
-                //If last row is in middle of boundary
-                if (pos >= step - len)
-                {
-                    for (l = pos; l >= step-len; l--)
-                    {
-                        if (lastLocalRow - (pos-l) < firstLocalRow)
-                        {
-                            break;
-                        }
-                        data[init_step + n_v - (pos-l)] = 0;
-                    }
-                }
+                current_step = step*(((lastLocalRow-1)/step)+1);
 
                 //If previous boundary lies on processor
-                for (int k = next_pos; k >= firstLocalRow; k-=step)
+                for (int k = current_step; k > firstLocalRow; k-=step)
                 {
                     for (int l = 0; l < len; l++)
                     {
-                        if (k-l < firstLocalRow)
+                        if (k - l - 1 < firstLocalRow)
                         {
                             break;
                         }
-                        data[init_step + n_v - (k-l) ] = 0;
+                        else if (k - l - 1 > lastLocalRow)
+                        {
+                            continue;
+                        }
+                        data[init_step + (k-l-firstLocalRow) -1] = 0;
                     }
                 }
             }
@@ -218,9 +196,10 @@ ParMatrix* stencil_grid(double* stencil, int* grid, int dim)
         for (int d = 0; d < N_s; d++)
         {
             //add data[i] if nonzero 
-            int col = diags[d] + i;
+            int col = diags[d] + i + firstLocalRow;
             double value = data[(N_s-d-1)*n_v+i];
             if (col >= 0 && col < N_v && fabs(value) > zero_tol)
+            //if (col >= 0 && col < N_v)
             {
                 col_idx[nnz] = col;
                 values[nnz] = value;
@@ -229,6 +208,7 @@ ParMatrix* stencil_grid(double* stencil, int* grid, int dim)
         }
     }
     row_ptr[n_v] = nnz;
+
 
     return new ParMatrix(N_v, N_v, row_ptr, col_idx, values, globalRowStarts);
     
