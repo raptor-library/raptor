@@ -4,7 +4,7 @@
 #include "ParVector.hpp"
 #include "Diffusion.hpp"
 #include "Stencil.hpp"
-
+#include "spmv.hpp"
 int main ( int argc, char *argv[] )
 {  
     int ilower, iupper;
@@ -33,9 +33,13 @@ int main ( int argc, char *argv[] )
     int localNumRows = A->localRows;
 
     // Create the rhs and solution
-    //ParVector* b = new ParVector(globalNumRows, localNumRows);
-    //ParVector* x = new ParVector(globalNumRows, localNumRows);
+    raptor::ParVector* b = new raptor::ParVector(globalNumRows, localNumRows);
+    raptor::ParVector* x = new raptor::ParVector(globalNumRows, localNumRows);
    
+    x->setConstValue(1.);
+    //parallelSPMV(A, x, b, 1., 0.);
+    
+
     // Set the rhs values to h^2 and the solution to zero
     //{
     //    double *rhs_values, *x_values;

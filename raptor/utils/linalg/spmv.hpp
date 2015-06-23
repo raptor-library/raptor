@@ -5,8 +5,13 @@ using Eigen::VectorXd;
 #include "Vector.hpp"
 #include "ParMatrix.hpp"
 #include "ParVector.hpp"
+using namespace raptor;
 
-void parallelSPMV(ParallelMatrix* A, ParVector* x, ParVector* y, double alpha, double beta)
+void sequentialSPMV(CSRMatrix* A, Vector* x, Vector* y, double alpha, double beta);
+void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double beta);
+
+
+void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double beta)
 {
 	/* y = \alpha Ax + \beta y */
 
@@ -17,9 +22,9 @@ void parallelSPMV(ParallelMatrix* A, ParVector* x, ParVector* y, double alpha, d
 	double *recv_data;
 
 	//TODO we do not want to malloc these every time
-	recv_data = malloc(sizeof(double)*A->globalCols);
-	send_requests = malloc(sizeof(MPI_Request)*send_structure.size);
-	recv_requests = malloc(sizeof(MPI_Request)*recv_structure.size);
+	recv_data = new double [A->globalCols];
+	send_requests = new MPI_Request [send_structure.size];
+	recv_requests = new MPI_Request [recv_structure.size];
 
 	for (int i = 0; i < A->globalCols; i++)
 	{
@@ -27,7 +32,7 @@ void parallelSPMV(ParallelMatrix* A, ParVector* x, ParVector* y, double alpha, d
 	}
 
 	// Begin sending and gathering off-diagonal entries
-	double* local = x->getLocalVector()->data();
+	double* local = x->getLocalVector().data();
 	for (send_thing in send_structure)
 	{
 		MPI_Isend(&(local[send_thing]), size_of_send, MPI_DOUBLE,
@@ -57,4 +62,12 @@ void parallelSPMV(ParallelMatrix* A, ParVector* x, ParVector* y, double alpha, d
 	// Be sure sends finish
 	// TODO Add an error check on the status
 	MPI_Waitall(num_sends, send_requests);
+	delete[] recv_data; 
+	delete[] send_requests; 
+	delete[] recv_requests; 
+}
+
+void sequentialSPMV(CSRMatrix* A, Vector* x, Vector* y, double alpha, double beta)
+{
+    y = alpha*(A->m*x) + beta * y;
 }
