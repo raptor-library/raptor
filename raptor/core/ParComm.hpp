@@ -1,7 +1,7 @@
 // Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#ifndef RAPTOR_CORE_PARCOMMPKG_HPP
-#define RAPTOR_CORE_PARCOMMPKG_HPP
+#ifndef RAPTOR_CORE_PARCOMM_HPP
+#define RAPTOR_CORE_PARCOMM_HPP
 
 #include <mpi.h>
 #include <math.h>
@@ -11,14 +11,14 @@ using Eigen::VectorXd;
 #include "Matrix.hpp"
 #include <map>
 
-class ParMatrix
+class ParComm
 {
 public:
     // TODO
-    ParMatrix();
+    ParComm();
 
     //Assumes symmetry (SPD A)
-    ParCommPkg(Matrix* offd, std:vector<int> mapToGlobal, int* globalRowStarts)
+    ParComm(Matrix* offd, std:vector<int> mapToGlobal, int* globalRowStarts)
     {
         if (mapToGlobal.size() == 0)
         {
@@ -75,12 +75,12 @@ public:
     }
 
     //Does not assume square (P)
-    ParCommPkg(Matrix* offd, std:vector<int> mapToGlobal, int* globalRowStarts,
+    ParComm(Matrix* offd, std:vector<int> mapToGlobal, int* globalRowStarts,
                int* possibleSendProcs)
     {
 
     }
-    ~ParCommPkg();
+    ~ParComm();
 
     std::vector<int> getSendIndicies(int proc)
     {
