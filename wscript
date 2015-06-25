@@ -23,4 +23,4 @@ def configure(cfg):
 def build(bld):
     bld.recurse('raptor')
     bld.recurse('external')
-    bld.recurse('examples')
+    # bld.recurse('examples')

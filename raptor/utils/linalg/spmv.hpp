@@ -1,13 +1,17 @@
+#ifndef RAPTOR_UTILS_LINALG_SPMV_H
+#define RAPTOR_UTILS_LINALG_SPMV_H
+
 #include <mpi.h>
 #include <Eigen/Sparse>
 using Eigen::VectorXd;
 
-#include "Vector.hpp"
-#include "ParMatrix.hpp"
-#include "ParVector.hpp"
+#include "core/Vector.hpp"
+#include "core/ParMatrix.hpp"
+#include "core/Matrix.hpp"
+#include "core/ParVector.hpp"
 using namespace raptor;
 
-void sequentialSPMV(CSRMatrix* A, Vector* x, Vector* y, double alpha, double beta);
+void sequentialSPMV(CSR_Matrix* A, Vector* x, Vector* y, double alpha, double beta);
 void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double beta);
 
 
@@ -67,7 +71,9 @@ void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double
 	delete[] recv_requests; 
 }
 
-void sequentialSPMV(CSRMatrix* A, Vector* x, Vector* y, double alpha, double beta)
+void sequentialSPMV(CSR_Matrix* A, Vector* x, Vector* y, double alpha, double beta)
 {
     y = alpha*(A->m*x) + beta * y;
 }
+
+#endif
