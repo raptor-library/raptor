@@ -8,7 +8,7 @@
 #include <Eigen/Dense>
 using Eigen::VectorXd;
 
-#include "ParMatrix.hpp"
+#include "core/ParMatrix.hpp"
 
 ParMatrix* stencil_grid(double* stencil, int* grid, int dim)
 {

@@ -1,12 +1,12 @@
 #include <math.h>
-#include "Matrix.hpp"
-#include "ParMatrix.hpp"
-#include "ParVector.hpp"
-#include "Diffusion.hpp"
-#include "Stencil.hpp"
-#include "spmv.hpp"
+#include "raptor/core/Matrix.hpp"
+#include "raptor/core/ParMatrix.hpp"
+#include "raptor/core/ParVector.hpp"
+#include "raptor/utils/gallery/Diffusion.hpp"
+#include "raptor/utils/gallery/Stencil.hpp"
+#include "raptor/utils/linalg/spmv.hpp"
 int main ( int argc, char *argv[] )
-{  
+{
     int ilower, iupper;
     int local_size, extra;
     double strong_threshold;
@@ -19,13 +19,13 @@ int main ( int argc, char *argv[] )
     grid[1] = 33;
 
     int dim = 2;
-   
+
     /* Initialize MPI */
     MPI_Init(&argc, &argv);
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
- 
+
     double* stencil = diffusion_stencil_2d(eps, theta);
     ParMatrix* A = stencil_grid(stencil, grid, dim);
 
@@ -35,10 +35,10 @@ int main ( int argc, char *argv[] )
     // Create the rhs and solution
     raptor::ParVector* b = new raptor::ParVector(globalNumRows, localNumRows);
     raptor::ParVector* x = new raptor::ParVector(globalNumRows, localNumRows);
-   
+
     x->setConstValue(1.);
     //parallelSPMV(A, x, b, 1., 0.);
-    
+
 
     // Set the rhs values to h^2 and the solution to zero
     //{
@@ -56,11 +56,9 @@ int main ( int argc, char *argv[] )
     //    x.SetConstValue(0.0);
     // }
 
-   
+
    // Finalize MPI
    MPI_Finalize();
-   
+
    return(0);
 }
-
-
