@@ -1,4 +1,7 @@
 add_src_promisc(core)
-
-include_directories("include")
-add_library(raptor ${core_sources} ${tests_sources})
+add_library(raptor ${core_SOURCES})
+include_directories(".")
+if(ENABLE_UNIT_TESTS)
+  add_tests_promisc(core)
+  add_tests_promisc(util)
+endif()

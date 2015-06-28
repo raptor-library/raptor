@@ -1,12 +1,13 @@
+#include <mpi.h>
 #include <math.h>
-#include "raptor/core/Matrix.hpp"
-#include "raptor/core/ParMatrix.hpp"
-#include "raptor/core/ParVector.hpp"
-#include "raptor/utils/gallery/Diffusion.hpp"
-#include "raptor/utils/gallery/Stencil.hpp"
-#include "raptor/utils/linalg/spmv.hpp"
-int main ( int argc, char *argv[] )
-{
+#include "core/ParMatrix.hpp"
+#include "core/ParVector.hpp"
+#include "gallery/Diffusion.hpp"
+#include "gallery/Stencil.hpp"
+#include "util/linalg/spmv.hpp"
+
+
+TEST(linag, spmv) {
     int ilower, iupper;
     int local_size, extra;
     double strong_threshold;
@@ -20,8 +21,6 @@ int main ( int argc, char *argv[] )
 
     int dim = 2;
 
-    /* Initialize MPI */
-    MPI_Init(&argc, &argv);
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
@@ -55,10 +54,4 @@ int main ( int argc, char *argv[] )
     //    b.SetValues(rhs_values);
     //    x.SetConstValue(0.0);
     // }
-
-
-   // Finalize MPI
-   MPI_Finalize();
-
-   return(0);
 }
