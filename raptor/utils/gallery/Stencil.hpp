@@ -4,7 +4,8 @@
 #define STENCIL_HPP
 
 #include <mpi.h>
-#include <math.h>
+#include <cmath>
+#include <stdlib.h>
 #include <Eigen/Dense>
 using Eigen::VectorXd;
 
@@ -209,6 +210,16 @@ ParMatrix* stencil_grid(double* stencil, int* grid, int dim)
         }
     }
     row_ptr[n_v] = nnz;
+
+    for (int i = 0; i < n_v; i++)
+    {
+        int row_start = row_ptr[i];
+        int row_end = row_ptr[i+1];
+        for (int j = row_start; j < row_end; j++)
+        {
+            //printf("Full(%d, %d) = %2.3e\n", i + firstLocalRow, col_idx[j], values[j]);
+        }
+    }
 
 
     return new ParMatrix(N_v, N_v, row_ptr, col_idx, values, globalRowStarts);

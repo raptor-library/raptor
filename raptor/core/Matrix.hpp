@@ -12,16 +12,17 @@ typedef Eigen::SparseMatrix<double, 1> SpMat;
 //typedef Eigen::SparseMatrix<double, RowMajor> SpMat;
 typedef Eigen::Triplet<double> Triplet;
 
-class Matrix
-{
+//class Matrix
+//{
     // pass
-};
+//};
 
-class CSR_Matrix : public Matrix
+//class CSR_Matrix : public Matrix
+class Matrix
 {
 
 public:
-    CSR_Matrix(std::vector<Triplet>* _triplets, int _nRows, int _nCols)
+    Matrix(std::vector<Triplet>* _triplets, int _nRows, int _nCols)
     {
         m = new SpMat (_nRows, _nCols);
         m->setFromTriplets(_triplets->begin(), _triplets->end());
@@ -29,7 +30,7 @@ public:
         nCols = _nCols;
         nnz = _triplets->size();
     }
-    CSR_Matrix(int* I, int* J, double* data, int _nRows, int _nCols, unsigned long _nnz)
+    Matrix(int* I, int* J, double* data, int _nRows, int _nCols, unsigned long _nnz)
     {
         m = new SpMat (_nRows, _nCols);
         std::vector<Triplet> _triplets(_nnz);
@@ -54,7 +55,7 @@ public:
         nnz = _nnz;
 
     }
-    ~CSR_Matrix() { delete m; }
+    ~Matrix() { delete m; }
 
     SpMat* m;
     int nRows;
