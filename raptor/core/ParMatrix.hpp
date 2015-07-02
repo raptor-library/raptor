@@ -78,16 +78,6 @@ public:
             }
         }
 
-        if (offdJ.size()) for (int i = 0; i < localRows; i++)
-        {
-            int row_start = offdI[i];
-            int row_end = offdI[i+1];
-            for (int j = row_start; j < row_end; j++)
-            {
-                printf("Offd(%d, %d) = %2.3e\n", i+firstColDiag, offdJ[j], offdData[j]);
-            }
-        }
-
         //Create localToGlobal map and convert offd
         // cols to local (currently global)
         int offdNNZ = offdJ.size();
@@ -131,6 +121,18 @@ public:
                     offdJ[j] = globalToLocal[offdJ[j]];
                 }
             }
+
+
+        if (rank == 1) if (offdJ.size()) for (int i = 0; i < localRows; i++)
+        {
+            int row_start = offdI[i];
+            int row_end = offdI[i+1];
+            for (int j = row_start; j < row_end; j++)
+            {
+                printf("Offd(%d, %d) = %2.3e\n", i, offdJ[j], offdData[j]);
+            }
+        }
+
 
             //Initialize two matrices (offd and diag)
             offd = new Matrix(offdI.data(), offdJ.data(), offdData.data(),

@@ -1,5 +1,6 @@
 #include <mpi.h>
 #include <Eigen/Sparse>
+#include <Eigen/Dense>
 //using Eigen::VectorXd;
 
 #include "Vector.hpp"
@@ -86,11 +87,6 @@ void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double
 
 	// Compute partial SpMV with local information
     sequentialSPMV(A->diag, x->local, y->local, alpha, 0.0); 
-    double *y_data = y->local->data();
-    for (int i = 0; i < y->localN; i++)
-    {
-        //printf("y_data[%d] = %2.3e\n", i+A->firstColDiag, y_data[i]);
-    } 
 	
     // Once data is available, add contribution of off-diagonals
 	// TODO Deal with new entries as they become available
@@ -98,22 +94,15 @@ void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double
     if (A->offdNumCols)
     {
 	MPI_Waitall(recvProcs.size(), recvRequests, recvStatus);
-    Vector* tmp = new Vector(tempVectorSize);
-    double* data = tmp->data();
-    data = recvBuffer;
 
+    //TODO -- should not need to copy the vector like this
+    Vector tmp = Vector(tempVectorSize);
     for (int i = 0; i < tempVectorSize; i++)
     {
-        printf("x_data[%d] = %2.3e\n", i+A->firstColDiag, data[i]);
+        tmp(i) = recvBuffer[i];
     }
 
-    sequentialSPMV(A->offd, tmp, y->local, alpha, 0.0);
-
-    y_data = y->local->data();
-    for (int i = 0; i < y->localN; i++)
-    {
-        printf("y_data[%d] = %2.3e\n", i+A->firstColDiag, y_data[i]);
-    } 
+    sequentialSPMV(A->offd, &tmp, y->local, alpha, 1.0); 
 
 	// Be sure sends finish
 	// TODO Add an error check on the status
@@ -123,6 +112,12 @@ void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double
 	delete[] recvRequests; 
     delete[] recvStatus;
     delete[] sendStatus;
+    }
+
+    double* y_data = y->local->data();
+    for (int i = 0; i < y->localN; i++)
+    {
+        printf("y_data[%d] = %2.3e\n", i+A->firstColDiag, y_data[i]);
     }
 
 }
