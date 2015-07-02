@@ -1,4 +1,5 @@
 #include <mpi.h>
+#include <gtest/gtest.h>
 #include <math.h>
 #include "core/ParMatrix.hpp"
 #include "core/ParVector.hpp"
@@ -16,8 +17,8 @@ TEST(linag, spmv) {
     double theta = 0.0;
 
     int* grid = (int*) calloc(2, sizeof(int));
-    grid[0] = 33;
-    grid[1] = 33;
+    grid[0] = 3;
+    grid[1] = 3;
 
     int dim = 2;
 
@@ -32,26 +33,9 @@ TEST(linag, spmv) {
     int localNumRows = A->localRows;
 
     // Create the rhs and solution
-    raptor::ParVector* b = new raptor::ParVector(globalNumRows, localNumRows);
-    raptor::ParVector* x = new raptor::ParVector(globalNumRows, localNumRows);
+    ParVector* b = new ParVector(globalNumRows, localNumRows);
+    ParVector* x = new ParVector(globalNumRows, localNumRows);
 
     x->setConstValue(1.);
-    //parallelSPMV(A, x, b, 1., 0.);
-
-
-    // Set the rhs values to h^2 and the solution to zero
-    //{
-    //    double *rhs_values, *x_values;
-    //    int    *rows;
-
-    //    rhs_values = calloc(local_size, sizeof(double));
-
-    //    for (i=0; i<local_size; i++)
-    //    {
-    //       rhs_values[i] = h2;
-    //    }
-
-    //    b.SetValues(rhs_values);
-    //    x.SetConstValue(0.0);
-    // }
+    parallelSPMV(A, x, b, 1., 0.);
 }

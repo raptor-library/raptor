@@ -4,10 +4,10 @@
 
 using namespace raptor;
 
-ParVector::ParVector(index_t gblN, index_t lclN):
-    globalN(gblN), localN(lclN)
-{
-    local.resize(lclN);
-}
+// ParVector::ParVector(index_t gblN, index_t lclN):
+//     globalN(gblN), localN(lclN)
+// {
+//     local.resize(lclN);
+// }
 
 ParVector::ParVector(ParVector&& v) = default;

@@ -15,42 +15,39 @@ namespace raptor
     class ParVector
     {
     public:
-        ParVector(index_t N, index_t n);
+        ParVector(index_t N, index_t n)
+        {
+            globalN = N;
+            localN = n;
+            local = new Vector(localN);
+            printf("Making vector N = %d, n = %d\n", N, n);
+        }
         ParVector(ParVector&& x);
         ~ParVector() {};
 
         template<int p> data_t norm() const
         {
-            data_t result = local.lpNorm<p>();
+            data_t result = local->lpNorm<p>();
 
             result = pow(result, p); // undoing root of p from local operation
             MPI_Allreduce(MPI_IN_PLACE, &result, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
             return pow(result, 1./p);
         }
 
-        Vector & getLocalVector()
-        {
-            return local;
-        }
-        const Vector & getLocalVector() const
-        {
-            return local;
-        }
         void axpy(const ParVector & x, data_t alpha)
         {
-            local += x.getLocalVector() * alpha;
+            *local += *(x.local) * alpha;
         }
         void scale(data_t alpha)
         {
-            local *= alpha;
+            *local *= alpha;
         }
         void setConstValue(data_t alpha)
         {
-            local = Vector::Constant(localN, alpha);
+            *local = Vector::Constant(localN, alpha);
         }
 
-    protected:
-        Vector local;
+        Vector* local;
         int globalN;
         int localN;
     };
