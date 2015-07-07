@@ -34,8 +34,6 @@ void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double
 
     MPI_Request* sendRequests;
     MPI_Request* recvRequests;
-    MPI_Status* sendStatus;
-    MPI_Status* recvStatus;
     double* sendBuffer;
     double* recvBuffer;
 
@@ -44,8 +42,6 @@ void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double
 	    //TODO we do not want to malloc these every time
 	    sendRequests = new MPI_Request [sendProcs.size()];
 	    recvRequests = new MPI_Request [recvProcs.size()];
-        sendStatus = new MPI_Status [sendProcs.size()];
-        recvStatus = new MPI_Status [recvProcs.size()];
         sendBuffer = new double[comm->sumSizeSends];
         recvBuffer = new double[comm->sumSizeRecvs];
 
@@ -58,7 +54,6 @@ void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double
         for (auto proc : recvProcs)
         {
             int numRecv = recvIndices[proc].size();
-            printf("%d recv %d from %d\n", rank, numRecv, proc);
             MPI_Irecv(&recvBuffer[begin], numRecv, MPI_DOUBLE, proc, 0, MPI_COMM_WORLD, &(recvRequests[reqCtr++]));
             begin += numRecv;
         }
@@ -73,7 +68,6 @@ void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double
                 sendBuffer[begin + ctr] = local[sendIdx];
                 ctr++;
             }
-            printf("%d send %lu to %d\n", rank, sendIndices[proc].size(), proc);
             MPI_Isend(&sendBuffer[begin], ctr, MPI_DOUBLE, proc, 0, MPI_COMM_WORLD, &(sendRequests[reqCtr++]));
             begin += ctr;
         }
@@ -88,29 +82,20 @@ void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double
     // Once data is available, add contribution of off-diagonals
 	// TODO Deal with new entries as they become available
 	// TODO Add an error check on the status
+    // TODO Using MPI_STATUS_IGNORE (delete[] recvStatus was causing a segfault)
     if (A->offdNumCols)
     {
-	    MPI_Waitall(recvProcs.size(), recvRequests, recvStatus);
-
-        //TODO -- should not need to copy the vector like this
-        //Vector tmp = Vector(tempVectorSize);
-        //for (int i = 0; i < tempVectorSize; i++)
-        //{
-        //    tmp(i) = recvBuffer[i];
-        //}
-
-        //Vector tmp = Eigen::Map<Vector>(recvBuffer, tempVectorSize);
+	    MPI_Waitall(recvProcs.size(), recvRequests, MPI_STATUS_IGNORE);
         Vector tmp = Vector::Map(recvBuffer, tempVectorSize);
         sequentialSPMV(A->offd, &tmp, y->local, alpha, 1.0); 
 
 	    // Be sure sends finish
 	    // TODO Add an error check on the status
-	    MPI_Waitall(sendProcs.size(), sendRequests, sendStatus);
-//	    delete[] recv_data; 
+	    MPI_Waitall(sendProcs.size(), sendRequests, MPI_STATUS_IGNORE);
+
 	    delete[] sendRequests; 
 	    delete[] recvRequests; 
-        delete[] recvStatus;
-        delete[] sendStatus;
+        
     }
 }
 

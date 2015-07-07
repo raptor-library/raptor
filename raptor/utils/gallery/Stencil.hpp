@@ -41,7 +41,6 @@ ParMatrix* stencil_grid(double* stencil, int* grid, int dim)
             size++;
         }
         globalRowStarts[i+1] = globalRowStarts[i] + size;
-        if (rank == 0) printf("GlobalRowStarts[%d] = %d\n", i+1, globalRowStarts[i+1]);
     }
     int firstLocalRow = globalRowStarts[rank];
     int lastLocalRow = globalRowStarts[rank+1] - 1;
