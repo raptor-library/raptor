@@ -15,16 +15,16 @@ int main ( int argc, char *argv[] )
     double theta = 0.0;
 
     int* grid = (int*) calloc(2, sizeof(int));
-    grid[0] = 3;
-    grid[1] = 3;
+    grid[0] = 4;
+    grid[1] = 4;
 
     int dim = 2;
    
     /* Initialize MPI */
     MPI_Init(&argc, &argv);
-    int rank, num_procs;
+    int rank, numProcs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
  
     double* stencil = diffusion_stencil_2d(eps, theta);
     ParMatrix* A = stencil_grid(stencil, grid, dim);
@@ -38,11 +38,21 @@ int main ( int argc, char *argv[] )
    
     x->setConstValue(1.);
     parallelSPMV(A, x, b, 1., 0.);
-   
-   // Finalize MPI
-   MPI_Finalize();
-   
-   return(0);
+
+    for (int proc = 0; proc < numProcs; proc++)
+    {
+        if (proc == rank) for (int i = 0; i < localNumRows; i++)
+        {
+            double* data = (b->local)->data();
+            printf("b[%d] = %2.3e\n", i+(A->firstColDiag), data[i]);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+
+    // Finalize MPI
+    MPI_Finalize();
+    
+    return(0);
 }
 
 
