@@ -1,9 +1,9 @@
 #include <math.h>
-#include "Matrix.hpp"
-#include "ParMatrix.hpp"
-#include "ParVector.hpp"
-#include "Diffusion.hpp"
-#include "Stencil.hpp"
+#include "matrix.hpp"
+#include "par_matrix.hpp"
+#include "par_vector.hpp"
+#include "diffusion.hpp"
+#include "stencil.hpp"
 #include "spmv.hpp"
 int main ( int argc, char *argv[] )
 {  

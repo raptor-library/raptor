@@ -3,9 +3,9 @@
 #include <Eigen/Dense>
 //using Eigen::VectorXd;
 
-#include "Vector.hpp"
-#include "ParMatrix.hpp"
-#include "ParVector.hpp"
+#include "vector.hpp"
+#include "par_matrix.hpp"
+#include "par_vector.hpp"
 using namespace raptor;
 
 void sequential_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta);
@@ -42,19 +42,19 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
 
     // Initialize communication variables
     comm          = A->comm;
-    send_procs    = comm->sendProcs;
-    recv_procs    = comm->recvProcs;
-    send_indices  = comm->sendIndices;
-    recv_indices  = comm->recvIndices;
-    tmp_size      = comm->sumSizeRecvs;
+    send_procs    = comm->send_procs;
+    recv_procs    = comm->recv_procs;
+    send_indices  = comm->send_indices;
+    recv_indices  = comm->recv_indices;
+    tmp_size      = comm->size_recvs;
     local_data    = x->local->data();
     if (A->offd_num_cols)
     {
 	    // TODO we do not want to malloc these every time
 	    send_requests = new MPI_Request [send_procs.size()];
 	    recv_requests = new MPI_Request [recv_procs.size()];
-        send_buffer = new data_t [comm->sumSizeSends];
-        recv_buffer = new data_t [comm->sumSizeRecvs];
+        send_buffer = new data_t [comm->size_sends];
+        recv_buffer = new data_t [comm->size_recvs];
     }
 
     // Send and receive vector data

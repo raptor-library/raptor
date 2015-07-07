@@ -1,6 +1,6 @@
 // Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#include "ParMatrix.hpp"
+#include "par_matrix.hpp"
 
 ParMatrix::ParMatrix(index_t _globalRows, index_t _globalCols, Matrix* _diag, Matrix* _offd)
 {

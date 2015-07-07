@@ -5,7 +5,7 @@
 
 #include <Eigen/Sparse>
 
-#include "Types.hpp"
+#include "types.hpp"
 
 // TODO: Do not hard code RowMajor as 1; use the enum that exists somewhwere
 typedef Eigen::SparseMatrix<data_t, 1> SpMat;

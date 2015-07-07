@@ -6,8 +6,8 @@
 #include <mpi.h>
 #include <math.h>
 
-#include "Types.hpp"
-#include "Vector.hpp"
+#include "types.hpp"
+#include "vector.hpp"
 
 namespace raptor
 {
