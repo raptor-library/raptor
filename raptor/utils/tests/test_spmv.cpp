@@ -22,29 +22,29 @@ int main ( int argc, char *argv[] )
    
     /* Initialize MPI */
     MPI_Init(&argc, &argv);
-    int rank, numProcs;
+    int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
  
     double* stencil = diffusion_stencil_2d(eps, theta);
     ParMatrix* A = stencil_grid(stencil, grid, dim);
 
-    int globalNumRows = A->globalRows;
-    int localNumRows = A->localRows;
+    int global_num_rows = A->global_rows;
+    int local_num_rows = A->local_rows;
 
     // Create the rhs and solution
-    ParVector* b = new ParVector(globalNumRows, localNumRows);
-    ParVector* x = new ParVector(globalNumRows, localNumRows);
+    ParVector* b = new ParVector(global_num_rows, local_num_rows);
+    ParVector* x = new ParVector(global_num_rows, local_num_rows);
    
-    x->setConstValue(1.);
-    parallelSPMV(A, x, b, 1., 0.);
+    x->set_const_value(1.);
+    parallel_spmv(A, x, b, 1., 0.);
 
-    for (int proc = 0; proc < numProcs; proc++)
+    for (int proc = 0; proc < num_procs; proc++)
     {
-        if (proc == rank) for (int i = 0; i < localNumRows; i++)
+        if (proc == rank) for (int i = 0; i < local_num_rows; i++)
         {
             double* data = (b->local)->data();
-            printf("b[%d] = %2.3e\n", i+(A->firstColDiag), data[i]);
+            printf("b[%d] = %2.3e\n", i+(A->first_col_diag), data[i]);
         }
         MPI_Barrier(MPI_COMM_WORLD);
     }

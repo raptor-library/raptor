@@ -12,8 +12,8 @@ ParMatrix::ParMatrix(index_t _globalRows, index_t _globalCols, Matrix* _diag, Ma
 
 ParMatrix::ParMatrix(ParMatrix* A)
 {
-    this->globalRows = A->globalRows;
-    this->globalCols = A->globalCols;
+    this->globalRows = A->global_rows;
+    this->globalCols = A->global_cols;
     this->diag = A->diag; // should we mark as not owning?
     this->offd = A->offd;
 }

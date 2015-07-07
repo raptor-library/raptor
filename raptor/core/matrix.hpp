@@ -16,8 +16,8 @@ class Matrix
 {
 public:
     SpMat* m;
-    index_t nRows;
-    index_t nCols;
+    index_t n_rows;
+    index_t n_cols;
     unsigned long nnz;
 };
 
@@ -26,17 +26,17 @@ class CSR_Matrix : public Matrix
 {
 
 public:
-    CSR_Matrix(std::vector<Triplet>* _triplets, index_t _nRows, index_t _nCols)
+    CSR_Matrix(std::vector<Triplet>* _triplets, index_t _nrows, index_t _ncols)
     {
-        m = new SpMat (_nRows, _nCols);
+        m = new SpMat (_nrows, _ncols);
         m->setFromTriplets(_triplets->begin(), _triplets->end());
-        nRows = _nRows;
-        nCols = _nCols;
+        n_rows = _nrows;
+        n_cols = _ncols;
         nnz = _triplets->size();
     }
-    CSR_Matrix(index_t* I, index_t* J, data_t* data, index_t _nRows, index_t _nCols, unsigned long _nnz)
+    CSR_Matrix(index_t* I, index_t* J, data_t* data, index_t _nrows, index_t _ncols, unsigned long _nnz)
     {
-        m = new SpMat (_nRows, _nCols);
+        m = new SpMat (_nrows, _ncols);
         std::vector<Triplet> _triplets(_nnz);
 
         // assumes COO format
@@ -48,7 +48,7 @@ public:
 
         //Assumes CSR Format
         index_t ctr = 0;
-        for (index_t i = 0; i < _nRows; i++)
+        for (index_t i = 0; i < _nrows; i++)
         {
             for (index_t j = I[i]; j < I[i+1]; j++)
             {
@@ -57,8 +57,8 @@ public:
         }
 
         m->setFromTriplets(_triplets.begin(), _triplets.end());
-        nRows = _nRows;
-        nCols = _nCols;
+        n_rows = _nrows;
+        n_cols = _ncols;
         nnz = _nnz;
 
     }

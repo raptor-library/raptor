@@ -8,10 +8,10 @@
 #include "ParVector.hpp"
 using namespace raptor;
 
-void sequentialSPMV(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta);
-void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta);
+void sequential_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta);
+void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta);
 
-void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta)
+void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta)
 {
     // Get MPI Information
     index_t rank, num_procs;
@@ -48,7 +48,7 @@ void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t
     recv_indices  = comm->recvIndices;
     tmp_size      = comm->sumSizeRecvs;
     local_data    = x->local->data();
-    if (A->offdNumCols)
+    if (A->offd_num_cols)
     {
 	    // TODO we do not want to malloc these every time
 	    send_requests = new MPI_Request [send_procs.size()];
@@ -58,7 +58,7 @@ void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t
     }
 
     // Send and receive vector data
-    if (A->offdNumCols)
+    if (A->offd_num_cols)
     {
 	    // Begin sending and gathering off-diagonal entries
         begin = 0;
@@ -90,13 +90,13 @@ void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t
 	y->scale(beta);
 
 	// Compute partial SpMV with local information
-    sequentialSPMV(A->diag, x->local, y->local, alpha, 0.0); 
+    sequential_spmv(A->diag, x->local, y->local, alpha, 0.0); 
 	
     // Once data is available, add contribution of off-diagonals
 	// TODO Deal with new entries as they become available
 	// TODO Add an error check on the status
     // TODO Using MPI_STATUS_IGNORE (delete[] recvStatus was causing a segfault)
-    if (A->offdNumCols)
+    if (A->offd_num_cols)
     {
         // Wait for all receives to finish
 	    MPI_Waitall(recv_procs.size(), recv_requests, MPI_STATUS_IGNORE);
@@ -105,7 +105,7 @@ void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t
         offd_tmp = Vector::Map(recv_buffer, tmp_size);
 
         // Compute partial SpMV with offd information
-        sequentialSPMV(A->offd, &offd_tmp, y->local, alpha, 1.0); 
+        sequential_spmv(A->offd, &offd_tmp, y->local, alpha, 1.0); 
 
 	    // Wait for all sends to finish
 	    // TODO Add an error check on the status
@@ -119,7 +119,7 @@ void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t
 }
 
 //Sequential SpMV (alpha*A*x + beta*y)
-void sequentialSPMV(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
+void sequential_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
 {
     *y = alpha*((*(A->m))*(*x)) + beta * (*y);
 }

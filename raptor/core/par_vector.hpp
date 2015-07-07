@@ -15,11 +15,11 @@ namespace raptor
     class ParVector
     {
     public:
-        ParVector(index_t N, index_t n)
+        ParVector(index_t glbl_n, index_t lcl_n)
         {
-            globalN = N;
-            localN = n;
-            local = new Vector(localN);
+            global_n = glbl_n;
+            local_n = lcl_n;
+            local = new Vector(local_n);
         }
         ParVector(ParVector&& x);
         ~ParVector() {};
@@ -41,14 +41,14 @@ namespace raptor
         {
             *local *= alpha;
         }
-        void setConstValue(data_t alpha)
+        void set_const_value(data_t alpha)
         {
-            *local = Vector::Constant(localN, alpha);
+            *local = Vector::Constant(local_n, alpha);
         }
 
         Vector* local;
-        int globalN;
-        int localN;
+        int global_n;
+        int local_n;
     };
 
 }
