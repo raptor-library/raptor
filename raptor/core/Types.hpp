@@ -3,10 +3,12 @@
 #ifndef RAPTOR_CORE_TYPES_HPP
 #define RAPTOR_CORE_TYPES_HPP
 
-namespace raptor
-{
+#include "mpi.h"
+
+//namespace raptor
+//{
     using data_t = double;
-    using index_t = unsigned int;
-}
+    using index_t = int;
+//}
 
 #endif

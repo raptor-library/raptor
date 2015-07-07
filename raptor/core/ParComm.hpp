@@ -18,10 +18,10 @@ public:
     ParComm();
 
     //Assumes symmetry (SPD A)
-    ParComm(Matrix* offd, std::vector<int> mapToGlobal, int* globalRowStarts)
+    ParComm(Matrix* offd, std::vector<index_t> mapToGlobal, index_t* globalRowStarts)
     {
 
-        int rank, numProcs;
+        index_t rank, numProcs;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
 
@@ -31,9 +31,9 @@ public:
         }
 
         //Create map from columns to processors they lie on
-        int proc = 0;
-        int globalCol = 0;
-        for (int col = 0; col < mapToGlobal.size(); col++)
+        index_t proc = 0;
+        index_t globalCol = 0;
+        for (index_t col = 0; col < mapToGlobal.size(); col++)
         {
             globalCol = mapToGlobal[col];
             while (globalCol >= globalRowStarts[proc+1])
@@ -45,18 +45,18 @@ public:
 
         //Find inital proc (local col 0 lies on)
         globalCol = mapToGlobal[0];
-        std::vector<int> procCols;
+        std::vector<index_t> procCols;
         proc = colToProc[0];
         procCols.push_back(0);
 
         //Initialize list of columns that must be sent/recvd
-        int first = 0;
-        int last = 0;
+        index_t first = 0;
+        index_t last = 0;
 
         //For each offd col, find proc it lies on.  Add proc and list
         // of columns it holds to map sendIndices / recvIndices (same here)
-        int oldProc = colToProc[0];
-        for (int col = 0; col < mapToGlobal.size(); col++)
+        index_t oldProc = colToProc[0];
+        for (index_t col = 0; col < mapToGlobal.size(); col++)
         {
             proc = colToProc[col];
             if (proc != oldProc)
@@ -65,7 +65,7 @@ public:
                 this->sendProcs.push_back(oldProc);
                 first = last;
                 last = col;
-                std::vector<int> newvec(procCols.begin() + first, procCols.begin() + last);
+                std::vector<index_t> newvec(procCols.begin() + first, procCols.begin() + last);
                 this->recvIndices[oldProc] = newvec;
             }
             oldProc = proc;
@@ -73,29 +73,29 @@ public:
         this->recvProcs.push_back(oldProc);
         this->sendProcs.push_back(oldProc);
         first = last;
-        std::vector<int> newvec(procCols.begin() + first, procCols.begin() + mapToGlobal.size());
+        std::vector<index_t> newvec(procCols.begin() + first, procCols.begin() + mapToGlobal.size());
         this->recvIndices[oldProc] = newvec;
 
 
 
-        int* procList = (int*) calloc(numProcs, sizeof(int));
+        index_t* procList = (index_t*) calloc(numProcs, sizeof(index_t));
 
-        int* ptr = (offd->m)->outerIndexPtr();
-        int* idx = (offd->m)->innerIndexPtr();
+        index_t* ptr = (offd->m)->outerIndexPtr();
+        index_t* idx = (offd->m)->innerIndexPtr();
         double* values = (offd->m)->valuePtr();
-        int numRows = (offd->m)->outerSize();
-        for (int i = 0; i < numRows; i++)
+        index_t numRows = (offd->m)->outerSize();
+        for (index_t i = 0; i < numRows; i++)
         {
-            int rowStart = ptr[i];
-            int rowEnd = ptr[i+1];
+            index_t rowStart = ptr[i];
+            index_t rowEnd = ptr[i+1];
             if (rowStart == rowEnd) 
             {
                 continue;
             }
             oldProc = colToProc[idx[rowStart]];
-            for (int j = rowStart; j < rowEnd; j++)
+            for (index_t j = rowStart; j < rowEnd; j++)
             {
-                int col = idx[j];
+                index_t col = idx[j];
                 proc = colToProc[col];
                 if (proc != oldProc)
                 {
@@ -105,7 +105,7 @@ public:
                     }
                     else
                     {
-                        std::vector<int> tmp;
+                        std::vector<index_t> tmp;
                         tmp.push_back(i);
                         sendIndices[oldProc] = tmp;
                     }
@@ -118,7 +118,7 @@ public:
             }
             else
             {
-                std::vector<int> tmp;
+                std::vector<index_t> tmp;
                 tmp.push_back(numRows - 1);
                 sendIndices[oldProc] = tmp;
             }
@@ -131,20 +131,20 @@ public:
     }
 
     // TODO -- Does not assume square (P)
-    ParComm(Matrix* offd, std::vector<int> mapToGlobal, int* globalRowStarts,
-               int* possibleSendProcs)
+    ParComm(Matrix* offd, std::vector<index_t> mapToGlobal, index_t* globalRowStarts,
+               index_t* possibleSendProcs)
     {
 
     }
     ~ParComm();
 
-    int* globalRowStarts;
-    int sumSizeSends;
-    int sumSizeRecvs;
-    std::map<int, std::vector<int>> sendIndices;
-    std::map<int, std::vector<int>> recvIndices;
-    std::vector<int> sendProcs;
-    std::vector<int> recvProcs;
-    std::vector<int> colToProc;
+    index_t* globalRowStarts;
+    index_t sumSizeSends;
+    index_t sumSizeRecvs;
+    std::map<index_t, std::vector<index_t>> sendIndices;
+    std::map<index_t, std::vector<index_t>> recvIndices;
+    std::vector<index_t> sendProcs;
+    std::vector<index_t> recvProcs;
+    std::vector<index_t> colToProc;
 };
 #endif

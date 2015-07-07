@@ -8,72 +8,85 @@
 #include "ParVector.hpp"
 using namespace raptor;
 
-void sequentialSPMV(Matrix* A, Vector* x, Vector* y, double alpha, double beta);
-void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double beta);
+void sequentialSPMV(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta);
+void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta);
 
-void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double beta)
+void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta)
 {
-	/* y = \alpha Ax + \beta y */
+    // Get MPI Information
+    index_t rank, num_procs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-	//TODO must enforce that y and x are not aliased, or this will NOT work
+	// TODO must enforce that y and x are not aliased, or this will NOT work
 	//    or we could use blocking sends as long as we post the iRecvs first
 
-	MPI_Request *send_requests, *recv_requests;
-	double *recv_data;
+    // Declare communication variables
+	MPI_Request*                            send_requests;
+    MPI_Request*                            recv_requests;
+    data_t*                                 send_buffer;
+    data_t*                                 recv_buffer;
+    data_t*                                 local_data;
+    Vector                                  offd_tmp;
+    index_t                                 num_recv_procs;
+    index_t                                 num_send_procs;
+    index_t                                 tmp_size;
+    index_t                                 begin;
+    index_t                                 ctr;
+    index_t                                 request_ctr;
+    ParComm*                                comm;
+    std::vector<index_t>                    send_procs;
+    std::vector<index_t>                    recv_procs;
+    std::map<index_t, std::vector<index_t>> send_indices;
+    std::map<index_t, std::vector<index_t>> recv_indices;
 
-    int rank, numProcs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
-
-    ParComm* comm = A->comm;
-    auto sendProcs = comm->sendProcs;
-    auto recvProcs = comm->recvProcs;
-    auto sendIndices = comm->sendIndices;
-    auto recvIndices = comm->recvIndices;
-    int tempVectorSize = comm->sumSizeRecvs;
-
-    MPI_Request* sendRequests;
-    MPI_Request* recvRequests;
-    double* sendBuffer;
-    double* recvBuffer;
-
+    // Initialize communication variables
+    comm          = A->comm;
+    send_procs    = comm->sendProcs;
+    recv_procs    = comm->recvProcs;
+    send_indices  = comm->sendIndices;
+    recv_indices  = comm->recvIndices;
+    tmp_size      = comm->sumSizeRecvs;
+    local_data    = x->local->data();
     if (A->offdNumCols)
     {
-	    //TODO we do not want to malloc these every time
-	    sendRequests = new MPI_Request [sendProcs.size()];
-	    recvRequests = new MPI_Request [recvProcs.size()];
-        sendBuffer = new double[comm->sumSizeSends];
-        recvBuffer = new double[comm->sumSizeRecvs];
+	    // TODO we do not want to malloc these every time
+	    send_requests = new MPI_Request [send_procs.size()];
+	    recv_requests = new MPI_Request [recv_procs.size()];
+        send_buffer = new data_t [comm->sumSizeSends];
+        recv_buffer = new data_t [comm->sumSizeRecvs];
+    }
 
+    // Send and receive vector data
+    if (A->offdNumCols)
+    {
 	    // Begin sending and gathering off-diagonal entries
-	    double* local = x->local->data();
-    
-        int begin = 0;
-        int ctr = 0;
-        int reqCtr = 0;
-        for (auto proc : recvProcs)
+        begin = 0;
+        ctr = 0;
+        request_ctr = 0;
+        for (auto proc : recv_procs)
         {
-            int numRecv = recvIndices[proc].size();
-            MPI_Irecv(&recvBuffer[begin], numRecv, MPI_DOUBLE, proc, 0, MPI_COMM_WORLD, &(recvRequests[reqCtr++]));
-            begin += numRecv;
+            index_t num_recv = recv_indices[proc].size();
+            MPI_Irecv(&recv_buffer[begin], num_recv, MPI_DOUBLE, proc, 0, MPI_COMM_WORLD, &(recv_requests[request_ctr++]));
+            begin += num_recv;
         }
 
         begin = 0;
-        reqCtr = 0;
-	    for (auto proc : sendProcs)
+        request_ctr = 0;
+	    for (auto proc : send_procs)
         {
             ctr = 0;
-            for (auto sendIdx : sendIndices[proc])
+            for (auto send_idx : send_indices[proc])
             {
-                sendBuffer[begin + ctr] = local[sendIdx];
+                send_buffer[begin + ctr] = local_data[send_idx];
                 ctr++;
             }
-            MPI_Isend(&sendBuffer[begin], ctr, MPI_DOUBLE, proc, 0, MPI_COMM_WORLD, &(sendRequests[reqCtr++]));
+            MPI_Isend(&send_buffer[begin], ctr, MPI_DOUBLE, proc, 0, MPI_COMM_WORLD, &(send_requests[request_ctr++]));
             begin += ctr;
         }
     }
 
-	// Add contribution of b
+	// Add contribution of beta
 	y->scale(beta);
 
 	// Compute partial SpMV with local information
@@ -85,21 +98,28 @@ void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double
     // TODO Using MPI_STATUS_IGNORE (delete[] recvStatus was causing a segfault)
     if (A->offdNumCols)
     {
-	    MPI_Waitall(recvProcs.size(), recvRequests, MPI_STATUS_IGNORE);
-        Vector tmp = Vector::Map(recvBuffer, tempVectorSize);
-        sequentialSPMV(A->offd, &tmp, y->local, alpha, 1.0); 
+        // Wait for all receives to finish
+	    MPI_Waitall(recv_procs.size(), recv_requests, MPI_STATUS_IGNORE);
 
-	    // Be sure sends finish
+        // Add received data to Vector
+        offd_tmp = Vector::Map(recv_buffer, tmp_size);
+
+        // Compute partial SpMV with offd information
+        sequentialSPMV(A->offd, &offd_tmp, y->local, alpha, 1.0); 
+
+	    // Wait for all sends to finish
 	    // TODO Add an error check on the status
-	    MPI_Waitall(sendProcs.size(), sendRequests, MPI_STATUS_IGNORE);
+	    MPI_Waitall(send_procs.size(), send_requests, MPI_STATUS_IGNORE);
 
-	    delete[] sendRequests; 
-	    delete[] recvRequests; 
+        // Delete MPI_Requests
+	    delete[] send_requests; 
+	    delete[] recv_requests; 
         
     }
 }
 
-void sequentialSPMV(Matrix* A, Vector* x, Vector* y, double alpha, double beta)
+//Sequential SpMV (alpha*A*x + beta*y)
+void sequentialSPMV(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
 {
     *y = alpha*((*(A->m))*(*x)) + beta * (*y);
 }

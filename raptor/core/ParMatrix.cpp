@@ -2,7 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "ParMatrix.hpp"
 
-ParMatrix::ParMatrix(int _globalRows, int _globalCols, Matrix* _diag, Matrix* _offd)
+ParMatrix::ParMatrix(index_t _globalRows, index_t _globalCols, Matrix* _diag, Matrix* _offd)
 {
     this->globalRows = _globalRows;
     this->globalCols = _globalCols;
