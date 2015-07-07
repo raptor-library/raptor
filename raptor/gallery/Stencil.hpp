@@ -35,12 +35,17 @@ ParMatrix* stencil_grid(double* stencil, int* grid, int dim)
     int* globalRowStarts = (int*) calloc(num_procs+1, sizeof(int));
     for (int i = 0; i < num_procs; i++)
     {
-        int size = (N_v / num_procs) + (extra/(i+1));
+        int size = (N_v / num_procs);
+        if (i < extra)
+        {
+            size++;
+        }
         globalRowStarts[i+1] = globalRowStarts[i] + size;
+        if (rank == 0) printf("GlobalRowStarts[%d] = %d\n", i+1, globalRowStarts[i+1]);
     }
     int firstLocalRow = globalRowStarts[rank];
     int lastLocalRow = globalRowStarts[rank+1] - 1;
-    int n_v = globalRowStarts[rank+1] - firstLocalRow;
+    int n_v = lastLocalRow - firstLocalRow + 1;
     
     //N_s is number of nonzero stencil entries
     int N_s = 0;
@@ -210,18 +215,6 @@ ParMatrix* stencil_grid(double* stencil, int* grid, int dim)
         }
     }
     row_ptr[n_v] = nnz;
-
-    for (int i = 0; i < n_v; i++)
-    {
-        int row_start = row_ptr[i];
-        int row_end = row_ptr[i+1];
-        for (int j = row_start; j < row_end; j++)
-        {
-            //printf("Full(%d, %d) = %2.3e\n", i + firstLocalRow, col_idx[j], values[j]);
-        }
-    }
-
-
     return new ParMatrix(N_v, N_v, row_ptr, col_idx, values, globalRowStarts);
     
 } 

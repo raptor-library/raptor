@@ -20,7 +20,6 @@ namespace raptor
             globalN = N;
             localN = n;
             local = new Vector(localN);
-            printf("Making vector N = %d, n = %d\n", N, n);
         }
         ParVector(ParVector&& x);
         ~ParVector() {};

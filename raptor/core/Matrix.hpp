@@ -42,11 +42,12 @@ public:
         //}
 
         //Assumes CSR Format
+        int ctr = 0;
         for (int i = 0; i < _nRows; i++)
         {
             for (int j = I[i]; j < I[i+1]; j++)
             {
-                _triplets.push_back(Triplet(i, J[j], data[j]));
+                _triplets[ctr++] = (Triplet(i, J[j], data[j]));
             }
         }
         m->setFromTriplets(_triplets.begin(), _triplets.end());

@@ -19,9 +19,9 @@ public:
     ParMatrix(int _GlobRows, int _GlobCols, int* ptr, int* idx,
              double* data, int* globalRowStarts)
     {
-        int rank, num_procs;
+        int rank, numProcs;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+        MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
 
         this->globalRows = _GlobRows;
         this->globalCols = _GlobCols;
@@ -122,25 +122,15 @@ public:
                 }
             }
 
-
-        if (rank == 1) if (offdJ.size()) for (int i = 0; i < localRows; i++)
-        {
-            int row_start = offdI[i];
-            int row_end = offdI[i+1];
-            for (int j = row_start; j < row_end; j++)
-            {
-                printf("Offd(%d, %d) = %2.3e\n", i, offdJ[j], offdData[j]);
-            }
-        }
-
-
             //Initialize two matrices (offd and diag)
             offd = new Matrix(offdI.data(), offdJ.data(), offdData.data(),
                           localRows, offdNumCols, offdData.size());
+            (offd->m)->makeCompressed();
         }
 
         diag = new Matrix(diagI.data(), diagJ.data(), diagData.data(),
                           localRows, localRows, diagData.size());
+        (diag->m)->makeCompressed();
 
         //Initialize communication package
         comm = new ParComm(offd, localToGlobal, globalRowStarts);
