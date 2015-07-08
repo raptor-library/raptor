@@ -1,2 +1,0 @@
-def build(bld):
-    bld.program(source='vecnorm.cpp', target='vecnorm', use='raptor')

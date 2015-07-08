@@ -1,15 +1,26 @@
+#ifndef RAPTOR_UTILS_LINALG_SPMV_H
+#define RAPTOR_UTILS_LINALG_SPMV_H
+
 #include <mpi.h>
 #include <Eigen/Sparse>
 #include <Eigen/Dense>
+#include <Eigen/Core>
 //using Eigen::VectorXd;
 
-#include "vector.hpp"
-#include "par_matrix.hpp"
-#include "par_vector.hpp"
+#include "core/vector.hpp"
+#include "core/par_matrix.hpp"
+#include "core/matrix.hpp"
+#include "core/par_vector.hpp"
 using namespace raptor;
 
-void sequential_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta);
-void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta);
+//void sequentialSPMV(CSRMatrix* A, Vector* x, Vector* y, double alpha, double beta);
+//void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double beta);
+
+template <typename Derived>
+void sequentialSPMV(Matrix* A, const Eigen::MatrixBase<Derived> & x, Vector* y, double alpha, double beta)
+{
+    *y = alpha*((*(A->m))*(x)) + beta * (*y);
+}
 
 void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta)
 {
@@ -90,8 +101,8 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
 	y->scale(beta);
 
 	// Compute partial SpMV with local information
-    sequential_spmv(A->diag, x->local, y->local, alpha, 0.0); 
-	
+	sequentialSPMV(A->diag, *(x->local), y->local, alpha, 0.0);
+
     // Once data is available, add contribution of off-diagonals
 	// TODO Deal with new entries as they become available
 	// TODO Add an error check on the status
@@ -102,10 +113,8 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
 	    MPI_Waitall(recv_procs.size(), recv_requests, MPI_STATUS_IGNORE);
 
         // Add received data to Vector
-        offd_tmp = Vector::Map(recv_buffer, tmp_size);
-
-        // Compute partial SpMV with offd information
-        sequential_spmv(A->offd, &offd_tmp, y->local, alpha, 1.0); 
+        Vector offd_tmp = Eigen::Map<Vector>(recv_buffer, tmp_size);
+        sequentialSPMV(A->offd, offd_tmp, y->local, alpha, 1.0); 
 
 	    // Wait for all sends to finish
 	    // TODO Add an error check on the status
@@ -114,13 +123,12 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
         // Delete MPI_Requests
 	    delete[] send_requests; 
 	    delete[] recv_requests; 
-        
     }
 }
 
-//Sequential SpMV (alpha*A*x + beta*y)
-void sequential_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
-{
-    *y = alpha*((*(A->m))*(*x)) + beta * (*y);
-}
+// void sequentialSPMV(Matrix* A, Vector* x, Vector* y, double alpha, double beta)
+// {
+//     *y = alpha*((*(A->m))*(*x)) + beta * (*y);
+// }
 
+#endif

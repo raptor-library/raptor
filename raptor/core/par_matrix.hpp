@@ -7,9 +7,9 @@
 #include <math.h>
 #include <Eigen/Dense>
 
-#include "matrix.hpp"
-#include "par_comm.hpp"
-#include "types.hpp"
+#include "core/matrix.hpp"
+#include "core/par_comm.hpp"
+#include "core/types.hpp"
 
 //using namespace raptor;
 using Eigen::VectorXd;

@@ -2,7 +2,7 @@
 #include <iostream>
 #include <mpi.h>
 
-#include <raptor/core/ParVector.hpp>
+#include <raptor/core/par_vector.hpp>
 
 
 int main(int argc, char *argv[])
@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
 
 	ParVector v(10,5);
 
-	v.setConstValue((rank+1)*.5);
+	v.set_const_value((rank+1)*.5);
 
 	auto norm = v.norm<2>();
 

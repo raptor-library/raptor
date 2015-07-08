@@ -8,8 +8,8 @@
 #include <Eigen/Dense>
 using Eigen::VectorXd;
 
-#include "par_matrix.hpp"
-#include "types.hpp"
+#include "core/par_matrix.hpp"
+#include "core/types.hpp"
 
 // diffusion_stencil_2d
 //

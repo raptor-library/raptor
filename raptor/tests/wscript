@@ -1,3 +1,0 @@
-def build(bld):
-        bld.program(features='test', source='test_spmv.cpp',
-                    target='test-spmv', use='core')

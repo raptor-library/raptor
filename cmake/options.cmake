@@ -1,0 +1,5 @@
+option(BUILD_SHARED_LIBS "Build the shared library" ON)
+option(BUILD_EXAMPLES "Build the examples" ON)
+option(ENABLE_UNIT_TESTS "Enable unit testing" OFF)
+set(TEST_COMM_SIZE "2" CACHE STRING "MPI Communicator Size for tests")
+option(ENABLE_JENKINS_OUTPUT "Enable xml output for unit tests" OFF)
