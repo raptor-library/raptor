@@ -2,7 +2,7 @@
 
 #include <mpi.h>
 
-#include "../ParVector.hpp"
+#include "../par_vector.hpp"
 
 TEST(core, vecnorm) {
 	int rank;
@@ -17,7 +17,7 @@ TEST(core, vecnorm) {
 
 	ParVector v(10,5);
 
-	v.setConstValue((rank+1)*.5);
+	v.set_const_value((rank+1)*.5);
 
 	auto norm = v.norm<2>();
 
