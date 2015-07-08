@@ -216,7 +216,7 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim)
         }
     }
     row_ptr[n_v] = nnz;
-    return new ParMatrix(N_v, N_v, row_ptr, col_idx, values, globalRowStarts);
+    return new ParMatrix(N_v, N_v, nnz, row_ptr, col_idx, values, globalRowStarts);
     
 } 
 

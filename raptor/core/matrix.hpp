@@ -34,25 +34,30 @@ public:
         n_cols = _ncols;
         nnz = _triplets->size();
     }
-    CSR_Matrix(index_t* I, index_t* J, data_t* data, index_t _nrows, index_t _ncols, unsigned long _nnz)
+    CSR_Matrix(index_t* I, index_t* J, data_t* data, index_t _nrows, index_t _ncols, unsigned long _nnz, format_t format = CSR)
     {
         m = new SpMat (_nrows, _ncols);
         std::vector<Triplet> _triplets(_nnz);
 
-        // assumes COO format
-        //index_t ctr = 0;
-        //for (int i = 0; i < _nnz; i++)
-        //{
-        //    _triplets[ctr++] = (Triplet(I[i], J[i], data[i]));
-        //}
-
-        //Assumes CSR Format
-        index_t ctr = 0;
-        for (index_t i = 0; i < _nrows; i++)
+        if (format == CSR)
         {
-            for (index_t j = I[i]; j < I[i+1]; j++)
+            // Assumes CSR Format
+            index_t ctr = 0;
+            for (index_t i = 0; i < _nrows; i++)
             {
-                _triplets[ctr++] = (Triplet(i, J[j], data[j]));
+                for (index_t j = I[i]; j < I[i+1]; j++)
+                {
+                    _triplets[ctr++] = (Triplet(i, J[j], data[j]));
+                }
+            }
+        }
+        else if (format == COO)
+        {
+            // Assumes COO format
+            index_t ctr = 0;
+            for (int i = 0; i < _nnz; i++)
+            {
+                _triplets[ctr++] = (Triplet(I[i], J[i], data[i]));
             }
         }
 
