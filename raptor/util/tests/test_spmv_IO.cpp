@@ -22,7 +22,7 @@ int main( int argc, char *argv[] )
     //char file[] = "plbuckle.mtx";
 
 	ParMatrix* A = readParMatrix(file, MPI_COMM_WORLD, true);
-
+    assert(A != NULL && "Error reading matrix!!!");
 	int global_num_rows = A->global_rows;
 	int local_num_rows = A->local_rows;
 

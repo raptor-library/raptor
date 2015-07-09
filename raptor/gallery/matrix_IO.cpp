@@ -29,7 +29,7 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file)
 
                 if ((ret_code = mm_read_mtx_crd_size(infile, &num_rows, &num_cols, &nnz)) !=0)
                     return NULL;
-        
+
                 fclose(infile);
                 //create a partintioning
                 global_row_starts = new index_t[comm_size+1];
@@ -207,6 +207,7 @@ int mm_read_unsymmetric_sparse(const char *fname, int start, int stop, int *M_, 
     *I_ = I;
     *J_ = J;
  
+        printf("Allocated\n");
     /* NOTE: when reading in doubles, ANSI C requires the use of the "l"  */
     /*   specifier as in "%lg", "%lf", "%le", otherwise errors will occur */
     /*  (ANSI C X3.159-1989, Sec. 4.9.6.2, p. 136 lines 13-15)            */
@@ -219,9 +220,12 @@ int mm_read_unsymmetric_sparse(const char *fname, int start, int stop, int *M_, 
         {
             I[ctr]--;  /* adjust from 1-based to 0-based */
             J[ctr]--;
-            ctr++;
+            (ctr)++;
         }
+        
     }
+    *nz_ = ctr;
+        printf("looped\n");
     fclose(f);
  
     *nz_ = ctr;
