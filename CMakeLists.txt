@@ -10,7 +10,7 @@ include(mpi_config)
 include(cxx_config)
 
 include_directories("external")
-set(raptor_INCDIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(raptor_INCDIR ${CMAKE_CURRENT_SOURCE_DIR}/raptor)
 
 add_subdirectory(raptor)
 

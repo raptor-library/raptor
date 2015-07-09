@@ -2,7 +2,7 @@
 #include <iostream>
 #include <mpi.h>
 
-#include <raptor/core/par_vector.hpp>
+#include <core/par_vector.hpp>
 
 
 int main(int argc, char *argv[])
