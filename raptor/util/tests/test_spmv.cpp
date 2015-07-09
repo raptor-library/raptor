@@ -1,5 +1,5 @@
 #include <mpi.h>
-#include <gtest/gtest.h>
+//#include <gtest/gtest.h>
 #include <math.h>
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
@@ -8,29 +8,35 @@
 #include "util/linalg/spmv.hpp"
 
 
-TEST(linag, spmv) {
-	int ilower, iupper;
-	int local_size, extra;
-	double strong_threshold;
+TEST(linag, spmv) 
+{
+//int main( int argc, char *argv[] )
+//{
 
-	double eps = 1.0;
-	double theta = 0.0;
+//    MPI_Init(&argc, &argv);
 
-	int* grid = (int*) calloc(2, sizeof(int));
+	index_t ilower, iupper;
+	index_t local_size, extra;
+	data_t strong_threshold;
+
+	data_t eps = 1.0;
+	data_t theta = 0.0;
+
+	index_t* grid = (index_t*) calloc(2, sizeof(index_t));
 	grid[0] = 4;
 	grid[1] = 4;
 
-	int dim = 2;
+	index_t dim = 2;
 
-	int rank, num_procs;
+	index_t rank, num_procs;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-	double* stencil = diffusion_stencil_2d(eps, theta);
-	ParMatrix* A = stencil_grid(stencil, grid, dim);
+	data_t* stencil = diffusion_stencil_2d(eps, theta);
+	ParMatrix* A = stencil_grid(stencil, grid, dim, COO);
 
-	int global_num_rows = A->global_rows;
-	int local_num_rows = A->local_rows;
+	index_t global_num_rows = A->global_rows;
+	index_t local_num_rows = A->local_rows;
 
 	// Create the rhs and solution
 	ParVector* b = new ParVector(global_num_rows, local_num_rows);
@@ -39,15 +45,17 @@ TEST(linag, spmv) {
 	x->set_const_value(1.);
 	parallel_spmv(A, x, b, 1., 0.);
 
-	for (int proc = 0; proc < num_procs; proc++)
+	for (index_t proc = 0; proc < num_procs; proc++)
 	{
 		if (proc == rank) {
-			for (int i = 0; i < local_num_rows; i++)
+			for (index_t i = 0; i < local_num_rows; i++)
 			{
-				double* data = (b->local)->data();
+				data_t* data = (b->local)->data();
 				printf("b[%d] = %2.3e\n", i+(A->first_col_diag), data[i]);
 			}
 		}
 		MPI_Barrier(MPI_COMM_WORLD);
 	}
+
+//    MPI_Finalize();
 }
