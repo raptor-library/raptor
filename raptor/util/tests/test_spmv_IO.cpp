@@ -1,5 +1,5 @@
 #include <mpi.h>
-//#include <gtest/gtest.h>
+#include <gtest/gtest.h>
 #include <math.h>
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
@@ -7,11 +7,11 @@
 #include "util/linalg/spmv.hpp"
 
 
-//TEST(linag, spmv) 
-//{
-int main( int argc, char *argv[] )
+TEST(linag, spmv) 
 {
-    MPI_Init(&argc, &argv);
+//int main( int argc, char *argv[] )
+//{
+//    MPI_Init(&argc, &argv);
 
 	int rank, num_procs;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -44,5 +44,5 @@ int main( int argc, char *argv[] )
 		}
 		MPI_Barrier(MPI_COMM_WORLD);
 	}
-    MPI_Finalize();
+//    MPI_Finalize();
 }

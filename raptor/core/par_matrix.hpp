@@ -56,6 +56,7 @@ public:
         {
             for (index_t i = 0; i < local_nnz; i++)
             {
+                int row_idx_init = row_idx[i];
                 row_idx[i] -= first_col_diag;
             }
         }
@@ -97,6 +98,7 @@ public:
             for (index_t i = 0; i < local_nnz; i++)
             {
                 global_col = col_idx[i];
+                //printf("%d, %d = %2.3e\n", row_idx[i], col_idx[i], data[i]);
                 //In offd block
                 if (global_col < first_col_diag || global_col > last_col_diag)
                 {
@@ -151,21 +153,12 @@ public:
             }
 
             //Initialize off-diagonal-block matrix
-            printf("offd_i=%d, offd_j=%d, offd_d=%d, lclr=%d, offd_ncol=%d, offd_d=%d, fmt=%f\n",
-            offd_i.size(), offd_j.size(), offd_data.size(), local_rows, offd_num_cols, offd_data.size(), format);
-            for (auto i : offd_i)
-                printf("i%d ", i);
-            for (auto i : offd_j)
-                printf("j%d ", i);
             offd = new CSR_Matrix(offd_i.data(), offd_j.data(), offd_data.data(),
                           local_rows, offd_num_cols, offd_data.size(), format);
             (offd->m)->makeCompressed();
         }
 
         //Initialize diagonal-block matrix
-            printf("diag_i=%d, diag_j=%d, diag_d=%d, lclr=%d, lclr=%d, diag_d=%d, fmt=%f\n",
-            diag_i.size(), diag_j.size(), diag_data.size(), local_rows, local_rows, diag_data.size(), format);
-
         diag = new CSR_Matrix(diag_i.data(), diag_j.data(), diag_data.data(),
                           local_rows, local_rows, diag_data.size(), format);
         (diag->m)->makeCompressed();

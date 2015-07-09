@@ -29,15 +29,20 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file)
 
                 if ((ret_code = mm_read_mtx_crd_size(infile, &num_rows, &num_cols, &nnz)) !=0)
                     return NULL;
-
+        
                 fclose(infile);
                 //create a partintioning
+                index_t extra = num_rows % comm_size;
                 global_row_starts = new index_t[comm_size+1];
+                global_row_starts[0] = 0;
                 for (int i = 0; i < comm_size; i++)
                 {
-                    global_row_starts[i] = i * (num_rows/comm_size);
+                    global_row_starts[i+1] =  global_row_starts[i] + (num_rows/comm_size);
+                    if (i < extra)
+                    {
+                        global_row_starts[i+1]++;
+                    }
                 }
-                global_row_starts[comm_size] = num_rows;
     
                 // read the file knowing our local rows
                 ret_code = mm_read_symmetric_sparse(filename, global_row_starts[rank],
@@ -67,6 +72,9 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file)
             return NULL;
         }
     }
+
+    //printf("GlobRowStarts[%d] = %d\t RowEnds[%d] = %d\tNNZ=%d\n", rank, global_row_starts[rank], rank, global_row_starts[rank+1], nnz);
+
     return new ParMatrix(num_rows, num_cols, nnz, row_ptr, col, data,
                 global_row_starts, COO, 1);
 }
@@ -119,7 +127,7 @@ int mm_read_symmetric_sparse(const char *fname, int start, int stop, int *M_, in
  
     I = (int *) malloc(2*nz * sizeof(int));
     J = (int *) malloc(2*nz * sizeof(int));
-    val = (double *) malloc(nz * sizeof(double));
+    val = (double *) malloc(2*nz * sizeof(double));
  
     *val_ = val;
     *I_ = I;
@@ -135,16 +143,21 @@ int mm_read_symmetric_sparse(const char *fname, int start, int stop, int *M_, in
         index_t ierr = fscanf(f, "%d %d %lg\n", &I[ctr], &J[ctr], &val[ctr]);
         index_t row = I[ctr];
         index_t col = J[ctr];
-        if (I[ctr] > start && I[ctr] <= stop)
+        data_t value = val[ctr];
+        if (row > start && row <= stop)
         {
-            I[ctr]--;  /* adjust from 1-based to 0-based */
-            J[ctr]--;
+            I[ctr] = row-1;  /* adjust from 1-based to 0-based */
+            J[ctr] = col-1;
+            val[ctr] = value;
+            //printf("(%d, %d) - %2.3e\tctr=%d\n", row-1, col-1, value, ctr);
             ctr++;
         }
         if (col > start && col <= stop && col != row)
         {
             I[ctr] = col-1;
             J[ctr] = row-1;
+            val[ctr] = value;
+            //printf("(%d, %d) - %2.3e\tctr=%d\n", col-1, row-1, value, ctr);
             ctr++;
         }
     }
@@ -207,7 +220,6 @@ int mm_read_unsymmetric_sparse(const char *fname, int start, int stop, int *M_, 
     *I_ = I;
     *J_ = J;
  
-        printf("Allocated\n");
     /* NOTE: when reading in doubles, ANSI C requires the use of the "l"  */
     /*   specifier as in "%lg", "%lf", "%le", otherwise errors will occur */
     /*  (ANSI C X3.159-1989, Sec. 4.9.6.2, p. 136 lines 13-15)            */
@@ -220,12 +232,9 @@ int mm_read_unsymmetric_sparse(const char *fname, int start, int stop, int *M_, 
         {
             I[ctr]--;  /* adjust from 1-based to 0-based */
             J[ctr]--;
-            (ctr)++;
+            ctr++;
         }
-        
     }
-    *nz_ = ctr;
-        printf("looped\n");
     fclose(f);
  
     *nz_ = ctr;
