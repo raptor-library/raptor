@@ -12,29 +12,57 @@ using Eigen::VectorXd;
 #include "core/par_matrix.hpp"
 #include "core/types.hpp"
 
-ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim)
+ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t format = CSR)
 {
     // Get MPI Information
     index_t rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    //double is never 0.0 ... need zero tolerance
-    data_t zero_tol = 1e-6;
+    // Declare stencil grid variables
+    data_t zero_tol;
+    data_t value;
+    data_t* nonzero_stencil;
+    data_t* data;
+    data_t* values;
+    index_t stencil_len;
+    index_t N_v; // global num rows
+    index_t n_v; // local num rows
+    index_t N_s; // number of stencil elements
+    index_t extra;
+    index_t first_local_row;
+    index_t last_local_row;
+    index_t ctr;
+    index_t init_step;
+    index_t idx;
+    index_t len;
+    index_t step;
+    index_t pos;
+    index_t current_step;
+    index_t next_pos;
+    index_t col;
+    index_t nnz;
+    index_t* global_row_starts;
+    index_t* diags;
+    index_t* strides;
+    index_t* stack_indices;
+    index_t* row_ptr;
+    index_t* col_idx;
 
-    // stencil - 3 ^ dim
-    index_t stencil_len = (index_t)pow(3, dim);
+    // Initialize variables
+    zero_tol = 1e-6; //data_t is never equal to 0
+    stencil_len = (index_t)pow(3, dim); // stencil - 3 ^ dim
 
     //N_v is global number of rows
-    index_t N_v = 1;
+    N_v = 1;
     for (index_t i = 0; i < dim; i++)
     {
        N_v *= grid[i];
     }
 
     //n_v is local number of rows
-    index_t extra = N_v % num_procs;
-    index_t* globalRowStarts = (int*) calloc(num_procs+1, sizeof(int));
+    extra = N_v % num_procs;
+    global_row_starts = (int*) calloc(num_procs+1, sizeof(int));
     for (index_t i = 0; i < num_procs; i++)
     {
         index_t size = (N_v / num_procs);
@@ -42,14 +70,14 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim)
         {
             size++;
         }
-        globalRowStarts[i+1] = globalRowStarts[i] + size;
+        global_row_starts[i+1] = global_row_starts[i] + size;
     }
-    index_t firstLocalRow = globalRowStarts[rank];
-    index_t lastLocalRow = globalRowStarts[rank+1] - 1;
-    index_t n_v = lastLocalRow - firstLocalRow + 1;
+    first_local_row = global_row_starts[rank];
+    last_local_row = global_row_starts[rank+1] - 1;
+    n_v = last_local_row - first_local_row + 1;
     
     //N_s is number of nonzero stencil entries
-    index_t N_s = 0;
+    N_s = 0;
     for (index_t i = 0; i < stencil_len; i++)
     {
         if (fabs(stencil[i]) > zero_tol)
@@ -58,10 +86,10 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim)
         }
     }
 
-    index_t* diags = (index_t*) calloc(N_s, sizeof(index_t));
-    data_t nonzero_stencil[N_s];
+    diags = (index_t*) calloc(N_s, sizeof(index_t));
+    nonzero_stencil = (data_t*) calloc(N_s, sizeof(data_t));
     //Calculate strides for index offset for each dof in stencil
-    index_t strides[dim];
+    strides = (index_t*) calloc (dim, sizeof(index_t));
     strides[0] = 1;
     for (index_t i = 0; i < dim-1; i++)
     {
@@ -70,7 +98,7 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim)
 
     //Calculate indices of nonzeros in  stencil
     index_t indices[N_s][dim];
-    index_t ctr = 0;
+    ctr = 0;
     for (index_t i = 0; i < stencil_len; i++)
     {
         if (fabs(stencil[i]) > zero_tol)
@@ -96,7 +124,7 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim)
     } 
 
     //Initial data array
-    data_t data[N_s * n_v];
+    data = (data_t*) calloc (N_s*n_v, sizeof(data_t));
     for (index_t i = 0; i < N_s; i++)
     {
         for (index_t j = 0; j < n_v; j++)
@@ -106,7 +134,7 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim)
     }
 
     //Vertically stack indices (reorder)
-    index_t stack_indices[N_s*dim];
+    stack_indices = (index_t*) calloc (N_s*dim, sizeof(index_t));
     for (index_t i = 0; i < N_s; i++)
     {
         for (index_t j = 0; j < dim; j++)
@@ -120,11 +148,11 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim)
     {
         //get correct chunk of data 
         //(corresponding to single stencil entry)
-        index_t init_step = i*n_v;
+        init_step = i*n_v;
         for (index_t j = 0; j < dim; j++)
         {
             //If main diagonal, no boundary conditions
-            index_t idx = stack_indices[i*dim + j];
+            idx = stack_indices[i*dim + j];
             if (idx == 0)
             {
                 continue;
@@ -133,37 +161,37 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim)
             //Calculate length of chunks that are to
             // be set to zero, and step size between
             // these blocks of data
-            index_t len = 1;
-            index_t step = 1;
+            len = 1;
+            step = 1;
             for (index_t k = 0; k < (dim-j-1); k++)
             {
                 len *= grid[k];
             }
             step = len * grid[0];
 
-            index_t pos = 0;
-            index_t current_step = 0;
-            index_t next_pos = 0;
+            pos = 0;
+            current_step = 0;
+            next_pos = 0;
 
             //zeros at beginning
             if (idx > 0)
             {
-                current_step = step * (firstLocalRow / step);
+                current_step = step * (first_local_row / step);
 
                 //If previous boundary lies on processor
-                for (index_t k = current_step; k < lastLocalRow+1; k+=step)
+                for (index_t k = current_step; k < last_local_row+1; k+=step)
                 {
                     for (index_t l = 0; l < len; l++)
                     {
-                        if (k+l > lastLocalRow)
+                        if (k+l > last_local_row)
                         {
                             break;
                         }
-                        if (k+l < firstLocalRow)
+                        if (k+l < first_local_row)
                         {
                             continue;
                         }
-                        data[init_step + (k-firstLocalRow) + l] = 0;
+                        data[init_step + (k-first_local_row) + l] = 0;
                     }
                 }
             }
@@ -171,53 +199,91 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim)
             //zeros at end
             else if (idx < 0)
             {
-                current_step = step*(((lastLocalRow-1)/step)+1);
+                current_step = step*(((last_local_row-1)/step)+1);
 
                 //If previous boundary lies on processor
-                for (index_t k = current_step; k > firstLocalRow; k-=step)
+                for (index_t k = current_step; k > first_local_row; k-=step)
                 {
                     for (index_t l = 0; l < len; l++)
                     {
-                        if (k - l - 1 < firstLocalRow)
+                        if (k - l - 1 < first_local_row)
                         {
                             break;
                         }
-                        else if (k - l - 1 > lastLocalRow)
+                        else if (k - l - 1 > last_local_row)
                         {
                             continue;
                         }
-                        data[init_step + (k-l-firstLocalRow) -1] = 0;
+                        data[init_step + (k-l-first_local_row) -1] = 0;
                     }
                 }
             }
         }
     }
 
-    //Add diagonals to a csr matrix
-    index_t* row_ptr = (index_t*) calloc(n_v+1, sizeof(index_t));
-    index_t* col_idx = (index_t*) calloc(n_v*N_s, sizeof(index_t));
-    data_t* values = (data_t*) calloc(n_v*N_s, sizeof(data_t));
-    index_t nnz = 0;
-    for (index_t i = 0; i < n_v; i++)
+    if (format == CSR)
     {
-        row_ptr[i] = nnz;
-        for (index_t d = 0; d < N_s; d++)
+        //Add diagonals to a csr matrix
+        row_ptr = (index_t*) calloc(n_v+1, sizeof(index_t));
+        col_idx = (index_t*) calloc(n_v*N_s, sizeof(index_t));
+        values = (data_t*) calloc(n_v*N_s, sizeof(data_t));
+        nnz = 0;
+        for (index_t i = 0; i < n_v; i++)
         {
-            //add data[i] if nonzero 
-            index_t col = diags[d] + i + firstLocalRow;
-            data_t value = data[(N_s-d-1)*n_v+i];
-            if (col >= 0 && col < N_v && fabs(value) > zero_tol)
-            //if (col >= 0 && col < N_v)
+            row_ptr[i] = nnz;
+            for (index_t d = 0; d < N_s; d++)
             {
-                col_idx[nnz] = col;
-                values[nnz] = value;
-                nnz++;
+                //add data[i] if nonzero 
+                index_t col = diags[d] + i + first_local_row;
+                data_t value = data[(N_s-d-1)*n_v+i];
+                if (col >= 0 && col < N_v && fabs(value) > zero_tol)
+                {
+                    col_idx[nnz] = col;
+                    values[nnz] = value;
+                    nnz++;
+                }
+            }
+        }
+        row_ptr[n_v] = nnz;
+    }
+    else if (format == COO)
+    {
+        // Add diagonals to a COO matrix
+        row_ptr = (index_t*) calloc(n_v*N_s, sizeof(index_t));
+        col_idx = (index_t*) calloc(n_v*N_s, sizeof(index_t));
+        values = (data_t*) calloc(n_v*N_s, sizeof(data_t));
+        nnz = 0;
+        for (index_t i = 0; i < n_v; i++)
+        {
+            for (index_t d = 0; d < N_s; d++)
+            {
+                //add data[i] if nonzero 
+                index_t col = diags[d] + i + first_local_row;
+                data_t value = data[(N_s-d-1)*n_v+i];
+                if (col >= 0 && col < N_v && fabs(value) > zero_tol)
+                {
+                    row_ptr[nnz] = i;
+                    col_idx[nnz] = col;
+                    values[nnz] = value;
+                    nnz++;
+                }
             }
         }
     }
-    row_ptr[n_v] = nnz;
-    return new ParMatrix(N_v, N_v, nnz, row_ptr, col_idx, values, globalRowStarts);
-    
+
+    ParMatrix* A = new ParMatrix(N_v, N_v, nnz, row_ptr, col_idx, values, global_row_starts, format = format, 0);
+
+    //delete[] nonzero_stencil;
+    //delete[] data;
+    //delete[] values;
+    //delete[] diags;
+    //delete[] strides;
+    //delete[] stack_indices;
+    //delete[] row_ptr;
+    //delete[] col_idx;
+    //delete[] global_row_starts;
+
+    return A;
 } 
 
 #endif

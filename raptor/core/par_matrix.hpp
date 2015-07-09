@@ -19,7 +19,7 @@ class ParMatrix
 public:
     ParMatrix(index_t _glob_rows, index_t _glob_cols, Matrix* _diag, Matrix* _offd);
     ParMatrix(index_t _glob_rows, index_t _glob_cols, index_t _nnz, index_t* row_idx, index_t* col_idx,
-             data_t* data, index_t* global_row_starts, format_t format = CSR)
+             data_t* data, index_t* global_row_starts, format_t format = CSR, int global_row_idx = 0)
     {
         // Get MPI Information
         index_t rank, num_procs;
@@ -41,6 +41,7 @@ public:
         index_t                   row_end;
         index_t                   global_col;
         index_t                   offd_nnz;
+        index_t                   size_i;
 
         // Initialize matrix dimensions
         global_rows = _glob_rows;
@@ -51,6 +52,14 @@ public:
         last_col_diag = first_col_diag + local_rows - 1;
 
         // Split ParMat into diag and offd matrices
+        if (global_row_idx && format == COO)
+        {
+            for (index_t i = 0; i < local_rows; i++)
+            {
+                row_idx[i] -= first_col_diag;
+            }
+        }
+    
         if (format == CSR)
         {
             // Assumes CSR Matrix
@@ -92,13 +101,13 @@ public:
                 //In offd block
                 if (global_col < first_col_diag || global_col > last_col_diag)
                 {
-                    offd_i.push_back(row_idx[i] - first_col_diag);
+                    offd_i.push_back(row_idx[i]);
                     offd_j.push_back(global_col);
                     offd_data.push_back(data[i]);
                 }
                 else //in diag block
                 {
-                    diag_i.push_back(row_idx[i] - first_col_diag);
+                    diag_i.push_back(row_idx[i]);
                     diag_j.push_back(global_col - first_col_diag);
                     diag_data.push_back(data[i]);
                 }
@@ -137,25 +146,20 @@ public:
             }
 
             //Convert offd cols to local
-            for (index_t i = 0; i < local_rows; i++)
+            for (index_t i = 0; i < offd_nnz; i++)
             {
-                index_t row_start = offd_i[i];
-                index_t row_end = offd_i[i+1];
-                for (index_t j = row_start; j < row_end; j++)
-                {
-                    offd_j[j] = global_to_local[offd_j[j]];
-                }
+                offd_j[i] = global_to_local[offd_j[i]];
             }
 
             //Initialize off-diagonal-block matrix
             offd = new CSR_Matrix(offd_i.data(), offd_j.data(), offd_data.data(),
-                          local_rows, offd_num_cols, offd_data.size(), format = format);
+                          local_rows, offd_num_cols, offd_data.size(), format);
             (offd->m)->makeCompressed();
         }
 
         //Initialize diagonal-block matrix
         diag = new CSR_Matrix(diag_i.data(), diag_j.data(), diag_data.data(),
-                          local_rows, local_rows, diag_data.size(), format = format);
+                          local_rows, local_rows, diag_data.size(), format);
         (diag->m)->makeCompressed();
 
         //Initialize communication package
