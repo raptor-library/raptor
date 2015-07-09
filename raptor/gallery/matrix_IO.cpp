@@ -7,7 +7,7 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file)
     index_t* col;
     data_t* data;
     index_t* global_row_starts;
-
+    printf("readParMatrix\n");
     
     if (single_file) 
     {
@@ -27,19 +27,29 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file)
         if ((ret_code = mm_read_mtx_crd_size(infile, &num_rows, &num_cols, &nnz)) !=0)
             return NULL;
         
+        printf("closing file\n");
         fclose(infile);
+        printf("closed\n");
         //create a partintioning
         global_row_starts = new index_t[comm_size+1];
         for (int i = 0; i < comm_size; i++)
         {
-            global_row_starts[i] = i * (num_rows/comm_size);
+            global_row_starts[i] = i * ((num_rows-1)/comm_size);
         }
         global_row_starts[comm_size] = num_rows;
-    
+        
+        for (int j = 0; j < comm_size; j++) {
+            if (rank == j)
+                for (int i = 0; i < comm_size+1; i++)
+                    printf("%d ", global_row_starts[i]);
+            MPI_Barrier(comm);
+        }
+        printf("partitioned %d, %d\n", global_row_starts[rank], global_row_starts[rank+1]);
         // read the file knowing our local rows
         ret_code = mm_read_unsymmetric_sparse(filename, global_row_starts[rank],
                     global_row_starts[rank+1], &num_rows, &num_cols, &nnz,
                     &data, &row_ptr, &col);
+        printf("read file %d\n", ret_code);
         if (ret_code != 0)
         {
             delete[] global_row_starts; 
@@ -120,20 +130,26 @@ int mm_read_unsymmetric_sparse(const char *fname, int start, int stop, int *M_, 
     *I_ = I;
     *J_ = J;
  
+        printf("Allocated\n");
     /* NOTE: when reading in doubles, ANSI C requires the use of the "l"  */
     /*   specifier as in "%lg", "%lf", "%le", otherwise errors will occur */
     /*  (ANSI C X3.159-1989, Sec. 4.9.6.2, p. 136 lines 13-15)            */
-
+    ctr = 0;
     for (i=0; i<nz; i++)
     {
         fscanf(f, "%d %d %lg\n", &I[ctr], &J[ctr], &val[ctr]);
-        if (I[ctr] >= start && I[ctr] < stop)
+            if (I[ctr] == 23)
+                printf("start=%d, stop=%d\n", start, stop);
+        if (I[ctr] >= start+1 && I[ctr] <= stop)
         {
             I[ctr]--;  /* adjust from 1-based to 0-based */
             J[ctr]--;
-            ctr++;
+            (ctr)++;
         }
+        
     }
+    *nz_ = ctr;
+        printf("looped\n");
     fclose(f);
  
     return 0;

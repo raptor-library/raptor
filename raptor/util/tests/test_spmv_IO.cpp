@@ -13,8 +13,8 @@ TEST(linag, spmv) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-	ParMatrix* A = readParMatrix("file.mtx", MPI_COMM_WORLD, true);
-
+	ParMatrix* A = readParMatrix("A2.mtx", MPI_COMM_WORLD, true);
+    assert(A != NULL && "Error reading matrix!!!");
 	int global_num_rows = A->global_rows;
 	int local_num_rows = A->local_rows;
 
