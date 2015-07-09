@@ -1,5 +1,5 @@
 CXX = mpiCC
-RAPTOR_PATH = home/bienz2/Desktop
+RAPTOR_PATH = 
 
 CXX_FLAGS = -O2 -std=c++11\
 	-I/$(RAPTOR_PATH)/raptor/external/\
