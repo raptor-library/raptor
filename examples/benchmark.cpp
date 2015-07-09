@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
 	MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     // matrix to read
-    char file[] = "./build/test/LFAT5.mtx";
+    char file[] = "LFAT5.mtx";
     //char file[] = "msc01440.mtx";
     //char file[] = "plbuckle.mtx";
 
