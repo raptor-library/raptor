@@ -7,7 +7,6 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file)
     index_t* col;
     data_t* data;
     index_t* global_row_starts;
-
     
     if (single_file) 
     {
@@ -17,33 +16,41 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file)
         MPI_Comm_size(comm, &comm_size);
         MPI_Comm_rank(comm, &rank);
 
-        // find size of matix 
-        if ((infile = fopen(filename, "r")) == NULL) 
-            return NULL;
-
-        if (mm_read_banner(infile, &matcode) != 0)
-            return NULL;
-
-        if ((ret_code = mm_read_mtx_crd_size(infile, &num_rows, &num_cols, &nnz)) !=0)
-            return NULL;
-        
-        fclose(infile);
-        //create a partintioning
-        global_row_starts = new index_t[comm_size+1];
-        for (int i = 0; i < comm_size; i++)
+        for (index_t proc = 0; proc < comm_size; proc++)
         {
-            global_row_starts[i] = i * (num_rows/comm_size);
-        }
-        global_row_starts[comm_size] = num_rows;
+            if (rank == proc)
+            {
+                // find size of matix 
+                if ((infile = fopen(filename, "r")) == NULL) 
+                    return NULL;
+
+                if (mm_read_banner(infile, &matcode) != 0)
+                    return NULL;
+
+                if ((ret_code = mm_read_mtx_crd_size(infile, &num_rows, &num_cols, &nnz)) !=0)
+                    return NULL;
+        
+                fclose(infile);
+                //create a partintioning
+                global_row_starts = new index_t[comm_size+1];
+                for (int i = 0; i < comm_size; i++)
+                {
+                    global_row_starts[i] = i * (num_rows/comm_size);
+                }
+                global_row_starts[comm_size] = num_rows;
     
-        // read the file knowing our local rows
-        ret_code = mm_read_unsymmetric_sparse(filename, global_row_starts[rank],
+                // read the file knowing our local rows
+                ret_code = mm_read_symmetric_sparse(filename, global_row_starts[rank],
                     global_row_starts[rank+1], &num_rows, &num_cols, &nnz,
                     &data, &row_ptr, &col);
-        if (ret_code != 0)
-        {
-            delete[] global_row_starts; 
-            return NULL;
+
+                if (ret_code != 0)
+                {
+                    delete[] global_row_starts; 
+                    return NULL;
+                }
+            }
+            MPI_Barrier(MPI_COMM_WORLD);
         }
     }
     else //one file per MPI process
@@ -51,7 +58,7 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file)
         //TODO: init global_row_starts
         global_row_starts = new index_t[comm_size+1];
         
-        ret_code = mm_read_unsymmetric_sparse(filename, global_row_starts[rank],
+        ret_code = mm_read_symmetric_sparse(filename, global_row_starts[rank],
                     global_row_starts[rank+1], &num_rows, &num_cols, &nnz,
                     &data, &row_ptr, &col);
         if (ret_code != 0)
@@ -61,10 +68,90 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file)
         }
     }
     return new ParMatrix(num_rows, num_cols, nnz, row_ptr, col, data,
-                global_row_starts, COO);
+                global_row_starts, COO, 1);
 }
 
+int mm_read_symmetric_sparse(const char *fname, int start, int stop, int *M_, int *N_, int *nz_,
+                double **val_, int **I_, int **J_)
+{
+    FILE *f;
+    MM_typecode matcode;
+    int M, N, nz;
+    int i, ctr;
+    double *val;
+    int *I, *J;
+     
+    if ((f = fopen(fname, "r")) == NULL)
+            return -1;
+ 
+ 
+    if (mm_read_banner(f, &matcode) != 0)
+    {
+        printf("mm_read_unsymetric: Could not process Matrix Market banner ");
+        printf(" in file [%s]\n", fname);
+        return -1;
+    }
+ 
+ 
+ 
+    if ( !(mm_is_real(matcode) && mm_is_matrix(matcode) &&
+            mm_is_sparse(matcode)))
+    {
+        fprintf(stderr, "Sorry, this application does not support ");
+        fprintf(stderr, "Market Market type: [%s]\n",
+                mm_typecode_to_str(matcode));
+        return -1;
+    }
+ 
+    /* find out size of sparse matrix: M, N, nz .... */
+ 
+    if (mm_read_mtx_crd_size(f, &M, &N, &nz) !=0)
+    {
+        fprintf(stderr, "read_unsymmetric_sparse(): could not parse matrix size.\n");
+        return -1;
+    }
+ 
+    *M_ = M;
+    *N_ = N;
+    //*nz_ = nz;
+ 
+    /* reseve memory for matrices */
+ 
+    I = (int *) malloc(2*nz * sizeof(int));
+    J = (int *) malloc(2*nz * sizeof(int));
+    val = (double *) malloc(nz * sizeof(double));
+ 
+    *val_ = val;
+    *I_ = I;
+    *J_ = J;
+ 
+    /* NOTE: when reading in doubles, ANSI C requires the use of the "l"  */
+    /*   specifier as in "%lg", "%lf", "%le", otherwise errors will occur */
+    /*  (ANSI C X3.159-1989, Sec. 4.9.6.2, p. 136 lines 13-15)            */
 
+    ctr = 0;
+    for (i=0; i<nz; i++)
+    {
+        index_t ierr = fscanf(f, "%d %d %lg\n", &I[ctr], &J[ctr], &val[ctr]);
+        index_t row = I[ctr];
+        index_t col = J[ctr];
+        if (I[ctr] > start && I[ctr] <= stop)
+        {
+            I[ctr]--;  /* adjust from 1-based to 0-based */
+            J[ctr]--;
+            ctr++;
+        }
+        if (col > start && col <= stop && col != row)
+        {
+            I[ctr] = col-1;
+            J[ctr] = row-1;
+            ctr++;
+        }
+    }
+    fclose(f);
+    *nz_ = ctr;
+    return 0;
+}
 
 int mm_read_unsymmetric_sparse(const char *fname, int start, int stop, int *M_, int *N_, int *nz_,
                 double **val_, int **I_, int **J_)
@@ -108,7 +195,7 @@ int mm_read_unsymmetric_sparse(const char *fname, int start, int stop, int *M_, 
  
     *M_ = M;
     *N_ = N;
-    *nz_ = nz;
+    //*nz_ = nz;
  
     /* reseve memory for matrices */
  
@@ -124,10 +211,11 @@ int mm_read_unsymmetric_sparse(const char *fname, int start, int stop, int *M_, 
     /*   specifier as in "%lg", "%lf", "%le", otherwise errors will occur */
     /*  (ANSI C X3.159-1989, Sec. 4.9.6.2, p. 136 lines 13-15)            */
 
+    ctr = 0;
     for (i=0; i<nz; i++)
     {
         fscanf(f, "%d %d %lg\n", &I[ctr], &J[ctr], &val[ctr]);
-        if (I[ctr] >= start && I[ctr] < stop)
+        if (I[ctr] > start && I[ctr] <= stop)
         {
             I[ctr]--;  /* adjust from 1-based to 0-based */
             J[ctr]--;
@@ -136,6 +224,7 @@ int mm_read_unsymmetric_sparse(const char *fname, int start, int stop, int *M_, 
     }
     fclose(f);
  
+    *nz_ = ctr;
     return 0;
 }
 
@@ -374,4 +463,3 @@ char  *mm_typecode_to_str(MM_typecode matcode)
     return mm_strdup(buffer);
 
 }
-

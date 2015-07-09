@@ -1,5 +1,5 @@
 #include <mpi.h>
-//#include <gtest/gtest.h>
+#include <gtest/gtest.h>
 #include <math.h>
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"

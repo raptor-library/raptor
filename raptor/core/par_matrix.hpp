@@ -54,7 +54,7 @@ public:
         // Split ParMat into diag and offd matrices
         if (global_row_idx && format == COO)
         {
-            for (index_t i = 0; i < local_rows; i++)
+            for (index_t i = 0; i < local_nnz; i++)
             {
                 row_idx[i] -= first_col_diag;
             }
@@ -97,7 +97,6 @@ public:
             for (index_t i = 0; i < local_nnz; i++)
             {
                 global_col = col_idx[i];
-
                 //In offd block
                 if (global_col < first_col_diag || global_col > last_col_diag)
                 {

@@ -1,5 +1,5 @@
 #include <mpi.h>
-#include <gtest/gtest.h>
+//#include <gtest/gtest.h>
 #include <math.h>
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
@@ -7,13 +7,21 @@
 #include "util/linalg/spmv.hpp"
 
 
-TEST(linag, spmv) {
+//TEST(linag, spmv) 
+//{
+int main( int argc, char *argv[] )
+{
+    MPI_Init(&argc, &argv);
 
 	int rank, num_procs;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-	ParMatrix* A = readParMatrix("file.mtx", MPI_COMM_WORLD, true);
+    char file[] = "LFAT5.mtx";
+    //char file[] = "msc01440.mtx";
+    //char file[] = "plbuckle.mtx";
+
+	ParMatrix* A = readParMatrix(file, MPI_COMM_WORLD, true);
 
 	int global_num_rows = A->global_rows;
 	int local_num_rows = A->local_rows;
@@ -36,4 +44,5 @@ TEST(linag, spmv) {
 		}
 		MPI_Barrier(MPI_COMM_WORLD);
 	}
+    MPI_Finalize();
 }
