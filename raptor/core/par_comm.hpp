@@ -97,6 +97,7 @@ public:
         idx = (offd->m)->innerIndexPtr();
         values = (offd->m)->valuePtr();
         num_rows = (offd->m)->outerSize();
+        size_sends = 0;
         for (index_t i = 0; i < num_rows; i++)
         {
             row_start = ptr[i];
@@ -124,6 +125,7 @@ public:
                         tmp.push_back(i);
                         send_indices[old_proc] = tmp;
                     }
+                    size_sends++;
                 }
                 old_proc = proc;
             }
@@ -138,10 +140,10 @@ public:
                 tmp.push_back(num_rows - 1);
                 send_indices[old_proc] = tmp;
             }
+            size_sends++;
         }
 
         //Store total number of values to be sent/received
-        size_sends = map_to_global.size();
         size_recvs = map_to_global.size();
 
     }

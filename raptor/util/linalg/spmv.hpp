@@ -95,6 +95,7 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
             MPI_Isend(&send_buffer[begin], ctr, MPI_DOUBLE, proc, 0, MPI_COMM_WORLD, &(send_requests[request_ctr++]));
             begin += ctr;
         }
+    
     }
 
 	// Add contribution of beta
@@ -123,7 +124,10 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
         // Delete MPI_Requests
 	    delete[] send_requests; 
 	    delete[] recv_requests; 
+        delete[] send_buffer;
+        delete[] recv_buffer;
     }
+
 }
 
 // void sequentialSPMV(Matrix* A, Vector* x, Vector* y, double alpha, double beta)

@@ -1,5 +1,5 @@
 #include <mpi.h>
-#include <gtest/gtest.h>
+//#include <gtest/gtest.h>
 #include <math.h>
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
@@ -8,12 +8,12 @@
 #include "util/linalg/spmv.hpp"
 
 
-TEST(linag, spmv) 
-{
-//int main( int argc, char *argv[] )
+//TEST(linag, spmv) 
 //{
+int main( int argc, char *argv[] )
+{
 
-//    MPI_Init(&argc, &argv);
+    MPI_Init(&argc, &argv);
 
 	index_t ilower, iupper;
 	index_t local_size, extra;
@@ -43,6 +43,7 @@ TEST(linag, spmv)
 	ParVector* x = new ParVector(global_num_rows, local_num_rows);
 
 	x->set_const_value(1.);
+	b->set_const_value(0.);
 	parallel_spmv(A, x, b, 1., 0.);
 
 	for (index_t proc = 0; proc < num_procs; proc++)
@@ -57,5 +58,5 @@ TEST(linag, spmv)
 		MPI_Barrier(MPI_COMM_WORLD);
 	}
 
-//    MPI_Finalize();
+    MPI_Finalize();
 }
