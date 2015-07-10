@@ -37,9 +37,7 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
     index_t idx;
     index_t len;
     index_t step;
-    index_t pos;
     index_t current_step;
-    index_t next_pos;
     index_t col;
     index_t nnz;
     index_t* global_row_starts;
@@ -168,10 +166,7 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
                 len *= grid[k];
             }
             step = len * grid[0];
-
-            pos = 0;
             current_step = 0;
-            next_pos = 0;
 
             //zeros at beginning
             if (idx > 0)
@@ -234,8 +229,8 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
             for (index_t d = 0; d < N_s; d++)
             {
                 //add data[i] if nonzero 
-                index_t col = diags[d] + i + first_local_row;
-                data_t value = data[(N_s-d-1)*n_v+i];
+                col = diags[d] + i + first_local_row;
+                value = data[(N_s-d-1)*n_v+i];
                 if (col >= 0 && col < N_v && fabs(value) > zero_tol)
                 {
                     col_idx[nnz] = col;
@@ -258,8 +253,8 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
             for (index_t d = 0; d < N_s; d++)
             {
                 //add data[i] if nonzero 
-                index_t col = diags[d] + i + first_local_row;
-                data_t value = data[(N_s-d-1)*n_v+i];
+                col = diags[d] + i + first_local_row;
+                value = data[(N_s-d-1)*n_v+i];
                 if (col >= 0 && col < N_v && fabs(value) > zero_tol)
                 {
                     row_ptr[nnz] = i;
@@ -272,16 +267,6 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
     }
 
     ParMatrix* A = new ParMatrix(N_v, N_v, nnz, row_ptr, col_idx, values, global_row_starts, format = format, 0);
-
-    //delete[] nonzero_stencil;
-    //delete[] data;
-    //delete[] values;
-    //delete[] diags;
-    //delete[] strides;
-    //delete[] stack_indices;
-    //delete[] row_ptr;
-    //delete[] col_idx;
-    //delete[] global_row_starts;
 
     free(row_ptr);
     free(col_idx);

@@ -140,7 +140,7 @@ int mm_read_symmetric_sparse(const char *fname, int start, int stop, int *M_, in
     ctr = 0;
     for (i=0; i<nz; i++)
     {
-        index_t ierr = fscanf(f, "%d %d %lg\n", &I[ctr], &J[ctr], &val[ctr]);
+        fscanf(f, "%d %d %lg\n", &I[ctr], &J[ctr], &val[ctr]);
         index_t row = I[ctr];
         index_t col = J[ctr];
         data_t value = val[ctr];
@@ -422,15 +422,12 @@ char *mm_strdup(const char *s)
 char  *mm_typecode_to_str(MM_typecode matcode)
 {
     char buffer[MM_MAX_LINE_LENGTH];
-    char *types[4];
+    char const *types[4];
 	char *mm_strdup(const char *);
-    int error =0;
 
     /* check for MTX type */
     if (mm_is_matrix(matcode)) 
         types[0] = MM_MTX_STR;
-    else
-        error=1;
 
     /* check for CRD or ARR matrix */
     if (mm_is_sparse(matcode))

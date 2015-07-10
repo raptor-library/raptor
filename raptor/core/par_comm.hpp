@@ -25,12 +25,6 @@ public:
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-        // If no off-diagonal block, return empty comm package
-        if (map_to_global.size() == 0)
-        {
-            return;
-        }
-
         // Declare communication variables
         std::vector<index_t>    proc_cols;
         index_t                 proc;
@@ -40,16 +34,23 @@ public:
         index_t                 first;
         index_t                 last;
         index_t                 num_rows;
+        index_t                 num_cols;
         index_t                 row_start;
         index_t                 row_end;
         index_t*                ptr;
         index_t*                idx;
-        data_t*                 values;
 
+        num_cols = map_to_global.size();
+
+        // If no off-diagonal block, return empty comm package
+        if (num_cols == 0)
+        {
+            return;
+        }
 
         // Create map from columns to processors they lie on
         proc = 0;
-        for (index_t col = 0; col < map_to_global.size(); col++)
+        for (index_t col = 0; col < num_cols; col++)
         {
             global_col = map_to_global[col];
             while (global_col >= global_row_starts[proc+1])
@@ -68,7 +69,7 @@ public:
         // of columns it holds to map recvIndices
         last = 0;
         old_proc = col_to_proc[0];
-        for (local_col = 0; local_col < map_to_global.size(); local_col++)
+        for (local_col = 0; local_col < num_cols; local_col++)
         {   
             proc = col_to_proc[local_col];
             // Column lies on new processor, so add last
@@ -86,7 +87,7 @@ public:
         }
         // Add last processor to communicator
         first = last;
-        std::vector<index_t> newvec(proc_cols.begin() + first, proc_cols.begin() + map_to_global.size());
+        std::vector<index_t> newvec(proc_cols.begin() + first, proc_cols.begin() + num_cols);
         recv_indices[old_proc] = newvec;
         recv_procs.push_back(old_proc);
         send_procs.push_back(old_proc);
@@ -95,7 +96,6 @@ public:
         // Get CSR Matrix variables
         ptr = (offd->m)->outerIndexPtr();
         idx = (offd->m)->innerIndexPtr();
-        values = (offd->m)->valuePtr();
         num_rows = (offd->m)->outerSize();
         size_sends = 0;
         for (index_t i = 0; i < num_rows; i++)
@@ -144,7 +144,7 @@ public:
         }
 
         //Store total number of values to be sent/received
-        size_recvs = map_to_global.size();
+        size_recvs = num_cols;
 
     }
 

@@ -40,8 +40,6 @@ public:
         index_t                   row_start;
         index_t                   row_end;
         index_t                   global_col;
-        index_t                   offd_nnz;
-        index_t                   size_i;
 
         // Initialize matrix dimensions
         global_rows = _glob_rows;
@@ -56,7 +54,6 @@ public:
         {
             for (index_t i = 0; i < local_nnz; i++)
             {
-                int row_idx_init = row_idx[i];
                 row_idx[i] -= first_col_diag;
             }
         }
@@ -168,12 +165,7 @@ public:
 
     }
     ParMatrix(ParMatrix* A);
-    ~ParMatrix()
-    {
-        delete diag;
-        delete comm;
-        delete offd;
-    }
+    ~ParMatrix();
 
     index_t global_rows;
     index_t global_cols;
@@ -185,6 +177,7 @@ public:
     std::map<index_t, index_t> global_to_local;
     index_t offd_num_cols;
     index_t first_col_diag;
+    index_t offd_nnz;
     ParComm* comm;
 };
 #endif

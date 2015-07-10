@@ -39,8 +39,6 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     data_t*                                 recv_buffer;
     data_t*                                 local_data;
     Vector                                  offd_tmp;
-    index_t                                 num_recv_procs;
-    index_t                                 num_send_procs;
     index_t                                 tmp_size;
     index_t                                 begin;
     index_t                                 ctr;

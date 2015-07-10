@@ -1,5 +1,5 @@
 #include <mpi.h>
-//#include <gtest/gtest.h>
+#include <gtest/gtest.h>
 #include <math.h>
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
@@ -8,16 +8,11 @@
 #include "util/linalg/spmv.hpp"
 
 
-//TEST(linag, spmv) 
-//{
-int main( int argc, char *argv[] )
+TEST(linag, spmv) 
 {
-
-    MPI_Init(&argc, &argv);
-
-	index_t ilower, iupper;
-	index_t local_size, extra;
-	data_t strong_threshold;
+//int main( int argc, char *argv[] )
+//{
+//    MPI_Init(&argc, &argv);
 
 	data_t eps = 1.0;
 	data_t theta = 0.0;
@@ -63,5 +58,5 @@ int main( int argc, char *argv[] )
     delete b;
     delete A;
 
-    MPI_Finalize();
+//    MPI_Finalize();
 }

@@ -34,7 +34,7 @@ public:
         n_cols = _ncols;
         nnz = _triplets->size();
     }
-    CSR_Matrix(index_t* I, index_t* J, data_t* data, index_t _nrows, index_t _ncols, unsigned long _nnz, format_t format = CSR)
+    CSR_Matrix(index_t* I, index_t* J, data_t* data, index_t _nrows, index_t _ncols, index_t _nnz, format_t format = CSR)
     {
         m = new SpMat (_nrows, _ncols);
         std::vector<Triplet> _triplets(_nnz);

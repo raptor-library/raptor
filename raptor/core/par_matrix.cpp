@@ -20,6 +20,11 @@ ParMatrix::ParMatrix(ParMatrix* A)
 
 ParMatrix::~ParMatrix()
 {
+    if (this->offd_nnz)
+    {
+        delete this->offd;
+    }
     delete this->diag;
-    delete this->offd;
+    delete this->comm;
+
 }
