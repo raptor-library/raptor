@@ -22,7 +22,7 @@ namespace raptor
             local = new Vector(local_n);
         }
         ParVector(ParVector&& x);
-        ~ParVector() {};
+        ~ParVector() {delete local;}
 
         template<int p> data_t norm() const
         {

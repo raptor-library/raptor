@@ -98,6 +98,8 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     
     }
 
+    MPI_Barrier(MPI_COMM_WORLD);
+
 	// Add contribution of beta
 	y->scale(beta);
 

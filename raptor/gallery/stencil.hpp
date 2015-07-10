@@ -62,8 +62,7 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
 
     //n_v is local number of rows
     extra = N_v % num_procs;
-    global_row_starts = new index_t[num_procs+1];
-    global_row_starts[0] = 0;
+    global_row_starts = (int*) calloc(num_procs+1, sizeof(int));
     for (index_t i = 0; i < num_procs; i++)
     {
         index_t size = (N_v / num_procs);
@@ -87,10 +86,10 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
         }
     }
 
-    diags = new index_t [N_s];
-    nonzero_stencil = new data_t [N_s];
+    diags = (index_t*) calloc(N_s, sizeof(index_t));
+    nonzero_stencil = (data_t*) calloc(N_s, sizeof(data_t));
     //Calculate strides for index offset for each dof in stencil
-    strides = new index_t [dim];
+    strides = (index_t*) calloc (dim, sizeof(index_t));
     strides[0] = 1;
     for (index_t i = 0; i < dim-1; i++)
     {
@@ -116,11 +115,7 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
     }
 
     //Add strides to diags
-    for (index_t j = 0; j < N_s; j++)
-    {
-        diags[j] += strides[0] * indices[j][dim-1];
-    }
-    for (index_t i = 1; i < dim; i++)
+    for (index_t i = 0; i < dim; i++)
     {
         for (index_t j = 0; j < N_s; j++)
         {
@@ -129,7 +124,7 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
     } 
 
     //Initial data array
-    data = new data_t [N_s*n_v];
+    data = (data_t*) calloc (N_s*n_v, sizeof(data_t));
     for (index_t i = 0; i < N_s; i++)
     {
         for (index_t j = 0; j < n_v; j++)
@@ -139,7 +134,7 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
     }
 
     //Vertically stack indices (reorder)
-    stack_indices = new index_t [N_s*dim];
+    stack_indices = (index_t*) calloc (N_s*dim, sizeof(index_t));
     for (index_t i = 0; i < N_s; i++)
     {
         for (index_t j = 0; j < dim; j++)
@@ -229,9 +224,9 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
     if (format == CSR)
     {
         //Add diagonals to a csr matrix
-        row_ptr = new index_t [n_v+1];
-        col_idx = new index_t [n_v*N_s];
-        values = new data_t [n_v*N_s];
+        row_ptr = (index_t*) calloc(n_v+1, sizeof(index_t));
+        col_idx = (index_t*) calloc(n_v*N_s, sizeof(index_t));
+        values = (data_t*) calloc(n_v*N_s, sizeof(data_t));
         nnz = 0;
         for (index_t i = 0; i < n_v; i++)
         {
@@ -254,9 +249,9 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
     else if (format == COO)
     {
         // Add diagonals to a COO matrix
-        row_ptr = new index_t [n_v*N_s];
-        col_idx = new index_t [n_v*N_s];
-        values = new data_t [n_v*N_s];
+        row_ptr = (index_t*) calloc(n_v*N_s, sizeof(index_t));
+        col_idx = (index_t*) calloc(n_v*N_s, sizeof(index_t));
+        values = (data_t*) calloc(n_v*N_s, sizeof(data_t));
         nnz = 0;
         for (index_t i = 0; i < n_v; i++)
         {
@@ -278,15 +273,26 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
 
     ParMatrix* A = new ParMatrix(N_v, N_v, nnz, row_ptr, col_idx, values, global_row_starts, format = format, 0);
 
-    delete[] nonzero_stencil;
-    delete[] data;
-    delete[] values;
-    delete[] diags;
-    delete[] strides;
-    delete[] stack_indices;
-    delete[] row_ptr;
-    delete[] col_idx;
-    delete[] global_row_starts;
+    //delete[] nonzero_stencil;
+    //delete[] data;
+    //delete[] values;
+    //delete[] diags;
+    //delete[] strides;
+    //delete[] stack_indices;
+    //delete[] row_ptr;
+    //delete[] col_idx;
+    //delete[] global_row_starts;
+
+    free(row_ptr);
+    free(col_idx);
+    free(values);
+
+    free(nonzero_stencil);
+    free(data);
+    free(diags);
+    free(strides);
+    free(stack_indices);
+    free(global_row_starts);
 
     return A;
 } 

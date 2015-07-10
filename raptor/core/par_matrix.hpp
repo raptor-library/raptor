@@ -98,7 +98,6 @@ public:
             for (index_t i = 0; i < local_nnz; i++)
             {
                 global_col = col_idx[i];
-                //printf("%d, %d = %2.3e\n", row_idx[i], col_idx[i], data[i]);
                 //In offd block
                 if (global_col < first_col_diag || global_col > last_col_diag)
                 {
@@ -169,7 +168,12 @@ public:
 
     }
     ParMatrix(ParMatrix* A);
-    ~ParMatrix();
+    ~ParMatrix()
+    {
+        delete diag;
+        delete comm;
+        delete offd;
+    }
 
     index_t global_rows;
     index_t global_cols;

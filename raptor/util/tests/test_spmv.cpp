@@ -33,7 +33,8 @@ int main( int argc, char *argv[] )
 	MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
 	data_t* stencil = diffusion_stencil_2d(eps, theta);
-	ParMatrix* A = stencil_grid(stencil, grid, dim, COO);
+	ParMatrix* A = stencil_grid(stencil, grid, dim, CSR);
+    delete[] stencil;
 
 	index_t global_num_rows = A->global_rows;
 	index_t local_num_rows = A->local_rows;
@@ -57,6 +58,10 @@ int main( int argc, char *argv[] )
 		}
 		MPI_Barrier(MPI_COMM_WORLD);
 	}
+
+    delete x;
+    delete b;
+    delete A;
 
     MPI_Finalize();
 }

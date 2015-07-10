@@ -69,7 +69,7 @@ public:
         last = 0;
         old_proc = col_to_proc[0];
         for (local_col = 0; local_col < map_to_global.size(); local_col++)
-        {
+        {   
             proc = col_to_proc[local_col];
             // Column lies on new processor, so add last
             // processor to communicator
@@ -117,7 +117,7 @@ public:
                 {
                     if (send_indices.count(old_proc))
                     {
-                        send_indices[old_proc].push_back(i);
+                        send_indices[old_proc].push_back(i);   
                     }
                     else
                     {
@@ -132,12 +132,12 @@ public:
             // Add last processor to communicator
             if (send_indices.count(old_proc))
             {
-                send_indices[old_proc].push_back(num_rows - 1);
+                send_indices[old_proc].push_back(i);
             }
             else
             {
                 std::vector<index_t> tmp;
-                tmp.push_back(num_rows - 1);
+                tmp.push_back(i);
                 send_indices[old_proc] = tmp;
             }
             size_sends++;
@@ -154,9 +154,8 @@ public:
     {
 
     }
-    ~ParComm();
+    ~ParComm(){};
 
-    index_t* global_row_starts;
     index_t size_sends;
     index_t size_recvs;
     std::map<index_t, std::vector<index_t>> send_indices;
