@@ -36,7 +36,7 @@ endfunction(add_unit)
 
 function(add_tests_promisc dir)
   # TODO: add check for tests already added with custom commsize
-  file(GLOB_RECURSE ${dir}_tests_ ${dir}/*tests/*.cpp)
+  file(GLOB_RECURSE ${dir}_tests_ ${dir}/*/tests/*.cpp)
   set(${dir}_TESTS ${${dir}_tests_} PARENT_SCOPE)
   foreach(tst ${${dir}_tests_})
 	get_filename_component(fname ${tst} NAME_WE)
