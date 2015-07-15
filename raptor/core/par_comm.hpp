@@ -57,7 +57,6 @@ public:
             {
                 proc++;
             }
-            col_to_proc.push_back(proc);   
         }
 
         //Find inital proc (local col 0 lies on)
@@ -70,7 +69,8 @@ public:
         last = 0;
         old_proc = col_to_proc[0];
         for (local_col = 0; local_col < num_cols; local_col++)
-        {   
+        {
+            proc_cols.push_back(local_col);   
             proc = col_to_proc[local_col];
             // Column lies on new processor, so add last
             // processor to communicator
