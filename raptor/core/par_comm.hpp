@@ -62,7 +62,6 @@ public:
         //Find inital proc (local col 0 lies on)
         global_col = map_to_global[0];
         proc = col_to_proc[0];
-        proc_cols.push_back(0);
 
         // For each offd col, find proc it lies on.  Add proc and list
         // of columns it holds to map recvIndices
