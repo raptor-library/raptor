@@ -45,6 +45,10 @@ namespace raptor
         {
             *local = Vector::Constant(local_n, alpha);
         }
+        void set_rand_values()
+        {
+            *local = Vector::Random(local_n);
+        }
 
         Vector* local;
         int global_n;

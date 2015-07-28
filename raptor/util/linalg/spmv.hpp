@@ -18,8 +18,51 @@ using namespace raptor;
 
 template <typename Derived>
 void sequentialSPMV(Matrix* A, const Eigen::MatrixBase<Derived> & x, Vector* y, double alpha, double beta)
-{
-    *y = alpha*((*(A->m))*(x)) + beta * (*y);
+{ 
+    data_t zero_tol = 1.0e-12;
+
+    index_t has_beta = (fabs(beta) > zero_tol);
+    index_t has_alpha = (fabs(alpha) > zero_tol);
+
+    //Scale y if beta not 0.0 or 1.0
+    if (has_beta && fabs(beta - 1.0) > zero_tol)
+    {
+        *y *= beta;
+    }
+
+    //Matvec if alpha not 0.0
+    if (has_alpha)
+    {
+        printf("Has Alpha = %2.3e\n", alpha);
+        if (fabs(alpha - 1.0) > zero_tol)
+        {
+            if (has_beta)
+            {
+                *y += alpha*((*(A->m))*(x));
+            }
+            else
+            {
+                *y = alpha*((*(A->m))*(x));
+            }
+        }
+        else
+        {
+            if (has_beta)
+            {
+                *y += (*(A->m))*(x);
+            }
+            else
+            {
+                *y = (*(A->m))*(x);
+            }
+        }
+    }
+
+    // Set to zero if alpha = beta = 0.0
+    else if (!has_beta)
+    {
+        *y *= beta;
+    }
 }
 
 void communicate(ParMatrix* A, ParVector*x, data_t** x_tmp, index_t* tmp_size)
@@ -154,16 +197,15 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
 
     if (A->offd_num_cols)
     {
+        printf("A has offd columns!\n");
 	    // TODO we do not want to malloc these every time
 	    send_requests = new MPI_Request [send_procs.size()];
 	    recv_requests = new MPI_Request [recv_procs.size()];
         send_buffer = new data_t [comm->size_sends];
         recv_buffer = new data_t [comm->size_recvs];
-    }
 
-    // Send and receive vector data
-    if (A->offd_num_cols)
-    {
+        // Send and receive vector data
+        printf("A has offd columns!\n");
 	    // Begin sending and gathering off-diagonal entries
         begin = 0;
         ctr = 0;
@@ -191,9 +233,6 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     
     }
 
-	// Add contribution of beta
-	y->scale(beta);
-
 	// Compute partial SpMV with local information
 	sequentialSPMV(A->diag, *(x->local), y->local, alpha, beta);
 
@@ -203,6 +242,7 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     // TODO Using MPI_STATUS_IGNORE (delete[] recvStatus was causing a segfault)
     if (A->offd_num_cols)
     {
+        printf("A has offd columns!\n");
         // Wait for all receives to finish
 	    MPI_Waitall(recv_procs.size(), recv_requests, MPI_STATUS_IGNORE);
 
