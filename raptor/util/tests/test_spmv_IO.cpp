@@ -21,7 +21,7 @@ TEST(linag, spmv)
     //char file[] = "msc01440.mtx";
     //char file[] = "plbuckle.mtx";
 
-	ParMatrix* A = readParMatrix(file, MPI_COMM_WORLD, true);
+	ParMatrix* A = readParMatrix(file, MPI_COMM_WORLD, true, 1);
     assert(A != NULL && "Error reading matrix!!!");
 	int global_num_rows = A->global_rows;
 	int local_num_rows = A->local_rows;

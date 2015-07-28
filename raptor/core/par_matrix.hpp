@@ -19,7 +19,7 @@ class ParMatrix
 public:
     ParMatrix(index_t _glob_rows, index_t _glob_cols, Matrix* _diag, Matrix* _offd);
     ParMatrix(index_t _glob_rows, index_t _glob_cols, index_t _nnz, index_t* row_idx, index_t* col_idx,
-             data_t* data, index_t* global_row_starts, format_t format = CSR, int global_row_idx = 0)
+             data_t* data, index_t* global_row_starts, format_t format = CSR, int global_row_idx = 0, int symmetric = 1)
     {
         // Get MPI Information
         index_t rank, num_procs;
@@ -160,7 +160,7 @@ public:
         (diag->m)->makeCompressed();
 
         //Initialize communication package
-        comm = new ParComm(offd, local_to_global, global_row_starts);
+        comm = new ParComm(offd, local_to_global, global_row_starts, symmetric);
 
 
     }

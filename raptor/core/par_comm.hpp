@@ -134,7 +134,7 @@ public:
         }
     }
 
-    void init_comm_sends_unsym(Matrix* offd, index_t rank, std::vector<index_t> map_to_global, index_t* global_row_starts)
+    /*void init_comm_sends_unsym(Matrix* offd, index_t rank, std::vector<index_t> map_to_global, index_t* global_row_starts)
     {
         index_t recv_proc = 0;
         index_t orig_ctr = 0;
@@ -206,7 +206,7 @@ public:
             }
             MPI_Test(&finished_request, &finished_flag, &recv_status);
         }
-    }
+    }*/
 
     // TODO
     ParComm();
@@ -241,10 +241,10 @@ public:
         {
             init_comm_sends_sym(offd);
         }
-        else
-        {
-            init_comm_sends_unsym(offd, rank, map_to_global, global_row_starts);
-        }
+        //else
+        //{
+        //    init_comm_sends_unsym(offd, rank, map_to_global, global_row_starts);
+        //}
     }
 
     ~ParComm(){};

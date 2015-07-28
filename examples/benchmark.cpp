@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
     //char file[] = "plbuckle.mtx";
 
 	// Create the matrix, rhs, and solution
-	ParMatrix* A = readParMatrix(file, MPI_COMM_WORLD, true);
+	ParMatrix* A = readParMatrix(file, MPI_COMM_WORLD, true, 0);
     assert(A != NULL && "Error reading matrix!!!");
 	int global_num_rows = A->global_rows;
 	int local_num_rows = A->local_rows;

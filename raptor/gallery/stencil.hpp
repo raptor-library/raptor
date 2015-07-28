@@ -266,7 +266,7 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
         }
     }
 
-    ParMatrix* A = new ParMatrix(N_v, N_v, nnz, row_ptr, col_idx, values, global_row_starts, format = format, 0);
+    ParMatrix* A = new ParMatrix(N_v, N_v, nnz, row_ptr, col_idx, values, global_row_starts, format = format, 0, 1);
 
     free(row_ptr);
     free(col_idx);
