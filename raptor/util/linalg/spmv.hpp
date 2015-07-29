@@ -19,50 +19,94 @@ using namespace raptor;
 template <typename Derived>
 void sequentialSPMV(Matrix* A, const Eigen::MatrixBase<Derived> & x, Vector* y, double alpha, double beta)
 { 
+    //TODO -- should be std::numeric_limits<data_t>::epsilon ...
     data_t zero_tol = 1.0e-12;
 
-    index_t has_beta = (fabs(beta) > zero_tol);
-    index_t has_alpha = (fabs(alpha) > zero_tol);
+    index_t alpha_zero = (fabs(alpha) < zero_tol);
+    index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
+    index_t alpha_neg_one = (fabs(alpha + 1.0) < zero_tol);
 
-    //Scale y if beta not 0.0 or 1.0
-    if (has_beta && fabs(beta - 1.0) > zero_tol)
-    {
-        *y *= beta;
-    }
+    index_t beta_zero = (fabs(beta) < zero_tol);
+    index_t beta_one = (fabs(beta - 1.0) < zero_tol);
+    index_t beta_neg_one = (fabs(beta + 1.0) < zero_tol);
 
-    //Matvec if alpha not 0.0
-    if (has_alpha)
+    if (alpha_one)
     {
-        printf("Has Alpha = %2.3e\n", alpha);
-        if (fabs(alpha - 1.0) > zero_tol)
+        if (beta_one)
         {
-            if (has_beta)
-            {
-                *y += alpha*((*(A->m))*(x));
-            }
-            else
-            {
-                *y = alpha*((*(A->m))*(x));
-            }
+            *y = ((*(A->m))*(x)) + (*y);
+        }
+        else if (beta_neg_one)
+        {
+            *y = ((*(A->m))*(x)) - (*y);
+        }
+        else if (beta_zero)
+        {
+            *y = ((*(A->m))*(x));
         }
         else
         {
-            if (has_beta)
-            {
-                *y += (*(A->m))*(x);
-            }
-            else
-            {
-                *y = (*(A->m))*(x);
-            }
+            *y = ((*(A->m))*(x)) + beta*(*y);
+        }
+    }
+    else if (alpha_neg_one)
+    {
+        if (beta_one)
+        {
+            *y = -((*(A->m))*(x)) + (*y);
+        }
+        else if (beta_neg_one)
+        {
+            *y = -((*(A->m))*(x)) - (*y);
+        }
+        else if (beta_zero)
+        {
+            *y = -((*(A->m))*(x));
+        }
+        else
+        {
+            *y = -((*(A->m))*(x)) + beta*(*y);
+        }
+    }
+    else if (alpha_zero)
+    {
+        if (beta_one)
+        {
+            //*y = (*y);
+        }
+        else if (beta_neg_one)
+        {
+            *y = -(*y);
+        }
+        else if (beta_zero)
+        {
+            *y *= 0.0;
+        }
+        else
+        {
+            *y = beta*(*y);
+        }
+    }
+    else
+    {
+        if (beta_one)
+        {
+            *y = alpha*((*(A->m))*(x)) + (*y);
+        }
+        else if (beta_neg_one)
+        {
+            *y = alpha*((*(A->m))*(x)) - (*y);
+        }
+        else if (beta_zero)
+        {
+            *y = alpha*((*(A->m))*(x));
+        }
+        else
+        {
+            *y = alpha*((*(A->m))*(x)) + beta*(*y);
         }
     }
 
-    // Set to zero if alpha = beta = 0.0
-    else if (!has_beta)
-    {
-        *y *= beta;
-    }
 }
 
 void communicate(ParMatrix* A, ParVector*x, data_t** x_tmp, index_t* tmp_size)
