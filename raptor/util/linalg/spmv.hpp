@@ -2,6 +2,7 @@
 #define RAPTOR_UTILS_LINALG_SPMV_H
 
 #include <mpi.h>
+#include <float.h>
 #include <Eigen/Sparse>
 #include <Eigen/Dense>
 #include <Eigen/Core>
@@ -20,7 +21,7 @@ template <typename Derived>
 void sequentialSPMV(Matrix* A, const Eigen::MatrixBase<Derived> & x, Vector* y, double alpha, double beta)
 { 
     //TODO -- should be std::numeric_limits<data_t>::epsilon ...
-    data_t zero_tol = 1.0e-12;
+    data_t zero_tol = DBL_EPSILON;
 
     index_t alpha_zero = (fabs(alpha) < zero_tol);
     index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);

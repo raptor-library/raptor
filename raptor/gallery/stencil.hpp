@@ -4,6 +4,7 @@
 #define STENCIL_HPP
 
 #include <mpi.h>
+#include <float.h>
 #include <cmath>
 #include <stdlib.h>
 #include <Eigen/Dense>
@@ -20,7 +21,7 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     // Declare stencil grid variables
-    data_t zero_tol;
+    data_t zero_tol = DBL_EPSILON;
     data_t value;
     data_t* nonzero_stencil;
     data_t* data;
@@ -48,7 +49,6 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
     index_t* col_idx;
 
     // Initialize variables
-    zero_tol = 1e-6; //data_t is never equal to 0
     stencil_len = (index_t)pow(3, dim); // stencil - 3 ^ dim
 
     //N_v is global number of rows
