@@ -70,7 +70,7 @@ public:
         size_recvs = num_cols;
     }
 
-    void init_comm_sends_sym(Matrix* offd)
+    void init_comm_sends_sym(Matrix<1>* offd)
     {
         index_t* ptr;
         index_t* idx;
@@ -133,6 +133,62 @@ public:
             size_sends++;
         }
     }
+
+    void init_comm_sends_sym(Matrix<0>* offd)
+    {
+        index_t* ptr;
+        index_t* idx;
+        index_t num_cols;
+        index_t col_start;
+        index_t col_end;
+        index_t proc;
+        index_t old_proc;
+        std::vector<index_t>::iterator it;
+
+        // Get CSR Matrix variables
+        ptr = (offd->m)->outerIndexPtr();
+        idx = (offd->m)->innerIndexPtr();
+        num_cols = (offd->m)->outerSize();
+        size_sends = 0;
+    
+        old_proc = col_to_proc[0];
+        for (index_t i = 0; i < num_cols; i++)
+        {
+            col_start = ptr[i];
+            col_end = ptr[i+1];
+            if (col_start == col_end) 
+            {
+                continue;
+            }
+            
+            proc = col_to_proc[i];
+
+            if (proc != old_proc)
+            {
+                send_procs.push_back(old_proc);
+                std::sort(send_indices[old_proc].begin(), send_indices[old_proc].end());
+                it = std::unique(send_indices[old_proc].begin(), send_indices[old_proc].end());
+                send_indices[old_proc].resize(std::distance(send_indices[old_proc].begin(), it));
+                size_sends += send_indices[old_proc].size();
+
+                std::vector<index_t> tmp;
+                send_indices[proc] = tmp;
+            }
+
+            for (index_t j = col_start; j < col_end; j++)
+            {
+                send_indices[proc].push_back(idx[j]);
+            }
+            old_proc = proc;
+        }
+
+        send_procs.push_back(old_proc);
+        std::sort(send_indices[old_proc].begin(), send_indices[old_proc].end());
+        it = std::unique(send_indices[old_proc].begin(), send_indices[old_proc].end());
+        send_indices[old_proc].resize(std::distance(send_indices[old_proc].begin(), it));
+        size_sends += send_indices[old_proc].size();
+    }
+
 
     /*void init_comm_sends_unsym(Matrix* offd, index_t rank, std::vector<index_t> map_to_global, index_t* global_row_starts)
     {
@@ -211,7 +267,8 @@ public:
     // TODO
     ParComm();
 
-    ParComm(Matrix* offd, std::vector<index_t> map_to_global, index_t* global_row_starts, index_t symmetric = 1)
+    template <int MatType>
+    ParComm(Matrix<MatType>* offd, std::vector<index_t> map_to_global, index_t* global_row_starts, index_t symmetric = 1)
     {
         // Get MPI Information
         index_t rank, num_procs;

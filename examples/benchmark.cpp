@@ -17,12 +17,12 @@ int main(int argc, char *argv[])
 
     // matrix to read
     //char file[] = "LFAT5.mtx";
-    //char file[] = "msc01440.mtx";
+    char file[] = "msc01440.mtx";
     //char file[] = "plbuckle.mtx";
-    char file[] = "bcsstm25.mtx";
+    //char file[] = "bcsstm25.mtx";
 
 	// Create the matrix, rhs, and solution
-	ParMatrix* A = readParMatrix(file, MPI_COMM_WORLD, true, 0);
+	ParMatrix* A = readParMatrix(file, MPI_COMM_WORLD, true, 1);
     //ParMatrix* A = diagonal(100); 
     assert(A != NULL && "Error reading matrix!!!");
 	int global_num_rows = A->global_rows;

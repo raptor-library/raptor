@@ -17,8 +17,8 @@ using namespace raptor;
 //void sequentialSPMV(CSRMatrix* A, Vector* x, Vector* y, double alpha, double beta);
 //void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double beta);
 
-template <typename Derived>
-void sequentialSPMV(Matrix* A, const Eigen::MatrixBase<Derived> & x, Vector* y, double alpha, double beta)
+template <typename Derived, int MatType>
+void sequentialSPMV(Matrix<MatType>* A, const Eigen::MatrixBase<Derived> & x, Vector* y, double alpha, double beta)
 { 
     //TODO -- should be std::numeric_limits<data_t>::epsilon ...
     data_t zero_tol = DBL_EPSILON;
@@ -242,7 +242,6 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
 
     if (A->offd_num_cols)
     {
-        printf("A has offd columns!\n");
 	    // TODO we do not want to malloc these every time
 	    send_requests = new MPI_Request [send_procs.size()];
 	    recv_requests = new MPI_Request [recv_procs.size()];
@@ -250,7 +249,6 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
         recv_buffer = new data_t [comm->size_recvs];
 
         // Send and receive vector data
-        printf("A has offd columns!\n");
 	    // Begin sending and gathering off-diagonal entries
         begin = 0;
         ctr = 0;
@@ -287,7 +285,6 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     // TODO Using MPI_STATUS_IGNORE (delete[] recvStatus was causing a segfault)
     if (A->offd_num_cols)
     {
-        printf("A has offd columns!\n");
         // Wait for all receives to finish
 	    MPI_Waitall(recv_procs.size(), recv_requests, MPI_STATUS_IGNORE);
 

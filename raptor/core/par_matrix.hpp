@@ -17,9 +17,9 @@ using Eigen::VectorXd;
 class ParMatrix
 {
 public:
-    ParMatrix(index_t _glob_rows, index_t _glob_cols, Matrix* _diag, Matrix* _offd);
+    ParMatrix(index_t _glob_rows, index_t _glob_cols, Matrix<1>* _diag, Matrix<0>* _offd);
     ParMatrix(index_t _glob_rows, index_t _glob_cols, index_t _nnz, index_t* row_idx, index_t* col_idx,
-             data_t* data, index_t* global_row_starts, format_t format = CSR, int global_row_idx = 0, int symmetric = 1)
+             data_t* data, index_t* global_row_starts, format_t format = CSR, int global_row_idx = 0, int symmetric = 1, int async = 0)
     {
         // Get MPI Information
         index_t rank, num_procs;
@@ -150,7 +150,7 @@ public:
             }
 
             //Initialize off-diagonal-block matrix
-            offd = new CSR_Matrix(offd_i.data(), offd_j.data(), offd_data.data(),
+            offd = new CSC_Matrix(offd_i.data(), offd_j.data(), offd_data.data(),
                           local_rows, offd_num_cols, offd_data.size(), format);
             (offd->m)->makeCompressed();
         }
@@ -172,8 +172,8 @@ public:
     index_t global_cols;
     index_t local_nnz;
     index_t local_rows;
-    Matrix* diag;
-    Matrix* offd;
+    Matrix<1>* diag;
+    Matrix<0>* offd;
     std::vector<index_t> local_to_global;
     std::map<index_t, index_t> global_to_local;
     index_t offd_num_cols;
