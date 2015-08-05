@@ -19,12 +19,14 @@ class ParMatrix
 public:
     ParMatrix(index_t _glob_rows, index_t _glob_cols, Matrix<1>* _diag, Matrix<0>* _offd);
     ParMatrix(index_t _glob_rows, index_t _glob_cols, index_t _nnz, index_t* row_idx, index_t* col_idx,
-             data_t* data, index_t* global_row_starts, format_t format = CSR, int global_row_idx = 0, int symmetric = 1, int async = 0)
+             data_t* data, index_t* _global_row_starts, format_t format = CSR, int global_row_idx = 0, int symmetric = 1, int async = 0)
     {
         // Get MPI Information
         index_t rank, num_procs;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+        global_row_starts = _global_row_starts;
 
         //Declare matrix variables
         std::vector<index_t>      diag_i;
@@ -180,5 +182,7 @@ public:
     index_t first_col_diag;
     index_t offd_nnz;
     ParComm* comm;
+    index_t* global_row_starts;
+
 };
 #endif
