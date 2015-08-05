@@ -19,7 +19,7 @@ class ParMatrix
 public:
     ParMatrix(index_t _glob_rows, index_t _glob_cols, Matrix<1>* _diag, Matrix<0>* _offd);
     ParMatrix(index_t _glob_rows, index_t _glob_cols, index_t _nnz, index_t* row_idx, index_t* col_idx,
-             data_t* data, index_t* _global_row_starts, format_t format = CSR, int global_row_idx = 0, int symmetric = 1, int async = 0)
+             data_t* data, index_t* _global_row_starts, format_t format = CSR, int global_row_idx = 0, int symmetric = 1)
     {
         // Get MPI Information
         index_t rank, num_procs;

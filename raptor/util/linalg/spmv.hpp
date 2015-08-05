@@ -35,7 +35,7 @@ void sequentialSPMV(Matrix<MatType>* A, const Eigen::MatrixBase<Derived> & x, Ve
     
     if (first_col > -1 && size)
     {
-        m = m.block(0, first_col, A->m->rows(), size);
+        //m = m.block(0, first_col, A->m->rows(), size);
     }
 
     if (alpha_one)
@@ -132,7 +132,7 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     MPI_Request*                            recv_requests;
     data_t*                                 send_buffer;
     data_t*                                 recv_buffer;
-    index_t*                                recv_proc_starts;
+    std::map<index_t, index_t>              recv_proc_starts;
     data_t*                                 local_data;
     Vector                                  offd_tmp;
     index_t                                 tmp_size;
@@ -161,7 +161,6 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
 	    recv_requests = new MPI_Request [recv_procs.size()];
         send_buffer = new data_t [comm->size_sends];
         recv_buffer = new data_t [comm->size_recvs];
-        recv_proc_starts = new index_t [recv_procs.size()];
 
         // Send and receive vector data
 	    // Begin sending and gathering off-diagonal entries
@@ -171,7 +170,7 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
         for (auto proc : recv_procs)
         {
             index_t num_recv = recv_indices[proc].size();
-            recv_proc_starts[request_ctr] = begin;
+            recv_proc_starts[proc] = begin;
             MPI_Irecv(&recv_buffer[begin], num_recv, MPI_DOUBLE, proc, 0, MPI_COMM_WORLD, &(recv_requests[request_ctr++]));
             begin += num_recv;
         }
@@ -204,13 +203,23 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
 
         if (async)
         {
-            index_t recv_idx = 0;
-            MPI_Waitany(recv_procs.size(), recv_requests, &recv_idx, MPI_STATUS_IGNORE);
-            index_t proc = recv_procs[recv_idx];
-            index_t first_col = A->global_row_starts[proc];
+            for (index_t i = 0; i < recv_procs.size(); i++)
+            {
+                index_t recv_idx = 0;
+                MPI_Waitany(recv_procs.size(), recv_requests, &recv_idx, MPI_STATUS_IGNORE);
+                index_t proc = recv_procs[recv_idx];
+                auto minmax = std::minmax_element(recv_indices[proc].begin(), recv_indices[proc].end());
+                index_t first_idx = minmax.first - recv_indices[proc].begin();
+                index_t last_idx = minmax.second - recv_indices[proc].begin();
 
-            Vector offd_tmp = Eigen::Map<Vector>(&recv_buffer[recv_proc_starts[proc]], recv_indices[proc].size());
-            sequentialSPMV(A->offd, offd_tmp, y->local, alpha, 1.0, first_col, (A->global_row_starts[proc+1] - first_col));
+                index_t first_col = recv_indices[proc][first_idx];
+                index_t last_col = recv_indices[proc][last_idx];
+
+                printf("FirstCol = %d\tLastCol = %d\tNumColsOffd=%d\n", first_col, last_col, A->offd_num_cols);
+                
+                Vector offd_tmp = Eigen::Map<Vector>(&recv_buffer[recv_proc_starts[proc]], recv_indices[proc].size());
+                sequentialSPMV(A->offd, offd_tmp, y->local, alpha, 1.0, first_col, last_col - first_col+1);
+            }
         }
         else
         {
@@ -231,7 +240,6 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
 	    delete[] recv_requests; 
         delete[] send_buffer;
         delete[] recv_buffer;
-        delete[] recv_proc_starts;
     }
 }
 

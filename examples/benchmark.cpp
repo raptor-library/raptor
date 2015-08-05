@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 
     // Time the SpMV
 	double t0 = MPI_Wtime();
-    parallel_spmv(A, x, b, 1., 0.);
+    parallel_spmv(A, x, b, 1., 0., 1);
     double total_time = MPI_Wtime() - t0;
     MPI_Reduce(&total_time, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0)
