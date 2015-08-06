@@ -190,7 +190,7 @@ public:
     }
 
 
-    /*void init_comm_sends_unsym(Matrix* offd, index_t rank, std::vector<index_t> map_to_global, index_t* global_row_starts)
+void init_comm_sends_unsym(index_t num_procs, index_t rank, std::vector<index_t> map_to_global, index_t* global_row_starts)
     {
         index_t recv_proc = 0;
         index_t orig_ctr = 0;
@@ -203,6 +203,54 @@ public:
         index_t send_buffer[size_recvs];
         MPI_Request send_requests[recv_size];
         MPI_Status send_status[recv_size];
+
+        #if MPI_VERSION < 3
+        index_t num_recvs;
+
+        // Determind number of messages I will receive
+        int* send_counts = (int*) calloc (num_procs, sizeof(int));
+        int* recv_counts = (int*) calloc (num_procs, sizeof(int));
+
+        //Send everything in recv_idx[recv_proc] to recv_proc;
+        for (index_t i = 0; i < recv_size; i++)
+        {
+            orig_ctr = ctr;
+            recv_proc = recv_procs[i];
+            for (auto recv_idx : recv_indices[recv_proc])
+            {
+                send_buffer[ctr++] = map_to_global[recv_idx];
+            }
+            MPI_Isend(&send_buffer[orig_ctr], ctr - orig_ctr, MPI_INT, recv_proc, unsym_tag, MPI_COMM_WORLD, &send_requests[req_ctr++]);
+            send_counts[recv_proc] = 1;
+        }
+
+        // AllReduce - sum number of sends to each process
+        MPI_Allreduce(send_counts, recv_counts, num_procs, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+        num_recvs = recv_counts[rank];
+        free(send_counts);
+        free(recv_counts);
+
+        index_t count = 0;
+        index_t avail_flag;
+        MPI_Status recv_status;
+        while (send_procs.size() < num_recvs)
+        {
+            //Probe for messages, and recv any found
+            MPI_Iprobe(MPI_ANY_SOURCE, unsym_tag, MPI_COMM_WORLD, &avail_flag, &recv_status);
+            if (avail_flag)
+            {
+                MPI_Get_count(&recv_status, MPI_INT, &count);
+                index_t recv_buffer[count];
+                MPI_Recv(&recv_buffer, count, MPI_INT, MPI_ANY_SOURCE, unsym_tag, MPI_COMM_WORLD, &recv_status);
+                for (int i = 0; i < count; i++) recv_buffer[i] = recv_buffer[i] - global_row_starts[rank];
+                send_procs.push_back(recv_status.MPI_SOURCE);
+                std::vector<index_t> send_idx(recv_buffer, recv_buffer + count);
+                send_indices[recv_status.MPI_SOURCE] = send_idx;
+                size_sends += send_idx.size();
+            }
+        }
+
+        #else
 
         //Send everything in recv_idx[recv_proc] to recv_proc;
         for (index_t i = 0; i < recv_size; i++)
@@ -262,7 +310,9 @@ public:
             }
             MPI_Test(&finished_request, &finished_flag, &recv_status);
         }
-    }*/
+        #endif
+    }
+
 
     // TODO
     ParComm();
@@ -298,10 +348,10 @@ public:
         {
             init_comm_sends_sym(offd);
         }
-        //else
-        //{
-        //    init_comm_sends_unsym(offd, rank, map_to_global, global_row_starts);
-        //}
+        else
+        {
+            init_comm_sends_unsym(num_procs, rank, map_to_global, global_row_starts);
+        }
     }
 
     ~ParComm(){};
