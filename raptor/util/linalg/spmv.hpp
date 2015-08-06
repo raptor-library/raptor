@@ -35,7 +35,7 @@ void sequentialSPMV(Matrix<MatType>* A, const Eigen::MatrixBase<Derived> & x, Ve
     
     if (first_col > -1 && size)
     {
-        //m = m.block(0, first_col, A->m->rows(), size);
+        m = m.block(0, first_col, A->m->rows(), size);
     }
 
     if (alpha_one)
@@ -214,8 +214,6 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
 
                 index_t first_col = recv_indices[proc][first_idx];
                 index_t last_col = recv_indices[proc][last_idx];
-
-                printf("FirstCol = %d\tLastCol = %d\tNumColsOffd=%d\n", first_col, last_col, A->offd_num_cols);
                 
                 Vector offd_tmp = Eigen::Map<Vector>(&recv_buffer[recv_proc_starts[proc]], recv_indices[proc].size());
                 sequentialSPMV(A->offd, offd_tmp, y->local, alpha, 1.0, first_col, last_col - first_col+1);
