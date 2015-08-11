@@ -29,15 +29,18 @@ public:
     CSR_Matrix(std::vector<Triplet>* _triplets, index_t _nrows, index_t _ncols)
     {
         m = new SpMat (_nrows, _ncols);
-        m->setFromTriplets(_triplets->begin(), _triplets->end());
         n_rows = _nrows;
         n_cols = _ncols;
         nnz = _triplets->size();
+        m->reserve(nnz);
+        m->setFromTriplets(_triplets->begin(), _triplets->end());
     }
     CSR_Matrix(index_t* I, index_t* J, data_t* data, index_t _nrows, index_t _ncols, index_t _nnz, format_t format = CSR)
     {
         m = new SpMat (_nrows, _ncols);
         std::vector<Triplet> _triplets(_nnz);
+        m->reserve(nnz);
+        _triplets.reserve(nnz);
 
         if (format == CSR)
         {

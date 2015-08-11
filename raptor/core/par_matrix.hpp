@@ -113,7 +113,6 @@ public:
         //Create localToGlobal map and convert offd
         // cols to local (currently global)
         offd_nnz = offd_j.size();
-        printf("Offd nnz = %d\n", offd_nnz);
         offd_num_cols = 0;
         if (offd_nnz)
         {

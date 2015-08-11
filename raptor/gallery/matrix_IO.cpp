@@ -73,7 +73,6 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, index_
         }
     }
 
-    //printf("GlobRowStarts[%d] = %d\t RowEnds[%d] = %d\tNNZ=%d\n", rank, global_row_starts[rank], rank, global_row_starts[rank+1], nnz);
 
     return new ParMatrix(num_rows, num_cols, nnz, row_ptr, col, data,
                 global_row_starts, COO, 1, symmetric);
@@ -158,7 +157,6 @@ int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_, int
             I[ctr] = row-1;  /* adjust from 1-based to 0-based */
             J[ctr] = col-1;
             val[ctr] = value;
-            //printf("(%d, %d) - %2.3e\tctr=%d\n", row-1, col-1, value, ctr);
             ctr++;
         }
         if (symmetric && col > start && col <= stop && col != row)
@@ -166,7 +164,6 @@ int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_, int
             I[ctr] = col-1;
             J[ctr] = row-1;
             val[ctr] = value;
-            //printf("(%d, %d) - %2.3e\tctr=%d\n", col-1, row-1, value, ctr);
             ctr++;
         }
     }
