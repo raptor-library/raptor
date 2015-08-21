@@ -190,8 +190,9 @@ public:
     }
 
 
-void init_comm_sends_unsym(index_t num_procs, index_t rank, std::vector<index_t> map_to_global, index_t* global_row_starts)
+    void init_comm_sends_unsym(index_t num_procs, index_t rank, std::vector<index_t> map_to_global, index_t* global_row_starts)
     {
+
         index_t recv_proc = 0;
         index_t orig_ctr = 0;
         index_t ctr = 0;

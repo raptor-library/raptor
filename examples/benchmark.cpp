@@ -4,7 +4,7 @@
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
 #include "gallery/matrix_IO.hpp"
-#include "gallery/diagonal.hpp"
+//#include "gallery/diagonal.hpp"
 #include "util/linalg/spmv.hpp"
 using namespace raptor;
 int main(int argc, char *argv[])
@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     //char file[] = "bcsstm25.mtx";
 
 	// Create the matrix, rhs, and solution
-	ParMatrix* A = readParMatrix(file, MPI_COMM_WORLD, true, 1);
+	ParMatrix* A = readParMatrix(file, MPI_COMM_WORLD, true, 0);
     //ParMatrix* A = diagonal(100); 
     assert(A != NULL && "Error reading matrix!!!");
 	int global_num_rows = A->global_rows;
