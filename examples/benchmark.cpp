@@ -22,7 +22,9 @@ int main(int argc, char *argv[])
     //char file[] = "bcsstm25.mtx";
 
 	// Create the matrix, rhs, and solution
+    printf("Creating parallel matrix (proc %d)\n", rank);
 	ParMatrix* A = readParMatrix(file, MPI_COMM_WORLD, true, 0);
+    printf("Finished parallel matrix (proc %d)\n", rank);
     //ParMatrix* A = diagonal(100); 
     assert(A != NULL && "Error reading matrix!!!");
 	int global_num_rows = A->global_rows;
@@ -34,7 +36,9 @@ int main(int argc, char *argv[])
 
     // Time the SpMV
 	double t0 = MPI_Wtime();
-    parallel_spmv(A, x, b, 1., 0., 1);
+    printf("Performing parallel spmv...\n");
+    parallel_spmv(A, x, b, 1., 0.);
+    printf("Finished parallel spmv...\n");
     double total_time = MPI_Wtime() - t0;
     MPI_Reduce(&total_time, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0)

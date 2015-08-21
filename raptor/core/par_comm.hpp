@@ -332,22 +332,28 @@ public:
         num_cols = map_to_global.size();
 
         // If no off-diagonal block, return empty comm package
-        if (num_cols == 0)
-        {
-            return;
-        }
+        //if (num_cols == 0)
+        //{
+        //    return;
+        //}
 
         // Create map from columns to processors they lie on
-        init_col_to_proc(num_procs, num_cols, map_to_global, global_row_starts);
+        if (num_cols > 0)
+        {
+            init_col_to_proc(num_procs, num_cols, map_to_global, global_row_starts);
 
-        // For each offd col, find proc it lies on.  Add proc and list
-        // of columns it holds to map recvIndices
-        init_comm_recvs(num_cols, map_to_global);
+            // For each offd col, find proc it lies on.  Add proc and list
+            // of columns it holds to map recvIndices
+            init_comm_recvs(num_cols, map_to_global);
+        }
 
         // Add processors needing to send to, and what to send to each
         if (symmetric)
         {
-            init_comm_sends_sym(offd);
+            if (num_cols > 0)
+            {
+                init_comm_sends_sym(offd);
+            }
         }
         else
         {
