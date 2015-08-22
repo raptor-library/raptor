@@ -154,12 +154,10 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     tmp_size      = comm->size_recvs;
     local_data    = x->local->data();
 
-    if (A->offd_num_cols)
+    if (recv_procs.size())
     {
-	    // TODO we do not want to malloc these every time
-	    send_requests = new MPI_Request [send_procs.size()];
+
 	    recv_requests = new MPI_Request [recv_procs.size()];
-        send_buffer = new data_t [comm->size_sends];
         recv_buffer = new data_t [comm->size_recvs];
 
         // Send and receive vector data
@@ -174,6 +172,14 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
             MPI_Irecv(&recv_buffer[begin], num_recv, MPI_DOUBLE, proc, 0, MPI_COMM_WORLD, &(recv_requests[request_ctr++]));
             begin += num_recv;
         }
+    
+    }
+
+    if (send_procs.size())
+    {
+	    // TODO we do not want to malloc these every time
+	    send_requests = new MPI_Request [send_procs.size()];
+        send_buffer = new data_t [comm->size_sends];
 
         begin = 0;
         request_ctr = 0;
@@ -188,8 +194,8 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
             MPI_Isend(&send_buffer[begin], ctr, MPI_DOUBLE, proc, 0, MPI_COMM_WORLD, &(send_requests[request_ctr++]));
             begin += ctr;
         }
-    
     }
+
 
 	// Compute partial SpMV with local information
 	sequentialSPMV(A->diag, *(x->local), y->local, alpha, beta);
@@ -198,9 +204,8 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
 	// TODO Deal with new entries as they become available
 	// TODO Add an error check on the status
     // TODO Using MPI_STATUS_IGNORE (delete[] recvStatus was causing a segfault)
-    if (A->offd_num_cols)
+    if (recv_procs.size())
     {
-
         if (async)
         {
             for (index_t i = 0; i < recv_procs.size(); i++)
@@ -228,16 +233,19 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
             Vector offd_tmp = Eigen::Map<Vector>(recv_buffer, tmp_size);
             sequentialSPMV(A->offd, offd_tmp, y->local, alpha, 1.0); 
         }
+    	delete[] recv_requests; 
+        delete[] recv_buffer;
+    }
 
+    if (send_procs.size())
+    {
 	    // Wait for all sends to finish
 	    // TODO Add an error check on the status
 	    MPI_Waitall(send_procs.size(), send_requests, MPI_STATUS_IGNORE);
 
         // Delete MPI_Requests
 	    delete[] send_requests; 
-	    delete[] recv_requests; 
         delete[] send_buffer;
-        delete[] recv_buffer;
     }
 }
 
