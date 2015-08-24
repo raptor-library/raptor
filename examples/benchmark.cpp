@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 
     // Time the SpMV
 	double t0 = MPI_Wtime();
-    parallel_spmv(A, x, b, 1., 0., 1);
+    parallel_spmv(A, x, b, 1., 0.,1);
     double total_time = MPI_Wtime() - t0;
     MPI_Reduce(&total_time, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0)
@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
         printf("Avg time for SpMV: %g\n", t0/num_procs);
 	
 
-    parallel_spmv(A, x, b, -1.0, 1.0);
+    //parallel_spmv(A, x, b, -1.0, 1.0);
 
     double norm = b->norm<2>();
     if (rank == 0) printf("2Norm = %2.3e\n", norm);
