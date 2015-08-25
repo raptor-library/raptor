@@ -118,7 +118,7 @@ void sequentialSPMV_eigen(Matrix<MatType>* A, Vector* x, Vector* y, double alpha
 }
 
 //CSC SpMV
-void sequentialSPMV_raptor(Matrix<0>* A, Vector* x, Vector* y, double alpha, double beta, std::vector<index_t> map, index_t _first_col = -1, index_t _size = 0)
+void sequentialSPMV_raptor(Matrix<0>* A, Vector* x, Vector* y, double alpha, double beta)
 {
     //TODO -- should be std::numeric_limits<data_t>::epsilon ...
     data_t zero_tol = DBL_EPSILON;
@@ -136,18 +136,7 @@ void sequentialSPMV_raptor(Matrix<0>* A, Vector* x, Vector* y, double alpha, dou
     data_t* values = (A->m)->valuePtr();
     index_t num_cols = (A->m)->outerSize();
     index_t num_rows = A->n_rows;
-
-    index_t first_col = 0;
-    index_t last_col = num_cols;
-
-    if (_first_col > -1)
-    {
-        first_col = _first_col;
-    }
-    if (_size > 0)
-    {
-        last_col = first_col + _size;
-    }
+    index_t num_nonzeros = (A->m)->nonZeros();
 
     index_t col_start;
     index_t col_end;
@@ -155,37 +144,31 @@ void sequentialSPMV_raptor(Matrix<0>* A, Vector* x, Vector* y, double alpha, dou
     data_t* y_data = y->data();
     data_t* x_data = x->data();
 
+
     if (alpha_one)
     {
         if (beta_one)
         {
-            for (index_t col = first_col; col < last_col; col++)
+            for (index_t col = 0; col < num_cols; col++)
             {
                 col_start = ptr[col];
                 col_end = ptr[col + 1];
                 data_t x_val = x_data[col];
-
                 for (index_t j = col_start; j < col_end; j++)
                 {
                     index_t row = idx[j];
                     y_data[row] += values[j] * x_val;
                 }
             }
-
-            for (index_t row = 0; row < num_rows; row++)
-            {
-                printf("Y[%d (%d)] = %2.3e\n", map[row], row, y_data[row]);
-            }
         }
         else
         {
-            printf("Section 2\n");
             for (index_t row = 0; row < num_rows; row++)
             {
                 y_data[row] = beta * y_data[row];
             }
 
-            for (index_t col = first_col; col < last_col; col++)
+            for (index_t col = 0; col < num_cols; col++)
             {
                 col_start = ptr[col];
                 col_end = ptr[col + 1];
@@ -202,8 +185,7 @@ void sequentialSPMV_raptor(Matrix<0>* A, Vector* x, Vector* y, double alpha, dou
     {
         if (beta_one)
         {
-            printf("Section 3\n");
-            for (index_t col = first_col; col < last_col; col++)
+            for (index_t col = 0; col < num_cols; col++)
             {
                 col_start = ptr[col];
                 col_end = ptr[col + 1];
@@ -217,13 +199,12 @@ void sequentialSPMV_raptor(Matrix<0>* A, Vector* x, Vector* y, double alpha, dou
         }
         else
         {
-            printf("Section 4\n");
             for (index_t row = 0; row < num_rows; row++)
             {
                 y_data[row] = beta * y_data[row];
             }
 
-            for (index_t col = first_col; col < last_col; col++)
+            for (index_t col = 0; col < num_cols; col++)
             {
                 col_start = ptr[col];
                 col_end = ptr[col + 1];
@@ -240,7 +221,6 @@ void sequentialSPMV_raptor(Matrix<0>* A, Vector* x, Vector* y, double alpha, dou
     {
         if (beta_zero)
         {
-            printf("Section 5\n");
             for (index_t row = 0; row < num_rows; row++)
             {
                 y_data[row] = 0.0;
@@ -248,7 +228,6 @@ void sequentialSPMV_raptor(Matrix<0>* A, Vector* x, Vector* y, double alpha, dou
         }
         if (!beta_one)
         {
-            printf("Section 6\n");
             for (index_t row = 0; row < num_rows; row++)
             {
                 y_data[row] = beta * y_data[row];
@@ -259,8 +238,7 @@ void sequentialSPMV_raptor(Matrix<0>* A, Vector* x, Vector* y, double alpha, dou
     {
         if (beta_one)
         {
-            printf("Section 7\n");
-            for (index_t col = first_col; col < last_col; col++)
+            for (index_t col = 0; col < num_cols; col++)
             {
                 col_start = ptr[col];
                 col_end = ptr[col + 1];
@@ -274,13 +252,12 @@ void sequentialSPMV_raptor(Matrix<0>* A, Vector* x, Vector* y, double alpha, dou
         }
         else
         {
-            printf("Section 8\n");
             for (index_t row = 0; row < num_rows; row++)
             {
                 y_data[row] = beta * y_data[row];
             }
 
-            for (index_t col = first_col; col < last_col; col++)
+            for (index_t col = 0; col < num_cols; col++)
             {
                 col_start = ptr[col];
                 col_end = ptr[col + 1];
@@ -295,9 +272,182 @@ void sequentialSPMV_raptor(Matrix<0>* A, Vector* x, Vector* y, double alpha, dou
     }
 }
 
-//CSR SpMV
-void sequentialSPMV_raptor(Matrix<1>* A, Vector* x, Vector* y, double alpha, double beta, index_t _first_col = -1, index_t _size = 0)
+//CSC SpMV
+void sequentialSPMV_raptor(Matrix<0>* A, Vector* x, Vector* y, double alpha, double beta, std::vector<index_t> col_list)
 {
+
+    // Get MPI Information
+    index_t rank, num_procs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+    //TODO -- should be std::numeric_limits<data_t>::epsilon ...
+    data_t zero_tol = DBL_EPSILON;
+
+    index_t alpha_zero = (fabs(alpha) < zero_tol);
+    index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
+    index_t alpha_neg_one = (fabs(alpha + 1.0) < zero_tol);
+
+    index_t beta_zero = (fabs(beta) < zero_tol);
+    index_t beta_one = (fabs(beta - 1.0) < zero_tol);
+    index_t beta_neg_one = (fabs(beta + 1.0) < zero_tol);
+
+    index_t* ptr = (A->m)->outerIndexPtr();
+    index_t* idx = (A->m)->innerIndexPtr();
+    data_t* values = (A->m)->valuePtr();
+    index_t num_cols = (A->m)->outerSize();
+    index_t num_rows = A->n_rows;
+    index_t num_nonzeros = (A->m)->nonZeros();
+
+    index_t col_start;
+    index_t col_end;
+    data_t x_val;
+    data_t* y_data = y->data();
+    data_t* x_data = x->data();
+
+    if (alpha_one)
+    {
+        if (beta_one)
+        {
+            // Ax + y
+            for (index_t i = 0; i < col_list.size(); i++)
+            {
+                index_t col = col_list[i];
+                col_start = ptr[col];
+                col_end = ptr[col + 1];
+                data_t x_val = x_data[i];
+
+                for (index_t j = col_start; j < col_end; j++)
+                {
+                    index_t row = idx[j];
+                    y_data[row] += values[j] * x_val;
+                }
+            }
+        }
+        else
+        {
+            for (index_t row = 0; row < num_rows; row++)
+            {
+                y_data[row] = beta * y_data[row];
+            }
+
+            for (index_t i = 0; i < col_list.size(); i++)
+            {
+                index_t col = col_list[i];
+                col_start = ptr[col];
+                col_end = ptr[col + 1];
+                data_t x_val = x_data[i];
+                for (index_t j = col_start; j < col_end; j++)
+                {
+                    index_t row = idx[j];
+                    y_data[row] += values[j] * x_val;
+                }
+            }
+        }
+    }
+    else if (alpha_neg_one)
+    {
+        if (beta_one)
+        {
+            for (index_t i = 0; i < col_list.size(); i++)
+            {
+                index_t col = col_list[i];
+                col_start = ptr[col];
+                col_end = ptr[col + 1];
+                data_t x_val = x_data[i];
+                for (index_t j = col_start; j < col_end; j++)
+                {
+                    index_t row = idx[j];
+                    y_data[row] -= values[j] * x_val;
+                }
+            }
+        }
+        else
+        {
+            for (index_t row = 0; row < num_rows; row++)
+            {
+                y_data[row] = beta * y_data[row];
+            }
+
+            for (index_t i = 0; i < col_list.size(); i++)
+            {
+                index_t col = col_list[i];
+                col_start = ptr[col];
+                col_end = ptr[col + 1];
+                data_t x_val = x_data[i];
+                for (index_t j = col_start; j < col_end; j++)
+                {
+                    index_t row = idx[j];
+                    y_data[row] -= values[j] * x_val;
+                }
+            }
+        }
+    }
+    else if (alpha_zero)
+    {
+        if (beta_zero)
+        {
+            for (index_t row = 0; row < num_rows; row++)
+            {
+                y_data[row] = 0.0;
+            }
+        }
+        if (!beta_one)
+        {
+            for (index_t row = 0; row < num_rows; row++)
+            {
+                y_data[row] = beta * y_data[row];
+            }
+        }
+    }
+    else
+    {
+        if (beta_one)
+        {
+            for (index_t i = 0; i < col_list.size(); i++)
+            {
+                index_t col = col_list[i];
+                col_start = ptr[col];
+                col_end = ptr[col + 1];
+                data_t x_val = x_data[i];
+                for (index_t j = col_start; j < col_end; j++)
+                {
+                    index_t row = idx[j];
+                    y_data[row] += alpha * values[j] * x_val;
+                }
+            }
+        }
+        else
+        {
+            for (index_t row = 0; row < num_rows; row++)
+            {
+                y_data[row] = beta * y_data[row];
+            }
+
+            for (index_t i = 0; i < col_list.size(); i++)
+            {
+                index_t col = col_list[i];
+                col_start = ptr[col];
+                col_end = ptr[col + 1];
+                data_t x_val = x_data[i];
+                for (index_t j = col_start; j < col_end; j++)
+                {
+                    index_t row = idx[j];
+                    y_data[row] += alpha * values[j] * x_val;
+                }
+            }
+        }
+    }
+}
+
+//CSR SpMV
+void sequentialSPMV_raptor(Matrix<1>* A, Vector* x, Vector* y, double alpha, double beta)
+{
+    // Get MPI Information
+    index_t rank, num_procs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
     //TODO -- should be std::numeric_limits<data_t>::epsilon ...
     data_t zero_tol = DBL_EPSILON;
 
@@ -347,11 +497,13 @@ void sequentialSPMV_raptor(Matrix<1>* A, Vector* x, Vector* y, double alpha, dou
                 row_end = ptr[i+1];
 
                 y_data[i] = values[row_start] * x_data[idx[row_start]];
+                //printf("Proc %d multiplies (%d, %d) = %2.3e x %2.3e\n", rank, i + first_col_diag, idx[row_start] + first_col_diag, values[row_start], x_data[idx[row_start]]);
 
                 for (index_t j = row_start + 1; j < row_end; j++)
                 {
                     index_t col = idx[j];
                     y_data[i] += values[j] * x_data[col];
+                    //printf("Proc %d multiplies (%d, %d) = %2.3e x %2.3e\n", rank, i + first_col_diag, col + first_col_diag, values[j], x_data[col]);
                 }
             }
         }
@@ -498,7 +650,7 @@ void sequentialSPMV_raptor(Matrix<1>* A, Vector* x, Vector* y, double alpha, dou
     }
 }
 
-void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta, index_t async = 0)
+void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta, index_t async = 0, index_t raptor = 1)
 {
     // Get MPI Information
     index_t rank, num_procs;
@@ -579,7 +731,14 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
 
 
 	// Compute partial SpMV with local information
-	sequentialSPMV_raptor(A->diag, x->local, y->local, alpha, beta);
+    if (raptor)
+    {
+	    sequentialSPMV_raptor(A->diag, x->local, y->local, alpha, beta);
+    }
+    else
+    {
+        sequentialSPMV_eigen(A->diag, x->local, y->local, alpha, beta);
+    }
 
     // Once data is available, add contribution of off-diagonals
 	// TODO Deal with new entries as they become available
@@ -594,15 +753,21 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
                 index_t recv_idx = 0;
                 MPI_Waitany(recv_procs.size(), recv_requests, &recv_idx, MPI_STATUS_IGNORE);
                 index_t proc = recv_procs[recv_idx];
-                auto minmax = std::minmax_element(recv_indices[proc].begin(), recv_indices[proc].end());
-                index_t first_idx = minmax.first - recv_indices[proc].begin();
-                index_t last_idx = minmax.second - recv_indices[proc].begin();
-
-                index_t first_col = recv_indices[proc][first_idx];
-                index_t last_col = recv_indices[proc][last_idx];
-                
                 Vector offd_tmp = Eigen::Map<Vector>(&recv_buffer[recv_proc_starts[proc]], recv_indices[proc].size());
-                sequentialSPMV_raptor(A->offd, &offd_tmp, y->local, alpha, 1.0, A->local_to_global, first_col, last_col - first_col+1);
+
+                if (raptor)
+                {
+                    sequentialSPMV_raptor(A->offd, &offd_tmp, y->local, alpha, 1.0, recv_indices[proc]);
+                }
+                else
+                {
+                    auto minmax = std::minmax_element(recv_indices[proc].begin(), recv_indices[proc].end());
+                    index_t first_idx = minmax.first - recv_indices[proc].begin();
+                    index_t last_idx = minmax.second - recv_indices[proc].begin();
+                    index_t first_col = recv_indices[proc][first_idx];
+                    index_t last_col = recv_indices[proc][last_idx];
+                    sequentialSPMV_eigen(A->offd, &offd_tmp, y->local, alpha, 1.0, first_col, last_col - first_col + 1);
+                }
             }
         }
         else
@@ -612,8 +777,17 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
 
             // Add received data to Vector
             Vector offd_tmp = Eigen::Map<Vector>(recv_buffer, tmp_size);
-            sequentialSPMV_raptor(A->offd, &offd_tmp, y->local, alpha, 1.0, A->local_to_global); 
+
+            if (raptor)
+            {
+                sequentialSPMV_raptor(A->offd, &offd_tmp, y->local, alpha, 1.0); 
+            }
+            else
+            {
+                sequentialSPMV_eigen(A->offd, &offd_tmp, y->local, alpha, 1.0);
+            }
         }
+
     	delete[] recv_requests; 
         delete[] recv_buffer;
     }
@@ -629,10 +803,5 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
         delete[] send_buffer;
     }
 }
-
-// void sequentialSPMV(Matrix* A, Vector* x, Vector* y, double alpha, double beta)
-// {
-//     *y = alpha*((*(A->m))*(*x)) + beta * (*y);
-// }
 
 #endif

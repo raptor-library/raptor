@@ -17,6 +17,20 @@ template<int MatType>
 class Matrix
 {
 public:
+    void insert(index_t row, index_t col, data_t value)
+    {
+        m->insert(row, col) = value;
+    }
+
+    void finalize()
+    {
+        m->makeCompressed();
+    }
+    void resize(index_t num_rows, index_t num_cols)
+    {
+        m->conservativeResize(num_rows, num_cols);
+    }
+
     Eigen::SparseMatrix<data_t, MatType, index_t>* m;
     index_t n_rows;
     index_t n_cols;
@@ -27,18 +41,26 @@ class CSR_Matrix : public Matrix <1>
 {
 
 public:
-    CSR_Matrix(std::vector<Triplet>* _triplets, index_t _nrows, index_t _ncols)
+    CSR_Matrix(index_t _nrows, index_t _ncols, index_t reserve_size)
     {
         m = new CSRMat (_nrows, _ncols);
-        m->setFromTriplets(_triplets->begin(), _triplets->end());
         n_rows = _nrows;
         n_cols = _ncols;
-        nnz = _triplets->size();
+        m->reserve(reserve_size);
+    }
+    CSR_Matrix(std::vector<Triplet> _triplets, index_t _nrows, index_t _ncols)
+    {
+        m = new CSRMat (_nrows, _ncols);
+        n_rows = _nrows;
+        n_cols = _ncols;
+        nnz = _triplets.size();
+        m->setFromTriplets(_triplets.begin(), _triplets.end());
     }
     CSR_Matrix(index_t* I, index_t* J, data_t* data, index_t _nrows, index_t _ncols, index_t _nnz, format_t format = CSR)
     {
         m = new CSRMat (_nrows, _ncols);
         std::vector<Triplet> _triplets(_nnz);
+        m->reserve(_nnz);
 
         if (format == CSR)
         {
@@ -76,13 +98,20 @@ class CSC_Matrix : public Matrix <0>
 {
 
 public:
-    CSC_Matrix(std::vector<Triplet>* _triplets, index_t _nrows, index_t _ncols)
+    CSC_Matrix(index_t _nrows, index_t _ncols, index_t reserve_size)
     {
         m = new CSCMat (_nrows, _ncols);
-        m->setFromTriplets(_triplets->begin(), _triplets->end());
         n_rows = _nrows;
         n_cols = _ncols;
-        nnz = _triplets->size();
+        m->reserve(reserve_size);
+    }
+    CSC_Matrix(std::vector<Triplet> _triplets, index_t _nrows, index_t _ncols)
+    {
+        m = new CSCMat (_nrows, _ncols);
+        n_rows = _nrows;
+        n_cols = _ncols;
+        nnz = _triplets.size();
+        m->setFromTriplets(_triplets.begin(), _triplets.end());
     }
     CSC_Matrix(index_t* I, index_t* J, data_t* data, index_t _nrows, index_t _ncols, index_t _nnz, format_t format = CSR)
     {
@@ -120,6 +149,5 @@ public:
     ~CSC_Matrix() { delete m; }
 };
 
-// TODO -- ADD COO_Matrix ... cannot find a Eigen implementation for this...
 
 #endif
