@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 
     int async = atoi(argv[1]);
     int raptor = atoi(argv[2]);
-    int n = atoi(argv[3]);
+    int n = sqrt(atoi(argv[3]));
     int num_tests = atoi(argv[4]);
 
 	data_t eps = 1.0;
