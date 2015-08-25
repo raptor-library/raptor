@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 
     // matrix to read
     //char file[] = "LFAT5.mtx";
-    char file[] = "msc01440.mtx";
+    //char file[] = "msc01440.mtx";
     //char file[] = "plbuckle.mtx";
     //char file[] = "bcsstm25.mtx";
 
@@ -59,15 +59,15 @@ int main(int argc, char *argv[])
     double total_time = (MPI_Wtime() - t0) / num_tests;
     MPI_Reduce(&total_time, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0)
-        printf("Max time for SpMV: %g\n", t0);
+        printf("Max time for Parallel SpMV: %g\n", t0);
     MPI_Reduce(&total_time, &t0, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
     if (rank == 0)
-        printf("Min time for SpMV: %g\n", t0);
+        printf("Min time for Parallel SpMV: %g\n", t0);
     MPI_Reduce(&total_time, &t0, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if (rank == 0)
-        printf("Avg time for SpMV: %g\n", t0/num_procs);
+        printf("Avg time for Parallel SpMV: %g\n", t0/num_procs);
 
-    /*if (raptor)
+    if (raptor)
     {
         t0 = MPI_Wtime();
         for (index_t i = 0; i < num_tests; i++)
@@ -84,7 +84,16 @@ int main(int argc, char *argv[])
             sequentialSPMV_eigen(A->diag, x->local, b->local, 1.0, 0.0);
         }
         total_time = (MPI_Wtime() - t0) / num_tests;
-    }*/
+    }
+    MPI_Reduce(&total_time, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0)
+        printf("Max time for Sequential SpMV: %g\n", t0);
+    MPI_Reduce(&total_time, &t0, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+    if (rank == 0)
+        printf("Min time for Sequential SpMV: %g\n", t0);
+    MPI_Reduce(&total_time, &t0, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (rank == 0)
+        printf("Avg time for Sequential SpMV: %g\n", t0/num_procs);
 
 	
 
