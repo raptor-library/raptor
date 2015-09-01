@@ -3,150 +3,199 @@
 #ifndef RAPTOR_CORE_MATRIX_H
 #define RAPTOR_CORE_MATRIX_H
 
-#include <Eigen/Sparse>
-
 #include "types.hpp"
 
-// TODO: Do not hard code RowMajor as 1; use the enum that exists somewhwere
-typedef Eigen::SparseMatrix<data_t, 1> CSRMat;
-typedef Eigen::SparseMatrix<data_t, 0> CSCMat;
-typedef Eigen::Triplet<data_t> Triplet;
-
-
-template<int MatType>
-class Matrix
+template <int MatType>
+class Matrix<int MatType>
 {
 public:
-    void insert(index_t row, index_t col, data_t value)
+
+    Matrix(index_t _nrows, index_t _ncols)
     {
-        m->insert(row, col) = value;
+        n_rows = _nrows;
+        n_cols = _ncols;
+        nnz = 0;
     }
 
-    void finalize()
+    ~Matrix()
     {
-        m->makeCompressed();
-    }
-    void resize(index_t num_rows, index_t num_cols)
-    {
-        m->conservativeResize(num_rows, num_cols);
+        delete[] indptr;
+        delete[] indices;
+        delete[] data;
     }
 
-    Eigen::SparseMatrix<data_t, MatType, index_t>* m;
+    index_t add_values(index_t i, index_t* j, data_t* values, index_t num_values);
+
+    index_t* indptr;
+    index_t* indices;
+    data_t* data;
+
     index_t n_rows;
     index_t n_cols;
-    unsigned long nnz;
+    index_t nnz;
+
 };
 
-class CSR_Matrix : public Matrix <1>
+class CSR_Matrix : public Matrix<1>
 {
 
 public:
-    CSR_Matrix(index_t _nrows, index_t _ncols, index_t reserve_size)
+    CSR_Matrix(index_t _nrows, index_t _ncols, index_t nnz_per_row) : Matrix(_nrows, _ncols)
     {
-        m = new CSRMat (_nrows, _ncols);
-        n_rows = _nrows;
-        n_cols = _ncols;
-        m->reserve(reserve_size);
-    }
-    CSR_Matrix(std::vector<Triplet> _triplets, index_t _nrows, index_t _ncols)
-    {
-        m = new CSRMat (_nrows, _ncols);
-        n_rows = _nrows;
-        n_cols = _ncols;
-        nnz = _triplets.size();
-        m->setFromTriplets(_triplets.begin(), _triplets.end());
-    }
-    CSR_Matrix(index_t* I, index_t* J, data_t* data, index_t _nrows, index_t _ncols, index_t _nnz, format_t format = CSR)
-    {
-        m = new CSRMat (_nrows, _ncols);
-        std::vector<Triplet> _triplets(_nnz);
-        m->reserve(_nnz);
+        index_t _nnz = nnz_per_row * _nrows;
+       
+        indptr = new index_t[_nrows + 1];
+        indices = new index_t[_nnz];
+        data = new data_t[_nnz];
 
-        if (format == CSR)
+        row_starts = new index_t[_nrows];
+        for (index_t i = 0; i < _nrows; i++)
         {
-            // Assumes CSR Format
-            index_t ctr = 0;
-            for (index_t i = 0; i < _nrows; i++)
+            row_starts[i] = i*nnz_per_row;
+            indptr[i] = 0;
+        }
+        indptr[_nrows] = 0;
+    }
+
+    ~CSR_Matrix() {}
+
+    index_t add_value(index_t row, index_t col, data_t value)
+    {
+        index_t pos = row_starts[row]++;
+        indices[pos] = col;
+        data[pos] = value;
+        indptr[row]++;
+        nnz++;
+    }
+
+    index_t add_values(index_t row, index_t* cols, data_t* values, index_t num_values)
+    {
+        for (index_t i = 0; i < num_values; i++)
+        {
+            index_t pos = row_starts[row]++;
+            indices[pos] = cols[i];
+            data[pos] = values[i];
+        }
+        indptr[row] += num_values;
+        nnz += num_values;
+    }
+
+    index_t finalize()
+    {
+        index_t* temp_idx = new index_t[nnz];
+        data_t* temp_data = new data_t[nnz];
+        index_t ctr = 0;
+
+        for (index_t row = 0; row < n_rows; row++)
+        {
+            index_t row_start = indptr[row];
+            index_t row_end = row_starts[row];
+
+            indptr[row] = ctr;
+
+            for (index_t j = row_start; j < row_end; j++)
             {
-                for (index_t j = I[i]; j < I[i+1]; j++)
-                {
-                    _triplets[ctr++] = (Triplet(i, J[j], data[j]));
-                }
+                temp_idx[ctr] = indices[j];
+                temp_data[ctr] = data[j];
+                ctr++;
             }
         }
-        else if (format == COO)
-        {
-            // Assumes COO format
-            index_t ctr = 0;
-            for (int i = 0; i < _nnz; i++)
-            {
-                _triplets[ctr++] = (Triplet(I[i], J[i], data[i]));
-            }
-        }
+        indptr[n_rows] = ctr;
 
-        m->setFromTriplets(_triplets.begin(), _triplets.end());
-        n_rows = _nrows;
-        n_cols = _ncols;
-        nnz = _nnz;
+        delete[] indices;
+        delete[] data;
+        delete[] row_starts;
 
+        indices = temp_idx;
+        data = temp_data;
     }
-    ~CSR_Matrix() { delete m; }
+
+    index_t* row_starts;
+
 };
 
 
-class CSC_Matrix : public Matrix <0>
+class CSC_Matrix : public Matrix<0>
 {
 
 public:
-    CSC_Matrix(index_t _nrows, index_t _ncols, index_t reserve_size)
+    CSC_Matrix(index_t _nrows, index_t _ncols, index_t nnz_per_col) : Matrix(_nrows, _ncols)
     {
-        m = new CSCMat (_nrows, _ncols);
-        n_rows = _nrows;
-        n_cols = _ncols;
-        m->reserve(reserve_size);
-    }
-    CSC_Matrix(std::vector<Triplet> _triplets, index_t _nrows, index_t _ncols)
-    {
-        m = new CSCMat (_nrows, _ncols);
-        n_rows = _nrows;
-        n_cols = _ncols;
-        nnz = _triplets.size();
-        m->setFromTriplets(_triplets.begin(), _triplets.end());
-    }
-    CSC_Matrix(index_t* I, index_t* J, data_t* data, index_t _nrows, index_t _ncols, index_t _nnz, format_t format = CSR)
-    {
-        m = new CSCMat (_nrows, _ncols);
-        std::vector<Triplet> _triplets(_nnz);
+        index_t _nnz = nnz_per_col * _ncols;
 
-        if (format == CSR)
+        indptr = new index_t[_ncols + 1];
+        indices = new index_t[_nnz];
+        data = new data_t[_nnz];
+
+        col_starts = new index_t[_ncols];
+        for (index_t i = 0; i < _ncols; i++)
         {
-            // Assumes CSR Format
-            index_t ctr = 0;
-            for (index_t i = 0; i < _nrows; i++)
+            col_starts[i] = i*nnz_per_col;
+            indptr[i] = 0;
+        }
+        indptr[_ncols] = 0;
+    }
+
+    ~CSR_Matrix() {}
+
+    index_t add_value(index_t row, index_t col, data_t value)
+    {
+        index_t pos = col_starts[col]++;
+        indices[pos] = row;
+        data[pos] = value;
+        indptr[col]++;
+        nnz++;
+    }
+
+    index_t add_values(index_t col, index_t* rows, data_t* values, index_t num_values)
+    {
+        for (index_t i = 0; i < num_values; i++)
+        {
+            index_t pos = col_starts[col]++;
+            indices[pos] = rows[i];
+            data[pos] = values[i];
+        }
+        indptr[col] += num_values;
+        nnz += num_values;
+    }
+
+    index_t resize(index_t _nrows, index_t _ncols)
+    {
+        n_rows = _nrows;
+        n_cols = _ncols;
+    }
+
+    index_t finalize()
+    {
+        index_t* temp_idx = new index_t[nnz];
+        data_t* temp_data = new data_t[nnz];
+        index_t ctr = 0;
+
+        for (index_t col = 0; col < n_cols; col++)
+        {
+            index_t col_start = indptr[col];
+            index_t col_end = col_starts[col];
+
+            indptr[col] = ctr;
+
+            for (index_t j = col_start; j < col_end; j++)
             {
-                for (index_t j = I[i]; j < I[i+1]; j++)
-                {
-                    _triplets[ctr++] = (Triplet(i, J[j], data[j]));
-                }
+                temp_idx[ctr] = indices[j];
+                temp_data[ctr] = data[j];
+                ctr++;
             }
         }
-        else if (format == COO)
-        {
-            // Assumes COO format
-            index_t ctr = 0;
-            for (int i = 0; i < _nnz; i++)
-            {
-                _triplets[ctr++] = (Triplet(I[i], J[i], data[i]));
-            }
-        }
+        indptr[n_cols] = ctr;
 
-        m->setFromTriplets(_triplets.begin(), _triplets.end());
-        n_rows = _nrows;
-        n_cols = _ncols;
-        nnz = _nnz;
+        delete[] indices;
+        delete[] data;
+        delete[] col_starts;
 
+        indices = temp_idx;
+        data = temp_data;
     }
-    ~CSC_Matrix() { delete m; }
+
+    index_t* col_starts;
 };
 
 

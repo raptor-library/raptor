@@ -26,5 +26,5 @@ ParMatrix::~ParMatrix()
     }
     delete this->diag;
     delete this->comm;
-
+    //delete[] this-> global_row_starts;
 }
