@@ -6,7 +6,7 @@
 #include "types.hpp"
 
 template <int MatType>
-class Matrix<int MatType>
+class Matrix
 {
 public:
 
@@ -24,7 +24,16 @@ public:
         delete[] data;
     }
 
-    index_t add_values(index_t i, index_t* j, data_t* values, index_t num_values);
+    void add_values(index_t i, index_t* j, data_t* values, index_t num_values);
+    void add_value(index_t row, index_t col, data_t value);
+
+    void resize(index_t _nrows, index_t _ncols)
+    {
+        n_rows = _nrows;
+        n_cols = _ncols;
+    }
+
+    void finalize();
 
     index_t* indptr;
     index_t* indices;
@@ -52,23 +61,22 @@ public:
         for (index_t i = 0; i < _nrows; i++)
         {
             row_starts[i] = i*nnz_per_row;
-            indptr[i] = 0;
+            indptr[i] = i*nnz_per_row;
         }
-        indptr[_nrows] = 0;
+        indptr[_nrows] = _nrows*nnz_per_row;
     }
 
     ~CSR_Matrix() {}
 
-    index_t add_value(index_t row, index_t col, data_t value)
+    void add_value(index_t row, index_t col, data_t value)
     {
         index_t pos = row_starts[row]++;
         indices[pos] = col;
         data[pos] = value;
-        indptr[row]++;
         nnz++;
     }
 
-    index_t add_values(index_t row, index_t* cols, data_t* values, index_t num_values)
+    void add_values(index_t row, index_t* cols, data_t* values, index_t num_values)
     {
         for (index_t i = 0; i < num_values; i++)
         {
@@ -76,11 +84,10 @@ public:
             indices[pos] = cols[i];
             data[pos] = values[i];
         }
-        indptr[row] += num_values;
         nnz += num_values;
     }
 
-    index_t finalize()
+    void finalize()
     {
         index_t* temp_idx = new index_t[nnz];
         data_t* temp_data = new data_t[nnz];
@@ -131,23 +138,22 @@ public:
         for (index_t i = 0; i < _ncols; i++)
         {
             col_starts[i] = i*nnz_per_col;
-            indptr[i] = 0;
+            indptr[i] = i*nnz_per_col;
         }
-        indptr[_ncols] = 0;
+        indptr[_ncols] = _ncols*nnz_per_col;
     }
 
-    ~CSR_Matrix() {}
+    ~CSC_Matrix() {}
 
-    index_t add_value(index_t row, index_t col, data_t value)
+    void add_value(index_t row, index_t col, data_t value)
     {
         index_t pos = col_starts[col]++;
         indices[pos] = row;
         data[pos] = value;
-        indptr[col]++;
         nnz++;
     }
 
-    index_t add_values(index_t col, index_t* rows, data_t* values, index_t num_values)
+    void add_values(index_t col, index_t* rows, data_t* values, index_t num_values)
     {
         for (index_t i = 0; i < num_values; i++)
         {
@@ -155,17 +161,10 @@ public:
             indices[pos] = rows[i];
             data[pos] = values[i];
         }
-        indptr[col] += num_values;
         nnz += num_values;
     }
 
-    index_t resize(index_t _nrows, index_t _ncols)
-    {
-        n_rows = _nrows;
-        n_cols = _ncols;
-    }
-
-    index_t finalize()
+    void finalize()
     {
         index_t* temp_idx = new index_t[nnz];
         data_t* temp_data = new data_t[nnz];
@@ -197,6 +196,30 @@ public:
 
     index_t* col_starts;
 };
+
+//template <int MatType>
+//class COO_Matrix : public Matrix<MatType>
+//{
+
+//public:
+//    COO_Matrix(index_t _nrows, index_t _ncols, index_t _nnz) : Matrix(_nrows, _ncols)
+//    {
+//        indptr = new index_t[_nnz];
+//        indices = new index_t[_nnz];
+//        data = new data_t[_nnz];
+
+//        for (index_t i = 0; i < _ncols; i++)
+//        {
+//            col_starts[i] = i*nnz_per_col;
+//            indptr[i] = 0;
+//        }
+//        indptr[_ncols] = 0;
+//    }
+
+//    ~COO_Matrix() {}
+
+//    index_t* nnz_per_ind;
+//};
 
 
 #endif

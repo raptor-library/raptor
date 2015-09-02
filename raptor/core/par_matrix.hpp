@@ -14,22 +14,42 @@
 class ParMatrix
 {
 public:
-    ParMatrix(index_t _glob_rows, index_t _glob_cols, index_t diag_nnz_row, index_t offd_cols, index_t offd_nnz_col)
+    ParMatrix(index_t _glob_rows, index_t _glob_cols)
+    {
+        // Initialize matrix dimensions
+        global_rows = _glob_rows;
+        global_cols = _glob_cols;
+        offd_num_cols = 0;
+
+        // Create Partition
+        create_partition(global_rows);
+    }
+
+    ParMatrix(index_t _globalRows, index_t _globalCols, CSR_Matrix* _diag, CSC_Matrix* _offd);
+    ParMatrix(ParMatrix* A);
+    ~ParMatrix();
+
+    void reserve_sizes(index_t diag_nnz_row, index_t offd_cols, index_t offd_nnz_col)
+    {
+        // Initialize diagonal matrix
+        diag = new CSR_Matrix(local_rows, local_rows, diag_nnz_row);
+
+        //Initialize offd matrix
+        offd = new CSC_Matrix(local_rows, offd_cols, offd_nnz_col);
+    }
+
+    void create_partition(index_t global_rows)
     {
         // Get MPI Information
         index_t rank, num_procs;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-        // Initialize matrix dimensions
-        global_rows = _glob_rows;
-        global_cols = _glob_cols;
-        offd_num_cols = 0;
-
         // Initialize global_row_starts (partition matrix)
         global_row_starts = new index_t[num_procs + 1];
-        index_t extra = glob_rows % num_procs;
-        index_t size = glob_rows / num_procs;
+        index_t extra = global_rows % num_procs;
+        index_t size = global_rows / num_procs;
+        global_row_starts[0] = 0;
         for (index_t i = 0; i < num_procs; i++)
         {
             global_row_starts[i+1] = global_row_starts[i] + size;
@@ -40,12 +60,6 @@ public:
         }
         first_col_diag = global_row_starts[rank];
         local_rows = global_row_starts[rank+1] - first_col_diag;
-
-        // Initialize diagonal matrix
-        diag = new CSR_Matrix(local_rows, local_rows, diag_nnz_row);
-
-        //Initialize offd matrix
-        offd = new CSC_Matrix(local_rows, offd_cols, offd_nnz_col);
     }
 
     void add_value(index_t row, index_t global_col, data_t value, index_t row_global = 0)
@@ -73,26 +87,29 @@ public:
 
     void finalize(index_t symmetric)
     {
-        offd->resize(local_rows, offd_num_cols);
-        offd->finalize();
+        if (offd_num_cols)
+        {
+            offd->resize(local_rows, offd_num_cols);
+            offd->finalize();
+        }
+        else
+        {
+            delete offd;
+        }
         diag->finalize();
         comm = new ParComm(offd, local_to_global, global_to_local, global_row_starts, symmetric);
     }
-
-    ParMatrix(ParMatrix* A);
-    ~ParMatrix();
 
     index_t global_rows;
     index_t global_cols;
     index_t local_nnz;
     index_t local_rows;
-    Matrix<0>* diag;
-    Matrix<1>* offd;
+    CSR_Matrix* diag;
+    CSC_Matrix* offd;
     std::vector<index_t> local_to_global;
     std::map<index_t, index_t> global_to_local;
     index_t offd_num_cols;
     index_t first_col_diag;
-    index_t offd_nnz;
     ParComm* comm;
     index_t* global_row_starts;
 

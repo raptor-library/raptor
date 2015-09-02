@@ -398,13 +398,11 @@ void sequentialSPMV(Matrix<1>* A, Vector* x, Vector* y, double alpha, double bet
                 row_end = ptr[i+1];
 
                 y_data[i] = values[row_start] * x_data[idx[row_start]];
-                //printf("Proc %d multiplies (%d, %d) = %2.3e x %2.3e\n", rank, i + first_col_diag, idx[row_start] + first_col_diag, values[row_start], x_data[idx[row_start]]);
 
                 for (index_t j = row_start + 1; j < row_end; j++)
                 {
                     index_t col = idx[j];
                     y_data[i] += values[j] * x_data[col];
-                    //printf("Proc %d multiplies (%d, %d) = %2.3e x %2.3e\n", rank, i + first_col_diag, col + first_col_diag, values[j], x_data[col]);
                 }
             }
         }
@@ -551,7 +549,7 @@ void sequentialSPMV(Matrix<1>* A, Vector* x, Vector* y, double alpha, double bet
     }
 }
 
-void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta, index_t async = 0, index_t raptor = 1)
+void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta, index_t async = 0)
 {
     // Get MPI Information
     index_t rank, num_procs;
@@ -632,14 +630,7 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
 
 
 	// Compute partial SpMV with local information
-    if (raptor)
-    {
-	    sequentialSPMV_raptor(A->diag, x->local, y->local, alpha, beta);
-    }
-    else
-    {
-        sequentialSPMV_eigen(A->diag, x->local, y->local, alpha, beta);
-    }
+    sequentialSPMV(A->diag, x->local, y->local, alpha, beta);
 
     // Once data is available, add contribution of off-diagonals
 	// TODO Deal with new entries as they become available
@@ -655,20 +646,7 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
                 MPI_Waitany(recv_procs.size(), recv_requests, &recv_idx, MPI_STATUS_IGNORE);
                 index_t proc = recv_procs[recv_idx];
                 Vector offd_tmp = Eigen::Map<Vector>(&recv_buffer[recv_proc_starts[proc]], recv_indices[proc].size());
-
-                if (raptor)
-                {
-                    sequentialSPMV_raptor(A->offd, &offd_tmp, y->local, alpha, 1.0, recv_indices[proc]);
-                }
-                else
-                {
-                    auto minmax = std::minmax_element(recv_indices[proc].begin(), recv_indices[proc].end());
-                    index_t first_idx = minmax.first - recv_indices[proc].begin();
-                    index_t last_idx = minmax.second - recv_indices[proc].begin();
-                    index_t first_col = recv_indices[proc][first_idx];
-                    index_t last_col = recv_indices[proc][last_idx];
-                    sequentialSPMV_eigen(A->offd, &offd_tmp, y->local, alpha, 1.0, first_col, last_col - first_col + 1);
-                }
+                sequentialSPMV(A->offd, &offd_tmp, y->local, alpha, 1.0, recv_indices[proc]);
             }
         }
         else
@@ -678,15 +656,8 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
 
             // Add received data to Vector
             Vector offd_tmp = Eigen::Map<Vector>(recv_buffer, tmp_size);
+            sequentialSPMV(A->offd, &offd_tmp, y->local, alpha, 1.0); 
 
-            if (raptor)
-            {
-                sequentialSPMV_raptor(A->offd, &offd_tmp, y->local, alpha, 1.0); 
-            }
-            else
-            {
-                sequentialSPMV_eigen(A->offd, &offd_tmp, y->local, alpha, 1.0);
-            }
         }
 
     	delete[] recv_requests; 
