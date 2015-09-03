@@ -29,13 +29,22 @@ public:
     ParMatrix(ParMatrix* A);
     ~ParMatrix();
 
-    void reserve_sizes(index_t diag_nnz_row, index_t offd_cols, index_t offd_nnz_col)
+    void create_matrices(index_t diag_nnz_row, index_t offd_cols, index_t offd_nnz_col)
     {
         // Initialize diagonal matrix
         diag = new CSR_Matrix(local_rows, local_rows, diag_nnz_row);
 
         //Initialize offd matrix
         offd = new CSC_Matrix(local_rows, offd_cols, offd_nnz_col);
+    }
+
+    void create_matrices()
+    {
+        // Initialize diagonal matrix
+        diag = new CSR_Matrix(local_rows, local_rows);
+
+        //Initialize offd matrix
+        offd = new CSC_Matrix(local_rows, local_rows);
     }
 
     void create_partition(index_t global_rows)
@@ -77,11 +86,11 @@ public:
                 global_to_local[global_col] = offd_num_cols++;
                 local_to_global.push_back(global_col);
             }
-            offd->add_value(row, global_to_local[global_col], value);
+            ((CSC_Matrix*)offd)->add_value(row, global_to_local[global_col], value);
         }
         else // Diagonal Block
         {
-            diag->add_value(row, global_col - first_col_diag, value);
+            ((CSR_Matrix*)diag)->add_value(row, global_col - first_col_diag, value);
         }
     }
 
@@ -90,13 +99,13 @@ public:
         if (offd_num_cols)
         {
             offd->resize(local_rows, offd_num_cols);
-            offd->finalize();
+            ((CSC_Matrix*)offd)->finalize();
         }
         else
         {
             delete offd;
         }
-        diag->finalize();
+        ((CSR_Matrix*)diag)->finalize();
         comm = new ParComm(offd, local_to_global, global_to_local, global_row_starts, symmetric);
     }
 
@@ -104,8 +113,8 @@ public:
     index_t global_cols;
     index_t local_nnz;
     index_t local_rows;
-    CSR_Matrix* diag;
-    CSC_Matrix* offd;
+    Matrix<1>* diag;
+    Matrix<0>* offd;
     std::vector<index_t> local_to_global;
     std::map<index_t, index_t> global_to_local;
     index_t offd_num_cols;

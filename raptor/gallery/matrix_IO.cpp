@@ -33,16 +33,17 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, index_
                     return NULL;
         
                 fclose(infile);
-              
+
+                A = new ParMatrix(num_rows, num_cols);
+                A->create_matrices();
                 global_row_starts = A->global_row_starts;
                 // read the file knowing our local rows
                 ret_code = mm_read_sparse(filename, global_row_starts[rank],
-                    global_row_starts[rank+1], &num_rows, &num_cols, &nnz,
-                    &data, &row_ptr, &col, symmetric);
+                    global_row_starts[rank+1], &num_rows, &num_cols,
+                    A, symmetric);
 
                 if (ret_code != 0)
                 {
-                    delete[] global_row_starts; 
                     return NULL;
                 }
             }
@@ -52,31 +53,29 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, index_
     else //one file per MPI process
     {
         //TODO: init global_row_starts
-        global_row_starts = A->global_row_starts;
+        //global_row_starts = A->global_row_starts;
         
-        ret_code = mm_read_sparse(filename, global_row_starts[rank],
-                    global_row_starts[rank+1], &num_rows, &num_cols, &nnz,
-                    &data, &row_ptr, &col, symmetric);
-        if (ret_code != 0)
-        {
-            return NULL;
-        }
+        //ret_code = mm_read_sparse(filename, global_row_starts[rank],
+        //            global_row_starts[rank+1], &num_rows, &num_cols,
+        //            A, symmetric);
+        //if (ret_code != 0)
+        //{
+        //    return NULL;
+        //}
     }
 
-    //printf("GlobRowStarts[%d] = %d\t RowEnds[%d] = %d\tNNZ=%d\n", rank, global_row_starts[rank], rank, global_row_starts[rank+1], nnz);
+    A->finalize(symmetric);
 
-    return NULL;
+    return A;
 }
 
-int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_, int *nz_,
-                double **val_, int **I_, int **J_, int symmetric)
+int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_,
+                ParMatrix* A, int symmetric)
 {
     FILE *f;
     MM_typecode matcode;
     int M, N, nz;
     int i, ctr;
-    double *val;
-    int *I, *J;
     data_t zero_tol = DBL_EPSILON;
      
     if ((f = fopen(fname, "r")) == NULL)
@@ -111,60 +110,31 @@ int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_, int
  
     *M_ = M;
     *N_ = N;
-    //*nz_ = nz;
- 
-    /* reseve memory for matrices */
- 
-    if (symmetric)
-    {
-        I = (int *) malloc(2*nz * sizeof(int));
-        J = (int *) malloc(2*nz * sizeof(int));
-        val = (double *) malloc(2*nz * sizeof(double));
-    }
-    else
-    {
-        I = (int *) malloc(nz * sizeof(int));
-        J = (int *) malloc(nz * sizeof(int));
-        val = (double *) malloc(nz * sizeof(double));
-    }
- 
-    *val_ = val;
-    *I_ = I;
-    *J_ = J;
  
     /* NOTE: when reading in doubles, ANSI C requires the use of the "l"  */
     /*   specifier as in "%lg", "%lf", "%le", otherwise errors will occur */
     /*  (ANSI C X3.159-1989, Sec. 4.9.6.2, p. 136 lines 13-15)            */
 
-    ctr = 0;
     for (i=0; i<nz; i++)
     {
-        fscanf(f, "%d %d %lg\n", &I[ctr], &J[ctr], &val[ctr]);
-        index_t row = I[ctr];
-        index_t col = J[ctr];
-        data_t value = val[ctr];
+        index_t row, col;
+        data_t value;
+        fscanf(f, "%d %d %lg\n", &row, &col, &value);
+
         if (fabs(value) < zero_tol) continue;
 
         if (row > start && row <= stop)
         {
-            I[ctr] = row-1;  /* adjust from 1-based to 0-based */
-            J[ctr] = col-1;
-            val[ctr] = value;
-            if (fabs(value) < 1e-16) printf("Value %d < zerotol!\n", ctr);
-            //printf("(%d, %d) - %2.3e\tctr=%d\n", row-1, col-1, value, ctr);
-            ctr++;
+            A->add_value(row-1, col-1, value, 1);
         }
         if (symmetric && col > start && col <= stop && col != row)
         {
-            I[ctr] = col-1;
-            J[ctr] = row-1;
-            val[ctr] = value;
-            //printf("(%d, %d) - %2.3e\tctr=%d\n", col-1, row-1, value, ctr);
-            ctr++;
+            A->add_value(col-1, row-1, value, 1);
         }
     }
+
     fclose(f);
-    *nz_ = ctr;
+
     return 0;
 }
 

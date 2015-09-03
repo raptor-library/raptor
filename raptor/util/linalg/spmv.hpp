@@ -31,9 +31,9 @@ void sequentialSPMV(Matrix<0>* A, Vector* x, Vector* y, double alpha, double bet
     index_t beta_one = (fabs(beta - 1.0) < zero_tol);
     index_t beta_neg_one = (fabs(beta + 1.0) < zero_tol);
 
-    index_t* ptr = A->indptr;
-    index_t* idx = A->indices;
-    data_t* values = A->data;
+    index_t* ptr = A->indptr.data();
+    index_t* idx = A->indices.data();
+    data_t* values = A->data.data();
     index_t num_cols = A->n_cols;
     index_t num_rows = A->n_rows;
     index_t num_nonzeros = A->nnz;
@@ -192,9 +192,9 @@ void sequentialSPMV(Matrix<0>* A, Vector* x, Vector* y, double alpha, double bet
     index_t beta_one = (fabs(beta - 1.0) < zero_tol);
     index_t beta_neg_one = (fabs(beta + 1.0) < zero_tol);
 
-    index_t* ptr = A->indptr;
-    index_t* idx = A->indices;
-    data_t* values = A->data;
+    index_t* ptr = A->indptr.data();
+    index_t* idx = A->indices.data();
+    data_t* values = A->data.data();
     index_t num_cols = A->n_cols;
     index_t num_rows = A->n_rows;
     index_t num_nonzeros = A->nnz;
@@ -359,9 +359,9 @@ void sequentialSPMV(Matrix<1>* A, Vector* x, Vector* y, double alpha, double bet
     index_t beta_one = (fabs(beta - 1.0) < zero_tol);
     index_t beta_neg_one = (fabs(beta + 1.0) < zero_tol);
 
-    index_t* ptr = A->indptr;
-    index_t* idx = A->indices;
-    data_t* values = A->data;
+    index_t* ptr = A->indptr.data();
+    index_t* idx = A->indices.data();
+    data_t* values = A->data.data();
     index_t num_cols = A->n_cols;
     index_t num_rows = A->n_rows;
     index_t num_nonzeros = A->nnz;

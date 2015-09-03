@@ -19,22 +19,22 @@ int main(int argc, char *argv[])
 
     index_t num_tests = 1;
 
-    data_t eps = 1.0;
-    data_t theta = 0.0;
-    index_t* grid = (index_t*) calloc(2, sizeof(index_t));
-    grid[0] = n;
-    grid[1] = n;
-    index_t dim = 2;
-    data_t* stencil = diffusion_stencil_2d(eps, theta);
-    ParMatrix* A = stencil_grid(stencil, grid, dim, CSR);
-    delete[] stencil;
+//    data_t eps = 1.0;
+//    data_t theta = 0.0;
+//    index_t* grid = (index_t*) calloc(2, sizeof(index_t));
+//    grid[0] = n;
+//    grid[1] = n;
+//    index_t dim = 2;
+//    data_t* stencil = diffusion_stencil_2d(eps, theta);
+//    ParMatrix* A = stencil_grid(stencil, grid, dim, CSR);
+//    delete[] stencil;
     
     // Create the matrix, rhs, and solution
     //char file[] = "LFAT5.mtx";
-    //char file[] = "msc01440.mtx";
+    char file[] = "msc01440.mtx";
     //char file[] = "plbuckle.mtx";
     //char file[] = "bcsstm25.mtx";
-    //ParMatrix* A = readParMatrix(file, MPI_COMM_WORLD, true, 1);
+    ParMatrix* A = readParMatrix(file, MPI_COMM_WORLD, true, 1);
 
     int global_num_rows = A->global_rows;
     int local_num_rows = A->local_rows;
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
     t0 = MPI_Wtime();
     for (index_t i = 0; i < num_tests; i++)
     {
-        parallel_spmv(A, x, b, 1., 0., 0);
+        parallel_spmv(A, x, b, 1., 0., 1);
     }
     total_time = (MPI_Wtime() - t0) / num_tests;
     MPI_Reduce(&total_time, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);

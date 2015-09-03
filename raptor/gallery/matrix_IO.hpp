@@ -26,8 +26,8 @@ int mm_write_banner(FILE *f, MM_typecode matcode);
 int mm_write_mtx_crd_size(FILE *f, int M, int N, int nz);
 int mm_write_mtx_array_size(FILE *f, int M, int N);
 
-int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_, int *nz_,
-                double **val_, int **I_, int **J_, int symmetric);
+int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_,
+                ParMatrix* A, int symmetric);
 
 ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int symmetric);
 

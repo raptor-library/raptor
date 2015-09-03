@@ -98,8 +98,8 @@ public:
         index_t local_col;
 
         // Get CSR Matrix variables
-        ptr = offd->indptr;
-        idx = offd->indices;
+        ptr = offd->indptr.data();
+        idx = offd->indices.data();
         num_rows = offd->n_rows;
         size_sends = 0;
         for (index_t i = 0; i < num_rows; i++)
@@ -176,8 +176,8 @@ public:
         std::vector<index_t>::iterator it;
 
         // Get CSR Matrix variables
-        ptr = offd->indptr;
-        idx = offd->indices;
+        ptr = offd->indptr.data();
+        idx = offd->indices.data();
         num_cols = offd->n_cols;
         size_sends = 0;
     
