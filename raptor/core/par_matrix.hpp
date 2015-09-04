@@ -98,7 +98,7 @@ public:
     {
         if (offd_num_cols)
         {
-            offd->resize(local_rows, offd_num_cols);
+            ((CSC_Matrix*)offd)->resize(local_rows, offd_num_cols);
             ((CSC_Matrix*)offd)->finalize();
         }
         else

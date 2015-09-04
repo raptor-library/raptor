@@ -56,7 +56,7 @@ using Eigen::VectorXd;
 //
 // TODO
 // ----
-// Add FE and FD options
+// Add FD option
 //
 data_t* diffusion_stencil_2d(data_t eps = 1.0, data_t theta = 0.0)
 {
