@@ -1,4 +1,5 @@
 #include "matrix_IO.hpp"
+#include <float.h>
 
 ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, index_t symmetric = 1)
 {
@@ -87,6 +88,7 @@ int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_, int
     int i, ctr;
     double *val;
     int *I, *J;
+    data_t zero_tol = DBL_EPSILON;
      
     if ((f = fopen(fname, "r")) == NULL)
             return -1;
@@ -152,6 +154,8 @@ int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_, int
         index_t row = I[ctr];
         index_t col = J[ctr];
         data_t value = val[ctr];
+        if (fabs(value) < zero_tol) continue;
+
         if (row > start && row <= stop)
         {
             I[ctr] = row-1;  /* adjust from 1-based to 0-based */
