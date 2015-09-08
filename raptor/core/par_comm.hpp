@@ -98,9 +98,9 @@ public:
         index_t local_col;
 
         // Get CSR Matrix variables
-        ptr = (offd->m)->outerIndexPtr();
-        idx = (offd->m)->innerIndexPtr();
-        num_rows = (offd->m)->outerSize();
+        ptr = offd->indptr.data();
+        idx = offd->indices.data();
+        num_rows = offd->n_rows;
         size_sends = 0;
         for (index_t i = 0; i < num_rows; i++)
         {
@@ -176,9 +176,9 @@ public:
         std::vector<index_t>::iterator it;
 
         // Get CSR Matrix variables
-        ptr = (offd->m)->outerIndexPtr();
-        idx = (offd->m)->innerIndexPtr();
-        num_cols = (offd->m)->outerSize();
+        ptr = offd->indptr.data();
+        idx = offd->indices.data();
+        num_cols = offd->n_cols;
         size_sends = 0;
     
         old_proc = col_to_proc[global_to_local.begin()->second];
@@ -356,27 +356,26 @@ public:
         MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
         // Declare communication variables
-        index_t                 num_cols;
-
-        num_cols = map_to_global.size();
-
-        // If no off-diagonal block, return empty comm package
-        if (num_cols == 0)
-        {
-            return;
-        }
-
-        // Create map from columns to processors they lie on
-        init_col_to_proc(num_procs, num_cols, global_to_local, global_row_starts);
+        index_t offd_num_cols = map_to_global.size();
 
         // For each offd col, find proc it lies on.  Add proc and list
         // of columns it holds to map recvIndices
-        init_comm_recvs(num_cols, global_to_local);
+        if (offd_num_cols)
+        {
+            // Create map from columns to processors they lie on
+            init_col_to_proc(num_procs, offd_num_cols, global_to_local, global_row_starts);
+            
+            // Init recvs
+            init_comm_recvs(offd_num_cols, global_to_local);
+        }
 
         // Add processors needing to send to, and what to send to each
         if (symmetric)
         {
-            init_comm_sends_sym(offd, global_to_local);
+            if (offd_num_cols)
+            {
+                init_comm_sends_sym(offd, global_to_local);
+            }
         }
         else
         {

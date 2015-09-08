@@ -25,7 +25,6 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
     data_t value;
     data_t* nonzero_stencil;
     data_t* data;
-    data_t* values;
     index_t stencil_len;
     index_t N_v; // global num rows
     index_t n_v; // local num rows
@@ -41,12 +40,11 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
     index_t current_step;
     index_t col;
     index_t nnz;
-    index_t* global_row_starts;
     index_t* diags;
     index_t* strides;
     index_t* stack_indices;
-    index_t* row_ptr;
-    index_t* col_idx;
+
+    ParMatrix* A;
 
     // Initialize variables
     stencil_len = (index_t)pow(3, dim); // stencil - 3 ^ dim
@@ -58,22 +56,6 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
        N_v *= grid[i];
     }
 
-    //n_v is local number of rows
-    extra = N_v % num_procs;
-    global_row_starts = (int*) calloc(num_procs+1, sizeof(int));
-    for (index_t i = 0; i < num_procs; i++)
-    {
-        index_t size = (N_v / num_procs);
-        if (i < extra)
-        {
-            size++;
-        }
-        global_row_starts[i+1] = global_row_starts[i] + size;
-    }
-    first_local_row = global_row_starts[rank];
-    last_local_row = global_row_starts[rank+1] - 1;
-    n_v = last_local_row - first_local_row + 1;
-    
     //N_s is number of nonzero stencil entries
     N_s = 0;
     for (index_t i = 0; i < stencil_len; i++)
@@ -83,6 +65,24 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
             N_s++;
         }
     }
+
+    A = new ParMatrix(N_v, N_v);
+    n_v = A->local_rows;
+    first_local_row = A->first_col_diag;
+    last_local_row = first_local_row + n_v - 1;
+
+    index_t nnz_per;
+    if (n_v < N_s)
+    {
+        nnz_per = n_v;
+    }
+    else
+    {
+        nnz_per = N_s;
+    }
+
+    index_t offd_cols = N_s + pow(3, dim-1)*n_v;
+    A->create_matrices(nnz_per, offd_cols, nnz_per);    
 
     diags = (index_t*) calloc(N_s, sizeof(index_t));
     nonzero_stencil = (data_t*) calloc(N_s, sizeof(data_t));
@@ -216,68 +216,28 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
         }
     }
 
-    if (format == CSR)
+    //Add diagonals to ParMatrix A
+    for (index_t i = 0; i < n_v; i++)
     {
-        //Add diagonals to a csr matrix
-        row_ptr = (index_t*) calloc(n_v+1, sizeof(index_t));
-        col_idx = (index_t*) calloc(n_v*N_s, sizeof(index_t));
-        values = (data_t*) calloc(n_v*N_s, sizeof(data_t));
-        nnz = 0;
-        for (index_t i = 0; i < n_v; i++)
+        for (index_t d = 0; d < N_s; d++)
         {
-            row_ptr[i] = nnz;
-            for (index_t d = 0; d < N_s; d++)
+            //add data[i] if nonzero 
+            col = diags[d] + i + first_local_row;
+            value = data[(N_s-d-1)*n_v+i];
+            if (col >= 0 && col < N_v && fabs(value) > zero_tol)
             {
-                //add data[i] if nonzero 
-                col = diags[d] + i + first_local_row;
-                value = data[(N_s-d-1)*n_v+i];
-                if (col >= 0 && col < N_v && fabs(value) > zero_tol)
-                {
-                    col_idx[nnz] = col;
-                    values[nnz] = value;
-                    nnz++;
-                }
-            }
-        }
-        row_ptr[n_v] = nnz;
-    }
-    else if (format == COO)
-    {
-        // Add diagonals to a COO matrix
-        row_ptr = (index_t*) calloc(n_v*N_s, sizeof(index_t));
-        col_idx = (index_t*) calloc(n_v*N_s, sizeof(index_t));
-        values = (data_t*) calloc(n_v*N_s, sizeof(data_t));
-        nnz = 0;
-        for (index_t i = 0; i < n_v; i++)
-        {
-            for (index_t d = 0; d < N_s; d++)
-            {
-                //add data[i] if nonzero 
-                col = diags[d] + i + first_local_row;
-                value = data[(N_s-d-1)*n_v+i];
-                if (col >= 0 && col < N_v && fabs(value) > zero_tol)
-                {
-                    row_ptr[nnz] = i;
-                    col_idx[nnz] = col;
-                    values[nnz] = value;
-                    nnz++;
-                }
+                A->add_value(i, col, value) ;
             }
         }
     }
-
-    ParMatrix* A = new ParMatrix(N_v, N_v, nnz, row_ptr, col_idx, values, global_row_starts, format, 0, 1);
-
-    free(row_ptr);
-    free(col_idx);
-    free(values);
+    
+    A->finalize(1);
 
     free(nonzero_stencil);
     free(data);
     free(diags);
     free(strides);
     free(stack_indices);
-    free(global_row_starts);
 
     return A;
 } 

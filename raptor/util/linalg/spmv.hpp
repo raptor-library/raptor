@@ -17,108 +17,8 @@ using namespace raptor;
 //void sequentialSPMV(CSRMatrix* A, Vector* x, Vector* y, double alpha, double beta);
 //void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double beta);
 
-template <int MatType>
-void sequentialSPMV_eigen(Matrix<MatType>* A, Vector* x, Vector* y, double alpha, double beta, index_t first_col = -1, index_t size = 0)
-{ 
-    //TODO -- should be std::numeric_limits<data_t>::epsilon ...
-    data_t zero_tol = DBL_EPSILON;
-
-    index_t alpha_zero = (fabs(alpha) < zero_tol);
-    index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
-    index_t alpha_neg_one = (fabs(alpha + 1.0) < zero_tol);
-
-    index_t beta_zero = (fabs(beta) < zero_tol);
-    index_t beta_one = (fabs(beta - 1.0) < zero_tol);
-    index_t beta_neg_one = (fabs(beta + 1.0) < zero_tol);
-
-    auto m = *(A->m);
-    
-    if (first_col > -1 && size)
-    {
-        m = m.block(0, first_col, A->m->rows(), size);
-    }
-
-    if (alpha_one)
-    {
-        if (beta_one)
-        {
-            *y = (m*(*x)) + (*y);
-        }
-        else if (beta_neg_one)
-        {
-            *y = (m*(*x)) - (*y);
-        }
-        else if (beta_zero)
-        {
-            *y = (m*(*x));
-        }
-        else
-        {
-            *y = (m*(*x)) + beta*(*y);
-        }
-    }
-    else if (alpha_neg_one)
-    {
-        if (beta_one)
-        {
-            *y = -(m*(*x)) + (*y);
-        }
-        else if (beta_neg_one)
-        {
-            *y = -(m*(*x)) - (*y);
-        }
-        else if (beta_zero)
-        {
-            *y = -(m*(*x));
-        }
-        else
-        {
-            *y = -(m*(*x)) + beta*(*y);
-        }
-    }
-    else if (alpha_zero)
-    {
-        if (beta_one)
-        {
-            //*y = (*y);
-        }
-        else if (beta_neg_one)
-        {
-            *y = -(*y);
-        }
-        else if (beta_zero)
-        {
-            *y *= 0.0;
-        }
-        else
-        {
-            *y = beta*(*y);
-        }
-    }
-    else
-    {
-        if (beta_one)
-        {
-            *y = alpha*(m*(*x)) + (*y);
-        }
-        else if (beta_neg_one)
-        {
-            *y = alpha*(m*(*x)) - (*y);
-        }
-        else if (beta_zero)
-        {
-            *y = alpha*(m*(*x));
-        }
-        else
-        {
-            *y = alpha*(m*(*x)) + beta*(*y);
-        }
-    }
-
-}
-
 //CSC SpMV
-void sequentialSPMV_raptor(Matrix<0>* A, Vector* x, Vector* y, double alpha, double beta)
+void sequentialSPMV(Matrix<0>* A, Vector* x, Vector* y, double alpha, double beta)
 {
     //TODO -- should be std::numeric_limits<data_t>::epsilon ...
     data_t zero_tol = DBL_EPSILON;
@@ -131,12 +31,12 @@ void sequentialSPMV_raptor(Matrix<0>* A, Vector* x, Vector* y, double alpha, dou
     index_t beta_one = (fabs(beta - 1.0) < zero_tol);
     index_t beta_neg_one = (fabs(beta + 1.0) < zero_tol);
 
-    index_t* ptr = (A->m)->outerIndexPtr();
-    index_t* idx = (A->m)->innerIndexPtr();
-    data_t* values = (A->m)->valuePtr();
-    index_t num_cols = (A->m)->outerSize();
+    index_t* ptr = A->indptr.data();
+    index_t* idx = A->indices.data();
+    data_t* values = A->data.data();
+    index_t num_cols = A->n_cols;
     index_t num_rows = A->n_rows;
-    index_t num_nonzeros = (A->m)->nonZeros();
+    index_t num_nonzeros = A->nnz;
 
     index_t col_start;
     index_t col_end;
@@ -273,7 +173,7 @@ void sequentialSPMV_raptor(Matrix<0>* A, Vector* x, Vector* y, double alpha, dou
 }
 
 //CSC SpMV
-void sequentialSPMV_raptor(Matrix<0>* A, Vector* x, Vector* y, double alpha, double beta, std::vector<index_t> col_list)
+void sequentialSPMV(Matrix<0>* A, Vector* x, Vector* y, double alpha, double beta, std::vector<index_t> col_list)
 {
 
     // Get MPI Information
@@ -292,12 +192,12 @@ void sequentialSPMV_raptor(Matrix<0>* A, Vector* x, Vector* y, double alpha, dou
     index_t beta_one = (fabs(beta - 1.0) < zero_tol);
     index_t beta_neg_one = (fabs(beta + 1.0) < zero_tol);
 
-    index_t* ptr = (A->m)->outerIndexPtr();
-    index_t* idx = (A->m)->innerIndexPtr();
-    data_t* values = (A->m)->valuePtr();
-    index_t num_cols = (A->m)->outerSize();
+    index_t* ptr = A->indptr.data();
+    index_t* idx = A->indices.data();
+    data_t* values = A->data.data();
+    index_t num_cols = A->n_cols;
     index_t num_rows = A->n_rows;
-    index_t num_nonzeros = (A->m)->nonZeros();
+    index_t num_nonzeros = A->nnz;
 
     index_t col_start;
     index_t col_end;
@@ -441,7 +341,7 @@ void sequentialSPMV_raptor(Matrix<0>* A, Vector* x, Vector* y, double alpha, dou
 }
 
 //CSR SpMV
-void sequentialSPMV_raptor(Matrix<1>* A, Vector* x, Vector* y, double alpha, double beta)
+void sequentialSPMV(Matrix<1>* A, Vector* x, Vector* y, double alpha, double beta)
 {
     // Get MPI Information
     index_t rank, num_procs;
@@ -459,11 +359,12 @@ void sequentialSPMV_raptor(Matrix<1>* A, Vector* x, Vector* y, double alpha, dou
     index_t beta_one = (fabs(beta - 1.0) < zero_tol);
     index_t beta_neg_one = (fabs(beta + 1.0) < zero_tol);
 
-    index_t* ptr = (A->m)->outerIndexPtr();
-    index_t* idx = (A->m)->innerIndexPtr();
-    data_t* values = (A->m)->valuePtr();
-
-    index_t num_rows = (A->m)->outerSize();
+    index_t* ptr = A->indptr.data();
+    index_t* idx = A->indices.data();
+    data_t* values = A->data.data();
+    index_t num_cols = A->n_cols;
+    index_t num_rows = A->n_rows;
+    index_t num_nonzeros = A->nnz;
 
     data_t* y_data = y->data();
     data_t* x_data = x->data();
@@ -497,13 +398,11 @@ void sequentialSPMV_raptor(Matrix<1>* A, Vector* x, Vector* y, double alpha, dou
                 row_end = ptr[i+1];
 
                 y_data[i] = values[row_start] * x_data[idx[row_start]];
-                //printf("Proc %d multiplies (%d, %d) = %2.3e x %2.3e\n", rank, i + first_col_diag, idx[row_start] + first_col_diag, values[row_start], x_data[idx[row_start]]);
 
                 for (index_t j = row_start + 1; j < row_end; j++)
                 {
                     index_t col = idx[j];
                     y_data[i] += values[j] * x_data[col];
-                    //printf("Proc %d multiplies (%d, %d) = %2.3e x %2.3e\n", rank, i + first_col_diag, col + first_col_diag, values[j], x_data[col]);
                 }
             }
         }
@@ -650,7 +549,7 @@ void sequentialSPMV_raptor(Matrix<1>* A, Vector* x, Vector* y, double alpha, dou
     }
 }
 
-void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta, index_t async = 0, index_t raptor = 1)
+void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta, index_t async = 0)
 {
     // Get MPI Information
     index_t rank, num_procs;
@@ -730,14 +629,7 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
 
 
 	// Compute partial SpMV with local information
-    if (raptor)
-    {
-	    sequentialSPMV_raptor(A->diag, x->local, y->local, alpha, beta);
-    }
-    else
-    {
-        sequentialSPMV_eigen(A->diag, x->local, y->local, alpha, beta);
-    }
+    sequentialSPMV(A->diag, x->local, y->local, alpha, beta);
 
     // Once data is available, add contribution of off-diagonals
 	// TODO Deal with new entries as they become available
@@ -753,20 +645,7 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
                 MPI_Waitany(recv_procs.size(), recv_requests, &recv_idx, MPI_STATUS_IGNORE);
                 index_t proc = recv_procs[recv_idx];
                 Vector offd_tmp = Eigen::Map<Vector>(&recv_buffer[recv_proc_starts[proc]], recv_indices[proc].size());
-
-                if (raptor)
-                {
-                    sequentialSPMV_raptor(A->offd, &offd_tmp, y->local, alpha, 1.0, recv_indices[proc]);
-                }
-                else
-                {
-                    auto minmax = std::minmax_element(recv_indices[proc].begin(), recv_indices[proc].end());
-                    index_t first_idx = minmax.first - recv_indices[proc].begin();
-                    index_t last_idx = minmax.second - recv_indices[proc].begin();
-                    index_t first_col = recv_indices[proc][first_idx];
-                    index_t last_col = recv_indices[proc][last_idx];
-                    sequentialSPMV_eigen(A->offd, &offd_tmp, y->local, alpha, 1.0, first_col, last_col - first_col + 1);
-                }
+                sequentialSPMV(A->offd, &offd_tmp, y->local, alpha, 1.0, recv_indices[proc]);
             }
         }
         else
@@ -776,15 +655,8 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
 
             // Add received data to Vector
             Vector offd_tmp = Eigen::Map<Vector>(recv_buffer, tmp_size);
+            sequentialSPMV(A->offd, &offd_tmp, y->local, alpha, 1.0); 
 
-            if (raptor)
-            {
-                sequentialSPMV_raptor(A->offd, &offd_tmp, y->local, alpha, 1.0); 
-            }
-            else
-            {
-                sequentialSPMV_eigen(A->offd, &offd_tmp, y->local, alpha, 1.0);
-            }
         }
 
     	delete[] recv_requests; 
