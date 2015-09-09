@@ -206,9 +206,9 @@ public:
 
         if (init_coo) // Convert COO to CSR
         {
-            index_t indptr_a[n_outer+1];
-            index_t indices_a[nnz];
-            data_t data_a[nnz];
+            index_t* indptr_a = new index_t[n_outer+1];
+            index_t* indices_a = new index_t[nnz];
+            data_t* data_a = new data_t[nnz];
 
             indptr_a[0] = 0;
             for (index_t ptr = 0; ptr < n_outer; ptr++)
@@ -224,10 +224,14 @@ public:
                 indices_a[pos] = indices[ctr];
                 data_a[pos] = data[ctr];
             }
-
+               
             indptr.assign(indptr_a, indptr_a + n_outer+1);
             indices.assign(indices_a, indices_a + nnz);
             data.assign(data_a, data_a + nnz);
+
+            delete[] indptr_a;
+            delete[] indices_a;
+            delete[] data_a;
         }
         else // Remove zeros from inital CSR
         {
