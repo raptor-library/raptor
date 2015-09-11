@@ -18,10 +18,10 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, index_
         MPI_Comm_size(comm, &comm_size);
         MPI_Comm_rank(comm, &rank);
 
-        for (index_t proc = 0; proc < comm_size; proc++)
-        {
-            if (rank == proc)
-            {
+//        for (index_t proc = 0; proc < comm_size; proc++)
+//        {
+//            if (rank == proc)
+//            {
                 // find size of matix 
                 if ((infile = fopen(filename, "r")) == NULL) 
                     return NULL;
@@ -46,9 +46,9 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, index_
                 {
                     return NULL;
                 }
-            }
-            MPI_Barrier(MPI_COMM_WORLD);
-        }
+//            }
+//            MPI_Barrier(MPI_COMM_WORLD);
+//        }
     }
     else //one file per MPI process
     {
