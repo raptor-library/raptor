@@ -233,6 +233,10 @@ public:
         index_t* send_buffer = new index_t[size_recvs];
         MPI_Request* send_requests = new MPI_Request[recv_size];
         MPI_Status* send_status = new MPI_Status[recv_size];
+        for (int i = 0; i < recv_size; i++)
+        {
+            send_requests[i] = MPI_REQUEST_NULL;
+        }
 
 //        #if MPI_VERSION < 3
         index_t num_recvs;
@@ -256,7 +260,7 @@ public:
             {
                 send_buffer[ctr++] = map_to_global[recv_idx];
             }
-            MPI_Isend(&send_buffer[orig_ctr], ctr - orig_ctr, MPI_INT, recv_proc, unsym_tag, MPI_COMM_WORLD, &send_requests[req_ctr++]);
+            MPI_Isend(&send_buffer[orig_ctr], ctr - orig_ctr, MPI_INT, recv_proc, unsym_tag, MPI_COMM_WORLD, &send_requests[i]);
             send_counts[recv_proc] = 1;
         }
 
@@ -286,7 +290,7 @@ public:
             }
         }
 
-        MPI_Waitall(send_procs.size(), send_requests, send_status);
+        MPI_Waitall(recv_procs.size(), send_requests, send_status);
         delete[] send_buffer;
         delete[] send_requests;
         delete[] send_status;

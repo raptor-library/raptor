@@ -121,6 +121,5 @@ public:
     index_t first_col_diag;
     ParComm* comm;
     index_t* global_row_starts;
-
 };
 #endif

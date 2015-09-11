@@ -571,6 +571,7 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     index_t                                 begin;
     index_t                                 ctr;
     index_t                                 request_ctr;
+    index_t                                 tag;
     ParComm*                                comm;
     std::vector<index_t>                    send_procs;
     std::vector<index_t>                    recv_procs;
@@ -589,6 +590,10 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     if (recv_procs.size())
     {
         recv_requests = new MPI_Request [recv_procs.size()];
+        for (index_t i = 0; i < recv_procs.size(); i++)
+        {
+            recv_requests[i] = MPI_REQUEST_NULL;
+        }
         recv_buffer = new data_t [comm->size_recvs];
 
         // Send and receive vector data
@@ -610,6 +615,10 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     {
         // TODO we do not want to malloc these every time
         send_requests = new MPI_Request [send_procs.size()];
+        for (index_t i = 0; i < send_procs.size(); i++)
+        {
+            send_requests[i] = MPI_REQUEST_NULL;
+        }
         send_buffer = new data_t [comm->size_sends];
 
         begin = 0;
