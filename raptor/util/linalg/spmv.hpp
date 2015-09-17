@@ -507,11 +507,11 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-	// TODO must enforce that y and x are not aliased, or this will NOT work
-	//    or we could use blocking sends as long as we post the iRecvs first
+    // TODO must enforce that y and x are not aliased, or this will NOT work
+    //    or we could use blocking sends as long as we post the iRecvs first
 
     // Declare communication variables
-	MPI_Request*                            send_requests;
+    MPI_Request*                            send_requests;
     MPI_Request*                            recv_requests;
     data_t*                                 send_buffer;
     data_t*                                 recv_buffer;
@@ -522,6 +522,7 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     index_t                                 begin;
     index_t                                 ctr;
     index_t                                 request_ctr;
+    index_t                                 tag;
     ParComm*                                comm;
     std::vector<index_t>                    send_procs;
     std::vector<index_t>                    recv_procs;
@@ -539,11 +540,15 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
 
     if (recv_procs.size())
     {
-	    recv_requests = new MPI_Request [recv_procs.size()];
+        recv_requests = new MPI_Request [recv_procs.size()];
+        for (index_t i = 0; i < recv_procs.size(); i++)
+        {
+            recv_requests[i] = MPI_REQUEST_NULL;
+        }
         recv_buffer = new data_t [comm->size_recvs];
 
         // Send and receive vector data
-	    // Begin sending and gathering off-diagonal entries
+        // Begin sending and gathering off-diagonal entries
         begin = 0;
         ctr = 0;
         request_ctr = 0;
@@ -559,13 +564,17 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
 
     if (send_procs.size())
     {
-	    // TODO we do not want to malloc these every time
-	    send_requests = new MPI_Request [send_procs.size()];
+        // TODO we do not want to malloc these every time
+        send_requests = new MPI_Request [send_procs.size()];
+        for (index_t i = 0; i < send_procs.size(); i++)
+        {
+            send_requests[i] = MPI_REQUEST_NULL;
+        }
         send_buffer = new data_t [comm->size_sends];
 
         begin = 0;
         request_ctr = 0;
-	    for (auto proc : send_procs)
+        for (auto proc : send_procs)
         {
             ctr = 0;
             for (auto send_idx : send_indices[proc])
@@ -579,12 +588,12 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     }
 
 
-	// Compute partial SpMV with local information
+    // Compute partial SpMV with local information
     sequentialSPMV(A->diag, x->local, y->local, alpha, beta);
 
     // Once data is available, add contribution of off-diagonals
-	// TODO Deal with new entries as they become available
-	// TODO Add an error check on the status
+    // TODO Deal with new entries as they become available
+    // TODO Add an error check on the status
     // TODO Using MPI_STATUS_IGNORE (delete[] recvStatus was causing a segfault)
     if (recv_procs.size())
     {
@@ -602,7 +611,7 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
         else
         {
             // Wait for all receives to finish
-	        MPI_Waitall(recv_procs.size(), recv_requests, MPI_STATUS_IGNORE);
+            MPI_Waitall(recv_procs.size(), recv_requests, MPI_STATUS_IGNORE);
 
             // Add received data to Vector
             Vector offd_tmp = Eigen::Map<Vector>(recv_buffer, tmp_size);
@@ -616,12 +625,12 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
 
     if (send_procs.size())
     {
-	    // Wait for all sends to finish
-	    // TODO Add an error check on the status
-	    MPI_Waitall(send_procs.size(), send_requests, MPI_STATUS_IGNORE);
+        // Wait for all sends to finish
+        // TODO Add an error check on the status
+        MPI_Waitall(send_procs.size(), send_requests, MPI_STATUS_IGNORE);
 
         // Delete MPI_Requests
-	    delete[] send_requests; 
+        delete[] send_requests; 
         delete[] send_buffer;
     }
 }
