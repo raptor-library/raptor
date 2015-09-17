@@ -86,7 +86,7 @@ public:
         size_recvs = num_cols;
     }
 
-    void init_comm_sends_sym(Matrix<1>* offd, std::map<index_t, index_t> global_to_local)
+    void init_comm_sends_sym_csr(Matrix* offd, std::map<index_t, index_t> global_to_local)
     {
         index_t* ptr;
         index_t* idx;
@@ -156,7 +156,7 @@ public:
         }
     }
 
-    void init_comm_sends_sym(Matrix<0>* offd, std::map<index_t, index_t> global_to_local)
+    void init_comm_sends_sym_csc(Matrix* offd, std::map<index_t, index_t> global_to_local)
     {
 
         // Get MPI Information
@@ -347,8 +347,7 @@ public:
     // TODO
     ParComm();
 
-    template <int MatType>
-    ParComm(Matrix<MatType>* offd, std::vector<index_t> map_to_global, std::map<index_t, index_t> global_to_local, index_t* global_row_starts, index_t symmetric = 1)
+    ParComm(Matrix* offd, std::vector<index_t> map_to_global, std::map<index_t, index_t> global_to_local, index_t* global_row_starts, index_t symmetric = 1)
     {
         // Get MPI Information
         index_t rank, num_procs;
@@ -374,7 +373,14 @@ public:
         {
             if (offd_num_cols)
             {
-                init_comm_sends_sym(offd, global_to_local);
+                if (offd->format == CSR)
+                {
+                    init_comm_sends_sym_csr(offd, global_to_local);
+                }
+                else
+                {
+                    init_comm_sends_sym_csc(offd, global_to_local);
+                }
             }
         }
         else

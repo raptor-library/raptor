@@ -23,28 +23,20 @@ public:
 
         // Create Partition
         create_partition(global_rows);
+
+        diag = new CSR_Matrix(local_rows, local_rows);
+        offd = new CSC_Matrix(local_rows, local_rows);
     }
 
     ParMatrix(index_t _globalRows, index_t _globalCols, CSR_Matrix* _diag, CSC_Matrix* _offd);
     ParMatrix(ParMatrix* A);
     ~ParMatrix();
 
-    void create_matrices(index_t diag_nnz_row, index_t offd_cols, index_t offd_nnz_col)
+    void reserve(index_t offd_cols, index_t nnz_per_row, index_t nnz_per_col)
     {
-        // Initialize diagonal matrix
-        diag = new CSR_Matrix(local_rows, local_rows, diag_nnz_row);
-
-        //Initialize offd matrix
-        offd = new CSC_Matrix(local_rows, offd_cols, offd_nnz_col);
-    }
-
-    void create_matrices()
-    {
-        // Initialize diagonal matrix
-        diag = new CSR_Matrix(local_rows, local_rows);
-
-        //Initialize offd matrix
-        offd = new CSC_Matrix(local_rows, local_rows);
+        offd->resize(local_rows, offd_cols);
+        offd->reserve(nnz_per_col);
+        diag->reserve(nnz_per_row);
     }
 
     void create_partition(index_t global_rows)
@@ -113,8 +105,8 @@ public:
     index_t global_cols;
     index_t local_nnz;
     index_t local_rows;
-    Matrix<1>* diag;
-    Matrix<0>* offd;
+    Matrix* diag;
+    Matrix* offd;
     std::vector<index_t> local_to_global;
     std::map<index_t, index_t> global_to_local;
     index_t offd_num_cols;

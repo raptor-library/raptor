@@ -82,7 +82,7 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
     }
 
     index_t offd_cols = N_s + pow(3, dim-1)*n_v;
-    A->create_matrices(nnz_per, offd_cols, nnz_per);    
+    A->reserve(offd_cols, nnz_per, nnz_per);    
 
     diags = (index_t*) calloc(N_s, sizeof(index_t));
     nonzero_stencil = (data_t*) calloc(N_s, sizeof(data_t));

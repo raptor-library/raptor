@@ -5,7 +5,6 @@
 
 #include "types.hpp"
 
-template <int MatType>
 class Matrix
 {
 //    Stores sequential sparse matrix
@@ -33,6 +32,8 @@ class Matrix
 //        Number of columns in the matrix
 //    n_outer : index_t
 //        Number of outer values in matrix (Rows in CSR, Cols in CSC)
+//    n_inner : index_t
+//        Number of inner values in matrix (Cols in CSR, Rows in CSC)
 //    nnz : index_t
 //        Number of nonzero values in the matrix
 //    init_coo : index_t
@@ -51,7 +52,7 @@ class Matrix
 //        Convert the matrix to compressed form, removing any zero values.
 //
 public:
-    Matrix(index_t _nrows, index_t _ncols, index_t _nouter)
+    Matrix(index_t _nrows, index_t _ncols, index_t _nouter, index_t _ninner)
     {
         //    Class constructor responsible for initializing an empty matrix
         //    in COO format.
@@ -69,54 +70,35 @@ public:
         n_rows = _nrows;
         n_cols = _ncols;
         n_outer = _nouter;
+        n_inner = _ninner;
         nnz = 0;
 
         ptr_nnz.resize(n_outer);
+        idx_nnz.resize(n_inner);
         init_coo = 1;
     }
 
-    Matrix(index_t _nrows, index_t _ncols, index_t _nouter, index_t nnz_per_outer)
+    ~Matrix(){}
+
+    void reserve(index_t nnz_per_outer)
     {
-        //    Class constructor responsible for initializing an empty matrix
-        //    directly into compressed format.  Initalizes each outer index
-        //    to hold the given number of elements (nnz_per_outer).
-        //
-        //    Parameters
-        //    ----------
-        //    _nrows : index_t
-        //        Number of rows in the matrix.
-        //    _ncols : index_t 
-        //        Number of columns in the matrix.
-        //    _nouter : index_t
-        //        Number of indices in the outer array (Rows if CSR and
-        //        Cols if CSC).
-        //    nnz_per_outer : index_t
-        //        Maximum number of nonzeros per outer index
-
-        n_rows = _nrows;
-        n_cols = _ncols;
-        n_outer = _nouter;
-        nnz = 0;
-
         index_t max_nnz = nnz_per_outer * n_outer;
        
         indptr.resize(n_outer + 1);
         indices.resize(max_nnz);
         data.resize(max_nnz);
-        ptr_nnz.resize(n_outer);
 
         for (index_t i = 0; i < n_outer; i++)
         {
             ptr_nnz[i] = 0;
+            idx_nnz[i] = 0;
             indptr[i] = i*nnz_per_outer;
         }
         indptr[n_outer] = n_outer*nnz_per_outer;
         init_coo = 0;
     }
 
-    ~Matrix(){}
-
-    void add_values(index_t ptr, index_t* idxs, data_t* values, index_t num_values)
+    virtual void add_values(index_t ptr, index_t* idxs, data_t* values, index_t num_values)
     {
         //    Insert multiple values into a single outer index of the matrix.
         //
@@ -136,11 +118,12 @@ public:
             index_t pos = indptr[ptr] + ptr_nnz[ptr]++;
             indices[pos] = idxs[i];
             data[pos] = values[i];
+            idx_nnz[idxs[i]]++;
         }
         nnz += num_values;
     }
 
-    void add_value(index_t ptr, index_t idx, data_t value)
+    virtual void add_value(index_t ptr, index_t idx, data_t value)
     {
         //    Insert a single value into the matrix.
         //
@@ -166,6 +149,7 @@ public:
             {
                 ptr_nnz[ptr]++;
             }
+
             nnz++;
         }
         else
@@ -175,9 +159,10 @@ public:
             data[pos] = value;
             nnz++;
         }
+        idx_nnz[idx]++;
     }
 
-    void resize(index_t _nrows, index_t _ncols, index_t _nouter)
+    virtual void resize(index_t _nrows, index_t _ncols)
     {
         //    Resize the dimensions of the matrix.
         //
@@ -189,10 +174,6 @@ public:
         //        New number of columns in the matrix.
         //    _nouter : index_t
         //        New number of outer indices in the matrix.
-
-        n_rows = _nrows;
-        n_cols = _ncols;
-        n_outer = _nouter;
     }
 
     void finalize()
@@ -256,38 +237,35 @@ public:
             data.resize(nnz);
             indices.resize(nnz);
         }
-        ptr_nnz.clear();
     }
 
     std::vector<index_t> indptr;
     std::vector<index_t> indices;
     std::vector<index_t> ptr_nnz;
+    std::vector<index_t> idx_nnz;
     std::vector<data_t> data;
 
     index_t n_rows;
     index_t n_cols;
     index_t n_outer;
+    index_t n_inner;
     index_t nnz;
     index_t init_coo;
+    format_t format;
 
 };
 
-class CSR_Matrix : public Matrix<1>
+class CSR_Matrix : public Matrix
 {
 //    The class constructs a compressed sparse row matrix, extending the
 //    Matrix class, with rows being the outer index.
 
 public:
-    CSR_Matrix(index_t _nrows, index_t _ncols) : Matrix(_nrows, _ncols, _nrows)
+    CSR_Matrix(index_t _nrows, index_t _ncols) : Matrix(_nrows, _ncols, _nrows, _ncols)
     {
+        format = CSR;
         //    Class constructor responsible for initializing an empty matrix
         //    in COO format.  Calls the Matrix constructor, with number of 
-        //    outer indices equal to the number of rows.
-    }
-    CSR_Matrix(index_t _nrows, index_t _ncols, index_t nnz_per_row) : Matrix(_nrows, _ncols, _nrows, nnz_per_row)
-    {
-        //    Class constructor responsible for initializing an empty matrix
-        //    directly into CSR format.  Calls the Matrix constructor, with number of 
         //    outer indices equal to the number of rows.
     }
 
@@ -305,25 +283,22 @@ public:
 
     void resize(index_t _nrows, index_t _ncols)
     {
-        Matrix::resize(_nrows, _ncols, _nrows);
+        n_rows = _nrows;
+        n_cols = _ncols;
+        n_outer = _nrows;
     }
 };
 
 
-class CSC_Matrix : public Matrix<0>
+class CSC_Matrix : public Matrix
 {
 
 public:
-    CSC_Matrix(index_t _nrows, index_t _ncols) : Matrix(_nrows, _ncols, _ncols)
+    CSC_Matrix(index_t _nrows, index_t _ncols) : Matrix(_nrows, _ncols, _ncols, _nrows)
     {
+        format = CSC;
         //    Class constructor responsible for initializing an empty matrix
         //    in COO format.  Calls the Matrix constructor, with number of 
-        //    outer indices equal to the number of columns.
-    }
-    CSC_Matrix(index_t _nrows, index_t _ncols, index_t nnz_per_col) : Matrix(_nrows, _ncols, _ncols, nnz_per_col)
-    { 
-        //    Class constructor responsible for initializing an empty matrix
-        //    directly into CSC format.  Calls the Matrix constructor, with number of 
         //    outer indices equal to the number of columns.
     }
 
@@ -341,7 +316,9 @@ public:
 
     void resize(index_t _nrows, index_t _ncols)
     {
-        Matrix::resize(_nrows, _ncols, _ncols);
+        n_rows = _nrows;
+        n_cols = _ncols;
+        n_outer = _ncols;
     }
 
 };

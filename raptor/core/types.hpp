@@ -9,7 +9,7 @@
 //{
     using data_t = double;
     using index_t = int;
-    enum format_t {CSR, COO};
+    enum format_t {CSR, CSC, COO};
 //}
 
 #endif

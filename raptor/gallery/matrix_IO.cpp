@@ -35,7 +35,6 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, index_
                 fclose(infile);
 
                 A = new ParMatrix(num_rows, num_cols);
-                A->create_matrices();
                 global_row_starts = A->global_row_starts;
                 // read the file knowing our local rows
                 ret_code = mm_read_sparse(filename, global_row_starts[rank],
