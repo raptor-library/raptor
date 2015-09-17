@@ -187,9 +187,11 @@ public:
 
         if (init_coo) // Convert COO to CSR
         {
-            index_t* indptr_a = new index_t[n_outer+1];
-            index_t* indices_a = new index_t[nnz];
-            data_t* data_a = new data_t[nnz];
+            std::vector<index_t> indptr_a;
+            std::vector<std::pair<index_t, data_t>> data_pair;
+
+            indptr_a.resize(n_outer + 1);
+            data_pair.resize(nnz);
 
             indptr_a[0] = 0;
             for (index_t ptr = 0; ptr < n_outer; ptr++)
@@ -202,17 +204,53 @@ public:
             {
                 index_t ptr = indptr[ctr];
                 index_t pos = indptr_a[ptr] + ptr_nnz[ptr]++;
-                indices_a[pos] = indices[ctr];
-                data_a[pos] = data[ctr];
+                data_pair[pos].first = indices[ctr];
+                data_pair[pos].second = data[ctr];
             }
-               
-            indptr.assign(indptr_a, indptr_a + n_outer+1);
-            indices.assign(indices_a, indices_a + nnz);
-            data.assign(data_a, data_a + nnz);
 
-            delete[] indptr_a;
-            delete[] indices_a;
-            delete[] data_a;
+            for (index_t i = 0; i < n_outer; i++)
+            {
+                index_t ptr_start = indptr_a[i];
+                index_t ptr_end = indptr_a[i+1];
+
+                std::sort(data_pair.begin()+ptr_start, data_pair.begin() + (ptr_end-1), 
+                    [](const std::pair<index_t, data_t>& lhs, 
+                    const std::pair<index_t, data_t>& rhs) 
+                        { return lhs.first < rhs.first; } );       
+            }
+
+            indptr.resize(n_outer + 1);
+            index_t ctr = 0;
+            for (index_t i = 0; i < n_outer; i++)
+            {
+                indptr[i] = ctr;
+                index_t ptr_start = indptr_a[i];
+                index_t ptr_end = indptr_a[i+1];
+    
+                if (ptr_start < ptr_end)
+                {
+                    indices[ctr] = data_pair[ptr_start].first;
+                    data[ctr] = data_pair[ptr_start].second;
+                    ctr++;
+                    for (index_t j = ptr_start + 1; j < ptr_end; j++)
+                    {
+                        if (data_pair[j].first == indices[ctr-1])
+                        {
+                            data[ctr-1] += data_pair[j].second;
+                        }
+                        else
+                        {
+                            indices[ctr] = data_pair[j].first;
+                            data[ctr] = data_pair[j].second;
+                            ctr++;
+                        }
+                    }
+                }
+            }
+            indptr[n_outer] = ctr;
+
+            indptr_a.clear();
+            data_pair.clear();
         }
         else // Remove zeros from inital CSR
         {
