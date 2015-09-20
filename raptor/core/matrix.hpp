@@ -4,6 +4,8 @@
 #define RAPTOR_CORE_MATRIX_H
 
 #include "types.hpp"
+#include <vector>
+#include <algorithm>
 
 class Matrix
 {
@@ -52,7 +54,7 @@ class Matrix
 //        Convert the matrix to compressed form, removing any zero values.
 //
 public:
-    Matrix(index_t _nrows, index_t _ncols, index_t _nouter, index_t _ninner)
+    Matrix(index_t _nrows, index_t _ncols, format_t _format = COO)
     {
         //    Class constructor responsible for initializing an empty matrix
         //    in COO format.
@@ -69,219 +71,46 @@ public:
 
         n_rows = _nrows;
         n_cols = _ncols;
-        n_outer = _nouter;
-        n_inner = _ninner;
         nnz = 0;
-
-        ptr_nnz.resize(n_outer);
-        idx_nnz.resize(n_inner);
+        format = _format;
         init_coo = 1;
-    }
 
-    ~Matrix(){}
+        row_nnz.resize(n_rows);
+        col_nnz.resize(n_cols);
 
-    void reserve(index_t nnz_per_outer)
-    {
-        index_t max_nnz = nnz_per_outer * n_outer;
-       
-        indptr.resize(n_outer + 1);
-        indices.resize(max_nnz);
-        data.resize(max_nnz);
-
-        for (index_t i = 0; i < n_outer; i++)
+        if (format == CSR)
         {
-            ptr_nnz[i] = 0;
-            idx_nnz[i] = 0;
-            indptr[i] = i*nnz_per_outer;
+            n_outer = n_rows;
+            n_inner = n_cols;
+            ptr_nnz = row_nnz;
+            idx_nnz = col_nnz;
         }
-        indptr[n_outer] = n_outer*nnz_per_outer;
-        init_coo = 0;
-    }
-
-    virtual void add_values(index_t ptr, index_t* idxs, data_t* values, index_t num_values)
-    {
-        //    Insert multiple values into a single outer index of the matrix.
-        //
-        //    Parameters
-        //    ----------
-        //    ptr : index_t
-        //        Outer index to insert values into.
-        //    idxs : index_t* 
-        //        Array of inner indices to be inserted into matrix.
-        //    values : data_t*
-        //        Array of values to be inserted into the matrix.
-        //    num_values : index_t
-        //        The number of values to be inserted into the matrix.
-
-        for (index_t i = 0; i < num_values; i++)
+        else if (format == CSC)
         {
-            index_t pos = indptr[ptr] + ptr_nnz[ptr]++;
-            indices[pos] = idxs[i];
-            data[pos] = values[i];
-            idx_nnz[idxs[i]]++;
-        }
-        nnz += num_values;
-    }
-
-    virtual void add_value(index_t ptr, index_t idx, data_t value)
-    {
-        //    Insert a single value into the matrix.
-        //
-        //    Parameters
-        //    ----------
-        //    ptr : index_t
-        //        Outer index of nonzero.
-        //    idx : index_t*
-        //        Inner index of nonzero.
-        //    value : data_t
-        //        Data value of nonzero.
-
-        if (init_coo)
-        {
-            indptr.push_back(ptr);
-            indices.push_back(idx);
-            data.push_back(value);
-            if (ptr >= ptr_nnz.size())
-            {
-                ptr_nnz.push_back(1);
-            }
-            else
-            {
-                ptr_nnz[ptr]++;
-            }
-
-            nnz++;
-        }
-        else
-        {
-            index_t pos = indptr[ptr] + ptr_nnz[ptr]++;
-            indices[pos] = idx;
-            data[pos] = value;
-            nnz++;
-        }
-        idx_nnz[idx]++;
-    }
-
-    virtual void resize(index_t _nrows, index_t _ncols)
-    {
-        //    Resize the dimensions of the matrix.
-        //
-        //    Parameters
-        //    ----------
-        //    _nrows : index_t
-        //        New number of rows in the matrix.
-        //    _ncols : index_t
-        //        New number of columns in the matrix.
-        //    _nouter : index_t
-        //        New number of outer indices in the matrix.
-    }
-
-    void finalize()
-    {
-        //    Converts the matrix into a useable, compressed form.  If
-        //    the matrix is initialized as a COO matrix (init_coo == 1)
-        //    the matrix is converted into the compressed format, and 
-        //    the COO matrix is cleared.  If the matrix was initialized 
-        //    directly into a compressed format, zeros are removed.  The
-        //    vector ptr_nnz is cleared.
-
-        if (init_coo) // Convert COO to CSR
-        {
-            std::vector<index_t> indptr_a;
-            std::vector<std::pair<index_t, data_t>> data_pair;
-
-            indptr_a.resize(n_outer + 1);
-            data_pair.resize(nnz);
-
-            indptr_a[0] = 0;
-            for (index_t ptr = 0; ptr < n_outer; ptr++)
-            {
-                indptr_a[ptr+1] = indptr_a[ptr] + ptr_nnz[ptr];
-                ptr_nnz[ptr] = 0;
-            }
-
-            for (index_t ctr = 0; ctr < nnz; ctr++)
-            {
-                index_t ptr = indptr[ctr];
-                index_t pos = indptr_a[ptr] + ptr_nnz[ptr]++;
-                data_pair[pos].first = indices[ctr];
-                data_pair[pos].second = data[ctr];
-            }
-
-            for (index_t i = 0; i < n_outer; i++)
-            {
-                index_t ptr_start = indptr_a[i];
-                index_t ptr_end = indptr_a[i+1];
-
-                std::sort(data_pair.begin()+ptr_start, data_pair.begin() + (ptr_end-1), 
-                    [](const std::pair<index_t, data_t>& lhs, 
-                    const std::pair<index_t, data_t>& rhs) 
-                        { return lhs.first < rhs.first; } );       
-            }
-
-            indptr.resize(n_outer + 1);
-            index_t ctr = 0;
-            for (index_t i = 0; i < n_outer; i++)
-            {
-                indptr[i] = ctr;
-                index_t ptr_start = indptr_a[i];
-                index_t ptr_end = indptr_a[i+1];
-    
-                if (ptr_start < ptr_end)
-                {
-                    indices[ctr] = data_pair[ptr_start].first;
-                    data[ctr] = data_pair[ptr_start].second;
-                    ctr++;
-                    for (index_t j = ptr_start + 1; j < ptr_end; j++)
-                    {
-                        if (data_pair[j].first == indices[ctr-1])
-                        {
-                            data[ctr-1] += data_pair[j].second;
-                        }
-                        else
-                        {
-                            indices[ctr] = data_pair[j].first;
-                            data[ctr] = data_pair[j].second;
-                            ctr++;
-                        }
-                    }
-                }
-            }
-            indptr[n_outer] = ctr;
-
-            indptr_a.clear();
-            data_pair.clear();
-        }
-        else // Remove zeros from inital CSR
-        {
-            index_t ctr = 0;
-
-            for (index_t ptr = 0; ptr < n_outer; ptr++)
-            {
-                index_t ptr_start = indptr[ptr];
-                index_t ptr_end = ptr_start + ptr_nnz[ptr];
-
-                indptr[ptr] = ctr;
-
-                for (index_t j = ptr_start; j < ptr_end; j++)
-                {
-                    indices[ctr] = indices[j];
-                    data[ctr] = data[j];
-                    ctr++;
-                }
-            }
-            indptr[n_outer] = ctr;
-
-            data.resize(nnz);
-            indices.resize(nnz);
+            n_outer = n_cols;
+            n_inner = n_rows;
+            ptr_nnz = col_nnz;
+            idx_nnz = row_nnz;
         }
     }
+
+    Matrix(Matrix* A);
+    ~Matrix();
+
+    void reserve(index_t nnz_per_outer);
+    void add_value(index_t ptr, index_t idx, data_t value);
+    void resize(index_t _nrows, index_t _ncols);
+    void finalize();
+    void convert(format_t _format);
 
     std::vector<index_t> indptr;
     std::vector<index_t> indices;
+    std::vector<data_t> data;
+
     std::vector<index_t> ptr_nnz;
     std::vector<index_t> idx_nnz;
-    std::vector<data_t> data;
+    std::vector<index_t> row_nnz;
+    std::vector<index_t> col_nnz;
 
     index_t n_rows;
     index_t n_cols;
@@ -290,74 +119,6 @@ public:
     index_t nnz;
     index_t init_coo;
     format_t format;
-
-};
-
-class CSR_Matrix : public Matrix
-{
-//    The class constructs a compressed sparse row matrix, extending the
-//    Matrix class, with rows being the outer index.
-
-public:
-    CSR_Matrix(index_t _nrows, index_t _ncols) : Matrix(_nrows, _ncols, _nrows, _ncols)
-    {
-        format = CSR;
-        //    Class constructor responsible for initializing an empty matrix
-        //    in COO format.  Calls the Matrix constructor, with number of 
-        //    outer indices equal to the number of rows.
-    }
-
-    ~CSR_Matrix() {}
-
-    void add_value(index_t row, index_t col, data_t value)
-    {
-        Matrix::add_value(row, col, value);
-    }
-
-    void add_values(index_t row, index_t* cols, data_t* values, index_t num_values)
-    {
-        Matrix::add_values(row, cols, values, num_values);
-    }
-
-    void resize(index_t _nrows, index_t _ncols)
-    {
-        n_rows = _nrows;
-        n_cols = _ncols;
-        n_outer = _nrows;
-    }
-};
-
-
-class CSC_Matrix : public Matrix
-{
-
-public:
-    CSC_Matrix(index_t _nrows, index_t _ncols) : Matrix(_nrows, _ncols, _ncols, _nrows)
-    {
-        format = CSC;
-        //    Class constructor responsible for initializing an empty matrix
-        //    in COO format.  Calls the Matrix constructor, with number of 
-        //    outer indices equal to the number of columns.
-    }
-
-    ~CSC_Matrix() {}
-
-    void add_value(index_t row, index_t col, data_t value)
-    {
-        Matrix::add_value(col, row, value);
-    }
-
-    void add_values(index_t col, index_t* rows, data_t* values, index_t num_values)
-    {
-        Matrix::add_values(col, rows, values, num_values);
-    }
-
-    void resize(index_t _nrows, index_t _ncols)
-    {
-        n_rows = _nrows;
-        n_cols = _ncols;
-        n_outer = _ncols;
-    }
 
 };
 

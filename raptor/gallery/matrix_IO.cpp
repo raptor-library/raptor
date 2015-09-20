@@ -8,7 +8,6 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, index_
     index_t* col;
     data_t* data;
     ParMatrix* A;
-    index_t* global_row_starts;
     
     if (single_file) 
     {
@@ -35,10 +34,9 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, index_
                 fclose(infile);
 
                 A = new ParMatrix(num_rows, num_cols);
-                global_row_starts = A->global_row_starts;
                 // read the file knowing our local rows
-                ret_code = mm_read_sparse(filename, global_row_starts[rank],
-                    global_row_starts[rank+1], &num_rows, &num_cols,
+                ret_code = mm_read_sparse(filename, A->first_row,
+                    A->first_row + A->local_rows, &num_rows, &num_cols,
                     A, symmetric);
 
                 if (ret_code != 0)
@@ -63,7 +61,7 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, index_
         //}
     }
 
-    A->finalize(symmetric);
+    //A->finalize(symmetric);
 
     return A;
 }

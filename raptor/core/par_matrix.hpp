@@ -22,13 +22,13 @@ public:
         offd_num_cols = 0;
 
         // Create Partition
-        create_partition(global_rows);
+        create_partition(global_rows, global_cols);
 
-        diag = new CSR_Matrix(local_rows, local_rows);
-        offd = new CSC_Matrix(local_rows, local_rows);
+        diag = new Matrix(local_rows, local_cols, CSR);
+        offd = new Matrix(local_rows, local_cols, CSC);
     }
 
-    ParMatrix(index_t _globalRows, index_t _globalCols, CSR_Matrix* _diag, CSC_Matrix* _offd);
+    ParMatrix(index_t _globalRows, index_t _globalCols, Matrix* _diag, Matrix* _offd);
     ParMatrix(ParMatrix* A);
     ~ParMatrix();
 
@@ -39,50 +39,92 @@ public:
         diag->reserve(nnz_per_row);
     }
 
-    void create_partition(index_t global_rows)
+    void create_partition(index_t global_rows, index_t global_cols)
     {
         // Get MPI Information
         index_t rank, num_procs;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-        // Initialize global_row_starts (partition matrix)
-        global_row_starts = new index_t[num_procs + 1];
-        index_t extra = global_rows % num_procs;
-        index_t size = global_rows / num_procs;
-        global_row_starts[0] = 0;
-        for (index_t i = 0; i < num_procs; i++)
+        index_t size_rows = global_rows / num_procs;
+        index_t extra_rows = global_rows % num_procs;
+
+        first_row = size_rows * rank;
+        local_rows = size_rows;
+        if (extra_rows > rank)
         {
-            global_row_starts[i+1] = global_row_starts[i] + size;
+            first_row += rank;
+            local_rows++;
+        }
+        else
+        {
+            first_row += extra_rows;
+        }
+
+        // Initialize global_col_starts (partition matrix)
+        index_t num_procs_active = num_procs;
+        if (size_rows == 0)
+        {
+            num_procs_active = extra_rows;
+        }
+
+        global_col_starts = new index_t[num_procs_active + 1];
+        index_t extra = global_cols % num_procs_active;
+        index_t size = global_cols / num_procs_active;
+        global_col_starts[0] = 0;
+        for (index_t i = 0; i < num_procs_active; i++)
+        {
+            global_col_starts[i+1] = global_col_starts[i] + size;
             if (i < extra)
             {
-                global_row_starts[i+1]++;
+                global_col_starts[i+1]++;
             }
         }
-        first_col_diag = global_row_starts[rank];
-        local_rows = global_row_starts[rank+1] - first_col_diag;
+        if (rank >= num_procs_active)
+        {
+            first_col_diag = global_col_starts[num_procs_active];
+            local_cols = 0;
+        }
+        else
+        {
+            first_col_diag = global_col_starts[rank];
+            local_cols = global_col_starts[rank+1] - first_col_diag;
+        }
+
+        MPI_Group group_world;
+        MPI_Group group_mat;
+        
+        index_t* active_ranks = new index_t[num_procs_active];
+        for (index_t i = 0; i < num_procs_active; i++)
+        {
+            active_ranks[i] = i;
+        }
+
+        MPI_Comm_group(MPI_COMM_WORLD, &group_world);
+        MPI_Group_incl(group_world, num_procs_active, active_ranks, &group_mat);
+        MPI_Comm_create(MPI_COMM_WORLD, group_mat, &comm_mat);
     }
 
     void add_value(index_t row, index_t global_col, data_t value, index_t row_global = 0)
     {
         if (row_global)
         {
-            row -= first_col_diag;
+            row -= first_row;
         }
 
         // Off-Diagonal Block
-        if (global_col < first_col_diag || global_col >= first_col_diag + local_rows)
+        if (global_col < first_col_diag || global_col >= first_col_diag + local_cols)
         {
             if (global_to_local.count(global_col) == 0)
             {
                 global_to_local[global_col] = offd_num_cols++;
                 local_to_global.push_back(global_col);
             }
-            ((CSC_Matrix*)offd)->add_value(row, global_to_local[global_col], value);
+            offd->add_value(row, global_to_local[global_col], value);
         }
         else // Diagonal Block
         {
-            ((CSR_Matrix*)diag)->add_value(row, global_col - first_col_diag, value);
+            diag->add_value(row, global_col - first_col_diag, value);
         }
     }
 
@@ -90,28 +132,31 @@ public:
     {
         if (offd_num_cols)
         {
-            ((CSC_Matrix*)offd)->resize(local_rows, offd_num_cols);
-            ((CSC_Matrix*)offd)->finalize();
+            offd->resize(local_rows, offd_num_cols);
+            offd->finalize();
         }
         else
         {
             delete offd;
         }
-        ((CSR_Matrix*)diag)->finalize();
-        comm = new ParComm(offd, local_to_global, global_to_local, global_row_starts, symmetric);
+        diag->finalize();
+        comm = new ParComm(offd, local_to_global, global_to_local, global_col_starts, comm_mat, symmetric);
     }
 
     index_t global_rows;
     index_t global_cols;
     index_t local_nnz;
     index_t local_rows;
+    index_t local_cols;
     Matrix* diag;
     Matrix* offd;
     std::vector<index_t> local_to_global;
     std::map<index_t, index_t> global_to_local;
     index_t offd_num_cols;
     index_t first_col_diag;
+    index_t first_row;
     ParComm* comm;
-    index_t* global_row_starts;
+    index_t* global_col_starts;
+    MPI_Comm comm_mat;
 };
 #endif

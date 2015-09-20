@@ -501,48 +501,75 @@ void seq_spmv_csr(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, st
 
     if (alpha_one)
     {
-        if (!beta_one)
+        if (beta_one)
         {
-            for (index_t outer = 0; outer < n_outer; outer++)
+            //Ax + y
+            for (index_t i = 0; i < outer_list.size(); i++)
             {
-                y_data[outer] *= beta;
+                index_t outer = outer_list[i];
+                ptr_start = ptr[outer];
+                ptr_end = ptr[outer+1];
+
+                for (index_t j = ptr_start; j < ptr_end; j++)
+                {
+                    index_t inner = idx[j];
+                    y_data[i] += values[j] * x_data[inner];
+                }
             }
         }
-        //Ax + y
-        for (index_t i = 0; i < outer_list.size(); i++)
+        else
         {
-            index_t outer = outer_list[i];
-            ptr_start = ptr[outer];
-            ptr_end = ptr[outer+1];
-
-            for (index_t j = ptr_start; j < ptr_end; j++)
+            //Ax + beta*y
+            for (index_t i = 0; i < outer_list.size(); i++)
             {
-                index_t inner = idx[j];
-                y_data[outer] += values[j] * x_data[inner];
+                index_t outer = outer_list[i];
+                ptr_start = ptr[outer];
+                ptr_end = ptr[outer+1];
+
+                y_data[i] *= beta;
+
+                for (index_t j = ptr_start; j < ptr_end; j++)
+                {
+                    index_t inner = idx[j];
+                    y_data[i] += values[j] * x_data[inner];
+                }
             }
         }
     }
     else if (alpha_neg_one)
     {
-        if (!beta_one)
+        if (beta_one)
         {
-            for (index_t outer = 0; outer < n_outer; outer++)
+            //Ax + y
+            for (index_t i = 0; i < outer_list.size(); i++)
             {
-                y_data[outer] *= beta;
+                index_t outer = outer_list[i];
+                ptr_start = ptr[outer];
+                ptr_end = ptr[outer+1];
+
+                for (index_t j = ptr_start; j < ptr_end; j++)
+                {
+                    index_t inner = idx[j];
+                    y_data[i] -= values[j] * x_data[inner];
+                }
             }
         }
-          
-        //-Ax + y
-        for (index_t i = 0; i < outer_list.size(); i++)
+        else
         {
-            index_t outer = outer_list[i];
-            ptr_start = ptr[outer];
-            ptr_end = ptr[outer+1];
-
-            for (index_t j = ptr_start; j < ptr_end; j++)
+            //Ax + beta*y
+            for (index_t i = 0; i < outer_list.size(); i++)
             {
-                index_t inner = idx[j];
-                y_data[outer] -= values[j] * x_data[inner];
+                index_t outer = outer_list[i];
+                ptr_start = ptr[outer];
+                ptr_end = ptr[outer+1];
+
+                y_data[i] *= beta;
+
+                for (index_t j = ptr_start; j < ptr_end; j++)
+                {
+                    index_t inner = idx[j];
+                    y_data[i] -= values[j] * x_data[inner];
+                }
             }
         }
     }
@@ -551,41 +578,54 @@ void seq_spmv_csr(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, st
         if (beta_zero)
         {
             //return 0
-            for (index_t outer = 0; outer < n_outer; outer++)
+            for (index_t i = 0; i < outer_list.size(); i++)
             {
-                y_data[outer] = 0.0;
+                y_data[i] = 0.0;
             }
         }
         else if (!beta_one)
         {
             //beta * y
-            for (index_t outer = 0; outer < n_outer; outer++)
+            for (index_t i = 0; i < outer_list.size(); i++)
             {
-                y_data[outer] *= beta;
+                y_data[i] *= beta;
             }
         }
     }
     else
     {
-        if (!beta_one)
+        if (beta_one)
         {
-            for (index_t outer = 0; outer < n_outer; outer++)
+            //Ax + y
+            for (index_t i = 0; i < outer_list.size(); i++)
             {
-                y_data[outer] *= beta;
+                index_t outer = outer_list[i];
+                ptr_start = ptr[outer];
+                ptr_end = ptr[outer+1];
+
+                for (index_t j = ptr_start; j < ptr_end; j++)
+                {
+                    index_t inner = idx[j];
+                    y_data[i] += alpha * values[j] * x_data[inner];
+                }
             }
         }
-
-        //alpha*Ax + y
-        for (index_t i = 0; i < outer_list.size(); i++)
+        else
         {
-            index_t outer = outer_list[i];
-            ptr_start = ptr[outer];
-            ptr_end = ptr[outer+1];
-
-            for (index_t j = ptr_start; j < ptr_end; j++)
+            //Ax + beta*y
+            for (index_t i = 0; i < outer_list.size(); i++)
             {
-                index_t inner = idx[j];
-                y_data[outer] += alpha * values[j] * x_data[inner];
+                index_t outer = outer_list[i];
+                ptr_start = ptr[outer];
+                ptr_end = ptr[outer+1];
+
+                y_data[i] *= beta;
+
+                for (index_t j = ptr_start; j < ptr_end; j++)
+                {
+                    index_t inner = idx[j];
+                    y_data[i] += alpha * values[j] * x_data[inner];
+                }
             }
         }
     }

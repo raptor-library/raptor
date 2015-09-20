@@ -68,7 +68,7 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
 
     A = new ParMatrix(N_v, N_v);
     n_v = A->local_rows;
-    first_local_row = A->first_col_diag;
+    first_local_row = A->first_row;
     last_local_row = first_local_row + n_v - 1;
 
     index_t nnz_per;
@@ -80,9 +80,6 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
     {
         nnz_per = N_s;
     }
-
-    index_t offd_cols = N_s + pow(3, dim-1)*n_v;
-    A->reserve(offd_cols, nnz_per, nnz_per);    
 
     diags = (index_t*) calloc(N_s, sizeof(index_t));
     nonzero_stencil = (data_t*) calloc(N_s, sizeof(data_t));
