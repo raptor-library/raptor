@@ -4,6 +4,10 @@
 #define RAPTOR_CORE_TYPES_HPP
 
 #include "mpi.h"
+#include <float.h>
+
+//TODO -- should be std::numeric_limits<data_t>::epsilon ...
+#define zero_tol DBL_EPSILON
 
 //namespace raptor
 //{

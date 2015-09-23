@@ -22,14 +22,29 @@ public:
         offd_num_cols = 0;
 
         // Create Partition
-        create_partition(global_rows, global_cols);
+        create_partition(global_rows, global_cols, MPI_COMM_WORLD);
 
-        diag = new Matrix(local_rows, local_cols, CSR);
-        offd = new Matrix(local_rows, local_cols, CSC);
+        diag = new Matrix(local_rows, local_cols);
+        offd = new Matrix(local_rows, local_cols);
+    }
+
+    ParMatrix(index_t _glob_rows, index_t _glob_cols, MPI_Comm _comm_mat)
+    {
+        // Initialize matrix dimensions
+        global_rows = _glob_rows;
+        global_cols = _glob_cols;
+        offd_num_cols = 0;
+
+        // Create Partition
+        create_partition(global_rows, global_cols, _comm_mat);
+
+        diag = new Matrix(local_rows, local_cols);
+        offd = new Matrix(local_rows, local_cols);
     }
 
     ParMatrix(index_t _globalRows, index_t _globalCols, Matrix* _diag, Matrix* _offd);
     ParMatrix(ParMatrix* A);
+    ParMatrix();
     ~ParMatrix();
 
     void reserve(index_t offd_cols, index_t nnz_per_row, index_t nnz_per_col)
@@ -39,12 +54,12 @@ public:
         diag->reserve(nnz_per_row);
     }
 
-    void create_partition(index_t global_rows, index_t global_cols)
+    void create_partition(index_t global_rows, index_t global_cols, MPI_Comm _comm_mat)
     {
         // Get MPI Information
         index_t rank, num_procs;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+        MPI_Comm_rank(_comm_mat, &rank);
+        MPI_Comm_size(_comm_mat, &num_procs);
 
         index_t size_rows = global_rows / num_procs;
         index_t extra_rows = global_rows % num_procs;
@@ -91,18 +106,25 @@ public:
             local_cols = global_col_starts[rank+1] - first_col_diag;
         }
 
-        MPI_Group group_world;
-        MPI_Group group_mat;
-        
-        index_t* active_ranks = new index_t[num_procs_active];
-        for (index_t i = 0; i < num_procs_active; i++)
+        if (num_procs_active < num_procs)
         {
-            active_ranks[i] = i;
-        }
+            MPI_Group group_world;
+            MPI_Group group_mat;
+        
+            index_t* active_ranks = new index_t[num_procs_active];
+            for (index_t i = 0; i < num_procs_active; i++)
+            {
+                active_ranks[i] = i;
+            }
 
-        MPI_Comm_group(MPI_COMM_WORLD, &group_world);
-        MPI_Group_incl(group_world, num_procs_active, active_ranks, &group_mat);
-        MPI_Comm_create(MPI_COMM_WORLD, group_mat, &comm_mat);
+            MPI_Comm_group(_comm_mat, &group_world);
+            MPI_Group_incl(group_world, num_procs_active, active_ranks, &group_mat);
+            MPI_Comm_create(_comm_mat, group_mat, &comm_mat);
+        }
+        else
+        {
+            comm_mat = _comm_mat;
+        }
     }
 
     void add_value(index_t row, index_t global_col, data_t value, index_t row_global = 0)
@@ -128,19 +150,27 @@ public:
         }
     }
 
-    void finalize(index_t symmetric)
+    void finalize(index_t symmetric, format_t diag_f = CSR, format_t offd_f = CSC)
     {
         if (offd_num_cols)
         {
             offd->resize(local_rows, offd_num_cols);
-            offd->finalize();
+            offd->finalize(offd_f);
         }
         else
         {
             delete offd;
         }
-        diag->finalize();
-        comm = new ParComm(offd, local_to_global, global_to_local, global_col_starts, comm_mat, symmetric);
+        if (local_rows)
+        {        
+            diag->finalize(diag_f);
+            comm = new ParComm(offd, local_to_global, global_to_local, global_col_starts, comm_mat, symmetric);
+        }
+        else
+        {
+            delete diag;
+        }
+
     }
 
     index_t global_rows;

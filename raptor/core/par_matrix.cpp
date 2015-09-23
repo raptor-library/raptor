@@ -18,13 +18,23 @@ ParMatrix::ParMatrix(ParMatrix* A)
     this->offd = A->offd;
 }
 
+ParMatrix::ParMatrix()
+{
+    this->local_rows = 0;
+    this->local_cols = 0;
+    this->offd_num_cols = 0;
+}
+
 ParMatrix::~ParMatrix()
 {
     if (this->offd_num_cols)
     {
         delete this->offd;
     }
-    delete this->diag;
-    delete this->comm;
+    if (this->local_rows)
+    {
+        delete this->diag;
+        delete this->comm;
+    }
     //delete[] this-> global_row_starts;
 }

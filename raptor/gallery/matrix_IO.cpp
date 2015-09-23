@@ -61,7 +61,7 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, index_
         //}
     }
 
-    //A->finalize(symmetric);
+    A->finalize(symmetric);
 
     return A;
 }
@@ -73,7 +73,6 @@ int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_,
     MM_typecode matcode;
     int M, N, nz;
     int i, ctr;
-    data_t zero_tol = DBL_EPSILON;
      
     if ((f = fopen(fname, "r")) == NULL)
             return -1;

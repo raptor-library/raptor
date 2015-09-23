@@ -73,51 +73,40 @@ public:
         n_cols = _ncols;
         nnz = 0;
         format = _format;
-        init_coo = 1;
-
-        row_nnz.resize(n_rows);
-        col_nnz.resize(n_cols);
 
         if (format == CSR)
         {
-            n_outer = n_rows;
-            n_inner = n_cols;
-            ptr_nnz = row_nnz;
-            idx_nnz = col_nnz;
+            //TODO - implement option for straight to CSR
         }
         else if (format == CSC)
         {
-            n_outer = n_cols;
-            n_inner = n_rows;
-            ptr_nnz = col_nnz;
-            idx_nnz = row_nnz;
+            //TODO - implement option for straight to CSC
         }
     }
 
+    Matrix();
     Matrix(Matrix* A);
     ~Matrix();
 
     void reserve(index_t nnz_per_outer);
     void add_value(index_t ptr, index_t idx, data_t value);
     void resize(index_t _nrows, index_t _ncols);
-    void finalize();
+    void finalize(format_t _format);
     void convert(format_t _format);
 
+    //COO - row/col idx, CSR/CSC - indptr/indices
+    std::vector<index_t> row_idx;
+    std::vector<index_t> col_idx;
     std::vector<index_t> indptr;
     std::vector<index_t> indices;
     std::vector<data_t> data;
-
-    std::vector<index_t> ptr_nnz;
-    std::vector<index_t> idx_nnz;
-    std::vector<index_t> row_nnz;
-    std::vector<index_t> col_nnz;
 
     index_t n_rows;
     index_t n_cols;
     index_t n_outer;
     index_t n_inner;
     index_t nnz;
-    index_t init_coo;
+
     format_t format;
 
 };

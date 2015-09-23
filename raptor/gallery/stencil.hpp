@@ -21,7 +21,6 @@ ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t fo
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     // Declare stencil grid variables
-    data_t zero_tol = DBL_EPSILON;
     data_t value;
     data_t* nonzero_stencil;
     data_t* data;

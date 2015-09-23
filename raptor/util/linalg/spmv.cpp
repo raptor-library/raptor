@@ -3,9 +3,6 @@
 //CSC SpMV
 void seq_spmv_csc(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
 {
-    //TODO -- should be std::numeric_limits<data_t>::epsilon ...
-    data_t zero_tol = DBL_EPSILON;
-
     index_t alpha_zero = (fabs(alpha) < zero_tol);
     index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
     index_t alpha_neg_one = (fabs(alpha + 1.0) < zero_tol);
@@ -119,9 +116,6 @@ void seq_spmv_csc(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, st
     index_t rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
-    //TODO -- should be std::numeric_limits<data_t>::epsilon ...
-    data_t zero_tol = DBL_EPSILON;
 
     index_t alpha_zero = (fabs(alpha) < zero_tol);
     index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
@@ -240,9 +234,6 @@ void seq_spmv_csr(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
     index_t rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
-    //TODO -- should be std::numeric_limits<data_t>::epsilon ...
-    data_t zero_tol = DBL_EPSILON;
 
     index_t alpha_zero = (fabs(alpha) < zero_tol);
     index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
@@ -472,9 +463,6 @@ void seq_spmv_csr(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, st
     index_t rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
-    //TODO -- should be std::numeric_limits<data_t>::epsilon ...
-    data_t zero_tol = DBL_EPSILON;
 
     index_t alpha_zero = (fabs(alpha) < zero_tol);
     index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
