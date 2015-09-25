@@ -1,7 +1,25 @@
 #include "spmv.hpp"
 
-//CSC SpMV
-void seq_spmv_csc(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
+/**************************************************************
+ *****   Sequential Matrix-Vector Multiplication
+ **************************************************************
+ ***** Performs matrix-vector multiplication on inner indices
+ ***** y[inner] = alpha * A[inner, outer] * x[outer] + beta*y[inner]
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to be multipled
+ ***** x : Vector*
+ *****    Vector to be multiplied
+ ***** y : Vector*
+ *****    Vector result is added to
+ ***** alpha : data_t
+ *****    Scalar to multipy A*x by
+ ***** beta : data_t
+ *****    Scalar to multiply original y by
+ **************************************************************/
+void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
 {
     index_t alpha_zero = (fabs(alpha) < zero_tol);
     index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
@@ -108,8 +126,29 @@ void seq_spmv_csc(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
     }
 }
 
-//CSC SpMV
-void seq_spmv_csc(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, std::vector<index_t> outer_list)
+/**************************************************************
+ *****   Partial Sequential Matrix-Vector Multiplication
+ **************************************************************
+ ***** Performs partial matrix-vector multiplication on inner indices
+ ***** y[inner] = alpha * A[inner, outer] * x[outer] + beta*y[inner]
+ ***** for a portion of the outer indices.
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to be multipled
+ ***** x : Vector*
+ *****    Vector to be multiplied
+ ***** y : Vector*
+ *****    Vector result is added to
+ ***** alpha : data_t
+ *****    Scalar to multipy A*x by
+ ***** beta : data_t
+ *****    Scalar to multiply original y by
+ ***** outer_list : std::vector<index_t>
+ *****    Outer indices to multiply
+ **************************************************************/
+void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, std::vector<index_t> outer_list)
 {
 
     // Get MPI Information
@@ -227,8 +266,26 @@ void seq_spmv_csc(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, st
     }
 }
 
-//CSR SpMV
-void seq_spmv_csr(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
+/**************************************************************
+ *****   Sequential Matrix-Vector Multiplication
+ **************************************************************
+ ***** Performs matrix-vector multiplication on outer indices
+ ***** y[outer] = alpha * A[outer, inner] * x[inner] + beta*y[outer]
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to be multipled
+ ***** x : Vector*
+ *****    Vector to be multiplied
+ ***** y : Vector*
+ *****    Vector result is added to
+ ***** alpha : data_t
+ *****    Scalar to multipy A*x by
+ ***** beta : data_t
+ *****    Scalar to multiply original y by
+ **************************************************************/
+void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
 {
     // Get MPI Information
     index_t rank, num_procs;
@@ -456,8 +513,29 @@ void seq_spmv_csr(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
     }
 }
 
-//CSR Partial SpMV
-void seq_spmv_csr(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, std::vector<index_t> outer_list)
+/**************************************************************
+ *****   Partial Sequential Matrix-Vector Multiplication
+ **************************************************************
+ ***** Performs partial matrix-vector multiplication on inner indices
+ ***** y[outer] = alpha * A[outer, inner] * x[inner] + beta*y[outer]
+ ***** for a portion of the outer indices.
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to be multipled
+ ***** x : Vector*
+ *****    Vector to be multiplied
+ ***** y : Vector*
+ *****    Vector result is added to
+ ***** alpha : data_t
+ *****    Scalar to multipy A*x by
+ ***** beta : data_t
+ *****    Scalar to multiply original y by
+ ***** outer_list : std::vector<index_t>
+ *****    Outer indices to multiply
+ **************************************************************/
+void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, std::vector<index_t> outer_list)
 {
     // Get MPI Information
     index_t rank, num_procs;
@@ -619,18 +697,58 @@ void seq_spmv_csr(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, st
     }
 }
 
+/**************************************************************
+ *****   Sequential Matrix-Vector Multiplication
+ **************************************************************
+ ***** Performs partial matrix-vector multiplication, calling
+ ***** method appropriate for matrix format
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to be multipled
+ ***** x : Vector*
+ *****    Vector to be multiplied
+ ***** y : Vector*
+ *****    Vector result is added to
+ ***** alpha : data_t
+ *****    Scalar to multipy A*x by
+ ***** beta : data_t
+ *****    Scalar to multiply original y by
+ **************************************************************/
 void sequential_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
 {
     if (A->format == CSR)
     {
-        seq_spmv_csr(A, x, y, alpha, beta);
+        seq_outer_spmv(A, x, y, alpha, beta);
     }
     else
     {
-        seq_spmv_csc(A, x, y, alpha, beta);
+        seq_inner_spmv(A, x, y, alpha, beta);
     }   
 }
 
+/**************************************************************
+ *****   Partial Sequential Matrix-Vector Multiplication
+ **************************************************************
+ ***** Performs partial matrix-vector multiplication, calling
+ ***** method appropriate for matrix format
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to be multipled
+ ***** x : Vector*
+ *****    Vector to be multiplied
+ ***** y : Vector*
+ *****    Vector result is added to
+ ***** alpha : data_t
+ *****    Scalar to multipy A*x by
+ ***** beta : data_t
+ *****    Scalar to multiply original y by
+ ***** outer_list : std::vector<index_t>
+ *****    Outer indices to multiply
+ **************************************************************/
 void sequential_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, std::vector<index_t> col_list)
 {
     if (A->format == CSR)
@@ -639,23 +757,62 @@ void sequential_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta,
     }
     else
     {
-        seq_spmv_csc(A, x, y, alpha, beta, col_list);
+        seq_inner_spmv(A, x, y, alpha, beta, col_list);
     }   
 }
 
-
+/**************************************************************
+ *****   Sequential Transpose Matrix-Vector Multiplication
+ **************************************************************
+ ***** Performs partial transpose matrix-vector multiplication, 
+ ***** calling method appropriate for matrix format
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to be multipled
+ ***** x : Vector*
+ *****    Vector to be multiplied
+ ***** y : Vector*
+ *****    Vector result is added to
+ ***** alpha : data_t
+ *****    Scalar to multipy A*x by
+ ***** beta : data_t
+ *****    Scalar to multiply original y by
+ **************************************************************/
 void sequential_spmv_T(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
 {
     if (A->format == CSR)
     {
-        seq_spmv_csc(A, x, y, alpha, beta);
+        seq_inner_spmv(A, x, y, alpha, beta);
     }
     else
     {
-        seq_spmv_csr(A, x, y, alpha, beta);
+        seq_outer_spmv(A, x, y, alpha, beta);
     }   
 }
 
+/**************************************************************
+ *****   Partial Sequential Transpose Matrix-Vector Multiplication
+ **************************************************************
+ ***** Performs partial transpose matrix-vector multiplication,
+ ***** calling method appropriate for matrix format
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to be multipled
+ ***** x : Vector*
+ *****    Vector to be multiplied
+ ***** y : Vector*
+ *****    Vector result is added to
+ ***** alpha : data_t
+ *****    Scalar to multipy A*x by
+ ***** beta : data_t
+ *****    Scalar to multiply original y by
+ ***** outer_list : std::vector<index_t>
+ *****    Outer indices to multiply
+ **************************************************************/
 void sequential_spmv_T(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, std::vector<index_t> col_list)
 {
     if (A->format == CSR)
@@ -664,6 +821,6 @@ void sequential_spmv_T(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t bet
     }
     else
     {
-        seq_spmv_csr(A, x, y, alpha, beta, col_list);
+        seq_outer_spmv(A, x, y, alpha, beta, col_list);
     }   
 }

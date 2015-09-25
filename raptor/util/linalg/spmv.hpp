@@ -17,11 +17,115 @@ using namespace raptor;
 //void sequentialSPMV(CSRMatrix* A, Vector* x, Vector* y, double alpha, double beta);
 //void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double beta);
 
+/**************************************************************
+ *****   Sequential Matrix-Vector Multiplication
+ **************************************************************
+ ***** Performs partial matrix-vector multiplication, calling
+ ***** method appropriate for matrix format
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to be multipled
+ ***** x : Vector*
+ *****    Vector to be multiplied
+ ***** y : Vector*
+ *****    Vector result is added to
+ ***** alpha : data_t
+ *****    Scalar to multipy A*x by
+ ***** beta : data_t
+ *****    Scalar to multiply original y by
+ **************************************************************/
 void sequential_spmv(Matrix* A, Vector* x, Vector* y, double alpha, double beta);
+
+/**************************************************************
+ *****   Partial Sequential Matrix-Vector Multiplication
+ **************************************************************
+ ***** Performs partial matrix-vector multiplication, calling
+ ***** method appropriate for matrix format
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to be multipled
+ ***** x : Vector*
+ *****    Vector to be multiplied
+ ***** y : Vector*
+ *****    Vector result is added to
+ ***** alpha : data_t
+ *****    Scalar to multipy A*x by
+ ***** beta : data_t
+ *****    Scalar to multiply original y by
+ ***** outer_list : std::vector<index_t>
+ *****    Outer indices to multiply
+ **************************************************************/
 void sequential_spmv_T(Matrix* A, Vector* x, Vector* y, double alpha, double beta);
+
+/**************************************************************
+ *****   Sequential Transpose Matrix-Vector Multiplication
+ **************************************************************
+ ***** Performs partial transpose matrix-vector multiplication, 
+ ***** calling method appropriate for matrix format
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to be multipled
+ ***** x : Vector*
+ *****    Vector to be multiplied
+ ***** y : Vector*
+ *****    Vector result is added to
+ ***** alpha : data_t
+ *****    Scalar to multipy A*x by
+ ***** beta : data_t
+ *****    Scalar to multiply original y by
+ **************************************************************/
 void sequential_spmv(Matrix* A, Vector* x, Vector* y, double alpha, double beta, std::vector<index_t> col_list);
+
+/**************************************************************
+ *****   Partial Sequential Transpose Matrix-Vector Multiplication
+ **************************************************************
+ ***** Performs partial transpose matrix-vector multiplication,
+ ***** calling method appropriate for matrix format
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to be multipled
+ ***** x : Vector*
+ *****    Vector to be multiplied
+ ***** y : Vector*
+ *****    Vector result is added to
+ ***** alpha : data_t
+ *****    Scalar to multipy A*x by
+ ***** beta : data_t
+ *****    Scalar to multiply original y by
+ ***** outer_list : std::vector<index_t>
+ *****    Outer indices to multiply
+ **************************************************************/
 void sequential_spmv_T(Matrix* A, Vector* x, Vector* y, double alpha, double beta, std::vector<index_t> col_list);
 
+/**************************************************************
+ *****   Parallel Matrix-Vector Multiplication
+ **************************************************************
+ ***** Performs parallel matrix-vector multiplication
+ ***** y = alpha*A*x + beta*y
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : ParMatrix*
+ *****    Parallel matrix to be multipled
+ ***** x : ParVector*
+ *****    Parallel vector to be multiplied
+ ***** y : ParVector*
+ *****    Parallel vector result is added to
+ ***** alpha : data_t
+ *****    Scalar to multipy alpha*A*x
+ ***** beta : data_t
+ *****    Scalar to multiply original y by
+ ***** async : index_t
+ *****    Boolean flag for updating SpMV asynchronously
+ **************************************************************/
 void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta, index_t async = 0)
 {
     // Get MPI Information
@@ -45,6 +149,10 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     index_t                                 ctr;
     index_t                                 request_ctr;
     index_t                                 tag;
+    index_t                                 send_size;
+    index_t                                 recv_size;
+    index_t                                 num_sends;
+    index_t                                 num_recvs;
     ParComm*                                comm;
     std::vector<index_t>                    send_procs;
     std::vector<index_t>                    recv_procs;
@@ -59,18 +167,23 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     recv_indices  = comm->recv_indices;
     tmp_size      = comm->size_recvs;
     local_data    = x->local->data();
+    num_sends = send_procs.size();
+    num_recvs = recv_procs.size();
+    send_size = comm->size_sends;
+    recv_size = comm->size_recvs;
 
-    if (recv_procs.size())
+    // If receive values, post appropriate MPI Receives
+    if (num_recvs)
     {
-        recv_requests = new MPI_Request [recv_procs.size()];
-        for (index_t i = 0; i < recv_procs.size(); i++)
+        // Initialize recv requests and buffer
+        recv_requests = new MPI_Request [num_recvs];
+        for (index_t i = 0; i < num_recvs; i++)
         {
             recv_requests[i] = MPI_REQUEST_NULL;
         }
-        recv_buffer = new data_t [comm->size_recvs];
+        recv_buffer = new data_t [recv_size];
 
-        // Send and receive vector data
-        // Begin sending and gathering off-diagonal entries
+        // Post receives for x-values that are needed
         begin = 0;
         ctr = 0;
         request_ctr = 0;
@@ -84,15 +197,16 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     
     }
 
-    if (send_procs.size())
+    // Send values of x to appropriate processors
+    if (num_sends)
     {
         // TODO we do not want to malloc these every time
-        send_requests = new MPI_Request [send_procs.size()];
-        for (index_t i = 0; i < send_procs.size(); i++)
+        send_requests = new MPI_Request [num_sends];
+        for (index_t i = 0; i < num_sends; i++)
         {
             send_requests[i] = MPI_REQUEST_NULL;
         }
-        send_buffer = new data_t [comm->size_sends];
+        send_buffer = new data_t [send_size];
 
         begin = 0;
         request_ctr = 0;
@@ -157,7 +271,27 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     }
 }
 
-//alpha*A^Tx + beta*y 
+/**************************************************************
+ *****   Parallel Transpose Matrix-Vector Multiplication
+ **************************************************************
+ ***** Performs parallel transpose matrix-vector multiplication
+ ***** y = alpha*A^T*x + beta*y
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : ParMatrix*
+ *****    Parallel matrix to be transposed and multipled
+ ***** x : ParVector*
+ *****    Parallel vector to be multiplied
+ ***** y : ParVector*
+ *****    Parallel vector result is added to
+ ***** alpha : data_t
+ *****    Scalar to multipy alpha*A*x
+ ***** beta : data_t
+ *****    Scalar to multiply original y by
+ ***** async : index_t
+ *****    Boolean flag for updating SpMV asynchronously
+ **************************************************************/
 void parallel_spmv_T(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta, index_t async = 0)
 {
     // Get MPI Information

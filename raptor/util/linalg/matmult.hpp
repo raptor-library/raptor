@@ -13,6 +13,7 @@
 #include "core/matrix.hpp"
 #include "core/par_vector.hpp"
 
+// Structure of a COO Element
 struct Element
 {
     index_t row;
@@ -20,6 +21,17 @@ struct Element
     data_t value;
 };
 
+/**************************************************************
+ *****   Create MPI Type
+ **************************************************************
+ ***** Creates a custom MPI_Datatype for communincating
+ ***** COO elements (struct Element)
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** coo_type : MPI_Datatype*
+ *****    MPI_Datatype to be returned
+ **************************************************************/
 void create_mpi_type(MPI_Datatype* coo_type)
 {
     index_t blocks[2] = {2, 1};
@@ -32,14 +44,83 @@ void create_mpi_type(MPI_Datatype* coo_type)
     MPI_Type_struct(2, blocks, displacements, types, coo_type);
 }
 
-// Dot product u^T*v (with global indices)
+/**************************************************************
+ *****   Dot Product
+ **************************************************************
+ ***** Calculates the dot product of two sparse vectors
+ ***** alpha = u^T*v
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** size_u : index_t
+ *****    Number of elements in vector u
+ ***** size_v : index_t 
+ *****    Number of elements in vector v
+ ***** local_u : index_t* 
+ *****    Indices of nonzeros in vector u
+ ***** local_v : index_t*
+ *****    Indices of nonzeros in vector v
+ ***** data_u : data_t*
+ *****    Values of nonzeros in vector u
+ ***** data_v : data_t*
+ *****    Values of nonzeros in vector v
+ ***** map_u : UType
+ *****    Maps indices of u from local to global
+ ***** map_v : VType
+ *****    Maps indices of v from local to global
+ **************************************************************/
 template <typename UType, typename VType>
-data_t dot(index_t size_u, index_t* local_u, UType map_u, data_t* data_u, 
-    index_t size_v, index_t* local_v, VType map_v, data_t* data_v );
+data_t dot(index_t size_u, index_t size_v, index_t* local_u, 
+    index_t* local_v, data_t* data_u, data_t* data_v,
+    UType map_u, VType map_v);
 
+/**************************************************************
+ *****   Partial Sequential Matrix-Matrix Multiplication
+ **************************************************************
+ ***** Performs a partial matmult, multiplying Matrix A
+ ***** by a single column of B
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to be multipled (on left)
+ ***** B : Matrix*
+ *****    Matrix to have single column multiplied (on right)
+ ***** C : ParMatrix*
+ *****    Parallel Matrix result is added to
+ ***** map_A : AType
+ *****    Maps local rows of A to global rows 
+ ***** map_B : BType 
+ *****    Maps local columns of B to global columns
+ ***** map_C : CType
+ *****    Maps local resulting column to global
+ ***** col : index_t 
+ *****    Column of B to be multiplied
+ **************************************************************/
 template <typename AType, typename BType, typename CType>
 void seq_mm(Matrix* A, Matrix* B, ParMatrix* C, AType  map_A,
         BType map_B, CType map_C, index_t col);
+
+/**************************************************************
+ *****   Sequential Matrix-Matrix Multiplication
+ **************************************************************
+ ***** Performs matrix-matrix multiplication A*B
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to be multipled (on left)
+ ***** B : Matrix*
+ *****    Matrix to be multiplied (on right)
+ ***** C : ParMatrix*
+ *****    Parallel Matrix result is added to
+ ***** map_A : AType
+ *****    Maps local rows of A to global rows 
+ ***** map_B : BType 
+ *****    Maps local columns of B to global columns
+ ***** map_C : CType
+ *****    Maps local resulting column to global
+ **************************************************************/
 template <typename AType, typename BType, typename CType>
 void seq_mm(Matrix* A, Matrix* B, ParMatrix* C, AType  map_A,
         BType map_B, CType map_C);
