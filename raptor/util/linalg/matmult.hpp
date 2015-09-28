@@ -21,6 +21,9 @@ struct Element
     data_t value;
 };
 
+index_t map_to_global(index_t i, std::vector<index_t> map);
+index_t map_to_global(index_t i, index_t addition);
+
 /**************************************************************
  *****   Create MPI Type
  **************************************************************
@@ -75,6 +78,36 @@ data_t dot(index_t size_u, index_t size_v, index_t* local_u,
     UType map_u, VType map_v);
 
 /**************************************************************
+ *****   Dot Product
+ **************************************************************
+ ***** Pulls rows/columns from matrices, and computes
+ ***** dot product of these
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to extract row from ( u )
+ ***** B : Matrix*
+ *****    Matrix to extract column from ( v )
+ ***** map_A : AType
+ *****    Maps local indices of A to global
+ ***** map_B : BType
+ *****    Maps local indices of B to global
+ ***** A_start : index_t 
+ *****    Index of first element in column of A
+ ***** A_end : index_t 
+ *****    Index of first element in next column of A
+ ***** B_start : index_t
+ *****    Index of first element in row of B
+ ***** B_end : index_t
+ *****    Index of first element in next row of B
+ **************************************************************/
+template <typename AType, typename BType>
+data_t dot(Matrix* A, Matrix* B, AType map_A, BType map_B, 
+        index_t A_start, index_t A_end,
+        index_t B_start, index_t B_end);
+
+/**************************************************************
  *****   Partial Sequential Matrix-Matrix Multiplication
  **************************************************************
  ***** Performs a partial matmult, multiplying Matrix A
@@ -125,6 +158,59 @@ template <typename AType, typename BType, typename CType>
 void seq_mm(Matrix* A, Matrix* B, ParMatrix* C, AType  map_A,
         BType map_B, CType map_C);
 
+/**************************************************************
+ *****   Partial Sequential Transpose Matrix-Matrix Multiplication
+ **************************************************************
+ ***** Performs a partial transpose matmult, multiplying Matrix A
+ ***** by a single column of B
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to be multipled (on right)
+ ***** B : Matrix*
+ *****    Matrix to have single transpose column multiplied (on left)
+ ***** C : ParMatrix*
+ *****    Parallel Matrix result is added to
+ ***** map_row_A : AType
+ *****    Maps local rows of A to global rows 
+ ***** map_row_B : BType 
+ *****    Maps local rows of B to global rows
+ ***** map_col_A : CType
+ *****    Maps local cols of A to global cols 
+ ***** map_col_B : DType 
+ *****    Maps local cols of B to global cols
+ ***** colB : index_t 
+ *****    Column of B to be multiplied
+ **************************************************************/
+template <typename AType, typename BType, typename CType>
+void seq_mm_T(Matrix* A, Matrix* B, ParMatrix* C, AType map_row_A,
+        BType map_row_B, CType map_col_A, index_t colB);
+
+/**************************************************************
+ *****   Partial Sequential Transpose Matrix-Matrix Multiplication
+ **************************************************************
+ ***** Performs a partial transpose matmult, multiplying Matrix A
+ ***** by a single column of B
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to be multipled (on right)
+ ***** B : Matrix*
+ *****    Matrix to have single transpose column multiplied (on left)
+ ***** C : ParMatrix*
+ *****    Parallel Matrix result is added to
+ ***** map_row_A : AType
+ *****    Maps local rows of A to global rows 
+ ***** map_row_B : BType 
+ *****    Maps local rows of B to global rows
+ ***** map_col_A : CType
+ *****    Maps local cols of A to global cols 
+ **************************************************************/
+template <typename AType, typename BType, typename CType>
+void seq_mm_T(Matrix* A, Matrix* B, ParMatrix* C, AType map_row_A,
+        BType map_row_B, CType map_col_A);
 
 /**************************************************************
  *****   Parallel Matrix - Matrix Multiplication
@@ -369,6 +455,258 @@ void parallel_matmult(ParMatrix* A, ParMatrix* B, ParMatrix** _C)
             n_recv++;
         }
     }
+
+    // Free custom COO datatype (finished communication)
+    MPI_Type_free(&coo_type);
+
+    // Convert matrices back to original format
+    A_diag->convert(format_ad);
+    if (A->offd_num_cols)
+    {
+        A_offd->convert(format_ao);
+    }
+    B_diag->convert(format_bd);
+    if (B->offd_num_cols)
+    {
+        B_offd->convert(format_bo);
+    }
+
+    // Finalize parallel output matrix
+    C->finalize(0);
+    *_C = C;
+
+    // Wait for sends to finish, then delete buffer
+    if (num_sends)
+    {
+	    MPI_Waitall(send_procs.size(), send_requests, MPI_STATUS_IGNORE);
+        delete[] send_buffer;
+        delete[] send_requests; 
+    }
+} 
+
+/**************************************************************
+ *****   Parallel Transpose Matrix - Matrix Multiplication
+ **************************************************************
+ ***** Multiplies together two parallel matrices , outputing
+ ***** the result in a new ParMatrix C = B^T*A
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : ParMatrix*
+ *****    Parallel matrix to be multiplied (on right)
+ ***** B : ParMatrix* 
+ *****    Parallel matrix to be transpose multiplied (on left)
+ ***** _C : ParMatrix**
+ *****    Parallel Matrix result is inserted into
+ **************************************************************/
+void parallel_matmult_T(ParMatrix* A, ParMatrix* B, ParMatrix** _C)
+{
+    // If process not active, create new 
+    // empty matrix, and return
+    if (!(A->local_rows))
+    {
+        *_C = new ParMatrix();
+        return;
+    }
+
+    // Declare matrix variables
+    ParMatrix* C;
+    Matrix* A_diag;
+    Matrix* A_offd;
+    Matrix* B_diag;
+    Matrix* B_offd;
+
+    // Declare format variables
+    format_t format_ad;
+    format_t format_ao;
+    format_t format_bd;
+    format_t format_bo;
+
+    // Declare communication variables
+    ParComm* comm;
+    std::vector<index_t> send_procs;
+    std::vector<index_t> recv_procs;
+    std::map<index_t, std::vector<index_t>> send_indices;
+    std::map<index_t, std::vector<index_t>> recv_indices;
+    MPI_Request* send_requests;
+    MPI_Status recv_status;
+    std::vector<Element>* send_buffer;
+    index_t send_proc;
+    index_t num_sends;
+    index_t num_recvs;
+    index_t count;
+    index_t n_recv;
+    index_t avail_flag;
+
+    // Declare matrix helper variables
+    index_t colA_start;
+    index_t colA_end;
+    index_t colB_start;
+    index_t colB_end;
+    index_t local_row;
+    index_t local_col;
+    index_t global_row;
+    index_t global_col;
+    data_t value;
+    Element tmp;
+    index_t num_cols;
+
+    // Declare temporary (recvd) matrix variables
+    Matrix* Btmp;
+    std::map<index_t, index_t> global_to_local;
+    std::vector<index_t> local_to_global;
+    std::vector<index_t> col_nnz;
+    index_t tmp_size;
+
+    // Initialize matrices
+    C = new ParMatrix(B->global_cols, A->global_cols, B->comm_mat);
+    A_diag = A->diag;
+    A_offd = A->offd;
+    B_diag = B->diag;
+    B_offd = B->offd;
+
+    // Set initial formats (to return with same type)
+    format_ad = A_diag->format;
+    format_bd = B_diag->format;
+    if (A->offd_num_cols)
+    {
+        format_ao = A_offd->format;
+    }
+    if (B->offd_num_cols)
+    {
+        format_bo = B_offd->format;
+    }
+
+    // Initialize Communication Package
+    comm = A->comm;
+    send_procs = comm->recv_procs;
+    recv_procs = comm->send_procs;
+    send_indices = comm->recv_indices;
+    recv_indices = comm->send_indices;
+    num_sends = send_procs.size();
+    num_recvs = recv_procs.size();
+    send_requests = new MPI_Request[num_sends];
+    send_buffer = new std::vector<Element>[num_sends];
+
+    /* Convert all matrices to CSC for multiplication */
+    A_diag->convert(CSC);
+    if (A->offd_num_cols)
+    {
+        A_offd->convert(CSC);
+    }
+    B_diag->convert(CSC);
+    if (B->offd_num_cols)
+    {
+        B_offd->convert(CSC);
+    }
+
+    // Create custom datatype (COO elements)
+    MPI_Datatype coo_type;
+    create_mpi_type(&coo_type);
+
+    // Commit COO Datatype
+    MPI_Type_commit(&coo_type);
+
+    // Send B-values to necessary processors
+    for (index_t i = 0; i < num_sends; i++)
+    {
+        send_proc = send_procs[i];
+        std::vector<index_t> send_idx = send_indices[send_proc];
+        if (B->offd_num_cols)
+        {
+            for (auto colB : send_idx)
+            {
+                colB_start = B_offd->indptr[colB];
+                colB_end = B_offd->indptr[colB+1];
+            
+                if (colB_start < colB_end)
+                {
+                    for (index_t colA = 0; colA < A_diag->n_cols; colA++)
+                    {
+                        colA_start = A_diag->indptr[colA];
+                        colA_end = A_diag->indptr[colA+1];
+                    
+                        if (colA_start < colA_end)
+                        {
+                            value = dot<index_t, index_t>(A_diag, B_offd, A->first_row, B->first_row, colA_start, colA_end, colB_start, colB_end);
+
+                            if (fabs(value) > zero_tol)
+                            {
+                                global_row = B->local_to_global[colB];
+                                global_col = colA + A->first_col_diag;
+                                tmp = {global_row, global_col, value};
+                                send_buffer[i].push_back(tmp);
+                            }
+                        }
+                    }
+            
+                    for (index_t colA = 0; colA < A->offd_num_cols; colA++)
+                    {
+                        colA_start = A_offd->indptr[colA];
+                        colA_end = A_offd->indptr[colA+1];
+
+                        if (colA_start < colA_end)
+                        {
+                            value = dot<index_t, index_t>(A_offd, B_offd, A->first_row, B->first_row, colA_start, colA_end, colB_start, colB_end);
+                            if (fabs(value) > zero_tol)
+                            {
+                                global_row = B->local_to_global[colB];
+                                global_col = A->local_to_global[colA];
+                                tmp = {global_row, global_col, value};
+                                send_buffer[i].push_back(tmp);
+                            }
+                        }
+                    }
+                }
+            }
+            // Send B-values to distant processor
+            MPI_Isend(send_buffer[i].data(), send_buffer[i].size(),
+                coo_type, send_proc, 1111, A->comm_mat, &send_requests[i]);
+        }
+        else
+        {
+            MPI_Isend(send_buffer[i].data(), 0, coo_type, send_proc, 1111, A->comm_mat, &send_requests[i]);
+        }
+    }
+   
+    // Multiply A_diag * B_diag
+    seq_mm_T<index_t, index_t, index_t>(A_diag, B_diag, C, 
+        A->first_row, B->first_row, A->first_col_diag);
+
+    if (B->offd_num_cols)
+    {
+        seq_mm_T<index_t, index_t, std::vector<index_t>>(A_offd, B_diag, C, A->first_row, B->first_row, A->local_to_global);
+    }
+
+    // Receive messages and add to C
+    count = 0;
+    n_recv = 0;
+    while (n_recv < num_recvs)
+    {
+        //Probe for messages, and recv any found
+        MPI_Iprobe(MPI_ANY_SOURCE, 1111, A->comm_mat, &avail_flag, &recv_status);
+        if (avail_flag)
+        {
+            // Get size of message in buffer
+            MPI_Get_count(&recv_status, coo_type, &count);
+
+            // Get process message comes from
+            index_t proc = recv_status.MPI_SOURCE;
+
+            // Receive message into buffer
+            Element recv_buffer[count];
+            MPI_Recv(&recv_buffer, count, coo_type, MPI_ANY_SOURCE, 1111, A->comm_mat, &recv_status);
+
+            // Add values to C
+            for (index_t i = 0; i < count; i++)
+            {
+                C->add_value(recv_buffer[i].row - C->first_row, recv_buffer[i].col, recv_buffer[i].value);
+            }
+
+            // Increment number of recvs
+            n_recv++;
+        }
+    } 
 
     // Free custom COO datatype (finished communication)
     MPI_Type_free(&coo_type);

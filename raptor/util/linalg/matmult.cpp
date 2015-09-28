@@ -138,28 +138,28 @@ data_t dot(index_t size_u, index_t size_v, index_t* local_u,
  *****    Maps local indices of A to global
  ***** map_B : BType
  *****    Maps local indices of B to global
- ***** col_start : index_t 
+ ***** A_start : index_t 
  *****    Index of first element in column of A
- ***** col_end : index_t 
+ ***** A_end : index_t 
  *****    Index of first element in next column of A
- ***** row_start : index_t
+ ***** B_start : index_t
  *****    Index of first element in row of B
- ***** row_end : index_t
+ ***** B_end : index_t
  *****    Index of first element in next row of B
  **************************************************************/
 template <typename AType, typename BType>
 data_t dot(Matrix* A, Matrix* B, AType map_A, BType map_B, 
-        index_t col_start, index_t col_end,
-        index_t row_start, index_t row_end)
+        index_t A_start, index_t A_end,
+        index_t B_start, index_t B_end)
 {
-    index_t size_A = row_end - row_start;
-    index_t size_B = col_end - col_start;
+    index_t size_A = A_end - A_start;
+    index_t size_B = B_end - B_start;
 
-    index_t* local_A = &(A->indices[row_start]);
-    index_t* local_B = &(B->indices[col_start]);
+    index_t* local_A = &(A->indices[A_start]);
+    index_t* local_B = &(B->indices[B_start]);
 
-    data_t* data_A = &(A->data[row_start]);
-    data_t* data_B = &(B->data[col_start]);
+    data_t* data_A = &(A->data[A_start]);
+    data_t* data_B = &(B->data[B_start]);
 
     return dot<AType, BType>(size_A, size_B, local_A, local_B,
         data_A, data_B, map_A, map_B);
@@ -192,15 +192,15 @@ template <typename AType, typename BType, typename CType>
 void seq_mm(Matrix* A, Matrix* B, ParMatrix* C, AType map_A,
         BType map_B, CType map_C, index_t col)
 {
-    index_t col_start = B->indptr[col];
-    index_t col_end = B->indptr[col+1];
+    index_t B_start = B->indptr[col];
+    index_t B_end = B->indptr[col+1];
     for (index_t row = 0; row < A->n_rows; row++)
     {
-        index_t row_start = A->indptr[row];
-        index_t row_end = A->indptr[row+1];
+        index_t A_start = A->indptr[row];
+        index_t A_end = A->indptr[row+1];
 
         data_t cij = dot<AType, BType> (A, B, map_A,
-             map_B, col_start, col_end, row_start, row_end);
+             map_B, A_start, A_end, B_start, B_end);
         index_t global_col = map_to_global(col, map_C);
         C->add_value(row, global_col, cij);
     }
@@ -237,6 +237,82 @@ void seq_mm(Matrix* A, Matrix* B, ParMatrix* C, AType map_A,
     {
         seq_mm<AType, BType, CType> (A, B, C, map_A,
             map_B, map_C, col);
+    }
+}
+
+/**************************************************************
+ *****   Partial Sequential Transpose Matrix-Matrix Multiplication
+ **************************************************************
+ ***** Performs a partial transpose matmult, multiplying Matrix A
+ ***** by a single column of B
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to be multipled (on right)
+ ***** B : Matrix*
+ *****    Matrix to have single transpose column multiplied (on left)
+ ***** C : ParMatrix*
+ *****    Parallel Matrix result is added to
+ ***** map_row_A : AType
+ *****    Maps local rows of A to global rows 
+ ***** map_row_B : BType 
+ *****    Maps local rows of B to global rows
+ ***** map_col_A : CType
+ *****    Maps local cols of A to global cols 
+ ***** colB : index_t 
+ *****    Column of B to be multiplied
+ **************************************************************/
+template <typename AType, typename BType, typename CType>
+void seq_mm_T(Matrix* A, Matrix* B, ParMatrix* C, AType map_row_A,
+        BType map_row_B, CType map_col_A, index_t colB)
+{
+    index_t colB_start = B->indptr[colB];
+    index_t colB_end = B->indptr[colB+1];
+    for (index_t colA = 0; colA < A->n_cols; colA++)
+    {
+        index_t colA_start = A->indptr[colA];
+        index_t colA_end = A->indptr[colA+1];
+
+        data_t cij = dot<AType, BType> (A, B, map_row_A,
+             map_row_B, colA_start, colA_end, colB_start, colB_end);
+        index_t global_row = map_to_global(colA, map_col_A);
+        C->add_value(colB, global_row, cij);
+    }
+}
+
+/**************************************************************
+ *****   Partial Sequential Transpose Matrix-Matrix Multiplication
+ **************************************************************
+ ***** Performs a partial transpose matmult, multiplying Matrix A
+ ***** by a single column of B
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to be multipled (on right)
+ ***** B : Matrix*
+ *****    Matrix to have single transpose column multiplied (on left)
+ ***** C : ParMatrix*
+ *****    Parallel Matrix result is added to
+ ***** map_row_A : AType
+ *****    Maps local rows of A to global rows 
+ ***** map_row_B : BType 
+ *****    Maps local rows of B to global rows
+ ***** map_col_A : CType
+ *****    Maps local cols of A to global cols 
+ **************************************************************/
+template <typename AType, typename BType, typename CType>
+void seq_mm_T(Matrix* A, Matrix* B, ParMatrix* C, AType map_row_A,
+        BType map_row_B, CType map_col_A)
+{
+    data_t cij;
+    index_t global_col;
+
+    for (index_t colB = 0; colB < B->n_cols; colB++)
+    {
+        seq_mm_T<AType, BType, CType> (A, B, C, map_row_A,
+            map_row_B, map_col_A, colB);
     }
 }
 

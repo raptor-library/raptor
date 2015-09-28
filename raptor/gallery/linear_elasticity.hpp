@@ -127,7 +127,7 @@ ParMatrix* linear_elasticity(index_t* grid, ParMatrix** B, data_t E = 1.0e5, dat
     ParMatrix* A = new ParMatrix(N, N);
 
     index_t n = A->local_rows;
-    index_t first_row = A->first_col_diag;
+    index_t first_row = A->first_row;
 
     data_t* pts = new data_t[n];
 
@@ -161,11 +161,11 @@ ParMatrix* linear_elasticity(index_t* grid, ParMatrix** B, data_t E = 1.0e5, dat
     index_t n_pos = 8;
     index_t pos[8] = {0, 1, 2, 3, 2*X + 4, 2*X + 5, 2*X + 2, 2*X + 3};
 
-    index_t max_pos = (X*(Y+1));
+    index_t max_pos = (2*X*(Y+1));
 
     index_t global_row;
     index_t row_start;
-    printf("A has %d rows, %d cols\n", N, N);
+
     for (index_t row = 0; row < n; row++)
     {
         global_row = row + first_row;
@@ -182,7 +182,6 @@ ParMatrix* linear_elasticity(index_t* grid, ParMatrix** B, data_t E = 1.0e5, dat
                     A->add_value(row,
                                 row_start + pos[j],
                                 ((*K)(i, j)));
-                    printf("(%d, %d) = %2.3f\n", global_row, row_start + pos[j], ((*K)(i, j)));
                 }
             }
         }
@@ -191,7 +190,7 @@ ParMatrix* linear_elasticity(index_t* grid, ParMatrix** B, data_t E = 1.0e5, dat
     *B = new ParMatrix(2*(X+1)*(Y+1), 3);
     for (index_t i = 0; i < (*B)->local_rows; i++)
     {
-        index_t global_row = (*B)->first_col_diag + i;
+        index_t global_row = (*B)->first_row + i;
         if (global_row % 2 == 0)
         {
             (*B)->add_value(i, 0, 1.0);
@@ -204,33 +203,47 @@ ParMatrix* linear_elasticity(index_t* grid, ParMatrix** B, data_t E = 1.0e5, dat
         }
     }
 
-    if (dirichlet)
-    {
-        Matrix* P = new Matrix(2*(X+1)*(Y+1), 2*(X-1)*(Y-1));
-        index_t init = 2*(Y+2);
-        for (index_t i = 0; i < P->local_rows; i++)
-        {
-            index_t global_row = i + P->first_row;
-            index_t relative = global_row - init;
-            extra = relative % (Y+1);
-
-            // Add to P in correct position
-            if (extra < (Y-1))
-            {
-                index_t col = ((Y-1)*(relative / (Y+1)) + extra;
-                P->add_value(i, col, 1.0);
-            }
-        }
-    }
-
-    printf("A had %d nnz in diag, %d nnz in offd\n", A->diag->nnz, A->offd->nnz);
     A->finalize(1);
-    printf("A has %d nnz in diag, %d nnz in offd\n", A->diag->nnz, A->offd->nnz);
-
     delete[] pts;
     delete K;
 
-    return A;
+
+    if (dirichlet)
+    {
+        ParMatrix* P = new ParMatrix(2*(X+1)*(Y+1), 2*(X-1)*(Y-1));
+        index_t init = 2*(Y+2);
+        index_t x_len = 2*(Y+1);
+        for (index_t i = 0; i < P->local_rows; i++)
+        {
+            index_t global_row = i + P->first_row;
+            if (global_row >= init && global_row + init < P->global_rows)
+            {
+                index_t relative = global_row - init;
+                index_t extra = relative % x_len;
+
+                // Add to P in correct position
+                if (extra < 2*(Y-1))
+                {
+                    index_t col = (2*(Y-1)*(relative / x_len)) + extra;
+                    P->add_value(i, col, 1.0);
+                }
+            }
+        }
+        P->finalize(0);
+
+        ParMatrix* A_tmp;
+        ParMatrix* A_dirichlet;
+        parallel_matmult(A, P, &A_tmp);
+        delete A;
+        parallel_matmult_T(A_tmp, P, &A_dirichlet);
+        delete A_tmp;
+        delete P;
+        return A_dirichlet;
+    }
+    else
+    {
+        return A;
+    }
 }
 
 

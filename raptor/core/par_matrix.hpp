@@ -152,7 +152,7 @@ public:
 
     void finalize(index_t symmetric, format_t diag_f = CSR, format_t offd_f = CSC)
     {
-        if (offd_num_cols)
+        if (offd->nnz)
         {
             offd->resize(local_rows, offd_num_cols);
             offd->finalize(offd_f);
@@ -161,14 +161,18 @@ public:
         {
             delete offd;
         }
-        if (local_rows)
+        if (diag->nnz)
         {        
             diag->finalize(diag_f);
-            comm = new ParComm(offd, local_to_global, global_to_local, global_col_starts, comm_mat, symmetric);
         }
         else
         {
             delete diag;
+        }
+    
+        if (local_rows)
+        {
+            comm = new ParComm(offd, local_to_global, global_to_local, global_col_starts, comm_mat, symmetric);
         }
 
     }

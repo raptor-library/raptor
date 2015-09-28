@@ -170,7 +170,6 @@ public:
         MPI_Comm_rank(comm_mat, &rank);
         MPI_Comm_size(comm_mat, &num_procs);
 
-
         index_t* ptr;
         index_t* idx;
         index_t num_cols;
@@ -306,6 +305,7 @@ public:
         delete[] send_buffer;
         delete[] send_requests;
         delete[] send_status;
+
     }
 
 
@@ -351,7 +351,7 @@ public:
         else
         {
             init_comm_sends_unsym(comm_mat, map_to_global, global_col_starts);
-        }
+        } 
     }
 
     ~ParComm(){};
