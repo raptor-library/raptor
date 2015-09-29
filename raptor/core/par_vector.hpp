@@ -33,22 +33,10 @@ namespace raptor
             return pow(result, 1./p);
         }
 
-        void axpy(const ParVector & x, data_t alpha)
-        {
-            *local += *(x.local) * alpha;
-        }
-        void scale(data_t alpha)
-        {
-            *local *= alpha;
-        }
-        void set_const_value(data_t alpha)
-        {
-            *local = Vector::Constant(local_n, alpha);
-        }
-        void set_rand_values()
-        {
-            *local = Vector::Random(local_n);
-        }
+        void axpy(const ParVector & x, data_t alpha);
+        void scale(data_t alpha);
+        void set_const_value(data_t alpha);
+        void set_rand_values();
 
         Vector* local;
         int global_n;
