@@ -111,11 +111,13 @@ int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_,
     /*   specifier as in "%lg", "%lf", "%le", otherwise errors will occur */
     /*  (ANSI C X3.159-1989, Sec. 4.9.6.2, p. 136 lines 13-15)            */
 
+    char buf[sizeof(index_t)*2 + sizeof(double) + sizeof(char)];
     for (i=0; i<nz; i++)
     {
         index_t row, col;
         data_t value;
-        fscanf(f, "%d %d %lg\n", &row, &col, &value);
+        fgets(buf, sizeof(buf), f);
+        sscanf(buf, "%d %d %lg\n", &row, &col, &value);
 
         if (fabs(value) < zero_tol) continue;
 
