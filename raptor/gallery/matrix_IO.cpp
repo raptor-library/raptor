@@ -87,7 +87,7 @@ int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_,
  
  
  
-    if ( !(mm_is_real(matcode) && mm_is_matrix(matcode) &&
+    if ( mm_is_complex(matcode) || !(mm_is_matrix(matcode) &&
             mm_is_sparse(matcode)))
     {
         fprintf(stderr, "Sorry, this application does not support ");
@@ -111,23 +111,48 @@ int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_,
     /*   specifier as in "%lg", "%lf", "%le", otherwise errors will occur */
     /*  (ANSI C X3.159-1989, Sec. 4.9.6.2, p. 136 lines 13-15)            */
 
-    char buf[sizeof(index_t)*2 + sizeof(double) + sizeof(char)];
-    for (i=0; i<nz; i++)
+    if ( mm_is_binary(matcode) )
     {
-        index_t row, col;
-        data_t value;
-        fgets(buf, sizeof(buf), f);
-        sscanf(buf, "%d %d %lg\n", &row, &col, &value);
-
-        if (fabs(value) < zero_tol) continue;
-
-        if (row > start && row <= stop)
+        char buf[sizeof(index_t)*2 + sizeof(double) + sizeof(char)];
+        for (i=0; i<nz; i++)
         {
-            A->add_value(row-1, col-1, value, 1);
+            index_t row, col;
+            data_t value;
+            fgets(buf, sizeof(buf), f);
+            sscanf(buf, "%d %d\n", &row, &col);
+
+            value = 1.0;
+
+            if (row > start && row <= stop)
+            {
+                A->add_value(row-1, col-1, value, 1);
+            }
+            if (symmetric && col > start && col <= stop && col != row)
+            {
+                A->add_value(col-1, row-1, value, 1);
+            }
         }
-        if (symmetric && col > start && col <= stop && col != row)
+    }
+    else
+    {
+        char buf[sizeof(index_t)*2 + sizeof(double) + sizeof(char)];
+        for (i=0; i<nz; i++)
         {
-            A->add_value(col-1, row-1, value, 1);
+            index_t row, col;
+            data_t value;
+            fgets(buf, sizeof(buf), f);
+            sscanf(buf, "%d %d %lg\n", &row, &col, &value);
+
+            if (fabs(value) < zero_tol) continue;
+
+            if (row > start && row <= stop)
+            {
+                A->add_value(row-1, col-1, value, 1);
+            }
+            if (symmetric && col > start && col <= stop && col != row)
+            {
+                A->add_value(col-1, row-1, value, 1);
+            }
         }
     }
 
