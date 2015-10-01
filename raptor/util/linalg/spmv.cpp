@@ -29,9 +29,9 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
     index_t beta_one = (fabs(beta - 1.0) < zero_tol);
     index_t beta_neg_one = (fabs(beta + 1.0) < zero_tol);
 
-    index_t* ptr = A->indptr.data();
-    index_t* idx = A->indices.data();
-    data_t* values = A->data.data();
+    std::vector<index_t> ptr = A->indptr;
+    std::vector<index_t> idx = A->indices;
+    std::vector<data_t> values = A->data;
     index_t num_cols = A->n_cols;
     index_t num_rows = A->n_rows;
     index_t n_outer = A->n_outer;
@@ -60,7 +60,7 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
             data_t x_val = x_data[outer];
             for (index_t j = ptr_start; j < ptr_end; j++)
             {
-               index_t inner = idx[j];
+                index_t inner = idx[j];
                 y_data[inner] += values[j] * x_val;
             }
         }
@@ -164,9 +164,9 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
     index_t beta_one = (fabs(beta - 1.0) < zero_tol);
     index_t beta_neg_one = (fabs(beta + 1.0) < zero_tol);
 
-    index_t* ptr = A->indptr.data();
-    index_t* idx = A->indices.data();
-    data_t* values = A->data.data();
+    std::vector<index_t> ptr = A->indptr;
+    std::vector<index_t> idx = A->indices;
+    std::vector<data_t> values = A->data;
     index_t num_cols = A->n_cols;
     index_t num_rows = A->n_rows;
     index_t n_outer = A->n_outer;
@@ -300,9 +300,9 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
     index_t beta_one = (fabs(beta - 1.0) < zero_tol);
     index_t beta_neg_one = (fabs(beta + 1.0) < zero_tol);
 
-    index_t* ptr = A->indptr.data();
-    index_t* idx = A->indices.data();
-    data_t* values = A->data.data();
+    std::vector<index_t> ptr = A->indptr;
+    std::vector<index_t> idx = A->indices;
+    std::vector<data_t> values = A->data;
     index_t num_cols = A->n_cols;
     index_t num_rows = A->n_rows;
     index_t n_outer = A->n_outer;
@@ -550,9 +550,9 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
     index_t beta_one = (fabs(beta - 1.0) < zero_tol);
     index_t beta_neg_one = (fabs(beta + 1.0) < zero_tol);
 
-    index_t* ptr = A->indptr.data();
-    index_t* idx = A->indices.data();
-    data_t* values = A->data.data();
+    std::vector<index_t> ptr = A->indptr;
+    std::vector<index_t> idx = A->indices;
+    std::vector<data_t> values = A->data;
     index_t num_cols = A->n_cols;
     index_t num_rows = A->n_rows;
     index_t n_outer = A->n_outer;
@@ -942,7 +942,6 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
             begin += ctr;
         }
     }
-
 
     // Compute partial SpMV with local information
     sequential_spmv(A->diag, x->local, y->local, alpha, beta);
