@@ -66,7 +66,7 @@ void ParMatrix::create_partition(index_t global_rows, index_t global_cols, MPI_C
         MPI_Group group_world;
         MPI_Group group_mat;
         
-        index_t* active_ranks = new index_t[num_procs_active];
+        index_t active_ranks[num_procs_active];
         for (index_t i = 0; i < num_procs_active; i++)
         {
             active_ranks[i] = i;
@@ -116,9 +116,9 @@ void ParMatrix::finalize(index_t symmetric, format_t diag_f, format_t offd_f)
     {
         delete offd;
     }      
+
     diag->finalize(diag_f);
 
-    
     if (local_rows)
     {
         comm = new ParComm(offd, local_to_global, global_to_local, global_col_starts, comm_mat, symmetric);

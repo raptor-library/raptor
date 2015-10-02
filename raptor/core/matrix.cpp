@@ -191,6 +191,18 @@ void Matrix::convert(format_t _format)
         this->n_inner = this->n_outer;
         this->n_outer = n_tmp;
 
+        if (this->nnz == 0)
+        {
+            indptr.resize(n_outer+1);
+            for (index_t i = 0; i < n_outer + 1; i++)
+            {
+                indptr[i] = 0;
+            }
+            this->format = _format;
+            return;
+        }
+
+
         // Calculate number of nonzeros per outer idx
         index_t* ptr_nnz = new index_t[this->n_outer]();
         for (index_t i = 0; i < this->nnz; i++)
@@ -289,6 +301,17 @@ void Matrix::convert(format_t _format)
             this->n_inner = this->n_rows;
             this->indptr = this->col_idx;
             this->indices = this->row_idx;
+        }
+
+        if (nnz == 0)
+        {
+            indptr.resize(n_outer+1);
+            for (index_t i = 0; i < n_outer + 1; i++)
+            {
+                indptr[i] = 0;
+            }
+            this->format = _format;
+            return;
         }
 
         // Calculate the number of nonzeros per outer idx

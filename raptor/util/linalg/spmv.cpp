@@ -29,9 +29,9 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
     index_t beta_one = (fabs(beta - 1.0) < zero_tol);
     index_t beta_neg_one = (fabs(beta + 1.0) < zero_tol);
 
-    index_t* ptr = A->indptr.data();
-    index_t* idx = A->indices.data();
-    data_t* values = A->data.data();
+    std::vector<index_t> ptr = A->indptr;
+    std::vector<index_t> idx = A->indices;
+    std::vector<data_t> values = A->data;
     index_t num_cols = A->n_cols;
     index_t num_rows = A->n_rows;
     index_t n_outer = A->n_outer;
@@ -60,7 +60,7 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
             data_t x_val = x_data[outer];
             for (index_t j = ptr_start; j < ptr_end; j++)
             {
-               index_t inner = idx[j];
+                index_t inner = idx[j];
                 y_data[inner] += values[j] * x_val;
             }
         }
@@ -150,12 +150,6 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
  **************************************************************/
 void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, std::vector<index_t> outer_list)
 {
-
-    // Get MPI Information
-    index_t rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
     index_t alpha_zero = (fabs(alpha) < zero_tol);
     index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
     index_t alpha_neg_one = (fabs(alpha + 1.0) < zero_tol);
@@ -164,9 +158,9 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
     index_t beta_one = (fabs(beta - 1.0) < zero_tol);
     index_t beta_neg_one = (fabs(beta + 1.0) < zero_tol);
 
-    index_t* ptr = A->indptr.data();
-    index_t* idx = A->indices.data();
-    data_t* values = A->data.data();
+    std::vector<index_t> ptr = A->indptr;
+    std::vector<index_t> idx = A->indices;
+    std::vector<data_t> values = A->data;
     index_t num_cols = A->n_cols;
     index_t num_rows = A->n_rows;
     index_t n_outer = A->n_outer;
@@ -287,11 +281,6 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
  **************************************************************/
 void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
 {
-    // Get MPI Information
-    index_t rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
     index_t alpha_zero = (fabs(alpha) < zero_tol);
     index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
     index_t alpha_neg_one = (fabs(alpha + 1.0) < zero_tol);
@@ -300,9 +289,9 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
     index_t beta_one = (fabs(beta - 1.0) < zero_tol);
     index_t beta_neg_one = (fabs(beta + 1.0) < zero_tol);
 
-    index_t* ptr = A->indptr.data();
-    index_t* idx = A->indices.data();
-    data_t* values = A->data.data();
+    std::vector<index_t> ptr = A->indptr;
+    std::vector<index_t> idx = A->indices;
+    std::vector<data_t> values = A->data;
     index_t num_cols = A->n_cols;
     index_t num_rows = A->n_rows;
     index_t n_outer = A->n_outer;
@@ -537,11 +526,6 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
  **************************************************************/
 void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, std::vector<index_t> outer_list)
 {
-    // Get MPI Information
-    index_t rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
     index_t alpha_zero = (fabs(alpha) < zero_tol);
     index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
     index_t alpha_neg_one = (fabs(alpha + 1.0) < zero_tol);
@@ -550,9 +534,9 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
     index_t beta_one = (fabs(beta - 1.0) < zero_tol);
     index_t beta_neg_one = (fabs(beta + 1.0) < zero_tol);
 
-    index_t* ptr = A->indptr.data();
-    index_t* idx = A->indices.data();
-    data_t* values = A->data.data();
+    std::vector<index_t> ptr = A->indptr;
+    std::vector<index_t> idx = A->indices;
+    std::vector<data_t> values = A->data;
     index_t num_cols = A->n_cols;
     index_t num_rows = A->n_rows;
     index_t n_outer = A->n_outer;
@@ -943,7 +927,6 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
         }
     }
 
-
     // Compute partial SpMV with local information
     sequential_spmv(A->diag, x->local, y->local, alpha, beta);
 
@@ -1054,7 +1037,7 @@ void parallel_spmv_T(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, dat
 
     if (recv_procs.size())
     {
-	    recv_requests = new MPI_Request [recv_procs.size()];
+        recv_requests = new MPI_Request [recv_procs.size()];
         recv_buffer = new data_t [size_recvs];
 
         // Send and receive vector data
@@ -1073,8 +1056,8 @@ void parallel_spmv_T(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, dat
 
     if (send_procs.size())
     {
-	    // TODO we do not want to malloc these every time
-	    send_requests = new MPI_Request [send_procs.size()];
+        // TODO we do not want to malloc these every time
+        send_requests = new MPI_Request [send_procs.size()];
         send_buffer = new data_t [size_sends];
         offd_tmp = new Vector(tmp_size);
 

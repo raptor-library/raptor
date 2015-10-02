@@ -66,7 +66,14 @@ std::map<index_t, index_t> global_to_local);
         } 
     }
 
-    ~ParComm(){};
+    ~ParComm()
+    {
+        send_indices.clear();
+        recv_indices.clear();
+        send_procs.clear();
+        recv_procs.clear();
+        col_to_proc.clear();
+    };
 
     index_t size_sends;
     index_t size_recvs;
