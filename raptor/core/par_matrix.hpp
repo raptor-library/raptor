@@ -82,7 +82,9 @@ public:
             delete this->diag;
             delete this->comm;
         }
-        //delete[] this-> global_row_starts;
+        delete[] this-> global_col_starts;
+        local_to_global.clear();
+        global_to_local.clear();
     }
 
     index_t global_rows;
