@@ -150,12 +150,6 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
  **************************************************************/
 void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, std::vector<index_t> outer_list)
 {
-
-    // Get MPI Information
-    index_t rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
     index_t alpha_zero = (fabs(alpha) < zero_tol);
     index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
     index_t alpha_neg_one = (fabs(alpha + 1.0) < zero_tol);
@@ -287,11 +281,6 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
  **************************************************************/
 void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
 {
-    // Get MPI Information
-    index_t rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
     index_t alpha_zero = (fabs(alpha) < zero_tol);
     index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
     index_t alpha_neg_one = (fabs(alpha + 1.0) < zero_tol);
@@ -537,11 +526,6 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
  **************************************************************/
 void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, std::vector<index_t> outer_list)
 {
-    // Get MPI Information
-    index_t rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
     index_t alpha_zero = (fabs(alpha) < zero_tol);
     index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
     index_t alpha_neg_one = (fabs(alpha + 1.0) < zero_tol);
@@ -1053,7 +1037,7 @@ void parallel_spmv_T(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, dat
 
     if (recv_procs.size())
     {
-	    recv_requests = new MPI_Request [recv_procs.size()];
+        recv_requests = new MPI_Request [recv_procs.size()];
         recv_buffer = new data_t [size_recvs];
 
         // Send and receive vector data
@@ -1072,8 +1056,8 @@ void parallel_spmv_T(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, dat
 
     if (send_procs.size())
     {
-	    // TODO we do not want to malloc these every time
-	    send_requests = new MPI_Request [send_procs.size()];
+        // TODO we do not want to malloc these every time
+        send_requests = new MPI_Request [send_procs.size()];
         send_buffer = new data_t [size_sends];
         offd_tmp = new Vector(tmp_size);
 

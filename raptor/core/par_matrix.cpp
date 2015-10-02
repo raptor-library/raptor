@@ -117,7 +117,7 @@ void ParMatrix::finalize(index_t symmetric, format_t diag_f, format_t offd_f)
         delete offd;
     }
     diag->finalize(diag_f);
-    
+
     if (local_rows)
     {
         comm = new ParComm(offd, local_to_global, global_to_local, global_col_starts, comm_mat, symmetric);
