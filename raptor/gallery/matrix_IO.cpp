@@ -111,7 +111,6 @@ int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_,
     /*   specifier as in "%lg", "%lf", "%le", otherwise errors will occur */
     /*  (ANSI C X3.159-1989, Sec. 4.9.6.2, p. 136 lines 13-15)            */
 
-
     if (mm_is_integer(matcode) || mm_is_real(matcode))
     {
         char buf[sizeof(index_t)*2 + sizeof(double) + sizeof(char)];
@@ -120,6 +119,7 @@ int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_,
             index_t row, col;
             data_t value;
             fgets(buf, sizeof(buf), f);
+
             sscanf(buf, "%d %d %lg\n", &row, &col, &value);
 
             if (fabs(value) < zero_tol) continue;
@@ -142,6 +142,7 @@ int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_,
             index_t row, col;
             data_t value;
             fgets(buf, sizeof(buf), f);
+
             sscanf(buf, "%d %d\n", &row, &col);
 
             value = 1.0;

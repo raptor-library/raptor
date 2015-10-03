@@ -115,7 +115,8 @@ void ParMatrix::finalize(index_t symmetric, format_t diag_f, format_t offd_f)
     else
     {
         delete offd;
-    }
+    }      
+
     diag->finalize(diag_f);
 
     if (local_rows)
