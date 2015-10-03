@@ -36,7 +36,7 @@ using namespace raptor;
  ***** beta : data_t
  *****    Scalar to multiply original y by
  **************************************************************/
-void sequential_spmv(Matrix* A, Vector* x, Vector* y, double alpha, double beta);
+void sequential_spmv(Matrix* A, data_t* x, data_t* y, double alpha, double beta);
 
 /**************************************************************
  *****   Partial Sequential Matrix-Vector Multiplication
@@ -59,7 +59,7 @@ void sequential_spmv(Matrix* A, Vector* x, Vector* y, double alpha, double beta)
  ***** outer_list : std::vector<index_t>
  *****    Outer indices to multiply
  **************************************************************/
-void sequential_spmv_T(Matrix* A, Vector* x, Vector* y, double alpha, double beta);
+void sequential_spmv_T(Matrix* A, data_t* x, data_t* y, double alpha, double beta);
 
 /**************************************************************
  *****   Sequential Transpose Matrix-Vector Multiplication
@@ -80,7 +80,7 @@ void sequential_spmv_T(Matrix* A, Vector* x, Vector* y, double alpha, double bet
  ***** beta : data_t
  *****    Scalar to multiply original y by
  **************************************************************/
-void sequential_spmv(Matrix* A, Vector* x, Vector* y, double alpha, double beta, std::vector<index_t> col_list);
+void sequential_spmv(Matrix* A, data_t* x, data_t* y, double alpha, double beta, std::vector<index_t> col_list);
 
 /**************************************************************
  *****   Partial Sequential Transpose Matrix-Vector Multiplication
@@ -103,7 +103,7 @@ void sequential_spmv(Matrix* A, Vector* x, Vector* y, double alpha, double beta,
  ***** outer_list : std::vector<index_t>
  *****    Outer indices to multiply
  **************************************************************/
-void sequential_spmv_T(Matrix* A, Vector* x, Vector* y, double alpha, double beta, std::vector<index_t> col_list);
+void sequential_spmv_T(Matrix* A, data_t* x, data_t* y, double alpha, double beta, std::vector<index_t> col_list);
 
 /**************************************************************
  *****   Parallel Matrix-Vector Multiplication

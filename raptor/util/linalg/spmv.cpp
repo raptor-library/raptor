@@ -18,8 +18,8 @@
  *****    Scalar to multipy A*x by
  ***** beta : data_t
  *****    Scalar to multiply original y by
- **************************************************************/
-void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
+ ***************************************************************
+void seq_inner_spmv(Matrix* A, data_t* x, data_t* y, data_t alpha, data_t beta)
 {
     index_t alpha_zero = (fabs(alpha) < zero_tol);
     index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
@@ -40,9 +40,6 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
     index_t ptr_start;
     index_t ptr_end;
     data_t x_val;
-    data_t* y_data = y->data();
-    data_t* x_data = x->data();
-
 
     if (alpha_one)
     {
@@ -50,18 +47,18 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
         {
             for (index_t inner = 0; inner < n_inner; inner++)
             {
-                y_data[inner] = beta * y_data[inner];
+                y[inner] = beta * y[inner];
             }
         }
         for (index_t outer = 0; outer < n_outer; outer++)
         {
             ptr_start = ptr[outer];
             ptr_end = ptr[outer + 1];
-            data_t x_val = x_data[outer];
+            data_t x_val = x[outer];
             for (index_t j = ptr_start; j < ptr_end; j++)
             {
                 index_t inner = idx[j];
-                y_data[inner] += values[j] * x_val;
+                y[inner] += values[j] * x_val;
             }
         }
     }
@@ -71,18 +68,18 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
         {
             for (index_t inner = 0; inner < n_inner; inner++)
             {
-                y_data[inner] = beta * y_data[inner];
+                y[inner] = beta * y[inner];
             }
         }
         for (index_t outer = 0; outer < n_outer; outer++)
         {
             ptr_start = ptr[outer];
             ptr_end = ptr[outer + 1];
-            data_t x_val = x_data[outer];
+            data_t x_val = x[outer];
             for (index_t j = ptr_start; j < ptr_end; j++)
             {
                 index_t inner = idx[j];
-                y_data[inner] -= values[j] * x_val;
+                y[inner] -= values[j] * x_val;
             }
         }
     }
@@ -92,14 +89,14 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
         {
             for (index_t inner = 0; inner < n_inner; inner++)
             {
-                y_data[inner] = 0.0;
+                y[inner] = 0.0;
             }
         }
         else if (!beta_one)
         {
             for (index_t inner = 0; inner < n_inner; inner++)
             {
-                y_data[inner] = beta * y_data[inner];
+                y[inner] = beta * y[inner];
             }
         }
     }
@@ -109,18 +106,18 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
         {
             for (index_t inner = 0; inner < n_inner; inner++)
             {
-                y_data[inner] = beta * y_data[inner];
+                y[inner] = beta * y[inner];
             }
         }
         for (index_t outer = 0; outer < n_outer; outer++)
         {
             ptr_start = ptr[outer];
             ptr_end = ptr[outer + 1];
-            data_t x_val = x_data[outer];
+            data_t x_val = x[outer];
             for (index_t j = ptr_start; j < ptr_end; j++)
             {
                 index_t inner = idx[j];
-                y_data[inner] += alpha * values[j] * x_val;
+                y[inner] += alpha * values[j] * x_val;
             }
         }
     }
@@ -148,7 +145,7 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
  ***** outer_list : std::vector<index_t>
  *****    Outer indices to multiply
  **************************************************************/
-void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, std::vector<index_t> outer_list)
+void seq_inner_spmv(Matrix* A, data_t* x, data_t* y, data_t alpha, data_t beta, std::vector<index_t> outer_list)
 {
     index_t alpha_zero = (fabs(alpha) < zero_tol);
     index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
@@ -170,8 +167,6 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
     index_t ptr_start;
     index_t ptr_end;
     data_t x_val;
-    data_t* y_data = y->data();
-    data_t* x_data = x->data();
 
     if (alpha_one)
     {
@@ -179,7 +174,7 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
         {
             for (index_t inner = 0; inner < n_inner; inner++)
             {
-                y_data[inner] = beta * y_data[inner];
+                y[inner] = beta * y[inner];
             }
         }
         // Ax + y
@@ -188,12 +183,12 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
             index_t outer = outer_list[i];
             ptr_start = ptr[outer];
             ptr_end = ptr[outer + 1];
-            data_t x_val = x_data[i];
+            data_t x_val = x[i];
 
             for (index_t j = ptr_start; j < ptr_end; j++)
             {
                 index_t inner = idx[j];
-                y_data[inner] += values[j] * x_val;
+                y[inner] += values[j] * x_val;
             }
         }
     }
@@ -203,7 +198,7 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
         {
             for (index_t inner = 0; inner < n_inner; inner++)
             {
-                y_data[inner] = beta * y_data[inner];
+                y[inner] = beta * y[inner];
             }
         }
         for (index_t i = 0; i < outer_list.size(); i++)
@@ -211,11 +206,11 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
             index_t outer = outer_list[i];
             ptr_start = ptr[outer];
             ptr_end = ptr[outer + 1];
-            data_t x_val = x_data[i];
+            data_t x_val = x[i];
             for (index_t j = ptr_start; j < ptr_end; j++)
             {
                 index_t inner = idx[j];
-                y_data[inner] -= values[j] * x_val;
+                y[inner] -= values[j] * x_val;
             }
         }
     }
@@ -225,14 +220,14 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
         {
             for (index_t inner = 0; inner < n_inner; inner++)
             {
-                y_data[inner] = 0.0;
+                y[inner] = 0.0;
             }
         }
         else if (!beta_one)
         {
             for (index_t inner = 0; inner < n_inner; inner++)
             {
-                y_data[inner] = beta * y_data[inner];
+                y[inner] = beta * y[inner];
             }
         }
     }
@@ -242,7 +237,7 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
         {
             for (index_t inner = 0; inner < n_inner; inner++)
             {
-                y_data[inner] = beta * y_data[inner];
+                y[inner] = beta * y[inner];
             }
         }
         for (index_t i = 0; i < outer_list.size(); i++)
@@ -250,11 +245,11 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
             index_t outer = outer_list[i];
             ptr_start = ptr[outer];
             ptr_end = ptr[outer + 1];
-            data_t x_val = x_data[i];
+            data_t x_val = x[i];
             for (index_t j = ptr_start; j < ptr_end; j++)
             {
                 index_t inner = idx[j];
-                y_data[inner] += alpha * values[j] * x_val;
+                y[inner] += alpha * values[j] * x_val;
             }
         }
     }
@@ -279,7 +274,7 @@ void seq_inner_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
  ***** beta : data_t
  *****    Scalar to multiply original y by
  **************************************************************/
-void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
+void seq_outer_spmv(Matrix* A, data_t* x, data_t* y, data_t alpha, data_t beta)
 {
     index_t alpha_zero = (fabs(alpha) < zero_tol);
     index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
@@ -298,9 +293,6 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
     index_t n_inner = A->n_inner;
     index_t num_nonzeros = A->nnz;
 
-    data_t* y_data = y->data();
-    data_t* x_data = x->data();
-
     index_t ptr_start;
     index_t ptr_end;
 
@@ -317,7 +309,7 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
                 for (index_t j = ptr_start; j < ptr_end; j++)
                 {
                     index_t inner = idx[j];
-                    y_data[outer] += values[j] * x_data[inner];
+                    y[outer] += values[j] * x[inner];
                 }
             }
         }
@@ -331,17 +323,17 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
 
                 if (ptr_start < ptr_end)
                 {
-                    y_data[outer] = values[ptr_start] * x_data[idx[ptr_start]];
+                    y[outer] = values[ptr_start] * x[idx[ptr_start]];
                 }
                 else
                 {
-                    y_data[outer] = 0.0;
+                    y[outer] = 0.0;
                 }
 
                 for (index_t j = ptr_start + 1; j < ptr_end; j++)
                 {
                     index_t inner = idx[j];
-                    y_data[outer] += values[j] * x_data[inner];
+                    y[outer] += values[j] * x[inner];
                 }
             }
         }
@@ -353,12 +345,12 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
                 ptr_start = ptr[outer];
                 ptr_end = ptr[outer+1];
 
-                y_data[outer] *= beta;
+                y[outer] *= beta;
 
                 for (index_t j = ptr_start + 1; j < ptr_end; j++)
                 {
                     index_t inner = idx[j];
-                    y_data[outer] += values[j] * x_data[inner];
+                    y[outer] += values[j] * x[inner];
                 }
             }
         }
@@ -376,7 +368,7 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
                 for (index_t j = ptr_start; j < ptr_end; j++)
                 {
                     index_t inner = idx[j];
-                    y_data[outer] -= values[j] * x_data[inner];
+                    y[outer] -= values[j] * x[inner];
                 }
             }
         }
@@ -390,17 +382,17 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
 
                 if (ptr_start < ptr_end)
                 {
-                    y_data[outer] = - (values[ptr_start] * x_data[idx[ptr_start]]);
+                    y[outer] = - (values[ptr_start] * x[idx[ptr_start]]);
                 }
                 else
                 {
-                    y_data[outer] = 0.0;
+                    y[outer] = 0.0;
                 }
 
                 for (index_t j = ptr_start + 1; j < ptr_end; j++)
                 {
                     index_t inner = idx[j];
-                    y_data[outer] -= values[j] * x_data[inner];
+                    y[outer] -= values[j] * x[inner];
                 }
             }
         }
@@ -412,12 +404,12 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
                 ptr_start = ptr[outer];
                 ptr_end = ptr[outer+1];
 
-                y_data[outer] *= beta;
+                y[outer] *= beta;
 
                 for (index_t j = ptr_start + 1; j < ptr_end; j++)
                 {
                     index_t inner = idx[j];
-                    y_data[outer] -= values[j] * x_data[inner];
+                    y[outer] -= values[j] * x[inner];
                 }
             }
         }
@@ -429,7 +421,7 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
             //return 0
             for (index_t outer = 0; outer < n_outer; outer++)
             {
-                y_data[outer] = 0.0;
+                y[outer] = 0.0;
             }
         }
         else if (!beta_one)
@@ -437,7 +429,7 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
             //beta * y
             for (index_t outer = 0; outer < n_outer; outer++)
             {
-                y_data[outer] *= beta;
+                y[outer] *= beta;
             }
         }
     }
@@ -454,7 +446,7 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
                 for (index_t j = ptr_start; j < ptr_end; j++)
                 {
                     index_t inner = idx[j];
-                    y_data[outer] += alpha * values[j] * x_data[inner];
+                    y[outer] += alpha * values[j] * x[inner];
                 }
             }
         }
@@ -468,17 +460,17 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
 
                 if (ptr_start < ptr_end)
                 {
-                    y_data[outer] = alpha * values[ptr_start] * x_data[idx[ptr_start]];
+                    y[outer] = alpha * values[ptr_start] * x[idx[ptr_start]];
                 }
                 else
                 {
-                    y_data[outer] = 0.0;
+                    y[outer] = 0.0;
                 }
 
                 for (index_t j = ptr_start + 1; j < ptr_end; j++)
                 {
                     index_t inner = idx[j];
-                    y_data[outer] += alpha * values[j] * x_data[inner];
+                    y[outer] += alpha * values[j] * x[inner];
                 }
             }
         }
@@ -490,12 +482,12 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
                 ptr_start = ptr[outer];
                 ptr_end = ptr[outer+1];
 
-                y_data[outer] *= beta;
+                y[outer] *= beta;
 
                 for (index_t j = ptr_start + 1; j < ptr_end; j++)
                 {
                     index_t inner = idx[j];
-                    y_data[outer] += alpha * values[j] * x_data[inner];
+                    y[outer] += alpha * values[j] * x[inner];
                 }
             }
         }
@@ -524,7 +516,7 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
  ***** outer_list : std::vector<index_t>
  *****    Outer indices to multiply
  **************************************************************/
-void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, std::vector<index_t> outer_list)
+void seq_outer_spmv(Matrix* A, data_t* x, data_t* y, data_t alpha, data_t beta, std::vector<index_t> outer_list)
 {
     index_t alpha_zero = (fabs(alpha) < zero_tol);
     index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
@@ -543,9 +535,6 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
     index_t n_inner = A->n_inner;
     index_t num_nonzeros = A->nnz;
 
-    data_t* y_data = y->data();
-    data_t* x_data = x->data();
-
     index_t ptr_start;
     index_t ptr_end;
 
@@ -563,7 +552,7 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
                 for (index_t j = ptr_start; j < ptr_end; j++)
                 {
                     index_t inner = idx[j];
-                    y_data[i] += values[j] * x_data[inner];
+                    y[i] += values[j] * x[inner];
                 }
             }
         }
@@ -576,12 +565,12 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
                 ptr_start = ptr[outer];
                 ptr_end = ptr[outer+1];
 
-                y_data[i] *= beta;
+                y[i] *= beta;
 
                 for (index_t j = ptr_start; j < ptr_end; j++)
                 {
                     index_t inner = idx[j];
-                    y_data[i] += values[j] * x_data[inner];
+                    y[i] += values[j] * x[inner];
                 }
             }
         }
@@ -600,7 +589,7 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
                 for (index_t j = ptr_start; j < ptr_end; j++)
                 {
                     index_t inner = idx[j];
-                    y_data[i] -= values[j] * x_data[inner];
+                    y[i] -= values[j] * x[inner];
                 }
             }
         }
@@ -613,12 +602,12 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
                 ptr_start = ptr[outer];
                 ptr_end = ptr[outer+1];
 
-                y_data[i] *= beta;
+                y[i] *= beta;
 
                 for (index_t j = ptr_start; j < ptr_end; j++)
                 {
                     index_t inner = idx[j];
-                    y_data[i] -= values[j] * x_data[inner];
+                    y[i] -= values[j] * x[inner];
                 }
             }
         }
@@ -630,7 +619,7 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
             //return 0
             for (index_t i = 0; i < outer_list.size(); i++)
             {
-                y_data[i] = 0.0;
+                y[i] = 0.0;
             }
         }
         else if (!beta_one)
@@ -638,7 +627,7 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
             //beta * y
             for (index_t i = 0; i < outer_list.size(); i++)
             {
-                y_data[i] *= beta;
+                y[i] *= beta;
             }
         }
     }
@@ -656,7 +645,7 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
                 for (index_t j = ptr_start; j < ptr_end; j++)
                 {
                     index_t inner = idx[j];
-                    y_data[i] += alpha * values[j] * x_data[inner];
+                    y[i] += alpha * values[j] * x[inner];
                 }
             }
         }
@@ -669,12 +658,12 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
                 ptr_start = ptr[outer];
                 ptr_end = ptr[outer+1];
 
-                y_data[i] *= beta;
+                y[i] *= beta;
 
                 for (index_t j = ptr_start; j < ptr_end; j++)
                 {
                     index_t inner = idx[j];
-                    y_data[i] += alpha * values[j] * x_data[inner];
+                    y[i] += alpha * values[j] * x[inner];
                 }
             }
         }
@@ -700,7 +689,7 @@ void seq_outer_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, 
  ***** beta : data_t
  *****    Scalar to multiply original y by
  **************************************************************/
-void sequential_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
+void sequential_spmv(Matrix* A, data_t* x, data_t* y, data_t alpha, data_t beta)
 {
     if (A->format == CSR)
     {
@@ -733,7 +722,7 @@ void sequential_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
  ***** outer_list : std::vector<index_t>
  *****    Outer indices to multiply
  **************************************************************/
-void sequential_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, std::vector<index_t> col_list)
+void sequential_spmv(Matrix* A, data_t* x, data_t* y, data_t alpha, data_t beta, std::vector<index_t> col_list)
 {
     if (A->format == CSR)
     {
@@ -764,7 +753,7 @@ void sequential_spmv(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta,
  ***** beta : data_t
  *****    Scalar to multiply original y by
  **************************************************************/
-void sequential_spmv_T(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta)
+void sequential_spmv_T(Matrix* A, data_t* x, data_t* y, data_t alpha, data_t beta)
 {
     if (A->format == CSR)
     {
@@ -797,7 +786,7 @@ void sequential_spmv_T(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t bet
  ***** outer_list : std::vector<index_t>
  *****    Outer indices to multiply
  **************************************************************/
-void sequential_spmv_T(Matrix* A, Vector* x, Vector* y, data_t alpha, data_t beta, std::vector<index_t> col_list)
+void sequential_spmv_T(Matrix* A, data_t* x, data_t* y, data_t alpha, data_t beta, std::vector<index_t> col_list)
 {
     if (A->format == CSR)
     {
@@ -928,23 +917,25 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     }
 
     // Compute partial SpMV with local information
-    sequential_spmv(A->diag, x->local, y->local, alpha, beta);
+    sequential_spmv(A->diag, x->local->data(), y->local->data(), alpha, beta);
 
     // Once data is available, add contribution of off-diagonals
     // TODO Deal with new entries as they become available
     // TODO Add an error check on the status
-    // TODO Using MPI_STATUS_IGNORE (delete[] recvStatus was causing a segfault)
-    if (recv_procs.size())
+    if (num_recvs)
     {
         if (async)
         {
             for (index_t i = 0; i < recv_procs.size(); i++)
             {
-                index_t recv_idx = 0;
-                MPI_Waitany(recv_procs.size(), recv_requests, &recv_idx, MPI_STATUS_IGNORE);
-                index_t proc = recv_procs[recv_idx];
-                Vector offd_tmp = Eigen::Map<Vector>(&recv_buffer[recv_proc_starts[proc]], recv_indices[proc].size());
-                sequential_spmv(A->offd, &offd_tmp, y->local, alpha, 1.0, recv_indices[proc]);
+                index_t n_recvd;
+                index_t recv_idx[num_recvs];
+                MPI_Waitsome(num_recvs, recv_requests, &n_recvd, recv_idx, MPI_STATUS_IGNORE);
+                for (index_t j = 0; j < n_recvd; j++)
+                {
+                    index_t proc = recv_procs[recv_idx[j]];
+                    sequential_spmv(A->offd, &recv_buffer[recv_proc_starts[proc]], y->local->data(), alpha, 1.0, recv_indices[proc]);
+                }
             }
         }
         else
@@ -953,8 +944,7 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
             MPI_Waitall(recv_procs.size(), recv_requests, MPI_STATUS_IGNORE);
 
             // Add received data to Vector
-            Vector offd_tmp = Eigen::Map<Vector>(recv_buffer, tmp_size);
-            sequential_spmv(A->offd, &offd_tmp, y->local, alpha, 1.0); 
+            sequential_spmv(A->offd, recv_buffer, y->local->data(), alpha, 1.0); 
 
         }
 
@@ -962,7 +952,7 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
         delete[] recv_buffer;
     }
 
-    if (send_procs.size())
+    if (num_sends)
     {
         // Wait for all sends to finish
         // TODO Add an error check on the status
@@ -1071,8 +1061,8 @@ void parallel_spmv_T(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, dat
             {
                 std::vector<index_t> tmp_indices = send_indices[proc];
                 offd_tmp->resize(send_indices[proc].size());
-                sequential_spmv_T(A->offd, x->local, offd_tmp, alpha, 0.0, send_indices[proc]);
                 local_data = offd_tmp->data();
+                sequential_spmv_T(A->offd, x->local->data(), local_data, alpha, 0.0, send_indices[proc]);
 
                 ctr = 0;
                 for (index_t i = 0; i < tmp_indices.size(); i++)
@@ -1086,8 +1076,8 @@ void parallel_spmv_T(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, dat
         }
         else
         {
-            sequential_spmv_T(A->offd, x->local, offd_tmp, alpha, 0.0);
             local_data = offd_tmp->data();
+            sequential_spmv_T(A->offd, x->local->data(), local_data, alpha, 0.0);
 
 	        for (auto proc : send_procs)
             {
@@ -1104,7 +1094,7 @@ void parallel_spmv_T(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, dat
         delete offd_tmp;
     }
 
-    sequential_spmv_T(A->diag, x->local, y->local, alpha, beta);
+    sequential_spmv_T(A->diag, x->local->data(), y->local->data(), alpha, beta);
 
     if (recv_procs.size())
     {
