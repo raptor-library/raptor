@@ -18,7 +18,7 @@
  *****    Scalar to multipy A*x by
  ***** beta : data_t
  *****    Scalar to multiply original y by
- ***************************************************************
+ **************************************************************/
 void seq_inner_spmv(Matrix* A, data_t* x, data_t* y, data_t alpha, data_t beta)
 {
     index_t alpha_zero = (fabs(alpha) < zero_tol);
@@ -1117,7 +1117,7 @@ void parallel_spmv_T(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, dat
         else
         {
             // Wait for all receives to finish
-	        MPI_Waitall(recv_procs.size(), recv_requests, MPI_STATUS_IGNORE);
+            MPI_Waitall(recv_procs.size(), recv_requests, MPI_STATUS_IGNORE);
 
             for (auto proc : recv_procs)
             {
@@ -1141,7 +1141,7 @@ void parallel_spmv_T(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, dat
 	    MPI_Waitall(send_procs.size(), send_requests, MPI_STATUS_IGNORE);
 
         // Delete MPI_Requests
-	    delete[] send_requests; 
+        delete[] send_requests; 
         delete[] send_buffer;
     } 
 }
