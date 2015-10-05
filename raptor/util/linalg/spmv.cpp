@@ -155,8 +155,6 @@ void seq_inner_spmv(Matrix* A, data_t* x, data_t* y, data_t alpha, data_t beta, 
     index_t beta_one = (fabs(beta - 1.0) < zero_tol);
     index_t beta_neg_one = (fabs(beta + 1.0) < zero_tol);
 
-    printf("AlphaOne = %d\tBetaOne = %d\n", alpha_one, beta_one);
-
     std::vector<index_t> ptr = A->indptr;
     std::vector<index_t> idx = A->indices;
     std::vector<data_t> values = A->data;
@@ -823,10 +821,13 @@ void sequential_spmv_T(Matrix* A, data_t* x, data_t* y, data_t alpha, data_t bet
  **************************************************************/
 void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta, index_t async)
 {
+    if (A->local_rows == 0) return;
+
     // Get MPI Information
+    MPI_Comm comm_mat = A->comm_mat;
     index_t rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    MPI_Comm_rank(comm_mat, &rank);
+    MPI_Comm_size(comm_mat, &num_procs);
 
     // TODO must enforce that y and x are not aliased, or this will NOT work
     //    or we could use blocking sends as long as we post the iRecvs first
@@ -886,7 +887,7 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
         {
             index_t num_recv = recv_indices[proc].size();
             recv_proc_starts[proc] = begin;
-            MPI_Irecv(&recv_buffer[begin], num_recv, MPI_DOUBLE, proc, 0, MPI_COMM_WORLD, &(recv_requests[request_ctr++]));
+            MPI_Irecv(&recv_buffer[begin], num_recv, MPI_DOUBLE, proc, 0, comm_mat, &(recv_requests[request_ctr++]));
             begin += num_recv;
         }
     
@@ -913,7 +914,7 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
                 send_buffer[begin + ctr] = local_data[send_idx];
                 ctr++;
             }
-            MPI_Isend(&send_buffer[begin], ctr, MPI_DOUBLE, proc, 0, MPI_COMM_WORLD, &(send_requests[request_ctr++]));
+            MPI_Isend(&send_buffer[begin], ctr, MPI_DOUBLE, proc, 0, comm_mat, &(send_requests[request_ctr++]));
             begin += ctr;
         }
     }
@@ -928,10 +929,10 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     {
         if (async)
         {
+            index_t recv_idx[num_recvs];
             for (index_t i = 0; i < recv_procs.size();)
             {
                 index_t n_recvd;
-                index_t recv_idx[num_recvs];
                 MPI_Waitsome(num_recvs, recv_requests, &n_recvd, recv_idx, MPI_STATUS_IGNORE);
                 for (index_t j = 0; j < n_recvd; j++)
                 {
@@ -990,10 +991,8 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
  **************************************************************/
 void parallel_spmv_T(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta, index_t async)
 {
-    // Get MPI Information
-    index_t rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    if (A->local_rows == 0) return;
+
 
     // Declare communication variables
 	MPI_Request*                            send_requests;
@@ -1015,6 +1014,14 @@ void parallel_spmv_T(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, dat
     std::vector<index_t>                    recv_procs;
     std::map<index_t, std::vector<index_t>> send_indices;
     std::map<index_t, std::vector<index_t>> recv_indices;
+    MPI_Comm                               comm_mat;
+    
+
+    // Get MPI Information
+    comm_mat = A->comm_mat;
+    index_t rank, num_procs;
+    MPI_Comm_rank(comm_mat, &rank);
+    MPI_Comm_size(comm_mat, &num_procs);
 
     // Initialize communication variables
     comm          = A->comm;
@@ -1041,7 +1048,7 @@ void parallel_spmv_T(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, dat
         {
             index_t num_recv = recv_indices[proc].size();
             recv_proc_starts[proc] = begin;
-            MPI_Irecv(&recv_buffer[begin], num_recv, MPI_DOUBLE, proc, msg_tag, MPI_COMM_WORLD, &(recv_requests[request_ctr++]));
+            MPI_Irecv(&recv_buffer[begin], num_recv, MPI_DOUBLE, proc, msg_tag, comm_mat, &(recv_requests[request_ctr++]));
             begin += num_recv;
         }   
     }
@@ -1073,7 +1080,7 @@ void parallel_spmv_T(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, dat
                     send_buffer[begin + ctr] = local_data[i];
                     ctr++;
                 }
-                MPI_Isend(&send_buffer[begin], ctr, MPI_DOUBLE, proc, msg_tag, MPI_COMM_WORLD, &(send_requests[request_ctr++]));
+                MPI_Isend(&send_buffer[begin], ctr, MPI_DOUBLE, proc, msg_tag, comm_mat, &(send_requests[request_ctr++]));
                 begin += ctr;
             }
         }
@@ -1090,7 +1097,7 @@ void parallel_spmv_T(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, dat
                     send_buffer[begin + ctr] = local_data[send_idx];
                     ctr++;
                 }
-                MPI_Isend(&send_buffer[begin], ctr, MPI_DOUBLE, proc, msg_tag, MPI_COMM_WORLD, &(send_requests[request_ctr++]));
+                MPI_Isend(&send_buffer[begin], ctr, MPI_DOUBLE, proc, msg_tag, comm_mat, &(send_requests[request_ctr++]));
                 begin += ctr;
             }
         }
