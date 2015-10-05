@@ -155,6 +155,8 @@ void seq_inner_spmv(Matrix* A, data_t* x, data_t* y, data_t alpha, data_t beta, 
     index_t beta_one = (fabs(beta - 1.0) < zero_tol);
     index_t beta_neg_one = (fabs(beta + 1.0) < zero_tol);
 
+    printf("AlphaOne = %d\tBetaOne = %d\n", alpha_one, beta_one);
+
     std::vector<index_t> ptr = A->indptr;
     std::vector<index_t> idx = A->indices;
     std::vector<data_t> values = A->data;
@@ -926,7 +928,7 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
     {
         if (async)
         {
-            for (index_t i = 0; i < recv_procs.size(); i++)
+            for (index_t i = 0; i < recv_procs.size();)
             {
                 index_t n_recvd;
                 index_t recv_idx[num_recvs];
@@ -936,6 +938,7 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
                     index_t proc = recv_procs[recv_idx[j]];
                     sequential_spmv(A->offd, &recv_buffer[recv_proc_starts[proc]], y->local->data(), alpha, 1.0, recv_indices[proc]);
                 }
+                i += n_recvd;
             }
         }
         else
