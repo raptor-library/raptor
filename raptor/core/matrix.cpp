@@ -3,6 +3,8 @@
 
 #include "matrix.hpp"
 
+using namespace raptor;
+
 /**************************************************************
  *****   Matrix Class Constructor
  **************************************************************
@@ -38,7 +40,6 @@ Matrix::Matrix()
  **************************************************************/
 Matrix::~Matrix()
 {
-
 }
 
 /**************************************************************
@@ -161,6 +162,26 @@ void Matrix::finalize(format_t _format)
     }
 
     else convert(_format);
+}
+
+/**************************************************************
+ *****   Matrix Finalize
+ **************************************************************
+ ***** Compresses matrix, sorts the entries, removes any zero
+ ***** values, and combines any entries at the same location
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** _format : format_t
+ *****    Format to convert Matrix to
+ **************************************************************/
+void Matrix::finalize(format_t _format, std::map<index_t, index_t>& to_local)
+{
+    for (index_t i = 0; i < nnz; i++)
+    {
+        col_idx[i] = to_local[col_idx[i]];
+    }
+    finalize(_format);
 }
 
 /**************************************************************

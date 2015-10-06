@@ -11,20 +11,21 @@ using Eigen::VectorXd;
 #include "matrix.hpp"
 #include <map>
 
+namespace raptor
+{
 class ParComm
 {
 public:
-    void init_col_to_proc(MPI_Comm comm_mat, index_t num_cols, std::map<index_t, index_t> global_to_local,  index_t* global_col_starts);
-    void init_comm_recvs(MPI_Comm comm_mat, index_t num_cols,   
-std::map<index_t, index_t> global_to_local);
-    void init_comm_sends_sym_csr(MPI_Comm comm_mat, Matrix* offd, std::map<index_t, index_t> global_to_local);
-    void init_comm_sends_sym_csc(MPI_Comm comm_mat, Matrix* offd, std::map<index_t, index_t> global_to_local);
-    void init_comm_sends_unsym(MPI_Comm comm_mat, std::vector<index_t> map_to_global, index_t* global_col_starts);
+    void init_col_to_proc(const MPI_Comm comm_mat, const index_t num_cols, std::map<index_t, index_t>& global_to_local, const index_t* global_col_starts);
+    void init_comm_recvs(const MPI_Comm comm_mat, const index_t num_cols, std::map<index_t, index_t>& global_to_local);
+    void init_comm_sends_sym_csr(const MPI_Comm comm_mat, const Matrix* offd, std::map<index_t, index_t>& global_to_local);
+    void init_comm_sends_sym_csc(const MPI_Comm comm_mat, const Matrix* offd, std::map<index_t, index_t>& global_to_local);
+    void init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<index_t>& map_to_global, const index_t* global_col_starts);
 
     // TODO
     ParComm();
 
-    ParComm(Matrix* offd, std::vector<index_t> map_to_global, std::map<index_t, index_t> global_to_local, index_t* global_col_starts, MPI_Comm comm_mat, index_t symmetric = 1)
+    ParComm(const Matrix* offd, const std::vector<index_t>& map_to_global, std::map<index_t, index_t>& global_to_local, const index_t* global_col_starts, const MPI_Comm comm_mat, const index_t symmetric = 1)
     {
         // Get MPI Information
         index_t rank, num_procs;
@@ -83,4 +84,5 @@ std::map<index_t, index_t> global_to_local);
     std::vector<index_t> recv_procs;
     std::vector<index_t> col_to_proc;
 };
+}
 #endif

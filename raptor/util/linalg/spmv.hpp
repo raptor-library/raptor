@@ -14,9 +14,6 @@
 #include "core/par_vector.hpp"
 using namespace raptor;
 
-//void sequentialSPMV(CSRMatrix* A, Vector* x, Vector* y, double alpha, double beta);
-//void parallelSPMV(ParMatrix* A, ParVector* x, ParVector* y, double alpha, double beta);
-
 /**************************************************************
  *****   Sequential Matrix-Vector Multiplication
  **************************************************************
@@ -36,30 +33,8 @@ using namespace raptor;
  ***** beta : data_t
  *****    Scalar to multiply original y by
  **************************************************************/
-void sequential_spmv(Matrix* A, data_t* x, data_t* y, double alpha, double beta);
-
-/**************************************************************
- *****   Partial Sequential Matrix-Vector Multiplication
- **************************************************************
- ***** Performs partial matrix-vector multiplication, calling
- ***** method appropriate for matrix format
- *****
- ***** Parameters
- ***** -------------
- ***** A : Matrix*
- *****    Matrix to be multipled
- ***** x : Vector*
- *****    Vector to be multiplied
- ***** y : Vector*
- *****    Vector result is added to
- ***** alpha : data_t
- *****    Scalar to multipy A*x by
- ***** beta : data_t
- *****    Scalar to multiply original y by
- ***** outer_list : std::vector<index_t>
- *****    Outer indices to multiply
- **************************************************************/
-void sequential_spmv_T(Matrix* A, data_t* x, data_t* y, double alpha, double beta);
+void sequential_spmv(Matrix* A, const data_t* x, data_t* y, const data_t alpha,
+    const data_t beta, index_t outer_start = 0, index_t n_outer = 0);
 
 /**************************************************************
  *****   Sequential Transpose Matrix-Vector Multiplication
@@ -80,30 +55,8 @@ void sequential_spmv_T(Matrix* A, data_t* x, data_t* y, double alpha, double bet
  ***** beta : data_t
  *****    Scalar to multiply original y by
  **************************************************************/
-void sequential_spmv(Matrix* A, data_t* x, data_t* y, double alpha, double beta, std::vector<index_t> col_list);
-
-/**************************************************************
- *****   Partial Sequential Transpose Matrix-Vector Multiplication
- **************************************************************
- ***** Performs partial transpose matrix-vector multiplication,
- ***** calling method appropriate for matrix format
- *****
- ***** Parameters
- ***** -------------
- ***** A : Matrix*
- *****    Matrix to be multipled
- ***** x : Vector*
- *****    Vector to be multiplied
- ***** y : Vector*
- *****    Vector result is added to
- ***** alpha : data_t
- *****    Scalar to multipy A*x by
- ***** beta : data_t
- *****    Scalar to multiply original y by
- ***** outer_list : std::vector<index_t>
- *****    Outer indices to multiply
- **************************************************************/
-void sequential_spmv_T(Matrix* A, data_t* x, data_t* y, double alpha, double beta, std::vector<index_t> col_list);
+void sequential_spmv_T(Matrix* A, const data_t* x, data_t* y, const data_t alpha,
+    const data_t beta, index_t outer_start = 0, index_t outer_end = 0);
 
 /**************************************************************
  *****   Parallel Matrix-Vector Multiplication
@@ -126,7 +79,7 @@ void sequential_spmv_T(Matrix* A, data_t* x, data_t* y, double alpha, double bet
  ***** async : index_t
  *****    Boolean flag for updating SpMV asynchronously
  **************************************************************/
-void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta, index_t async = 0);
+void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const data_t alpha, const data_t beta, const index_t async = 0);
 
 /**************************************************************
  *****   Parallel Transpose Matrix-Vector Multiplication
@@ -149,6 +102,6 @@ void parallel_spmv(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_
  ***** async : index_t
  *****    Boolean flag for updating SpMV asynchronously
  **************************************************************/
-void parallel_spmv_T(ParMatrix* A, ParVector* x, ParVector* y, data_t alpha, data_t beta, index_t async = 0);
+void parallel_spmv_T(const ParMatrix* A, const ParVector* x, ParVector* y, const data_t alpha, const data_t beta, const index_t async = 0);
 
 #endif

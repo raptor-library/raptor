@@ -9,11 +9,11 @@
 //TODO -- should be std::numeric_limits<data_t>::epsilon ...
 #define zero_tol DBL_EPSILON
 
-//namespace raptor
-//{
+namespace raptor
+{
     using data_t = double;
     using index_t = int;
     enum format_t {CSR, CSC, COO};
-//}
+}
 
 #endif

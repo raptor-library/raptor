@@ -11,6 +11,9 @@ using Eigen::VectorXd;
 #include "core/par_matrix.hpp"
 #include "core/types.hpp"
 
+#include "diffusion.hpp"
+using namespace raptor;
+
 // diffusion_stencil_2d
 //
 // Generate a diffusion stencil

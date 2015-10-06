@@ -13,6 +13,8 @@
 #include "core/matrix.hpp"
 #include "core/par_vector.hpp"
 
+using namespace raptor;
+
 // Structure of a COO Element
 struct Element
 {

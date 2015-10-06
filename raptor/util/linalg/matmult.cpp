@@ -42,7 +42,7 @@ void create_mpi_type(MPI_Datatype* coo_type)
  ***** index_t :
  *****    Global index of i
  **************************************************************/
-index_t map_to_global(index_t i, std::vector<index_t> map)
+index_t map_to_global(index_t i, std::vector<index_t>& map)
 {
     return map[i];
 }
@@ -172,7 +172,7 @@ data_t dot(index_t size_u, index_t size_v, index_t* local_u,
  *****    Index of first element in next row of B
  **************************************************************/
 template <typename AType, typename BType>
-data_t dot(Matrix* A, Matrix* B, AType map_A, BType map_B, 
+data_t dot(Matrix* A, Matrix* B, AType& map_A, BType& map_B, 
         index_t A_start, index_t A_end,
         index_t B_start, index_t B_end)
 {

@@ -2,6 +2,8 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "par_matrix.hpp"
 
+using namespace raptor;
+
 void ParMatrix::reserve(index_t offd_cols, index_t nnz_per_row, index_t nnz_per_col)
 {
     offd->resize(local_rows, offd_cols);
@@ -97,7 +99,7 @@ void ParMatrix::add_value(index_t row, index_t global_col, data_t value, index_t
             global_to_local[global_col] = offd_num_cols++;
             local_to_global.push_back(global_col);
         }
-        offd->add_value(row, global_to_local[global_col], value);
+        offd->add_value(row, global_col, value);
     }
     else // Diagonal Block
     {
@@ -107,10 +109,20 @@ void ParMatrix::add_value(index_t row, index_t global_col, data_t value, index_t
 
 void ParMatrix::finalize(index_t symmetric, format_t diag_f, format_t offd_f)
 {
+    if (offd_num_cols)
+    {
+        std::sort(local_to_global.begin(), local_to_global.end());
+        for (index_t i = 0; i < local_to_global.size(); i++)
+        {
+            index_t global_col = local_to_global[i];
+            global_to_local[global_col] = i;
+        }
+    }
+
     if (offd->nnz)
     {
         offd->resize(local_rows, offd_num_cols);
-        offd->finalize(offd_f);
+        offd->finalize(offd_f, global_to_local);
     }
     else
     {

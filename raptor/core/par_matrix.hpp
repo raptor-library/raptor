@@ -11,6 +11,8 @@
 #include "core/par_comm.hpp"
 #include "core/types.hpp"
 
+namespace raptor
+{
 class ParMatrix
 {
 public:
@@ -131,4 +133,5 @@ public:
     index_t* global_col_starts;
     MPI_Comm comm_mat;
 };
+}
 #endif
