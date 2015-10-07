@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
     if (rank == 0)
         printf("Avg time for Parallel SpMV: %g\n", t0/num_procs);
     
-    double norm = b->norm<2>();
+    double norm = b->norm(2);
     if (rank == 0) printf("2Norm = %2.3e\n", norm);
 
     MPI_Finalize();

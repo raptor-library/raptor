@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
 
 	v.set_const_value((rank+1)*.5);
 
-	auto norm = v.norm<2>();
+	auto norm = v.norm(2);
 
 	if (rank == 0) {
 		std::cout << "Norm: " << norm << std::endl;

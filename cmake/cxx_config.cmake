@@ -7,6 +7,8 @@ else()
 endif()
 
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+set(CMAKE_C_COMPILER "tau_cc.sh")
+set(CMAKE_CXX_COMPILER "tau_cxx.sh")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -fivopts -flax-vector-conversions -funsafe-math-optimizations -Wall -dynamic")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -Wall -g")
 

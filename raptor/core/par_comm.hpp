@@ -5,8 +5,6 @@
 
 #include <mpi.h>
 #include <math.h>
-#include <Eigen/Dense>
-using Eigen::VectorXd;
 
 #include "matrix.hpp"
 #include <map>

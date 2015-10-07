@@ -5,7 +5,6 @@
 
 #include <mpi.h>
 #include <math.h>
-#include <Eigen/Dense>
 
 #include "core/matrix.hpp"
 #include "core/par_comm.hpp"

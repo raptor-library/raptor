@@ -7,8 +7,6 @@
 #include <float.h>
 #include <cmath>
 #include <stdlib.h>
-#include <Eigen/Dense>
-using Eigen::VectorXd;
 
 #include "core/par_matrix.hpp"
 #include "core/types.hpp"

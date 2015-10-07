@@ -3,10 +3,6 @@
 
 #include <mpi.h>
 #include <float.h>
-#include <Eigen/Sparse>
-#include <Eigen/Dense>
-#include <Eigen/Core>
-//using Eigen::VectorXd;
 
 #include "core/vector.hpp"
 #include "core/par_matrix.hpp"

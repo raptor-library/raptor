@@ -33,12 +33,12 @@ namespace raptor
             }
         }
 
-        template<int p> data_t norm() const
+        data_t norm(index_t p)
         {
             data_t result;
             if (local_n)
             {
-                result = local->lpNorm<p>();
+                result = local->norm(p);
                 result = pow(result, p); // undoing root of p from local operation
             }
             else
@@ -49,7 +49,7 @@ namespace raptor
             return pow(result, 1./p);
         }
 
-        void axpy(const ParVector & x, data_t alpha);
+        void axpy(ParVector & x, data_t alpha);
         void scale(data_t alpha);
         void set_const_value(data_t alpha);
         void set_rand_values();
