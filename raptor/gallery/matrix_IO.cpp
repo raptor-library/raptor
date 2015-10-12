@@ -118,9 +118,9 @@ int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_,
         {
             index_t row, col;
             data_t value;
-            fgets(buf, sizeof(buf), f);
+            //fgets(buf, sizeof(buf), f);
 
-            sscanf(buf, "%d %d %lg\n", &row, &col, &value);
+            fscanf(f, "%d %d %lg\n", &row, &col, &value);
 
             if (fabs(value) < zero_tol) continue;
 
