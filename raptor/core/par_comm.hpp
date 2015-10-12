@@ -25,10 +25,10 @@ public:
     // TODO
     ParComm();
 
-    ParComm(const Matrix* offd, const std::vector<index_t>& map_to_global, std::map<index_t, index_t>& global_to_local, const index_t* global_col_starts, const MPI_Comm comm_mat, const index_t symmetric = 1)
+    ParComm(const Matrix* offd, const std::vector<index_t>& map_to_global, std::map<index_t, index_t>& global_to_local, const index_t* global_col_starts, const MPI_Comm comm_mat, const int symmetric = 1)
     {
         // Get MPI Information
-        index_t rank, num_procs;
+        int rank, num_procs;
         MPI_Comm_rank(comm_mat, &rank);
         MPI_Comm_size(comm_mat, &num_procs);
 

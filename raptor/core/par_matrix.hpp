@@ -20,7 +20,7 @@ public:
     void reserve(index_t offd_cols, index_t nnz_per_row, index_t nnz_per_col);
     void create_partition(index_t global_rows, index_t global_cols, MPI_Comm _comm_mat);
     void add_value(index_t row, index_t global_col, data_t value, index_t row_global = 0);
-    void finalize(index_t symmetric, format_t diag_f = CSR, format_t offd_f = CSC);
+    void finalize(int symmetric, format_t diag_f = CSR, format_t offd_f = CSC);
 
     ParMatrix(index_t _glob_rows, index_t _glob_cols)
     {

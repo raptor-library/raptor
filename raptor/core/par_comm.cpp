@@ -10,7 +10,7 @@ void ParComm::init_col_to_proc(const MPI_Comm comm_mat, const index_t num_cols,
     const index_t* global_col_starts)
 {
     // Get MPI Information
-    index_t rank, num_procs;
+    int rank, num_procs;
     MPI_Comm_rank(comm_mat, &rank);
     MPI_Comm_size(comm_mat, &num_procs);
 
@@ -34,7 +34,7 @@ void ParComm::init_comm_recvs(const MPI_Comm comm_mat, const index_t num_cols,
     std::map<index_t, index_t>& global_to_local)
 {
     // Get MPI Information
-    index_t rank, num_procs;
+    int rank, num_procs;
     MPI_Comm_rank(comm_mat, &rank);
     MPI_Comm_size(comm_mat, &num_procs);
 
@@ -156,7 +156,7 @@ void ParComm::init_comm_sends_sym_csr(const MPI_Comm comm_mat, const Matrix* off
 void ParComm::init_comm_sends_sym_csc(const MPI_Comm comm_mat, const Matrix* offd, std::map<index_t, index_t>& global_to_local)
 {
     // Get MPI Information
-    index_t rank, num_procs;
+    int rank, num_procs;
     MPI_Comm_rank(comm_mat, &rank);
     MPI_Comm_size(comm_mat, &num_procs);
 
@@ -217,7 +217,7 @@ void ParComm::init_comm_sends_sym_csc(const MPI_Comm comm_mat, const Matrix* off
 void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<index_t>& map_to_global, const index_t* global_col_starts)
 {
     // Get MPI Information
-    index_t rank, num_procs;
+    int rank, num_procs;
     MPI_Comm_rank(comm_mat, &rank);
     MPI_Comm_size(comm_mat, &num_procs);
 
@@ -258,18 +258,18 @@ void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<i
         {
             send_buffer[ctr++] = map_to_global[recv_idx];
         }
-        MPI_Isend(&send_buffer[orig_ctr], ctr - orig_ctr, MPI_INT, recv_proc, unsym_tag, comm_mat, &send_requests[i]);
+        MPI_Isend(&send_buffer[orig_ctr], ctr - orig_ctr, MPI_INDEX_T, recv_proc, unsym_tag, comm_mat, &send_requests[i]);
         send_counts[recv_proc] = 1;
     }
 
     // AllReduce - sum number of sends to each process
-    MPI_Allreduce(send_counts, recv_counts, num_procs, MPI_INT, MPI_SUM, comm_mat);
+    MPI_Allreduce(send_counts, recv_counts, num_procs, MPI_INDEX_T, MPI_SUM, comm_mat);
     num_recvs = recv_counts[rank];
     delete[] send_counts;
     delete[] recv_counts;
 
-    index_t count = 0;
-    index_t avail_flag;
+    int count = 0;
+    int avail_flag;
     MPI_Status recv_status;
     while (send_procs.size() < num_recvs)
     {
@@ -277,9 +277,9 @@ void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<i
         MPI_Iprobe(MPI_ANY_SOURCE, unsym_tag, comm_mat, &avail_flag, &recv_status);
         if (avail_flag)
         {
-            MPI_Get_count(&recv_status, MPI_INT, &count);
+            MPI_Get_count(&recv_status, MPI_INDEX_T, &count);
             index_t recv_buffer[count];
-            MPI_Recv(&recv_buffer, count, MPI_INT, MPI_ANY_SOURCE, unsym_tag, comm_mat, &recv_status);
+            MPI_Recv(&recv_buffer, count, MPI_INDEX_T, MPI_ANY_SOURCE, unsym_tag, comm_mat, &recv_status);
             for (int i = 0; i < count; i++) recv_buffer[i] = recv_buffer[i] - global_col_starts[rank];
             send_procs.push_back(recv_status.MPI_SOURCE);
             std::vector<index_t> send_idx(recv_buffer, recv_buffer + count);
