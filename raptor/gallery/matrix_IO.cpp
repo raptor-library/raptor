@@ -141,9 +141,9 @@ int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_,
         {
             index_t row, col;
             data_t value;
-            fgets(buf, sizeof(buf), f);
+//            fgets(buf, sizeof(buf), f);
 
-            sscanf(buf, "%d %d\n", &row, &col);
+            fscanf(f, "%d %d\n", &row, &col);
 
             value = 1.0;
 
