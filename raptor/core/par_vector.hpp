@@ -19,16 +19,32 @@ namespace raptor
         {
             global_n = glbl_n;
             local_n = lcl_n;
-            local = new Vector(local_n);
+            if (local_n)
+            {
+                local = new Vector(local_n);
+            }
         }
         ParVector(ParVector&& x);
-        ~ParVector() {delete local;}
+        ~ParVector()
+        {
+            if (local_n)
+            {
+                delete local;
+            }
+        }
 
         template<int p> data_t norm() const
         {
-            data_t result = local->lpNorm<p>();
-
-            result = pow(result, p); // undoing root of p from local operation
+            data_t result;
+            if (local_n)
+            {
+                result = local->lpNorm<p>();
+                result = pow(result, p); // undoing root of p from local operation
+            }
+            else
+            {
+                result = 0.0;
+            }
             MPI_Allreduce(MPI_IN_PLACE, &result, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
             return pow(result, 1./p);
         }

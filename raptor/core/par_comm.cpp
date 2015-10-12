@@ -3,9 +3,11 @@
 
 #include "par_comm.hpp"
 
-void ParComm::init_col_to_proc(MPI_Comm comm_mat, index_t num_cols, 
-    std::map<index_t, index_t> global_to_local,  
-    index_t* global_col_starts)
+using namespace raptor;
+
+void ParComm::init_col_to_proc(const MPI_Comm comm_mat, const index_t num_cols, 
+    std::map<index_t, index_t>& global_to_local,  
+    const index_t* global_col_starts)
 {
     // Get MPI Information
     index_t rank, num_procs;
@@ -28,8 +30,8 @@ void ParComm::init_col_to_proc(MPI_Comm comm_mat, index_t num_cols,
     }
 }
 
-void ParComm::init_comm_recvs(MPI_Comm comm_mat, index_t num_cols,   
-    std::map<index_t, index_t> global_to_local)
+void ParComm::init_comm_recvs(const MPI_Comm comm_mat, const index_t num_cols,   
+    std::map<index_t, index_t>& global_to_local)
 {
     // Get MPI Information
     index_t rank, num_procs;
@@ -81,10 +83,10 @@ void ParComm::init_comm_recvs(MPI_Comm comm_mat, index_t num_cols,
     size_recvs = num_cols;
 }
 
-void ParComm::init_comm_sends_sym_csr(MPI_Comm comm_mat, Matrix* offd, std::map<index_t, index_t> global_to_local)
+void ParComm::init_comm_sends_sym_csr(const MPI_Comm comm_mat, const Matrix* offd, std::map<index_t, index_t>& global_to_local)
 {
-    index_t* ptr;
-    index_t* idx;
+    std::vector<index_t> ptr;
+    std::vector<index_t> idx;
     index_t num_rows;
     index_t row_start;
     index_t row_end;
@@ -93,8 +95,8 @@ void ParComm::init_comm_sends_sym_csr(MPI_Comm comm_mat, Matrix* offd, std::map<
     index_t local_col;
 
     // Get CSR Matrix variables
-    ptr = offd->indptr.data();
-    idx = offd->indices.data();
+    ptr = offd->indptr;
+    idx = offd->indices;
     num_rows = offd->n_rows;
     size_sends = 0;
     for (index_t i = 0; i < num_rows; i++)
@@ -151,15 +153,15 @@ void ParComm::init_comm_sends_sym_csr(MPI_Comm comm_mat, Matrix* offd, std::map<
     }
 }
 
-void ParComm::init_comm_sends_sym_csc(MPI_Comm comm_mat, Matrix* offd, std::map<index_t, index_t> global_to_local)
+void ParComm::init_comm_sends_sym_csc(const MPI_Comm comm_mat, const Matrix* offd, std::map<index_t, index_t>& global_to_local)
 {
     // Get MPI Information
     index_t rank, num_procs;
     MPI_Comm_rank(comm_mat, &rank);
     MPI_Comm_size(comm_mat, &num_procs);
 
-    index_t* ptr;
-    index_t* idx;
+    std::vector<index_t> ptr;
+    std::vector<index_t> idx;
     index_t num_cols;
     index_t col_start;
     index_t col_end;
@@ -169,8 +171,8 @@ void ParComm::init_comm_sends_sym_csc(MPI_Comm comm_mat, Matrix* offd, std::map<
     std::vector<index_t>::iterator it;
 
     // Get CSR Matrix variables
-    ptr = offd->indptr.data();
-    idx = offd->indices.data();
+    ptr = offd->indptr;
+    idx = offd->indices;
     num_cols = offd->n_cols;
     size_sends = 0;
     
@@ -212,7 +214,7 @@ void ParComm::init_comm_sends_sym_csc(MPI_Comm comm_mat, Matrix* offd, std::map<
     size_sends += send_indices[old_proc].size();
 }
 
-void ParComm::init_comm_sends_unsym(MPI_Comm comm_mat, std::vector<index_t> map_to_global, index_t* global_col_starts)
+void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<index_t>& map_to_global, const index_t* global_col_starts)
 {
     // Get MPI Information
     index_t rank, num_procs;

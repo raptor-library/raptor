@@ -10,6 +10,8 @@
 #include "core/par_matrix.hpp"
 #include "core/types.hpp"
 
+using namespace raptor;
+
 #define MM_MAX_LINE_LENGTH 1025
 #define MatrixMarketBanner "%%MatrixMarket"
 #define MM_MAX_TOKEN_LENGTH 64

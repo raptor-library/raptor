@@ -12,6 +12,8 @@
 #include "core/types.hpp"
 #include "util/linalg/matmult.hpp"
 
+using namespace raptor;
+
 Eigen::MatrixXd* q12d_local(data_t* vertices, data_t lame, data_t mu);
 
 ParMatrix* linear_elasticity(index_t* grid, ParMatrix** B, data_t E = 1.0e5, data_t nu = 0.3, index_t dirichlet = 1, data_t* spacing = NULL);

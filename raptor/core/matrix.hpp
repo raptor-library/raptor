@@ -5,6 +5,7 @@
 
 #include "types.hpp"
 #include <vector>
+#include <map>
 #include <algorithm>
 
 /**************************************************************
@@ -51,13 +52,15 @@
  ***** resize()
  *****    Change the matrix dimensions.
  ***** finalize()
- *****    Convert the matrix to compressed form,
+ ****    Convert the matrix to compressed form,
  *****    removing any zero values.
  *****    TODO -- implement this for other options than
  *****    COO to compressed
  ***** convert()
  *****    Convert between formats
  **************************************************************/
+namespace raptor
+{
 class Matrix
 {
 
@@ -178,6 +181,7 @@ public:
     *****    Format to convert Matrix to
     **************************************************************/
     void finalize(format_t _format);
+    void finalize(format_t _format, std::map<index_t, index_t>& to_local);
 
     /**************************************************************
     *****   Matrix Convert
@@ -191,7 +195,6 @@ public:
     *****    Format to convert Matrix to
     **************************************************************/
     void convert(format_t _format);
-
 
     std::vector<index_t> row_idx;
     std::vector<index_t> col_idx;
@@ -208,5 +211,5 @@ public:
     format_t format;
 
 };
-
+}
 #endif

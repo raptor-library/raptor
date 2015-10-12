@@ -11,6 +11,8 @@
 #include "core/par_comm.hpp"
 #include "core/types.hpp"
 
+namespace raptor
+{
 class ParMatrix
 {
 public:
@@ -46,6 +48,34 @@ public:
 
         diag = new Matrix(local_rows, local_cols);
         offd = new Matrix(local_rows, local_cols);
+    }
+
+    ParMatrix(index_t _glob_rows, index_t _glob_cols, data_t* values)
+    {
+        global_rows = _glob_rows; 
+        global_cols = _glob_cols;
+        offd_num_cols = 0;
+       
+        // Create Partition
+        create_partition(global_rows, global_cols, MPI_COMM_WORLD);
+
+        diag = new Matrix(local_rows, local_cols);
+        offd = new Matrix(local_rows, local_cols);
+
+        index_t val_start = first_row * global_cols;
+        index_t val_end = (first_row + local_rows) * global_cols;
+
+        for (index_t i = val_start; i < val_end; i++)
+        {
+            if (fabs(values[i]) > zero_tol)
+            {
+                index_t global_col = i % global_cols;
+                index_t global_row = i / global_cols;
+                add_value(global_row - first_row, global_col, values[i]);
+            }
+        }
+
+        finalize(0);
     }
 
     ParMatrix(index_t _globalRows, index_t _globalCols, Matrix* _diag, Matrix* _offd)
@@ -103,4 +133,5 @@ public:
     index_t* global_col_starts;
     MPI_Comm comm_mat;
 };
+}
 #endif
