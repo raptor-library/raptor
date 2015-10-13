@@ -1,9 +1,10 @@
 #include "matrix_IO.hpp"
 #include <float.h>
 
-ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, index_t symmetric = 1)
+ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int symmetric = 1)
 {
-    index_t num_rows, num_cols, nnz, comm_size, rank, ret_code;
+    index_t num_rows, num_cols, nnz;
+    int comm_size, rank, ret_code;
     index_t* row_ptr;
     index_t* col;
     data_t* data;
@@ -66,12 +67,12 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, index_
     return A;
 }
 
-int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_,
+int mm_read_sparse(const char *fname, index_t start, index_t stop, index_t *M_, index_t *N_,
                 ParMatrix* A, int symmetric)
 {
     FILE *f;
     MM_typecode matcode;
-    int M, N, nz;
+    index_t M, N, nz;
     int i, ctr;
      
     if ((f = fopen(fname, "r")) == NULL)
@@ -118,9 +119,9 @@ int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_,
         {
             index_t row, col;
             data_t value;
-            fgets(buf, sizeof(buf), f);
+//            fgets(buf, sizeof(buf), f);
 
-            sscanf(buf, "%d %d %lg\n", &row, &col, &value);
+            fscanf(f, "%lu %lu %lg\n", &row, &col, &value);
 
             if (fabs(value) < zero_tol) continue;
 
@@ -141,9 +142,9 @@ int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_,
         {
             index_t row, col;
             data_t value;
-            fgets(buf, sizeof(buf), f);
+//            fgets(buf, sizeof(buf), f);
 
-            sscanf(buf, "%d %d\n", &row, &col);
+            fscanf(f, "%lu %lu\n", &row, &col);
 
             value = 1.0;
 
@@ -260,15 +261,15 @@ int mm_read_banner(FILE *f, MM_typecode *matcode)
     return 0;
 }
 
-int mm_write_mtx_crd_size(FILE *f, int M, int N, int nz)
+int mm_write_mtx_crd_size(FILE *f, index_t M, index_t N, index_t nz)
 {
-    if (fprintf(f, "%d %d %d\n", M, N, nz) != 3)
+    if (fprintf(f, "%lu %lu %lu\n", M, N, nz) != 3)
         return MM_COULD_NOT_WRITE_FILE;
     else 
         return 0;
 }
 
-int mm_read_mtx_crd_size(FILE *f, int *M, int *N, int *nz )
+int mm_read_mtx_crd_size(FILE *f, index_t *M, index_t *N, index_t *nz )
 {
     char line[MM_MAX_LINE_LENGTH];
     int num_items_read;
@@ -284,13 +285,13 @@ int mm_read_mtx_crd_size(FILE *f, int *M, int *N, int *nz )
     }while (line[0] == '%');
 
     /* line[] is either blank or has M,N, nz */
-    if (sscanf(line, "%d %d %d", M, N, nz) == 3)
+    if (sscanf(line, "%lu %lu %lu", M, N, nz) == 3)
         return 0;
         
     else
     do
     { 
-        num_items_read = fscanf(f, "%d %d %d", M, N, nz); 
+        num_items_read = fscanf(f, "%lu %lu %lu", M, N, nz); 
         if (num_items_read == EOF) return MM_PREMATURE_EOF;
     }
     while (num_items_read != 3);
@@ -299,7 +300,7 @@ int mm_read_mtx_crd_size(FILE *f, int *M, int *N, int *nz )
 }
 
 
-int mm_read_mtx_array_size(FILE *f, int *M, int *N)
+int mm_read_mtx_array_size(FILE *f, index_t *M, index_t *N)
 {
     char line[MM_MAX_LINE_LENGTH];
     int num_items_read;
@@ -314,13 +315,13 @@ int mm_read_mtx_array_size(FILE *f, int *M, int *N)
     }while (line[0] == '%');
 
     /* line[] is either blank or has M,N, nz */
-    if (sscanf(line, "%d %d", M, N) == 2)
+    if (sscanf(line, "%lu %lu", M, N) == 2)
         return 0;
         
     else /* we have a blank line */
     do
     { 
-        num_items_read = fscanf(f, "%d %d", M, N); 
+        num_items_read = fscanf(f, "%lu %lu", M, N); 
         if (num_items_read == EOF) return MM_PREMATURE_EOF;
     }
     while (num_items_read != 2);
@@ -328,9 +329,9 @@ int mm_read_mtx_array_size(FILE *f, int *M, int *N)
     return 0;
 }
 
-int mm_write_mtx_array_size(FILE *f, int M, int N)
+int mm_write_mtx_array_size(FILE *f, index_t M, index_t N)
 {
-    if (fprintf(f, "%d %d\n", M, N) != 2)
+    if (fprintf(f, "%lu %lu\n", M, N) != 2)
         return MM_COULD_NOT_WRITE_FILE;
     else 
         return 0;

@@ -8,11 +8,13 @@
 
 //TODO -- should be std::numeric_limits<data_t>::epsilon ...
 #define zero_tol DBL_EPSILON
+#define MPI_INDEX_T MPI_UNSIGNED_LONG
+#define MPI_DATA_T MPI_DOUBLE
 
 namespace raptor
 {
     using data_t = double;
-    using index_t = int;
+    using index_t = unsigned long;
     enum format_t {CSR, CSC, COO};
 }
 

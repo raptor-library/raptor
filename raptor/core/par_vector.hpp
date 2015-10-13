@@ -45,7 +45,7 @@ namespace raptor
             {
                 result = 0.0;
             }
-            MPI_Allreduce(MPI_IN_PLACE, &result, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+            MPI_Allreduce(MPI_IN_PLACE, &result, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
             return pow(result, 1./p);
         }
 

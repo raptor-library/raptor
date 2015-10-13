@@ -15,10 +15,10 @@
 void create_mpi_type(MPI_Datatype* coo_type)
 {
     index_t blocks[2] = {2, 1};
-    MPI_Datatype types[2] = {MPI_INT, MPI_DOUBLE};
+    MPI_Datatype types[2] = {MPI_INDEX_T, MPI_DATA_T};
     MPI_Aint displacements[2];
     MPI_Aint intex;
-    MPI_Type_extent(MPI_INT, &intex);
+    MPI_Type_extent(MPI_INDEX_T, &intex);
     displacements[0] = static_cast<MPI_Aint>(0);
     displacements[1] = 2*intex;
     MPI_Type_struct(2, blocks, displacements, types, coo_type);
@@ -662,9 +662,9 @@ void parallel_matmult_T(ParMatrix* A, ParMatrix* B, ParMatrix** _C)
     index_t send_proc;
     index_t num_sends;
     index_t num_recvs;
-    index_t count;
+    it count;
     index_t n_recv;
-    index_t avail_flag;
+    int avail_flag;
 
     // Declare matrix helper variables
     index_t colA_start;

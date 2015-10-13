@@ -6,7 +6,7 @@
 ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t format)
 {
     // Get MPI Information
-    index_t rank, num_procs;
+    int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 

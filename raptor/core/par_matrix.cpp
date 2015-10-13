@@ -14,7 +14,7 @@ void ParMatrix::reserve(index_t offd_cols, index_t nnz_per_row, index_t nnz_per_
 void ParMatrix::create_partition(index_t global_rows, index_t global_cols, MPI_Comm _comm_mat)
 {
     // Get MPI Information
-    index_t rank, num_procs;
+    int rank, num_procs;
     MPI_Comm_rank(_comm_mat, &rank);
     MPI_Comm_size(_comm_mat, &num_procs);
 
@@ -34,15 +34,15 @@ void ParMatrix::create_partition(index_t global_rows, index_t global_cols, MPI_C
     }
 
     // Initialize global_col_starts (partition matrix)
-    index_t num_procs_active = num_procs;
+    int num_procs_active = num_procs;
     if (size_rows == 0)
     {
         num_procs_active = extra_rows;
     }
 
     global_col_starts = new index_t[num_procs_active + 1];
-    index_t extra = global_cols % num_procs_active;
-    index_t size = global_cols / num_procs_active;
+    int extra = global_cols % num_procs_active;
+    int size = global_cols / num_procs_active;
     global_col_starts[0] = 0;
     for (index_t i = 0; i < num_procs_active; i++)
     {
@@ -68,7 +68,7 @@ void ParMatrix::create_partition(index_t global_rows, index_t global_cols, MPI_C
         MPI_Group group_world;
         MPI_Group group_mat;
         
-        index_t active_ranks[num_procs_active];
+        int active_ranks[num_procs_active];
         for (index_t i = 0; i < num_procs_active; i++)
         {
             active_ranks[i] = i;
@@ -96,6 +96,8 @@ void ParMatrix::add_value(index_t row, index_t global_col, data_t value, index_t
     {
         if (global_to_local.count(global_col) == 0)
         {
+
+            if (global_col < 0) printf ("Adding COL %d\n", global_col);
             global_to_local[global_col] = offd_num_cols++;
             local_to_global.push_back(global_col);
         }
@@ -107,15 +109,16 @@ void ParMatrix::add_value(index_t row, index_t global_col, data_t value, index_t
     }
 }
 
-void ParMatrix::finalize(index_t symmetric, format_t diag_f, format_t offd_f)
+void ParMatrix::finalize(int symmetric, format_t diag_f, format_t offd_f)
 {
     if (offd_num_cols)
     {
         std::sort(local_to_global.begin(), local_to_global.end());
         for (index_t i = 0; i < local_to_global.size(); i++)
         {
-            index_t global_col = local_to_global[i];
-            global_to_local[global_col] = i;
+            index_t global_col = local_to_global.at(i);
+            std::map<index_t, index_t>::iterator it = global_to_local.find(global_col);
+            it->second = i;
         }
     }
 

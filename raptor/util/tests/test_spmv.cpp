@@ -23,7 +23,7 @@ TEST(linag, spmv)
 
 	index_t dim = 2;
 
-	index_t rank, num_procs;
+	int rank, num_procs;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 

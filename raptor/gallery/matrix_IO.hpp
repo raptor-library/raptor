@@ -21,14 +21,14 @@ typedef char MM_typecode[4];
 
 char *mm_typecode_to_str(MM_typecode matcode);
 int mm_read_banner(FILE *f, MM_typecode *matcode);
-int mm_read_mtx_crd_size(FILE *f, int *M, int *N, int *nz);
-int mm_read_mtx_array_size(FILE *f, int *M, int *N);
+int mm_read_mtx_crd_size(FILE *f, index_t *M, index_t *N, index_t *nz);
+int mm_read_mtx_array_size(FILE *f, index_t *M, index_t *N);
 
 int mm_write_banner(FILE *f, MM_typecode matcode);
-int mm_write_mtx_crd_size(FILE *f, int M, int N, int nz);
-int mm_write_mtx_array_size(FILE *f, int M, int N);
+int mm_write_mtx_crd_size(FILE *f, index_t M, index_t N, index_t nz);
+int mm_write_mtx_array_size(FILE *f, index_t M, index_t N);
 
-int mm_read_sparse(const char *fname, int start, int stop, int *M_, int *N_,
+int mm_read_sparse(const char *fname, index_t start, index_t stop, index_t *M_, index_t *N_,
                 ParMatrix* A, int symmetric);
 
 ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int symmetric);
