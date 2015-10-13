@@ -88,14 +88,14 @@ int mm_read_sparse(const char *fname, index_t start, index_t stop, index_t *M_, 
  
  
  
-    if ( mm_is_complex(matcode) || !(mm_is_matrix(matcode) &&
-            mm_is_sparse(matcode)))
-    {
-        fprintf(stderr, "Sorry, this application does not support ");
-        fprintf(stderr, "Market Market type: [%s]\n",
-                mm_typecode_to_str(matcode));
-        return -1;
-    }
+//    if ( mm_is_complex(matcode) || !(mm_is_matrix(matcode) &&
+//            mm_is_sparse(matcode)))
+//    {
+//        fprintf(stderr, "Sorry, this application does not support ");
+//        fprintf(stderr, "Market Market type: [%s]\n",
+//                mm_typecode_to_str(matcode));
+//        return -1;
+//    }
  
     /* find out size of sparse matrix: M, N, nz .... */
  
