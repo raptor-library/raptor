@@ -142,7 +142,6 @@ int mm_read_sparse(const char *fname, index_t start, index_t stop, index_t *M_, 
         {
             index_t row, col;
             data_t value;
-//            fgets(buf, sizeof(buf), f);
 
             fscanf(f, "%lu %lu\n", &row, &col);
 
