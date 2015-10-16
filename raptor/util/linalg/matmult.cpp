@@ -14,7 +14,7 @@
  **************************************************************/
 void create_mpi_type(MPI_Datatype* coo_type)
 {
-    index_t blocks[2] = {2, 1};
+    int blocks[2] = {2, 1};
     MPI_Datatype types[2] = {MPI_INDEX_T, MPI_DATA_T};
     MPI_Aint displacements[2];
     MPI_Aint intex;
@@ -387,12 +387,12 @@ void parallel_matmult(ParMatrix* A, ParMatrix* B, ParMatrix** _C)
     MPI_Request* send_requests;
     MPI_Status recv_status;
     std::vector<Element>* send_buffer;
-    index_t send_proc;
+    int send_proc;
     index_t num_sends;
     index_t num_recvs;
-    index_t count;
-    index_t n_recv;
-    index_t avail_flag;
+    int count;
+    int n_recv;
+    int avail_flag;
 
     // Declare matrix helper variables
     index_t row_start;
@@ -662,7 +662,7 @@ void parallel_matmult_T(ParMatrix* A, ParMatrix* B, ParMatrix** _C)
     index_t send_proc;
     index_t num_sends;
     index_t num_recvs;
-    it count;
+    int count;
     index_t n_recv;
     int avail_flag;
 
