@@ -229,9 +229,17 @@ void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<i
     index_t recv_size = recv_procs.size();
     size_sends = 0;
 
-    index_t* send_buffer = new index_t[size_recvs];
-    MPI_Request* send_requests = new MPI_Request[recv_size];
-    MPI_Status* send_status = new MPI_Status[recv_size];
+    index_t* send_buffer = NULL;
+    MPI_Request* send_requests = NULL;
+    MPI_Status* send_status = NULL;
+
+    if (recv_size)
+    {
+        send_buffer = new index_t[size_recvs];
+        send_requests = new MPI_Request[recv_size];
+        send_status = new MPI_Status[recv_size];
+    }
+
     for (int i = 0; i < recv_size; i++)
     {
         send_requests[i] = MPI_REQUEST_NULL;
@@ -288,10 +296,13 @@ void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<i
         }
     }
 
-    MPI_Waitall(recv_procs.size(), send_requests, send_status);
+    if (recv_size)
+    {
+        MPI_Waitall(recv_size, send_requests, send_status);
    
-    delete[] send_buffer;
-    delete[] send_requests;
-    delete[] send_status;
+        delete[] send_buffer;
+        delete[] send_requests;
+        delete[] send_status;
+    }
 
 }
