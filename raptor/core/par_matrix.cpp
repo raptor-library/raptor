@@ -11,6 +11,68 @@ void ParMatrix::reserve(index_t offd_cols, index_t nnz_per_row, index_t nnz_per_
     diag->reserve(nnz_per_row);
 }
 
+void ParMatrix::create_partition(index_t global_rows, index_t global_cols, index_t first_row, index_t local_rows, index_t first_col_diag)
+{
+
+    MPI_Comm _comm_mat = MPI_COMM_WORLD;
+
+    // Get MPI Information
+    int rank, num_procs;
+    MPI_Comm_rank(_comm_mat, &rank);
+    MPI_Comm_size(_comm_mat, &num_procs);
+
+    // Active Procs
+    int active = 0;
+    int num_active = 0;
+    int* active_list = new int[num_procs]();
+    if (local_rows)
+    { 
+        active = 1;
+    }
+    MPI_Allgather(&active, 1, MPI_INT, active_list, 1, MPI_INT, _comm_mat);
+
+    for (int i = 0; i < num_procs; i++)
+    {
+        if (active_list[i])
+        {
+            num_active++;
+        }
+    }
+
+    if (num_active < num_procs)
+    {
+        MPI_Group group_world;
+        MPI_Group group_mat;
+        
+        int active_ranks[num_active];
+        int ctr = 0;
+        for (index_t i = 0; i < num_procs; i++)
+        {
+            if (active_list[i])
+            {
+                active_ranks[ctr++] = i;
+            }
+        }
+
+        MPI_Comm_group(_comm_mat, &group_world);
+        MPI_Group_incl(group_world, num_active, active_ranks, &group_mat);
+        MPI_Comm_create(_comm_mat, group_mat, &comm_mat);
+    }
+    else
+    {
+        comm_mat = _comm_mat;
+    }
+
+    if (active)
+    {
+        global_col_starts = new index_t[num_active+1];
+        MPI_Allgather(&first_col_diag, 1, MPI_INT, global_col_starts, 1, MPI_INT, comm_mat);
+        global_col_starts[num_active] = global_cols;
+    }
+
+    delete[] active_list;
+}
+
 void ParMatrix::create_partition(index_t global_rows, index_t global_cols, MPI_Comm _comm_mat)
 {
     // Get MPI Information
@@ -96,8 +158,6 @@ void ParMatrix::add_value(index_t row, index_t global_col, data_t value, index_t
     {
         if (global_to_local.count(global_col) == 0)
         {
-
-            if (global_col < 0) printf ("Adding COL %d\n", global_col);
             global_to_local[global_col] = offd_num_cols++;
             local_to_global.push_back(global_col);
         }
@@ -105,7 +165,12 @@ void ParMatrix::add_value(index_t row, index_t global_col, data_t value, index_t
     }
     else // Diagonal Block
     {
-        diag->add_value(row, global_col - first_col_diag, value);
+        index_t local_col = global_col - first_col_diag;
+        diag->add_value(row, local_col, value);
+        if (row == local_col)
+        {
+            diag_elmts[row] += value;
+        }
     }
 }
 
@@ -121,7 +186,6 @@ void ParMatrix::finalize(int symmetric, format_t diag_f, format_t offd_f)
             it->second = i;
         }
     }
-
     if (offd->nnz)
     {
         offd->resize(local_rows, offd_num_cols);

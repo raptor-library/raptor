@@ -15,10 +15,11 @@ namespace raptor
     class ParVector
     {
     public:
-        ParVector(index_t glbl_n, index_t lcl_n)
+        ParVector(index_t glbl_n, index_t lcl_n, index_t first_lcl)
         {
             global_n = glbl_n;
             local_n = lcl_n;
+            first_local = first_lcl;
             if (local_n)
             {
                 local = new Vector(local_n);
@@ -49,7 +50,7 @@ namespace raptor
             return pow(result, 1./p);
         }
 
-        void axpy(ParVector & x, data_t alpha);
+        void axpy(ParVector* x, data_t alpha);
         void scale(data_t alpha);
         void set_const_value(data_t alpha);
         void set_rand_values();
@@ -57,6 +58,7 @@ namespace raptor
         Vector* local;
         int global_n;
         int local_n;
+        int first_local;
     };
 
 }

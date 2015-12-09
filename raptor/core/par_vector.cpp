@@ -6,11 +6,11 @@ using namespace raptor;
 
 ParVector::ParVector(ParVector&& v) = default;
 
-void ParVector::axpy(ParVector & x, data_t alpha)
+void ParVector::axpy(ParVector* x, data_t alpha)
 {
     if (local_n)
     {
-        local->axpy(*x.local, alpha);
+        local->axpy(*x->local, alpha);
     }
 }
 void ParVector::scale(data_t alpha)

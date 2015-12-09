@@ -30,8 +30,7 @@ void ParComm::init_col_to_proc(const MPI_Comm comm_mat, const index_t num_cols,
     }
 }
 
-void ParComm::init_comm_recvs(const MPI_Comm comm_mat, const index_t num_cols,   
-    std::map<index_t, index_t>& global_to_local)
+void ParComm::init_comm_recvs(const MPI_Comm comm_mat, const index_t num_cols, std::map<index_t, index_t>& global_to_local)
 {
     // Get MPI Information
     int rank, num_procs;
@@ -228,20 +227,14 @@ void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<i
     index_t unsym_tag = 1212;
     index_t recv_size = recv_procs.size();
     size_sends = 0;
-
-    index_t* send_buffer = new index_t[size_recvs];
-    MPI_Request* send_requests = new MPI_Request[recv_size];
-    MPI_Status* send_status = new MPI_Status[recv_size];
-    for (int i = 0; i < recv_size; i++)
-    {
-        send_requests[i] = MPI_REQUEST_NULL;
-    }
-
-    index_t num_recvs;
-
+    
     // Determind number of messages I will receive
+    index_t* send_buffer = NULL;
+    MPI_Request* send_requests = NULL;
+    MPI_Status* send_status = NULL;
     index_t* send_counts = new index_t[num_procs];
     index_t* recv_counts = new index_t[num_procs];  
+    index_t num_recvs;
 
     for (index_t i = 0; i < num_procs; i++)
     {
@@ -249,17 +242,28 @@ void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<i
         recv_counts[i] = 0;
     }
 
-    //Send everything in recv_idx[recv_proc] to recv_proc;
-    for (index_t i = 0; i < recv_size; i++)
+    if (recv_size)
     {
-        orig_ctr = ctr;
-        recv_proc = recv_procs[i];
-        for (auto recv_idx : recv_indices[recv_proc])
+        send_buffer = new index_t[size_recvs];
+        send_requests = new MPI_Request[recv_size];
+        send_status = new MPI_Status[recv_size];
+        for (int i = 0; i < recv_size; i++)
         {
-            send_buffer[ctr++] = map_to_global[recv_idx];
+            send_requests[i] = MPI_REQUEST_NULL;
         }
-        MPI_Isend(&send_buffer[orig_ctr], ctr - orig_ctr, MPI_INDEX_T, recv_proc, unsym_tag, comm_mat, &send_requests[i]);
-        send_counts[recv_proc] = 1;
+
+        //Send everything in recv_idx[recv_proc] to recv_proc;
+        for (index_t i = 0; i < recv_size; i++)
+        {
+            orig_ctr = ctr;
+            recv_proc = recv_procs[i];
+            for (auto recv_idx : recv_indices[recv_proc])
+            {
+                send_buffer[ctr++] = map_to_global[recv_idx];
+            }
+            MPI_Isend(&send_buffer[orig_ctr], ctr - orig_ctr, MPI_INDEX_T, recv_proc, unsym_tag, comm_mat, &send_requests[i]);
+            send_counts[recv_proc] = 1;
+        }
     }
 
     // AllReduce - sum number of sends to each process
@@ -288,10 +292,12 @@ void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<i
         }
     }
 
-    MPI_Waitall(recv_procs.size(), send_requests, send_status);
-   
-    delete[] send_buffer;
-    delete[] send_requests;
-    delete[] send_status;
+    if (recv_size)
+    {
+        MPI_Waitall(recv_size, send_requests, send_status);
+        delete[] send_buffer;
+        delete[] send_requests;
+        delete[] send_status;
+    }
 
 }

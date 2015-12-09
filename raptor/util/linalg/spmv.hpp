@@ -30,7 +30,7 @@ using namespace raptor;
  *****    Scalar to multiply original y by
  **************************************************************/
 void sequential_spmv(Matrix* A, const data_t* x, data_t* y, const data_t alpha,
-    const data_t beta, index_t outer_start = 0, index_t n_outer = 0);
+    const data_t beta, data_t* result = NULL, int outer_start = 0, int n_outer = -1);
 
 /**************************************************************
  *****   Sequential Transpose Matrix-Vector Multiplication
@@ -52,7 +52,7 @@ void sequential_spmv(Matrix* A, const data_t* x, data_t* y, const data_t alpha,
  *****    Scalar to multiply original y by
  **************************************************************/
 void sequential_spmv_T(Matrix* A, const data_t* x, data_t* y, const data_t alpha,
-    const data_t beta, index_t outer_start = 0, index_t outer_end = 0);
+    const data_t beta, data_t* result = NULL, int outer_start = 0, int n_outer = -1);
 
 /**************************************************************
  *****   Parallel Matrix-Vector Multiplication
@@ -75,7 +75,7 @@ void sequential_spmv_T(Matrix* A, const data_t* x, data_t* y, const data_t alpha
  ***** async : index_t
  *****    Boolean flag for updating SpMV asynchronously
  **************************************************************/
-void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const data_t alpha, const data_t beta, const index_t async = 0);
+void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const data_t alpha, const data_t beta, const int async = 0, ParVector *result = NULL);
 
 /**************************************************************
  *****   Parallel Transpose Matrix-Vector Multiplication
@@ -98,6 +98,6 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
  ***** async : index_t
  *****    Boolean flag for updating SpMV asynchronously
  **************************************************************/
-void parallel_spmv_T(const ParMatrix* A, const ParVector* x, ParVector* y, const data_t alpha, const data_t beta, const index_t async = 0);
+void parallel_spmv_T(const ParMatrix* A, const ParVector* x, ParVector* y, const data_t alpha, const data_t beta, const int async = 0, ParVector* result = NULL);
 
 #endif

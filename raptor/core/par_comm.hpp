@@ -45,6 +45,7 @@ public:
         }
 
         // Add processors needing to send to, and what to send to each
+
         if (symmetric)
         {
             if (offd_num_cols)

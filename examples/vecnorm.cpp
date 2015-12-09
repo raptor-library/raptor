@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 
 	using namespace raptor;
 
-	ParVector v(10,5);
+	ParVector v(10,5, rank*5);
 
 	v.set_const_value((rank+1)*.5);
 

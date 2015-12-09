@@ -17,7 +17,8 @@ class ParMatrix
 public:
 
     void reserve(index_t offd_cols, index_t nnz_per_row, index_t nnz_per_col);
-    void create_partition(index_t global_rows, index_t global_cols, MPI_Comm _comm_mat);
+    void create_partition(index_t global_rows, index_t global_cols, MPI_Comm _comm_mat = MPI_COMM_WORLD);
+    void create_partition(index_t global_rows, index_t global_cols, index_t first_row, index_t local_rows, index_t first_col_diag);
     void add_value(index_t row, index_t global_col, data_t value, index_t row_global = 0);
     void finalize(int symmetric, format_t diag_f = CSR, format_t offd_f = CSC);
 
@@ -33,6 +34,31 @@ public:
 
         diag = new Matrix(local_rows, local_cols);
         offd = new Matrix(local_rows, local_cols);
+        if (local_rows)
+        {
+            diag_elmts = new data_t[local_rows]();
+        }
+    }
+
+    ParMatrix(index_t _glob_rows, index_t _glob_cols, index_t _local_rows, index_t _local_cols, index_t _first_row, index_t _first_col_diag)
+    {
+        global_rows = _glob_rows;
+        global_cols = _glob_cols;
+        local_rows = _local_rows;
+        local_cols = _local_cols;
+        first_row = _first_row;
+        first_col_diag = _first_col_diag;
+        offd_num_cols = 0;
+
+        create_partition(global_rows, global_cols, first_row, local_rows, first_col_diag);
+
+        diag = new Matrix(local_rows, local_cols);
+        offd = new Matrix(local_rows, local_cols);
+
+        if (local_rows)
+        {
+            diag_elmts = new data_t[local_rows]();
+        }
     }
 
     ParMatrix(index_t _glob_rows, index_t _glob_cols, MPI_Comm _comm_mat)
@@ -47,6 +73,10 @@ public:
 
         diag = new Matrix(local_rows, local_cols);
         offd = new Matrix(local_rows, local_cols);
+        if (local_rows)
+        {
+            diag_elmts = new data_t[local_rows]();
+        }
     }
 
     ParMatrix(index_t _glob_rows, index_t _glob_cols, data_t* values)
@@ -60,6 +90,10 @@ public:
 
         diag = new Matrix(local_rows, local_cols);
         offd = new Matrix(local_rows, local_cols);
+        if (local_rows)
+        {
+            diag_elmts = new data_t[local_rows]();
+        }
 
         index_t val_start = first_row * global_cols;
         index_t val_end = (first_row + local_rows) * global_cols;
@@ -110,6 +144,7 @@ public:
         {
             delete this->diag;
             delete this->comm;
+            delete diag_elmts;
         }
         delete[] this-> global_col_starts;
         local_to_global.clear();
@@ -123,6 +158,7 @@ public:
     index_t local_cols;
     Matrix* diag;
     Matrix* offd;
+    data_t* diag_elmts;
     std::vector<index_t> local_to_global;
     std::map<index_t, index_t> global_to_local;
     index_t offd_num_cols;
