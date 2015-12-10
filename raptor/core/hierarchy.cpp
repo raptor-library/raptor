@@ -169,6 +169,8 @@ void Hierarchy::cycle(index_t level)
     // Otherwise, run V-cycle
     else
     {
+        x_list[level+1]->set_const_value(0.0);
+
         // Pre-Relaxation
         jacobi(A_list[level], x_list[level], b_list[level], relax_weight);
 
