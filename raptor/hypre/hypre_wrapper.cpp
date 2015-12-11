@@ -178,7 +178,9 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
     HYPRE_BoomerAMGSetPMaxElmts(amg_data, p_max_elmts);
     HYPRE_BoomerAMGSetAggNumLevels(amg_data, agg_num_levels);
     HYPRE_BoomerAMGSetStrongThreshold(amg_data, strong_threshold);
-      
+    HYPRE_BoomerAMGSetMaxCoarseSize(amg_data, 25);
+    HYPRE_BoomerAMGSetMinCoarseSize(amg_data, 10);
+
     // Setup AMG
     HYPRE_BoomerAMGSetup(amg_data, A, b, x);
 

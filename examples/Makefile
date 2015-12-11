@@ -9,7 +9,8 @@ CXX_FLAGS = -O2 -std=c++11\
 CXX_LIBS = -L/$(RAPTOR_PATH)/raptor/build/raptor\
 	-lraptor\
     -L/home/bienz2/Documents/Parallel/hypre/src/hypre/lib\
-    -lHYPRE
+    -lHYPRE\
+	-Wall -llapack -lblas
 
 all : benchmark.cpp
 	$(CXX) $(CXX_FLAGS) benchmark.cpp $(CXX_LIBS) -o benchmark.out

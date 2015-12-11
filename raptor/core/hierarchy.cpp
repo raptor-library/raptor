@@ -4,6 +4,8 @@
 #include "hierarchy.hpp"
 
 using namespace raptor;
+extern "C" void dgetrf_(int* dim1, int* dim2, double* a, int* lda, int* ipiv, int* info);
+
 
 /**************************************************************
  *****   Matrix Class Destructor
@@ -70,29 +72,91 @@ void Hierarchy::add_level(ParMatrix* A, ParMatrix* P)
 ************************************************************/
 void Hierarchy::add_level(ParMatrix* A)
 {
-    int global_rows = A->global_rows;
-    int local_rows = A->local_rows;
 
-    ParVector* x;
-    ParVector* b;
-
+    // Add sparse matrix and vector data structures
     A_list.push_back(A);
-
-    // Initialize x, b for level only if not first level
-    if (num_levels > 0)
-    {
-        x = new ParVector(global_rows, local_rows, A->first_row);
-        b = new ParVector(global_rows, local_rows, A->first_row);
-        x_list.push_back(x);
-        b_list.push_back(b);
-    }
-    else // otherwise, leave NULL
-    {
-        x_list.push_back(NULL);
-        b_list.push_back(NULL);
-    }
+    x_list.push_back(new ParVector(A->global_rows, A->local_rows, A->first_row));
+    b_list.push_back(new ParVector(A->global_cols, A->local_cols, A->first_col_diag));
 
     num_levels++;
+
+    // If process is not active, return
+    if (A->local_rows == 0) return;
+    
+    // Find rank and number of active procs
+    int rank, num_procs;
+    MPI_Comm_rank(A->comm_mat, &rank);
+    MPI_Comm_size(A->comm_mat, &num_procs);
+
+    // Create A_coarse (dense matrix)
+    coarse_rows = A->global_rows;
+    coarse_cols = A->global_cols;
+    A_coarse = new data_t[coarse_rows*coarse_cols];
+    permute_coarse = new int[coarse_rows];
+
+    // Find local size of each dense matrix
+    int local_dense_size = A->local_rows * coarse_cols;
+    data_t* A_coarse_lcl = new data_t[local_dense_size]();
+    gather_sizes = new int[num_procs];
+    gather_displs = new int[num_procs];
+    MPI_Allgather(&local_dense_size, 1, MPI_INT, gather_sizes, 1, MPI_INT, A->comm_mat);
+    gather_displs[0] = 0;
+    for (int i = 0; i < num_procs-1; i++)
+    {
+        gather_displs[i+1] = gather_displs[i] + gather_sizes[i];
+    }
+
+    // Add entries on A_diag to dense A_coarse
+    int row_start, row_end;
+    int global_row, global_col;
+    for (int row = 0; row < A->local_rows; row++)
+    {
+        row_start = A->diag->indptr[row];
+        row_end = A->diag->indptr[row+1];
+        for (int j = row_start; j < row_end; j++)
+        {
+            global_col = A->diag->indices[j] + A->first_col_diag;
+            A_coarse_lcl[(row * coarse_cols) + global_col] = A->diag->data[j];
+        }
+    }
+
+    // Add entries on A_offd to dense A_coarse
+    int col_start, col_end;
+    if (A->offd_num_cols) for (int col = 0; col < A->offd->n_cols; col++)
+    {
+        col_start = A->offd->indptr[col];
+        col_end = A->offd->indptr[col+1];
+        global_col = A->local_to_global[col];
+        for (int j = col_start; j < col_end; j++)
+        {
+            A_coarse_lcl[(A->offd->indices[j] * coarse_cols) + global_col] = A->offd->data[j];
+        }
+    }
+
+    // Gather all entries among active processes (for redundant solve)
+    MPI_Allgatherv(A_coarse_lcl, local_dense_size, MPI_DOUBLE, A_coarse, gather_sizes, gather_displs, MPI_DOUBLE, A->comm_mat);
+
+    gather_sizes[0] /= coarse_cols;
+    for (int i = 1; i < num_procs; i++)
+    {
+        gather_sizes[i] /= coarse_cols;
+        gather_displs[i] /= coarse_cols;
+    }
+
+    for (int i = 0; i < A->global_rows; i++)
+    {
+        for (int j = 0; j < A->global_rows; j++)
+        {
+            printf("A[%d, %d] = %2.3e\n", i, j, A_coarse[i*A->global_rows + j]);
+        }
+    }
+
+    delete[] A_coarse_lcl;
+
+    permute_coarse = new int[coarse_cols];
+    int info;
+    dgetrf_(&coarse_rows, &coarse_cols, A_coarse, &coarse_rows, permute_coarse, &info);
+
 }
 
 /**************************************************************
@@ -164,7 +228,8 @@ void Hierarchy::cycle(index_t level)
     // If coarsest level, solve and return
     if (level == num_levels - 1)
     {
-        jacobi(A_list[level], x_list[level], b_list[level], relax_weight);
+        //jacobi(A_list[level], x_list[level], b_list[level], relax_weight);
+        redundant_gauss_elimination(A_list[level], x_list[level], b_list[level], A_coarse, permute_coarse, gather_sizes, gather_displs);
     }
     // Otherwise, run V-cycle
     else
@@ -172,7 +237,7 @@ void Hierarchy::cycle(index_t level)
         x_list[level+1]->set_const_value(0.0);
 
         // Pre-Relaxation
-        jacobi(A_list[level], x_list[level], b_list[level], relax_weight);
+        relax(A_list[level], x_list[level], b_list[level], presmooth_sweeps);
 
         // Calculate Residual
         parallel_spmv(A_list[level], x_list[level], b_list[level], -1.0, 1.0, 0, tmp_list[level]);
@@ -190,7 +255,7 @@ void Hierarchy::cycle(index_t level)
         x_list[level]->axpy(tmp_list[level], 1.0);
 
         // Post-Relaxation
-        jacobi(A_list[level], x_list[level], b_list[level], relax_weight);
+        relax(A_list[level], x_list[level], b_list[level], postsmooth_sweeps);
     }
 }
 

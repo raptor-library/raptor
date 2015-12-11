@@ -7,7 +7,7 @@
 #include "gallery/stencil.hpp"
 #include "gallery/diffusion.hpp"
 #include "hypre/hypre_wrapper.hpp"
-#include "util/linalg/jacobi.hpp"
+#include "util/linalg/relax.hpp"
 
 //using namespace raptor;
 int main(int argc, char *argv[])
@@ -16,11 +16,11 @@ int main(int argc, char *argv[])
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-    index_t n = 10;
+    index_t n = 50;
 
     index_t num_tests = 1;
 
-    data_t eps = 1.0;
+    data_t eps = 0.1;
     data_t theta = 0.0;
     index_t* grid = new index_t[2];
     grid[0] = n;
@@ -47,23 +47,14 @@ int main(int argc, char *argv[])
     Hierarchy* ml = create_wrapped_hierarchy(A, x, b);
 
     int num_levels = ml->num_levels;
-    
-    //for (int i = 1; i < num_levels - 1; i++)
-    //{
-        //parallel_spmv(ml->A_list[i], ml->x_list[i], ml->b_list[i], -1.0, 1.0, 0, ml->tmp_list[i]);
-        //parallel_spmv(ml->P_list[i], ml->x_list[i+1], ml->b_list[i], 1.0, 0.0);
-        //parallel_spmv_T(ml->P_list[i], ml->x_list[i], ml->b_list[i+1], 1.0, 0.0);
-    //}
-
-    //MPI_Barrier(MPI_COMM_WORLD);
 
     ml->solve(x, b);
     data_t r_norm;
 
-    //delete ml;
-    //delete A;
-    //delete x;
-    //delete b;
+    delete ml;
+    delete A;
+    delete x;
+    delete b;
 
     MPI_Finalize();
 

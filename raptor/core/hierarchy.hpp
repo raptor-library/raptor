@@ -6,8 +6,9 @@
 #include "types.hpp"
 #include "par_matrix.hpp"
 #include "par_vector.hpp"
-#include "util/linalg/jacobi.hpp"
+#include "util/linalg/relax.hpp"
 #include "util/linalg/spmv.hpp"
+#include "util/linalg/gauss_elimination.hpp"
 
 /**************************************************************
  *****   Hierarchy Class
@@ -71,6 +72,8 @@ namespace raptor
               max_coarse_size = _max_coarse_size;
               min_coarse_size = _min_coarse_size;
               num_levels = 0;
+              presmooth_sweeps = 2;
+              postsmooth_sweeps = 2;
           }
           ~Hierarchy();
 
@@ -149,6 +152,8 @@ namespace raptor
           index_t zero_b;
 
           data_t relax_weight;
+          int presmooth_sweeps;
+          int postsmooth_sweeps;
           data_t rhs_norm;
 
           std::vector<data_t> resid_list;
@@ -160,6 +165,12 @@ namespace raptor
           std::vector<ParVector*> b_list;
           std::vector<ParVector*> tmp_list;
 
+          data_t* A_coarse;
+          int* permute_coarse;
+          int* gather_sizes;
+          int* gather_displs;
+          int coarse_rows;
+          int coarse_cols;
     };
 }
 #endif
