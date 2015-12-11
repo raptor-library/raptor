@@ -143,14 +143,6 @@ void Hierarchy::add_level(ParMatrix* A)
         gather_displs[i] /= coarse_cols;
     }
 
-    for (int i = 0; i < A->global_rows; i++)
-    {
-        for (int j = 0; j < A->global_rows; j++)
-        {
-            printf("A[%d, %d] = %2.3e\n", i, j, A_coarse[i*A->global_rows + j]);
-        }
-    }
-
     delete[] A_coarse_lcl;
 
     permute_coarse = new int[coarse_cols];
@@ -228,7 +220,7 @@ void Hierarchy::cycle(index_t level)
     // If coarsest level, solve and return
     if (level == num_levels - 1)
     {
-        //jacobi(A_list[level], x_list[level], b_list[level], relax_weight);
+        //relax(A_list[level], x_list[level], b_list[level], 2);
         redundant_gauss_elimination(A_list[level], x_list[level], b_list[level], A_coarse, permute_coarse, gather_sizes, gather_displs);
     }
     // Otherwise, run V-cycle
@@ -277,9 +269,8 @@ void Hierarchy::solve(ParVector* x, ParVector* b, data_t solve_tol, data_t _rela
 {
     // Set weight for relaxation
     relax_weight = _relax_weight;
-
-    printf("RelaxWeight = %2.3f\n", relax_weight);
-
+    presmooth_sweeps = 2;
+    postsmooth_sweeps = 2;
     data_t rel_resid;
 
     // Set fine solution, rhs vectors

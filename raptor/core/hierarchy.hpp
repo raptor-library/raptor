@@ -72,8 +72,6 @@ namespace raptor
               max_coarse_size = _max_coarse_size;
               min_coarse_size = _min_coarse_size;
               num_levels = 0;
-              presmooth_sweeps = 2;
-              postsmooth_sweeps = 2;
           }
           ~Hierarchy();
 
