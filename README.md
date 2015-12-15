@@ -1,5 +1,4 @@
-raptor
-======
+# raptor
 
 General, high performance algebraic multigrid solver
 
@@ -17,10 +16,12 @@ Build Instructions
 mkdir build
 ```
 2. Configure the build
+
 ```bash
 cd build
 ccmake ..
 ```
+
 Follow the onscreen instructions:
 
 * press c to configure
@@ -29,6 +30,7 @@ Follow the onscreen instructions:
   * ```TEST_COMM_SIZE```: default MPI Communicator size for tests
 * press g to generate and exit.
 3. Build project
+
 ```bash
 make
 ```
@@ -41,4 +43,3 @@ The build system is currently setup to use google test with ctest. The build
 system currently looks through the source tree and adds anything it finds in a
 test directory to ctest. For a simple example, look at
 raptor/core/tests/ParVector.cpp.
-

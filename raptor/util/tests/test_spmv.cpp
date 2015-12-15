@@ -23,13 +23,15 @@ TEST(linag, spmv)
 
 	index_t dim = 2;
 
-	index_t rank, num_procs;
+	int rank, num_procs;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
 	data_t* stencil = diffusion_stencil_2d(eps, theta);
 	ParMatrix* A = stencil_grid(stencil, grid, dim, CSR);
     delete[] stencil;
+
+    printf("Rank %d created matrix!\n", rank);
 
 	index_t global_num_rows = A->global_rows;
 	index_t local_num_rows = A->local_rows;
@@ -40,7 +42,11 @@ TEST(linag, spmv)
 
 	x->set_const_value(1.);
 	b->set_const_value(0.);
+    printf("Rank %d created vectors!\n", rank);
+
+    printf("Rank %d starting SpMV...\n", rank);
 	parallel_spmv(A, x, b, 1., 0.);
+    printf("Rank %d complete SpMV!\n", rank);
 
 	for (index_t proc = 0; proc < num_procs; proc++)
 	{

@@ -11,173 +11,127 @@
 #include "core/par_comm.hpp"
 #include "core/types.hpp"
 
-//using namespace raptor;
-using Eigen::VectorXd;
-
+namespace raptor
+{
 class ParMatrix
 {
 public:
-    ParMatrix(index_t _glob_rows, index_t _glob_cols, Matrix* _diag, Matrix* _offd);
-    ParMatrix(index_t _glob_rows, index_t _glob_cols, index_t _nnz, index_t* row_idx, index_t* col_idx,
-             data_t* data, index_t* global_row_starts, format_t format = CSR, int global_row_idx = 0, int symmetric = 1)
+
+    void reserve(index_t offd_cols, index_t nnz_per_row, index_t nnz_per_col);
+    void create_partition(index_t global_rows, index_t global_cols, MPI_Comm _comm_mat);
+    void add_value(index_t row, index_t global_col, data_t value, index_t row_global = 0);
+    void finalize(int symmetric, format_t diag_f = CSR, format_t offd_f = CSC);
+
+    ParMatrix(index_t _glob_rows, index_t _glob_cols)
     {
-        // Get MPI Information
-        index_t rank, num_procs;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
-        //Declare matrix variables
-        std::vector<index_t>      diag_i;
-        std::vector<index_t>      diag_j;
-        std::vector<data_t>       diag_data;
-        std::vector<index_t>      offd_i;
-        std::vector<index_t>      offd_j;
-        std::vector<data_t>       offd_data;
-        std::vector<index_t>      offd_cols;
-        index_t                   diag_ctr = 0;
-        index_t                   offd_ctr = 0;
-        index_t                   last_col_diag;
-        index_t                   row_start;
-        index_t                   row_end;
-        index_t                   global_col;
-
         // Initialize matrix dimensions
         global_rows = _glob_rows;
         global_cols = _glob_cols;
-        local_nnz = _nnz;
-        first_col_diag = global_row_starts[rank];
-        local_rows = global_row_starts[rank+1] - first_col_diag;
-        last_col_diag = first_col_diag + local_rows - 1;
-
-        // Split ParMat into diag and offd matrices
-        if (global_row_idx && format == COO)
-        {
-            for (index_t i = 0; i < local_nnz; i++)
-            {
-                row_idx[i] -= first_col_diag;
-            }
-        }
-    
-        if (format == CSR)
-        {
-            // Assumes CSR Matrix
-            diag_i.push_back(0);
-            offd_i.push_back(0);
-            for (index_t i = 0; i < local_rows; i++)
-            {
-                row_start = row_idx[i];
-                row_end = row_idx[i+1];
-                for (index_t j = row_start; j < row_end; j++)
-                {
-                    global_col = col_idx[j];
-
-                    //In offd block
-                    if (global_col < first_col_diag || global_col > last_col_diag)
-                    {
-                        offd_ctr++;
-                        offd_j.push_back(global_col);
-                        offd_data.push_back(data[j]);
-                    }
-                    else //in diag block
-                    {
-                        diag_ctr++;
-                        diag_j.push_back(global_col - first_col_diag);
-                        diag_data.push_back(data[j]);
-                    }
-                }
-                diag_i.push_back(diag_ctr);
-                offd_i.push_back(offd_ctr);
-            }
-        }
-        else if (format == COO)
-        {
-            // Assumes COO Matrix
-            for (index_t i = 0; i < local_nnz; i++)
-            {
-                global_col = col_idx[i];
-                //In offd block
-                if (global_col < first_col_diag || global_col > last_col_diag)
-                {
-                    offd_i.push_back(row_idx[i]);
-                    offd_j.push_back(global_col);
-                    offd_data.push_back(data[i]);
-                }
-                else //in diag block
-                {
-                    diag_i.push_back(row_idx[i]);
-                    diag_j.push_back(global_col - first_col_diag);
-                    diag_data.push_back(data[i]);
-                }
-            }
-        }
-        //Create localToGlobal map and convert offd
-        // cols to local (currently global)
-        offd_nnz = offd_j.size();
         offd_num_cols = 0;
-        if (offd_nnz)
+
+        // Create Partition
+        create_partition(global_rows, global_cols, MPI_COMM_WORLD);
+
+        diag = new Matrix(local_rows, local_cols);
+        offd = new Matrix(local_rows, local_cols);
+    }
+
+    ParMatrix(index_t _glob_rows, index_t _glob_cols, MPI_Comm _comm_mat)
+    {
+        // Initialize matrix dimensions
+        global_rows = _glob_rows;
+        global_cols = _glob_cols;
+        offd_num_cols = 0;
+
+        // Create Partition
+        create_partition(global_rows, global_cols, _comm_mat);
+
+        diag = new Matrix(local_rows, local_cols);
+        offd = new Matrix(local_rows, local_cols);
+    }
+
+    ParMatrix(index_t _glob_rows, index_t _glob_cols, data_t* values)
+    {
+        global_rows = _glob_rows; 
+        global_cols = _glob_cols;
+        offd_num_cols = 0;
+       
+        // Create Partition
+        create_partition(global_rows, global_cols, MPI_COMM_WORLD);
+
+        diag = new Matrix(local_rows, local_cols);
+        offd = new Matrix(local_rows, local_cols);
+
+        index_t val_start = first_row * global_cols;
+        index_t val_end = (first_row + local_rows) * global_cols;
+
+        for (index_t i = val_start; i < val_end; i++)
         {
-            //New vector containing offdCols
-            for (index_t i = 0; i < offd_nnz; i++)
+            if (fabs(values[i]) > zero_tol)
             {
-                offd_cols.push_back(offd_j[i]);
+                index_t global_col = i % global_cols;
+                index_t global_row = i / global_cols;
+                add_value(global_row - first_row, global_col, values[i]);
             }
-
-            //Sort columns
-            std::sort(offd_cols.begin(), offd_cols.end());
-
-            //Count columns with nonzeros in offd
-            offd_num_cols = 1;
-            for (index_t i = 0; i < offd_nnz-1; i++)
-            {
-                if (offd_cols[i+1] > offd_cols[i])
-                {
-                    offd_cols[offd_num_cols++] = offd_cols[i+1];
-                }
-            }
-
-            //Map global columns to indices: 0 - offdNumCols
-            for (index_t i = 0; i < offd_num_cols; i++)
-            {
-                local_to_global.push_back(offd_cols[i]);
-                global_to_local[offd_cols[i]] = i;
-            }
-
-            //Convert offd cols to local
-            for (index_t i = 0; i < offd_nnz; i++)
-            {
-                offd_j[i] = global_to_local[offd_j[i]];
-            }
-
-            //Initialize off-diagonal-block matrix
-            offd = new CSR_Matrix(offd_i.data(), offd_j.data(), offd_data.data(),
-                          local_rows, offd_num_cols, offd_data.size(), format);
-            (offd->m)->makeCompressed();
         }
 
-        //Initialize diagonal-block matrix
-        diag = new CSR_Matrix(diag_i.data(), diag_j.data(), diag_data.data(),
-                          local_rows, local_rows, diag_data.size(), format);
-        (diag->m)->makeCompressed();
-
-        //Initialize communication package
-        comm = new ParComm(offd, local_to_global, global_row_starts, symmetric);
-
-
+        finalize(0);
     }
-    ParMatrix(ParMatrix* A);
-    ~ParMatrix();
+
+    ParMatrix(index_t _globalRows, index_t _globalCols, Matrix* _diag, Matrix* _offd)
+    {
+        this->global_rows = _globalRows;
+        this->global_cols = _globalCols;
+        this->diag = _diag;
+        this->offd = _offd;
+    }
+
+    ParMatrix(ParMatrix* A)
+    {
+        this->global_rows = A->global_rows;
+        this->global_cols = A->global_cols;
+        this->diag = A->diag; // should we mark as not owning? (we should think about move semantics or if people really love pointers we could use smart pointers).
+        this->offd = A->offd;
+    }
+
+    ParMatrix()
+    {
+        this->local_rows = 0;
+        this->local_cols = 0;
+        this->offd_num_cols = 0;
+    }
+
+    ~ParMatrix()
+    {
+        if (this->offd_num_cols)
+        {
+            delete this->offd;
+        }
+        if (this->local_rows)
+        {
+            delete this->diag;
+            delete this->comm;
+        }
+        delete[] this-> global_col_starts;
+        local_to_global.clear();
+        global_to_local.clear();
+    }
 
     index_t global_rows;
     index_t global_cols;
     index_t local_nnz;
     index_t local_rows;
+    index_t local_cols;
     Matrix* diag;
     Matrix* offd;
     std::vector<index_t> local_to_global;
     std::map<index_t, index_t> global_to_local;
     index_t offd_num_cols;
     index_t first_col_diag;
-    index_t offd_nnz;
+    index_t first_row;
     ParComm* comm;
+    index_t* global_col_starts;
+    MPI_Comm comm_mat;
 };
+}
 #endif
