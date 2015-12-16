@@ -6,6 +6,5 @@ add_library(raptor STATIC ${core_SOURCES} ${gallery_SOURCES} ${util_SOURCES})
 
 include_directories(".")
 if(ENABLE_UNIT_TESTS)
-  add_tests_promisc(core)
-  add_tests_promisc(util)
+  add_subdirectory(core/tests)
 endif()
