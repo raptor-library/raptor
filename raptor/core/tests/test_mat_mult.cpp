@@ -13,29 +13,29 @@
 #include "util/linalg/spmv.hpp"
 #include "util/linalg/matmult.hpp"
 
-TEST(core, test_mat_mult) {
-	MPI_Init(core, test_mat_mult);
+TEST(core, matmult) {
 	int rank;
 	int comm_size;
 
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
 
-	ASSERT_EQ(comm_size, 1);
+	ASSERT_EQ(comm_size, 2);
 
 	using namespace raptor;
 
 	data_t vA[9] = {1,0,0,0,0,0,0,0,0};
-    data_t vx[15] = {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    data_t vBtest[15] = {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+	data_t vx[15] = {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
-    ParMatrix* A = new ParMatrix(3,3,vA);
+	ParMatrix* A = new ParMatrix(3,3,vA);
 	ParMatrix* x = new ParMatrix(3,5,vx);
 	ParMatrix* B;
-	ParMatrix* Btest = new ParMatrix(3,5,vBtest);
 
 	parallel_matmult(A, x, &B);
 
-	MPI_Finalize();
+	// create the test matrix
+	data_t vBtest[15] = {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+	ParMatrix* Btest = new ParMatrix(3,5,vBtest);
+
 	ASSERT_EQ(B, Btest);
 }
