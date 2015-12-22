@@ -20,20 +20,20 @@ TEST(core, matmult) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
 
-	ASSERT_EQ(comm_size, 2);
+	ASSERT_EQ(comm_size, 1);
 
 	using namespace raptor;
 
 	data_t vA[9] = {1,0,0,0,0,0,0,0,0};
-	data_t vx[15] = {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-
-	ParMatrix* A = new ParMatrix(3,3,vA);
+    data_t vx[15] = {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    
+    ParMatrix* A = new ParMatrix(3,3,vA);
 	ParMatrix* x = new ParMatrix(3,5,vx);
 	ParMatrix* B;
 
 	parallel_matmult(A, x, &B);
 
-	// create the test matrix
+	// write comparison answer
 	data_t vBtest[15] = {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	ParMatrix* Btest = new ParMatrix(3,5,vBtest);
 
