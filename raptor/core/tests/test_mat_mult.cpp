@@ -25,9 +25,9 @@ TEST(core, matmult) {
 	using namespace raptor;
 
 	data_t vA[9] = {1,0,0,0,0,0,0,0,0};
-    data_t vx[15] = {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    	data_t vx[15] = {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
     
-    ParMatrix* A = new ParMatrix(3,3,vA);
+    	ParMatrix* A = new ParMatrix(3,3,vA);
 	ParMatrix* x = new ParMatrix(3,5,vx);
 	ParMatrix* B;
 
