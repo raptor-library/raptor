@@ -6,8 +6,8 @@
 #include "types.hpp"
 #include "par_matrix.hpp"
 #include "par_vector.hpp"
-#include "util/linalg/relax.hpp"
 #include "util/linalg/spmv.hpp"
+#include "util/linalg/relax.hpp"
 #include "util/linalg/gauss_elimination.hpp"
 
 /**************************************************************

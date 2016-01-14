@@ -1,3 +1,6 @@
+#ifndef RAPTOR_HYPRE_WRAPPER_H
+#define RAPTOR_HYPRE_WRAPPER_H
+
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "core/hierarchy.hpp"
@@ -26,3 +29,5 @@ raptor::Hierarchy* create_wrapped_hierarchy(raptor::ParMatrix* A_rap,
                                 int p_max_elmts = 0,
                                 int agg_num_levels = 0,
                                 double strong_threshold = 0.25);
+
+#endif

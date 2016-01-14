@@ -1,15 +1,18 @@
-include_directories(/home/bienz2/Documents/Parallel/hypre/src/hypre/include)
+if (DEFINED ENV{HYPRE_INC})
+    include_directories($ENV{HYPRE_INC})
+    if (DEFINED ENV{MFEM_INC} AND DEFINED ENV{METIS_INC})
+        include_directories($ENV{MFEM_INC})
+        include_directories($ENV{METIS_INC})
+    endif()
+endif()
 
-add_src_promisc(core)
-add_src_promisc(gallery)
-add_src_promisc(util)
-add_src_promisc(hypre)
+include_directories(.)
 
-add_library(raptor STATIC ${core_SOURCES} ${gallery_SOURCES} ${util_SOURCES} ${hypre_SOURCES})
+add_subdirectory(core)
+add_subdirectory(gallery)
+add_subdirectory(util)
 
-#add_library(raptor-shared SHARED ${core_SOURCES} ${gallery_SOURCES} ${util_SOURCES})
-#add_library(raptor-static STATIC ${core_SOURCES} ${gallery_SOURCES} ${util_SOURCES})
-#set_target_properties(raptor-shared raptor-static PROPERTIES OUTPUT_NAME raptor)
+add_library(raptor STATIC ${core_SOURCES} ${gallery_SOURCES} ${util_SOURCES})
 
 include_directories(".")
 if(ENABLE_UNIT_TESTS)

@@ -6,9 +6,9 @@
 #include <mpi.h>
 #include <math.h>
 
-#include "core/matrix.hpp"
-#include "core/par_comm.hpp"
-#include "core/types.hpp"
+#include "matrix.hpp"
+#include "par_comm.hpp"
+#include "types.hpp"
 
 namespace raptor
 {
