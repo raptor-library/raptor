@@ -5,8 +5,6 @@
 
 #include <mpi.h>
 #include <math.h>
-#include <Eigen/Dense>
-using Eigen::VectorXd;
 
 #include "matrix.hpp"
 #include <map>
@@ -47,6 +45,7 @@ public:
         }
 
         // Add processors needing to send to, and what to send to each
+
         if (symmetric)
         {
             if (offd_num_cols)

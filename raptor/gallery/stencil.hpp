@@ -7,14 +7,12 @@
 #include <float.h>
 #include <cmath>
 #include <stdlib.h>
-#include <Eigen/Dense>
-using Eigen::VectorXd;
 
 #include "core/par_matrix.hpp"
 #include "core/types.hpp"
 
 using namespace raptor;
 
-ParMatrix* stencil_grid(data_t* stencil, index_t* grid, index_t dim, format_t format = CSR);
+ParMatrix* stencil_grid(data_t* stencil, int* grid, int dim, format_t format = CSR);
 
 #endif

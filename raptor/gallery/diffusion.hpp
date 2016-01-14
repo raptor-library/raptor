@@ -5,8 +5,6 @@
 
 #include <mpi.h>
 #include <cmath>
-#include <Eigen/Dense>
-using Eigen::VectorXd;
 
 #include "core/par_matrix.hpp"
 #include "core/types.hpp"

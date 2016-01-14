@@ -4,7 +4,6 @@
 #define MULTILEVEL_HPP
 
 #include <math.h>
-#include <Eigen/Dense>
 #include "ParMatrix.hpp"
 #include "ParVector.hpp"
 

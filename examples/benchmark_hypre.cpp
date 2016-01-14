@@ -3,9 +3,11 @@
 
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
+#include "core/hierarchy.hpp"
 #include "gallery/stencil.hpp"
 #include "gallery/diffusion.hpp"
-#include "util/linalg/spmv.hpp"
+#include "gallery/external/hypre_wrapper.hpp"
+#include "util/linalg/relax.hpp"
 
 //using namespace raptor;
 int main(int argc, char *argv[])
@@ -35,30 +37,21 @@ int main(int argc, char *argv[])
     int local_num_cols = A->local_cols;
     int first_row = A->first_row;
     int first_col_diag = A->first_col_diag;
-
     ParVector* b = new ParVector(global_num_cols, local_num_cols, first_col_diag);
     ParVector* x = new ParVector(global_num_rows, local_num_rows, first_row);
     ParVector* result = new ParVector(global_num_cols, local_num_cols, first_col_diag);
-
     b->set_const_value(0.0);
     x->set_const_value(1.0);
     result->set_const_value(0.0);
 
-    data_t t0, tfinal;
+    Hierarchy* ml = create_wrapped_hierarchy(A, x, b);
 
-    t0 = MPI_Wtime();
-    for (int i = 0; i < num_tests; i++)
-    {
-        parallel_spmv(A, x, b, 1.0, 0.0, 1);
-    }
-    tfinal = (MPI_Wtime() - t0) / num_tests;
+    int num_levels = ml->num_levels;
 
-    // Print Timings
-    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    if (rank == 0) printf("Max Time per SpMV: %2.3e\n", t0);
-    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (rank == 0) printf("Avg Time per SpMV: %2.3e\n", t0 / num_procs);
+    ml->solve(x, b);
+    data_t r_norm;
 
+    delete ml;
     delete A;
     delete x;
     delete b;
