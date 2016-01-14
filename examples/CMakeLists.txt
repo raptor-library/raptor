@@ -4,6 +4,7 @@ target_link_libraries(benchmark raptor ${MPI_LIBRARIES})
 
 if(WITH_HYPRE)
     add_executable(benchmark_hypre benchmark_hypre.cpp)
+    target_link_libraries(benchmark_hypre raptor ${MPI_LIBRARIES} ${HYPRE_LIBRARIES})
 endif(WITH_HYPRE)
 #if (${WITH_HYPRE})
 #    include_directories($ENV{HYPRE_INC})

@@ -23,7 +23,6 @@ if(WITH_HYPRE)
     find_package(hypre)
     if(HYPRE_FOUND)
         include_directories(${HYPRE_INCLUDE_DIRS})
-        target_link_libraries(raptor ${HYPRE_LIBRARIES})
     endif(HYPRE_FOUND)
 endif(WITH_HYPRE)
 
