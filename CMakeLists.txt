@@ -19,10 +19,16 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 option(WITH_HYPRE "Add Hypre" OFF)
 add_feature_info(hypre WITH_HYPRE "Hypre preconditioner")
 
+find_library(LAPACK_LIBRARY NAMES liblapack lapack)
+find_library(BLAS_LIBRARY NAMES libblas blas)
+
 if(WITH_HYPRE)
-    find_package(hypre)
+    find_package(Hypre)
     if(HYPRE_FOUND)
         include_directories(${HYPRE_INCLUDE_DIRS})
+	else()
+	    message ( WARNING "Cannot find HYPRE. Try setting CMAKE_PREFIX_PATH" )
+		set(WITH_HYPRE OFF)
     endif(HYPRE_FOUND)
 endif(WITH_HYPRE)
 

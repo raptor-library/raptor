@@ -14,6 +14,8 @@ add_subdirectory(util)
 
 add_library(raptor STATIC ${core_SOURCES} ${gallery_SOURCES} ${util_SOURCES})
 
+target_link_libraries(raptor ${LAPACK_LIBRARY} ${BLAS_LIBRARY})
+
 include_directories(".")
 if(ENABLE_UNIT_TESTS)
   add_subdirectory(core/tests)

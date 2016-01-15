@@ -1,13 +1,12 @@
 # from https://cmake.org/Wiki/CMake:How_To_Find_Libraries
 
 find_package(PkgConfig)
-pkg_check_modules(hypre QUIET hypre)
+pkg_check_modules(HYPRE QUIET hypre)
 
-find_path(HYPRE_INCLUDE_DIR hypre.h
-          HINTS ${PC_HYPRE_INCLUDEDIR} ${PC_HYPRE_INCLUDE_DIRS}
-          PATH_SUFFIXES hypre)
+find_path(HYPRE_INCLUDE_DIR HYPRE.h
+          HINTS ${PC_HYPRE_INCLUDEDIR} ${PC_HYPRE_INCLUDE_DIRS})
 
-find_library(HYPRE_LIBRARY NAMES hypre
+find_library(HYPRE_LIBRARY NAMES HYPRE
              HINTS ${PC_HYPRE_LIBDIR} ${PC_HYPRE_LIBRARY_DIRS})
 
 set(HYPRE_LIBRARIES ${HYPRE_LIBRARY} )
