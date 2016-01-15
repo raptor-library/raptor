@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     index_t num_tests = 1;
-    const char* mesh = "../../mfem/data/beam-tet.mesh";
+    const char* mesh = "/home/bienz2/Documents/Parallel/mfem/data/beam-tet.mesh";
     int order = 3;
 
     ParMatrix* A;
