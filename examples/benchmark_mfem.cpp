@@ -16,14 +16,17 @@ int main(int argc, char *argv[])
 
     index_t num_tests = 1;
     char* mesh = argv[1];
-    int order = atoi(argv[2]);
+    int num_elements = atoi(argv[2]);
+
+    int order = 3;
+    if (argc > 3) order = atoi(argv[3]);
 
     ParMatrix* A;
     ParVector* x;
     ParVector* b;
 
 //    mfem_laplace(&A, &x, &b, mesh, order);
-    mfem_linear_elasticity(&A, &x, &b, mesh, order);
+    mfem_linear_elasticity(&A, &x, &b, mesh, num_elements, order);
 //    mfem_electromagnetic_diffusion(&A, &x, &b, mesh, order);
 
     data_t t0, tfinal;

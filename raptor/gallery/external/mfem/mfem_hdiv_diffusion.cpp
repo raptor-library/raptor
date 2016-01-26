@@ -13,7 +13,7 @@ using namespace mfem;
 void F_exact(const mfem::Vector &, mfem::Vector &);
 void f_exact(const mfem::Vector &, mfem::Vector &);
 
-void mfem_hdiv_diffusion(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x_raptor_ptr, raptor::ParVector** b_raptor_ptr, const char* mesh_file, int order, bool set_bc, bool visualization)
+void mfem_hdiv_diffusion(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x_raptor_ptr, raptor::ParVector** b_raptor_ptr, const char* mesh_file, int num_elements, int order, bool set_bc, bool visualization)
 {
    int myid, num_procs;
    MPI_Comm_rank(MPI_COMM_WORLD, &myid);
@@ -41,7 +41,7 @@ void mfem_hdiv_diffusion(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x
    //    more than 1,000 elements.
    {
       int ref_levels =
-         (int)floor(log(1000./mesh->GetNE())/log(2.)/dim);
+         (int)floor(log((1.0*num_elements)/mesh->GetNE())/log(2.)/dim);
       for (int l = 0; l < ref_levels; l++)
          mesh->UniformRefinement();
    }
