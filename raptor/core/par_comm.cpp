@@ -50,167 +50,33 @@ void ParComm::init_comm_recvs(const MPI_Comm comm_mat, const index_t num_cols, s
 
     // For each offd col, find proc it lies on.  Add proc and list
     // of columns it holds to map recvIndices
-    last = 0;
-    old_proc = col_to_proc[global_to_local.begin()->second];
-
     ctr = 0;
+
+    old_proc = col_to_proc[global_to_local.begin()->second];
+    recv_procs.push_back(old_proc);
+    recv_col_starts.push_back(ctr);
+
     for (std::map<index_t, index_t>::iterator i = global_to_local.begin(); i != global_to_local.end(); i++)
     {
         local_col = i->second;
-        proc_cols.push_back(local_col);
+        recv_col_indices.push_back(local_col);
         proc = col_to_proc[local_col];
         // Column lies on new processor, so add last
         // processor to communicator
         if (proc != old_proc)
         {
-            first = last;
-            last = ctr;
-            std::vector<index_t> newvec(proc_cols.begin() + first, proc_cols.begin() + last);
-            recv_indices[old_proc] = newvec;
-            recv_procs.push_back(old_proc);
+            recv_procs.push_back(proc);
+            recv_col_starts.push_back(ctr);
+            old_proc = proc;
         }
-        old_proc = proc;
         ctr++;
     }
     // Add last processor to communicator
-    first = last;
-    std::vector<index_t> newvec(proc_cols.begin() + first, proc_cols.begin() + num_cols);
-    recv_indices[old_proc] = newvec;
-    recv_procs.push_back(old_proc);
+    recv_col_starts.push_back(ctr);
+
 
     //Store total number of values to be sent/received
     size_recvs = num_cols;
-}
-
-void ParComm::init_comm_sends_sym_csr(const MPI_Comm comm_mat, const Matrix* offd, std::map<index_t, index_t>& global_to_local)
-{
-    std::vector<index_t> ptr;
-    std::vector<index_t> idx;
-    index_t num_rows;
-    index_t row_start;
-    index_t row_end;
-    index_t proc;
-    index_t old_proc;
-    index_t local_col;
-
-    // Get CSR Matrix variables
-    ptr = offd->indptr;
-    idx = offd->indices;
-    num_rows = offd->n_rows;
-    size_sends = 0;
-    for (index_t i = 0; i < num_rows; i++)
-    {
-        row_start = ptr[i];
-        row_end = ptr[i+1];
-        if (row_start == row_end) 
-        {
-            continue;
-        }
-        old_proc = col_to_proc[idx[row_start]];
-        for (index_t j = row_start; j < row_end; j++)
-        {
-            local_col = idx[j];
-            proc = col_to_proc[local_col];
-            // Column lies on new processor, so add last
-            // processor to communicator
-            if (proc != old_proc)
-            {
-                if (send_indices.count(old_proc))
-                {
-                    if (send_indices[old_proc].back() != i)
-                    {
-                        send_indices[old_proc].push_back(i);   
-                    }
-                }
-                else
-                {
-                    std::vector<index_t> tmp;
-                    tmp.push_back(i);
-                    send_indices[old_proc] = tmp;
-                    send_procs.push_back(old_proc);
-                }
-                size_sends++;
-            }
-            old_proc = proc;
-        }
-        // Add last processor to communicator
-        if (send_indices.count(old_proc))
-        {
-            if (send_indices[old_proc].back() != i)
-            {
-                send_indices[old_proc].push_back(i);
-            }
-        }
-        else
-        {
-            std::vector<index_t> tmp;
-            tmp.push_back(i);
-            send_indices[old_proc] = tmp;
-            send_procs.push_back(old_proc);
-        }
-        size_sends++;
-    }
-}
-
-void ParComm::init_comm_sends_sym_csc(const MPI_Comm comm_mat, const Matrix* offd, std::map<index_t, index_t>& global_to_local)
-{
-    // Get MPI Information
-    int rank, num_procs;
-    MPI_Comm_rank(comm_mat, &rank);
-    MPI_Comm_size(comm_mat, &num_procs);
-
-    std::vector<index_t> ptr;
-    std::vector<index_t> idx;
-    index_t num_cols;
-    index_t col_start;
-    index_t col_end;
-    index_t proc;
-    index_t old_proc;
-    index_t local_col;
-    std::vector<index_t>::iterator it;
-
-    // Get CSR Matrix variables
-    ptr = offd->indptr;
-    idx = offd->indices;
-    num_cols = offd->n_cols;
-    size_sends = 0;
-    
-    old_proc = col_to_proc[global_to_local.begin()->second];
-    for (std::map<index_t, index_t>::iterator i = global_to_local.begin(); i != global_to_local.end(); i++)
-    {
-        local_col = i->second;
-        col_start = ptr[local_col];
-        col_end = ptr[local_col+1];
-        if (col_start == col_end) 
-        {
-            continue;
-        }
-            
-        proc = col_to_proc[local_col];
-
-        if (proc != old_proc)
-        {
-            send_procs.push_back(old_proc);
-            std::sort(send_indices[old_proc].begin(), send_indices[old_proc].end());
-            it = std::unique(send_indices[old_proc].begin(), send_indices[old_proc].end());
-            send_indices[old_proc].resize(std::distance(send_indices[old_proc].begin(), it));
-            size_sends += send_indices[old_proc].size();
-
-            std::vector<index_t> tmp;
-            send_indices[proc] = tmp;
-        }
-
-        for (index_t j = col_start; j < col_end; j++)
-        {
-            send_indices[proc].push_back(idx[j]);
-        }
-        old_proc = proc;
-    }
-    send_procs.push_back(old_proc);
-    std::sort(send_indices[old_proc].begin(), send_indices[old_proc].end());
-    it = std::unique(send_indices[old_proc].begin(), send_indices[old_proc].end());
-    send_indices[old_proc].resize(std::distance(send_indices[old_proc].begin(), it));
-    size_sends += send_indices[old_proc].size();
 }
 
 void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<index_t>& map_to_global, const index_t* global_col_starts)
@@ -253,17 +119,21 @@ void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<i
         }
 
         //Send everything in recv_idx[recv_proc] to recv_proc;
+        int recv_start, recv_end;
         for (index_t i = 0; i < recv_size; i++)
         {
             orig_ctr = ctr;
             recv_proc = recv_procs[i];
-            for (auto recv_idx : recv_indices[recv_proc])
+            recv_start = recv_col_starts[i];
+            recv_end = recv_col_starts[i+1];
+            for (int j = recv_start; j < recv_end; j++)
             {
-                send_buffer[ctr++] = map_to_global[recv_idx];
+                send_buffer[ctr++] = map_to_global[recv_col_indices[j]];
             }
             MPI_Isend(&send_buffer[orig_ctr], ctr - orig_ctr, MPI_INDEX_T, recv_proc, unsym_tag, comm_mat, &send_requests[i]);
             send_counts[recv_proc] = 1;
         }
+
     }
 
     // AllReduce - sum number of sends to each process

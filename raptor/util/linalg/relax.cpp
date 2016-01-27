@@ -130,13 +130,17 @@ void relax(const ParMatrix* A, ParVector* x, const ParVector* y, int num_sweeps,
     index_t                                  num_recvs;
     index_t*                                 send_procs;
     index_t*                                 recv_procs;
+    index_t*                                 recv_col_starts;
+    index_t*                                 recv_col_indices;
     ParComm*                                 comm;
     std::map<index_t, index_t>               recv_proc_starts;
 
     // Initialize communication variables
     comm          = A->comm;
     send_procs    = comm->send_procs.data();
-    recv_procs    = comm->recv_procs.data();
+    recv_procs    = comm->recv_procs.data();  
+    recv_col_starts = comm->recv_col_starts.data();
+    recv_col_indices = comm->recv_col_indices.data();
     local_data    = x->local->data();
     num_sends = comm->send_procs.size();
     num_recvs = comm->recv_procs.size();
@@ -180,11 +184,14 @@ void relax(const ParMatrix* A, ParVector* x, const ParVector* y, int num_sweeps,
             begin = 0;
             ctr = 0;
             request_ctr = 0;
+
+            index_t proc, num_recv, recv_start, recv_end;
             for (index_t i = 0; i < num_recvs; i++)
             {
-                index_t proc = recv_procs[i];
-                index_t num_recv = comm->recv_indices[proc].size();
-                recv_proc_starts[proc] = begin;
+                proc = recv_procs[i];
+                recv_start = recv_col_starts[i];
+                recv_end = recv_col_starts[i+1];
+                num_recv = recv_end - recv_start;
                 MPI_Irecv(&recv_buffer[begin], num_recv, MPI_DATA_T, proc, 0, comm_mat, &(recv_requests[request_ctr++]));
                 begin += num_recv;
             }
@@ -222,6 +229,7 @@ void relax(const ParMatrix* A, ParVector* x, const ParVector* y, int num_sweeps,
             if (async)
             {
                 int recv_idx[num_recvs];
+                index_t proc, recv_start, recv_end, first_col, num_cols;
                 for (index_t i = 0; i < num_recvs;)
                 {
                     int n_recvd;
@@ -229,9 +237,10 @@ void relax(const ParMatrix* A, ParVector* x, const ParVector* y, int num_sweeps,
                     for (index_t j = 0; j < n_recvd; j++)
                     {
                         index_t proc = recv_procs[recv_idx[j]];
-                        std::vector<index_t>* r_indices = &(comm->recv_indices[proc]);
-                        int first_col = r_indices->data()[0];
-                        int num_cols = r_indices->size();
+                        recv_start = recv_col_starts[recv_idx[j]];
+                        recv_end = recv_col_starts[recv_idx[j]+1];
+                        first_col = recv_col_indices[recv_start];
+                        num_cols = recv_end - recv_start;
                         sequential_spmv(A->offd, x_data, sum_data, 1.0, 1.0, NULL, first_col, num_cols);
                     }
                     i += n_recvd;

@@ -7,6 +7,8 @@
 #include "gallery/diffusion.hpp"
 #include "util/linalg/spmv.hpp"
 
+#include <assert.h>
+
 //using namespace raptor;
 int main(int argc, char *argv[])
 {
@@ -14,6 +16,9 @@ int main(int argc, char *argv[])
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+    assert(num_procs > 1 && "num_procs == 1\n");
+
     index_t n = 50;
 
     index_t num_tests = 1;
