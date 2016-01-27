@@ -25,8 +25,11 @@ SET(HYPRE_DIR "" CACHE STRING "Directory of HYPRE")
 SET(METIS_DIR "" CACHE STRING "Directory of metis")
 SET(MFEM_DIR "" CACHE STRING "Directory of mfem")
 
-find_library(LAPACK_LIBRARIES NAMES liblapack lapack)
-find_library(BLAS_LIBRARIES NAMES libblas blas)
+#set(LAPACK_LIBRARY "")
+#set(BLAS_LIBRARY "")
+
+find_library(LAPACK_LIBRARY NAMES liblapack lapack)
+find_library(BLAS_LIBRARY NAMES libblas blas)
 
 if(WITH_HYPRE)
     find_package(Hypre)

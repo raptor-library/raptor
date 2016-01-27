@@ -16,8 +16,6 @@ class ParComm
 public:
     void init_col_to_proc(const MPI_Comm comm_mat, const index_t num_cols, std::map<index_t, index_t>& global_to_local, const index_t* global_col_starts);
     void init_comm_recvs(const MPI_Comm comm_mat, const index_t num_cols, std::map<index_t, index_t>& global_to_local);
-    void init_comm_sends_sym_csr(const MPI_Comm comm_mat, const Matrix* offd, std::map<index_t, index_t>& global_to_local);
-    void init_comm_sends_sym_csc(const MPI_Comm comm_mat, const Matrix* offd, std::map<index_t, index_t>& global_to_local);
     void init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<index_t>& map_to_global, const index_t* global_col_starts);
 
     // TODO
@@ -45,42 +43,30 @@ public:
         }
 
         // Add processors needing to send to, and what to send to each
-
-        if (symmetric)
-        {
-            if (offd_num_cols)
-            {
-                if (offd->format == CSR)
-                {
-                    init_comm_sends_sym_csr(comm_mat, offd, global_to_local);
-                }
-                else
-                {
-                    init_comm_sends_sym_csc(comm_mat, offd, global_to_local);
-                }
-            }
-        }
-        else
-        {
-            init_comm_sends_unsym(comm_mat, map_to_global, global_col_starts);
-        } 
+        init_comm_sends_unsym(comm_mat, map_to_global, global_col_starts);
     }
 
     ~ParComm()
     {
-        send_indices.clear();
-        recv_indices.clear();
         send_procs.clear();
+        send_indices.clear();
+
         recv_procs.clear();
+        recv_col_starts.clear();
+        recv_col_indices.clear();
+
         col_to_proc.clear();
     };
 
     index_t size_sends;
-    index_t size_recvs;
-    std::map<index_t, std::vector<index_t>> send_indices;
-    std::map<index_t, std::vector<index_t>> recv_indices;
     std::vector<index_t> send_procs;
+    std::map<index_t, std::vector<index_t>> send_indices;
+
+    index_t size_recvs;
     std::vector<index_t> recv_procs;
+    std::vector<index_t> recv_col_starts;
+    std::vector<index_t> recv_col_indices;
+
     std::vector<index_t> col_to_proc;
 };
 }

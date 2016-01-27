@@ -357,7 +357,7 @@ void seq_mm_T(Matrix* A, Matrix* B, ParMatrix* C, AType map_row_A,
  **************************************************************/
 void parallel_matmult(ParMatrix* A, ParMatrix* B, ParMatrix** _C)
 {
-    // If process not active, create new 
+/*    // If process not active, create new 
     // empty matrix, and return
     if (!(A->local_rows))
     {
@@ -444,7 +444,7 @@ void parallel_matmult(ParMatrix* A, ParMatrix* B, ParMatrix** _C)
     num_sends = send_procs.size();
     num_recvs = recv_procs.size();
 
-    /* Send elements of B as array of COO structs */
+    // Send elements of B as array of COO structs 
     B_diag->convert(CSR);
     if (B->offd_num_cols)
     {
@@ -609,7 +609,7 @@ void parallel_matmult(ParMatrix* A, ParMatrix* B, ParMatrix** _C)
 	    MPI_Waitall(send_procs.size(), send_requests, MPI_STATUS_IGNORE);
         delete[] send_buffer;
         delete[] send_requests; 
-    }
+    }*/
 } 
 
 /**************************************************************
@@ -629,7 +629,7 @@ void parallel_matmult(ParMatrix* A, ParMatrix* B, ParMatrix** _C)
  **************************************************************/
 void parallel_matmult_T(ParMatrix* A, ParMatrix* B, ParMatrix** _C)
 {
-    // If process not active, create new 
+/*    // If process not active, create new 
     // empty matrix, and return
     if (!(A->local_rows))
     {
@@ -716,7 +716,7 @@ void parallel_matmult_T(ParMatrix* A, ParMatrix* B, ParMatrix** _C)
     send_requests = new MPI_Request[num_sends];
     send_buffer = new std::vector<Element>[num_sends];
 
-    /* Convert all matrices to CSC for multiplication */
+    // Convert all matrices to CSC for multiplication
     A_diag->convert(CSC);
     if (A->offd_num_cols)
     {
@@ -861,6 +861,6 @@ void parallel_matmult_T(ParMatrix* A, ParMatrix* B, ParMatrix** _C)
 	    MPI_Waitall(send_procs.size(), send_requests, MPI_STATUS_IGNORE);
         delete[] send_buffer;
         delete[] send_requests; 
-    }
+    }*/
 }  
 
