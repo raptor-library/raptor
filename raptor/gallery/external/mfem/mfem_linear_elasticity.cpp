@@ -1,7 +1,7 @@
 // Lines 11-151 of this code were taken from MFEM example, ex2p.cpp (lines 76-216)
 
 #include "gallery/external/mfem_wrapper.hpp"
-#include "gallery/external/hypre_wrapper.cpp"
+#include "gallery/external/hypre_wrapper.hpp"
 #include "mfem.hpp"
 #include <fstream>
 #include <iostream>

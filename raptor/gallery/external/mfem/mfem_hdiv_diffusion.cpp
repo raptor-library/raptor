@@ -1,7 +1,7 @@
 // Lines 11-110 of this code were taken from MFEM example, ex4p.cpp (lines 78-177).  The methods F_exact and f_exact were also taken from this file.
 
 #include "gallery/external/mfem_wrapper.hpp"
-#include "gallery/external/hypre_wrapper.cpp"
+#include "gallery/external/hypre_wrapper.hpp"
 #include "mfem.hpp"
 #include <fstream>
 #include <iostream>
