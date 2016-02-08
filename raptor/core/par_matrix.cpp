@@ -11,11 +11,8 @@ void ParMatrix::reserve(index_t offd_cols, index_t nnz_per_row, index_t nnz_per_
     diag->reserve(nnz_per_row);
 }
 
-void ParMatrix::create_partition(index_t global_rows, index_t global_cols, index_t first_row, index_t local_rows, index_t first_col_diag)
+void ParMatrix::create_comm_mat(MPI_Comm _comm_mat)
 {
-
-    MPI_Comm _comm_mat = MPI_COMM_WORLD;
-
     // Get MPI Information
     int rank, num_procs;
     MPI_Comm_rank(_comm_mat, &rank);
@@ -43,7 +40,7 @@ void ParMatrix::create_partition(index_t global_rows, index_t global_cols, index
     {
         MPI_Group group_world;
         MPI_Group group_mat;
-        
+
         int active_ranks[num_active];
         int ctr = 0;
         for (index_t i = 0; i < num_procs; i++)
@@ -63,14 +60,30 @@ void ParMatrix::create_partition(index_t global_rows, index_t global_cols, index
         comm_mat = _comm_mat;
     }
 
-    if (active)
+    delete[] active_list;
+
+}
+
+void ParMatrix::create_partition(index_t global_rows, index_t global_cols, index_t first_row, index_t local_rows, index_t first_col_diag)
+{
+
+    MPI_Comm _comm_mat = MPI_COMM_WORLD;
+
+    // Get MPI Information
+    int rank, num_procs;
+    MPI_Comm_rank(_comm_mat, &rank);
+    MPI_Comm_size(_comm_mat, &num_procs);
+
+    create_comm_mat(_comm_mat);
+
+    if (local_rows)
     {
+        int num_active;
+        MPI_Comm_size(comm_mat, &num_active);
         global_col_starts = new index_t[num_active+1];
         MPI_Allgather(&first_col_diag, 1, MPI_INT, global_col_starts, 1, MPI_INT, comm_mat);
         global_col_starts[num_active] = global_cols;
     }
-
-    delete[] active_list;
 }
 
 void ParMatrix::create_partition(index_t global_rows, index_t global_cols, MPI_Comm _comm_mat)

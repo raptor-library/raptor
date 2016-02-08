@@ -59,7 +59,8 @@ void ParComm::init_comm_recvs(const MPI_Comm comm_mat, const index_t num_cols, s
     for (std::map<index_t, index_t>::iterator i = global_to_local.begin(); i != global_to_local.end(); i++)
     {
         local_col = i->second;
-        recv_col_indices.push_back(local_col);
+        if (rank == 0) printf("LocalCol %d\n", local_col);
+        //recv_col_indices.push_back(local_col);
         proc = col_to_proc[local_col];
         // Column lies on new processor, so add last
         // processor to communicator
@@ -73,10 +74,6 @@ void ParComm::init_comm_recvs(const MPI_Comm comm_mat, const index_t num_cols, s
     }
     // Add last processor to communicator
     recv_col_starts.push_back(ctr);
-
-
-    //Store total number of values to be sent/received
-    size_recvs = num_cols;
 }
 
 void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<index_t>& map_to_global, const index_t* global_col_starts)
@@ -92,7 +89,7 @@ void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<i
     index_t req_ctr = 0;
     index_t unsym_tag = 1212;
     index_t recv_size = recv_procs.size();
-    size_sends = 0;
+    index_t size_recvs = recv_col_starts[recv_size];
 
     // Determind number of messages I will receive
     index_t* send_buffer = NULL;
@@ -128,7 +125,8 @@ void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<i
             recv_end = recv_col_starts[i+1];
             for (int j = recv_start; j < recv_end; j++)
             {
-                send_buffer[ctr++] = map_to_global[recv_col_indices[j]];
+                send_buffer[ctr++] = map_to_global[j];
+                //send_buffer[ctr++] = map_to_global[recv_col_indices[j]];
             }
             MPI_Isend(&send_buffer[orig_ctr], ctr - orig_ctr, MPI_INDEX_T, recv_proc, unsym_tag, comm_mat, &send_requests[i]);
             send_counts[recv_proc] = 1;
@@ -145,6 +143,7 @@ void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<i
     int count = 0;
     int avail_flag;
     MPI_Status recv_status;
+    send_row_starts.push_back(0);
     while (send_procs.size() < num_recvs)
     {
         //Probe for messages, and recv any found
@@ -154,11 +153,12 @@ void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<i
             MPI_Get_count(&recv_status, MPI_INDEX_T, &count);
             index_t recv_buffer[count];
             MPI_Recv(&recv_buffer, count, MPI_INDEX_T, MPI_ANY_SOURCE, unsym_tag, comm_mat, &recv_status);
-            for (int i = 0; i < count; i++) recv_buffer[i] = recv_buffer[i] - global_col_starts[rank];
             send_procs.push_back(recv_status.MPI_SOURCE);
-            std::vector<index_t> send_idx(recv_buffer, recv_buffer + count);
-            send_indices[recv_status.MPI_SOURCE] = send_idx;
-            size_sends += send_idx.size();
+            for (int i = 0; i < count; i++)
+            {
+                send_row_indices.push_back(recv_buffer[i] - global_col_starts[rank]);
+            }
+            send_row_starts.push_back(send_row_indices.size());
         }
     }
 

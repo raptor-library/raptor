@@ -3,6 +3,7 @@
 
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
+#include "core/par_comm.hpp"
 #include "core/hierarchy.hpp"
 #include "_hypre_utilities.h"
 #include "HYPRE.h"

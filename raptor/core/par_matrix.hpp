@@ -19,6 +19,7 @@ public:
     void reserve(index_t offd_cols, index_t nnz_per_row, index_t nnz_per_col);
     void create_partition(index_t global_rows, index_t global_cols, MPI_Comm _comm_mat = MPI_COMM_WORLD);
     void create_partition(index_t global_rows, index_t global_cols, index_t first_row, index_t local_rows, index_t first_col_diag);
+    void create_comm_mat(MPI_Comm _comm_mat = MPI_COMM_WORLD);
     void add_value(index_t row, index_t global_col, data_t value, index_t row_global = 0);
     void finalize(int symmetric, format_t diag_f = CSR, format_t offd_f = CSC);
 
@@ -40,7 +41,7 @@ public:
         }
     }
 
-    ParMatrix(index_t _glob_rows, index_t _glob_cols, index_t _local_rows, index_t _local_cols, index_t _first_row, index_t _first_col_diag)
+    ParMatrix(index_t _glob_rows, index_t _glob_cols, index_t _local_rows, index_t _local_cols, index_t _first_row, index_t _first_col_diag, index_t* _global_col_starts = NULL)
     {
         global_rows = _glob_rows;
         global_cols = _glob_cols;
@@ -50,8 +51,15 @@ public:
         first_col_diag = _first_col_diag;
         offd_num_cols = 0;
 
-        create_partition(global_rows, global_cols, first_row, local_rows, first_col_diag);
-
+	if (_global_col_starts == NULL)
+	{
+            create_partition(global_rows, global_cols, first_row, local_rows, first_col_diag);
+	}
+	else
+	{
+	    global_col_starts = _global_col_starts;
+	    create_comm_mat(MPI_COMM_WORLD);
+	}
         diag = new Matrix(local_rows, local_cols);
         offd = new Matrix(local_rows, local_cols);
 

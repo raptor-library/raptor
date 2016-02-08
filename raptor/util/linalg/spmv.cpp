@@ -493,9 +493,11 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
     index_t                                  num_sends;
     index_t                                  num_recvs;
     index_t*                                 send_procs;
+    index_t*                                 send_row_starts;
+    index_t*                                 send_row_indices;
     index_t*                                 recv_procs;
     index_t*                                 recv_col_starts;
-    index_t*                                 recv_col_indices;
+//    index_t*                                 recv_col_indices;
     ParComm*                                 comm;
 
     // Initialize communication variables
@@ -506,15 +508,17 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
     if (num_sends)
     {
         send_procs    = comm->send_procs.data();
-        send_size = comm->size_sends;
+        send_row_starts = comm->send_row_starts.data();
+        send_row_indices = comm->send_row_indices.data();
+        send_size = send_row_starts[num_sends];
     }
 
     if (num_recvs)
     {
         recv_procs    = comm->recv_procs.data();
         recv_col_starts = comm->recv_col_starts.data();
-        recv_col_indices = comm->recv_col_indices.data();
-        recv_size = comm->size_recvs;
+//        recv_col_indices = comm->recv_col_indices.data();
+        recv_size = recv_col_starts[num_recvs];
     }
 
     if (x->local_n)
@@ -559,6 +563,8 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
     // Send values of x to appropriate processors
     if (num_sends)
     {
+        int send_start, send_end, send_size;
+
         // TODO we do not want to malloc these every time
         send_requests = new MPI_Request [num_sends];
         for (index_t i = 0; i < num_sends; i++)
@@ -572,15 +578,16 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
         for (index_t i = 0; i < num_sends; i++)
         {
             index_t proc = send_procs[i];
-            ctr = 0;
-            std::vector<index_t>* s_indices = &(comm->send_indices[proc]);
-            for (auto send_idx : *s_indices)
+            send_start = send_row_starts[i];
+            send_end = send_row_starts[i+1];
+            send_size = send_end - send_start;
+
+            for (int j = send_start; j < send_end; j++)
             {
-                send_buffer[begin + ctr] = x_data[send_idx];
-                ctr++;
+                send_buffer[j] = x_data[send_row_indices[j]];
             }
-            MPI_Isend(&send_buffer[begin], ctr, MPI_DATA_T, proc, 0, comm_mat, &(send_requests[request_ctr++]));
-            begin += ctr;
+            MPI_Isend(&send_buffer[begin], send_size, MPI_DATA_T, proc, 0, comm_mat, &(send_requests[request_ctr++]));
+            begin += send_size;
         }
     }
 
@@ -602,12 +609,12 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
                 MPI_Waitsome(num_recvs, recv_requests, &n_recvd, recv_idx, MPI_STATUS_IGNORE);
                 for (index_t j = 0; j < n_recvd; j++)
                 {
-                    index_t proc = recv_procs[recv_idx[j]];
+                    //index_t proc = recv_procs[recv_idx[j]];
                     recv_start = recv_col_starts[recv_idx[j]];
                     recv_end = recv_col_starts[recv_idx[j]+1];
-                    first_col = recv_col_indices[recv_start];
+                    //first_col = recv_col_indices[recv_start]; -- first col == recv_start
                     num_cols = recv_end - recv_start;
-                    sequential_spmv(A->offd, recv_buffer, y_data, alpha, 1.0, result_data, first_col, num_cols);
+                    sequential_spmv(A->offd, recv_buffer, y_data, alpha, 1.0, result_data, recv_start, num_cols);
                 }
                 i += n_recvd;
             }
