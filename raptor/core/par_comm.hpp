@@ -57,7 +57,7 @@ public:
 
         recv_procs.clear();
         recv_col_starts.clear();
-//        recv_col_indices.clear();
+        recv_col_indices.clear();
 
         col_to_proc.clear();
     };
@@ -71,7 +71,7 @@ public:
 //    index_t size_recvs;
     std::vector<index_t> recv_procs;
     std::vector<index_t> recv_col_starts;
-//    std::vector<index_t> recv_col_indices;
+    std::vector<index_t> recv_col_indices;
 
     std::vector<index_t> col_to_proc;
 };

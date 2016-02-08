@@ -59,8 +59,7 @@ void ParComm::init_comm_recvs(const MPI_Comm comm_mat, const index_t num_cols, s
     for (std::map<index_t, index_t>::iterator i = global_to_local.begin(); i != global_to_local.end(); i++)
     {
         local_col = i->second;
-        if (rank == 0) printf("LocalCol %d\n", local_col);
-        //recv_col_indices.push_back(local_col);
+        recv_col_indices.push_back(local_col);
         proc = col_to_proc[local_col];
         // Column lies on new processor, so add last
         // processor to communicator
@@ -125,8 +124,8 @@ void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<i
             recv_end = recv_col_starts[i+1];
             for (int j = recv_start; j < recv_end; j++)
             {
-                send_buffer[ctr++] = map_to_global[j];
-                //send_buffer[ctr++] = map_to_global[recv_col_indices[j]];
+                //send_buffer[ctr++] = map_to_global[j];
+                send_buffer[ctr++] = map_to_global[recv_col_indices[j]];
             }
             MPI_Isend(&send_buffer[orig_ctr], ctr - orig_ctr, MPI_INDEX_T, recv_proc, unsym_tag, comm_mat, &send_requests[i]);
             send_counts[recv_proc] = 1;
