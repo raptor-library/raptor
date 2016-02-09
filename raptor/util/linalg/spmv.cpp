@@ -488,10 +488,10 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
     index_t                                  ctr;
     index_t                                  request_ctr;
     index_t                                  tag;
+    index_t                                  send_size;
+    index_t                                  recv_size;
     index_t                                  num_sends;
     index_t                                  num_recvs;
-    index_t                                  size_sends;
-    index_t                                  size_recvs;
     index_t*                                 send_procs;
     index_t*                                 send_row_starts;
     index_t*                                 send_row_indices;
@@ -499,7 +499,6 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
     index_t*                                 recv_col_starts;
 //    index_t*                                 recv_col_indices;
     ParComm*                                 comm;
-
 
     // Initialize communication variables
     comm          = A->comm;
@@ -511,7 +510,7 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
         send_procs    = comm->send_procs.data();
         send_row_starts = comm->send_row_starts.data();
         send_row_indices = comm->send_row_indices.data();
-        size_sends = send_row_starts[num_sends];
+        send_size = send_row_starts[num_sends];
     }
 
     if (num_recvs)
@@ -519,7 +518,7 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
         recv_procs    = comm->recv_procs.data();
         recv_col_starts = comm->recv_col_starts.data();
 //        recv_col_indices = comm->recv_col_indices.data();
-        size_recvs = recv_col_starts[num_recvs];
+        recv_size = recv_col_starts[num_recvs];
     }
 
     if (x->local_n)
@@ -541,7 +540,7 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
         {
             recv_requests[i] = MPI_REQUEST_NULL;
         }
-        recv_buffer = new data_t [size_recvs];
+        recv_buffer = new data_t [recv_size];
 
         // Post receives for x-values that are needed
         begin = 0;
@@ -572,7 +571,7 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
         {
             send_requests[i] = MPI_REQUEST_NULL;
         }
-        send_buffer = new data_t [size_sends];
+        send_buffer = new data_t [send_size];
 
         begin = 0;
         request_ctr = 0;
