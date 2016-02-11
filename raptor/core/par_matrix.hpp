@@ -41,7 +41,7 @@ public:
         }
     }
 
-    ParMatrix(index_t _glob_rows, index_t _glob_cols, index_t _local_rows, index_t _local_cols, index_t _first_row, index_t _first_col_diag, index_t* _global_col_starts = NULL, format_t diag_f = CSR, format_t offd_f = CSC)
+    ParMatrix(index_t _glob_rows, index_t _glob_cols, index_t _local_rows, index_t _local_cols, index_t _first_row, index_t _first_col_diag, format_t diag_f = CSR, format_t offd_f = CSC)
     {
         global_rows = _glob_rows;
         global_cols = _glob_cols;
@@ -51,16 +51,8 @@ public:
         first_col_diag = _first_col_diag;
         offd_num_cols = 0;
 
-	if (_global_col_starts == NULL)
-	{
-            create_partition(global_rows, global_cols, first_row, local_rows, first_col_diag);
-	}
-	else
-	{
-	    global_col_starts = _global_col_starts;
-//	    create_comm_mat(MPI_COMM_WORLD);
-            comm_mat = MPI_COMM_WORLD;
-	}
+        create_partition(global_rows, global_cols, first_row, local_rows, first_col_diag);
+
         diag = new Matrix(local_rows, local_cols, diag_f);
         offd = new Matrix(local_rows, local_cols, offd_f);
 
@@ -122,40 +114,39 @@ public:
 
     ParMatrix(index_t _globalRows, index_t _globalCols, Matrix* _diag, Matrix* _offd)
     {
-        this->global_rows = _globalRows;
-        this->global_cols = _globalCols;
-        this->diag = _diag;
-        this->offd = _offd;
+        global_rows = _globalRows;
+        global_cols = _globalCols;
+        diag = _diag;
+        offd = _offd;
     }
 
     ParMatrix(ParMatrix* A)
     {
-        this->global_rows = A->global_rows;
-        this->global_cols = A->global_cols;
-        this->diag = A->diag; // should we mark as not owning? (we should think about move semantics or if people really love pointers we could use smart pointers).
-        this->offd = A->offd;
+        global_rows = A->global_rows;
+        global_cols = A->global_cols;
+        diag = A->diag; // should we mark as not owning? (we should think about move semantics or if people really love pointers we could use smart pointers).
+        offd = A->offd;
     }
 
     ParMatrix()
     {
-        this->local_rows = 0;
-        this->local_cols = 0;
-        this->offd_num_cols = 0;
+        local_rows = 0;
+        local_cols = 0;
+        offd_num_cols = 0;
     }
 
     ~ParMatrix()
     {
         if (this->offd_num_cols)
         {
-            delete this->offd;
+            delete offd;
         }
         if (this->local_rows)
         {
-            delete this->diag;
-            delete this->comm;
-            delete diag_elmts;
+            delete diag;
+            delete comm;
+//            delete diag_elmts;
         }
-        delete[] this-> global_col_starts;
     }
 
     index_t global_rows;
@@ -167,12 +158,12 @@ public:
     Matrix* offd;
     data_t* diag_elmts;
     Array<index_t> local_to_global;
+    Array<index_t> global_col_starts;
     std::map<index_t, index_t> global_to_local;
     index_t offd_num_cols;
     index_t first_col_diag;
     index_t first_row;
     ParComm* comm;
-    index_t* global_col_starts;
     MPI_Comm comm_mat;
 };
 }

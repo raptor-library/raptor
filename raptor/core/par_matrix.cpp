@@ -73,8 +73,9 @@ void ParMatrix::create_partition(index_t global_rows, index_t global_cols, index
     {
         int num_active;
         MPI_Comm_size(comm_mat, &num_active);
-        global_col_starts = new index_t[num_active+1];
-        MPI_Allgather(&first_col_diag, 1, MPI_INT, global_col_starts, 1, MPI_INT, comm_mat);
+        global_col_starts.resize(num_active+1);
+        index_t* global_col_starts_data = global_col_starts.data();
+        MPI_Allgather(&first_col_diag, 1, MPI_INT, global_col_starts_data, 1, MPI_INT, comm_mat);
         global_col_starts[num_active] = global_cols;
     }
 }
@@ -108,7 +109,7 @@ void ParMatrix::create_partition(index_t global_rows, index_t global_cols, MPI_C
         num_procs_active = extra_rows;
     }
 
-    global_col_starts = new index_t[num_procs_active + 1];
+    global_col_starts.resize(num_procs_active + 1);
     int extra = global_cols % num_procs_active;
     int size = global_cols / num_procs_active;
     global_col_starts[0] = 0;

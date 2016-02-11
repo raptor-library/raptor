@@ -84,6 +84,9 @@ HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap)
 // TODO -- Create A Shallow Copy for Conversion
 raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre)
 {
+    HYPRE_Int num_procs;
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
     hypre_CSRMatrix* A_hypre_diag = hypre_ParCSRMatrixDiag(A_hypre);
     HYPRE_Real* diag_data = hypre_CSRMatrixData(A_hypre_diag);
     HYPRE_Int* diag_i = hypre_CSRMatrixI(A_hypre_diag);
@@ -121,13 +124,22 @@ raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre)
     HYPRE_Real value;
 
     // Create empty raptor Matrix
-    raptor::ParMatrix* A = new ParMatrix(global_rows, global_cols, diag_rows, diag_cols, first_row, first_col_diag, global_col_starts, CSR, CSR);
+    raptor::ParMatrix* A = new ParMatrix();
+    A->global_rows = global_rows;
+    A->global_cols = global_cols;
+    A->local_rows = diag_rows;
+    A->local_cols = diag_cols;
+    A->first_row = first_row;
+    A->first_col_diag = first_col_diag;
+    A->comm_mat = MPI_COMM_WORLD;
 
     // Copy local to global index data
     A->offd_num_cols = offd_cols;
     A->local_to_global.set_data(offd_cols, col_map_offd);
+    A->global_col_starts.set_data(num_procs + 1, global_col_starts);
 
     // Copy diagonal matrix
+    A->diag = new Matrix(diag_rows, diag_cols, CSR);
     A->diag->n_rows = diag_rows;
     A->diag->n_cols = diag_cols;
     A->diag->n_outer = diag_rows;
@@ -139,6 +151,7 @@ raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre)
     A->diag->data.set_data(diag_nnz, diag_data);
 
     // Copy off-diagonal matrix
+    A->offd = new Matrix(offd_rows, offd_cols, CSR);
     A->offd->n_rows = offd_rows;
     A->offd->n_cols = offd_cols;
     A->offd->n_outer = offd_rows;
@@ -167,7 +180,7 @@ raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre)
     A->comm->recv_col_starts.set_data(A->comm->num_recvs, recv_vec_starts);
     A->comm->recv_col_starts.resize(A->comm->num_recvs + 1);
     A->comm->recv_col_starts[A->comm->num_recvs] = offd_cols;
- 
+
     return A;
 }
 
@@ -289,9 +302,9 @@ raptor::Hierarchy* create_wrapped_hierarchy(raptor::ParMatrix* A_rap,
     //Clean up TODO -- can we set arrays to NULL and still delete these?
     remove_shared_ptrs((hypre_ParAMGData*)amg_data);
     hypre_BoomerAMGDestroy(amg_data); 
-    HYPRE_IJMatrixDestroy(A);
-    HYPRE_IJVectorDestroy(x);
-    HYPRE_IJVectorDestroy(b);
+//    HYPRE_IJMatrixDestroy(A);
+//    HYPRE_IJVectorDestroy(x);
+//    HYPRE_IJVectorDestroy(b);
 
     return ml;
 }

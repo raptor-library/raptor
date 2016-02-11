@@ -15,9 +15,9 @@ namespace raptor
 class ParComm
 {
 public:
-    void init_col_to_proc(const MPI_Comm comm_mat, const index_t num_cols, std::map<index_t, index_t>& global_to_local, const index_t* global_col_starts);
+    void init_col_to_proc(const MPI_Comm comm_mat, const index_t num_cols, std::map<index_t, index_t>& global_to_local, Array<index_t> global_col_starts);
     void init_comm_recvs(const MPI_Comm comm_mat, const index_t num_cols, std::map<index_t, index_t>& global_to_local);
-    void init_comm_sends_unsym(const MPI_Comm comm_mat, Array<index_t>& map_to_global, const index_t* global_col_starts);
+    void init_comm_sends_unsym(const MPI_Comm comm_mat, Array<index_t>& map_to_global, Array<index_t> global_col_starts);
 
     // TODO
     ParComm()
@@ -28,7 +28,7 @@ public:
         size_recvs = 0;
     }
 
-    ParComm(const Matrix* offd, Array<index_t>& map_to_global, std::map<index_t, index_t>& global_to_local, const index_t* global_col_starts, const MPI_Comm comm_mat, const int symmetric = 1)
+    ParComm(const Matrix* offd, Array<index_t>& map_to_global, std::map<index_t, index_t>& global_to_local, Array<index_t> global_col_starts, const MPI_Comm comm_mat, const int symmetric = 1)
     {
         num_sends = 0;
         size_sends = 0;

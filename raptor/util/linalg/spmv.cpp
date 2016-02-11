@@ -459,7 +459,7 @@ void sequential_spmv_T(Matrix* A, const data_t* x, data_t* y, const data_t alpha
  **************************************************************/
 void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const data_t alpha, const data_t beta, const int async, ParVector* result)
 {
-    if (A->local_rows == 0) return;
+//    if (A->local_rows == 0) return;
 
     data_t* result_data = NULL;
     if (result != NULL)
@@ -469,9 +469,6 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
 
     // Get MPI Information
     MPI_Comm comm_mat = A->comm_mat;
-    int rank, num_procs;
-    MPI_Comm_rank(comm_mat, &rank);
-    MPI_Comm_size(comm_mat, &num_procs);
 
     // TODO must enforce that y and x are not aliased, or this will NOT work
     //    or we could use blocking sends as long as we post the iRecvs first
@@ -590,8 +587,11 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
         }
     }
 
-    // Compute partial SpMV with local information
-    sequential_spmv(A->diag, x_data, y_data, alpha, beta, result_data);
+    if (A->local_rows)
+    {
+        // Compute partial SpMV with local information
+        sequential_spmv(A->diag, x_data, y_data, alpha, beta, result_data);
+    }
 
     // Once data is available, add contribution of off-diagonals
     // TODO Deal with new entries as they become available

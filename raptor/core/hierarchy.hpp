@@ -163,6 +163,8 @@ namespace raptor
           std::vector<ParVector*> b_list;
           std::vector<ParVector*> tmp_list;
 
+          MPI_Comm comm_dense;
+
           data_t* A_coarse;
           int* permute_coarse;
           int* gather_sizes;

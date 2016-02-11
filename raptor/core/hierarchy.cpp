@@ -15,6 +15,13 @@ extern "C" void dgetrf_(int* dim1, int* dim2, double* a, int* lda, int* ipiv, in
  **************************************************************/
 Hierarchy::~Hierarchy()
 {
+    if (A_list[num_levels - 1] -> local_rows)
+    {
+        delete[] A_coarse;
+        delete[] permute_coarse;
+        delete[] gather_sizes;
+        delete[] gather_displs;    
+    }
 }
 
 /***********************************************************
@@ -80,74 +87,114 @@ void Hierarchy::add_level(ParMatrix* A)
 
     num_levels++;
 
-    // If process is not active, return
-    if (A->local_rows == 0) return;
-    
-    // Find rank and number of active procs
-    int rank, num_procs;
-    MPI_Comm_rank(A->comm_mat, &rank);
+    int num_procs;
     MPI_Comm_size(A->comm_mat, &num_procs);
 
-    // Create A_coarse (dense matrix)
-    coarse_rows = A->global_rows;
-    coarse_cols = A->global_cols;
-    A_coarse = new data_t[coarse_rows*coarse_cols];
-    permute_coarse = new int[coarse_rows];
-
-    // Find local size of each dense matrix
-    int local_dense_size = A->local_rows * coarse_cols;
-    data_t* A_coarse_lcl = new data_t[local_dense_size]();
-    gather_sizes = new int[num_procs];
-    gather_displs = new int[num_procs];
-    MPI_Allgather(&local_dense_size, 1, MPI_INT, gather_sizes, 1, MPI_INT, A->comm_mat);
-    gather_displs[0] = 0;
-    for (int i = 0; i < num_procs-1; i++)
+    // Active Procs
+    int active = 0;
+    int num_active = 0;
+    int* active_list = new int[num_procs]();
+    if (A->local_rows)
     {
-        gather_displs[i+1] = gather_displs[i] + gather_sizes[i];
+        active = 1;
     }
+    MPI_Allgather(&active, 1, MPI_INT, active_list, 1, MPI_INT, A->comm_mat);
 
-    // Add entries on A_diag to dense A_coarse
-    int row_start, row_end;
-    int global_row, global_col;
-    for (int row = 0; row < A->local_rows; row++)
+    for (int i = 0; i < num_procs; i++)
     {
-        row_start = A->diag->indptr[row];
-        row_end = A->diag->indptr[row+1];
-        for (int j = row_start; j < row_end; j++)
+        if (active_list[i])
         {
-            global_col = A->diag->indices[j] + A->first_col_diag;
-            A_coarse_lcl[(row * coarse_cols) + global_col] = A->diag->data[j];
+            num_active++;
         }
     }
 
-    // Add entries on A_offd to dense A_coarse
-    int col_start, col_end;
-    if (A->offd_num_cols) for (int col = 0; col < A->offd->n_cols; col++)
+    MPI_Group group_world;
+    MPI_Group group_mat;
+
+    int active_ranks[num_active];
+    int ctr = 0;
+    for (index_t i = 0; i < num_procs; i++)
     {
-        col_start = A->offd->indptr[col];
-        col_end = A->offd->indptr[col+1];
-        global_col = A->local_to_global[col];
-        for (int j = col_start; j < col_end; j++)
+        if (active_list[i])
         {
-            A_coarse_lcl[(A->offd->indices[j] * coarse_cols) + global_col] = A->offd->data[j];
+            active_ranks[ctr++] = i;
         }
     }
 
-    // Gather all entries among active processes (for redundant solve)
-    MPI_Allgatherv(A_coarse_lcl, local_dense_size, MPI_DOUBLE, A_coarse, gather_sizes, gather_displs, MPI_DOUBLE, A->comm_mat);
+    MPI_Comm_group(A->comm_mat, &group_world);
+    MPI_Group_incl(group_world, num_active, active_ranks, &group_mat);
+    MPI_Comm_create(A->comm_mat, group_mat, &comm_dense);
 
-    gather_sizes[0] /= coarse_cols;
-    for (int i = 1; i < num_procs; i++)
+    // If process is not active, return
+    if (A->local_rows)
     {
-        gather_sizes[i] /= coarse_cols;
-        gather_displs[i] /= coarse_cols;
+        // Find rank and number of active procs
+        int rank, num_procs;
+        MPI_Comm_rank(comm_dense, &rank);
+        MPI_Comm_size(comm_dense, &num_procs);
+
+        // Create A_coarse (dense matrix)
+        coarse_rows = A->global_rows;
+        coarse_cols = A->global_cols;
+        A_coarse = new data_t[coarse_rows*coarse_cols];
+        permute_coarse = new int[coarse_rows];
+
+        // Find local size of each dense matrix
+        int local_dense_size = A->local_rows * coarse_cols;
+        data_t* A_coarse_lcl = new data_t[local_dense_size]();
+        gather_sizes = new int[num_procs];
+        gather_displs = new int[num_procs];
+        MPI_Allgather(&local_dense_size, 1, MPI_INT, gather_sizes, 1, MPI_INT, comm_dense);
+        gather_displs[0] = 0;
+        for (int i = 0; i < num_procs-1; i++)
+        {
+            gather_displs[i+1] = gather_displs[i] + gather_sizes[i];
+        }
+
+        // Add entries on A_diag to dense A_coarse
+        int row_start, row_end;
+        int global_row, global_col;
+        for (int row = 0; row < A->local_rows; row++)
+        {
+            row_start = A->diag->indptr[row];
+            row_end = A->diag->indptr[row+1];
+            for (int j = row_start; j < row_end; j++)
+            {
+                global_col = A->diag->indices[j] + A->first_col_diag;
+                A_coarse_lcl[(row * coarse_cols) + global_col] = A->diag->data[j];
+            }
+        }
+
+        // Add entries on A_offd to dense A_coarse
+        int col_start, col_end;
+        if (A->offd_num_cols) for (int col = 0; col < A->offd->n_cols; col++)
+        {
+            col_start = A->offd->indptr[col];
+            col_end = A->offd->indptr[col+1];
+            global_col = A->local_to_global[col];
+            for (int j = col_start; j < col_end; j++)
+            {
+                A_coarse_lcl[(A->offd->indices[j] * coarse_cols) + global_col] = A->offd->data[j];
+            }
+        }
+
+        // Gather all entries among active processes (for redundant solve)
+        MPI_Allgatherv(A_coarse_lcl, local_dense_size, MPI_DOUBLE, A_coarse, gather_sizes, gather_displs, MPI_DOUBLE, comm_dense);
+
+        gather_sizes[0] /= coarse_cols;
+        for (int i = 1; i < num_procs; i++)
+        {
+            gather_sizes[i] /= coarse_cols;
+            gather_displs[i] /= coarse_cols;
+        }
+
+        delete[] A_coarse_lcl;
+
+        permute_coarse = new int[coarse_cols];
+        int info;
+        dgetrf_(&coarse_rows, &coarse_cols, A_coarse, &coarse_rows, permute_coarse, &info);
     }
 
-    delete[] A_coarse_lcl;
-
-    permute_coarse = new int[coarse_cols];
-    int info;
-    dgetrf_(&coarse_rows, &coarse_cols, A_coarse, &coarse_rows, permute_coarse, &info);
 
 }
 
