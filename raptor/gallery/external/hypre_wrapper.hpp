@@ -15,6 +15,7 @@ HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap);
 raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre);
 raptor::Hierarchy* convert(HYPRE_Solver amg_data);
 void remove_shared_ptrs(hypre_ParCSRMatrix* A_hypre);
+void remove_shared_ptrs(HYPRE_Solver amg_data);
 HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
                                 hypre_ParVector* x,
                                 hypre_ParVector* b,

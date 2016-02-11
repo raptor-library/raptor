@@ -144,7 +144,8 @@ void mfem_electromagnetic_diffusion(raptor::ParMatrix** A_raptor_ptr, raptor::Pa
    delete B;
    delete X;
    delete A;
-//   hypre_ParCSRMatrixDestroy(A_hypre);
+   remove_shared_ptrs(A_hypre);
+   hypre_ParCSRMatrixDestroy(A_hypre);
 
    *A_raptor_ptr = A_raptor;
    *x_raptor_ptr = x_raptor;

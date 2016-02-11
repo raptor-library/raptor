@@ -58,7 +58,8 @@ public:
 	else
 	{
 	    global_col_starts = _global_col_starts;
-	    create_comm_mat(MPI_COMM_WORLD);
+//	    create_comm_mat(MPI_COMM_WORLD);
+            comm_mat = MPI_COMM_WORLD;
 	}
         diag = new Matrix(local_rows, local_cols, diag_f);
         offd = new Matrix(local_rows, local_cols, offd_f);

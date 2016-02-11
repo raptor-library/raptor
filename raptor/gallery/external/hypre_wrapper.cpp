@@ -193,6 +193,20 @@ void remove_shared_ptrs(hypre_ParCSRMatrix* A_hypre)
 
 }
 
+void remove_shared_ptrs(hypre_ParAMGData* amg_data)
+{
+    HYPRE_Int num_levels = hypre_ParAMGDataNumLevels(amg_data);
+    hypre_ParCSRMatrix** A_array = hypre_ParAMGDataAArray(amg_data);
+    hypre_ParCSRMatrix** P_array = hypre_ParAMGDataPArray(amg_data);
+
+    for (int i = 0; i < num_levels - 1; i++)
+    {
+        remove_shared_ptrs(A_array[i]);
+        remove_shared_ptrs(P_array[i]);
+    }
+    remove_shared_ptrs(A_array[num_levels-1]);
+}
+
 raptor::Hierarchy* convert(hypre_ParAMGData* amg_data)
 {
     HYPRE_Int num_levels = hypre_ParAMGDataNumLevels(amg_data);
@@ -273,10 +287,11 @@ raptor::Hierarchy* create_wrapped_hierarchy(raptor::ParMatrix* A_rap,
     raptor::Hierarchy* ml = convert((hypre_ParAMGData*)amg_data);
 
     //Clean up TODO -- can we set arrays to NULL and still delete these?
-    //hypre_BoomerAMGDestroy(amg_data); 
-    //HYPRE_IJMatrixDestroy(A);
-    //HYPRE_IJVectorDestroy(x);
-    //HYPRE_IJVectorDestroy(b);
+    remove_shared_ptrs((hypre_ParAMGData*)amg_data);
+    hypre_BoomerAMGDestroy(amg_data); 
+    HYPRE_IJMatrixDestroy(A);
+    HYPRE_IJVectorDestroy(x);
+    HYPRE_IJVectorDestroy(b);
 
     return ml;
 }

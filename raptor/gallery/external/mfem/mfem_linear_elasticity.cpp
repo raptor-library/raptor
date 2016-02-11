@@ -177,8 +177,8 @@ void mfem_linear_elasticity(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector*
    delete B;
    delete X;
    delete A;
-//   remove_shared_ptrs(A_hypre);
-//   hypre_ParCSRMatrixDestroy(A_hypre);
+   remove_shared_ptrs(A_hypre);
+   hypre_ParCSRMatrixDestroy(A_hypre);
 
    *A_raptor_ptr = A_raptor;
    *x_raptor_ptr = x_raptor;
