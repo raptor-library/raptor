@@ -140,7 +140,7 @@ void mfem_linear_elasticity(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector*
    if (myid == 0)
       cout << "matrix ... " << flush;
    a->Assemble();
-   Array<int> ess_bdr(pmesh->bdr_attributes.Max());
+   mfem::Array<int> ess_bdr(pmesh->bdr_attributes.Max());
    ess_bdr = 0;
    ess_bdr[0] = 1;
    a->EliminateEssentialBC(ess_bdr, x, *b);
@@ -177,7 +177,8 @@ void mfem_linear_elasticity(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector*
    delete B;
    delete X;
    delete A;
-   hypre_ParCSRMatrixDestroy(A_hypre);
+//   remove_shared_ptrs(A_hypre);
+//   hypre_ParCSRMatrixDestroy(A_hypre);
 
    *A_raptor_ptr = A_raptor;
    *x_raptor_ptr = x_raptor;

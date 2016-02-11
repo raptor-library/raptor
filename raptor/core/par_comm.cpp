@@ -17,7 +17,7 @@ void ParComm::init_col_to_proc(const MPI_Comm comm_mat, const index_t num_cols,
     index_t proc = 0;
     index_t global_col = 0;
     index_t local_col = 0;
-    col_to_proc.reserve(num_cols);
+    col_to_proc.resize(num_cols);
     for (std::map<index_t, index_t>::iterator i = global_to_local.begin(); i != global_to_local.end(); i++)
     {
         global_col = i->first;
@@ -59,8 +59,6 @@ void ParComm::init_comm_recvs(const MPI_Comm comm_mat, const index_t num_cols, s
     for (std::map<index_t, index_t>::iterator i = global_to_local.begin(); i != global_to_local.end(); i++)
     {
         local_col = i->second;
-        if (rank == 0) printf("LocalCol %d\n", local_col);
-        //recv_col_indices.push_back(local_col);
         proc = col_to_proc[local_col];
         // Column lies on new processor, so add last
         // processor to communicator
@@ -74,9 +72,12 @@ void ParComm::init_comm_recvs(const MPI_Comm comm_mat, const index_t num_cols, s
     }
     // Add last processor to communicator
     recv_col_starts.push_back(ctr);
+
+    num_recvs = recv_procs.size();
+    size_recvs = recv_col_starts[num_recvs];
 }
 
-void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<index_t>& map_to_global, const index_t* global_col_starts)
+void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, Array<index_t>& map_to_global, const index_t* global_col_starts)
 {
     // Get MPI Information
     int rank, num_procs;
@@ -88,8 +89,6 @@ void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<i
     index_t ctr = 0;
     index_t req_ctr = 0;
     index_t unsym_tag = 1212;
-    index_t recv_size = recv_procs.size();
-    index_t size_recvs = recv_col_starts[recv_size];
 
     // Determind number of messages I will receive
     index_t* send_buffer = NULL;
@@ -97,7 +96,6 @@ void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<i
     MPI_Status* send_status = NULL;
     index_t* send_counts = new index_t[num_procs];
     index_t* recv_counts = new index_t[num_procs];  
-    index_t num_recvs;
 
     for (index_t i = 0; i < num_procs; i++)
     {
@@ -105,19 +103,19 @@ void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<i
         recv_counts[i] = 0;
     }
 
-    if (recv_size)
+    if (num_recvs)
     {
         send_buffer = new index_t[size_recvs];
-        send_requests = new MPI_Request[recv_size];
-        send_status = new MPI_Status[recv_size];
-        for (int i = 0; i < recv_size; i++)
+        send_requests = new MPI_Request[num_recvs];
+        send_status = new MPI_Status[num_recvs];
+        for (int i = 0; i < num_recvs; i++)
         {
             send_requests[i] = MPI_REQUEST_NULL;
         }
 
         //Send everything in recv_idx[recv_proc] to recv_proc;
         int recv_start, recv_end;
-        for (index_t i = 0; i < recv_size; i++)
+        for (index_t i = 0; i < num_recvs; i++)
         {
             orig_ctr = ctr;
             recv_proc = recv_procs[i];
@@ -126,7 +124,6 @@ void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<i
             for (int j = recv_start; j < recv_end; j++)
             {
                 send_buffer[ctr++] = map_to_global[j];
-                //send_buffer[ctr++] = map_to_global[recv_col_indices[j]];
             }
             MPI_Isend(&send_buffer[orig_ctr], ctr - orig_ctr, MPI_INDEX_T, recv_proc, unsym_tag, comm_mat, &send_requests[i]);
             send_counts[recv_proc] = 1;
@@ -136,7 +133,6 @@ void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<i
 
     // AllReduce - sum number of sends to each process
     MPI_Allreduce(send_counts, recv_counts, num_procs, MPI_INDEX_T, MPI_SUM, comm_mat);
-    num_recvs = recv_counts[rank];
     delete[] send_counts;
     delete[] recv_counts;
 
@@ -162,13 +158,16 @@ void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, const std::vector<i
         }
     }
 
-    if (recv_size)
+    if (num_recvs)
     {
-        MPI_Waitall(recv_size, send_requests, send_status);
+        MPI_Waitall(num_recvs, send_requests, send_status);
 
         delete[] send_buffer;
         delete[] send_requests;
         delete[] send_status;
     }
+
+    num_sends = send_procs.size();
+    size_sends = send_row_starts[num_sends];
 
 }

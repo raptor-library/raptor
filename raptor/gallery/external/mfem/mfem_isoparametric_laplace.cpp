@@ -169,7 +169,7 @@ void mfem_hdiv_diffusion(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x
    delete B;
    delete X;
    delete A;
-   hypre_ParCSRMatrixDestroy(A_hypre);
+//   hypre_ParCSRMatrixDestroy(A_hypre);
 
    *A_raptor_ptr = A_raptor;
    *x_raptor_ptr = x_raptor;

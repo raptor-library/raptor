@@ -88,18 +88,21 @@ raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre)
     HYPRE_Real* diag_data = hypre_CSRMatrixData(A_hypre_diag);
     HYPRE_Int* diag_i = hypre_CSRMatrixI(A_hypre_diag);
     HYPRE_Int* diag_j = hypre_CSRMatrixJ(A_hypre_diag);
+    HYPRE_Int  diag_nnz = hypre_CSRMatrixNumNonzeros(A_hypre_diag);
+    HYPRE_Int diag_rows = hypre_CSRMatrixNumRows(A_hypre_diag);
+    HYPRE_Int diag_cols = hypre_CSRMatrixNumCols(A_hypre_diag);
 
     hypre_CSRMatrix* A_hypre_offd = hypre_ParCSRMatrixOffd(A_hypre);
     HYPRE_Real* offd_data = hypre_CSRMatrixData(A_hypre_offd);
     HYPRE_Int* offd_i = hypre_CSRMatrixI(A_hypre_offd);
     HYPRE_Int* offd_j = hypre_CSRMatrixJ(A_hypre_offd);
+    HYPRE_Int  offd_nnz = hypre_CSRMatrixNumNonzeros(A_hypre_offd);
+    HYPRE_Int offd_rows = hypre_CSRMatrixNumRows(A_hypre_offd);
+    HYPRE_Int offd_cols = hypre_CSRMatrixNumCols(A_hypre_offd);
 
-    HYPRE_Int local_rows = hypre_CSRMatrixNumRows(A_hypre_diag);
-    HYPRE_Int local_cols = hypre_CSRMatrixNumCols(A_hypre_diag);
     HYPRE_Int first_row = hypre_ParCSRMatrixFirstRowIndex(A_hypre);
     HYPRE_Int first_col_diag = hypre_ParCSRMatrixFirstColDiag(A_hypre);
     HYPRE_Int* col_map_offd = hypre_ParCSRMatrixColMapOffd(A_hypre);
-    HYPRE_Int num_cols_offd = hypre_CSRMatrixNumCols(A_hypre_offd);
     HYPRE_Int global_rows = hypre_ParCSRMatrixGlobalNumRows(A_hypre);
     HYPRE_Int global_cols = hypre_ParCSRMatrixGlobalNumCols(A_hypre);
     HYPRE_Int* global_col_starts = hypre_ParCSRMatrixColStarts(A_hypre);
@@ -118,61 +121,76 @@ raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre)
     HYPRE_Real value;
 
     // Create empty raptor Matrix
-    raptor::ParMatrix* A = new ParMatrix(global_rows, global_cols, local_rows, local_cols, first_row, first_col_diag, global_col_starts);
+    raptor::ParMatrix* A = new ParMatrix(global_rows, global_cols, diag_rows, diag_cols, first_row, first_col_diag, global_col_starts, CSR, CSR);
+
+    // Copy local to global index data
+    A->offd_num_cols = offd_cols;
+    A->local_to_global.set_data(offd_cols, col_map_offd);
 
     // Copy diagonal matrix
-    raptor::index_t* rap_diag_indptr = A->diag->indptr.data();
-    raptor::index_t* rap_diag_indices = A->diag->indices.data();
-    raptor::data_t* rap_diag_data = A->diag->data.data();
-    rap_diag_indptr = diag_i;
-    rap_diag_indices = diag_j;
-    rap_diag_data = diag_data;
-    A->diag->n_rows = local_rows;
-    A->diag->n_cols = local_cols;
-    A->diag->n_outer = local_rows;
-    A->diag->n_inner = local_cols;
+    A->diag->n_rows = diag_rows;
+    A->diag->n_cols = diag_cols;
+    A->diag->n_outer = diag_rows;
+    A->diag->n_inner = diag_cols;
+    A->diag->nnz = diag_nnz;
     A->diag->format = CSR;
+    A->diag->indptr.set_data(diag_rows + 1, diag_i);
+    A->diag->indices.set_data(diag_nnz, diag_j);
+    A->diag->data.set_data(diag_nnz, diag_data);
 
     // Copy off-diagonal matrix
-    raptor::index_t* rap_offd_indptr = A->offd->indptr.data();
-    raptor::index_t* rap_offd_indices = A->offd->indices.data();
-    raptor::data_t* rap_offd_data = A->offd->data.data();
-    rap_offd_indptr = offd_i;
-    rap_offd_indices = offd_j;
-    rap_offd_data = offd_data;
-    A->offd->n_rows = local_rows;
-    A->offd->n_cols = num_cols_offd;
-    A->offd->n_outer = local_rows;
-    A->offd->n_inner = local_cols;
+    A->offd->n_rows = offd_rows;
+    A->offd->n_cols = offd_cols;
+    A->offd->n_outer = offd_rows;
+    A->offd->n_inner = offd_cols;
+    A->offd->nnz = offd_nnz;
     A->offd->format = CSR;
+    A->offd->indptr.set_data(offd_rows + 1, offd_i);
+    A->offd->indices.set_data(offd_nnz, offd_j);
+    A->offd->data.set_data(offd_nnz, offd_data);
 
     // Convert offd matrix to CSC
     A->offd->convert(CSC);
 
-    // Copy local to global index data
-    A->offd_num_cols = num_cols_offd;
-    raptor::index_t* rap_local_to_global = A->local_to_global.data();
-    rap_local_to_global = col_map_offd;
-
     // Create empty communicator
     A->comm = new ParComm();
+    A->comm->num_sends = num_sends;
+    A->comm->num_recvs = num_recvs;
+    A->comm->size_sends = send_map_starts[num_sends];
+    A->comm->size_recvs = offd_cols;
 
-    index_t* rap_send_procs = A->comm->send_procs.data();
-    index_t* rap_send_row_starts = A->comm->send_row_starts.data();
-    index_t* rap_send_row_indices = A->comm->send_row_indices.data();
-    rap_send_procs = send_procs;
-    rap_send_row_starts = send_map_starts;
-    rap_send_row_indices = send_map_elmts;
+    A->comm->send_procs.set_data(A->comm->num_sends, send_procs);
+    A->comm->send_row_starts.set_data(A->comm->num_sends + 1, send_map_starts);
+    A->comm->send_row_indices.set_data(A->comm->size_sends, send_map_elmts);
 
-    index_t* rap_recv_procs = A->comm->recv_procs.data();
-    index_t* rap_recv_col_starts = A->comm->recv_col_starts.data();
-    rap_recv_procs = recv_procs;
-    rap_recv_col_starts = recv_vec_starts;
-
-    A->comm->send_procs.resize(num_sends);
-    A->comm->recv_procs.resize(num_recvs);
+    A->comm->recv_procs.set_data(A->comm->num_recvs, recv_procs);
+    A->comm->recv_col_starts.set_data(A->comm->num_recvs, recv_vec_starts);
+    A->comm->recv_col_starts.resize(A->comm->num_recvs + 1);
+    A->comm->recv_col_starts[A->comm->num_recvs] = offd_cols;
  
     return A;
+}
+
+void remove_shared_ptrs(hypre_ParCSRMatrix* A_hypre)
+{
+    hypre_CSRMatrix* A_hypre_diag = hypre_ParCSRMatrixDiag(A_hypre);
+    hypre_CSRMatrix* A_hypre_offd = hypre_ParCSRMatrixOffd(A_hypre);
+    hypre_ParCSRCommPkg* comm_pkg = hypre_ParCSRMatrixCommPkg(A_hypre);
+
+    hypre_CSRMatrixData(A_hypre_diag) = NULL;
+    hypre_CSRMatrixI(A_hypre_diag) = NULL;
+    hypre_CSRMatrixJ(A_hypre_diag) = NULL;
+    hypre_CSRMatrixData(A_hypre_offd) = NULL;
+    hypre_CSRMatrixI(A_hypre_offd) = NULL;
+    hypre_CSRMatrixJ(A_hypre_offd) = NULL;
+    hypre_ParCSRMatrixColMapOffd(A_hypre) = NULL;
+    hypre_ParCSRMatrixColStarts(A_hypre) = NULL;
+    hypre_ParCSRCommPkgSendProcs(comm_pkg) = NULL;
+    hypre_ParCSRCommPkgSendMapStarts(comm_pkg) = NULL;
+    hypre_ParCSRCommPkgSendMapElmts(comm_pkg) = NULL;
+    hypre_ParCSRCommPkgRecvProcs(comm_pkg) = NULL;
+    hypre_ParCSRCommPkgRecvVecStarts(comm_pkg) = NULL; 
+
 }
 
 raptor::Hierarchy* convert(hypre_ParAMGData* amg_data)

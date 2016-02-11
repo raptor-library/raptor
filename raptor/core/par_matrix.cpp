@@ -4,13 +4,6 @@
 
 using namespace raptor;
 
-void ParMatrix::reserve(index_t offd_cols, index_t nnz_per_row, index_t nnz_per_col)
-{
-    offd->resize(local_rows, offd_cols);
-    offd->reserve(nnz_per_col);
-    diag->reserve(nnz_per_row);
-}
-
 void ParMatrix::create_comm_mat(MPI_Comm _comm_mat)
 {
     // Get MPI Information
@@ -187,14 +180,14 @@ void ParMatrix::add_value(index_t row, index_t global_col, data_t value, index_t
     }
 }
 
-void ParMatrix::finalize(int symmetric, format_t diag_f, format_t offd_f)
+void ParMatrix::finalize(int symmetric)
 {
     if (offd_num_cols)
     {
-        std::sort(local_to_global.begin(), local_to_global.end());
+        local_to_global.sort();
         for (index_t i = 0; i < local_to_global.size(); i++)
         {
-            index_t global_col = local_to_global.at(i);
+            index_t global_col = local_to_global[i];
             std::map<index_t, index_t>::iterator it = global_to_local.find(global_col);
             it->second = i;
         }
@@ -202,14 +195,15 @@ void ParMatrix::finalize(int symmetric, format_t diag_f, format_t offd_f)
     if (offd->nnz)
     {
         offd->resize(local_rows, offd_num_cols);
-        offd->finalize(offd_f, global_to_local);
+        offd->col_to_local(global_to_local);
+        offd->finalize();
     }
     else
     {
         delete offd;
     }      
 
-    diag->finalize(diag_f);
+    diag->finalize();
 
     if (local_rows)
     {

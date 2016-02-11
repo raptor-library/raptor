@@ -14,7 +14,7 @@ add_subdirectory(util)
 
 add_library(raptor STATIC ${core_SOURCES} ${gallery_SOURCES} ${util_SOURCES})
 
-target_link_libraries(raptor ${MFEM_LIBRARY} ${METIS_LIBRARY} ${HYPRE_LIBRARY}
+target_link_libraries(raptor ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
 	${LAPACK_LIBRARY} ${BLAS_LIBRARY})
 
 include_directories(".")

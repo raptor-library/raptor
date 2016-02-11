@@ -488,37 +488,35 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
     index_t                                  ctr;
     index_t                                  request_ctr;
     index_t                                  tag;
-    index_t                                  send_size;
-    index_t                                  recv_size;
     index_t                                  num_sends;
     index_t                                  num_recvs;
+    index_t                                  size_sends;
+    index_t                                  size_recvs;
     index_t*                                 send_procs;
     index_t*                                 send_row_starts;
     index_t*                                 send_row_indices;
     index_t*                                 recv_procs;
     index_t*                                 recv_col_starts;
-//    index_t*                                 recv_col_indices;
     ParComm*                                 comm;
 
     // Initialize communication variables
     comm          = A->comm;
-    num_sends = comm->send_procs.size();
-    num_recvs = comm->recv_procs.size();
+    num_sends = comm->num_sends;
+    num_recvs = comm->num_recvs;
+    size_sends = comm->size_sends;
+    size_recvs = comm->size_recvs;
 
     if (num_sends)
     {
         send_procs    = comm->send_procs.data();
         send_row_starts = comm->send_row_starts.data();
         send_row_indices = comm->send_row_indices.data();
-        send_size = send_row_starts[num_sends];
     }
 
     if (num_recvs)
     {
         recv_procs    = comm->recv_procs.data();
         recv_col_starts = comm->recv_col_starts.data();
-//        recv_col_indices = comm->recv_col_indices.data();
-        recv_size = recv_col_starts[num_recvs];
     }
 
     if (x->local_n)
@@ -531,6 +529,7 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
         y_data = y->local->data();
     }
 
+
     // If receive values, post appropriate MPI Receives
     if (num_recvs)
     {
@@ -540,7 +539,7 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
         {
             recv_requests[i] = MPI_REQUEST_NULL;
         }
-        recv_buffer = new data_t [recv_size];
+        recv_buffer = new data_t [size_recvs];
 
         // Post receives for x-values that are needed
         begin = 0;
@@ -567,11 +566,11 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
 
         // TODO we do not want to malloc these every time
         send_requests = new MPI_Request [num_sends];
-        for (index_t i = 0; i < num_sends; i++)
+        for (index_t i = 0; i < num_sends;i++)
         {
             send_requests[i] = MPI_REQUEST_NULL;
         }
-        send_buffer = new data_t [send_size];
+        send_buffer = new data_t [size_sends];
 
         begin = 0;
         request_ctr = 0;

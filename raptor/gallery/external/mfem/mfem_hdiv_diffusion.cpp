@@ -102,7 +102,7 @@ void mfem_hdiv_diffusion(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x
    a->Assemble();
    if (set_bc && pmesh->bdr_attributes.Size())
    {
-      Array<int> ess_bdr(pmesh->bdr_attributes.Max());
+      mfem::Array<int> ess_bdr(pmesh->bdr_attributes.Max());
       ess_bdr = 1;
       a->EliminateEssentialBC(ess_bdr, x, *b);
    }
@@ -140,7 +140,7 @@ void mfem_hdiv_diffusion(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x
    delete B;
    delete X;
    delete A;
-   hypre_ParCSRMatrixDestroy(A_hypre);
+//   hypre_ParCSRMatrixDestroy(A_hypre);
 
    *A_raptor_ptr = A_raptor;
    *x_raptor_ptr = x_raptor;

@@ -1,11 +1,11 @@
 #include "relax.hpp"
 #include "spmv.hpp"
 
-void gs_diag(const Matrix* A, const data_t* x, const data_t* y, data_t* result, data_t* diag_data)
+void gs_diag(Matrix* A, const data_t* x, const data_t* y, data_t* result, data_t* diag_data)
 {
-    const std::vector<index_t>& indptr = A->indptr;
-    const std::vector<index_t>& indices = A->indices;
-    const std::vector<data_t>& data = A->data;
+    index_t* indptr = A->indptr.data();
+    index_t* indices = A->indices.data();
+    data_t* data = A->data.data();
 
     index_t num_rows = A->n_rows;
     index_t row_start, row_end;
@@ -68,11 +68,11 @@ void gs_diag(const Matrix* A, const data_t* x, const data_t* y, data_t* result, 
     }
 }
 
-void jacobi_diag(const Matrix* A, const data_t* x, data_t* result, data_t* diag_data)
+void jacobi_diag(Matrix* A, const data_t* x, data_t* result, data_t* diag_data)
 {
-    const std::vector<index_t>& indptr = A->indptr;
-    const std::vector<index_t>& indices = A->indices;
-    const std::vector<data_t>& data = A->data;
+    index_t* indptr = A->indptr.data();
+    index_t* indices = A->indices.data();
+    data_t* data = A->data.data();
 
     index_t num_rows = A->n_rows;
     index_t row_start, row_end;
@@ -124,8 +124,8 @@ void relax(const ParMatrix* A, ParVector* x, const ParVector* y, int num_sweeps,
     index_t                                  begin;
     index_t                                  ctr;
     index_t                                  request_ctr;
-    index_t                                  send_size;
-    index_t                                  recv_size;
+    index_t                                  size_sends;
+    index_t                                  size_recvs;
     index_t                                  num_sends;
     index_t                                  num_recvs;
     index_t*                                 send_procs;
@@ -133,23 +133,30 @@ void relax(const ParMatrix* A, ParVector* x, const ParVector* y, int num_sweeps,
     index_t*                                 send_row_indices;
     index_t*                                 recv_procs;
     index_t*                                 recv_col_starts;
-//    index_t*                                 recv_col_indices;
     ParComm*                                 comm;
     std::map<index_t, index_t>               recv_proc_starts;
 
     // Initialize communication variables
     comm          = A->comm;
-    send_procs    = comm->send_procs.data();
-    send_row_starts = comm->send_row_starts.data();
-    send_row_indices = comm->send_row_indices.data();
-    recv_procs    = comm->recv_procs.data();  
-    recv_col_starts = comm->recv_col_starts.data();
-//    recv_col_indices = comm->recv_col_indices.data();
+    num_sends = comm->num_sends;
+    num_recvs = comm->num_recvs;
+    size_sends = comm->size_sends;
+    size_recvs = comm->size_recvs;
+
+    if (num_sends)
+    {
+        send_procs = comm->send_procs.data();
+        send_row_starts = comm->send_row_starts.data();
+        send_row_indices = comm->send_row_indices.data();
+    }
+
+    if (num_recvs)
+    {
+        recv_procs = comm->recv_procs.data();
+        recv_col_starts = comm->recv_col_starts.data();
+    }     
+
     local_data    = x->local->data();
-    num_sends = comm->send_procs.size();
-    num_recvs = comm->recv_procs.size();
-    send_size = send_row_starts[num_sends];
-    recv_size = recv_col_starts[num_recvs];
 
     data_t* x_data = x->local->data();
     data_t* y_data = y->local->data();
@@ -165,7 +172,7 @@ void relax(const ParMatrix* A, ParVector* x, const ParVector* y, int num_sweeps,
         {
             recv_requests[i] = MPI_REQUEST_NULL;
         }
-        recv_buffer = new data_t [recv_size];
+        recv_buffer = new data_t [size_recvs];
     }
 
     if (num_sends)
@@ -176,7 +183,7 @@ void relax(const ParMatrix* A, ParVector* x, const ParVector* y, int num_sweeps,
         {
             send_requests[i] = MPI_REQUEST_NULL;
         }
-        send_buffer = new data_t [send_size];
+        send_buffer = new data_t [size_sends];
     }
 
     for (int iter = 0; iter < num_sweeps; iter++)
@@ -204,7 +211,7 @@ void relax(const ParMatrix* A, ParVector* x, const ParVector* y, int num_sweeps,
         // Send values of x to appropriate processors
         if (num_sends)
         {
-            int send_start, send_end, send_size;
+            int send_start, send_end, size_sends;
             begin = 0;
             request_ctr = 0;
             for (index_t i = 0; i < num_sends; i++)
@@ -212,14 +219,14 @@ void relax(const ParMatrix* A, ParVector* x, const ParVector* y, int num_sweeps,
                 index_t proc = send_procs[i];
                 send_start = send_row_starts[i];
                 send_end = send_row_starts[i+1];
-                send_size = send_end - send_start;
+                size_sends = send_end - send_start;
 
                 for (int j = send_start; j < send_end; j++)
                 {
                     send_buffer[j] = x_data[send_row_indices[j]];
                 }
-                MPI_Isend(&send_buffer[begin], send_size, MPI_DATA_T, proc, 0, comm_mat, &(send_requests[request_ctr++]));
-                begin += send_size;
+                MPI_Isend(&send_buffer[begin], size_sends, MPI_DATA_T, proc, 0, comm_mat, &(send_requests[request_ctr++]));
+                begin += size_sends;
             }
 
         }

@@ -6,71 +6,6 @@
 using namespace raptor;
 
 /**************************************************************
- *****   Matrix Class Constructor
- **************************************************************
- ***** TODO -- copy Matrix?
- *****
- ***** Parameters
- ***** -------------
- ***** A : Matrix*
- *****    Matrix to copy
- **************************************************************/
-Matrix::Matrix(Matrix* A)
-{
-
-}
-
-/**************************************************************
- *****   Matrix Class Constructor
- **************************************************************
- ***** Initializes an empty COO Matrix (without setting dimensions)
- *****
- **************************************************************/
-Matrix::Matrix()
-{
-    nnz = 0;
-    format = COO;
-}
-
-/**************************************************************
- *****   Matrix Class Destructor
- **************************************************************
- ***** Deletes all arrays/vectors
- *****
- **************************************************************/
-Matrix::~Matrix()
-{
-}
-
-/**************************************************************
- *****   Matrix Reserve
- **************************************************************
- ***** Reserves nnz per each outer (row or column) to add entries 
- ***** without re-allocating memory.
- ***** TODO -- implement for COO, add CSR/CSC functionality
- *****
- ***** Parameters
- ***** -------------
- ***** nnz_per_outer : index_t
- *****    Number of nonzeros per each row (or column if CSC)
- **************************************************************/
-void Matrix::reserve(index_t nnz_per_outer)
-{
-    index_t max_nnz = nnz_per_outer * n_outer;
-       
-    this->indptr.resize(n_outer + 1);
-    this->indices.resize(max_nnz);
-    this->data.resize(max_nnz);
-
-    for (index_t i = 0; i < n_outer; i++)
-    {
-        this->indptr[i] = i*nnz_per_outer;
-    }
-
-    this->indptr[n_outer] = n_outer*nnz_per_outer;
-}
-
-/**************************************************************
  *****   Matrix Add Value
  **************************************************************
  ***** Inserts a value into the Matrix
@@ -89,20 +24,16 @@ void Matrix::add_value(index_t row, index_t col, data_t value)
 {
     if (format == CSR)
     {
-        // TODO -- Add directly to CSR
+        indptr.push_back(row);
+        indices.push_back(col);
     }
     else if (format == CSC)
     {
-        // TODO -- Add directly to CSC
+        indptr.push_back(col);
+        indices.push_back(row);
     }
-    else if (format == COO)
-    {
-        this->row_idx.push_back(row);
-        this->col_idx.push_back(col);
-        this->data.push_back(value);
-
-        this->nnz++;
-    }
+    data.push_back(value);
+    nnz++;
 }
  
 /**************************************************************
@@ -126,11 +57,9 @@ void Matrix::resize(index_t _nrows, index_t _ncols)
     {
         this->n_outer = _nrows;
         this->n_inner = _ncols;
-        this->indptr.resize(_nrows + 1);
     }
     else if (format == CSC)
     {
-        this->indptr.resize(_ncols + 1);
         this->n_outer = _ncols;
         this->n_inner = _nrows;
     }
@@ -141,47 +70,144 @@ void Matrix::resize(index_t _nrows, index_t _ncols)
  **************************************************************
  ***** Compresses matrix, sorts the entries, removes any zero
  ***** values, and combines any entries at the same location
+ ***** TODO -- currently only call before finalize
  *****
  ***** Parameters
  ***** -------------
  ***** _format : format_t
  *****    Format to convert Matrix to
  **************************************************************/
-void Matrix::finalize(format_t _format)
+void Matrix::col_to_local(std::map<index_t, index_t>& map)
 {
-    if (this->format == _format)
+    if (format == CSR)
     {
-        if (format == COO)
+        for (index_t i = 0; i < nnz; i++)
         {
-            // Nothing to do?
-        }
-        else
-        {
-            //TODO-- Add support for straight to CSR/CSC
+            indices[i] = map[indices[i]];
         }
     }
-
-    else convert(_format);
+    else
+    {
+        for (index_t i = 0; i < nnz; i++)
+        {
+            indptr[i] = map[indptr[i]];
+        }
+    }
 }
 
-/**************************************************************
- *****   Matrix Finalize
- **************************************************************
- ***** Compresses matrix, sorts the entries, removes any zero
- ***** values, and combines any entries at the same location
- *****
- ***** Parameters
- ***** -------------
- ***** _format : format_t
- *****    Format to convert Matrix to
- **************************************************************/
-void Matrix::finalize(format_t _format, std::map<index_t, index_t>& to_local)
+void Matrix::finalize()
 {
+    if (format == CSR)
+    {
+        n_outer = n_rows;
+        n_inner = n_cols;
+    }
+    else
+    {
+        n_outer = n_cols;
+        n_inner = n_rows;
+    }
+    if (nnz == 0)
+    {
+        indptr.resize(n_outer+1);
+        for (index_t i = 0; i < n_outer + 1; i++)
+        {
+            indptr[i] = 0;
+        }
+        return;
+    }
+
+    index_t* ptr_nnz = new index_t[this->n_outer]();
     for (index_t i = 0; i < nnz; i++)
     {
-        col_idx[i] = to_local[col_idx[i]];
+        ptr_nnz[indptr[i]]++;
     }
-    finalize(_format);
+
+    // Create vectors to copy sorted data into
+    std::vector<index_t> indptr_a;
+    std::vector<std::pair<index_t, data_t>> data_pair;
+    indptr_a.resize(n_outer + 1);
+    data_pair.resize(nnz);
+
+    // Set the outer pointer (based on nnz per outer idx)
+    indptr_a[0] = 0;
+    for (index_t ptr = 0; ptr < n_outer; ptr++)
+    {
+        indptr_a[ptr+1] = indptr_a[ptr] + ptr_nnz[ptr];
+        ptr_nnz[ptr] = 0;
+    }
+
+    // Add inner indices and values, grouped by outer idx
+    for (index_t ctr = 0; ctr < nnz; ctr++)
+    {
+        index_t ptr = indptr[ctr];
+        index_t pos = indptr_a[ptr] + ptr_nnz[ptr]++;
+        data_pair[pos].first = indices[ctr];
+        data_pair[pos].second = data[ctr];
+    }
+
+    // Sort each outer group (completely sorted matrix)
+    for (index_t i = 0; i < n_outer; i++)
+    {
+        index_t ptr_start = indptr_a[i];
+        index_t ptr_end = indptr_a[i+1];
+
+        if (ptr_start < ptr_end)
+        {
+            std::sort(data_pair.begin()+ptr_start, data_pair.begin() + ptr_end,
+                [](const std::pair<index_t, data_t>& lhs,
+                const std::pair<index_t, data_t>& rhs)
+                    { return lhs.first < rhs.first; } );
+        }
+    }
+
+    // Add entries to compressed vectors
+    indptr.resize(n_outer + 1);
+    index_t ctr = 0;
+    for (index_t i = 0; i < n_outer; i++)
+    {
+        indptr[i] = ctr;
+        index_t ptr_start = indptr_a[i];
+        index_t ptr_end = indptr_a[i+1];
+
+        index_t j = ptr_start;
+
+        // Always add first entry (if greater than zero)
+        while (j < ptr_end)
+        {
+            if (fabs(data_pair[j].second) > zero_tol)
+            {
+                indices[ctr] = data_pair[j].first;
+                data[ctr] = data_pair[j].second;
+                ctr++;
+                j++;
+                break;
+            }
+            j++;
+        }
+
+        // Only add successive entries if they are different
+        // Otherwise combine (add values together)
+        for (; j < ptr_end; j++)
+        {
+            if (data_pair[j].first == indices[ctr-1])
+            {
+                data[ctr-1] += data_pair[j].second;
+            }
+            else if (fabs(data_pair[j].second) > zero_tol)
+            {
+                indices[ctr] = data_pair[j].first;
+                data[ctr] = data_pair[j].second;
+                ctr++;
+            }
+        }
+    }
+    indptr[n_outer] = ctr;
+
+    // Delete array
+    delete[] ptr_nnz;
+
+
 }
 
 /**************************************************************
@@ -204,231 +230,102 @@ void Matrix::convert(format_t _format)
     }
 
     // Convert between CSR and CSC
-    if ((this->format == CSR || this->format == CSC) 
-        && (_format == CSR || _format == CSC))
+    // Switch inner and outer indices
+    index_t n_tmp = this->n_inner;
+    this->n_inner = this->n_outer;
+    this->n_outer = n_tmp;
+
+    if (nnz == 0)
     {
-        // Switch inner and outer indices
-        index_t n_tmp = this->n_inner;
-        this->n_inner = this->n_outer;
-        this->n_outer = n_tmp;
-
-        if (this->nnz == 0)
+        indptr.resize(n_outer+1);
+        indices.resize(0);
+        data.resize(0);
+        for (index_t i = 0; i < n_outer + 1; i++)
         {
-            indptr.resize(n_outer+1);
-            for (index_t i = 0; i < n_outer + 1; i++)
-            {
-                indptr[i] = 0;
-            }
-            this->format = _format;
-            return;
+            indptr[i] = 0;
         }
-
-
-        // Calculate number of nonzeros per outer idx
-        index_t* ptr_nnz = new index_t[this->n_outer]();
-        for (index_t i = 0; i < this->nnz; i++)
-        {
-            ptr_nnz[this->indices[i]]++;      
-        }
-
-        // Create vectors to copy sorted data into
-        std::vector<index_t> indptr_a;
-        std::vector<std::pair<index_t, data_t>> data_pair;
-        indptr_a.resize(this->n_outer + 1);
-        data_pair.resize(this->nnz);
-
-        // Set the outer pointer (based on nnz per outer idx)
-        indptr_a[0] = 0;
-        for (index_t ptr = 0; ptr < this->n_outer; ptr++)
-        {
-            indptr_a[ptr+1] = indptr_a[ptr] + ptr_nnz[ptr];
-            ptr_nnz[ptr] = 0;
-        }
-
-        // Add inner indices and values, grouped by outer idx
-        for (index_t i = 0; i < this->n_inner; i++)
-        {
-            index_t ptr_start = this->indptr[i];
-            index_t ptr_end = this->indptr[i+1];
-
-            for (index_t j = ptr_start; j < ptr_end; j++)
-            {
-                index_t new_ptr = this->indices[j];
-                index_t pos = indptr_a[new_ptr] + ptr_nnz[new_ptr]++;
-                data_pair[pos].first = i;
-                data_pair[pos].second = this->data[j];
-            }
-        }
-
-        // Sort each outer group (completely sorted matrix)
-        for (index_t i = 0; i < this->n_outer; i++)
-        {
-            index_t ptr_start = indptr_a[i];
-            index_t ptr_end = indptr_a[i+1];
-
-            if (ptr_start < ptr_end)
-            {
-                std::sort(data_pair.begin()+ptr_start, data_pair.begin() + ptr_end, 
-                    [](const std::pair<index_t, data_t>& lhs, 
-                    const std::pair<index_t, data_t>& rhs) 
-                        { return lhs.first < rhs.first; } );       
-            }
-        }
-
-        // Add entries to compressed vectors 
-        // (assume no zeros or duplicate entries)
-        this->indptr.resize(this->n_outer + 1);
-        index_t ctr = 0;
-        for (index_t i = 0; i < this->n_outer; i++)
-        {
-            this->indptr[i] = ctr;
-            index_t ptr_start = indptr_a[i];
-            index_t ptr_end = indptr_a[i+1];
-    
-            for (index_t j = ptr_start; j < ptr_end; j++)
-            {
-                if (fabs(data_pair[j].second) > zero_tol)
-                {
-                    this->indices[ctr] = data_pair[j].first;
-                    this->data[ctr] = data_pair[j].second;
-                    ctr++;
-                }
-            }
-        }
-        this->indptr[this->n_outer] = ctr;
-
-        indptr_a.clear();
-        data_pair.clear();
-    
-        delete[] ptr_nnz;
+        format = _format;
+        return;
     }
 
-    // Convert from COO to a compressed format
-    else if (this->format == COO)
+    // Calculate number of nonzeros per outer idx
+    index_t* ptr_nnz = new index_t[n_outer]();
+    for (index_t i = 0; i < nnz; i++)
     {
-        // CSR - rows are outer indices
-        if (_format == CSR)
-        {
-            this->n_outer = this->n_rows;
-            this->n_inner = this->n_cols;
-            this->indptr = this->row_idx;
-            this->indices = this->col_idx;
-        }
-
-        // CSC - columns are outer indices
-        else if (_format == CSC)
-        {
-            this->n_outer = this->n_cols;
-            this->n_inner = this->n_rows;
-            this->indptr = this->col_idx;
-            this->indices = this->row_idx;
-        }
-
-        if (nnz == 0)
-        {
-            indptr.resize(n_outer+1);
-            for (index_t i = 0; i < n_outer + 1; i++)
-            {
-                indptr[i] = 0;
-            }
-            this->format = _format;
-            return;
-        }
-
-        // Calculate the number of nonzeros per outer idx
-        index_t* ptr_nnz = new index_t[this->n_outer]();
-        for (index_t i = 0; i < this->nnz; i++)
-        {
-            ptr_nnz[this->indptr[i]]++;            
-        }
-
-        // Create vectors to copy sorted data into
-        std::vector<index_t> indptr_a;
-        std::vector<std::pair<index_t, data_t>> data_pair;
-        indptr_a.resize(this->n_outer + 1);
-        data_pair.resize(this->nnz);
-
-        // Set the outer pointer (based on nnz per outer idx)
-        indptr_a[0] = 0;
-        for (index_t ptr = 0; ptr < this->n_outer; ptr++)
-        {
-            indptr_a[ptr+1] = indptr_a[ptr] + ptr_nnz[ptr];
-            ptr_nnz[ptr] = 0;
-        }
-
-        // Add inner indices and values, grouped by outer idx
-        for (index_t ctr = 0; ctr < this->nnz; ctr++)
-        {
-            index_t ptr = this->indptr[ctr];
-            index_t pos = indptr_a[ptr] + ptr_nnz[ptr]++;
-            data_pair[pos].first = this->indices[ctr];
-            data_pair[pos].second = this->data[ctr];
-        }
-
-        // Sort each outer group (completely sorted matrix)
-        for (index_t i = 0; i < this->n_outer; i++)
-        {
-            index_t ptr_start = indptr_a[i];
-            index_t ptr_end = indptr_a[i+1];
-
-            if (ptr_start < ptr_end)
-            {
-                std::sort(data_pair.begin()+ptr_start, data_pair.begin() + ptr_end, 
-                    [](const std::pair<index_t, data_t>& lhs, 
-                    const std::pair<index_t, data_t>& rhs) 
-                        { return lhs.first < rhs.first; } );       
-            }
-        }
-
-        // Add entries to compressed vectors
-        this->indptr.resize(this->n_outer + 1);
-        index_t ctr = 0;
-        for (index_t i = 0; i < this->n_outer; i++)
-        {
-            this->indptr[i] = ctr;
-            index_t ptr_start = indptr_a[i];
-            index_t ptr_end = indptr_a[i+1];
-    
-            index_t j = ptr_start;
-
-            // Always add first entry (if greater than zero)
-            while (j < ptr_end)
-            {
-                if (fabs(data_pair[j].second) > zero_tol)
-                {
-                    this->indices[ctr] = data_pair[j].first;
-                    this->data[ctr] = data_pair[j].second;
-                    ctr++;
-                    j++;
-                    break;
-                }  
-                j++;
-            }
-
-            // Only add successive entries if they are different
-            // Otherwise combine (add values together)
-            for (; j < ptr_end; j++)
-            {
-                if (data_pair[j].first == this->indices[ctr-1])
-                {
-                    this->data[ctr-1] += data_pair[j].second;
-                }
-                else if (fabs(data_pair[j].second) > zero_tol)
-                {
-                    this->indices[ctr] = data_pair[j].first;
-                    this->data[ctr] = data_pair[j].second;
-                    ctr++;
-                }
-            }
-        }
-        this->indptr[this->n_outer] = ctr;
-
-        // Clear vectors and array
-        indptr_a.clear();
-        data_pair.clear();
-        delete[] ptr_nnz;
+        ptr_nnz[indices[i]]++;      
     }
+
+    // Create vectors to copy sorted data into
+    std::vector<index_t> indptr_a;
+    std::vector<std::pair<index_t, data_t>> data_pair;
+    indptr_a.resize(n_outer + 1);
+    data_pair.resize(nnz);
+
+    // Set the outer pointer (based on nnz per outer idx)
+    indptr_a[0] = 0;
+    for (index_t ptr = 0; ptr < this->n_outer; ptr++)
+    {
+        indptr_a[ptr+1] = indptr_a[ptr] + ptr_nnz[ptr];
+        ptr_nnz[ptr] = 0;
+    }
+
+    // Add inner indices and values, grouped by outer idx
+    for (index_t i = 0; i < this->n_inner; i++)
+    {
+        index_t ptr_start = this->indptr[i];
+        index_t ptr_end = this->indptr[i+1];
+
+        for (index_t j = ptr_start; j < ptr_end; j++)
+        {
+            index_t new_ptr = this->indices[j];
+            index_t pos = indptr_a[new_ptr] + ptr_nnz[new_ptr]++;
+            data_pair[pos].first = i;
+            data_pair[pos].second = this->data[j];
+        }
+    }
+
+    // Sort each outer group (completely sorted matrix)
+    for (index_t i = 0; i < n_outer; i++)
+    {
+        index_t ptr_start = indptr_a[i];
+        index_t ptr_end = indptr_a[i+1];
+
+        if (ptr_start < ptr_end)
+        {
+            std::sort(data_pair.begin()+ptr_start, data_pair.begin() + ptr_end, 
+                [](const std::pair<index_t, data_t>& lhs, 
+                const std::pair<index_t, data_t>& rhs) 
+                    { return lhs.first < rhs.first; } );       
+        }
+    }
+
+    // Add entries to compressed vectors 
+    // (assume no zeros or duplicate entries)
+    indptr.resize(n_outer + 1);
+    index_t ctr = 0;
+    for (index_t i = 0; i < n_outer; i++)
+    {
+        indptr[i] = ctr;
+        index_t ptr_start = indptr_a[i];
+        index_t ptr_end = indptr_a[i+1];
+    
+        for (index_t j = ptr_start; j < ptr_end; j++)
+        {
+            if (fabs(data_pair[j].second) > zero_tol)
+            {
+                indices[ctr] = data_pair[j].first;
+                data[ctr] = data_pair[j].second;
+                ctr++;
+            }
+        }
+    }
+    indptr[n_outer] = ctr;
+
+    indptr_a.clear();
+    data_pair.clear();
+  
+    delete[] ptr_nnz;
 
     // Set new format
-    this->format = _format;
+    format = _format;
 }

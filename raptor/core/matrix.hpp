@@ -4,6 +4,7 @@
 #define RAPTOR_CORE_MATRIX_H
 
 #include "types.hpp"
+#include "array.hpp"
 #include <vector>
 #include <map>
 #include <algorithm>
@@ -77,23 +78,14 @@ public:
     ***** _ncols : index_t 
     *****    Number of columns in the matrix
     ***** _format : format_t
-    *****    Format of the Matrix (COO, CSR, CSC)
+    *****    Format of the Matrix (CSR, CSC)
     **************************************************************/
-    Matrix(index_t _nrows, index_t _ncols, format_t _format = COO)
+    Matrix(index_t _nrows, index_t _ncols, format_t _format = CSR)
     {
         n_rows = _nrows;
         n_cols = _ncols;
         nnz = 0;
-        format = _format;
-
-        if (format == CSR)
-        {
-            //TODO - implement option for straight to CSR
-        }
-        else if (format == CSC)
-        {
-            //TODO - implement option for straight to CSC
-        }
+        format = _format;  // Adds to COO and then compresses to format
     }
 
     /**************************************************************
@@ -101,8 +93,18 @@ public:
     **************************************************************
     ***** Initializes an empty COO Matrix (without setting dimensions)
     *****
+    ***** Parameters
+    ***** -------------
+    ***** _format : format_t
+    *****    Format of the Matrix (CSR, CSC)
     **************************************************************/
-    Matrix();
+    Matrix(format_t _format = CSR)
+    {
+        n_rows = 0;
+        n_cols = 0;
+        nnz = 0;
+        format = _format;
+    }
 
     /**************************************************************
     *****   Matrix Class Constructor
@@ -114,7 +116,10 @@ public:
     ***** A : Matrix*
     *****    Matrix to copy
     **************************************************************/
-    Matrix(Matrix* A);
+    Matrix(Matrix* A)
+    {
+
+    }
 
     /**************************************************************
     *****   Matrix Class Destructor
@@ -122,21 +127,10 @@ public:
     ***** Deletes all arrays/vectors
     *****
     **************************************************************/
-    ~Matrix();
+    ~Matrix()
+    {
 
-    /**************************************************************
-    *****   Matrix Reserve
-    **************************************************************
-    ***** Reserves nnz per each outer (row or column) to add entries 
-    ***** without re-allocating memory.
-    ***** TODO -- implement for COO, add CSR/CSC functionality
-    *****
-    ***** Parameters
-    ***** -------------
-    ***** nnz_per_outer : index_t
-    *****    Number of nonzeros per each row (or column if CSC)
-    **************************************************************/
-    void reserve(index_t nnz_per_outer);
+    }
 
     /**************************************************************
     *****   Matrix Add Value
@@ -180,8 +174,8 @@ public:
     ***** _format : format_t
     *****    Format to convert Matrix to
     **************************************************************/
-    void finalize(format_t _format);
-    void finalize(format_t _format, std::map<index_t, index_t>& to_local);
+    void col_to_local(std::map<index_t, index_t>& map);
+    void finalize();
 
     /**************************************************************
     *****   Matrix Convert
@@ -196,11 +190,9 @@ public:
     **************************************************************/
     void convert(format_t _format);
 
-    std::vector<index_t> row_idx;
-    std::vector<index_t> col_idx;
-    std::vector<index_t> indptr;
-    std::vector<index_t> indices;
-    std::vector<data_t> data;
+    Array<index_t> indptr;
+    Array<index_t> indices;
+    Array<data_t> data;
 
     index_t n_rows;
     index_t n_cols;

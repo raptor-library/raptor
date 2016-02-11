@@ -28,8 +28,8 @@ using namespace raptor;
  ***** weight : data_t
  *****    Weight to relax with
  **************************************************************/
-void jacobi_diag(const Matrix* A, const data_t* x, const data_t* y, const data_t* D, data_t* result, const data_t weight);
-void jacobi_offd(const Matrix* A, const data_t* x, const data_t* y, const data_t* D, data_t* result, const data_t weight, const int first_col = 0, const int num_cols = -1);
+void jacobi_diag(Matrix* A, const data_t* x, const data_t* y, const data_t* D, data_t* result, const data_t weight);
+void jacobi_offd(Matrix* A, const data_t* x, const data_t* y, const data_t* D, data_t* result, const data_t weight, const int first_col = 0, const int num_cols = -1);
 
 void relax(const ParMatrix* A, ParVector* x, const ParVector* y, int num_sweeps, const int async = 0);
 

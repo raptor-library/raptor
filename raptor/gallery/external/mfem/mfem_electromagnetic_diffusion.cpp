@@ -107,7 +107,7 @@ void mfem_electromagnetic_diffusion(raptor::ParMatrix** A_raptor_ptr, raptor::Pa
    a->AddDomainIntegrator(new CurlCurlIntegrator(*muinv));
    a->AddDomainIntegrator(new VectorFEMassIntegrator(*sigma));
    a->Assemble();
-   Array<int> ess_bdr(pmesh->bdr_attributes.Max());
+   mfem::Array<int> ess_bdr(pmesh->bdr_attributes.Max());
    ess_bdr = 1;
    a->EliminateEssentialBC(ess_bdr, x, *b);
    a->Finalize();
@@ -144,7 +144,7 @@ void mfem_electromagnetic_diffusion(raptor::ParMatrix** A_raptor_ptr, raptor::Pa
    delete B;
    delete X;
    delete A;
-   hypre_ParCSRMatrixDestroy(A_hypre);
+//   hypre_ParCSRMatrixDestroy(A_hypre);
 
    *A_raptor_ptr = A_raptor;
    *x_raptor_ptr = x_raptor;
