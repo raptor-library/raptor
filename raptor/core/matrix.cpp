@@ -163,10 +163,10 @@ void Matrix::finalize()
 
     // Add entries to compressed vectors
     indptr.resize(n_outer + 1);
-    index_t ctr = 0;
+    nnz = 0;
     for (index_t i = 0; i < n_outer; i++)
     {
-        indptr[i] = ctr;
+        indptr[i] = nnz;
         index_t ptr_start = indptr_a[i];
         index_t ptr_end = indptr_a[i+1];
 
@@ -177,9 +177,9 @@ void Matrix::finalize()
         {
             if (fabs(data_pair[j].second) > zero_tol)
             {
-                indices[ctr] = data_pair[j].first;
-                data[ctr] = data_pair[j].second;
-                ctr++;
+                indices[nnz] = data_pair[j].first;
+                data[nnz] = data_pair[j].second;
+                nnz++;
                 j++;
                 break;
             }
@@ -190,19 +190,19 @@ void Matrix::finalize()
         // Otherwise combine (add values together)
         for (; j < ptr_end; j++)
         {
-            if (data_pair[j].first == indices[ctr-1])
+            if (data_pair[j].first == indices[nnz-1])
             {
-                data[ctr-1] += data_pair[j].second;
+                data[nnz-1] += data_pair[j].second;
             }
             else if (fabs(data_pair[j].second) > zero_tol)
             {
-                indices[ctr] = data_pair[j].first;
-                data[ctr] = data_pair[j].second;
-                ctr++;
+                indices[nnz] = data_pair[j].first;
+                data[nnz] = data_pair[j].second;
+                nnz++;
             }
         }
     }
-    indptr[n_outer] = ctr;
+    indptr[n_outer] = nnz;
 
     // Delete array
     delete[] ptr_nnz;
@@ -250,8 +250,10 @@ void Matrix::convert(format_t _format)
 
     // Calculate number of nonzeros per outer idx
     index_t* ptr_nnz = new index_t[n_outer]();
+    if (nnz != indptr[n_inner]) printf("NNZ = %d, INDPTR[-1] = %d\n", nnz, indptr[n_inner]);
     for (index_t i = 0; i < nnz; i++)
     {
+        if (indices[i] >= n_outer) printf("Converting %d to %d, Indices[%d] = %d, n_outer = %d\n", format, _format, i, indices[i], n_outer);
         ptr_nnz[indices[i]]++;      
     }
 
@@ -299,27 +301,48 @@ void Matrix::convert(format_t _format)
         }
     }
 
-    // Add entries to compressed vectors 
-    // (assume no zeros or duplicate entries)
+    // Add entries to compressed vectors
     indptr.resize(n_outer + 1);
-    index_t ctr = 0;
+    nnz = 0;
     for (index_t i = 0; i < n_outer; i++)
     {
-        indptr[i] = ctr;
+        indptr[i] = nnz;
         index_t ptr_start = indptr_a[i];
         index_t ptr_end = indptr_a[i+1];
-    
-        for (index_t j = ptr_start; j < ptr_end; j++)
+
+        index_t j = ptr_start;
+
+        // Always add first entry (if greater than zero)
+        while (j < ptr_end)
         {
             if (fabs(data_pair[j].second) > zero_tol)
             {
-                indices[ctr] = data_pair[j].first;
-                data[ctr] = data_pair[j].second;
-                ctr++;
+                indices[nnz] = data_pair[j].first;
+                data[nnz] = data_pair[j].second;
+                nnz++;
+                j++;
+                break;
+            }
+            j++;
+        }
+
+        // Only add successive entries if they are different
+        // Otherwise combine (add values together)
+        for (; j < ptr_end; j++)
+        {
+            if (data_pair[j].first == indices[nnz-1])
+            {
+                data[nnz-1] += data_pair[j].second;
+            }
+            else if (fabs(data_pair[j].second) > zero_tol)
+            {
+                indices[nnz] = data_pair[j].first;
+                data[nnz] = data_pair[j].second;
+                nnz++;
             }
         }
     }
-    indptr[n_outer] = ctr;
+    indptr[n_outer] = nnz;
 
     indptr_a.clear();
     data_pair.clear();
