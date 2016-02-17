@@ -8,7 +8,7 @@ if(WITH_HYPRE)
 endif(WITH_HYPRE)
 
 if(WITH_MFEM)
-	add_executable(benchmark_mfem benchmark_mfem.cpp)
+    add_executable(benchmark_mfem benchmark_mfem.cpp)
     target_link_libraries(benchmark_mfem raptor ${MPI_LIRARIES})
 endif(WITH_MFEM)
 

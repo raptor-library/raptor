@@ -301,48 +301,29 @@ void Matrix::convert(format_t _format)
         }
     }
 
-    // Add entries to compressed vectors
+    // Add entries to compressed vectors 
+    // (assume no zeros or duplicate entries)
     indptr.resize(n_outer + 1);
-    nnz = 0;
+    index_t ctr = 0;
     for (index_t i = 0; i < n_outer; i++)
     {
-        indptr[i] = nnz;
+        indptr[i] = ctr;
         index_t ptr_start = indptr_a[i];
         index_t ptr_end = indptr_a[i+1];
-
-        index_t j = ptr_start;
-
-        // Always add first entry (if greater than zero)
-        while (j < ptr_end)
+    
+        for (index_t j = ptr_start; j < ptr_end; j++)
         {
-            if (fabs(data_pair[j].second) > zero_tol)
+    //        if (fabs(data_pair[j].second) > zero_tol)
             {
-                indices[nnz] = data_pair[j].first;
-                data[nnz] = data_pair[j].second;
-                nnz++;
-                j++;
-                break;
-            }
-            j++;
-        }
-
-        // Only add successive entries if they are different
-        // Otherwise combine (add values together)
-        for (; j < ptr_end; j++)
-        {
-            if (data_pair[j].first == indices[nnz-1])
-            {
-                data[nnz-1] += data_pair[j].second;
-            }
-            else if (fabs(data_pair[j].second) > zero_tol)
-            {
-                indices[nnz] = data_pair[j].first;
-                data[nnz] = data_pair[j].second;
-                nnz++;
+                indices[ctr] = data_pair[j].first;
+                data[ctr] = data_pair[j].second;
+                ctr++;
             }
         }
     }
-    indptr[n_outer] = nnz;
+    indptr[n_outer] = ctr;
+
+
 
     indptr_a.clear();
     data_pair.clear();

@@ -302,9 +302,9 @@ raptor::Hierarchy* create_wrapped_hierarchy(raptor::ParMatrix* A_rap,
     //Clean up TODO -- can we set arrays to NULL and still delete these?
     remove_shared_ptrs((hypre_ParAMGData*)amg_data);
     hypre_BoomerAMGDestroy(amg_data); 
-//    HYPRE_IJMatrixDestroy(A);
-//    HYPRE_IJVectorDestroy(x);
-//    HYPRE_IJVectorDestroy(b);
+    HYPRE_IJMatrixDestroy(A);
+    HYPRE_IJVectorDestroy(x);
+    HYPRE_IJVectorDestroy(b);
 
     return ml;
 }
