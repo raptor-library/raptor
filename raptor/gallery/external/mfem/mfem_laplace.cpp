@@ -105,7 +105,7 @@ void mfem_laplace(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x_raptor
    delete a;
    delete b;
 
-/*   hypre_ParCSRMatrix *A_hypre = A->StealData();
+   hypre_ParCSRMatrix *A_hypre = A->StealData();
    double* b_hypre = B->GetData();
    double* x_hypre = X->GetData();
 
@@ -121,11 +121,11 @@ void mfem_laplace(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x_raptor
       x_raptor_data[i] = x_hypre[i];
       b_raptor_data[i] = b_hypre[i];
    }
-*/   
+   
    delete B;
    delete X;
-//   remove_shared_ptrs(A_hypre);
-//   hypre_ParCSRMatrixDestroy(A_hypre);
+   remove_shared_ptrs(A_hypre);
+   hypre_ParCSRMatrixDestroy(A_hypre);
    delete A;
   
 //   delete fespace;
@@ -134,8 +134,8 @@ void mfem_laplace(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x_raptor
    delete pmesh;
 
 
-//   *A_raptor_ptr = A_raptor;
-//   *x_raptor_ptr = x_raptor;
-//   *b_raptor_ptr = b_raptor;
+   *A_raptor_ptr = A_raptor;
+   *x_raptor_ptr = x_raptor;
+   *b_raptor_ptr = b_raptor;
 
 }

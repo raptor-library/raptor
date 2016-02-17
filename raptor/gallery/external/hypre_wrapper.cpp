@@ -291,13 +291,10 @@ raptor::Hierarchy* create_wrapped_hierarchy(raptor::ParMatrix* A_rap,
     hypre_ParVector* par_b;
     HYPRE_IJVectorGetObject(b, (void **) &par_b);
 
-    //A_rap = convert(parcsr_A);
-    //x_rap = convert(par_x);
-    //b_rap = convert(par_b);
-
     HYPRE_Solver amg_data = hypre_create_hierarchy(parcsr_A, par_x, par_b, coarsen_type, interp_type, p_max_elmts, agg_num_levels);
 
-    raptor::Hierarchy* ml = convert((hypre_ParAMGData*)amg_data);
+    raptor::Hierarchy* ml;
+    ml = convert((hypre_ParAMGData*)amg_data);
 
     //Clean up TODO -- can we set arrays to NULL and still delete these?
     remove_shared_ptrs((hypre_ParAMGData*)amg_data);

@@ -7,6 +7,18 @@
 #include "HYPRE_IJ_mv.h"
 #include "HYPRE_parcsr_mv.h"
 
+#include <stdlib.h>
+#include <time.h>
+void clear_cache(int size, double* cache_list)
+{
+    srand(time(NULL));
+    for (int i = 0; i < size; i++)
+    {
+        cache_list[i] = rand()%10;
+    }
+}
+
+
 HYPRE_Int
 hypre_ParCSRCommHandleTest( hypre_ParCSRCommHandle *comm_handle, HYPRE_Int *comm_flags, HYPRE_Int *finished, HYPRE_Int *total_finished, HYPRE_Int *last_finished)
 {
@@ -60,7 +72,6 @@ hypre_ParCSRMatrixAsyncMatvec( HYPRE_Complex       alpha,
    hypre_ParCSRCommPkg *comm_pkg = hypre_ParCSRMatrixCommPkg(A);
    hypre_CSRMatrix   *diag   = hypre_ParCSRMatrixDiag(A);
    hypre_CSRMatrix   *offd   = hypre_ParCSRMatrixOffd(A);
-   //hypre_CSRMatrix  **offd_proc   = hypre_ParCSRMatrixOffdProc(A);
    hypre_Vector      *x_local  = hypre_ParVectorLocalVector(x);
    hypre_Vector      *y_local  = hypre_ParVectorLocalVector(y);
    HYPRE_Int          num_rows = hypre_ParCSRMatrixGlobalNumRows(A);
