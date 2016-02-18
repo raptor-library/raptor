@@ -8,6 +8,7 @@ endif(WITH_HYPRE)
 
 set(gallery_SOURCES
     gallery/diffusion.cpp
+    gallery/laplacian27pt.cpp
     gallery/matrix_IO.cpp
     gallery/stencil.cpp
     ${external_gallery_SOURCES}

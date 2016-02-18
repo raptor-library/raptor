@@ -4,6 +4,9 @@
 #include "util/linalg/spmv.hpp"
 #include "gallery/external/mfem_wrapper.hpp"
 #include "gallery/external/hypre_wrapper.hpp"
+#include "gallery/laplacian27pt.hpp"
+#include "gallery/diffusion.hpp"
+#include "gallery/stencil.hpp"
 #include "hypre_async.h"
 
 using namespace raptor;
@@ -20,11 +23,11 @@ int main(int argc, char *argv[])
 
     // Get Command Line Arguments (Must Have 5)
     // TODO -- Fix how we parse command line
-    assert(argc >= 5);
-    char* mesh = argv[1];
-    int num_tests = atoi(argv[2]);
-    int num_elements = atoi(argv[3]);
-    int order = atoi(argv[4]);
+//    assert(argc >= 5);
+//    char* mesh = argv[1];
+    int num_tests = atoi(argv[1]);
+    int num_elements = atoi(argv[2]);
+//    int order = atoi(argv[4]);
 
     // Declare Variables
     ParMatrix* A;
@@ -58,7 +61,11 @@ int main(int argc, char *argv[])
     data_t* cache_list = new data_t[cache_size];
 
     // Get matrix and vectors from MFEM
-    mfem_laplace(&A, &x, &b, mesh, num_elements, order);
+    //mfem_laplace(&A, &x, &b, mesh, num_elements, order);
+    data_t* sten = laplace_stencil_27pt();
+    int dim = 3;
+    int grid[dim] = {num_elements, num_elements, num_elements};
+    A = stencil_grid(sten, grid, dim);
 
     // Calculate and Print Number of Nonzeros in Matrix
     local_nnz = 0;
@@ -69,6 +76,9 @@ int main(int argc, char *argv[])
     global_nnz = 0;
     MPI_Reduce(&local_nnz, &global_nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Num Nonzeros = %lu\n", global_nnz);
+
+    x = new ParVector(A->global_rows, A->local_rows, A->first_row);
+    b = new ParVector(A->global_cols, A->local_cols, A->first_col_diag);
 
     t0, tfinal;
     ml = create_wrapped_hierarchy(A, x, b);

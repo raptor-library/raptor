@@ -21,7 +21,7 @@ public:
     void create_partition(index_t global_rows, index_t global_cols, index_t first_row, index_t local_rows, index_t first_col_diag);
     void create_comm_mat(MPI_Comm _comm_mat = MPI_COMM_WORLD);
     void add_value(index_t row, index_t global_col, data_t value, index_t row_global = 0);
-    void finalize(int symmetric);
+    void finalize();
 
     ParMatrix(index_t _glob_rows, index_t _glob_cols, format_t diag_f = CSR, format_t offd_f = CSC)
     {
@@ -109,7 +109,7 @@ public:
             }
         }
 
-        finalize(0);
+        finalize();
     }
 
     ParMatrix(index_t _globalRows, index_t _globalCols, Matrix* _diag, Matrix* _offd)
@@ -145,7 +145,7 @@ public:
         {
             delete diag;
             delete comm;
-//            delete diag_elmts;
+            delete diag_elmts;
         }
     }
 

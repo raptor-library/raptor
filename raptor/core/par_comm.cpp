@@ -7,7 +7,7 @@ using namespace raptor;
 
 void ParComm::init_col_to_proc(const MPI_Comm comm_mat, const index_t num_cols, 
     std::map<index_t, index_t>& global_to_local,  
-    Array<index_t> global_col_starts)
+    Array<index_t>& global_col_starts)
 {
     // Get MPI Information
     int rank, num_procs;
@@ -77,7 +77,7 @@ void ParComm::init_comm_recvs(const MPI_Comm comm_mat, const index_t num_cols, s
     size_recvs = recv_col_starts[num_recvs];
 }
 
-void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, Array<index_t>& map_to_global, Array<index_t> global_col_starts)
+void ParComm::init_comm_sends_unsym(const MPI_Comm comm_mat, Array<index_t>& map_to_global, Array<index_t>& global_col_starts)
 {
     // Get MPI Information
     int rank, num_procs;

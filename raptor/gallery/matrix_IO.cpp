@@ -62,7 +62,7 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int sy
         //}
     }
 
-    A->finalize(symmetric);
+    A->finalize();
 
     return A;
 }

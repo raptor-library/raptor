@@ -181,7 +181,7 @@ void ParMatrix::add_value(index_t row, index_t global_col, data_t value, index_t
     }
 }
 
-void ParMatrix::finalize(int symmetric)
+void ParMatrix::finalize()
 {
     if (offd_num_cols)
     {
@@ -208,7 +208,7 @@ void ParMatrix::finalize(int symmetric)
 
     if (local_rows)
     {
-        comm = new ParComm(offd, local_to_global, global_to_local, global_col_starts, comm_mat, symmetric);
+        comm = new ParComm(offd, local_to_global, global_to_local, global_col_starts, comm_mat);
     }
 
 }

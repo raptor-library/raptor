@@ -213,12 +213,12 @@ ParMatrix* stencil_grid(data_t* stencil, int* grid, int dim, format_t format)
             value = data[(N_s-d-1)*n_v+i];
             if (col >= 0 && col < N_v && fabs(value) > zero_tol)
             {
-                A->add_value(i, col, value) ;
+                A->add_value(i, col, value);
             }
         }
     }
     
-    A->finalize(0);
+    A->finalize();
 
     delete[] nonzero_stencil;
     delete[] data;
