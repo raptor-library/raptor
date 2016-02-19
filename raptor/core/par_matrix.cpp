@@ -210,6 +210,11 @@ void ParMatrix::finalize()
     {
         comm = new ParComm(offd, local_to_global, global_to_local, global_col_starts, comm_mat);
     }
-
+    else
+    {
+        comm = new ParComm();
+        comm->num_sends = 0;
+        comm->num_recvs = 0;
+    }
 }
 

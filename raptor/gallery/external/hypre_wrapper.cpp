@@ -31,8 +31,10 @@ HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap)
 {
     HYPRE_IJMatrix A;
 
-    HYPRE_Int n_rows, n_cols;
-    HYPRE_Int local_row_start, local_col_start;
+    HYPRE_Int n_rows = 0;
+    HYPRE_Int n_cols = 0;
+    HYPRE_Int local_row_start = 0;
+    HYPRE_Int local_col_start = 0;
     HYPRE_Int rank, num_procs;
     HYPRE_Int one = 1;
 
@@ -40,9 +42,12 @@ HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     n_rows = A_rap->local_rows;
-    n_cols = A_rap->local_cols;
-    local_row_start = A_rap->first_row;
-    local_col_start = A_rap->first_col_diag;
+    if (n_rows)
+    {
+        n_cols = A_rap->local_cols;
+        local_row_start = A_rap->first_row;
+        local_col_start = A_rap->first_col_diag;
+    }
 
     /**********************************
      ****** CREATE HYPRE MATRIX
@@ -60,7 +65,7 @@ HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap)
         {
             HYPRE_Int global_col = A_rap->diag->indices[j] + A_rap->first_col_diag;
             HYPRE_Real value = A_rap->diag->data[j];
-            HYPRE_IJMatrixAddToValues(A, 1, &one, &global_row, &global_col, &value);
+            HYPRE_IJMatrixSetValues(A, 1, &one, &global_row, &global_col, &value);
         }
     }
 
@@ -73,7 +78,7 @@ HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap)
         {
             HYPRE_Int global_row = A_rap->offd->indices[j] + A_rap->first_row;
             HYPRE_Real value = A_rap->offd->data[j];
-            HYPRE_IJMatrixAddToValues(A, 1, &one, &global_row, &global_col, &value);
+            HYPRE_IJMatrixSetValues(A, 1, &one, &global_row, &global_col, &value);
         }
     }
     HYPRE_IJMatrixAssemble(A);
@@ -181,8 +186,8 @@ raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre)
 
 
     // Create empty communicator
-    if (diag_rows)
-    {
+//    if (diag_rows)
+//    {
         A->comm = new ParComm();
         A->comm->num_sends = num_sends;
         A->comm->num_recvs = num_recvs;
@@ -212,8 +217,9 @@ raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre)
             A->comm->recv_col_starts.set_data(A->comm->num_recvs, recv_vec_starts);
             A->comm->recv_col_starts.resize(A->comm->num_recvs + 1);
             A->comm->recv_col_starts[A->comm->num_recvs] = offd_cols;
+            hypre_ParCSRCommPkgRecvVecStarts(comm_pkg) = A->comm->recv_col_starts.data();
         }
-    }
+//    }
 
     return A;
 }
@@ -224,18 +230,37 @@ void remove_shared_ptrs(hypre_ParCSRMatrix* A_hypre)
     hypre_CSRMatrix* A_hypre_offd = hypre_ParCSRMatrixOffd(A_hypre);
     hypre_ParCSRCommPkg* comm_pkg = hypre_ParCSRMatrixCommPkg(A_hypre);
 
-    hypre_CSRMatrixData(A_hypre_diag) = NULL;
-    hypre_CSRMatrixI(A_hypre_diag) = NULL;
-    hypre_CSRMatrixJ(A_hypre_diag) = NULL;
-    hypre_CSRMatrixData(A_hypre_offd) = NULL;
-    hypre_CSRMatrixI(A_hypre_offd) = NULL;
-    hypre_CSRMatrixJ(A_hypre_offd) = NULL;
-    hypre_ParCSRMatrixColMapOffd(A_hypre) = NULL;
-    hypre_ParCSRCommPkgSendProcs(comm_pkg) = NULL;
-    hypre_ParCSRCommPkgSendMapStarts(comm_pkg) = NULL;
-    hypre_ParCSRCommPkgSendMapElmts(comm_pkg) = NULL;
-    hypre_ParCSRCommPkgRecvProcs(comm_pkg) = NULL;
-    hypre_ParCSRCommPkgRecvVecStarts(comm_pkg) = NULL; 
+    if (hypre_CSRMatrixNumRows(A_hypre_diag))
+    {
+        hypre_CSRMatrixData(A_hypre_diag) = NULL;
+        hypre_CSRMatrixI(A_hypre_diag) = NULL;
+        hypre_CSRMatrixJ(A_hypre_diag) = NULL;
+    }
+
+    if (hypre_CSRMatrixNumCols(A_hypre_offd))
+    {
+        hypre_CSRMatrixData(A_hypre_offd) = NULL;
+        hypre_CSRMatrixI(A_hypre_offd) = NULL;
+        hypre_CSRMatrixJ(A_hypre_offd) = NULL;
+    }
+
+    if (hypre_CSRMatrixNumCols(A_hypre_offd))
+    {
+        hypre_ParCSRMatrixColMapOffd(A_hypre) = NULL;
+    }
+
+    if (hypre_ParCSRCommPkgNumSends(comm_pkg))
+    {
+        hypre_ParCSRCommPkgSendProcs(comm_pkg) = NULL;
+        hypre_ParCSRCommPkgSendMapStarts(comm_pkg) = NULL;
+        hypre_ParCSRCommPkgSendMapElmts(comm_pkg) = NULL;
+    }
+
+    if (hypre_ParCSRCommPkgNumRecvs(comm_pkg))
+    {
+        hypre_ParCSRCommPkgRecvProcs(comm_pkg) = NULL;
+        hypre_ParCSRCommPkgRecvVecStarts(comm_pkg) = NULL; 
+    }
 
 }
 

@@ -31,7 +31,7 @@ data_t* laplace_stencil_27pt()
         stencil[i] = -1;
     }
 
-    stencil[14] = 26;
+    stencil[13] = 26;
 
     return stencil;
 }
