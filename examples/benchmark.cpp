@@ -54,11 +54,18 @@ int main(int argc, char *argv[])
     t0 = MPI_Wtime();
     for (int i = 0; i < num_tests; i++)
     {
-        parallel_spmv(A, x, b, 1.0, 0.0, 1);
+        parallel_spmv(A, x, b, 1.0, 0.0, 0);
     }
     tfinal = (MPI_Wtime() - t0) / num_tests;
 
     // Print Timings
+    long level_nnz, level_nnz_local;
+    level_nnz_local = A->diag->nnz + A->offd->nnz;
+    MPI_Reduce(&level_nnz_local, &level_nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("A has %d nonzeros\n", level_nnz);
+    double b_norm = b->norm(2);
+    if (rank == 0) printf("2 norm of b = %2.3e\n", b_norm);
+
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Max Time per SpMV: %2.3e\n", t0);
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -67,6 +74,7 @@ int main(int argc, char *argv[])
     delete A;
     delete x;
     delete b;
+    delete result;
 
     MPI_Finalize();
 

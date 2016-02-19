@@ -176,7 +176,7 @@ void ParMatrix::add_value(index_t row, index_t global_col, data_t value, index_t
         diag->add_value(row, local_col, value);
         if (row == local_col)
         {
-            diag_elmts[row] += value;
+            //diag_elmts[row] += value;
         }
     }
 }

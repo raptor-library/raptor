@@ -73,7 +73,33 @@ namespace raptor
               min_coarse_size = _min_coarse_size;
               num_levels = 0;
           }
-          ~Hierarchy();
+
+          ~Hierarchy()
+          {
+
+//              if (A_list[num_levels - 1] -> local_rows)
+//              {
+//                  delete[] A_coarse;
+//                  delete[] permute_coarse;
+//                  delete[] gather_sizes;
+//                  delete[] gather_displs;
+//              }
+
+              for (int i = 0; i < num_levels; i++)
+              {
+                  delete A_list[i];
+                  if (i < num_levels - 1)
+                  {
+                      delete P_list[i];
+                      delete tmp_list[i];
+                  }
+                  if (i > 0)
+                  {
+                      delete x_list[i];
+                      delete b_list[i];
+                  }
+              }
+          }
 
           /***********************************************************
           *****  Add Level

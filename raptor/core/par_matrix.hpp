@@ -118,6 +118,7 @@ public:
         global_cols = _globalCols;
         diag = _diag;
         offd = _offd;
+        diag_elmts = new data_t[diag->n_rows];
     }
 
     ParMatrix(ParMatrix* A)
@@ -126,6 +127,7 @@ public:
         global_cols = A->global_cols;
         diag = A->diag; // should we mark as not owning? (we should think about move semantics or if people really love pointers we could use smart pointers).
         offd = A->offd;
+        diag_elmts = A->diag_elmts;
     }
 
     ParMatrix()
@@ -133,6 +135,7 @@ public:
         local_rows = 0;
         local_cols = 0;
         offd_num_cols = 0;
+        diag_elmts = NULL;
     }
 
     ~ParMatrix()
@@ -145,7 +148,7 @@ public:
         {
             delete diag;
             delete comm;
-            delete diag_elmts;
+            delete[] diag_elmts;
         }
     }
 

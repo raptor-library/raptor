@@ -136,7 +136,6 @@ raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre)
     // Copy local to global index data
     A->offd_num_cols = offd_cols;
     A->local_to_global.set_data(offd_cols, col_map_offd);
-    A->global_col_starts.set_data(num_procs + 1, global_col_starts);
 
     // Copy diagonal matrix
     A->diag = new Matrix(diag_rows, diag_cols, CSR);
@@ -146,40 +145,75 @@ raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre)
     A->diag->n_inner = diag_cols;
     A->diag->nnz = diag_nnz;
     A->diag->format = CSR;
-    A->diag->indptr.set_data(diag_rows + 1, diag_i);
-    A->diag->indices.set_data(diag_nnz, diag_j);
-    A->diag->data.set_data(diag_nnz, diag_data);
+    if (diag_rows)
+    {
+        A->diag->indptr.set_data(diag_rows + 1, diag_i);
+    }
+    if (diag_nnz)
+    {
+        A->diag->indices.set_data(diag_nnz, diag_j);
+        A->diag->data.set_data(diag_nnz, diag_data);
+    }
 
     // Copy off-diagonal matrix
-    A->offd = new Matrix(offd_rows, offd_cols, CSR);
-    A->offd->n_rows = offd_rows;
-    A->offd->n_cols = offd_cols;
-    A->offd->n_outer = offd_rows;
-    A->offd->n_inner = offd_cols;
-    A->offd->nnz = offd_nnz;
-    A->offd->format = CSR;
-    A->offd->indptr.set_data(offd_rows + 1, offd_i);
-    A->offd->indices.set_data(offd_nnz, offd_j);
-    A->offd->data.set_data(offd_nnz, offd_data);
+    if (offd_cols)
+    {
+        A->offd = new Matrix(offd_rows, offd_cols, CSR);
+        A->offd->n_rows = offd_rows;
+        A->offd->n_cols = offd_cols;
+        A->offd->n_outer = offd_rows;
+        A->offd->n_inner = offd_cols;
+        A->offd->nnz = offd_nnz;
+        A->offd->format = CSR;
+        if (offd_rows)
+        {
+            A->offd->indptr.set_data(offd_rows + 1, offd_i);
+        }
+        if (offd_nnz)
+        {
+            A->offd->indices.set_data(offd_nnz, offd_j);
+            A->offd->data.set_data(offd_nnz, offd_data);
+        }
 
-    // Convert offd matrix to CSC
-    A->offd->convert(CSC);
+        // Convert offd matrix to CSC
+        A->offd->convert(CSC);
+    }
+
 
     // Create empty communicator
-    A->comm = new ParComm();
-    A->comm->num_sends = num_sends;
-    A->comm->num_recvs = num_recvs;
-    A->comm->size_sends = send_map_starts[num_sends];
-    A->comm->size_recvs = offd_cols;
+    if (diag_rows)
+    {
+        A->comm = new ParComm();
+        A->comm->num_sends = num_sends;
+        A->comm->num_recvs = num_recvs;
+        if (num_sends)
+        {
+            A->comm->size_sends = send_map_starts[num_sends];
+        }
+        else
+        {
+            A->comm->size_sends = 0;
+        }
+        A->comm->size_recvs = offd_cols;
 
-    A->comm->send_procs.set_data(A->comm->num_sends, send_procs);
-    A->comm->send_row_starts.set_data(A->comm->num_sends + 1, send_map_starts);
-    A->comm->send_row_indices.set_data(A->comm->size_sends, send_map_elmts);
+        if (num_sends)
+        {
+            A->comm->send_procs.set_data(A->comm->num_sends, send_procs);
+            A->comm->send_row_starts.set_data(A->comm->num_sends + 1, send_map_starts);
+        }
+        if (A->comm->size_sends)
+        {
+            A->comm->send_row_indices.set_data(A->comm->size_sends, send_map_elmts);
+        }
 
-    A->comm->recv_procs.set_data(A->comm->num_recvs, recv_procs);
-    A->comm->recv_col_starts.set_data(A->comm->num_recvs, recv_vec_starts);
-    A->comm->recv_col_starts.resize(A->comm->num_recvs + 1);
-    A->comm->recv_col_starts[A->comm->num_recvs] = offd_cols;
+        if (num_recvs)
+        {
+            A->comm->recv_procs.set_data(A->comm->num_recvs, recv_procs);
+            A->comm->recv_col_starts.set_data(A->comm->num_recvs, recv_vec_starts);
+            A->comm->recv_col_starts.resize(A->comm->num_recvs + 1);
+            A->comm->recv_col_starts[A->comm->num_recvs] = offd_cols;
+        }
+    }
 
     return A;
 }
@@ -197,7 +231,6 @@ void remove_shared_ptrs(hypre_ParCSRMatrix* A_hypre)
     hypre_CSRMatrixI(A_hypre_offd) = NULL;
     hypre_CSRMatrixJ(A_hypre_offd) = NULL;
     hypre_ParCSRMatrixColMapOffd(A_hypre) = NULL;
-    hypre_ParCSRMatrixColStarts(A_hypre) = NULL;
     hypre_ParCSRCommPkgSendProcs(comm_pkg) = NULL;
     hypre_ParCSRCommPkgSendMapStarts(comm_pkg) = NULL;
     hypre_ParCSRCommPkgSendMapElmts(comm_pkg) = NULL;
@@ -297,7 +330,7 @@ raptor::Hierarchy* create_wrapped_hierarchy(raptor::ParMatrix* A_rap,
     ml = convert((hypre_ParAMGData*)amg_data);
 
     //Clean up TODO -- can we set arrays to NULL and still delete these?
-    remove_shared_ptrs((hypre_ParAMGData*)amg_data);
+    remove_shared_ptrs((hypre_ParAMGData*) amg_data);
     hypre_BoomerAMGDestroy(amg_data); 
     HYPRE_IJMatrixDestroy(A);
     HYPRE_IJVectorDestroy(x);

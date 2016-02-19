@@ -7,23 +7,6 @@ using namespace raptor;
 extern "C" void dgetrf_(int* dim1, int* dim2, double* a, int* lda, int* ipiv, int* info);
 
 
-/**************************************************************
- *****   Matrix Class Destructor
- **************************************************************
- ***** Deletes all arrays/vectors
- *****
- **************************************************************/
-Hierarchy::~Hierarchy()
-{
-    if (A_list[num_levels - 1] -> local_rows)
-    {
-        delete[] A_coarse;
-        delete[] permute_coarse;
-        delete[] gather_sizes;
-        delete[] gather_displs;    
-    }
-}
-
 /***********************************************************
 *****  Add Level
 ************************************************************
@@ -86,6 +69,9 @@ void Hierarchy::add_level(ParMatrix* A)
     b_list.push_back(new ParVector(A->global_cols, A->local_cols, A->first_col_diag));
 
     num_levels++;
+
+
+return;
 
     int num_procs;
     MPI_Comm_size(A->comm_mat, &num_procs);

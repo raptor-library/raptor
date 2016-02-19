@@ -62,10 +62,11 @@ int main(int argc, char *argv[])
 
     // Get matrix and vectors from MFEM
     //mfem_laplace(&A, &x, &b, mesh, num_elements, order);
-    data_t* sten = laplace_stencil_27pt();
     int dim = 3;
     int grid[dim] = {num_elements, num_elements, num_elements};
+    data_t* sten = laplace_stencil_27pt();
     A = stencil_grid(sten, grid, dim);
+    delete[] sten; 
 
     // Calculate and Print Number of Nonzeros in Matrix
     local_nnz = 0;
