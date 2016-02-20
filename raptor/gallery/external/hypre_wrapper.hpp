@@ -10,10 +10,14 @@
 #include "_hypre_parcsr_mv.h"
 #include "_hypre_parcsr_ls.h"
 
-HYPRE_IJVector convert(raptor::ParVector* x_rap);
-HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap);
-raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre);
-raptor::Hierarchy* convert(HYPRE_Solver amg_data);
+HYPRE_IJVector convert(raptor::ParVector* x_rap,
+                       MPI_Comm comm_mat = MPI_COMM_WORLD);
+HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap,
+                       MPI_Comm comm_mat = MPI_COMM_WORLD);
+raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre,
+                           MPI_Comm comm_mat = MPI_COMM_WORLD);
+raptor::Hierarchy* convert(HYPRE_Solver amg_data, 
+                           MPI_Comm comm_mat = MPI_COMM_WORLD);
 void remove_shared_ptrs(hypre_ParCSRMatrix* A_hypre);
 void remove_shared_ptrs(HYPRE_Solver amg_data);
 HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
@@ -31,6 +35,7 @@ raptor::Hierarchy* create_wrapped_hierarchy(raptor::ParMatrix* A_rap,
                                 int interp_type = 0,
                                 int p_max_elmts = 0,
                                 int agg_num_levels = 0,
-                                double strong_threshold = 0.25);
+                                double strong_threshold = 0.25,
+                                MPI_Comm comm_mat = MPI_COMM_WORLD);
 
 #endif

@@ -14,11 +14,11 @@ double analytic_solution(mfem::Vector &x);
 double analytic_rhs(mfem::Vector &x);
 void SnapNodes(Mesh &mesh);
 
-void mfem_hdiv_diffusion(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x_raptor_ptr, raptor::ParVector** b_raptor_ptr, int elem_type, int ref_levels, int order, bool always_snap, bool visualization)
+void mfem_hdiv_diffusion(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x_raptor_ptr, raptor::ParVector** b_raptor_ptr, int elem_type, int ref_levels, int order, bool always_snap, MPI_Comm comm_mat)
 {
    int myid, num_procs;
-   MPI_Comm_rank(MPI_COMM_WORLD, &myid);
-   MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+   MPI_Comm_rank(comm_mat, &myid);
+   MPI_Comm_size(comm_mat, &num_procs);
 
    // 3. Generate an initial high-order (surface) mesh on the unit sphere. The
    //    Mesh object represents a 2D mesh in 3 spatial dimensions. We first add
@@ -90,7 +90,7 @@ void mfem_hdiv_diffusion(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x
          SnapNodes(*mesh);
    }
 
-   ParMesh *pmesh = new ParMesh(MPI_COMM_WORLD, *mesh);
+   ParMesh *pmesh = new ParMesh(comm_mat, *mesh);
    delete mesh;
    {
       int par_ref_levels = 2;
@@ -153,7 +153,7 @@ void mfem_hdiv_diffusion(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x
    double* b_hypre = B->GetData();
    double* x_hypre = X->GetData();
 
-   //raptor::ParMatrix *A_raptor = convert(A_hypre, MPI_COMM_WORLD);
+   //raptor::ParMatrix *A_raptor = convert(A_hypre, comm_mat);
    raptor::ParMatrix* A_raptor = convert(A_hypre);
    raptor::ParVector* b_raptor = new raptor::ParVector(A_raptor->global_rows, A_raptor->local_rows, A_raptor->first_row);
    raptor::ParVector* x_raptor = new raptor::ParVector(A_raptor->global_rows, A_raptor->local_rows, A_raptor->first_row);

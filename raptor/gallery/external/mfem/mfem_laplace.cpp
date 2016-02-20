@@ -9,11 +9,11 @@
 using namespace std;
 using namespace mfem;
 
-void mfem_laplace(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x_raptor_ptr, raptor::ParVector** b_raptor_ptr, const char* mesh_file, int num_elements, int order, bool visualization)
+void mfem_laplace(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x_raptor_ptr, raptor::ParVector** b_raptor_ptr, const char* mesh_file, int num_elements, int order, MPI_Comm comm_mat)
 {
     int myid, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &myid);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    MPI_Comm_rank(comm_mat, &myid);
+    MPI_Comm_size(comm_mat, &num_procs);
 
     // 3. Read the (serial) mesh from the given mesh file on all processors.  We
    //    can handle triangular, quadrilateral, tetrahedral, hexahedral, surface
@@ -45,7 +45,7 @@ void mfem_laplace(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x_raptor
    // 5. Define a parallel mesh by a partitioning of the serial mesh. Refine
    //    this mesh further in parallel to increase the resolution. Once the
    //    parallel mesh is defined, the serial mesh can be deleted.
-   ParMesh *pmesh = new ParMesh(MPI_COMM_WORLD, *mesh);
+   ParMesh *pmesh = new ParMesh(comm_mat, *mesh);
    delete mesh;
    {
       int par_ref_levels = 2;
@@ -109,7 +109,7 @@ void mfem_laplace(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x_raptor
    double* b_hypre = B->GetData();
    double* x_hypre = X->GetData();
 
-   //raptor::ParMatrix *A_raptor = convert(A_hypre, MPI_COMM_WORLD);
+   //raptor::ParMatrix *A_raptor = convert(A_hypre, comm_mat);
    raptor::ParMatrix* A_raptor = convert(A_hypre);
    raptor::ParVector* b_raptor = new raptor::ParVector(A_raptor->global_rows, A_raptor->local_rows, A_raptor->first_row);
    raptor::ParVector* x_raptor = new raptor::ParVector(A_raptor->global_rows, A_raptor->local_rows, A_raptor->first_row);

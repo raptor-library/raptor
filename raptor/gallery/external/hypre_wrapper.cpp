@@ -1,13 +1,13 @@
 #include "hypre_wrapper.hpp"
 
-HYPRE_IJVector convert(raptor::ParVector* x_rap)
+HYPRE_IJVector convert(raptor::ParVector* x_rap, MPI_Comm comm_mat)
 {
     HYPRE_IJVector x;
 
     HYPRE_Int first_local = x_rap->first_local;
     HYPRE_Int local_n = x_rap->local_n;
 
-    HYPRE_IJVectorCreate(MPI_COMM_WORLD, first_local, first_local + local_n, &x);
+    HYPRE_IJVectorCreate(comm_mat, first_local, first_local + local_n, &x);
     HYPRE_IJVectorSetObjectType(x, HYPRE_PARCSR);
     HYPRE_IJVectorInitialize(x);
 
@@ -27,7 +27,7 @@ HYPRE_IJVector convert(raptor::ParVector* x_rap)
 }
 
 // TODO - Create a shallow copy for conversion
-HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap)
+HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap, MPI_Comm comm_mat)
 {
     HYPRE_IJMatrix A;
 
@@ -36,8 +36,8 @@ HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap)
     HYPRE_Int rank, num_procs;
     HYPRE_Int one = 1;
 
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    MPI_Comm_rank(comm_mat, &rank);
+    MPI_Comm_size(comm_mat, &num_procs);
 
     n_rows = A_rap->local_rows;
     n_cols = A_rap->local_cols;
@@ -47,7 +47,7 @@ HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap)
     /**********************************
      ****** CREATE HYPRE MATRIX
      ************************************/
-    HYPRE_IJMatrixCreate(MPI_COMM_WORLD, local_row_start, local_row_start + n_rows - 1, local_col_start, local_col_start + n_cols - 1, &A);
+    HYPRE_IJMatrixCreate(comm_mat, local_row_start, local_row_start + n_rows - 1, local_col_start, local_col_start + n_cols - 1, &A);
     HYPRE_IJMatrixSetObjectType(A, HYPRE_PARCSR);
     HYPRE_IJMatrixInitialize(A);
 
@@ -82,10 +82,10 @@ HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap)
 }
 
 // TODO -- Create A Shallow Copy for Conversion
-raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre)
+raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre, MPI_Comm comm_mat)
 {
     HYPRE_Int num_procs;
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    MPI_Comm_size(comm_mat, &num_procs);
 
     hypre_CSRMatrix* A_hypre_diag = hypre_ParCSRMatrixDiag(A_hypre);
     HYPRE_Real* diag_data = hypre_CSRMatrixData(A_hypre_diag);
@@ -131,7 +131,7 @@ raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre)
     A->local_cols = diag_cols;
     A->first_row = first_row;
     A->first_col_diag = first_col_diag;
-    A->comm_mat = MPI_COMM_WORLD;
+    A->comm_mat = comm_mat;
 
     // Copy local to global index data
     A->offd_num_cols = offd_cols;
@@ -253,7 +253,7 @@ void remove_shared_ptrs(hypre_ParAMGData* amg_data)
     remove_shared_ptrs(A_array[num_levels-1]);
 }
 
-raptor::Hierarchy* convert(hypre_ParAMGData* amg_data)
+raptor::Hierarchy* convert(hypre_ParAMGData* amg_data, MPI_Comm comm_mat)
 {
     HYPRE_Int num_levels = hypre_ParAMGDataNumLevels(amg_data);
     hypre_ParCSRMatrix** A_array = hypre_ParAMGDataAArray(amg_data);
@@ -263,13 +263,13 @@ raptor::Hierarchy* convert(hypre_ParAMGData* amg_data)
 
     for (int i = 0; i < num_levels - 1; i++)
     {
-        ParMatrix* A = convert(A_array[i]);
-        ParMatrix* P = convert(P_array[i]);
+        ParMatrix* A = convert(A_array[i], comm_mat);
+        ParMatrix* P = convert(P_array[i], comm_mat);
 
         ml->add_level(A, P);
     }
 
-    ParMatrix* A = convert(A_array[num_levels-1]);
+    ParMatrix* A = convert(A_array[num_levels-1], comm_mat);
     ml->add_level(A);
 
     return ml;
@@ -311,11 +311,12 @@ raptor::Hierarchy* create_wrapped_hierarchy(raptor::ParMatrix* A_rap,
                                 int interp_type,
                                 int p_max_elmts,
                                 int agg_num_levels,
-                                double strong_threshold)
+                                double strong_threshold,
+                                MPI_Comm comm_mat)
 {
-    HYPRE_IJMatrix A = convert(A_rap);
-    HYPRE_IJVector x = convert(x_rap);
-    HYPRE_IJVector b = convert(b_rap);
+    HYPRE_IJMatrix A = convert(A_rap, comm_mat);
+    HYPRE_IJVector x = convert(x_rap, comm_mat);
+    HYPRE_IJVector b = convert(b_rap, comm_mat);
 
     hypre_ParCSRMatrix* parcsr_A;
     HYPRE_IJMatrixGetObject(A, (void**) &parcsr_A);
@@ -324,10 +325,11 @@ raptor::Hierarchy* create_wrapped_hierarchy(raptor::ParMatrix* A_rap,
     hypre_ParVector* par_b;
     HYPRE_IJVectorGetObject(b, (void **) &par_b);
 
-    HYPRE_Solver amg_data = hypre_create_hierarchy(parcsr_A, par_x, par_b, coarsen_type, interp_type, p_max_elmts, agg_num_levels);
+    HYPRE_Solver amg_data = hypre_create_hierarchy(parcsr_A, par_x, par_b, 
+                            coarsen_type, interp_type, p_max_elmts, agg_num_levels);
 
     raptor::Hierarchy* ml;
-    ml = convert((hypre_ParAMGData*)amg_data);
+    ml = convert((hypre_ParAMGData*)amg_data, comm_mat);
 
     //Clean up TODO -- can we set arrays to NULL and still delete these?
     remove_shared_ptrs((hypre_ParAMGData*) amg_data);

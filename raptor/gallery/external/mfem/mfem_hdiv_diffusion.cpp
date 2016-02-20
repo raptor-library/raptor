@@ -13,11 +13,11 @@ using namespace mfem;
 void F_exact(const mfem::Vector &, mfem::Vector &);
 void f_exact(const mfem::Vector &, mfem::Vector &);
 
-void mfem_hdiv_diffusion(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x_raptor_ptr, raptor::ParVector** b_raptor_ptr, const char* mesh_file, int num_elements, int order, bool set_bc, bool visualization)
+void mfem_hdiv_diffusion(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x_raptor_ptr, raptor::ParVector** b_raptor_ptr, const char* mesh_file, int num_elements, int order, bool set_bc, MPI_Comm comm_mat)
 {
    int myid, num_procs;
-   MPI_Comm_rank(MPI_COMM_WORLD, &myid);
-   MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+   MPI_Comm_rank(comm_mat, &myid);
+   MPI_Comm_size(comm_mat, &num_procs);
 
    // 3. Read the (serial) mesh from the given mesh file on all processors.  We
    //    can handle triangular, quadrilateral, tetrahedral, hexahedral, surface
@@ -51,7 +51,7 @@ void mfem_hdiv_diffusion(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x
    //    parallel mesh is defined, the serial mesh can be deleted. Tetrahedral
    //    meshes need to be reoriented before we can define high-order Nedelec
    //    spaces on them (this is needed in the ADS solver below).
-   ParMesh *pmesh = new ParMesh(MPI_COMM_WORLD, *mesh);
+   ParMesh *pmesh = new ParMesh(comm_mat, *mesh);
    delete mesh;
    {
       int par_ref_levels = 2;
@@ -124,7 +124,7 @@ void mfem_hdiv_diffusion(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x
    double* b_hypre = B->GetData();
    double* x_hypre = X->GetData();
 
-   //raptor::ParMatrix *A_raptor = convert(A_hypre, MPI_COMM_WORLD);
+   //raptor::ParMatrix *A_raptor = convert(A_hypre, comm_mat);
    raptor::ParMatrix* A_raptor = convert(A_hypre);
    raptor::ParVector* b_raptor = new raptor::ParVector(A_raptor->global_rows, A_raptor->local_rows, A_raptor->first_row);
    raptor::ParVector* x_raptor = new raptor::ParVector(A_raptor->global_rows, A_raptor->local_rows, A_raptor->first_row);
