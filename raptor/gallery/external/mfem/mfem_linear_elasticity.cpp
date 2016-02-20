@@ -161,8 +161,7 @@ void mfem_linear_elasticity(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector*
    double* b_hypre = B->GetData();
    double* x_hypre = X->GetData();
 
-   //raptor::ParMatrix *A_raptor = convert(A_hypre, comm_mat);
-   raptor::ParMatrix* A_raptor = convert(A_hypre);
+   raptor::ParMatrix *A_raptor = convert(A_hypre, comm_mat);
    raptor::ParVector* b_raptor = new raptor::ParVector(A_raptor->global_rows, A_raptor->local_rows, A_raptor->first_row);
    raptor::ParVector* x_raptor = new raptor::ParVector(A_raptor->global_rows, A_raptor->local_rows, A_raptor->first_row);
 
