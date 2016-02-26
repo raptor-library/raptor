@@ -12,3 +12,8 @@ if(WITH_MFEM)
     target_link_libraries(benchmark_mfem raptor ${MPI_LIRARIES})
 endif(WITH_MFEM)
 
+    add_executable(benchmark_charm benchmark_charm.cpp)
+    target_link_libraries(benchmark_charm raptor ${MPI_LIRARIES})
+
+
+

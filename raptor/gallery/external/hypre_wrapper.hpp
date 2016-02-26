@@ -17,7 +17,7 @@ HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap,
                        MPI_Comm comm_mat = MPI_COMM_WORLD);
 raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre,
                            MPI_Comm comm_mat = MPI_COMM_WORLD);
-raptor::Hierarchy* convert(HYPRE_Solver amg_data, 
+raptor::Hierarchy* convert(hypre_ParAMGData* amg_data, 
                            MPI_Comm comm_mat = MPI_COMM_WORLD);
 void remove_shared_ptrs(hypre_ParCSRMatrix* A_hypre);
 void remove_shared_ptrs(hypre_ParAMGData* amg_data);

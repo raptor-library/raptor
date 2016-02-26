@@ -600,22 +600,14 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
     {
         if (async)
         {
-            int recv_idx[num_recvs];
-            index_t proc, recv_start, recv_end, first_col, num_cols;
-            for (index_t i = 0; i < num_recvs;)
+            int recv_idx, recv_start, recv_end, num_cols;
+            for (index_t i = 0; i < num_recvs; i++)
             {
-                int n_recvd;
-                MPI_Waitsome(num_recvs, recv_requests, &n_recvd, recv_idx, MPI_STATUS_IGNORE);
-                for (index_t j = 0; j < n_recvd; j++)
-                {
-                    //index_t proc = recv_procs[recv_idx[j]];
-                    recv_start = recv_col_starts[recv_idx[j]];
-                    recv_end = recv_col_starts[recv_idx[j]+1];
-                    //first_col = recv_col_indices[recv_start]; -- first col == recv_start
-                    num_cols = recv_end - recv_start;
-                    sequential_spmv(A->offd, recv_buffer, y_data, alpha, 1.0, result_data, recv_start, num_cols);
-                }
-                i += n_recvd;
+                MPI_Waitany(num_recvs, recv_requests, &recv_idx, MPI_STATUS_IGNORE);
+                recv_start = recv_col_starts[recv_idx];
+                recv_end = recv_col_starts[recv_idx+1];
+                num_cols = recv_end - recv_start;
+                sequential_spmv(A->offd, recv_buffer, y_data, alpha, 1.0, result_data, recv_start, num_cols);
             }
         }
         else
