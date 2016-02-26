@@ -323,8 +323,6 @@ void Matrix::convert(format_t _format)
     }
     indptr[n_outer] = ctr;
 
-
-
     indptr_a.clear();
     data_pair.clear();
   

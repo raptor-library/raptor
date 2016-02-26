@@ -146,10 +146,10 @@ public:
         }
         if (this->local_rows)
         {
-            delete diag;
-            delete comm;
             delete[] diag_elmts;
         }
+            delete diag;
+            delete comm;
     }
 
     index_t global_rows;

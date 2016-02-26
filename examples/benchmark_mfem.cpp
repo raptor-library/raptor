@@ -23,11 +23,17 @@ int main(int argc, char *argv[])
 
     // Get Command Line Arguments (Must Have 5)
     // TODO -- Fix how we parse command line
-//    assert(argc >= 5);
-//    char* mesh = argv[1];
-    int num_tests = atoi(argv[1]);
-    int num_elements = atoi(argv[2]);
-//    int order = atoi(argv[4]);
+    int num_tests = 10;
+    int num_elements = 10;
+    if (argc > 1)
+    {
+        num_tests = atoi(argv[1]);
+        if (argc > 2)
+        {
+            num_elements = atoi(argv[2]);
+        }
+    }
+
 
     // Declare Variables
     ParMatrix* A;
@@ -66,7 +72,10 @@ int main(int argc, char *argv[])
     int grid[dim] = {num_elements, num_elements, num_elements};
     data_t* sten = laplace_stencil_27pt();
     A = stencil_grid(sten, grid, dim);
-    delete[] sten; 
+    delete[] sten;
+    b = new ParVector(A->global_cols, A->local_cols, A->first_col_diag);
+    x = new ParVector(A->global_rows, A->local_rows, A->first_row);
+    x->set_const_value(1.0);
 
     // Calculate and Print Number of Nonzeros in Matrix
     local_nnz = 0;
@@ -78,12 +87,22 @@ int main(int argc, char *argv[])
     MPI_Reduce(&local_nnz, &global_nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Num Nonzeros = %lu\n", global_nnz);
 
-    x = new ParVector(A->global_rows, A->local_rows, A->first_row);
-    b = new ParVector(A->global_cols, A->local_cols, A->first_col_diag);
-
     t0, tfinal;
-    ml = create_wrapped_hierarchy(A, x, b);
+
+    // Create hypre (amg_data) and raptor (ml) hierarchies (they share data)
+    A_ij = convert(A);
+    x_ij = convert(x);
+    b_ij = convert(b);
+    HYPRE_IJMatrixGetObject(A_ij, (void**) &A_hypre);
+    HYPRE_IJVectorGetObject(x_ij, (void **) &x_hypre);
+    HYPRE_IJVectorGetObject(b_ij, (void **) &b_hypre);
+    HYPRE_Solver amg_data = hypre_create_hierarchy(A_hypre, x_hypre, b_hypre, 6, 0, 0, 0, 0.25);
+    ml = convert((hypre_ParAMGData*) amg_data);
+
     num_levels = ml->num_levels;
+    hypre_ParCSRMatrix** A_array = hypre_ParAMGDataAArray((hypre_ParAMGData*) amg_data);
+    hypre_ParVector** x_array = hypre_ParAMGDataUArray((hypre_ParAMGData*) amg_data);
+    hypre_ParVector** b_array = hypre_ParAMGDataFArray((hypre_ParAMGData*) amg_data);
 
     ml->x_list[0] = x;
     ml->b_list[0] = b;
@@ -93,6 +112,9 @@ int main(int argc, char *argv[])
         A_l = ml->A_list[i];
         x_l = ml->x_list[i];
         b_l = ml->b_list[i];
+        A_hypre = A_array[i];
+        x_hypre = x_array[i];
+        b_hypre = b_array[i];
 
         local_rows = A_l->local_rows;
         len_x = x_l->local_n;
@@ -109,7 +131,7 @@ int main(int argc, char *argv[])
         // Set X Data -- Local Elements are Unique
         if (local_rows)
         {
-            x_data = ml->x_list[i]->local->data();
+            x_data = x_l->local->data();
             for (int j = 0; j < len_x; j++)
             {
                 x_data[j] = (1.0 * j) / len_x;
@@ -120,7 +142,7 @@ int main(int argc, char *argv[])
         t0 = MPI_Wtime();
         for (int j = 0; j < num_tests; j++)
         {
-            parallel_spmv(ml->A_list[i], ml->x_list[i], ml->b_list[i], 1.0, 0.0, 0);
+            parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, 0);
         }
         tfinal = (MPI_Wtime() - t0) / num_tests;
         b_norm = b_l->norm(2);
@@ -135,7 +157,7 @@ int main(int argc, char *argv[])
         t0 = MPI_Wtime();
         for (int j = 0; j < num_tests; j++)
         {
-            parallel_spmv(ml->A_list[i], ml->x_list[i], ml->b_list[i], 1.0, 0.0, 1);
+            parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, 1);
         }
         tfinal = (MPI_Wtime() - t0) / num_tests;
         b_norm = b_l->norm(2);
@@ -147,14 +169,14 @@ int main(int argc, char *argv[])
         clear_cache(cache_size, cache_list);   
 
         // Test CSR Synchronous SpMV
-        if (ml->A_list[i]->local_rows && ml->A_list[i]->offd_num_cols)
+        if (A_l->local_rows && A_l->offd_num_cols)
         {
-            ml->A_list[i]->offd->convert(CSR);
+            A_l->offd->convert(CSR);
         }
         t0 = MPI_Wtime();
         for (int j = 0; j < num_tests; j++)
         {
-            parallel_spmv(ml->A_list[i], ml->x_list[i], ml->b_list[i], 1.0, 0.0, 0);
+            parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, 0);
         }
         tfinal = (MPI_Wtime() - t0) / num_tests;
         b_norm = b_l->norm(2);
@@ -165,19 +187,13 @@ int main(int argc, char *argv[])
         if (rank == 0) printf("Level %d Avg Time per CSR SpMV: %2.3e\n", i, t0 / num_procs);
         clear_cache(cache_size, cache_list);   
     
-        // Create Equivalent Hypre Matrix / Vectors
-        if (ml->A_list[i]->local_rows && ml->A_list[i]->offd_num_cols)
-        {
-            ml->A_list[i]->offd->convert(CSC);
-        }
-        A_ij = convert(ml->A_list[i]);
-        x_ij = convert(ml->x_list[i]);
-        b_ij = convert(ml->b_list[i]);
-        HYPRE_IJMatrixGetObject(A_ij, (void**) &A_hypre);
-        HYPRE_IJVectorGetObject(x_ij, (void**) &x_hypre);
-        HYPRE_IJVectorGetObject(b_ij, (void**) &b_hypre);
-
         // Test HYPRE (CSR) Synchronous SpMV
+        if (A_l->offd_num_cols)
+        {
+            hypre_CSRMatrixData(hypre_ParCSRMatrixOffd(A_hypre)) = A_l->offd->data.data();
+            hypre_CSRMatrixI(hypre_ParCSRMatrixOffd(A_hypre)) = A_l->offd->indptr.data();
+            hypre_CSRMatrixJ(hypre_ParCSRMatrixOffd(A_hypre)) = A_l->offd->indices.data();
+        }
         t0 = MPI_Wtime();
         for (int j = 0; j < num_tests; j++)
         {
@@ -209,10 +225,18 @@ int main(int argc, char *argv[])
         clear_cache(cache_size, cache_list);   
     
         // Destroy HYPRE Matrices
-        HYPRE_IJMatrixDestroy(A_ij);
-        HYPRE_IJVectorDestroy(x_ij);
-        HYPRE_IJVectorDestroy(b_ij);
+        for (int j = 0; j < hypre_ParCSRCommPkgNumRecvs(hypre_ParCSRMatrixCommPkg(A_hypre)); j++)
+        {
+            hypre_CSRMatrixDestroy(offd_proc_list[j]);
+        }
+        delete[] offd_proc_list;
     }
+
+    remove_shared_ptrs((hypre_ParAMGData*) amg_data);
+    hypre_BoomerAMGDestroy(amg_data);
+    HYPRE_IJMatrixDestroy(A_ij);
+    HYPRE_IJVectorDestroy(x_ij);
+    HYPRE_IJVectorDestroy(b_ij);
 
     delete ml;
 
