@@ -9,8 +9,7 @@
 #include "gallery/stencil.hpp"
 #include "hypre_async.h"
 
-#include <string>
-#include <sstream>
+#include <unistd.h>
 
 using namespace raptor;
 
@@ -19,6 +18,40 @@ int main(int argc, char *argv[])
     // Initialize MPI
     MPI_Init(&argc, &argv);
 
+    int num_levels = 25;
+    int ids[num_levels][8];
+    char names[num_levels][8][20];
+    int init_id = 10;
+
+    for (int i = 0; i < num_levels; i++)
+    {
+        snprintf(names[i][0], 20, "SpMV %d", i);
+        ids[i][0] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][0], init_id + (i*8) + 1);
+
+        snprintf(names[i][1], 20, "DiagSpmv %d", i);
+        ids[i][1] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][1], init_id + (i*8) + 2);
+
+        snprintf(names[i][2], 20, "OffdSpMV %d", i);
+        ids[i][2] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][2], init_id + (i*8) + 3);
+
+        snprintf(names[i][3], 20, "Waitany (Recv) %d", i);
+        ids[i][3] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][3], init_id + (i*8) + 4);
+
+        snprintf(names[i][4], 20, "Waitall (Recv) %d", i);
+        ids[i][4] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][4], init_id + (i*8) + 5);
+
+        snprintf(names[i][5], 20, "Waitall (Send) %d", i);
+        ids[i][5] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][5], init_id + (i*8) + 6);
+
+        snprintf(names[i][6], 20, "Init Recv %d", i);
+        ids[i][6] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][6], init_id + (i*8) + 7);
+
+        snprintf(names[i][7], 20, "Init Send %d", i);
+        ids[i][7] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][7], init_id + (i*8) + 8);
+    }
+
+MPI_Barrier(MPI_COMM_WORLD);
+usleep(1000);
 _TRACE_END();
 
     // Get Local Process Rank, Number of Processes
@@ -50,17 +83,12 @@ _TRACE_END();
 
     long local_nnz;
     long global_nnz;
-    index_t num_levels;
     index_t len_b, len_x;
     index_t local_rows;
     data_t b_norm;
     data_t t0, tfinal;
     data_t* b_data;
     data_t* x_data;
-
-    //Initialize variable for clearing cache between tests
-    index_t cache_size = 10000;
-    data_t* cache_list = new data_t[cache_size];
 
     // Get matrix and vectors from MFEM
     //mfem_laplace(&A, &x, &b, mesh, num_elements, order);
@@ -91,69 +119,8 @@ _TRACE_END();
     num_levels = ml->num_levels;
 
 _TRACE_BEGIN();
-
-    int ids[num_levels][8];
-
-    int init_id = rank*200;
-
-    for (int i = 0; i < num_levels; i++)
-    {
-        std::ostringstream oss;
-        oss << "SpMV" << i;
-        std::string spmv_string = oss.str();
-        char const* spmv_name = spmv_string.c_str();
-        int spmv_id = _TRACE_REGISTER_FUNCTION_ID((char*) spmv_name, init_id + (i*8) + 1);
-        ids[i][0] = spmv_id;
-
-        std::ostringstream diag_oss;
-        diag_oss << "DiagSpMV" << i;
-        std::string diag_spmv_string = diag_oss.str();
-        char const* diag_spmv_name = diag_spmv_string.c_str();
-        int diag_spmv_id = _TRACE_REGISTER_FUNCTION_ID((char*) diag_spmv_name, init_id + (i*8) + 2);
-        ids[i][1] = diag_spmv_id;
-
-        std::ostringstream offd_oss;
-        offd_oss << "OffdSpMV" << i;
-        std::string offd_spmv_string = offd_oss.str();
-        char const* offd_spmv_name = offd_spmv_string.c_str();
-        int offd_spmv_id = _TRACE_REGISTER_FUNCTION_ID((char*) offd_spmv_name, init_id + (i*8) + 3);
-        ids[i][2] = offd_spmv_id;
-
-        std::ostringstream waitany_oss;
-        waitany_oss << "WaitAny (Recv) " << i;
-        std::string waitany_string = waitany_oss.str();
-        char const* waitany_name = waitany_string.c_str();
-        int waitany_id = _TRACE_REGISTER_FUNCTION_ID((char*) waitany_name, init_id + (i*8) + 4);
-        ids[i][3] = waitany_id;
-
-        std::ostringstream waitall_oss;
-        waitall_oss << "WaitAll (Recv) " << i;
-        std::string waitall_string = waitall_oss.str();
-        char const* waitall_name = waitall_string.c_str();
-        int waitall_id = _TRACE_REGISTER_FUNCTION_ID((char*) waitall_name, init_id + (i*8) + 5);
-        ids[i][4] = waitall_id;
-
-        std::ostringstream waitall2_oss;
-        waitall2_oss << "WaitAll (Send) " << i;
-        std::string waitall2_string = waitall2_oss.str();
-        char const* waitall2_name = waitall2_string.c_str();
-        int waitall2_id = _TRACE_REGISTER_FUNCTION_ID((char*) waitall2_name, init_id + (i*8) + 6);
-        ids[i][5] = waitall2_id;
-
-        std::ostringstream init_recv_oss;
-        init_recv_oss << "Init Recv " << i;
-        std::string init_recv_string = init_recv_oss.str();
-        char const* init_recv_name = init_recv_string.c_str();
-        int init_recv_id = _TRACE_REGISTER_FUNCTION_ID((char*) init_recv_name, init_id + (i*8) + 7);
-        ids[i][6] = init_recv_id;
-
-        std::ostringstream init_send_oss;
-        init_send_oss << "Init Send " << i;
-        std::string init_send_string = init_send_oss.str();
-        char const* init_send_name = init_send_string.c_str();
-        int init_send_id = _TRACE_REGISTER_FUNCTION_ID((char*) init_send_name, init_id + (i*8) + 8);
-        ids[i][7] = init_send_id;
-    }
+MPI_Barrier(MPI_COMM_WORLD);
+usleep(1000);
 
     ml->x_list[0] = x;
     ml->b_list[0] = b;
@@ -165,12 +132,12 @@ _TRACE_BEGIN();
         b_l = ml->b_list[i];
 
         // Test CSC Synchronous SpMV
-        _TRACE_BEGIN_FUNCTION_ID(ids[i][0]);
+        _TRACE_BEGIN_FUNCTION_NAME(names[i][0]);
         for (int j = 0; j < num_tests; j++)
         {
-            parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, 0, ids[i]);
+            parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, 0, names[i]);
         }
-        _TRACE_END_FUNCTION_ID(ids[i][0]);
+        _TRACE_END_FUNCTION_NAME(names[i][0]);
 
     }
 
@@ -179,8 +146,6 @@ _TRACE_BEGIN();
     delete A;
     delete x;
     delete b;
-
-    delete[] cache_list;
 
     MPI_Finalize();
 
