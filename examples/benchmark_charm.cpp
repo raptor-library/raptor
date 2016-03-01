@@ -21,33 +21,41 @@ int main(int argc, char *argv[])
     int num_levels = 25;
     int ids[num_levels][8];
     char names[num_levels][8][20];
-    int init_id = 10;
+    int init_id = 1;
 
     for (int i = 0; i < num_levels; i++)
     {
         snprintf(names[i][0], 20, "SpMV %d", i);
-        ids[i][0] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][0], init_id + (i*8) + 1);
+        //ids[i][0] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][0], init_id + (i*8) + 1);
+        ids[i][0] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i][0]);
 
         snprintf(names[i][1], 20, "DiagSpmv %d", i);
-        ids[i][1] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][1], init_id + (i*8) + 2);
+        //ids[i][1] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][1], init_id + (i*8) + 2);
+        ids[i][1] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i][1]);
 
         snprintf(names[i][2], 20, "OffdSpMV %d", i);
-        ids[i][2] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][2], init_id + (i*8) + 3);
+        //ids[i][2] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][2], init_id + (i*8) + 3);
+        ids[i][2] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i][2]);
 
         snprintf(names[i][3], 20, "Waitany (Recv) %d", i);
-        ids[i][3] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][3], init_id + (i*8) + 4);
+        //ids[i][3] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][3], init_id + (i*8) + 4);
+        ids[i][3] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i][3]);
 
         snprintf(names[i][4], 20, "Waitall (Recv) %d", i);
-        ids[i][4] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][4], init_id + (i*8) + 5);
+        //ids[i][4] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][4], init_id + (i*8) + 5);
+        ids[i][4] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i][4]);
 
         snprintf(names[i][5], 20, "Waitall (Send) %d", i);
-        ids[i][5] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][5], init_id + (i*8) + 6);
+        //ids[i][5] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][5], init_id + (i*8) + 6);
+        ids[i][5] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i][5]);
 
         snprintf(names[i][6], 20, "Init Recv %d", i);
-        ids[i][6] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][6], init_id + (i*8) + 7);
+        //ids[i][6] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][6], init_id + (i*8) + 7);
+        ids[i][6] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i][6]);
 
         snprintf(names[i][7], 20, "Init Send %d", i);
-        ids[i][7] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][7], init_id + (i*8) + 8);
+        //ids[i][7] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][7], init_id + (i*8) + 8);
+        ids[i][7] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i][7]);
     }
 
 MPI_Barrier(MPI_COMM_WORLD);
@@ -140,6 +148,10 @@ usleep(1000);
         _TRACE_END_FUNCTION_NAME(names[i][0]);
 
     }
+
+MPI_Barrier(MPI_COMM_WORLD);
+usleep(1000);
+_TRACE_END();
 
     delete ml;
 
