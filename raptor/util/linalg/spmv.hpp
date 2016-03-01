@@ -75,7 +75,7 @@ void sequential_spmv_T(Matrix* A, const data_t* x, data_t* y, const data_t alpha
  ***** async : index_t
  *****    Boolean flag for updating SpMV asynchronously
  **************************************************************/
-void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const data_t alpha, const data_t beta, const int async = 0, ParVector *result = NULL);
+void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const data_t alpha, const data_t beta, const int async = 0, int* spmv_id = NULL, ParVector *result = NULL);
 
 /**************************************************************
  *****   Parallel Transpose Matrix-Vector Multiplication
