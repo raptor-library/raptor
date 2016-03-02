@@ -537,12 +537,8 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
     {
         _TRACE_BEGIN_FUNCTION_NAME((char*) spmv_names[6]);
         // Initialize recv requests and buffer
-        recv_requests = new MPI_Request [num_recvs];
-        for (index_t i = 0; i < num_recvs; i++)
-        {
-            recv_requests[i] = MPI_REQUEST_NULL;
-        }
-        recv_buffer = new data_t [size_recvs];
+        recv_requests = comm->recv_requests;
+        recv_buffer = comm->recv_buffer;
 
         // Post receives for x-values that are needed
         begin = 0;
@@ -569,12 +565,8 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
         int send_start, send_end, send_size;
 
         // TODO we do not want to malloc these every time
-        send_requests = new MPI_Request [num_sends];
-        for (index_t i = 0; i < num_sends;i++)
-        {
-            send_requests[i] = MPI_REQUEST_NULL;
-        }
-        send_buffer = new data_t [size_sends];
+        send_requests = comm->send_requests;
+        send_buffer = comm->send_buffer;
 
         begin = 0;
         request_ctr = 0;
@@ -639,8 +631,8 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
 
         }
 
-    	delete[] recv_requests; 
-        delete[] recv_buffer;
+    	//delete[] recv_requests; 
+        //delete[] recv_buffer;
     }
 
     if (num_sends)
@@ -652,8 +644,8 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
         _TRACE_END_FUNCTION_NAME((char*) spmv_names[5]);
 
         // Delete MPI_Requests
-        delete[] send_requests; 
-        delete[] send_buffer;
+        //delete[] send_requests; 
+        //delete[] send_buffer;
     }
 }
 

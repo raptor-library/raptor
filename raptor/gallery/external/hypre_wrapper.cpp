@@ -194,6 +194,8 @@ raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre, MPI_Comm comm_mat)
         if (num_sends)
         {
             A->comm->size_sends = send_map_starts[num_sends];
+            A->comm->send_requests = new MPI_Request [num_sends];
+            A->comm->send_buffer = new data_t [A->comm->size_sends];
         }
         else
         {
@@ -218,6 +220,9 @@ raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre, MPI_Comm comm_mat)
             A->comm->recv_col_starts.resize(A->comm->num_recvs + 1);
             A->comm->recv_col_starts[A->comm->num_recvs] = offd_cols;
             hypre_ParCSRCommPkgRecvVecStarts(comm_pkg) = A->comm->recv_col_starts.data();
+
+            A->comm->recv_requests = new MPI_Request [A->comm->num_recvs];
+            A->comm->recv_buffer = new data_t [A->comm->size_recvs];
         }
 //    }
 
