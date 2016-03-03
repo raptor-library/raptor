@@ -535,7 +535,6 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
     // If receive values, post appropriate MPI Receives
     if (num_recvs)
     {
-        _TRACE_BEGIN_FUNCTION_NAME((char*) spmv_names[6]);
         // Initialize recv requests and buffer
         recv_requests = comm->recv_requests;
         recv_buffer = comm->recv_buffer;
@@ -552,39 +551,47 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
             recv_start = recv_col_starts[i];
             recv_end = recv_col_starts[i+1];
             num_recv = recv_end - recv_start;
+        _TRACE_BEGIN_FUNCTION_NAME((char*) spmv_names[6]);
             MPI_Irecv(&recv_buffer[begin], num_recv, MPI_DATA_T, proc, 0, comm_mat, &(recv_requests[request_ctr++]));
+        _TRACE_END_FUNCTION_NAME((char*) spmv_names[6]);
             begin += num_recv;
         }
-        _TRACE_END_FUNCTION_NAME((char*) spmv_names[6]);
     }
 
     // Send values of x to appropriate processors
     if (num_sends)
     {
-        _TRACE_BEGIN_FUNCTION_NAME((char*) spmv_names[7]);
-        int send_start, send_end, send_size;
+        int send_start, send_end;
+        index_t* send_sizes;
 
         // TODO we do not want to malloc these every time
         send_requests = comm->send_requests;
         send_buffer = comm->send_buffer;
 
+        send_sizes = new index_t[num_sends];
+
         begin = 0;
         request_ctr = 0;
         for (index_t i = 0; i < num_sends; i++)
         {
-            index_t proc = send_procs[i];
             send_start = send_row_starts[i];
             send_end = send_row_starts[i+1];
-            send_size = send_end - send_start;
+            send_sizes[i] = send_end - send_start;
 
-            for (int j = 0; j < send_size; j++)
+            for (int j = 0; j < send_sizes[i]; j++)
             {
                 send_buffer[i][j] = x_data[send_row_indices[send_start + j]];
             }
-            MPI_Isend(send_buffer[i], send_size, MPI_DATA_T, proc, 0, comm_mat, &(send_requests[request_ctr++]));
             //begin += send_size;
         }
+
+        for (int i = 0; i < num_sends; i++)
+        {
+            index_t proc = send_procs[i];
+        _TRACE_BEGIN_FUNCTION_NAME((char*) spmv_names[7]);
+            MPI_Isend(send_buffer[i], send_sizes[i], MPI_DATA_T, proc, 0, comm_mat, &(send_requests[request_ctr++]));
         _TRACE_END_FUNCTION_NAME((char*) spmv_names[7]);
+        }
     }
 
     if (A->local_rows)
@@ -603,32 +610,18 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
         if (async)
         {
             int recv_idx, recv_start, recv_end, num_cols;
-            int finished = 0;
-            _TRACE_BEGIN_FUNCTION_NAME((char*) spmv_names[3]);
-            MPI_Testall(num_recvs, recv_requests, &finished, MPI_STATUS_IGNORE);
-            _TRACE_END_FUNCTION_NAME((char*) spmv_names[3]);
-
-            if (finished)
+            for (index_t i = 0; i < num_recvs; i++)
             {
+                _TRACE_BEGIN_FUNCTION_NAME((char*) spmv_names[3]);
+                MPI_Waitany(num_recvs, recv_requests, &recv_idx, MPI_STATUS_IGNORE);
+                _TRACE_END_FUNCTION_NAME((char*) spmv_names[3]);
+
                 _TRACE_BEGIN_FUNCTION_NAME((char*) spmv_names[2]);
-                sequential_spmv(A->offd, recv_buffer, y_data, alpha, 1.0, result_data); 
+                recv_start = recv_col_starts[recv_idx];
+                recv_end = recv_col_starts[recv_idx+1];
+                num_cols = recv_end - recv_start;
+                sequential_spmv(A->offd, recv_buffer, y_data, alpha, 1.0, result_data, recv_start, num_cols);
                 _TRACE_END_FUNCTION_NAME((char*) spmv_names[2]);
-            }
-            else
-            {
-                for (index_t i = 0; i < num_recvs; i++)
-                {
-                    _TRACE_BEGIN_FUNCTION_NAME((char*) spmv_names[3]);
-                    MPI_Waitany(num_recvs, recv_requests, &recv_idx, MPI_STATUS_IGNORE);
-                    _TRACE_END_FUNCTION_NAME((char*) spmv_names[3]);
-
-                    _TRACE_BEGIN_FUNCTION_NAME((char*) spmv_names[2]);
-                    recv_start = recv_col_starts[recv_idx];
-                    recv_end = recv_col_starts[recv_idx+1];
-                    num_cols = recv_end - recv_start;
-                    sequential_spmv(A->offd, recv_buffer, y_data, alpha, 1.0, result_data, recv_start, num_cols);
-                    _TRACE_END_FUNCTION_NAME((char*) spmv_names[2]);
-                }
             }
         }
         else

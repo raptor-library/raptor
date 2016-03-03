@@ -61,6 +61,7 @@ int main(int argc, char *argv[])
     data_t t0, tfinal;
     data_t* b_data;
     data_t* x_data;
+    data_t* x_data_hypre;
 
     //Initialize variable for clearing cache between tests
     index_t cache_size = 10000;
@@ -132,9 +133,11 @@ int main(int argc, char *argv[])
         if (local_rows)
         {
             x_data = x_l->local->data();
+            x_data_hypre = hypre_VectorData(hypre_ParVectorLocalVector(x_array[i]));
             for (int j = 0; j < len_x; j++)
             {
                 x_data[j] = (1.0 * j) / len_x;
+                x_data_hypre[j] = x_data[j];
             }
         }
 

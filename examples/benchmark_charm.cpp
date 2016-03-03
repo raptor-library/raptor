@@ -49,11 +49,11 @@ int main(int argc, char *argv[])
         //ids[i][5] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][5], init_id + (i*8) + 6);
         ids[i][5] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i][5]);
 
-        snprintf(names[i][6], 20, "Init Recv %d", i);
+        snprintf(names[i][6], 20, "Irecv %d", i);
         //ids[i][6] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][6], init_id + (i*8) + 7);
         ids[i][6] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i][6]);
 
-        snprintf(names[i][7], 20, "Init Send %d", i);
+        snprintf(names[i][7], 20, "Isend %d", i);
         //ids[i][7] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][7], init_id + (i*8) + 8);
         ids[i][7] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i][7]);
     }
@@ -71,12 +71,17 @@ _TRACE_END();
     // TODO -- Fix how we parse command line
     int num_tests = 10;
     int num_elements = 10;
+    int async = 0;
     if (argc > 1)
     {
         num_tests = atoi(argv[1]);
         if (argc > 2)
         {
             num_elements = atoi(argv[2]);
+            if (argc > 3)
+            {
+                async = atoi(argv[3]);
+            }
         }
     }
 
@@ -143,7 +148,7 @@ usleep(1000);
         _TRACE_BEGIN_FUNCTION_NAME(names[i][0]);
         for (int j = 0; j < num_tests; j++)
         {
-            parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, 0, names[i]);
+            parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, async, names[i]);
         }
         _TRACE_END_FUNCTION_NAME(names[i][0]);
 
