@@ -8,7 +8,7 @@
 #include "gallery/diffusion.hpp"
 #include "gallery/stencil.hpp"
 #include "hypre_async.h"
-
+#include "core/puppers.hpp"
 #include <unistd.h>
 
 using namespace raptor;
@@ -123,15 +123,13 @@ _TRACE_END();
 
     // Create hypre (amg_data) and raptor (ml) hierarchies (they share data)
     ml = create_wrapped_hierarchy(A, x, b);
-
     num_levels = ml->num_levels;
+    ml->x_list[0] = x;
+    ml->b_list[0] = b;
 
 _TRACE_BEGIN();
 MPI_Barrier(MPI_COMM_WORLD);
 usleep(1000);
-
-    ml->x_list[0] = x;
-    ml->b_list[0] = b;
 
     for (int i = 0; i < num_levels; i++)
     {
@@ -139,11 +137,17 @@ usleep(1000);
         x_l = ml->x_list[i];
         b_l = ml->b_list[i];
 
+        int a_l_reg = MPI_Register((void*) &(A_l), (MPI_PupFn) pup_par_matrix);
+        int x_l_reg = MPI_Register((void*) &(x_l), (MPI_PupFn) pup_par_vector);
+        int b_l_reg = MPI_Register((void*) &(b_l), (MPI_PupFn) pup_par_vector);
+
+        MPI_Migrate();
+
         // Test CSC Synchronous SpMV
         _TRACE_BEGIN_FUNCTION_NAME(names[i][0]);
         for (int j = 0; j < num_tests; j++)
         {
-            parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, 0, names[i]);
+            parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, 1, names[i]);
         }
         _TRACE_END_FUNCTION_NAME(names[i][0]);
 

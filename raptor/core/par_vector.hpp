@@ -26,6 +26,11 @@ namespace raptor
             }
         }
         ParVector(ParVector&& x);
+
+        ParVector()
+        {
+
+        }
         ~ParVector()
         {
             if (local_n)

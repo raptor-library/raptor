@@ -4,6 +4,7 @@
 #define VECTOR_HPP
 
 #include "types.hpp"
+#include "array.hpp"
 #include <vector>
 #include <time.h>
 #include <stdlib.h>
@@ -23,6 +24,11 @@ public:
 
     Vector()
     {
+        size = 0;
+    }
+
+    ~Vector()
+    {
 
     }
 
@@ -33,7 +39,7 @@ public:
     data_t norm(index_t p);
     data_t* data();
 
-    std::vector<data_t> values;
+    Array<data_t> values;
     index_t size;
 };
 
