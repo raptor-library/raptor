@@ -181,5 +181,39 @@ void pup_par_matrix(pup_er p, void* m_tmp)
     }
 }
 
+void pup_par_level(pup_er p, void* l_tmp)
+{
+    Level** l_ptr = (Level**) l_tmp;
+    
+    if (pup_isUnpacking(p))
+    {
+        *l_ptr = new Level();
+    }
+    Level* l = *l_ptr;
+
+    pup_int(p, &(l->idx));
+    pup_bytes(p, &(l->coarsest), sizeof(bool));
+    pup_bytes(p, &(l->has_vec), sizeof(bool));
+
+    pup_par_matrix(p, &(l->A));
+
+    if (!(l->coarsest))
+    {
+        pup_par_matrix(p, &(l->P));
+        pup_par_vector(p, &(l->tmp));
+    }
+
+    if (l->has_vec)
+    {
+        pup_par_vector(p, &(l->x));
+        pup_par_vector(p, &(l->b));
+    }
+
+    if (pup_isPacking(p))
+    {
+        delete l;
+    }
+}
+
 
 

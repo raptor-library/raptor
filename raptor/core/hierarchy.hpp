@@ -6,6 +6,7 @@
 #include "types.hpp"
 #include "par_matrix.hpp"
 #include "par_vector.hpp"
+#include "level.hpp"
 #include "util/linalg/spmv.hpp"
 #include "util/linalg/relax.hpp"
 #include "util/linalg/gauss_elimination.hpp"
@@ -87,17 +88,7 @@ namespace raptor
 
               for (int i = 0; i < num_levels; i++)
               {
-                  delete A_list[i];
-                  if (i < num_levels - 1)
-                  {
-                      delete P_list[i];
-                      delete tmp_list[i];
-                  }
-                  if (i > 0)
-                  {
-                      delete x_list[i];
-                      delete b_list[i];
-                  }
+                  delete levels[i];
               }
           }
 
@@ -183,11 +174,7 @@ namespace raptor
           std::vector<data_t> resid_list;
           std::vector<data_t> rel_resid_list;
 
-          std::vector<ParMatrix*> A_list;
-          std::vector<ParMatrix*> P_list;
-          std::vector<ParVector*> x_list;
-          std::vector<ParVector*> b_list;
-          std::vector<ParVector*> tmp_list;
+          std::vector<Level*> levels;
 
           MPI_Comm comm_dense;
 

@@ -557,7 +557,7 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
     if (num_sends)
     {
         _TRACE_BEGIN_FUNCTION_NAME((char*) spmv_names[7]);
-        int send_start, send_end;
+        int send_start, send_end, send_size;
 
         // TODO we do not want to malloc these every time
         send_requests = comm->send_requests;

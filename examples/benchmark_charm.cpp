@@ -129,8 +129,12 @@ _TRACE_END();
     // Create hypre (amg_data) and raptor (ml) hierarchies (they share data)
     ml = create_wrapped_hierarchy(A, x, b);
     num_levels = ml->num_levels;
-    ml->x_list[0] = x;
-    ml->b_list[0] = b;
+    Level* l0 = ml->levels[0];
+    l0->x = x;
+    l0->b = b;
+    l0->has_vec = true;
+
+
 
 _TRACE_BEGIN();
 MPI_Barrier(MPI_COMM_WORLD);
@@ -138,13 +142,13 @@ usleep(1000);
 
     for (int i = 0; i < num_levels; i++)
     {
-        A_l = ml->A_list[i];
-        x_l = ml->x_list[i];
-        b_l = ml->b_list[i];
+        Level* l = ml->levels[i];
 
-        int a_l_reg = MPI_Register((void*) &(A_l), (MPI_PupFn) pup_par_matrix);
-        int x_l_reg = MPI_Register((void*) &(x_l), (MPI_PupFn) pup_par_vector);
-        int b_l_reg = MPI_Register((void*) &(b_l), (MPI_PupFn) pup_par_vector);
+        A_l = l->A;
+        x_l = l->x;
+        b_l = l->b;
+
+        int l_reg = MPI_Register((void*) &l, (MPI_PupFn) pup_par_level);
 
         MPI_Migrate();
 
@@ -162,11 +166,13 @@ MPI_Barrier(MPI_COMM_WORLD);
 usleep(1000);
 _TRACE_END();
 
+
     delete ml;
 
     delete A;
     delete x;
     delete b;
+
 
     MPI_Finalize();
 
