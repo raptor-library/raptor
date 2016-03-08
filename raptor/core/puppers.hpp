@@ -156,27 +156,44 @@ void pup_par_matrix(pup_er p, void* m_tmp)
     if (pup_isUnpacking(p))
     {
         m->diag = new Matrix();
-        m->offd = new Matrix();
-        m->diag_elmts = new data_t[m->local_rows];
         m->comm = new ParComm();
-        for (int i = 0; i < m->local_to_global.size(); i++)
+        if (m->offd_num_cols)
         {
-            m->global_to_local[m->local_to_global[i]] = i;
+            m->offd = new Matrix();
         }
+        if (m->local_rows)
+        {
+            m->diag_elmts = new data_t[m->local_rows];
+        }
+//        for (int i = 0; i < m->local_to_global.size(); i++)
+//        {
+//            m->global_to_local[m->local_to_global[i]] = i;
+//        }
     }
 
     pup_matrix(p, &(m->diag));
-    pup_matrix(p, &(m->offd));
     pup_par_comm(p, &(m->comm));
-    pup_doubles(p, m->diag_elmts, m->local_rows);
+    if (m->offd_num_cols)
+    {
+        pup_matrix(p, &(m->offd));
+    }
+    if (m->local_rows)
+    {
+        pup_doubles(p, m->diag_elmts, m->local_rows);
+    }
 
     if (pup_isPacking(p))
     {
         delete m->diag;
-        delete m->offd;
         delete m->comm;
-        delete[] m->diag_elmts;
-        m->global_to_local.clear();
+        if (m->offd_num_cols)
+        {
+            delete m->offd;
+        }
+        if (m->local_rows)
+        {
+            delete[] m->diag_elmts;
+        }
         delete m;
     }
 }
@@ -197,10 +214,10 @@ void pup_par_level(pup_er p, void* l_tmp)
 
     pup_par_matrix(p, &(l->A));
 
-    if (!(l->coarsest))
+    if (pup_isUnpacking(p))
     {
-        pup_par_matrix(p, &(l->P));
-        pup_par_vector(p, &(l->tmp));
+        l->P = NULL;
+        l->tmp = NULL;
     }
 
     if (l->has_vec)
@@ -211,6 +228,8 @@ void pup_par_level(pup_er p, void* l_tmp)
 
     if (pup_isPacking(p))
     {
+        delete l->P;
+        delete l->tmp;
         delete l;
     }
 }
