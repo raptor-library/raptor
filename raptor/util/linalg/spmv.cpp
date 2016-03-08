@@ -599,32 +599,18 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
         if (async)
         {
             int recv_idx, recv_start, recv_end, num_cols;
-            int finished = 0;
-            _TRACE_BEGIN_FUNCTION_NAME((char*) spmv_names[3]);
-            MPI_Testall(num_recvs, recv_requests, &finished, MPI_STATUS_IGNORE);
-            _TRACE_END_FUNCTION_NAME((char*) spmv_names[3]);
-
-            if (finished)
+            for (index_t i = 0; i < num_recvs; i++)
             {
+                _TRACE_BEGIN_FUNCTION_NAME((char*) spmv_names[3]);
+                MPI_Waitany(num_recvs, recv_requests, &recv_idx, MPI_STATUS_IGNORE);
+                _TRACE_END_FUNCTION_NAME((char*) spmv_names[3]);
+
                 _TRACE_BEGIN_FUNCTION_NAME((char*) spmv_names[2]);
-                sequential_spmv(A->offd, recv_buffer, y_data, alpha, 1.0, result_data); 
+                recv_start = recv_col_starts[recv_idx];
+                recv_end = recv_col_starts[recv_idx+1];
+                num_cols = recv_end - recv_start;
+                sequential_spmv(A->offd, recv_buffer, y_data, alpha, 1.0, result_data, recv_start, num_cols);
                 _TRACE_END_FUNCTION_NAME((char*) spmv_names[2]);
-            }
-            else
-            {
-                for (index_t i = 0; i < num_recvs; i++)
-                {
-                    _TRACE_BEGIN_FUNCTION_NAME((char*) spmv_names[3]);
-                    MPI_Waitany(num_recvs, recv_requests, &recv_idx, MPI_STATUS_IGNORE);
-                    _TRACE_END_FUNCTION_NAME((char*) spmv_names[3]);
-
-                    _TRACE_BEGIN_FUNCTION_NAME((char*) spmv_names[2]);
-                    recv_start = recv_col_starts[recv_idx];
-                    recv_end = recv_col_starts[recv_idx+1];
-                    num_cols = recv_end - recv_start;
-                    sequential_spmv(A->offd, recv_buffer, y_data, alpha, 1.0, result_data, recv_start, num_cols);
-                    _TRACE_END_FUNCTION_NAME((char*) spmv_names[2]);
-                }
             }
         }
         else
