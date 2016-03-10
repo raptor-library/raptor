@@ -17,51 +17,6 @@ int main(int argc, char *argv[])
 {
     // Initialize MPI
     MPI_Init(&argc, &argv);
-
-    int num_levels = 25;
-    int ids[num_levels][8];
-    char names[num_levels][8][20];
-    int init_id = 1;
-
-    for (int i = 0; i < num_levels; i++)
-    {
-        snprintf(names[i][0], 20, "SpMV %d", i);
-        //ids[i][0] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][0], init_id + (i*8) + 1);
-        ids[i][0] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i][0]);
-
-        snprintf(names[i][1], 20, "DiagSpmv %d", i);
-        //ids[i][1] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][1], init_id + (i*8) + 2);
-        ids[i][1] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i][1]);
-
-        snprintf(names[i][2], 20, "OffdSpMV %d", i);
-        //ids[i][2] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][2], init_id + (i*8) + 3);
-        ids[i][2] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i][2]);
-
-        snprintf(names[i][3], 20, "Waitany (Recv) %d", i);
-        //ids[i][3] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][3], init_id + (i*8) + 4);
-        ids[i][3] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i][3]);
-
-        snprintf(names[i][4], 20, "Waitall (Recv) %d", i);
-        //ids[i][4] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][4], init_id + (i*8) + 5);
-        ids[i][4] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i][4]);
-
-        snprintf(names[i][5], 20, "Waitall (Send) %d", i);
-        //ids[i][5] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][5], init_id + (i*8) + 6);
-        ids[i][5] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i][5]);
-
-        snprintf(names[i][6], 20, "Irecv %d", i);
-        //ids[i][6] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][6], init_id + (i*8) + 7);
-        ids[i][6] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i][6]);
-
-        snprintf(names[i][7], 20, "Isend %d", i);
-        //ids[i][7] = _TRACE_REGISTER_FUNCTION_ID((char*) names[i][7], init_id + (i*8) + 8);
-        ids[i][7] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i][7]);
-    }
-
-MPI_Barrier(MPI_COMM_WORLD);
-usleep(1000);
-_TRACE_END();
-
     // Get Local Process Rank, Number of Processes
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -72,6 +27,7 @@ _TRACE_END();
     int num_tests = 10;
     int num_elements = 10;
     int async = 0;
+    int level = 0;
     if (argc > 1)
     {
         num_tests = atoi(argv[1]);
@@ -81,8 +37,32 @@ _TRACE_END();
             if (argc > 3)
             {
                 async = atoi(argv[3]);
+                if (argc > 4)
+                {
+                    level = atoi(argv[4]);
+                }
             }
         }
+    }
+
+    int ids[8];
+    char names[8][20];
+
+    snprintf(names[0], 20, "SpMV %d", level);
+    snprintf(names[1], 20, "DiagSpMV %d", level);
+    snprintf(names[2], 20, "OffdSpMV %d", level);
+    snprintf(names[3], 20, "Waitany (Recv) %d", level);
+    snprintf(names[4], 20, "Waitall (Recv) %d", level);
+    snprintf(names[5], 20, "Waitall (Send) %d", level);
+    snprintf(names[6], 20, "Irecv %d", level);
+    snprintf(names[7], 20, "Isend %d", level);
+
+usleep(1000000);
+traceEnd();
+
+    for (int i = 0; i < 8; i++)
+    {
+        ids[i] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i]);
     }
 
     // Declare Variables
@@ -114,58 +94,95 @@ _TRACE_END();
     x = new ParVector(A->global_rows, A->local_rows, A->first_row);
     x->set_const_value(1.0);
 
-    // Calculate and Print Number of Nonzeros in Matrix
-    local_nnz = 0;
-    if (A->local_rows)
-    {
-        local_nnz = A->diag->nnz + A->offd->nnz;
-    }
-    global_nnz = 0;
-    MPI_Reduce(&local_nnz, &global_nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (rank == 0) printf("Num Nonzeros = %lu\n", global_nnz);
-
-    t0, tfinal;
-
-    // Create hypre (amg_data) and raptor (ml) hierarchies (they share data)
     ml = create_wrapped_hierarchy(A, x, b);
-    num_levels = ml->num_levels;
+
+traceBegin();
+usleep(1000000);
+
+    int num_levels = ml->num_levels;
     Level* l0 = ml->levels[0];
     l0->x = x;
     l0->b = b;
     l0->has_vec = true;
 
+    int num_sends, size_sends, total_num_sends, total_size_sends;
 
+    int l_reg = 0;
+    Level* l = NULL;
 
-_TRACE_BEGIN();
-MPI_Barrier(MPI_COMM_WORLD);
-usleep(1000);
-
-    for (int i = 0; i < num_levels; i++)
+    if (num_levels > level)
     {
-        Level* l = ml->levels[i];
+        l = ml->levels[level];
+        l_reg = MPI_Register((void*) &l, (MPI_PupFn) pup_par_level);
+    }
+        
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (num_levels > level)
+    {
+        traceFlushLog();
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
 
+    for (int i = 0; i < 4; i++)
+    {
+        if (num_levels > level)
+        {
+            l = ml->levels[level];
+            A_l = l->A;
+            x_l = l->x;
+            b_l = l->b;
+
+            MPI_Migrate();
+
+//            _TRACE_BEGIN_FUNCTION_NAME(names[0]);
+            for (int j = 0; j < num_tests; j++)
+            {
+                parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, async, names);
+            }
+//            _TRACE_END_FUNCTION_NAME(names[0]);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (num_levels > level)
+        {
+            usleep(1000000);
+            traceFlushLog();
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+
+
+    num_sends = 0;
+    size_sends = 0;
+    local_nnz = 0;
+    if (num_levels > level)
+    {
+        l = ml->levels[level];
         A_l = l->A;
         x_l = l->x;
         b_l = l->b;
-
-        int l_reg = MPI_Register((void*) &l, (MPI_PupFn) pup_par_level);
-
-        MPI_Migrate();
-
-        // Test CSC Synchronous SpMV
-        _TRACE_BEGIN_FUNCTION_NAME(names[i][0]);
-        for (int j = 0; j < num_tests; j++)
+   
+        num_sends = A_l->comm->num_sends;
+        size_sends = A_l->comm->size_sends;
+        if (A_l->offd_num_cols)
         {
-            parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, async, names[i]);
+            local_nnz = A_l->diag->nnz + A_l->offd->nnz;
         }
-        _TRACE_END_FUNCTION_NAME(names[i][0]);
-
+        else
+        {
+            local_nnz = A_l->diag->nnz;
+        }
     }
 
-MPI_Barrier(MPI_COMM_WORLD);
-usleep(1000);
-_TRACE_END();
+    MPI_Reduce(&num_sends, &total_num_sends, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&size_sends, &total_size_sends, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&local_nnz, &global_nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
 
+    if (rank == 0)
+    {
+        printf("Level %d has %lu global nonzeros\n", level, global_nnz);
+        printf("Total Number of Messages Sent = %d\n", total_num_sends);
+        printf("Total SIZE of Messages Sent = %d\n", total_size_sends);
+    }
 
     delete ml;
 
