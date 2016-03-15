@@ -8,7 +8,7 @@
 #include "gallery/diffusion.hpp"
 #include "gallery/stencil.hpp"
 #include "hypre_async.h"
-#include "core/puppers.hpp"
+//#include "core/puppers.hpp"
 #include <unistd.h>
 
 using namespace raptor;
@@ -17,6 +17,7 @@ int main(int argc, char *argv[])
 {
     // Initialize MPI
     MPI_Init(&argc, &argv);
+
     // Get Local Process Rank, Number of Processes
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -27,7 +28,6 @@ int main(int argc, char *argv[])
     int num_tests = 10;
     int num_elements = 10;
     int async = 0;
-    int level = 0;
     if (argc > 1)
     {
         num_tests = atoi(argv[1]);
@@ -37,32 +37,8 @@ int main(int argc, char *argv[])
             if (argc > 3)
             {
                 async = atoi(argv[3]);
-                if (argc > 4)
-                {
-                    level = atoi(argv[4]);
-                }
             }
         }
-    }
-
-    int ids[8];
-    char names[8][20];
-
-    snprintf(names[0], 20, "SpMV %d", level);
-    snprintf(names[1], 20, "DiagSpMV %d", level);
-    snprintf(names[2], 20, "OffdSpMV %d", level);
-    snprintf(names[3], 20, "Waitany (Recv) %d", level);
-    snprintf(names[4], 20, "Waitall (Recv) %d", level);
-    snprintf(names[5], 20, "Waitall (Send) %d", level);
-    snprintf(names[6], 20, "Irecv %d", level);
-    snprintf(names[7], 20, "Isend %d", level);
-
-usleep(1000000);
-traceEnd();
-
-    for (int i = 0; i < 8; i++)
-    {
-        ids[i] = _TRACE_REGISTER_FUNCTION_NAME((char*) names[i]);
     }
 
     // Declare Variables
@@ -94,94 +70,70 @@ traceEnd();
     x = new ParVector(A->global_rows, A->local_rows, A->first_row);
     x->set_const_value(1.0);
 
+    // Calculate and Print Number of Nonzeros in Matrix
+    local_nnz = 0;
+    if (A->local_rows)
+    {
+        local_nnz = A->diag->nnz + A->offd->nnz;
+    }
+    global_nnz = 0;
+    MPI_Reduce(&local_nnz, &global_nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Nonzeros = %lu\n", global_nnz);
+
+    t0, tfinal;
+
+    // Create hypre (amg_data) and raptor (ml) hierarchies (they share data)
     ml = create_wrapped_hierarchy(A, x, b);
-
-traceBegin();
-usleep(1000000);
-
     int num_levels = ml->num_levels;
     Level* l0 = ml->levels[0];
     l0->x = x;
     l0->b = b;
     l0->has_vec = true;
 
-    int num_sends, size_sends, total_num_sends, total_size_sends;
-
-    int l_reg = 0;
-    Level* l = NULL;
-
-    if (num_levels > level)
+    for (int i = 0; i < num_levels; i++)
     {
-        l = ml->levels[level];
-        l_reg = MPI_Register((void*) &l, (MPI_PupFn) pup_par_level);
-    }
-        
-    MPI_Barrier(MPI_COMM_WORLD);
-    if (num_levels > level)
-    {
-        traceFlushLog();
-    }
-    MPI_Barrier(MPI_COMM_WORLD);
+        Level* l = ml->levels[i];
 
-    for (int i = 0; i < 4; i++)
-    {
-        if (num_levels > level)
-        {
-            l = ml->levels[level];
-            A_l = l->A;
-            x_l = l->x;
-            b_l = l->b;
-
-            MPI_Migrate();
-
-//            _TRACE_BEGIN_FUNCTION_NAME(names[0]);
-            for (int j = 0; j < num_tests; j++)
-            {
-                parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, async, names);
-            }
-//            _TRACE_END_FUNCTION_NAME(names[0]);
-        }
-        MPI_Barrier(MPI_COMM_WORLD);
-        if (num_levels > level)
-        {
-            usleep(1000000);
-            traceFlushLog();
-        }
-        MPI_Barrier(MPI_COMM_WORLD);
-    }
-
-
-    num_sends = 0;
-    size_sends = 0;
-    local_nnz = 0;
-    if (num_levels > level)
-    {
-        l = ml->levels[level];
         A_l = l->A;
         x_l = l->x;
         b_l = l->b;
-   
-        num_sends = A_l->comm->num_sends;
-        size_sends = A_l->comm->size_sends;
-        if (A_l->offd_num_cols)
-        {
-            local_nnz = A_l->diag->nnz + A_l->offd->nnz;
-        }
-        else
-        {
-            local_nnz = A_l->diag->nnz;
-        }
-    }
 
-    MPI_Reduce(&num_sends, &total_num_sends, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&size_sends, &total_size_sends, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&local_nnz, &global_nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+//        int l_reg = MPI_Register((void*) &l, (MPI_PupFn) pup_par_level);
 
-    if (rank == 0)
-    {
-        printf("Level %d has %lu global nonzeros\n", level, global_nnz);
-        printf("Total Number of Messages Sent = %d\n", total_num_sends);
-        printf("Total SIZE of Messages Sent = %d\n", total_size_sends);
+//        MPI_Migrate();
+
+        // Test CSC Synchronous SpMV
+        t0 = MPI_Wtime();
+        for (int j = 0; j < num_tests; j++)
+        {
+            parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, async);
+        }
+        tfinal = (MPI_Wtime() - t0) / num_tests;
+
+        int num_sends = 0;
+        int size_sends = 0;
+        int total_num_sends = 0;
+        int total_size_sends = 0;
+ 
+        if (A_l->local_rows)
+        {
+            num_sends = A_l->comm->num_sends;
+            size_sends = A_l->comm->size_sends;
+        }
+
+        MPI_Reduce(&num_sends, &total_num_sends, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&size_sends, &total_size_sends, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+
+        if (rank == 0)
+        {
+            printf("Level %d\n", i);
+            printf("Total Number of Messages Sent = %d\n", total_num_sends);
+            printf("Total SIZE of Messages Sent = %d\n", total_size_sends);
+            printf("Max Time per Parallel Spmv = %2.5e\n", t0);
+        }
+ 
+
     }
 
     delete ml;
