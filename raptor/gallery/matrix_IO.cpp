@@ -18,48 +18,29 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int sy
         MPI_Comm_size(comm, &comm_size);
         MPI_Comm_rank(comm, &rank);
 
-//        for (index_t proc = 0; proc < comm_size; proc++)
-//        {
-//            if (rank == proc)
-//            {
-                // find size of matix 
-                if ((infile = fopen(filename, "r")) == NULL) 
-                    return NULL;
+        // find size of matix 
+        if ((infile = fopen(filename, "r")) == NULL) 
+            return NULL;
 
-                if (mm_read_banner(infile, &matcode) != 0)
-                    return NULL;
+        if (mm_read_banner(infile, &matcode) != 0)
+            return NULL;
 
-                if ((ret_code = mm_read_mtx_crd_size(infile, &num_rows, &num_cols, &nnz)) !=0)
-                    return NULL;
+        if ((ret_code = mm_read_mtx_crd_size(infile, &num_rows, &num_cols, &nnz)) !=0)
+            return NULL;
         
-                fclose(infile);
+        fclose(infile);
 
-                A = new ParMatrix(num_rows, num_cols);
-                // read the file knowing our local rows
-                ret_code = mm_read_sparse(filename, A->first_row,
-                    A->first_row + A->local_rows, &num_rows, &num_cols,
-                    A, symmetric);
-
-                if (ret_code != 0)
-                {
-                    return NULL;
-                }
-//            }
-//            MPI_Barrier(MPI_COMM_WORLD);
-//        }
-    }
-    else //one file per MPI process
-    {
-        //TODO: init global_row_starts
-        //global_row_starts = A->global_row_starts;
+        A = new ParMatrix(num_rows, num_cols, MPI_COMM_WORLD);
         
-        //ret_code = mm_read_sparse(filename, global_row_starts[rank],
-        //            global_row_starts[rank+1], &num_rows, &num_cols,
-        //            A, symmetric);
-        //if (ret_code != 0)
-        //{
-        //    return NULL;
-        //}
+        // read the file knowing our local rows
+        ret_code = mm_read_sparse(filename, A->first_row,
+            A->first_row + A->local_rows, &num_rows, &num_cols,
+            A, symmetric);
+
+        if (ret_code != 0)
+        {
+            return NULL;
+        }
     }
 
     A->finalize();
@@ -119,14 +100,14 @@ int mm_read_sparse(const char *fname, index_t start, index_t stop, index_t *M_, 
         {
             index_t row, col;
             data_t value;
-//            fgets(buf, sizeof(buf), f);
 
-            fscanf(f, "%lu %lu %lg\n", &row, &col, &value);
+            fscanf(f, "%d %d %lg\n", &row, &col, &value);
 
             if (fabs(value) < zero_tol) continue;
 
             if (row > start && row <= stop)
             {
+printf("Adding %2.3f to (%d, %d)\n", value,  row-1, col-1);
                 A->add_value(row-1, col-1, value, 1);
             }
             if (symmetric && col > start && col <= stop && col != row)
@@ -143,7 +124,7 @@ int mm_read_sparse(const char *fname, index_t start, index_t stop, index_t *M_, 
             index_t row, col;
             data_t value;
 
-            fscanf(f, "%lu %lu\n", &row, &col);
+            fscanf(f, "%d %d\n", &row, &col);
 
             value = 1.0;
 
@@ -262,7 +243,7 @@ int mm_read_banner(FILE *f, MM_typecode *matcode)
 
 int mm_write_mtx_crd_size(FILE *f, index_t M, index_t N, index_t nz)
 {
-    if (fprintf(f, "%lu %lu %lu\n", M, N, nz) != 3)
+    if (fprintf(f, "%d %d %d\n", M, N, nz) != 3)
         return MM_COULD_NOT_WRITE_FILE;
     else 
         return 0;
@@ -284,13 +265,13 @@ int mm_read_mtx_crd_size(FILE *f, index_t *M, index_t *N, index_t *nz )
     }while (line[0] == '%');
 
     /* line[] is either blank or has M,N, nz */
-    if (sscanf(line, "%lu %lu %lu", M, N, nz) == 3)
+    if (sscanf(line, "%d %d %d", M, N, nz) == 3)
         return 0;
         
     else
     do
     { 
-        num_items_read = fscanf(f, "%lu %lu %lu", M, N, nz); 
+        num_items_read = fscanf(f, "%d %d %d", M, N, nz); 
         if (num_items_read == EOF) return MM_PREMATURE_EOF;
     }
     while (num_items_read != 3);
@@ -314,13 +295,13 @@ int mm_read_mtx_array_size(FILE *f, index_t *M, index_t *N)
     }while (line[0] == '%');
 
     /* line[] is either blank or has M,N, nz */
-    if (sscanf(line, "%lu %lu", M, N) == 2)
+    if (sscanf(line, "%d %d", M, N) == 2)
         return 0;
         
     else /* we have a blank line */
     do
     { 
-        num_items_read = fscanf(f, "%lu %lu", M, N); 
+        num_items_read = fscanf(f, "%d %d", M, N); 
         if (num_items_read == EOF) return MM_PREMATURE_EOF;
     }
     while (num_items_read != 2);
@@ -330,7 +311,7 @@ int mm_read_mtx_array_size(FILE *f, index_t *M, index_t *N)
 
 int mm_write_mtx_array_size(FILE *f, index_t M, index_t N)
 {
-    if (fprintf(f, "%lu %lu\n", M, N) != 2)
+    if (fprintf(f, "%d %d\n", M, N) != 2)
         return MM_COULD_NOT_WRITE_FILE;
     else 
         return 0;

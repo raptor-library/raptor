@@ -51,9 +51,8 @@ int main(int argc, char *argv[])
     data_t* b_data;
     data_t* x_data;
 
-    // Get matrix and vectors from MFEM
-    //mfem_laplace(&A, &x, &b, mesh, num_elements, order);
-    A = readParMatrix(filename, MPI_COMM_WORLD, 1, 0);
+    A = readParMatrix(filename, MPI_COMM_WORLD, 1, 1);
+
     b = new ParVector(A->global_cols, A->local_cols, A->first_col_diag);
     x = new ParVector(A->global_rows, A->local_rows, A->first_row);
     x->set_const_value(1.0);
@@ -103,7 +102,6 @@ int main(int argc, char *argv[])
     delete A;
     delete x;
     delete b;
-
 
     MPI_Finalize();
 
