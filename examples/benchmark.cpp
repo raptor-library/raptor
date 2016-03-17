@@ -71,15 +71,20 @@ int main(int argc, char *argv[])
     // Test CSC Synchronous SpMV
     MPI_Barrier(MPI_COMM_WORLD);
     num_tests = 0;
-    tfinal_min = 10000;
-
     t0 = MPI_Wtime();
-    while((MPI_Wtime() - t0) < 1.0)
+    data_t total_time = 0.0;
+    int finished = 0;
+    int lcl_finished = 0;
+    while(!finished)
     {
         parallel_spmv(A, x, b, 1.0, 0.0, async);
         num_tests++;
+        total_time = MPI_Wtime() - t0;
+        if (total_time > 1.0) lcl_finished = 1;
+        MPI_Allreduce(&lcl_finished, &finished, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
     }
     num_tests *= 2;
+ 
     MPI_Barrier(MPI_COMM_WORLD);
 
     for (int t = 0; t < 5; t++)
