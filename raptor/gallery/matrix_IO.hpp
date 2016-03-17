@@ -32,6 +32,8 @@ int mm_read_sparse(const char *fname, index_t start, index_t stop, index_t *M_, 
                 ParMatrix* A, int symmetric);
 
 ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int symmetric);
+void distParMatrix(char* filename);
+int mm_dist_sparse(const char *fname, index_t start, index_t stop);
 
 /********************* MM_typecode query fucntions ***************************/
 

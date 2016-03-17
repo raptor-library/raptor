@@ -55,15 +55,16 @@ int main(int argc, char *argv[])
     index_t len_b, len_x;
     index_t local_rows;
     data_t b_norm;
-    data_t t0, tfinal;
+    data_t t0, tfinal, tfinal_min;
     data_t* b_data;
     data_t* x_data;
 
     // Get matrix and vectors from MFEM
     //mfem_laplace(&A, &x, &b, mesh, num_elements, order);
-    int dim = 3;
-    int grid[dim] = {num_elements, num_elements, num_elements};
-    data_t* sten =  laplace_stencil_27pt();
+    int dim = 2;
+    int grid[dim] = {num_elements, num_elements};
+//    data_t* sten =  laplace_stencil_27pt();
+    data_t* sten = diffusion_stencil_2d(0.01, M_PI/8.0);
     A = stencil_grid(sten, grid, dim);
     delete[] sten;
     b = new ParVector(A->global_cols, A->local_cols, A->first_col_diag);
@@ -80,15 +81,15 @@ int main(int argc, char *argv[])
     MPI_Reduce(&local_nnz, &global_nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Num Nonzeros = %lu\n", global_nnz);
 
-    t0, tfinal;
-
     // Create hypre (amg_data) and raptor (ml) hierarchies (they share data)
     int coarsen_type = 10;
     int interp_type = 6; 
     int Pmx = 0;
     int agg_num_levels = 1;
 
-    ml = create_wrapped_hierarchy(A, x, b, coarsen_type, interp_type, Pmx, agg_num_levels);
+//    ml = create_wrapped_hierarchy(A, x, b, coarsen_type, interp_type, Pmx, agg_num_levels);
+    ml = create_wrapped_hierarchy(A, x, b);
+
     int num_levels = ml->num_levels;
     Level* l0 = ml->levels[0];
     l0->x = x;
@@ -108,12 +109,31 @@ int main(int argc, char *argv[])
 //        MPI_Migrate();
 
         // Test CSC Synchronous SpMV
+        tfinal_min = 10000;
+MPI_Barrier(MPI_COMM_WORLD);
+        num_tests = 0;
         t0 = MPI_Wtime();
-        for (int j = 0; j < num_tests; j++)
+        while(MPI_Wtime() - t0 < 1.0)
         {
             parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, async);
+            num_tests++;
         }
-        tfinal = (MPI_Wtime() - t0) / num_tests;
+        num_tests *= 2;
+
+MPI_Barrier(MPI_COMM_WORLD);
+
+        for (int t = 0; t < 5; t++)
+        {
+            t0 = MPI_Wtime();
+            for (int j = 0; j < num_tests; j++)
+            {
+                parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, async);
+            }
+            tfinal = (MPI_Wtime() - t0) / num_tests;
+            if (tfinal < tfinal_min) tfinal_min = tfinal;
+            MPI_Barrier(MPI_COMM_WORLD);
+        }
+        tfinal = tfinal_min;
 
         int num_sends = 0;
         int size_sends = 0;

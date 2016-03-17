@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
     index_t len_b, len_x;
     index_t local_rows;
     data_t b_norm;
-    data_t t0, tfinal;
+    data_t t0, tfinal, tfinal_min;
     data_t* b_data;
     data_t* x_data;
 
@@ -67,16 +67,34 @@ int main(int argc, char *argv[])
     MPI_Reduce(&local_nnz, &global_nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Num Nonzeros = %lu\n", global_nnz);
 
-    t0, tfinal;
 
     // Test CSC Synchronous SpMV
+    MPI_Barrier(MPI_COMM_WORLD);
+    num_tests = 0;
+    tfinal_min = 10000;
+
     t0 = MPI_Wtime();
-    for (int j = 0; j < num_tests; j++)
+    while((MPI_Wtime() - t0) < 1.0)
     {
         parallel_spmv(A, x, b, 1.0, 0.0, async);
+        num_tests++;
     }
-    tfinal = (MPI_Wtime() - t0) / num_tests;
+    num_tests *= 2;
+    MPI_Barrier(MPI_COMM_WORLD);
 
+    for (int t = 0; t < 5; t++)
+    { 
+        t0 = MPI_Wtime();
+        for (int j = 0; j < num_tests; j++)
+        {
+            parallel_spmv(A, x, b, 1.0, 0.0, async);
+        }
+        tfinal = (MPI_Wtime() - t0) / num_tests;
+        if (tfinal < tfinal_min) tfinal_min = tfinal;
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+    tfinal = tfinal_min;
+    
     int num_sends = 0;
     int size_sends = 0;
     int total_num_sends = 0;

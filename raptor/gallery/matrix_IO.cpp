@@ -1,5 +1,6 @@
 #include "matrix_IO.hpp"
 #include <float.h>
+#include <stdio.h>
 
 ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int symmetric = 1)
 {
@@ -46,6 +47,148 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int sy
     A->finalize();
 
     return A;
+}
+
+void distParMatrix(char* filename)
+{
+    index_t num_rows, num_cols, nnz;
+    int comm_size, rank, ret_code;
+    MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    FILE* infile;
+    MM_typecode matcode;
+
+    // find size of matix 
+    infile = fopen(filename, "r");
+    mm_read_banner(infile, &matcode);
+    ret_code = mm_read_mtx_crd_size(infile, &num_rows, &num_cols, &nnz);
+
+    int size = num_rows / comm_size;
+    int extra = num_rows % comm_size;
+    int global_row_starts[comm_size];
+
+    global_row_starts[0] = 0;
+    for (int i = 0; i < comm_size; i++)
+    {
+        global_row_starts[i+1] = global_row_starts[i] + size;
+        if (i < extra) global_row_starts[i+1]++;
+    }
+
+    ret_code = mm_dist_sparse(filename, global_row_starts[rank], global_row_starts[rank+1]);
+
+    fclose(infile);
+}
+
+int mm_dist_sparse(const char* fname, index_t start, index_t stop)
+{
+    FILE *f;
+    FILE *out;
+    MM_typecode matcode;
+    index_t M, N, nz;
+    int i, ctr;
+
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    char outname[100];
+    sprintf(outname, "%s.%d", fname, rank);
+
+    if ((f = fopen(fname, "r")) == NULL)
+        return -1;
+    if ((out = fopen(outname, "w")) == NULL)
+        return -1;
+
+    if (mm_read_banner(f, &matcode) != 0)
+    {
+        printf("mm_read_unsymetric: Could not process Matrix Market banner ");
+        printf(" in file [%s]\n", fname);
+        return -1;
+    }
+
+    /* find out size of sparse matrix: M, N, nz .... */
+
+    if (mm_read_mtx_crd_size(f, &M, &N, &nz) !=0)
+    {
+        fprintf(stderr, "read_unsymmetric_sparse(): could not parse matrix size.\n");
+        return -1;
+    }
+
+    int lcl_nz = 0;
+    int lcl_rows = stop - start;
+    if (mm_is_integer(matcode) || mm_is_real(matcode))
+    {
+        for (i=0; i<nz; i++)
+        {
+            index_t row, col;
+            data_t value;
+
+            fscanf(f, "%d %d %lg\n", &row, &col, &value);
+
+            if (row > start && row <= stop)
+            {
+                lcl_nz++;
+            }
+        }
+        fprintf(out, "%d %d %d\n",  lcl_rows, lcl_rows, lcl_nz);
+
+        fclose(f);
+        f = fopen(fname, "r");
+
+        for (i=0; i<nz; i++)
+        {
+            index_t row, col;
+            data_t value;
+
+            fscanf(f, "%d %d %lg\n", &row, &col, &value);
+
+            if (row > start && row <= stop)
+            {
+                fprintf(out, "%d %d %lg\n", row, col, value);
+            }
+        }
+    }
+    else
+    {
+        for (i=0; i<nz; i++)
+        {
+            index_t row, col;
+            data_t value;
+
+            fscanf(f, "%d %d\n", &row, &col);
+
+            value = 1.0;
+
+            if (row > start && row <= stop)
+            {
+                lcl_nz++;
+            }
+        }
+        fprintf(out, "%d %d %d\n", lcl_rows, lcl_rows, lcl_nz);
+
+        fclose(f);
+        f = fopen(fname, "r");
+
+        for (i=0; i<nz; i++)
+        {
+            index_t row, col;
+            data_t value;
+
+            fscanf(f, "%d %d\n", &row, &col);
+
+            value = 1.0;
+
+            if (row > start && row <= stop)
+            {
+                fprintf(out, "%d %d\n", row, col);
+            }
+        }
+    }
+
+
+
+    fclose(f);
+    return 0;
+
 }
 
 int mm_read_sparse(const char *fname, index_t start, index_t stop, index_t *M_, index_t *N_,
@@ -107,7 +250,6 @@ int mm_read_sparse(const char *fname, index_t start, index_t stop, index_t *M_, 
 
             if (row > start && row <= stop)
             {
-printf("Adding %2.3f to (%d, %d)\n", value,  row-1, col-1);
                 A->add_value(row-1, col-1, value, 1);
             }
             if (symmetric && col > start && col <= stop && col != row)
