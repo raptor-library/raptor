@@ -75,28 +75,59 @@ void distParMatrix(char* filename)
         if (i < extra) global_row_starts[i+1]++;
     }
 
-    ret_code = mm_dist_sparse(filename, global_row_starts[rank], global_row_starts[rank+1]);
+    ret_code = mm_copy_header(filename);
+    ret_code += mm_write_lcl_size(filename, global_row_starts[rank], global_row_starts[rank+1]);
+    ret_code += mm_dist_sparse(filename, global_row_starts[rank], global_row_starts[rank+1]);
 
     fclose(infile);
 }
 
-int mm_dist_sparse(const char* fname, index_t start, index_t stop)
+int mm_copy_header(const char* fname)
+{
+    FILE *f;
+    FILE *out;
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    char outname[1000];
+    sprintf(outname, "%s.%d", fname, rank);
+
+    if ((f = fopen(fname, "r")) == NULL) return -1;
+    if ((out = fopen(outname, "a")) == NULL) return -1;
+   
+    char line[1000];
+    char first_char[10] = "%";
+    while (1)
+    {
+        fgets(line, 1000, f);
+
+        if (line[0] == first_char[0])
+        {
+            fprintf(out, "%s", line);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    fclose(f);
+    fclose(out);
+}
+
+int mm_write_lcl_size(const char* fname, index_t start, index_t stop)
 {
     FILE *f;
     FILE *out;
     MM_typecode matcode;
     index_t M, N, nz;
     int i, ctr;
-
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     char outname[100];
     sprintf(outname, "%s.%d", fname, rank);
 
-    if ((f = fopen(fname, "r")) == NULL)
-        return -1;
-    if ((out = fopen(outname, "w")) == NULL)
-        return -1;
+    if ((f = fopen(fname, "r")) == NULL) return -1;
+    if ((out = fopen(outname, "a")) == NULL) return -1;
 
     if (mm_read_banner(f, &matcode) != 0)
     {
@@ -129,11 +160,72 @@ int mm_dist_sparse(const char* fname, index_t start, index_t stop)
                 lcl_nz++;
             }
         }
+        fprintf(out, "%d %d %d\n", M, N, nz);
         fprintf(out, "%d %d %d\n",  lcl_rows, lcl_rows, lcl_nz);
+    }
+   else
+    {
+        for (i=0; i<nz; i++)
+        {
+            index_t row, col;
+            data_t value;
 
-        fclose(f);
-        f = fopen(fname, "r");
+            fscanf(f, "%d %d\n", &row, &col);
+            value = 1.0;
 
+            if (row > start && row <= stop)
+            {
+                lcl_nz++;
+            }
+        }
+        fprintf(out, "%d %d %d\n", M, N, nz);
+        fprintf(out, "%d %d %d\n", lcl_rows, lcl_rows, lcl_nz);
+    }
+
+    fclose(f);
+    fclose(out);
+
+    return 0;
+
+}
+
+int mm_dist_sparse(const char* fname, index_t start, index_t stop)
+{
+    FILE *f;
+    FILE *out;
+    MM_typecode matcode;
+    index_t M, N, nz;
+    int i, ctr;
+
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    char outname[100];
+    sprintf(outname, "%s.%d", fname, rank);
+
+    if ((f = fopen(fname, "r")) == NULL)
+        return -1;
+    if ((out = fopen(outname, "a")) == NULL)
+        return -1;
+
+    if (mm_read_banner(f, &matcode) != 0)
+    {
+        printf("mm_read_unsymetric: Could not process Matrix Market banner ");
+        printf(" in file [%s]\n", fname);
+        return -1;
+    }
+
+    /* find out size of sparse matrix: M, N, nz .... */
+
+    if (mm_read_mtx_crd_size(f, &M, &N, &nz) !=0)
+    {
+        fprintf(stderr, "read_unsymmetric_sparse(): could not parse matrix size.\n");
+        return -1;
+    }
+
+    int lcl_nz = 0;
+    int lcl_rows = stop - start;
+    if (mm_is_integer(matcode) || mm_is_real(matcode))
+    {
         for (i=0; i<nz; i++)
         {
             index_t row, col;
@@ -160,33 +252,14 @@ int mm_dist_sparse(const char* fname, index_t start, index_t stop)
 
             if (row > start && row <= stop)
             {
-                lcl_nz++;
-            }
-        }
-        fprintf(out, "%d %d %d\n", lcl_rows, lcl_rows, lcl_nz);
-
-        fclose(f);
-        f = fopen(fname, "r");
-
-        for (i=0; i<nz; i++)
-        {
-            index_t row, col;
-            data_t value;
-
-            fscanf(f, "%d %d\n", &row, &col);
-
-            value = 1.0;
-
-            if (row > start && row <= stop)
-            {
                 fprintf(out, "%d %d\n", row, col);
             }
         }
     }
 
-
-
     fclose(f);
+    fclose(out);
+
     return 0;
 
 }
