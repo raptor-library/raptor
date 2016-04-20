@@ -18,4 +18,6 @@ endif(WITH_MFEM)
     add_executable(dist_mtx dist_mtx.cpp)
     target_link_libraries(dist_mtx raptor ${MPI_LIRARIES})
 
+    add_executable(benchmark_spmv benchmark_spmv.cpp)
+    target_link_libraries(benchmark_spmv raptor ${MPI_LIRARIES})
 

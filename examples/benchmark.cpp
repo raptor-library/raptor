@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     // Get Command Line Arguments (Must Have 5)
     // TODO -- Fix how we parse command line
     int num_tests = 10;
-    char* filename = "~/scratch/delaunay_n18.mtx";
+    char* filename = "/Users/abienz/Documents/Parallel/raptor/examples/msc01440.mtx";
     int async = 0;
     if (argc > 1)
     {
@@ -46,7 +46,6 @@ int main(int argc, char *argv[])
     long global_nnz;
     index_t len_b, len_x;
     index_t local_rows;
-    data_t b_norm;
     data_t t0, tfinal, tfinal_min;
     data_t* b_data;
     data_t* x_data;
@@ -121,6 +120,14 @@ int main(int argc, char *argv[])
         printf("Total SIZE of Messages Sent = %d\n", total_size_sends);
         printf("Max Time per Parallel Spmv = %2.5e\n", t0);
     }
+
+
+    parallel_spmv_T(A, b, x, 1.0, 0.0);
+    b->set_const_value(0.0);
+    data_t b_norm = b->norm(2);
+    data_t x_norm = x->norm(2);
+
+    if (rank == 0) printf("BNorm = %2.3e\tXNorm = %2.3e\n", b_norm, x_norm);
  
     delete A;
     delete x;

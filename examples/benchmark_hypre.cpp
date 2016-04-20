@@ -126,6 +126,8 @@ MPI_Barrier(MPI_COMM_WORLD);
         }
         num_tests *= 2;
 
+        parallel_spmv_T(A_l, b_l, x_l, 1.0, 0.0);
+
 MPI_Barrier(MPI_COMM_WORLD);
         for (int t = 0; t < 5; t++)
         {
