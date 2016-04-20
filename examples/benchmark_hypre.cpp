@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
     // Get matrix and vectors from MFEM
     //mfem_laplace(&A, &x, &b, mesh, num_elements, order);
     int dim = 2;
-    int grid[dim] = {num_elements, num_elements};
+    int grid[2] = {num_elements, num_elements};
 //    data_t* sten =  laplace_stencil_27pt();
     data_t* sten = diffusion_stencil_2d(0.01, M_PI/8.0);
     A = stencil_grid(sten, grid, dim);

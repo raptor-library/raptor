@@ -175,7 +175,7 @@ data_t Hierarchy::fine_residual()
 
     // Calculate Residual
     Level* l = levels[0];
-    parallel_spmv(l->A, l->x, l->b, -1.0, 1.0, 0, NULL, l->tmp);
+    parallel_spmv(l->A, l->x, l->b, -1.0, 1.0, 0, l->tmp);
 
     resid = l->tmp->norm(2);
     resid_list.push_back(resid);
@@ -239,7 +239,7 @@ void Hierarchy::cycle(index_t level)
         relax(l->A, l->x, l->b, presmooth_sweeps);
 
         // Calculate Residual
-        parallel_spmv(l->A, l->x, l->b, -1.0, 1.0, 0, NULL, l->tmp);
+        parallel_spmv(l->A, l->x, l->b, -1.0, 1.0, 0, l->tmp);
 
         // Restrict Residual
         parallel_spmv_T(l->P, l->tmp, l_next->b, 1.0, 0.0, 0);
@@ -248,7 +248,7 @@ void Hierarchy::cycle(index_t level)
         cycle(level + 1);
 
         // Interpolate Error 
-        parallel_spmv(l->P, l_next->x, l->tmp, -1.0, 1.0, 0, NULL);
+        parallel_spmv(l->P, l_next->x, l->tmp, -1.0, 1.0, 0);
 
         // Update Solution Vector
         l->x->axpy(l->tmp, 1.0);

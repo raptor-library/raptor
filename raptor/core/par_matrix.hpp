@@ -98,7 +98,7 @@ public:
     *****    Communicator containing all processes that are
     *****    creating this matrix
     **************************************************************/
-    ParMatrix(index_t _glob_rows, index_t _glob_cols, format_t diag_f = CSR, format_t offd_f = CSC, MPI_Comm comm_mat = MPI_COMM_WORLD)
+    ParMatrix(index_t _glob_rows, index_t _glob_cols, MPI_Comm _comm_mat = MPI_COMM_WORLD, format_t diag_f = CSR, format_t offd_f = CSC)
     {
         // Initialize matrix dimensions
         global_rows = _glob_rows;
@@ -106,7 +106,7 @@ public:
         offd_num_cols = 0;
 
         // Create Partition
-        create_partition(global_rows, global_cols, comm_mat);
+        create_partition(_comm_mat);
 
         diag = new Matrix(local_rows, local_cols, diag_f);
         offd = new Matrix(local_rows, local_cols, offd_f);
@@ -143,7 +143,7 @@ public:
     ***** offd_f : format_t (optional)
     *****    Format of off-diagonal matrix (default CSC)
     **************************************************************/
-    ParMatrix(index_t _glob_rows, index_t _glob_cols, index_t _local_rows, index_t _local_cols, index_t _first_row, index_t _first_col_diag, format_t diag_f = CSR, format_t offd_f = CSC)
+    ParMatrix(index_t _glob_rows, index_t _glob_cols, index_t _local_rows, index_t _local_cols, index_t _first_row, index_t _first_col_diag, MPI_Comm _comm_mat = MPI_COMM_WORLD, format_t diag_f = CSR, format_t offd_f = CSC)
     {
         global_rows = _glob_rows;
         global_cols = _glob_cols;
@@ -153,7 +153,7 @@ public:
         first_col_diag = _first_col_diag;
         offd_num_cols = 0;
 
-        create_partition(global_rows, global_cols, first_row, local_rows, first_col_diag);
+        gather_partition(_comm_mat);
 
         diag = new Matrix(local_rows, local_cols, diag_f);
         offd = new Matrix(local_rows, local_cols, offd_f);
@@ -183,14 +183,14 @@ public:
     ***** offd_f : format_t (optional)
     *****    Format of off-diagonal matrix (default CSC)
     **************************************************************/
-    ParMatrix(index_t _glob_rows, index_t _glob_cols, data_t* values, format_t diag_f = CSR, format_t offd_f = CSC)
+    ParMatrix(index_t _glob_rows, index_t _glob_cols, data_t* values, MPI_Comm _comm_mat = MPI_COMM_WORLD, format_t diag_f = CSR, format_t offd_f = CSC)
     {
         global_rows = _glob_rows; 
         global_cols = _glob_cols;
         offd_num_cols = 0;
        
         // Create Partition
-        create_partition(global_rows, global_cols, MPI_COMM_WORLD);
+        create_partition(_comm_mat);
 
         // Initialize empty diag/offd matrices
         diag = new Matrix(local_rows, local_cols, diag_f);
