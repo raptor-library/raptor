@@ -20,15 +20,11 @@
  *****
  ***** Attributes
  ***** -------------
- ***** row_idx : vector<index_t>
- *****    Array of row indices (only in COO)
- ***** col_idx : vector<index_t>
- *****    Array of column indices (only in COO)
- ***** indptr : vector<index_t>
+ ***** indptr : Array<index_t>
  *****    Array of pointers to the outer indices (Row in CSR, Col in CSC)
- ***** indices : vector<index_t>
+ ***** indices : Array<index_t>
  *****    Indices of the inner array (Col in CSR, Row in CSC)
- ***** data : vector<data_t>
+ ***** data : Array<data_t>
  *****    Values of the matrix data
  ***** n_rows : index_t
  *****    Number of rows in the matrix
@@ -47,11 +43,10 @@
  ***** -------
  ***** add_value()
  *****    Insert a single value into the matrix.
- ***** reserve()
- *****    Reserve nnz/row (or nnz/col)
- *****    TODO -- Currently doesn't affect anything
  ***** resize()
  *****    Change the matrix dimensions.
+ ***** col_to_local()
+ *****    Converts columns indices from global to local
  ***** finalize()
  ****    Convert the matrix to compressed form,
  *****    removing any zero values.
@@ -91,7 +86,7 @@ public:
     /**************************************************************
     *****   Matrix Class Constructor
     **************************************************************
-    ***** Initializes an empty COO Matrix (without setting dimensions)
+    ***** Initializes an empty Matrix (without setting dimensions)
     *****
     ***** Parameters
     ***** -------------
@@ -164,6 +159,19 @@ public:
     void resize(index_t _nrows, index_t _ncols);
 
     /**************************************************************
+    *****   Matrix ColToLocal
+    **************************************************************
+    ***** Converts column indices to be local values
+    ***** 0 to number of cols
+    *****
+    ***** Parameters
+    ***** -------------
+    ***** map : std::map<index_t, index_t>
+    *****    Maps global columns to local columns
+    **************************************************************/
+    void col_to_local(std::map<index_t, index_t>& map);
+
+    /**************************************************************
     *****   Matrix Finalize
     **************************************************************
     ***** Compresses matrix, sorts the entries, removes any zero
@@ -174,7 +182,6 @@ public:
     ***** _format : format_t
     *****    Format to convert Matrix to
     **************************************************************/
-    void col_to_local(std::map<index_t, index_t>& map);
     void finalize();
 
     /**************************************************************

@@ -1,5 +1,6 @@
 #include "matrix_IO.hpp"
 #include <float.h>
+#include <stdio.h>
 
 ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int symmetric = 1)
 {
@@ -18,53 +19,249 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int sy
         MPI_Comm_size(comm, &comm_size);
         MPI_Comm_rank(comm, &rank);
 
-//        for (index_t proc = 0; proc < comm_size; proc++)
-//        {
-//            if (rank == proc)
-//            {
-                // find size of matix 
-                if ((infile = fopen(filename, "r")) == NULL) 
-                    return NULL;
+        // find size of matix 
+        if ((infile = fopen(filename, "r")) == NULL) 
+            return NULL;
 
-                if (mm_read_banner(infile, &matcode) != 0)
-                    return NULL;
+        if (mm_read_banner(infile, &matcode) != 0)
+            return NULL;
 
-                if ((ret_code = mm_read_mtx_crd_size(infile, &num_rows, &num_cols, &nnz)) !=0)
-                    return NULL;
+        if ((ret_code = mm_read_mtx_crd_size(infile, &num_rows, &num_cols, &nnz)) !=0)
+            return NULL;
         
-                fclose(infile);
+        fclose(infile);
 
-                A = new ParMatrix(num_rows, num_cols);
-                // read the file knowing our local rows
-                ret_code = mm_read_sparse(filename, A->first_row,
-                    A->first_row + A->local_rows, &num_rows, &num_cols,
-                    A, symmetric);
-
-                if (ret_code != 0)
-                {
-                    return NULL;
-                }
-//            }
-//            MPI_Barrier(MPI_COMM_WORLD);
-//        }
-    }
-    else //one file per MPI process
-    {
-        //TODO: init global_row_starts
-        //global_row_starts = A->global_row_starts;
+        A = new ParMatrix(num_rows, num_cols, MPI_COMM_WORLD);
         
-        //ret_code = mm_read_sparse(filename, global_row_starts[rank],
-        //            global_row_starts[rank+1], &num_rows, &num_cols,
-        //            A, symmetric);
-        //if (ret_code != 0)
-        //{
-        //    return NULL;
-        //}
+        // read the file knowing our local rows
+        ret_code = mm_read_sparse(filename, A->first_row,
+            A->first_row + A->local_rows, &num_rows, &num_cols,
+            A, symmetric);
+
+        if (ret_code != 0)
+        {
+            return NULL;
+        }
     }
 
     A->finalize();
 
     return A;
+}
+
+void distParMatrix(char* filename)
+{
+    index_t num_rows, num_cols, nnz;
+    int comm_size, rank, ret_code;
+    MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    FILE* infile;
+    MM_typecode matcode;
+
+    // find size of matix 
+    infile = fopen(filename, "r");
+    mm_read_banner(infile, &matcode);
+    ret_code = mm_read_mtx_crd_size(infile, &num_rows, &num_cols, &nnz);
+
+    int size = num_rows / comm_size;
+    int extra = num_rows % comm_size;
+    int global_row_starts[comm_size];
+
+    global_row_starts[0] = 0;
+    for (int i = 0; i < comm_size; i++)
+    {
+        global_row_starts[i+1] = global_row_starts[i] + size;
+        if (i < extra) global_row_starts[i+1]++;
+    }
+
+    ret_code = mm_copy_header(filename);
+    ret_code += mm_write_lcl_size(filename, global_row_starts[rank], global_row_starts[rank+1]);
+    ret_code += mm_dist_sparse(filename, global_row_starts[rank], global_row_starts[rank+1]);
+
+    fclose(infile);
+}
+
+int mm_copy_header(const char* fname)
+{
+    FILE *f;
+    FILE *out;
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    char outname[1000];
+    sprintf(outname, "%s.%d", fname, rank);
+
+    if ((f = fopen(fname, "r")) == NULL) return -1;
+    if ((out = fopen(outname, "a")) == NULL) return -1;
+   
+    char line[1000];
+    char first_char[10] = "%";
+    while (1)
+    {
+        fgets(line, 1000, f);
+
+        if (line[0] == first_char[0])
+        {
+            fprintf(out, "%s", line);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    fclose(f);
+    fclose(out);
+}
+
+int mm_write_lcl_size(const char* fname, index_t start, index_t stop)
+{
+    FILE *f;
+    FILE *out;
+    MM_typecode matcode;
+    index_t M, N, nz;
+    int i, ctr;
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    char outname[100];
+    sprintf(outname, "%s.%d", fname, rank);
+
+    if ((f = fopen(fname, "r")) == NULL) return -1;
+    if ((out = fopen(outname, "a")) == NULL) return -1;
+
+    if (mm_read_banner(f, &matcode) != 0)
+    {
+        printf("mm_read_unsymetric: Could not process Matrix Market banner ");
+        printf(" in file [%s]\n", fname);
+        return -1;
+    }
+
+    /* find out size of sparse matrix: M, N, nz .... */
+
+    if (mm_read_mtx_crd_size(f, &M, &N, &nz) !=0)
+    {
+        fprintf(stderr, "read_unsymmetric_sparse(): could not parse matrix size.\n");
+        return -1;
+    }
+
+    int lcl_nz = 0;
+    int lcl_rows = stop - start;
+    if (mm_is_integer(matcode) || mm_is_real(matcode))
+    {
+        for (i=0; i<nz; i++)
+        {
+            index_t row, col;
+            data_t value;
+
+            fscanf(f, "%d %d %lg\n", &row, &col, &value);
+
+            if (row > start && row <= stop)
+            {
+                lcl_nz++;
+            }
+        }
+        fprintf(out, "%d %d %d\n", M, N, nz);
+        fprintf(out, "%d %d %d\n",  lcl_rows, lcl_rows, lcl_nz);
+    }
+   else
+    {
+        for (i=0; i<nz; i++)
+        {
+            index_t row, col;
+            data_t value;
+
+            fscanf(f, "%d %d\n", &row, &col);
+            value = 1.0;
+
+            if (row > start && row <= stop)
+            {
+                lcl_nz++;
+            }
+        }
+        fprintf(out, "%d %d %d\n", M, N, nz);
+        fprintf(out, "%d %d %d\n", lcl_rows, lcl_rows, lcl_nz);
+    }
+
+    fclose(f);
+    fclose(out);
+
+    return 0;
+
+}
+
+int mm_dist_sparse(const char* fname, index_t start, index_t stop)
+{
+    FILE *f;
+    FILE *out;
+    MM_typecode matcode;
+    index_t M, N, nz;
+    int i, ctr;
+
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    char outname[100];
+    sprintf(outname, "%s.%d", fname, rank);
+
+    if ((f = fopen(fname, "r")) == NULL)
+        return -1;
+    if ((out = fopen(outname, "a")) == NULL)
+        return -1;
+
+    if (mm_read_banner(f, &matcode) != 0)
+    {
+        printf("mm_read_unsymetric: Could not process Matrix Market banner ");
+        printf(" in file [%s]\n", fname);
+        return -1;
+    }
+
+    /* find out size of sparse matrix: M, N, nz .... */
+
+    if (mm_read_mtx_crd_size(f, &M, &N, &nz) !=0)
+    {
+        fprintf(stderr, "read_unsymmetric_sparse(): could not parse matrix size.\n");
+        return -1;
+    }
+
+    int lcl_nz = 0;
+    int lcl_rows = stop - start;
+    if (mm_is_integer(matcode) || mm_is_real(matcode))
+    {
+        for (i=0; i<nz; i++)
+        {
+            index_t row, col;
+            data_t value;
+
+            fscanf(f, "%d %d %lg\n", &row, &col, &value);
+
+            if (row > start && row <= stop)
+            {
+                fprintf(out, "%d %d %lg\n", row, col, value);
+            }
+        }
+    }
+    else
+    {
+        for (i=0; i<nz; i++)
+        {
+            index_t row, col;
+            data_t value;
+
+            fscanf(f, "%d %d\n", &row, &col);
+
+            value = 1.0;
+
+            if (row > start && row <= stop)
+            {
+                fprintf(out, "%d %d\n", row, col);
+            }
+        }
+    }
+
+    fclose(f);
+    fclose(out);
+
+    return 0;
+
 }
 
 int mm_read_sparse(const char *fname, index_t start, index_t stop, index_t *M_, index_t *N_,
@@ -119,9 +316,8 @@ int mm_read_sparse(const char *fname, index_t start, index_t stop, index_t *M_, 
         {
             index_t row, col;
             data_t value;
-//            fgets(buf, sizeof(buf), f);
 
-            fscanf(f, "%lu %lu %lg\n", &row, &col, &value);
+            fscanf(f, "%d %d %lg\n", &row, &col, &value);
 
             if (fabs(value) < zero_tol) continue;
 
@@ -143,7 +339,7 @@ int mm_read_sparse(const char *fname, index_t start, index_t stop, index_t *M_, 
             index_t row, col;
             data_t value;
 
-            fscanf(f, "%lu %lu\n", &row, &col);
+            fscanf(f, "%d %d\n", &row, &col);
 
             value = 1.0;
 
@@ -262,7 +458,7 @@ int mm_read_banner(FILE *f, MM_typecode *matcode)
 
 int mm_write_mtx_crd_size(FILE *f, index_t M, index_t N, index_t nz)
 {
-    if (fprintf(f, "%lu %lu %lu\n", M, N, nz) != 3)
+    if (fprintf(f, "%d %d %d\n", M, N, nz) != 3)
         return MM_COULD_NOT_WRITE_FILE;
     else 
         return 0;
@@ -284,13 +480,13 @@ int mm_read_mtx_crd_size(FILE *f, index_t *M, index_t *N, index_t *nz )
     }while (line[0] == '%');
 
     /* line[] is either blank or has M,N, nz */
-    if (sscanf(line, "%lu %lu %lu", M, N, nz) == 3)
+    if (sscanf(line, "%d %d %d", M, N, nz) == 3)
         return 0;
         
     else
     do
     { 
-        num_items_read = fscanf(f, "%lu %lu %lu", M, N, nz); 
+        num_items_read = fscanf(f, "%d %d %d", M, N, nz); 
         if (num_items_read == EOF) return MM_PREMATURE_EOF;
     }
     while (num_items_read != 3);
@@ -314,13 +510,13 @@ int mm_read_mtx_array_size(FILE *f, index_t *M, index_t *N)
     }while (line[0] == '%');
 
     /* line[] is either blank or has M,N, nz */
-    if (sscanf(line, "%lu %lu", M, N) == 2)
+    if (sscanf(line, "%d %d", M, N) == 2)
         return 0;
         
     else /* we have a blank line */
     do
     { 
-        num_items_read = fscanf(f, "%lu %lu", M, N); 
+        num_items_read = fscanf(f, "%d %d", M, N); 
         if (num_items_read == EOF) return MM_PREMATURE_EOF;
     }
     while (num_items_read != 2);
@@ -330,7 +526,7 @@ int mm_read_mtx_array_size(FILE *f, index_t *M, index_t *N)
 
 int mm_write_mtx_array_size(FILE *f, index_t M, index_t N)
 {
-    if (fprintf(f, "%lu %lu\n", M, N) != 2)
+    if (fprintf(f, "%d %d\n", M, N) != 2)
         return MM_COULD_NOT_WRITE_FILE;
     else 
         return 0;

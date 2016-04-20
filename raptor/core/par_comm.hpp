@@ -168,6 +168,18 @@ public:
 
         // Add processors needing to send to, and what to send to each
         init_comm_sends_unsym(comm_mat, map_to_global, global_col_starts);
+
+        if (num_sends)
+        {
+            send_requests = new MPI_Request [num_sends];
+            send_buffer = new data_t[size_sends];
+        }
+
+        if (num_recvs)
+        {
+            recv_requests = new MPI_Request [num_recvs];
+            recv_buffer = new data_t [size_recvs];
+        }
     }
 
     /**************************************************************
@@ -177,6 +189,17 @@ public:
     **************************************************************/
     ~ParComm()
     {
+        if (num_sends)
+        {
+            delete[] send_requests;
+            delete[] send_buffer;
+        }
+        
+        if (num_recvs)
+        {
+            delete[] recv_requests;
+            delete[] recv_buffer;
+        }
     };
 
     index_t num_sends;
@@ -188,7 +211,11 @@ public:
     Array<index_t> send_row_indices;
     Array<index_t> recv_procs;
     Array<index_t> recv_col_starts;
-    Array<index_t> col_to_proc; 
+    Array<index_t> col_to_proc;
+    MPI_Request* send_requests;
+    MPI_Request* recv_requests; 
+    data_t* send_buffer;
+    data_t* recv_buffer;
 };
 }
 #endif

@@ -8,6 +8,8 @@
 #include "gallery/diffusion.hpp"
 #include "gallery/stencil.hpp"
 #include "hypre_async.h"
+//#include "core/puppers.hpp"
+#include <unistd.h>
 
 using namespace raptor;
 
@@ -25,12 +27,17 @@ int main(int argc, char *argv[])
     // TODO -- Fix how we parse command line
     int num_tests = 10;
     int num_elements = 10;
+    int async = 0;
     if (argc > 1)
     {
         num_tests = atoi(argv[1]);
         if (argc > 2)
         {
             num_elements = atoi(argv[2]);
+            if (argc > 3)
+            {
+                async = atoi(argv[3]);
+            }
         }
     }
 
@@ -45,17 +52,12 @@ int main(int argc, char *argv[])
 
     long local_nnz;
     long global_nnz;
-    index_t num_levels;
     index_t len_b, len_x;
     index_t local_rows;
     data_t b_norm;
     data_t t0, tfinal;
     data_t* b_data;
     data_t* x_data;
-
-    //Initialize variable for clearing cache between tests
-    index_t cache_size = 10000;
-    data_t* cache_list = new data_t[cache_size];
 
     // Get matrix and vectors from MFEM
     //mfem_laplace(&A, &x, &b, mesh, num_elements, order);
@@ -82,67 +84,56 @@ int main(int argc, char *argv[])
 
     // Create hypre (amg_data) and raptor (ml) hierarchies (they share data)
     ml = create_wrapped_hierarchy(A, x, b);
-
-    num_levels = ml->num_levels;
-    ml->x_list[0] = x;
-    ml->b_list[0] = b;
+    int num_levels = ml->num_levels;
+    Level* l0 = ml->levels[0];
+    l0->x = x;
+    l0->b = b;
+    l0->has_vec = true;
 
     for (int i = 0; i < num_levels; i++)
     {
-        A_l = ml->A_list[i];
-        x_l = ml->x_list[i];
-        b_l = ml->b_list[i];
+        Level* l = ml->levels[i];
 
-        local_rows = A_l->local_rows;
-        len_x = x_l->local_n;
-        len_b = b_l->local_n;
+        A_l = l->A;
+        x_l = l->x;
+        b_l = l->b;
 
-        // Print Global Nonzeros in Level i
-        if (local_rows)
-        {
-            local_nnz = A_l->diag->nnz + A_l->offd->nnz;
-        }
-        MPI_Reduce(&local_nnz, &global_nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Level %d has %lu nonzeros\n", i, global_nnz);
+//        int l_reg = MPI_Register((void*) &l, (MPI_PupFn) pup_par_level);
 
-        // Set X Data -- Local Elements are Unique
-        if (local_rows)
-        {
-            x_data = x_l->local->data();
-            for (int j = 0; j < len_x; j++)
-            {
-                x_data[j] = (1.0 * j) / len_x;
-            }
-        }
+//        MPI_Migrate();
 
         // Test CSC Synchronous SpMV
         t0 = MPI_Wtime();
         for (int j = 0; j < num_tests; j++)
         {
-            parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, 0);
+            parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, async);
         }
         tfinal = (MPI_Wtime() - t0) / num_tests;
-        b_norm = b_l->norm(2);
-        if (rank == 0) printf("2 norm of b = %2.3e\n", b_norm);
-        MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Level %d Max Time per SYNC SpMV: %2.3e\n", i, t0);
-        MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Level %d Avg Time per SYNC SpMV: %2.3e\n", i, t0 / num_procs);
-        clear_cache(cache_size, cache_list);
 
-        // Test CSC Synchronous SpMV
-        t0 = MPI_Wtime();
-        for (int j = 0; j < num_tests; j++)
+        int num_sends = 0;
+        int size_sends = 0;
+        int total_num_sends = 0;
+        int total_size_sends = 0;
+ 
+        if (A_l->local_rows)
         {
-            parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, 1);
+            num_sends = A_l->comm->num_sends;
+            size_sends = A_l->comm->size_sends;
         }
-        tfinal = (MPI_Wtime() - t0) / num_tests;
-        b_norm = b_l->norm(2);
-        if (rank == 0) printf("2 norm of b = %2.3e\n", b_norm);
+
+        MPI_Reduce(&num_sends, &total_num_sends, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&size_sends, &total_size_sends, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
         MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Level %d Max Time per ASYNC SpMV: %2.3e\n", i, t0);
-        MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Level %d Avg Time per ASYNC SpMV: %2.3e\n", i, t0 / num_procs);
+
+        if (rank == 0)
+        {
+            printf("Level %d\n", i);
+            printf("Total Number of Messages Sent = %d\n", total_num_sends);
+            printf("Total SIZE of Messages Sent = %d\n", total_size_sends);
+            printf("Max Time per Parallel Spmv = %2.5e\n", t0);
+        }
+ 
+
     }
 
     delete ml;
@@ -151,7 +142,6 @@ int main(int argc, char *argv[])
     delete x;
     delete b;
 
-    delete[] cache_list;
 
     MPI_Finalize();
 

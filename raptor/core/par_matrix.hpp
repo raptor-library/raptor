@@ -267,8 +267,8 @@ public:
         {
             delete[] diag_elmts;
         }
-            delete diag;
-            delete comm;
+        delete diag;
+        delete comm;
     }
 
     /**************************************************************

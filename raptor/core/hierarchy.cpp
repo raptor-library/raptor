@@ -23,31 +23,7 @@ void Hierarchy::add_level(ParMatrix* A, ParMatrix* P)
 {
     int global_rows = A->global_rows;
     int local_rows = A->local_rows;
-
-    ParVector* x;
-    ParVector* b;
-    ParVector* tmp;
-
-    A_list.push_back(A);
-    P_list.push_back(P);
-    tmp = new ParVector(global_rows, local_rows, A->first_row);
-    tmp_list.push_back(tmp);
-
-    // Initialize x, b for level only if not first level
-    if (num_levels > 0)
-    {
-        x = new ParVector(global_rows, local_rows, A->first_row);
-        b = new ParVector(global_rows, local_rows, A->first_row);
-        x_list.push_back(x);
-        b_list.push_back(b);
-    }
-    else // otherwise, leave NULL
-    {
-        x_list.push_back(NULL);
-        b_list.push_back(NULL);
-    }
-
-    num_levels++;
+    levels.push_back(new Level(A, P, num_levels++));
 }
 
 /***********************************************************
@@ -62,14 +38,8 @@ void Hierarchy::add_level(ParMatrix* A, ParMatrix* P)
 ************************************************************/
 void Hierarchy::add_level(ParMatrix* A)
 {
-
     // Add sparse matrix and vector data structures
-    A_list.push_back(A);
-    x_list.push_back(new ParVector(A->global_rows, A->local_rows, A->first_row));
-    b_list.push_back(new ParVector(A->global_cols, A->local_cols, A->first_col_diag));
-
-    num_levels++;
-
+    levels.push_back(new Level(A, num_levels++));
 
 return;
 
@@ -204,9 +174,10 @@ data_t Hierarchy::fine_residual()
     data_t resid, rel_resid;
 
     // Calculate Residual
-    parallel_spmv(A_list[0], x_list[0], b_list[0], -1.0, 1.0, 0, tmp_list[0]);
+    Level* l = levels[0];
+    parallel_spmv(l->A, l->x, l->b, -1.0, 1.0, 0, NULL, l->tmp);
 
-    resid = tmp_list[0]->norm(2);
+    resid = l->tmp->norm(2);
     resid_list.push_back(resid);
     if (zero_b)
     {
@@ -250,37 +221,40 @@ void Hierarchy::cycle(index_t level)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
+    Level* l = levels[level];
+    Level* l_next = levels[level+1];
+
     // If coarsest level, solve and return
     if (level == num_levels - 1)
     {
         //relax(A_list[level], x_list[level], b_list[level], 2);
-        redundant_gauss_elimination(A_list[level], x_list[level], b_list[level], A_coarse, permute_coarse, gather_sizes, gather_displs);
+        redundant_gauss_elimination(l->A, l->x, l->b, A_coarse, permute_coarse, gather_sizes, gather_displs);
     }
     // Otherwise, run V-cycle
     else
     {
-        x_list[level+1]->set_const_value(0.0);
+        l_next->x->set_const_value(0.0);
 
         // Pre-Relaxation
-        relax(A_list[level], x_list[level], b_list[level], presmooth_sweeps);
+        relax(l->A, l->x, l->b, presmooth_sweeps);
 
         // Calculate Residual
-        parallel_spmv(A_list[level], x_list[level], b_list[level], -1.0, 1.0, 0, tmp_list[level]);
+        parallel_spmv(l->A, l->x, l->b, -1.0, 1.0, 0, NULL, l->tmp);
 
         // Restrict Residual
-        parallel_spmv_T(P_list[level], tmp_list[level], b_list[level+1], 1.0, 0.0, 0);
+        parallel_spmv_T(l->P, l->tmp, l_next->b, 1.0, 0.0, 0);
 
         // Coarse Grid Correction
         cycle(level + 1);
 
         // Interpolate Error 
-        parallel_spmv(P_list[level], x_list[level+1], tmp_list[level], -1.0, 1.0, 0);
+        parallel_spmv(l->P, l_next->x, l->tmp, -1.0, 1.0, 0, NULL);
 
         // Update Solution Vector
-        x_list[level]->axpy(tmp_list[level], 1.0);
+        l->x->axpy(l->tmp, 1.0);
 
         // Post-Relaxation
-        relax(A_list[level], x_list[level], b_list[level], postsmooth_sweeps);
+        relax(l->A, l->x, l->b, postsmooth_sweeps);
     }
 }
 
@@ -307,8 +281,9 @@ void Hierarchy::solve(ParVector* x, ParVector* b, data_t solve_tol, data_t _rela
     data_t rel_resid;
 
     // Set fine solution, rhs vectors
-    x_list[0] = x;
-    b_list[0] = b;
+    Level* l0 = levels[0];
+    l0->x = x;
+    l0->b = b;
 
     // Calculate norm of rhs
     rhs_norm = b->norm(2);

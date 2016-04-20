@@ -4,6 +4,19 @@
 
 using namespace raptor;
 
+/**************************************************************
+*****   ParMatrix Create Comm Mat
+**************************************************************
+***** Creates MPI communicator (on top of that passed as
+***** an argument) containing all active procs, or those
+***** that will hold at least one row of the matrix.
+*****
+***** Parameters
+***** -------------
+***** _comm_mat : MPI_Comm (optional)
+*****    MPI Communicator containing all processes that will
+*****    call this method (default MPI_COMM_WORLD)
+**************************************************************/
 void ParMatrix::create_comm_mat(MPI_Comm _comm_mat)
 {
     // Get MPI Information
@@ -57,11 +70,19 @@ void ParMatrix::create_comm_mat(MPI_Comm _comm_mat)
 
 }
 
-void ParMatrix::create_partition(index_t global_rows, index_t global_cols, index_t first_row, index_t local_rows, index_t first_col_diag)
+/**************************************************************
+*****   ParMatrix Gather Partition
+**************************************************************
+***** All processes gather the previously created partition
+*****
+***** Parameters
+***** -------------
+***** _comm_mat : MPI_Comm (optional)
+*****    MPI Communicator containing all processes that will
+*****    call this method (default MPI_COMM_WORLD)
+**************************************************************/
+void ParMatrix::gather_partition(MPI_Comm _comm_mat)
 {
-
-    MPI_Comm _comm_mat = MPI_COMM_WORLD;
-
     // Get MPI Information
     int rank, num_procs;
     MPI_Comm_rank(_comm_mat, &rank);
@@ -80,7 +101,19 @@ void ParMatrix::create_partition(index_t global_rows, index_t global_cols, index
     }
 }
 
-void ParMatrix::create_partition(index_t global_rows, index_t global_cols, MPI_Comm _comm_mat)
+/**************************************************************
+*****   ParMatrix Create Partition
+**************************************************************
+***** Partitions the matrix evenly across all processes
+***** in the MPI communicator
+*****
+***** Parameters
+***** -------------
+***** _comm_mat : MPI_Comm (optional)
+*****    MPI Communicator containing all processes that will
+*****    call this method (default MPI_COMM_WORLD)
+**************************************************************/
+void ParMatrix::create_partition(MPI_Comm _comm_mat)
 {
     // Get MPI Information
     int rank, num_procs;
@@ -153,6 +186,25 @@ void ParMatrix::create_partition(index_t global_rows, index_t global_cols, MPI_C
     }
 }
 
+/**************************************************************
+*****   ParMatrix Add Value
+**************************************************************
+***** Adds a value to the local portion of the parallel matrix,
+***** determining whether it should be added to diagonal or 
+***** off-diagonal block.  Local_to_global, global_to_local, and
+***** offd_num_cols are appended as necessary
+*****
+***** Parameters
+***** -------------
+***** row : index_t
+*****    Row of value (default as local row)
+***** global_col : index_t 
+*****    Global column of value
+***** value : data_t
+*****    Value to be added to parallel matrix
+***** row_global : index_t (optional)
+*****    Determines if the row is a global value (default 0 -- local)
+**************************************************************/    
 void ParMatrix::add_value(index_t row, index_t global_col, data_t value, index_t row_global)
 {
     if (row_global)
@@ -181,6 +233,13 @@ void ParMatrix::add_value(index_t row, index_t global_col, data_t value, index_t
     }
 }
 
+/**************************************************************
+*****   ParMatrix Finalize
+**************************************************************
+***** Finalizes the diagonal and off-diagonal matrices.  Sorts
+***** the local_to_global indices, and creates the parallel
+***** communicator
+**************************************************************/
 void ParMatrix::finalize()
 {
     if (offd_num_cols)

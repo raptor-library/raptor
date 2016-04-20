@@ -66,16 +66,15 @@ void Matrix::resize(index_t _nrows, index_t _ncols)
 }
 
 /**************************************************************
- *****   Matrix Finalize
+ *****   Matrix ColToLocal
  **************************************************************
- ***** Compresses matrix, sorts the entries, removes any zero
- ***** values, and combines any entries at the same location
- ***** TODO -- currently only call before finalize
+ ***** Converts column indices to be local values
+ ***** 0 to number of cols
  *****
  ***** Parameters
  ***** -------------
- ***** _format : format_t
- *****    Format to convert Matrix to
+ ***** map : std::map<index_t, index_t>
+ *****    Maps global columns to local columns
  **************************************************************/
 void Matrix::col_to_local(std::map<index_t, index_t>& map)
 {
@@ -95,6 +94,17 @@ void Matrix::col_to_local(std::map<index_t, index_t>& map)
     }
 }
 
+/**************************************************************
+ *****   Matrix Finalize
+ **************************************************************
+ ***** Compresses matrix, sorts the entries, removes any zero
+ ***** values, and combines any entries at the same location
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** _format : format_t
+ *****    Format to convert Matrix to
+ **************************************************************/
 void Matrix::finalize()
 {
     if (format == CSR)
@@ -250,10 +260,8 @@ void Matrix::convert(format_t _format)
 
     // Calculate number of nonzeros per outer idx
     index_t* ptr_nnz = new index_t[n_outer]();
-    if (nnz != indptr[n_inner]) printf("NNZ = %d, INDPTR[-1] = %d\n", nnz, indptr[n_inner]);
     for (index_t i = 0; i < nnz; i++)
     {
-        if (indices[i] >= n_outer) printf("Converting %d to %d, Indices[%d] = %d, n_outer = %d\n", format, _format, i, indices[i], n_outer);
         ptr_nnz[indices[i]]++;      
     }
 
@@ -313,12 +321,9 @@ void Matrix::convert(format_t _format)
     
         for (index_t j = ptr_start; j < ptr_end; j++)
         {
-    //        if (fabs(data_pair[j].second) > zero_tol)
-            {
-                indices[ctr] = data_pair[j].first;
-                data[ctr] = data_pair[j].second;
-                ctr++;
-            }
+            indices[ctr] = data_pair[j].first;
+            data[ctr] = data_pair[j].second;
+            ctr++;
         }
     }
     indptr[n_outer] = ctr;

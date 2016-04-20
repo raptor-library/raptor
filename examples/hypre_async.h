@@ -213,7 +213,7 @@ hypre_CSRMatrix** create_offd_proc_array(hypre_ParCSRMatrix *A)
       {
         row_start = offd_i[i];
         row_end = offd_i[i+1];
-        qsort1(offd_j, offd_data, row_start, row_end-1 );
+        hypre_qsort1(offd_j, offd_data, row_start, row_end-1 );
 
         proc_idx = 0;
         for (j = row_start; j < row_end; j++)
