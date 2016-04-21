@@ -379,6 +379,7 @@ void parallel_matmult(ParMatrix* A, ParMatrix* B, ParMatrix** _C)
     format_t format_bo;
 
     // Declare communication variables
+    MPI_Comm comm_mat;
     ParComm* comm;
     std::vector<index_t> send_procs;
     std::vector<index_t> recv_procs;
@@ -414,6 +415,8 @@ void parallel_matmult(ParMatrix* A, ParMatrix* B, ParMatrix** _C)
     std::vector<index_t> col_nnz;
     index_t tmp_size;
 
+    comm_mat = A->comm_mat;
+
     // Initialize matrices
     C = new ParMatrix(A->global_rows, B->global_cols, A->comm_mat);
     A_diag = A->diag;
@@ -435,16 +438,29 @@ void parallel_matmult(ParMatrix* A, ParMatrix* B, ParMatrix** _C)
 
     // Initialize Communication Package
     comm = A->comm;
-    send_procs = comm->send_procs;
-    recv_procs = comm->recv_procs;
-    send_indices = comm->send_indices;
-    recv_indices = comm->recv_indices;
-    send_requests = new MPI_Request[send_procs.size()];
-    send_buffer = new std::vector<Element>[send_procs.size()];
-    num_sends = send_procs.size();
-    num_recvs = recv_procs.size();
+    num_sends = comm->num_sends;
+    num_recvs = comm->num_recvs;
+
+    if (num_sends)
+    {
+        send_procs = comm->send_procs;
+        send_row_starts = comm->send_row_starts;
+        send_row_indices = comm->send_row_indices;
+
+        send_requests = comm->send_requests;
+        send_buffer = new std::vector<Element>[num_sends];
+    }
+
+    if (num_recvs)
+    {
+        recv_procs = comm->recv_procs;
+        recv_col_starts = comm->recv_col_starts;
+
+        recv_requests = comm->recv_requests;
+    }
 
     // Send elements of B as array of COO structs 
+    // Convert offd of B to CSR for sending
     B_diag->convert(CSR);
     if (B->offd_num_cols)
     {
@@ -462,37 +478,39 @@ void parallel_matmult(ParMatrix* A, ParMatrix* B, ParMatrix** _C)
     for (index_t i = 0; i < num_sends; i++)
     {
         send_proc = send_procs[i];
-        std::vector<index_t> send_idx = send_indices[send_proc];
-        for (auto row : send_idx)
+        send_start = send_row_indices[i];
+        send_end = send_row_indices[i+1];
+
+        for (int row = send_start; row < send_end; row++)
         {
-            // Send diagonal portion of row
             row_start = B_diag->indptr[row];
             row_end = B_diag->indptr[row+1];
-            for (index_t j = row_start; j < row_end; j++)
+
+            for (int j = row_start; j < row_end; j++)
             {
-                local_col = B_diag->indices[j] + B->first_col_diag;
+                col = B_diag->indices[j] + B->first_col_diag;
                 value = B_diag->data[j];
-                tmp = {row + B->first_row, local_col, value};
+                tmp = {row + B->first_row, col, value};
                 send_buffer[i].push_back(tmp);
             }
 
-            // Send off-diagonal portion of row
             if (B->offd_num_cols)
             {
                 row_start = B_offd->indptr[row];
                 row_end = B_offd->indptr[row+1];
-                for (index_t j = row_start; j < row_end; j++)
+
+                for (int j = row_start; j < row_end; j++)
                 {
-                    local_col = B->local_to_global[B_offd->indices[j]];
+                    col = B->local_to_global[B_offd->indices[j]];
                     value = B_offd->data[j];
-                    tmp = {row + B->first_row, local_col, value};
+                    tmp = {row + B->first_row, col, value};
                     send_buffer[i].push_back(tmp);
                 }
             }
         }
         // Send B-values to distant processor
         MPI_Isend(send_buffer[i].data(), send_buffer[i].size(), coo_type,
-            send_proc, 1111, A->comm_mat, &send_requests[i]);
+            send_proc, 1111, comm_mat, &send_requests[i]);
     }
 
     // Convert A to CSR, B to CSC, and multiply local portion
