@@ -70,9 +70,9 @@ int main(int argc, char *argv[])
     data_t correct_x[5];
     for (int i = 0; i < 5; i++)
     {
-        correct_x[i] = a_data[i*3] * correct_b[0];
-        correct_x[i] += a_data[i*3 + 1] * correct_b[1];
-        correct_x[i] += a_data[i*3 + 2] * correct_b[2];
+        correct_x[i] = a_data[i] * correct_b[0];
+        correct_x[i] += a_data[i + 5] * correct_b[1];
+        correct_x[i] += a_data[i + 10] * correct_b[2];
     }
 
     parallel_spmv(A, x ,b, 1.0, 0.0, 0);
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
     assert_equals(correct_b, b_data, A->local_rows, A->first_row);
 
     parallel_spmv_T(A, b, x, 1.0, 0.0);
-//    assert_equals(correct_x, x_data, A->local_rows, A->first_row);
+    assert_equals(correct_x, x_data, A->local_cols, A->first_col_diag);
 
     MPI_Finalize();
 
