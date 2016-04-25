@@ -202,6 +202,63 @@ public:
         }
     };
 
+#ifdef WITH_AMPI
+    void pup(PUP::er &p)
+    {
+        // Basic Primitives
+        p | num_sends;
+        p | num_recvs;
+        p | size_sends;
+        p | size_recvs;
+
+        // Custom Datatypes
+        p | send_procs;
+        p | send_row_starts;
+        p | send_row_indices;
+        p | recv_procs;
+        p | recv_col_starts;
+        p | col_to_proc;
+
+        // Heap Data
+        if (p.isUnpacking())
+        {
+            if (num_sends)
+            {
+                send_requests = new MPI_Request[num_sends];
+                send_buffer = new data_t[size_sends];
+            }
+            if (num_recvs)
+            {
+                recv_requests = new MPI_Request[num_recvs];
+                recv_buffer = new data_t[size_recvs];
+            }
+        }
+        if (num_sends)
+        {
+            p(send_requests, num_sends);
+            p(send_buffer, size_sends);
+        }
+        if (num_recvs)
+        {
+            p(recv_requests, num_recvs);
+            p(recv_buffer, size_recvs);
+        }
+        if (p.isDeleting())
+        {
+            if (num_sends)
+            {
+                delete[] send_requests;
+                delete[] send_buffer;
+            }
+            if (num_recvs)
+            {
+                delete[] recv_requests;
+                delete[] recv_buffer;
+            }
+        }
+    }
+#endif
+
     index_t num_sends;
     index_t num_recvs;
     index_t size_sends;

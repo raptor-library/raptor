@@ -197,6 +197,23 @@ public:
     **************************************************************/
     void convert(format_t _format);
 
+#ifdef WITH_AMPI
+    void pup(PUP::er &p)
+    {
+        // Basic Primitives
+        p | n_rows;
+        p | n_cols;
+        p | n_outer;
+        p | n_inner;
+        p | nnz;
+
+        // Custom Datatypes
+        p | indptr;
+        p | indices;
+        p | data;
+    }
+#endif
+
     Array<index_t> indptr;
     Array<index_t> indices;
     Array<data_t> data;

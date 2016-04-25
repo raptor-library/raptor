@@ -7,7 +7,6 @@
 #include "gallery/laplacian27pt.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/stencil.hpp"
-#include "hypre_async.h"
 //#include "core/puppers.hpp"
 #include <unistd.h>
 

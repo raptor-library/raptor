@@ -154,6 +154,17 @@ public:
     **************************************************************/
     data_t* data();
 
+#ifdef WITH_AMPI
+    void pup(PUP::er &p)
+    {
+       // Basic Primitives
+       p | size;
+
+       // Custom Datatypes
+       p | values;
+    }
+#endif
+
     Array<data_t> values;
     index_t size;
 };

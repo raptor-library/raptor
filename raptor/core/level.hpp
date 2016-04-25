@@ -116,6 +116,37 @@ namespace raptor
               }
           }
 
+#ifdef WITH_AMPI
+          void pup(PUP::er &p)
+          {
+              // Basic Primitives
+              p | idx;
+              p | coarsest;
+              p | has_vec;
+
+              // Heap Allocated Data
+              if (p.isUnpacking())
+              {
+                  A = new ParMatrix();
+                  x = new ParVector();
+                  b = new ParVector();
+                  P = NULL;
+                  tmp = NULL;
+              }
+              A->pup(p);
+              x->pup(p);
+              b->pup(p);
+              if (p.isDeleting())
+              {
+                  delete A;
+                  delete P;
+                  delete x;
+                  delete b;
+                  delete tmp;
+              }
+          }
+#endif
+
           ParMatrix* A;
           ParMatrix* P;
           ParVector* x;

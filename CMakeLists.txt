@@ -18,18 +18,20 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
 option(WITH_HYPRE "Add Hypre" OFF)
 option(WITH_MFEM "Add MFEM" OFF)
+option(WITH_AMPI "Using AMPI" OFF)
 add_feature_info(hypre WITH_HYPRE "Hypre preconditioner")
 add_feature_info(mfem WITH_MFEM "MFEM matrix gallery")
+add_feature_info(ampi WITH_AMPI "Compile with AMPI")
 
 SET(HYPRE_DIR "" CACHE STRING "Directory of HYPRE")
 SET(METIS_DIR "" CACHE STRING "Directory of metis")
 SET(MFEM_DIR "" CACHE STRING "Directory of mfem")
 
-#set(LAPACK_LIBRARY "")
-#set(BLAS_LIBRARY "")
+set(LAPACK_LIBRARY "")
+set(BLAS_LIBRARY "")
 
-find_library(LAPACK_LIBRARY NAMES liblapack lapack)
-find_library(BLAS_LIBRARY NAMES libblas blas)
+#find_library(LAPACK_LIBRARY NAMES liblapack lapack)
+#find_library(BLAS_LIBRARY NAMES libblas blas)
 
 if(WITH_HYPRE)
     find_package(Hypre)
@@ -66,6 +68,11 @@ if(WITH_MFEM)
 		message(FATAL_ERROR "Cannot find mfem. Try setting MFEM_DIR.")	
 	endif(MFEM_FOUND)
 endif(WITH_MFEM)
+
+if (WITH_AMPI)
+	add_definitions(-DUSE_AMPI)
+endif(WITH_AMPI)
+
 
 add_subdirectory(raptor)
 

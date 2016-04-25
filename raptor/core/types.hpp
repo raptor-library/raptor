@@ -6,6 +6,13 @@
 #include "mpi.h"
 #include <float.h>
 #include <math.h>
+#include <stdlib.h>
+#include <time.h>
+
+#ifdef WITH_AMPI
+#include "pup.h"
+#include "pup_stl.h"
+#endif
 
 //TODO -- should be std::numeric_limits<data_t>::epsilon ...
 #define zero_tol DBL_EPSILON

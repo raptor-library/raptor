@@ -343,6 +343,67 @@ public:
     **************************************************************/
     void finalize();
 
+#ifdef WITH_AMPI
+    void pup(PUP::er &p)
+    {
+        // Basic Primitives
+        p | global_rows;
+        p | global_cols; 
+        p | local_nnz;
+        p | local_rows;
+        p | local_cols;
+        p | offd_num_cols;
+        p | first_col_diag;
+        p | first_row;
+        p | comm_mat;
+
+        // STL Datatypes
+        p | global_to_local;
+
+        //Custom Datatypes
+        p | local_to_global;
+        p | global_col_starts;
+
+        // Heap Data 
+        if (p.isUnpacking())
+        {
+            if (offd_num_cols)
+            {
+                offd = new Matrix(local_rows, offd_num_cols, CSC);
+            }
+            if (local_rows)
+            {
+                diag_elmts = new data_t[local_rows];
+            }
+            diag = new Matrix(local_rows, local_rows, CSR);
+            comm = new ParComm();
+        }
+        if (offd_num_cols)
+        {
+            offd->pup(p);
+        }
+        if (local_rows)
+        {
+            p(diag_elmts, local_rows);
+        }
+        diag->pup(p);
+        comm->pup(p);
+        if (p.isDeleting())
+        {
+            if (offd_num_cols)
+            {
+                delete offd;
+            }
+            if (local_rows)
+            {
+                delete diag_elmts;
+            }
+            delete diag;
+            delete comm;
+        }
+    }
+#endif
+
     index_t global_rows;
     index_t global_cols;
     index_t local_nnz;

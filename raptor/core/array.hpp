@@ -111,7 +111,27 @@ public:
         assert(index >= 0 && index < n);
         return data_ptr[index];
     }
- 
+
+#ifdef WITH_AMPI 
+    void pup(PUP::er &p)
+    {
+        // Basic primitives
+        p | n;
+        p | alloc_n;
+
+        // Heap allocated data arrays
+        if (p.isUnpacking())
+        {
+            data_ptr = (T*) calloc (alloc_n, sizeof(T));
+        }
+        p(data_ptr, alloc_n);
+        if (p.isDeleting())
+        {
+            free(data_ptr);
+        }
+    }
+#endif
+
     index_t n;
     index_t alloc_n;
     T* data_ptr;

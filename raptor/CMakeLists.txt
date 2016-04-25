@@ -14,11 +14,15 @@ add_subdirectory(util)
 
 add_library(raptor STATIC ${core_SOURCES} ${gallery_SOURCES} ${util_SOURCES})
 
+if (WITH_AMPI)
+target_link_libraries(raptor ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
+	${LAPACK_LIBRARY} ${BLAS_LIBRARY} "-module CommonLBs")
 #target_link_libraries(raptor ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
 #	${LAPACK_LIBRARY} ${BLAS_LIBRARY} "-module CommonLBs -tracemode projections -tracemode summary")
-
+else (WITH_AMPI)
 target_link_libraries(raptor ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
 	${LAPACK_LIBRARY} ${BLAS_LIBRARY})
+endif() 
 
 include_directories(".")
 if(ENABLE_UNIT_TESTS)

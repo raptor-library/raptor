@@ -3,8 +3,8 @@
 #include "core/types.hpp"
 #include "util/linalg/spmv.hpp"
 #include "gallery/matrix_IO.hpp"
-#include "hypre_async.h"
 //#include "core/puppers.hpp"
+#include "clear_cache.hpp"
 #include <unistd.h>
 
 using namespace raptor;
