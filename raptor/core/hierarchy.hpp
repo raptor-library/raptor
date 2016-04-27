@@ -160,6 +160,7 @@ namespace raptor
           ************************************************************/
           void solve(ParVector* x, ParVector* b, data_t solve_tol = 1e-5, data_t _relax_weight = 2.0/3, int max_iterations = 100);
 
+
           index_t num_levels;
           index_t max_levels;
           index_t max_coarse_size;

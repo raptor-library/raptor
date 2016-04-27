@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#ifdef WITH_AMPI
+#ifdef USE_AMPI
 #include "pup.h"
 #include "pup_stl.h"
 #endif

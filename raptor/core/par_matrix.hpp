@@ -34,8 +34,6 @@
  *****    Matrix storing local diagonal block
  ***** offd : Matrix*
  *****    Matrix storing local off-diagonal block
- ***** diag_elmts : data_t*
- *****    Pointer to values that lie on the diagonal
  ***** local_to_global : Array<index_t>
  *****    Array that converts local columns in offd matrix to global
  ***** global_to_local : std::map<index_t, index_t>
@@ -110,10 +108,6 @@ public:
 
         diag = new Matrix(local_rows, local_cols, diag_f);
         offd = new Matrix(local_rows, local_cols, offd_f);
-        if (local_rows)
-        {
-            diag_elmts = new data_t[local_rows]();
-        }
     }
 
     /**************************************************************
@@ -158,10 +152,6 @@ public:
         diag = new Matrix(local_rows, local_cols, diag_f);
         offd = new Matrix(local_rows, local_cols, offd_f);
 
-        if (local_rows)
-        {
-            diag_elmts = new data_t[local_rows]();
-        }
     }
 
     /**************************************************************
@@ -195,10 +185,6 @@ public:
         // Initialize empty diag/offd matrices
         diag = new Matrix(local_rows, local_cols, diag_f);
         offd = new Matrix(local_rows, local_cols, offd_f);
-        if (local_rows)
-        {
-            diag_elmts = new data_t[local_rows]();
-        }
 
         // Add values to diag/offd matrices
         index_t val_start = first_row * global_cols;
@@ -234,7 +220,6 @@ public:
         global_cols = A->global_cols;
         diag = A->diag; // should we mark as not owning? (we should think about move semantics or if people really love pointers we could use smart pointers).
         offd = A->offd;
-        diag_elmts = A->diag_elmts;
     }
 
     /**************************************************************
@@ -248,7 +233,6 @@ public:
         local_rows = 0;
         local_cols = 0;
         offd_num_cols = 0;
-        diag_elmts = NULL;
     }
 
     /**************************************************************
@@ -262,10 +246,6 @@ public:
         if (this->offd_num_cols)
         {
             delete offd;
-        }
-        if (this->local_rows)
-        {
-            delete[] diag_elmts;
         }
         delete diag;
         delete comm;
@@ -343,66 +323,6 @@ public:
     **************************************************************/
     void finalize();
 
-#ifdef WITH_AMPI
-    void pup(PUP::er &p)
-    {
-        // Basic Primitives
-        p | global_rows;
-        p | global_cols; 
-        p | local_nnz;
-        p | local_rows;
-        p | local_cols;
-        p | offd_num_cols;
-        p | first_col_diag;
-        p | first_row;
-        p | comm_mat;
-
-        // STL Datatypes
-        p | global_to_local;
-
-        //Custom Datatypes
-        p | local_to_global;
-        p | global_col_starts;
-
-        // Heap Data 
-        if (p.isUnpacking())
-        {
-            if (offd_num_cols)
-            {
-                offd = new Matrix(local_rows, offd_num_cols, CSC);
-            }
-            if (local_rows)
-            {
-                diag_elmts = new data_t[local_rows];
-            }
-            diag = new Matrix(local_rows, local_rows, CSR);
-            comm = new ParComm();
-        }
-        if (offd_num_cols)
-        {
-            offd->pup(p);
-        }
-        if (local_rows)
-        {
-            p(diag_elmts, local_rows);
-        }
-        diag->pup(p);
-        comm->pup(p);
-        if (p.isDeleting())
-        {
-            if (offd_num_cols)
-            {
-                delete offd;
-            }
-            if (local_rows)
-            {
-                delete diag_elmts;
-            }
-            delete diag;
-            delete comm;
-        }
-    }
-#endif
 
     index_t global_rows;
     index_t global_cols;
@@ -411,7 +331,6 @@ public:
     index_t local_cols;
     Matrix* diag;
     Matrix* offd;
-    data_t* diag_elmts;
     Array<index_t> local_to_global;
     Array<index_t> global_col_starts;
     std::map<index_t, index_t> global_to_local;

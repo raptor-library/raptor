@@ -159,33 +159,6 @@ namespace raptor
         **************************************************************/
         data_t norm(index_t p);
 
-#ifdef WITH_AMPI
-        void pup(PUP::er &p)
-        {
-            // Basic Primitives
-            p | global_n;
-            p | local_n;
-            p | first_local;
-       
-            // Custom Datatype in Heap
-            if (p.isUnpacking())
-            {
-                if (local_n)
-                {
-                    local = new Vector(local_n);
-                }
-            }
-            local->pup(p);
-            if (p.isDeleting())
-            {
-                if (local_n)
-                {
-                    delete local;
-                }
-            }
-        }
-#endif
-
         Vector* local;
         int global_n;
         int local_n;

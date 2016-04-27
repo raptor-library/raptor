@@ -226,10 +226,6 @@ void ParMatrix::add_value(index_t row, index_t global_col, data_t value, index_t
     {
         index_t local_col = global_col - first_col_diag;
         diag->add_value(row, local_col, value);
-        if (row == local_col)
-        {
-            //diag_elmts[row] += value;
-        }
     }
 }
 

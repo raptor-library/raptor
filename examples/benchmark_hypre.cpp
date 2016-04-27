@@ -9,8 +9,11 @@
 #include "gallery/diffusion.hpp"
 #include "gallery/stencil.hpp"
 #include "clear_cache.hpp"
-//#include "core/puppers.hpp"
 #include <unistd.h>
+
+#ifdef USE_AMPI
+    #include "core/puppers.hpp"
+#endif
 
 using namespace raptor;
 
@@ -121,6 +124,14 @@ int main(int argc, char *argv[])
     int cache_len = 10000;
     double cache_array[cache_len];
 
+#ifdef USE_AMPI
+    int pup_idx;
+    AMPI_Register_pup((MPI_PupFn) pup_hierarchy, &ml, &pup_idx);
+    MPI_Info hints;
+    MPI_Info_create(&hints);
+    MPI_Info_set(hints, "ampi_load_balance", "sync");
+#endif
+
     for (int i = 0; i < num_levels; i++)
     {
         Level* l = ml->levels[i];
@@ -156,14 +167,14 @@ int main(int argc, char *argv[])
         tasync[i] /= num_tests;
     }
 
-
     for (int lb = 0; lb < num_lb; lb++)
     {
 #ifdef USE_AMPI
-        MPI_Migrate();
+        AMPI_Migrate(hints);
+        MPI_Barrier(MPI_COMM_WORLD);
 #endif    
 
-        for (int i = 0; i < num_levels; i++)
+        for (int i = 0; i < ml->num_levels; i++)
         {
             Level* l = ml->levels[i];
 
@@ -179,8 +190,7 @@ int main(int argc, char *argv[])
             for (int test = 0; test < num_tests; test++)
             {
                 get_ctime(t0);
-//                parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, 0);
-if (rank == 0) printf ("A has %d local rows, %d local cols, %d global rows, %d global cols\n", A_l->local_rows, A_l->local_cols, A_l->global_rows, A_l->global_cols);
+                parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, 0);
                 get_ctime(t1);
                 tsync_lb[i][lb] += (t1 - t0);
 
@@ -191,7 +201,7 @@ if (rank == 0) printf ("A has %d local rows, %d local cols, %d global rows, %d g
             for (int test = 0; test < num_tests; test++)
             {
                 get_ctime(t0);
-//                parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, 1);
+                parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, 1);
                 get_ctime(t1);
                 tasync_lb[i][lb] += (t1 - t0);
 
@@ -203,7 +213,7 @@ if (rank == 0) printf ("A has %d local rows, %d local cols, %d global rows, %d g
 
     for (int i = 0; i < num_levels; i++)
     {
-/*        Level* l = ml->levels[i];
+        Level* l = ml->levels[i];
 
         A_l = l->A;
         x_l = l->x;
@@ -245,13 +255,9 @@ if (rank == 0) printf ("A has %d local rows, %d local cols, %d global rows, %d g
                 printf("Max Time per LOAD-BALANCED Parallel ASYNC SpMV [%d] = %2.5e\n", lb, t1);
             }
         }
-*/    }
+    }
 
-//    delete ml;
-//    delete A;
-//    delete x;
-//    delete b;
-
+    delete ml;
 
     MPI_Finalize();
 
