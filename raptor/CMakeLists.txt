@@ -16,7 +16,7 @@ add_library(raptor STATIC ${core_SOURCES} ${gallery_SOURCES} ${util_SOURCES})
 
 if (WITH_AMPI)
 target_link_libraries(raptor ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
-	${LAPACK_LIBRARY} ${BLAS_LIBRARY} "-module CommonLBs")
+	${LAPACK_LIBRARY} ${BLAS_LIBRARY} "-module CommonLBs -lm")
 #target_link_libraries(raptor ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
 #	${LAPACK_LIBRARY} ${BLAS_LIBRARY} "-module CommonLBs -tracemode projections -tracemode summary")
 else (WITH_AMPI)

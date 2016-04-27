@@ -27,6 +27,12 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
+#ifdef USE_AMPI
+    MPI_Info hints;
+    MPI_Info_create(&hints);
+    MPI_Info_set(hints, "ampi_load_balance", "sync");
+#endif
+
     // Get Command Line Arguments (Must Have 5)
     // TODO -- Fix how we parse command line
     int num_tests = 10;
@@ -50,17 +56,11 @@ int main(int argc, char *argv[])
     ParVector* x;
     ParVector* b;
     Hierarchy* ml;
-    ParMatrix* A_l;
-    ParVector* x_l;
-    ParVector* b_l;
 
     long local_nnz;
     long global_nnz;
-    index_t len_b, len_x;
-    index_t local_rows;
-    data_t b_norm;
-    data_t* b_data;
-    data_t* x_data;
+    int len_b, len_x;
+    int local_rows;
 
     // Get matrix and vectors from MFEM
     data_t* sten = NULL;
@@ -107,155 +107,78 @@ int main(int argc, char *argv[])
     {
         ml = create_wrapped_hierarchy(A, x, b, coarsen_type, interp_type, Pmx, agg_num_levels);
     }
+    delete A;
 
     int num_levels = ml->num_levels;
-    Level* l0 = ml->levels[0];
-    l0->x = x;
-    l0->b = b;
-    l0->has_vec = true;
+    Level* l = ml->levels[0];
+    l->x = x;
+    l->b = b;
+    l->has_vec = true;
 
-    data_t t0, t1;
-    data_t tsync[num_levels], tasync[num_levels];
+    double t0, t1;
+    double tsync, tasync;
 
     int num_lb = 2;
-    data_t tsync_lb[num_levels][num_lb];
-    data_t tasync_lb[num_levels][num_lb];
 
     int cache_len = 10000;
     double cache_array[cache_len];
 
 #ifdef USE_AMPI
-    int pup_idx;
-    AMPI_Register_pup((MPI_PupFn) pup_hierarchy, &ml, &pup_idx);
-    MPI_Info hints;
-    MPI_Info_create(&hints);
-    MPI_Info_set(hints, "ampi_load_balance", "sync");
+    int ml_idx;
+    AMPI_Register_pup((MPI_PupFn) pup_hierarchy, &ml, &ml_idx);
 #endif
 
-    for (int i = 0; i < num_levels; i++)
-    {
-        Level* l = ml->levels[i];
-
-        A_l = l->A;
-        x_l = l->x;
-        b_l = l->b;
-
-        tsync[i] = 0.0;
-        tasync[i] = 0.0;
-
-        // Test CSC Synchronous SpMV
-        for (int test = 0; test < num_tests; test++)
-        {
-            get_ctime(t0);
-            parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, 0);
-            get_ctime(t1);
-            tsync[i] += (t1 - t0);
-
-            clear_cache(cache_len, cache_array);
-        }
-        tsync[i] /= num_tests;
-
-        for (int test = 0; test < num_tests; test++)
-        {
-            get_ctime(t0);
-            parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, 1);
-            get_ctime(t1);
-            tasync[i] += (t1 - t0);
-
-            clear_cache(cache_len, cache_array);
-        }
-        tasync[i] /= num_tests;
-    }
 
     for (int lb = 0; lb < num_lb; lb++)
     {
-#ifdef USE_AMPI
-        AMPI_Migrate(hints);
-        MPI_Barrier(MPI_COMM_WORLD);
-#endif    
-
+        if (rank == 0)
+        {
+            printf("Number of Load Balancing Calls = %d\n", lb);
+        }
         for (int i = 0; i < ml->num_levels; i++)
         {
             Level* l = ml->levels[i];
 
-            A_l = l->A;
-            x_l = l->x;
-            b_l = l->b;
-
-            tsync_lb[i][lb] = 0.0;
-            tasync_lb[i][lb] = 0.0;
-
+            tsync = 0.0;
+            tasync = 0.0;
 
             // Test CSC Synchronous SpMV
-            for (int test = 0; test < num_tests; test++)
+            for (int j = 0; j < num_tests; j++)
             {
                 get_ctime(t0);
-                parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, 0);
+                parallel_spmv(l->A, l->x, l->b, 1.0, 0.0, 0);
                 get_ctime(t1);
-                tsync_lb[i][lb] += (t1 - t0);
+                tsync += (t1 - t0);
 
                 clear_cache(cache_len, cache_array);
             }
-            tsync_lb[i][lb] /= num_tests;
+            tsync /= num_tests;
 
-            for (int test = 0; test < num_tests; test++)
+            for (int j = 0; j < num_tests; j++)
             {
                 get_ctime(t0);
-                parallel_spmv(A_l, x_l, b_l, 1.0, 0.0, 1);
+                parallel_spmv(l->A, l->x, l->b, 1.0, 0.0, 1);
                 get_ctime(t1);
-                tasync_lb[i][lb] += (t1 - t0);
+                tasync += (t1 - t0);
 
                 clear_cache(cache_len, cache_array);
             }
-            tasync_lb[i][lb] /= num_tests;
-        }
-    }
+            tasync /= num_tests;
 
-    for (int i = 0; i < num_levels; i++)
-    {
-        Level* l = ml->levels[i];
+            MPI_Reduce(&tsync, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+            MPI_Reduce(&tasync, &t1, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
-        A_l = l->A;
-        x_l = l->x;
-        b_l = l->b;
-
-        int num_sends = 0;
-        int size_sends = 0;
-        int total_num_sends = 0;
-        int total_size_sends = 0;
- 
-        if (A_l->local_rows)
-        {
-            num_sends = A_l->comm->num_sends;
-            size_sends = A_l->comm->size_sends;
-        }
-
-        MPI_Reduce(&num_sends, &total_num_sends, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-        MPI_Reduce(&size_sends, &total_size_sends, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-        MPI_Reduce(&tsync[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        MPI_Reduce(&tasync[i], &t1, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-
-        if (rank == 0)
-        {
-            printf("Level %d\n", i);
-            printf("Total Number of Messages Sent = %d\n", total_num_sends);
-            printf("Total SIZE of Messages Sent = %d\n", total_size_sends);
-            printf("Max Time per Parallel Spmv = %2.5e\n", t0);
-            printf("Max Time per Parallel ASYNC SpMV = %2.5e\n", t1);
-        }
-
-        for (int lb = 0; lb < num_lb; lb++)
-        {
-            MPI_Reduce(&(tsync_lb[i][lb]), &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            MPI_Reduce(&(tasync_lb[i][lb]), &t1, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-
-            if (rank == 0)
-            { 
-                printf("Max Time per LOAD-BALANCED Parallel Spmv [%d] = %2.5e\n", lb, t0);
-                printf("Max Time per LOAD-BALANCED Parallel ASYNC SpMV [%d] = %2.5e\n", lb, t1);
+            if (rank == 0) 
+            {
+                printf("Level %d Time Sync = %2.5e\n", i, t0);
+                printf("Level %d Time Async = %2.5e\n", i, t1);
             }
         }
+        AMPI_Migrate(hints);
     }
+
+    delete ml->levels[0]->x;
+    delete ml->levels[0]->b;
 
     delete ml;
 
