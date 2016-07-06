@@ -60,7 +60,9 @@ namespace raptor
                   b = new ParVector(A->global_rows, A->local_rows, A->first_row);
                   has_vec = true;
               }
-              tmp = new ParVector(A->global_rows, A->local_rows, A->first_row);
+              b_tmp = new ParVector(A->global_rows, A->local_rows, A->first_row);
+              x_tmp = new ParVector(A->global_cols, A->local_cols, A->first_col_diag);
+
           }
     
           /**************************************************************
@@ -87,14 +89,16 @@ namespace raptor
                   has_vec = true;
               }
 
-              tmp = NULL;
+              b_tmp = NULL;
+              x_tmp = NULL;
               P = NULL;
           }
 
           Level()
           {
               P = NULL;
-              tmp = NULL;
+              b_tmp = NULL;
+              x_tmp = NULL;
               A = NULL;
               x = NULL;
               b = NULL;
@@ -115,9 +119,13 @@ namespace raptor
                   delete P;
               }
 
-              if (tmp)
+              if (x_tmp)
               {
-                  delete tmp;
+                  delete x_tmp;
+              }
+              if (b_tmp)
+              {
+                  delete b_tmp;
               }
 
               if (idx > 0)
@@ -131,7 +139,8 @@ namespace raptor
           ParMatrix* P;
           ParVector* x;
           ParVector* b;
-          ParVector* tmp;
+          ParVector* x_tmp;
+          ParVector* b_tmp;
           int idx;
           bool coarsest;
           bool has_vec;

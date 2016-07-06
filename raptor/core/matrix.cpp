@@ -94,6 +94,85 @@ void Matrix::col_to_local(std::map<index_t, index_t>& map)
     }
 }
 
+void Matrix::move_diag_first()
+{
+    int outer_start, outer_end;
+    bool has_diag;
+    int shift, pos, idx;
+
+    // Sum_Missing[i] shows how many diags
+    // before row i were missing (need to shift)
+    int* sum_missing = new int[n_outer+1];
+    int* diag_pos = new int[n_outer];
+
+    sum_missing[0] = 0;
+    for (int i = 0; i < n_outer; i++)
+    {
+        outer_start = indptr[i];
+        outer_end = indptr[i+1];
+        has_diag = false;
+        diag_pos[i] = -1;
+        for (int j = outer_start; j < outer_end; j++)
+        {  
+            idx = indices[j];
+            if (i == idx)
+            {
+                diag_pos[i] = j;
+                has_diag = true;
+                sum_missing[i+1] = sum_missing[i];
+                break;
+            }
+        }
+
+        if (!has_diag)
+        {
+            sum_missing[i+1] = sum_missing[i] + 1;
+        }
+    }
+
+    indices.resize(indices.size() + sum_missing[n_outer]);
+    data.resize(data.size() + sum_missing[n_outer]);
+
+    data_t diag_data;
+
+    // Go backwards because moving values towards end
+    for (int i = n_outer - 1; i >= 0; i--)
+    {
+        pos = diag_pos[i];
+        outer_start = indptr[i];
+        outer_end = indptr[i+1];
+        shift = sum_missing[i+1];
+
+        if (pos >= 0)
+        {
+            diag_data = data[pos];
+            for (int j = outer_end - 1; j > pos; j--)
+            {
+                indices[j + shift] = indices[j];
+                data[j + shift] = data[j];
+            }
+            for (int j = pos; j > outer_start; j--)
+            {
+                indices[j + shift] = indices[j - 1];
+                data[j + shift] = data[j - 1];
+            }
+            indices[outer_start + shift] = i;
+            data[outer_start + shift] = diag_data;
+        }
+        else
+        {
+            for (int j = outer_end - 1; j >= outer_start; j--)
+            {
+                indices[j + shift] = indices[j];
+                data[j + shift] = data[j];
+            }
+            indices[outer_start + shift - 1] = i;
+            data[outer_start + shift - 1] = 0.0;
+        }
+        indptr[i+1] = indptr[i+1] + shift;
+    }
+}
+
 /**************************************************************
  *****   Matrix Finalize
  **************************************************************
@@ -127,7 +206,7 @@ void Matrix::finalize()
         return;
     }
 
-    index_t* ptr_nnz = new index_t[this->n_outer]();
+    index_t* ptr_nnz = new index_t[n_outer]();
     for (index_t i = 0; i < nnz; i++)
     {
         ptr_nnz[indptr[i]]++;
@@ -216,8 +295,6 @@ void Matrix::finalize()
 
     // Delete array
     delete[] ptr_nnz;
-
-
 }
 
 /**************************************************************

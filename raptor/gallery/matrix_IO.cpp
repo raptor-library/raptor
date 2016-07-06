@@ -2,6 +2,8 @@
 #include <float.h>
 #include <stdio.h>
 
+//TODO -- Comment this.. but I think this started with someone else's code?
+// Do we need to add something about where this code came from?
 ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int symmetric = 1)
 {
     index_t num_rows, num_cols, nnz;

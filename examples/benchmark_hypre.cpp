@@ -92,6 +92,7 @@ int main(int argc, char *argv[])
     b = new ParVector(A->global_cols, A->local_cols, A->first_col_diag);
     x = new ParVector(A->global_rows, A->local_rows, A->first_row);
     x->set_const_value(1.0);
+    b->set_const_value(0.0);
 
     // Create hypre (amg_data) and raptor (ml) hierarchies (they share data)
     int coarsen_type = 10;
@@ -107,6 +108,20 @@ int main(int argc, char *argv[])
     {
         ml = create_wrapped_hierarchy(A, x, b, coarsen_type, interp_type, Pmx, agg_num_levels);
     }
+
+    ParVector* residual = new ParVector(b->global_n, b->local_n, b->first_local);
+    parallel_spmv(A, x, b, 1.0, -1.0, 0, residual);
+    data_t r_norm = residual->norm(2);
+    if (rank == 0) printf("Initial Norm = %e\n", r_norm);
+
+    ml->solve(x, b, 1e-06, 0.25, 100);
+
+    
+
+/*    parallel_spmv(A, x, b, 1.0, -1.0, 0, residual);
+    r_norm = residual->norm(2);
+    if (rank == 0) printf("Norm = %e\n", r_norm);
+
     delete A;
 
     int num_levels = ml->num_levels;
@@ -114,6 +129,8 @@ int main(int argc, char *argv[])
     l->x = x;
     l->b = b;
     l->has_vec = true;
+
+    
 
     double t0, t1;
     double tsync, tasync;
@@ -174,13 +191,15 @@ int main(int argc, char *argv[])
                 printf("Level %d Time Async = %2.5e\n", i, t1);
             }
         }
+#ifdef USE_AMPI
         AMPI_Migrate(hints);
+#endif
     }
-
-    delete ml->levels[0]->x;
-    delete ml->levels[0]->b;
-
-    delete ml;
+*/
+//    delete A;
+//    delete x;
+//    delete b;
+//    delete ml;
 
     MPI_Finalize();
 

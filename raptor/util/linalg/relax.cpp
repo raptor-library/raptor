@@ -1,17 +1,40 @@
+// Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
+// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
+
 #include "relax.hpp"
 #include "spmv.hpp"
 
-void gs_diag(Matrix* A, const data_t* x, const data_t* y, data_t* result, data_t* diag_data)
+/**************************************************************
+ *****   Sequential Gauss-Seidel (Forward Sweep)
+ **************************************************************
+ ***** Performs gauss-seidel along the diagonal block of the 
+ ***** matrix, assuming that the off-diagonal block has
+ ***** already been altered appropriately.
+ ***** The result from this sweep is put into 'result'
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to relax over
+ ***** x : data_t*
+ *****    Vector to be relaxed
+ ***** y : data_t*
+ *****    Right hand side vector
+ ***** result: data_t*
+ *****    Vector for result to be put into
+ **************************************************************/
+void gs_forward(Matrix* A, data_t* x, const data_t* y, data_t* result)
 {
     index_t* indptr = A->indptr.data();
     index_t* indices = A->indices.data();
     data_t* data = A->data.data();
 
-    index_t num_rows = A->n_rows;
-    index_t row_start, row_end;
+    int num_rows = A->n_rows;
+    int row_start, row_end;
 
-    index_t col;
+    int col;
     data_t value;
+    data_t diag;
 
     // Forward Sweep
     for (index_t row = 0; row < num_rows; row++)
@@ -19,28 +42,59 @@ void gs_diag(Matrix* A, const data_t* x, const data_t* y, data_t* result, data_t
         row_start = indptr[row];
         row_end = indptr[row+1];
 
-        for (index_t j = row_start; j < row_end; j++)
+        if (row_end > row_start) diag = data[row_start];
+        else diag = 0.0;
+
+        for (index_t j = row_start + 1; j < row_end; j++)
         {
             col = indices[j];
             value = data[j];
             if (col < row)
             {
-                result[row] += value*result[col];
+                result[row] -= value*result[col];
             }
             else if (col > row)
             {
-                result[row] += value*x[col];
-            }
-            else if (col == row)
-            {
-                diag_data[row] = value;
+                result[row] -= value*x[col];
             }
         }
-        if (fabs(diag_data[row]) > zero_tol)
+        if (fabs(diag) > zero_tol)
         {
-            result[row] = (y[row] - result[row]) / diag_data[row];
+            result[row] /= diag;
         }
     }
+}
+
+/**************************************************************
+ *****   Sequential Gauss-Seidel (Backward Sweep)
+ **************************************************************
+ ***** Performs gauss-seidel along the diagonal block of the 
+ ***** matrix, assuming that the off-diagonal block has
+ ***** already been altered appropriately.
+ ***** The result from this sweep is put into 'result'
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to relax over
+ ***** x : data_t*
+ *****    Vector to be relaxed
+ ***** y : data_t*
+ *****    Right hand side vector
+ ***** result: data_t*
+ *****    Vector for result to be put into
+ **************************************************************/
+void gs_backward(Matrix* A, data_t* x, const data_t* y, data_t* result)
+{
+    index_t* indptr = A->indptr.data();
+    index_t* indices = A->indices.data();
+    data_t* data = A->data.data();
+
+    int num_rows = A->n_rows;
+    int row_start, row_end;
+    int col;
+    data_t value;
+    data_t diag;
 
     // Backward Sweep
     for (index_t row = num_rows-1; row >= 0; row--)
@@ -48,262 +102,140 @@ void gs_diag(Matrix* A, const data_t* x, const data_t* y, data_t* result, data_t
         row_start = indptr[row];
         row_end = indptr[row+1];
 
-        for (index_t j = row_start; j < row_end; j++)
+        if (row_end > row_start) diag = data[row_start];
+        else diag = 0.0;
+
+        for (index_t j = row_start + 1; j < row_end; j++)
         {
             col = indices[j];
             value = data[j];
             if (col > row)
             {
-                result[row] += value*result[col];
+                result[row] -= value*result[col];
             }
             else if (col < row)
             {
-                result[row] += value*x[col];
+                result[row] -= value*x[col];
             }
         }
-        if (fabs(diag_data[row]) > zero_tol)
+        if (fabs(diag) > zero_tol)
         {
-            result[row] = (y[row] - result[row]) / diag_data[row];
+            result[row] /= diag;
         }
     }
 }
 
-void jacobi_diag(Matrix* A, const data_t* x, data_t* result, data_t* diag_data)
+/**************************************************************
+ *****   Hybrid Gauss-Seidel / Jacobi Parallel Relaxation
+ **************************************************************
+ ***** Performs Jacobi along the off-diagonal block and
+ ***** symmetric Gauss-Seidel along the diagonal block
+ ***** The tmp array is used as a place-holder, but the result
+ ***** is returned put in the x-vector. 
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** A : Matrix*
+ *****    Matrix to relax over
+ ***** x : data_t*
+ *****    Vector to be relaxed, will contain result
+ ***** y : data_t*
+ *****    Right hand side vector
+ ***** tmp: data_t*
+ *****    Vector needed for inner steps
+ ***** dist_x : data_t*
+ *****    Vector of distant x-values recvd from other processes
+ **************************************************************/
+void hybrid(ParMatrix* A, data_t* x, const data_t* y, data_t* tmp, data_t* dist_x)
 {
-    index_t* indptr = A->indptr.data();
-    index_t* indices = A->indices.data();
-    data_t* data = A->data.data();
-
-    index_t num_rows = A->n_rows;
-    index_t row_start, row_end;
-
-    index_t col;
-    data_t value;
-
-    for (index_t row = 0; row < num_rows; row++)
+    // Forward Sweep
+    for (int i = 0; i < A->local_rows; i++)
     {
-        row_start = indptr[row];
-        row_end = indptr[row+1];
-
-        for (index_t j = row_start; j < row_end; j++)
-        {
-            col = indices[j];
-            value = data[j];
-            if (col == row)
-            {
-                diag_data[row] = value;
-            }
-            else
-            {
-                result[row] += value * x[col]; 
-            }
-        }
+        tmp[i] = y[i];
     }
+    if (A->offd_num_cols)
+    {
+        sequential_spmv(A->offd, dist_x, tmp, -1.0, 1.0); 
+    }
+    gs_forward(A->diag, x, y, tmp);
+
+    // Backward Sweep
+    for (int i = 0; i < A->local_rows; i++)
+    {
+        x[i] = y[i];
+    }
+    if (A->offd_num_cols)
+    {
+        sequential_spmv(A->offd, dist_x, x, -1.0, 1.0); 
+    }
+    gs_forward(A->diag, tmp, y, x);
 }
 
-void relax(const ParMatrix* A, ParVector* x, const ParVector* y, int num_sweeps, const int async)
+/**************************************************************
+ *****  Relaxation Method 
+ **************************************************************
+ ***** Performs jacobi along the diagonal block of the matrix
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** l: Level*
+ *****    Level in hierarchy to be relaxed
+ ***** num_sweeps : int
+ *****    Number of relaxation sweeps to perform
+ **************************************************************/
+void relax(const Level* l, int num_sweeps)
 {
-    if (A->local_rows == 0) return;
+    if (l->A->local_rows == 0) return;
 
     // Get MPI Information
-    MPI_Comm comm_mat = A->comm_mat;
+    MPI_Comm comm_mat = l->A->comm_mat;
     int rank, num_procs;
     MPI_Comm_rank(comm_mat, &rank);
     MPI_Comm_size(comm_mat, &num_procs);
 
-    // TODO must enforce that y and x are not aliased, or this will NOT work
-    //    or we could use blocking sends as long as we post the iRecvs first
-
     // Declare communication variables
-    MPI_Request*                             send_requests;
-    MPI_Request*                             recv_requests;
-    data_t*                                  send_buffer;
-    data_t*                                  recv_buffer;
-    data_t*                                  local_data;
-    Vector                                   offd_tmp;
-    index_t                                  begin;
-    index_t                                  ctr;
-    index_t                                  request_ctr;
-    index_t                                  size_sends;
-    index_t                                  size_recvs;
-    index_t                                  num_sends;
-    index_t                                  num_recvs;
-    index_t*                                 send_procs;
-    index_t*                                 send_row_starts;
-    index_t*                                 send_row_indices;
-    index_t*                                 recv_procs;
-    index_t*                                 recv_col_starts;
     ParComm*                                 comm;
-    std::map<index_t, index_t>               recv_proc_starts;
 
     // Initialize communication variables
-    comm          = A->comm;
-    num_sends = comm->num_sends;
-    num_recvs = comm->num_recvs;
-    size_sends = comm->size_sends;
-    size_recvs = comm->size_recvs;
+    comm          = l->A->comm;
 
-    if (num_sends)
-    {
-        send_procs = comm->send_procs.data();
-        send_row_starts = comm->send_row_starts.data();
-        send_row_indices = comm->send_row_indices.data();
-    }
-
-    if (num_recvs)
-    {
-        recv_procs = comm->recv_procs.data();
-        recv_col_starts = comm->recv_col_starts.data();
-    }     
-
-    local_data    = x->local->data();
-
-    data_t* x_data = x->local->data();
-    data_t* y_data = y->local->data();
-    data_t* sum_data = new data_t[y->local_n]();
-    data_t* x_new_data = new data_t[x->local_n]();
-    data_t* diag_data = new data_t[A->diag->n_rows]();
-
-    if (num_recvs)
-    {
-        // Initialize recv requests and buffer
-        recv_requests = new MPI_Request [num_recvs];
-        for (index_t i = 0; i < num_recvs; i++)
-        {
-            recv_requests[i] = MPI_REQUEST_NULL;
-        }
-        recv_buffer = new data_t [size_recvs];
-    }
-
-    if (num_sends)
-    {
-        // TODO we do not want to malloc these every time
-        send_requests = new MPI_Request [num_sends];
-        for (index_t i = 0; i < num_sends; i++)
-        {
-            send_requests[i] = MPI_REQUEST_NULL;
-        }
-        send_buffer = new data_t [size_sends];
-    }
+    data_t* x_data = l->x->local->data();
+    data_t* y_data = l->b->local->data();
+    data_t* b_tmp_data = l->b_tmp->local->data();
+    data_t* x_tmp_data = l->x_tmp->local->data();
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
         // If receive values, post appropriate MPI Receives
-        if (num_recvs)
+        if (comm->num_recvs)
         {
-            // Post receives for x-values that are needed
-            begin = 0;
-            ctr = 0;
-            request_ctr = 0;
-
-            index_t proc, num_recv, recv_start, recv_end;
-            for (index_t i = 0; i < num_recvs; i++)
-            {
-                proc = recv_procs[i];
-                recv_start = recv_col_starts[i];
-                recv_end = recv_col_starts[i+1];
-                num_recv = recv_end - recv_start;
-                MPI_Irecv(&recv_buffer[begin], num_recv, MPI_DATA_T, proc, 0, comm_mat, &(recv_requests[request_ctr++]));
-                begin += num_recv;
-            }
+            comm->init_recvs(comm_mat);
         }
 
         // Send values of x to appropriate processors
-        if (num_sends)
+        if (comm->num_sends)
         {
-            int send_start, send_end, size_sends;
-            begin = 0;
-            request_ctr = 0;
-            for (index_t i = 0; i < num_sends; i++)
-            {
-                index_t proc = send_procs[i];
-                send_start = send_row_starts[i];
-                send_end = send_row_starts[i+1];
-                size_sends = send_end - send_start;
-
-                for (int j = send_start; j < send_end; j++)
-                {
-                    send_buffer[j] = x_data[send_row_indices[j]];
-                }
-                MPI_Isend(&send_buffer[begin], size_sends, MPI_DATA_T, proc, 0, comm_mat, &(send_requests[request_ctr++]));
-                begin += size_sends;
-            }
-
+            comm->init_sends(x_data, comm_mat);
         }
-
-        // Compute partial relaxation with local information
-        //jacobi_diag(A->diag, x_data, sum_data, diag_data);
-        gs_diag(A->diag, x_data, y_data, x_new_data, diag_data);
 
         // Once data is available, add contribution of off-diagonals
         // TODO Deal with new entries as they become available
         // TODO Add an error check on the status
-        if (num_recvs)
+        if (comm->num_recvs)
         {
-            if (async)
-            {
-                int recv_idx[num_recvs];
-                index_t proc, recv_start, recv_end, first_col, num_cols;
-                for (index_t i = 0; i < num_recvs;)
-                {
-                    int n_recvd;
-                    MPI_Waitsome(num_recvs, recv_requests, &n_recvd, recv_idx, MPI_STATUS_IGNORE);
-                    for (index_t j = 0; j < n_recvd; j++)
-                    {
-                        //index_t proc = recv_procs[recv_idx[j]];
-                        recv_start = recv_col_starts[recv_idx[j]];
-                        recv_end = recv_col_starts[recv_idx[j]+1];
-                        //first_col = recv_col_indices[recv_start];
-                        num_cols = recv_end - recv_start;
-                        sequential_spmv(A->offd, x_data, sum_data, 1.0, 1.0, NULL, recv_start, num_cols);
-                    }
-                    i += n_recvd;
-                }
-            }
-            else
-            {
-                // Wait for all receives to finish
-                MPI_Waitall(num_recvs, recv_requests, MPI_STATUS_IGNORE);
-
-                // Add received data to Vector
-                sequential_spmv(A->offd, recv_buffer, sum_data, 1.0, 1.0); 
-
-            }
+            // Wait for all receives to finish
+            comm->complete_recvs();
         }
 
-        index_t num_rows = A->local_rows;
-        for (int i = 0; i < num_rows; i++)
-        {
-            if (fabs(diag_data[i]) > zero_tol)
-            {
-                x_data[i] = x_new_data[i] + (y_data[i] - sum_data[i]) / diag_data[i];
-                sum_data[i] = 0;
-                x_new_data[i] = 0;
-            }
-        }
+        hybrid(l->A, x_data, y_data, x_tmp_data, comm->recv_buffer);
 
-        if (num_sends)
+        if (comm->num_sends)
         {
             // Wait for all sends to finish
             // TODO Add an error check on the status
-            MPI_Waitall(num_sends, send_requests, MPI_STATUS_IGNORE);
+            comm->complete_sends();
         }
     }
-
-    if (num_recvs)
-    {
-        delete[] recv_requests; 
-        delete[] recv_buffer;
-    }
-    if (num_sends)
-    {
-        // Delete MPI_Requests
-        delete[] send_requests; 
-        delete[] send_buffer;
-    }
-    delete[] diag_data;
-    delete[] sum_data;
-    delete[] x_new_data;
 }
 
 

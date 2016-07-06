@@ -151,7 +151,6 @@ public:
 
         diag = new Matrix(local_rows, local_cols, diag_f);
         offd = new Matrix(local_rows, local_cols, offd_f);
-
     }
 
     /**************************************************************
@@ -243,7 +242,7 @@ public:
     **************************************************************/
     ~ParMatrix()
     {
-        if (this->offd_num_cols)
+        if (offd_num_cols)
         {
             delete offd;
         }

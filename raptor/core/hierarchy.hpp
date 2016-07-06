@@ -51,7 +51,6 @@ namespace raptor
 {
     class Hierarchy
     {
-
         public:
           /**************************************************************
           *****   Matrix Class Constructor
@@ -75,16 +74,18 @@ namespace raptor
               num_levels = 0;
           }
 
+          /**************************************************************
+          *****   Matrix Class Destructor
+          **************************************************************
+          ***** Destructs the hierarchy, deleting each level and 
+          ***** objects for the coarsest level solve.
+          **************************************************************/
           ~Hierarchy()
           {
-
-//              if (A_list[num_levels - 1] -> local_rows)
-//              {
-//                  delete[] A_coarse;
-//                  delete[] permute_coarse;
-//                  delete[] gather_sizes;
-//                  delete[] gather_displs;
-//              }
+              delete[] A_coarse;
+              delete[] permute_coarse; 
+              delete[] sizes;
+              delete[] displs;
 
               for (int i = 0; i < num_levels; i++)
               {
@@ -117,6 +118,19 @@ namespace raptor
           *****    Coarse-grid operator A
           ************************************************************/
           void add_level(ParMatrix* A);
+
+          /***********************************************************
+          *****  Create Coarse Level (DENSE)
+          ************************************************************
+          ***** Store entire dense matrix for coarsest level
+          ***** (For repetitive coarse level BLAS solve)
+          *****
+          ***** Parameters
+          ***** -------------
+          ***** A : ParMatrix*
+          *****    Coarse-grid operator A
+          ************************************************************/
+          void create_coarse_level(ParMatrix* A);
 
           /*************************************************************
           *****   Fine Residual
@@ -158,8 +172,8 @@ namespace raptor
           ***** relax_weight : data_t
           *****    Weight used in jacobi relaxation
           ************************************************************/
-          void solve(ParVector* x, ParVector* b, data_t solve_tol = 1e-5, data_t _relax_weight = 2.0/3, int max_iterations = 100);
-
+          void solve(ParVector* x, ParVector* b, data_t solve_tol = 1e-5, 
+                  data_t _relax_weight = 2.0/3, int max_iterations = 100);
 
           index_t num_levels;
           index_t max_levels;
@@ -177,12 +191,11 @@ namespace raptor
 
           std::vector<Level*> levels;
 
-          MPI_Comm comm_dense;
-
+          // Objects for coarsest level solve
           data_t* A_coarse;
           int* permute_coarse;
-          int* gather_sizes;
-          int* gather_displs;
+          int* sizes;
+          int* displs;
           int coarse_rows;
           int coarse_cols;
     };

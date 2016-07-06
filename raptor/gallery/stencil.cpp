@@ -3,7 +3,29 @@
 
 #include "stencil.hpp"
 
-ParMatrix* stencil_grid(data_t* stencil, int* grid, int dim, format_t format)
+
+/**************************************************************
+ *****   Stencil Grid
+ **************************************************************
+ ***** Generate a matrix from a specified stencil, and of a
+ ***** specified size;
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** stencil : data_t*
+ *****    Stencil of the matrix
+ ***** grid : int*
+ *****    Dimensions of the matrix
+ ***** dim : int
+ *****    Dimension of grid variable
+ *****
+ ***** Returns
+ ***** -------------
+ ***** ParMatrix*
+ *****    Matrix formed from stencil
+ *****
+ **************************************************************/
+ParMatrix* stencil_grid(data_t* stencil, int* grid, int dim)
 {
     // Get MPI Information
     int rank, num_procs;

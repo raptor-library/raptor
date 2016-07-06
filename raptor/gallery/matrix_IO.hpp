@@ -1,6 +1,9 @@
 #ifndef MATRIX_IO_H
 #define MATRIX_IO_H
 
+//TODO -- Comment this.. but I think this started with someone else's code?
+// Do we need to add something about where this code came from?
+
 #include <mpi.h>
 #include <stdio.h>
 #include <string.h>

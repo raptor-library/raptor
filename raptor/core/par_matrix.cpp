@@ -260,6 +260,10 @@ void ParMatrix::finalize()
     }      
 
     diag->finalize();
+    if (local_rows)
+    {
+        diag->move_diag_first();
+    }
 
     if (local_rows)
     {
