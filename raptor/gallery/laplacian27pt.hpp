@@ -9,17 +9,21 @@
 
 using namespace raptor;
 
-/**************************************************************
- *****   27 Point Laplacian Stencil
- **************************************************************
- ***** Generate a 27-point Laplacian stencil
- *****
- ***** Returns
- ***** -------------
- ***** data_t*
- *****    A 3x3 diffusion stencil
- *****
- **************************************************************/
+// 27 Point Laplacian Stencil
+//
+// Generate a 27-point laplacian stencil
+//
+// Returns
+// -------
+// stencil : numpy array
+//     A 3x3 diffusion stencil
+//
+// See Also
+// --------
+// stencil_grid
+//
+//
+
 data_t* laplace_stencil_27pt();
 
 #endif

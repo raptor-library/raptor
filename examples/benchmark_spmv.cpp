@@ -81,10 +81,10 @@ int main(int argc, char *argv[])
     parallel_spmv(A, x, b, 1.0, 0.0, 1);
     assert_equals(correct_b, b_data, A->local_rows, A->first_row);
 
-    parallel_spmv_T(A, b, x, 1.0, 0.0);
+    parallel_spmv_T(A, b, x, 1.0, 0.0, 0);
     assert_equals(correct_x, x_data, A->local_cols, A->first_col_diag);
 
-    parallel_spmv_T(A, b, x, 1.0, 0.0);
+    parallel_spmv_T(A, b, x, 1.0, 0.0, 1);
     assert_equals(correct_x, x_data, A->local_cols, A->first_col_diag);
 
     MPI_Finalize();

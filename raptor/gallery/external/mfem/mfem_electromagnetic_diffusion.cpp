@@ -13,30 +13,6 @@ using namespace mfem;
 void E_exact(const mfem::Vector &, mfem::Vector &);
 void f_exact(const mfem::Vector &, mfem::Vector &);
 
-/**************************************************************
- *****   MFEM Electomagnetic Diffusion
- **************************************************************
- ***** Creates a linear elasticity matrix from MFEM
- *****
- ***** Parameters
- ***** -------------
- ***** A : raptor::ParMatrix**
- *****    Pointer to uninitialized parallel matrix for laplacian to be stored in
- ***** x : ParVector**
- *****    Pointer to uninitialized parallel vector for solution vector
- ***** y : ParVector**
- *****    Pointer to uninitialized parallel vector for rhs vector
- ***** mesh_file : char (const)
- *****    Location of file containing mesh for MFEM to use
- ***** num_elements: int
- *****    Maximum size for refined serial mesh
- ***** order : int (optional)
- *****    Use continuous Lagrange finite elements of this order.
- *****    If order < 1, uses isoparametric/isogeometric space.
- *****    Default = 3
- ***** comm_mat : MPI_Comm (optional)
- *****    MPI_Communicator for A.  Default = MPI_COMM_WORLD.
- **************************************************************/
 void mfem_electromagnetic_diffusion(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x_raptor_ptr, raptor::ParVector** b_raptor_ptr, const char* mesh_file, int num_elements, int order, MPI_Comm comm_mat)
 {
    int myid, num_procs;

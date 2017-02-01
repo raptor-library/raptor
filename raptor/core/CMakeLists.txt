@@ -8,6 +8,6 @@ core/vector.cpp
 core/par_matrix.cpp 
 core/par_vector.cpp 
 core/par_comm.cpp 
-core/hierarchy.cpp
+#core/hierarchy.cpp
 PARENT_SCOPE)
 

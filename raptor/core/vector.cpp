@@ -97,6 +97,25 @@ data_t Vector::norm(index_t p)
 }
 
 /**************************************************************
+*****   Print Vector
+**************************************************************
+***** Prints all nonzero elements in vector
+*****
+***** Parameters
+***** -------------
+***** vec_name : const char* (optional)
+*****    Name to be printed.  Default prints Vec[%d] = %e.
+**************************************************************/
+void Vector::print(const char* vec_name)
+{
+    for (int i = 0; i < size; i++)
+    {
+        if (fabs(values[i]) > zero_tol)
+            printf("%s[%d] = %e\n", vec_name, i, values[i]);
+    }
+}
+
+/**************************************************************
 *****   Vector Data
 **************************************************************
 ***** Returns pointer to vector entries

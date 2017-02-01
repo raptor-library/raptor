@@ -20,7 +20,7 @@ using namespace raptor;
 void ParMatrix::create_comm_mat(MPI_Comm _comm_mat)
 {
     // Get MPI Information
-    int rank, num_procs;
+/*    int rank, num_procs;
     MPI_Comm_rank(_comm_mat, &rank);
     MPI_Comm_size(_comm_mat, &num_procs);
 
@@ -62,11 +62,11 @@ void ParMatrix::create_comm_mat(MPI_Comm _comm_mat)
         MPI_Comm_create(_comm_mat, group_mat, &comm_mat);
     }
     else
-    {
+*/    {
         comm_mat = _comm_mat;
     }
 
-    delete[] active_list;
+//    delete[] active_list;
 
 }
 
@@ -90,15 +90,13 @@ void ParMatrix::gather_partition(MPI_Comm _comm_mat)
 
     create_comm_mat(_comm_mat);
 
-    if (local_rows)
-    {
-        int num_active;
-        MPI_Comm_size(comm_mat, &num_active);
-        global_col_starts.resize(num_active+1);
-        index_t* global_col_starts_data = global_col_starts.data();
-        MPI_Allgather(&first_col_diag, 1, MPI_INT, global_col_starts_data, 1, MPI_INT, comm_mat);
-        global_col_starts[num_active] = global_cols;
-    }
+    int num_active;
+    MPI_Comm_size(comm_mat, &num_active);
+    global_col_starts.resize(num_active+1);
+    index_t* global_col_starts_data = global_col_starts.data();
+    MPI_Allgather(&first_col_diag, 1, MPI_INT, global_col_starts_data, 
+            1, MPI_INT, comm_mat);
+    global_col_starts[num_active] = global_cols;
 }
 
 /**************************************************************
@@ -205,27 +203,29 @@ void ParMatrix::create_partition(MPI_Comm _comm_mat)
 ***** row_global : index_t (optional)
 *****    Determines if the row is a global value (default 0 -- local)
 **************************************************************/    
-void ParMatrix::add_value(index_t row, index_t global_col, data_t value, index_t row_global)
+void ParMatrix::add_value(index_t row, index_t global_col, data_t value)
 {
-    if (row_global)
+    if (global_col >= first_col_diag && global_col < first_col_diag + local_cols)
     {
-        row -= first_row;
+        diag->add_value(row, global_col - first_col_diag, value);
     }
-
-    // Off-Diagonal Block
-    if (global_col < first_col_diag || global_col >= first_col_diag + local_cols)
+    else 
     {
-        if (global_to_local.count(global_col) == 0)
-        {
-            global_to_local[global_col] = offd_num_cols++;
-            local_to_global.push_back(global_col);
-        }
+        global_column_set.insert(global_col);
         offd->add_value(row, global_col, value);
     }
-    else // Diagonal Block
+}
+
+void ParMatrix::add_global_value(int row, int global_col, double value)
+{
+    if (global_col >= first_col_diag && global_col < first_col_diag + local_cols)
     {
-        index_t local_col = global_col - first_col_diag;
-        diag->add_value(row, local_col, value);
+        diag->add_value(row-first_row, global_col - first_col_diag, value);
+    }
+    else
+    {
+        global_column_set.insert(global_col);
+        offd->add_value(row-first_row, global_col, value);
     }
 }
 
@@ -236,44 +236,31 @@ void ParMatrix::add_value(index_t row, index_t global_col, data_t value, index_t
 ***** the local_to_global indices, and creates the parallel
 ***** communicator
 **************************************************************/
-void ParMatrix::finalize()
+void ParMatrix::finalize(bool create_comm)
 {
+    offd->condense_cols();
+    local_to_global = offd->col_list;
+    offd_num_cols = local_to_global.size();   
     if (offd_num_cols)
     {
-        local_to_global.sort();
-        for (index_t i = 0; i < local_to_global.size(); i++)
-        {
-            index_t global_col = local_to_global[i];
-            std::map<index_t, index_t>::iterator it = global_to_local.find(global_col);
-            it->second = i;
-        }
-    }
-    if (offd->nnz)
-    {
-        offd->resize(local_rows, offd_num_cols);
-        offd->col_to_local(global_to_local);
-        offd->finalize();
+        Matrix* tmp = offd;
+        offd = new CSCMatrix((COOMatrix*) tmp);
+        offd->sort();
+        delete tmp;
     }
     else
     {
         delete offd;
     }      
 
-    diag->finalize();
-    if (local_rows)
-    {
-        diag->move_diag_first();
-    }
+    Matrix* tmp = diag;
+    diag = new CSRMatrix((COOMatrix*) tmp);
+    diag->sort();
+    delete tmp;
 
-    if (local_rows)
-    {
-        comm = new ParComm(offd, local_to_global, global_to_local, global_col_starts, comm_mat);
-    }
+    if (create_comm)
+        comm = new ParComm(local_to_global, global_col_starts, first_row, comm_mat);
     else
-    {
         comm = new ParComm();
-        comm->num_sends = 0;
-        comm->num_recvs = 0;
-    }
 }
 

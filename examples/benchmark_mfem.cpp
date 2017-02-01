@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 
     // Get matrix and vectors from MFEM
 //    mfem_linear_elasticity(&A, &x, &b, mesh, num_elements, order);
-//mfem_laplace(&A, &x, &b, mesh, num_elements, order);
+mfem_laplace(&A, &x, &b, mesh, num_elements, order);
 
     // Calculate and Print Number of Nonzeros in Matrix
     local_nnz = 0;

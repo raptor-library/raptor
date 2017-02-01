@@ -26,13 +26,13 @@
  ***** Attributes
  ***** -------------
  ***** A_list : vector<ParMatrix*>
- *****    Array of Operators
+ *****    std::vector of Operators
  ***** P_list : vector<ParMatrix*>
- *****    Array of Prolongation Operators
+ *****    std::vector of Prolongation Operators
  ***** x_list : vector<ParVector*>
- *****    Array of solution vectors
+ *****    std::vector of solution vectors
  ***** b_list : vector<ParVector*>
- *****    Array of right-hand side vectors
+ *****    std::vector of right-hand side vectors
  ***** num_levels : index_t
  *****    Number of levels in hierarchy
  ***** max_num_levels : index_t
@@ -51,6 +51,7 @@ namespace raptor
 {
     class Hierarchy
     {
+
         public:
           /**************************************************************
           *****   Matrix Class Constructor
@@ -74,18 +75,16 @@ namespace raptor
               num_levels = 0;
           }
 
-          /**************************************************************
-          *****   Matrix Class Destructor
-          **************************************************************
-          ***** Destructs the hierarchy, deleting each level and 
-          ***** objects for the coarsest level solve.
-          **************************************************************/
           ~Hierarchy()
           {
-              delete[] A_coarse;
-              delete[] permute_coarse; 
-              delete[] sizes;
-              delete[] displs;
+
+//              if (A_list[num_levels - 1] -> local_rows)
+//              {
+//                  delete[] A_coarse;
+//                  delete[] permute_coarse;
+//                  delete[] gather_sizes;
+//                  delete[] gather_displs;
+//              }
 
               for (int i = 0; i < num_levels; i++)
               {
@@ -118,19 +117,6 @@ namespace raptor
           *****    Coarse-grid operator A
           ************************************************************/
           void add_level(ParMatrix* A);
-
-          /***********************************************************
-          *****  Create Coarse Level (DENSE)
-          ************************************************************
-          ***** Store entire dense matrix for coarsest level
-          ***** (For repetitive coarse level BLAS solve)
-          *****
-          ***** Parameters
-          ***** -------------
-          ***** A : ParMatrix*
-          *****    Coarse-grid operator A
-          ************************************************************/
-          void create_coarse_level(ParMatrix* A);
 
           /*************************************************************
           *****   Fine Residual
@@ -172,8 +158,8 @@ namespace raptor
           ***** relax_weight : data_t
           *****    Weight used in jacobi relaxation
           ************************************************************/
-          void solve(ParVector* x, ParVector* b, data_t solve_tol = 1e-5, 
-                  data_t _relax_weight = 2.0/3, int max_iterations = 100);
+          void solve(ParVector* x, ParVector* b, data_t solve_tol = 1e-5, data_t _relax_weight = 2.0/3, int max_iterations = 100);
+
 
           index_t num_levels;
           index_t max_levels;
@@ -191,11 +177,12 @@ namespace raptor
 
           std::vector<Level*> levels;
 
-          // Objects for coarsest level solve
+          MPI_Comm comm_dense;
+
           data_t* A_coarse;
           int* permute_coarse;
-          int* sizes;
-          int* displs;
+          int* gather_sizes;
+          int* gather_displs;
           int coarse_rows;
           int coarse_cols;
     };

@@ -1,10 +1,9 @@
 // Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#ifndef VECTOR_HPP
-#define VECTOR_HPP
+#ifndef RAPTOR_CORE_VECTOR_HPP
+#define RAPTOR_CORE_VECTOR_HPP
 
 #include "types.hpp"
-#include "array.hpp"
 #include <vector>
 #include <time.h>
 #include <stdlib.h>
@@ -19,7 +18,7 @@
  ***** Attributes
  ***** -------------
  ***** values : std::vector<data_t>
- *****    Array of vector values
+ *****    std::vector of vector values
  ***** size : index_t
  *****    Dimension of vector
  ***** 
@@ -36,10 +35,11 @@
  *****    Multiplies entries of vector by a constant
  ***** norm(index_t p)
  *****    Calculates the p-norm of the vector
+ ***** print()
+ *****    Prints the nonzero values and positions
  ***** data()
  *****    Returns the data values as a data_t*
  **************************************************************/
-
 namespace raptor
 {
 class Vector
@@ -73,16 +73,6 @@ public:
     }
 
     /**************************************************************
-    *****   Vector Class Destructor
-    **************************************************************
-    ***** 
-    **************************************************************/
-    ~Vector()
-    {
-
-    }
-
-    /**************************************************************
     *****   Vector Set Constant Value
     **************************************************************
     ***** Initializes the vector to a constant value
@@ -93,7 +83,6 @@ public:
     *****    Constant value to set each element of vector to
     **************************************************************/
     void set_const_value(data_t alpha);
-
     
     /**************************************************************
     *****   Vector Set Random Values
@@ -143,6 +132,18 @@ public:
     data_t norm(index_t p);
 
     /**************************************************************
+    *****   Print Vector
+    **************************************************************
+    ***** Prints all nonzero elements in vector
+    *****
+    ***** Parameters
+    ***** -------------
+    ***** vec_name : const char* (optional)
+    *****    Name to be printed.  Default prints Vec[%d] = %e.
+    **************************************************************/
+    void print(const char* vec_name = "Vec");
+
+    /**************************************************************
     *****   Vector Data
     **************************************************************
     ***** Returns pointer to vector entries
@@ -154,7 +155,7 @@ public:
     **************************************************************/
     data_t* data();
 
-    Array<data_t> values;
+    std::vector<data_t> values;
     index_t size;
 };
 

@@ -6,410 +6,828 @@
 using namespace raptor;
 
 /**************************************************************
- *****   Matrix Add Value
- **************************************************************
- ***** Inserts a value into the Matrix
- ***** TODO -- functionality for CSR/CSC
- *****
- ***** Parameters
- ***** -------------
- ***** ptr : index_t
- *****    Outer index (Row in CSR, Col in CSC)
- ***** idx : index_t 
- *****    Inner index (Col in CSR, Row in CSC)
- ***** value : data_t
- *****    Value to insert
- **************************************************************/
-void Matrix::add_value(index_t row, index_t col, data_t value)
+*****  Matrix Print
+**************************************************************
+***** Print the nonzeros in the matrix, as well as the row
+***** and column according to each nonzero
+**************************************************************/
+void Matrix::print()
 {
-    if (format == CSR)
+    apply_func([](int row, int col, double val)
+            {
+                printf("A[%d][%d] = %e\n", row, col, val);
+            });
+}
+
+/**************************************************************
+*****   Matrix Resize
+**************************************************************
+***** Set the matrix dimensions to those passed as parameters
+*****
+***** Parameters
+***** -------------
+***** _nrows : int
+*****    Number of rows in matrix
+***** _ncols : int
+*****    Number of cols in matrix
+**************************************************************/
+void Matrix::resize(int _n_rows, int _n_cols)
+{
+    n_rows = _n_rows;
+    n_cols = _n_cols;
+}
+
+/**************************************************************
+*****   Matrix-Vector Multiply (b = Ax)
+**************************************************************
+***** Multiplies the matrix times a vector x, and writes the
+***** result in vector b.
+*****
+***** Parameters
+***** -------------
+***** x : Vector*
+*****    Vector by which to multiply the matrix 
+***** b : Vector*
+*****    Vector in which to place solution
+**************************************************************/
+void Matrix::mult(Vector* x, Vector* b)
+{
+    double* x_data = x->data();
+    double* b_data = b->data();
+    
+    for (int i = 0; i < n_rows; i++)
     {
-        indptr.push_back(row);
-        indices.push_back(col);
+        b_data[i] = 0.0;
     }
-    else if (format == CSC)
+
+    apply_func(x_data, b_data, 
+            [](int row, int col, double val, double* xd, double* bd)
+            {
+                bd[row] += val * xd[col];
+            });
+}
+
+void Matrix::mult(double* x_data, double* b_data)
+{    
+    for (int i = 0; i < n_rows; i++)
     {
-        indptr.push_back(col);
-        indices.push_back(row);
+        b_data[i] = 0.0;
     }
-    data.push_back(value);
+
+    apply_func(x_data, b_data, 
+            [](int row, int col, double val, double* xd, double* bd)
+            {
+                bd[row] += val * xd[col];
+            });
+}
+
+/**************************************************************
+*****   Matrix-Matrix Multiply (C = A*B)
+**************************************************************
+***** Multiplies the matrix times a matrix B, and writes the
+***** result in matrix C.
+*****
+***** Parameters
+***** -------------
+***** B : Matrix*
+*****    Matrix by which to multiply the matrix 
+***** C : Matrix*
+*****    Matrix in which to place solution
+**************************************************************/
+//void Matrix::mult(Matrix* x, Matrix* b)
+//{
+//}
+
+/**************************************************************
+*****   Matrix Residual (r = b - Ax)
+**************************************************************
+***** Calculates the residual, r = b - Ax
+*****
+***** Parameters
+***** -------------
+***** x : Vector*
+*****    Vector by which to multiply the matrix 
+***** b : Vector*
+*****    Right-hand side vector
+***** r : Vector*
+*****    Vector in which to place residual
+**************************************************************/
+void Matrix::residual(Vector* x, Vector* b, Vector* r)
+{
+    double* x_data = x->data();
+    double* b_data = b->data();
+    double* r_data = r->data();
+
+    for (int i = 0; i < n_rows; i++)
+    {
+        r_data[i] = b_data[i];
+    }
+
+    apply_func(x_data, r_data,
+            [](int row, int col, double val, double* xd, double* rd)
+            {
+                rd[row] -= val * xd[col];
+            });
+}
+
+/**************************************************************
+*****  COOMatrix Add Value
+**************************************************************
+***** Inserts value into the position (row, col) of the matrix
+*****
+***** Parameters
+***** -------------
+***** row : int
+*****    Row in which to insert value 
+***** col : int
+*****    Column in which to insert value
+***** value : double
+*****    Nonzero value to be inserted into the matrix
+**************************************************************/
+void COOMatrix::add_value(int row, int col, double value)
+{
+    idx1.push_back(row);
+    idx2.push_back(col);
+    vals.push_back(value);
     nnz++;
 }
- 
+
 /**************************************************************
- *****   Matrix Resize
- **************************************************************
- ***** Resizes the dimensions of the matrix
- *****
- ***** Parameters
- ***** -------------
- ***** _nrows : index_t
- *****    Number of rows in the matrix
- ***** _ncols : index_t 
- *****    Number of columns in the matrix
- **************************************************************/
-void Matrix::resize(index_t _nrows, index_t _ncols)
+*****   COOMatrix Condense Rows
+**************************************************************
+***** Removes zero rows from the matrix, and initializes 
+***** row_list, which points from new row index to original 
+***** row index.
+**************************************************************/
+void COOMatrix::condense_rows()
 {
-    this->n_rows = _nrows;
-    this->n_cols = _ncols;
-   
-    if (format == CSR)
+    std::set<int> row_set;
+    std::map<int, int> orig_to_new;
+    int ctr = 0;
+
+    // Find all rows that contain nonzeros
+    for (std::vector<int>::iterator it = idx1.begin(); it != idx1.end(); ++it)
     {
-        this->n_outer = _nrows;
-        this->n_inner = _ncols;
+        row_set.insert(*it);
     }
-    else if (format == CSC)
+
+    // Condense matrix, removing zero rows, by creating map of original row
+    // index to new (condensed) row index
+    for (std::set<int>::iterator it = row_set.begin(); 
+            it != row_set.end(); ++it)
     {
-        this->n_outer = _ncols;
-        this->n_inner = _nrows;
+        orig_to_new[*it] = row_list.size();
+        row_list.push_back(*it);
+    }
+
+    // Resize matrix to remove zero rows
+    n_rows = row_set.size();
+
+    // Map original row to new condensed row
+    for (std::vector<int>::iterator it = idx1.begin(); it != idx1.end(); ++it)
+    {
+        *it = orig_to_new[*it];
     }
 }
 
 /**************************************************************
- *****   Matrix ColToLocal
- **************************************************************
- ***** Converts column indices to be local values
- ***** 0 to number of cols
- *****
- ***** Parameters
- ***** -------------
- ***** map : std::map<index_t, index_t>
- *****    Maps global columns to local columns
- **************************************************************/
-void Matrix::col_to_local(std::map<index_t, index_t>& map)
+*****   COOMatrix Condense Columns
+**************************************************************
+***** Removes zero columns from the matrix, and initializes 
+***** col_list, which points from new column index to original 
+***** column index.
+**************************************************************/
+void COOMatrix::condense_cols()
 {
-    if (format == CSR)
+    std::set<int> col_set;
+    std::map<int, int> orig_to_new;
+    int ctr = 0;
+
+    // Find all cols that contain nonzeros
+    for (std::vector<int>::iterator it = idx2.begin(); it != idx2.end(); ++it)
     {
-        for (index_t i = 0; i < nnz; i++)
-        {
-            indices[i] = map[indices[i]];
-        }
-    }
-    else
-    {
-        for (index_t i = 0; i < nnz; i++)
-        {
-            indptr[i] = map[indptr[i]];
-        }
-    }
-}
-
-void Matrix::move_diag_first()
-{
-    int outer_start, outer_end;
-    bool has_diag;
-    int shift, pos, idx;
-
-    // Sum_Missing[i] shows how many diags
-    // before row i were missing (need to shift)
-    int* sum_missing = new int[n_outer+1];
-    int* diag_pos = new int[n_outer];
-
-    sum_missing[0] = 0;
-    for (int i = 0; i < n_outer; i++)
-    {
-        outer_start = indptr[i];
-        outer_end = indptr[i+1];
-        has_diag = false;
-        diag_pos[i] = -1;
-        for (int j = outer_start; j < outer_end; j++)
-        {  
-            idx = indices[j];
-            if (i == idx)
-            {
-                diag_pos[i] = j;
-                has_diag = true;
-                sum_missing[i+1] = sum_missing[i];
-                break;
-            }
-        }
-
-        if (!has_diag)
-        {
-            sum_missing[i+1] = sum_missing[i] + 1;
-        }
+        col_set.insert(*it);
     }
 
-    indices.resize(indices.size() + sum_missing[n_outer]);
-    data.resize(data.size() + sum_missing[n_outer]);
-
-    data_t diag_data;
-
-    // Go backwards because moving values towards end
-    for (int i = n_outer - 1; i >= 0; i--)
+    // Condense matrix, removing zero cols, by creating map of original col
+    // index to new (condensed) col index
+    for (std::set<int>::iterator it = col_set.begin(); 
+            it != col_set.end(); ++it)
     {
-        pos = diag_pos[i];
-        outer_start = indptr[i];
-        outer_end = indptr[i+1];
-        shift = sum_missing[i+1];
+        orig_to_new[*it] = col_list.size();
+        col_list.push_back(*it);
+    }
 
-        if (pos >= 0)
-        {
-            diag_data = data[pos];
-            for (int j = outer_end - 1; j > pos; j--)
-            {
-                indices[j + shift] = indices[j];
-                data[j + shift] = data[j];
-            }
-            for (int j = pos; j > outer_start; j--)
-            {
-                indices[j + shift] = indices[j - 1];
-                data[j + shift] = data[j - 1];
-            }
-            indices[outer_start + shift] = i;
-            data[outer_start + shift] = diag_data;
-        }
-        else
-        {
-            for (int j = outer_end - 1; j >= outer_start; j--)
-            {
-                indices[j + shift] = indices[j];
-                data[j + shift] = data[j];
-            }
-            indices[outer_start + shift - 1] = i;
-            data[outer_start + shift - 1] = 0.0;
-        }
-        indptr[i+1] = indptr[i+1] + shift;
+    // Resize matrix to remove zero cols
+    n_cols = col_set.size();
+
+    // Map original col to new condensed col
+    for (std::vector<int>::iterator it = idx2.begin(); it != idx2.end(); ++it)
+    {
+        *it = orig_to_new[*it];
     }
 }
 
 /**************************************************************
- *****   Matrix Finalize
- **************************************************************
- ***** Compresses matrix, sorts the entries, removes any zero
- ***** values, and combines any entries at the same location
- *****
- ***** Parameters
- ***** -------------
- ***** _format : format_t
- *****    Format to convert Matrix to
- **************************************************************/
-void Matrix::finalize()
+*****   COOMatrix Sort
+**************************************************************
+***** Sorts the sparse matrix by row, and by column within 
+***** each row.  Removes duplicates, summing their values 
+***** together.
+**************************************************************/
+void COOMatrix::sort()
 {
-    if (format == CSR)
+    // Create permutation vector p
+    std::vector<int> p(nnz);
+    std::iota(p.begin(), p.end(), 0);
+    std::sort(p.begin(), p.end(),
+        [&](int i, int j){ 
+            if (idx1[i] == idx1[j])
+                return idx2[i] < idx2[j];
+            else
+                return idx1[i] < idx1[j];
+        });
+
+    // Permute all vectors (rows, cols, data) 
+    // according to p
+    std::vector<bool> done(nnz);
+    for (int i = 0; i < nnz; i++)
     {
-        n_outer = n_rows;
-        n_inner = n_cols;
-    }
-    else
-    {
-        n_outer = n_cols;
-        n_inner = n_rows;
-    }
-    if (nnz == 0)
-    {
-        indptr.resize(n_outer+1);
-        for (index_t i = 0; i < n_outer + 1; i++)
+        if (done[i]) continue;
+
+        done[i] = true;
+        int prev_j = i;
+        int j = p[i];
+        while (i != j)
         {
-            indptr[i] = 0;
-        }
-        return;
-    }
-
-    index_t* ptr_nnz = new index_t[n_outer]();
-    for (index_t i = 0; i < nnz; i++)
-    {
-        ptr_nnz[indptr[i]]++;
-    }
-
-    // Create vectors to copy sorted data into
-    std::vector<index_t> indptr_a;
-    std::vector<std::pair<index_t, data_t>> data_pair;
-    indptr_a.resize(n_outer + 1);
-    data_pair.resize(nnz);
-
-    // Set the outer pointer (based on nnz per outer idx)
-    indptr_a[0] = 0;
-    for (index_t ptr = 0; ptr < n_outer; ptr++)
-    {
-        indptr_a[ptr+1] = indptr_a[ptr] + ptr_nnz[ptr];
-        ptr_nnz[ptr] = 0;
-    }
-
-    // Add inner indices and values, grouped by outer idx
-    for (index_t ctr = 0; ctr < nnz; ctr++)
-    {
-        index_t ptr = indptr[ctr];
-        index_t pos = indptr_a[ptr] + ptr_nnz[ptr]++;
-        data_pair[pos].first = indices[ctr];
-        data_pair[pos].second = data[ctr];
-    }
-
-    // Sort each outer group (completely sorted matrix)
-    for (index_t i = 0; i < n_outer; i++)
-    {
-        index_t ptr_start = indptr_a[i];
-        index_t ptr_end = indptr_a[i+1];
-
-        if (ptr_start < ptr_end)
-        {
-            std::sort(data_pair.begin()+ptr_start, data_pair.begin() + ptr_end,
-                [](const std::pair<index_t, data_t>& lhs,
-                const std::pair<index_t, data_t>& rhs)
-                    { return lhs.first < rhs.first; } );
+            std::swap(idx1[prev_j], idx1[j]);
+            std::swap(idx2[prev_j], idx2[j]);
+            std::swap(vals[prev_j], vals[j]);
+            done[j] = true;
+            prev_j = j;
+            j = p[j];
         }
     }
 
-    // Add entries to compressed vectors
-    indptr.resize(n_outer + 1);
-    nnz = 0;
-    for (index_t i = 0; i < n_outer; i++)
+    // Remove duplicates (sum together)
+    int prev_row = idx1[0];
+    int prev_col = idx2[0];
+    int ctr = 1;
+    for (int i = 1; i < nnz; i++)
     {
-        indptr[i] = nnz;
-        index_t ptr_start = indptr_a[i];
-        index_t ptr_end = indptr_a[i+1];
-
-        index_t j = ptr_start;
-
-        // Always add first entry (if greater than zero)
-        while (j < ptr_end)
+        int row = idx1[i];
+        int col = idx2[i];
+        double val = vals[i];
+        if (row == prev_row && col == prev_col)
         {
-            if (fabs(data_pair[j].second) > zero_tol)
-            {
-                indices[nnz] = data_pair[j].first;
-                data[nnz] = data_pair[j].second;
-                nnz++;
-                j++;
-                break;
-            }
-            j++;
+            vals[ctr-1] += val;
         }
-
-        // Only add successive entries if they are different
-        // Otherwise combine (add values together)
-        for (; j < ptr_end; j++)
+        else if (ctr != i)
         {
-            if (data_pair[j].first == indices[nnz-1])
-            {
-                data[nnz-1] += data_pair[j].second;
-            }
-            else if (fabs(data_pair[j].second) > zero_tol)
-            {
-                indices[nnz] = data_pair[j].first;
-                data[nnz] = data_pair[j].second;
-                nnz++;
-            }
-        }
-    }
-    indptr[n_outer] = nnz;
-
-    // Delete array
-    delete[] ptr_nnz;
-}
-
-/**************************************************************
- *****   Matrix Convert
- **************************************************************
- ***** Converts matrix into given format.  If format is the same
- ***** as that already set, nothing is done.
- *****
- ***** Parameters
- ***** -------------
- ***** _format : format_t
- *****    Format to convert Matrix to
- **************************************************************/
-void Matrix::convert(format_t _format)
-{
-    // Don't convert if format remains the same
-    if (format == _format)
-    {
-        return;
-    }
-
-    // Convert between CSR and CSC
-    // Switch inner and outer indices
-    index_t n_tmp = this->n_inner;
-    this->n_inner = this->n_outer;
-    this->n_outer = n_tmp;
-
-    if (nnz == 0)
-    {
-        indptr.resize(n_outer+1);
-        indices.resize(0);
-        data.resize(0);
-        for (index_t i = 0; i < n_outer + 1; i++)
-        {
-            indptr[i] = 0;
-        }
-        format = _format;
-        return;
-    }
-
-    // Calculate number of nonzeros per outer idx
-    index_t* ptr_nnz = new index_t[n_outer]();
-    for (index_t i = 0; i < nnz; i++)
-    {
-        ptr_nnz[indices[i]]++;      
-    }
-
-    // Create vectors to copy sorted data into
-    std::vector<index_t> indptr_a;
-    std::vector<std::pair<index_t, data_t>> data_pair;
-    indptr_a.resize(n_outer + 1);
-    data_pair.resize(nnz);
-
-    // Set the outer pointer (based on nnz per outer idx)
-    indptr_a[0] = 0;
-    for (index_t ptr = 0; ptr < this->n_outer; ptr++)
-    {
-        indptr_a[ptr+1] = indptr_a[ptr] + ptr_nnz[ptr];
-        ptr_nnz[ptr] = 0;
-    }
-
-    // Add inner indices and values, grouped by outer idx
-    for (index_t i = 0; i < this->n_inner; i++)
-    {
-        index_t ptr_start = this->indptr[i];
-        index_t ptr_end = this->indptr[i+1];
-
-        for (index_t j = ptr_start; j < ptr_end; j++)
-        {
-            index_t new_ptr = this->indices[j];
-            index_t pos = indptr_a[new_ptr] + ptr_nnz[new_ptr]++;
-            data_pair[pos].first = i;
-            data_pair[pos].second = this->data[j];
-        }
-    }
-
-    // Sort each outer group (completely sorted matrix)
-    for (index_t i = 0; i < n_outer; i++)
-    {
-        index_t ptr_start = indptr_a[i];
-        index_t ptr_end = indptr_a[i+1];
-
-        if (ptr_start < ptr_end)
-        {
-            std::sort(data_pair.begin()+ptr_start, data_pair.begin() + ptr_end, 
-                [](const std::pair<index_t, data_t>& lhs, 
-                const std::pair<index_t, data_t>& rhs) 
-                    { return lhs.first < rhs.first; } );       
-        }
-    }
-
-    // Add entries to compressed vectors 
-    // (assume no zeros or duplicate entries)
-    indptr.resize(n_outer + 1);
-    index_t ctr = 0;
-    for (index_t i = 0; i < n_outer; i++)
-    {
-        indptr[i] = ctr;
-        index_t ptr_start = indptr_a[i];
-        index_t ptr_end = indptr_a[i+1];
-    
-        for (index_t j = ptr_start; j < ptr_end; j++)
-        {
-            indices[ctr] = data_pair[j].first;
-            data[ctr] = data_pair[j].second;
+            idx1[ctr] = row;
+            idx2[ctr] = col;
+            vals[ctr] = val;
             ctr++;
         }
     }
-    indptr[n_outer] = ctr;
-
-    indptr_a.clear();
-    data_pair.clear();
-  
-    delete[] ptr_nnz;
-
-    // Set new format
-    format = _format;
+    nnz = ctr;
 }
+
+/**************************************************************
+*****  COOMatrix Apply Function
+**************************************************************
+***** Apply function, passed as a paramter, to every nonzero
+***** in the COO Matrix.
+*****
+***** Parameters
+***** -------------
+***** func_ptr : std::function<void(int, int, double)>
+*****    Function that should be applied to every nonzero in 
+*****    matrix.  This function needs to know only the row,
+*****    column, and value of every nonzero.
+**************************************************************/
+void COOMatrix::apply_func(std::function<void(int, int, double)> func_ptr)
+{
+    for (int i = 0; i < nnz; i++)
+    {
+        int row = idx1[i];
+        int col = idx2[i];
+        double val = vals[i];
+        func_ptr(row, col, val);
+    }
+} 
+
+/**************************************************************
+*****  COOMatrix Apply Function
+**************************************************************
+***** Apply function, passed as a paramter, to every nonzero
+***** in the COO Matrix.  For an example, look at the method mult.
+*****
+***** Parameters
+***** -------------
+***** func_ptr : std::function<void(int, int, double, double*, double*)>
+*****    Function that should be applied to every nonzero in 
+*****    matrix.  This function needs to know the row,
+*****    column, and value of every nonzero, as well as the two
+*****    double* values passed as arguments.
+***** xd : double* 
+*****    Array of doubles that are used in function
+***** bd : double*
+*****    Array of doubles that are used in function
+**************************************************************/
+void COOMatrix::apply_func(double* xd, double* bd, 
+        std::function<void(int, int, double, double*, double*)> func_ptr)
+{
+    for (int i = 0; i < nnz; i++)
+    {
+        int row = idx1[i];
+        int col = idx2[i];
+        double val = vals[i];
+        func_ptr(row, col, val, xd, bd);
+    }
+}    
+
+/**************************************************************
+*****  CSRMatrix Add Value
+**************************************************************
+***** Inserts value into the position (row, col) of the matrix.
+***** Values must be inserted in row-wise order, so if the row
+***** is not equal to the row of the previously inserted value,
+***** indptr is edited, and it is assumed that row is complete.
+***** TODO -- this method needs further testing
+*****
+***** Parameters
+***** -------------
+***** row : int
+*****    Row in which to insert value 
+***** col : int
+*****    Column in which to insert value
+***** value : double
+*****    Nonzero value to be inserted into the matrix
+**************************************************************/
+void CSRMatrix::add_value(int row, int col, double value)
+{
+    int last_row = 0;
+    if (nnz) last_row = idx1[nnz - 1];
+    while (last_row < row)
+    {
+        idx1[++last_row] = nnz;
+    }
+
+    idx2.push_back(col);
+    vals.push_back(value);
+    nnz++;
+}
+
+
+/**************************************************************
+*****   CSRMatrix Condense Rows
+**************************************************************
+***** Removes zero rows from the matrix, and initializes 
+***** row_list, which points from new row index to original 
+***** row index.
+**************************************************************/
+void CSRMatrix::condense_rows()
+{
+    std::vector<int> orig_to_new;
+    orig_to_new.resize(n_rows);
+    row_list.reserve(n_rows);
+    int ctr = 0;
+
+    for (int i = 0; i < n_rows; i++)
+    {
+        int row_size = idx1[i+1] - idx1[i];
+        if (row_size)
+        {
+            orig_to_new[i] = row_list.size();
+            row_list.push_back(i);
+        }
+    }
+
+    for (std::vector<int>::iterator it = row_list.begin(); 
+            it != row_list.end(); ++it)
+    {
+        idx1[ctr+1] = idx1[*it + 1];
+        ctr++;
+    }
+    n_rows = row_list.size();
+}
+
+/**************************************************************
+*****   CSRMatrix Condense Columns
+**************************************************************
+***** Removes zero columns from the matrix, and initializes 
+***** col_list, which points from new column index to original 
+***** column index.
+**************************************************************/
+void CSRMatrix::condense_cols()
+{
+    std::set<int> col_set;
+    std::map<int, int> orig_to_new;
+    int ctr = 0;
+
+    // Find all cols that contain nonzeros
+    for (std::vector<int>::iterator it = idx2.begin(); it != idx2.end(); ++it)
+    {
+        col_set.insert(*it);
+    }
+
+    // Condense matrix, removing zero cols, by creating map of original col
+    // index to new (condensed) col index
+    for (std::set<int>::iterator it = col_set.begin(); 
+            it != col_set.end(); ++it)
+    {
+        orig_to_new[*it] = col_list.size();
+        col_list.push_back(*it);
+    }
+
+    // Resize matrix to remove zero cols
+    n_cols = col_set.size();
+
+    // Map original col to new condensed col
+    for (std::vector<int>::iterator it = idx2.begin(); it != idx2.end(); ++it)
+    {
+        *it = orig_to_new[*it];
+    }
+}
+
+/**************************************************************
+*****   CSRMatrix Sort
+**************************************************************
+***** Sorts the sparse matrix by columns within each row.  
+***** Removes duplicates, summing their values 
+***** together.
+**************************************************************/
+void CSRMatrix::sort()
+{
+    // Sort the columns of each row (and data accordingly) and remove
+    // duplicates (summing values together)
+    int orig_row_start = idx1[0];
+    for (int row = 0; row < n_rows; row++)
+    {
+        int new_row_start = idx1[row];
+        int orig_row_end = idx1[row+1];
+        int row_size = orig_row_end - orig_row_start;
+        if (row_size == 0) 
+        {
+            orig_row_start = orig_row_end;
+            idx1[row+1] = idx1[row];
+            continue;
+        }
+
+        // Create permutation vector p for row
+        std::vector<int> p(row_size);
+        std::iota(p.begin(), p.end(), 0);
+        std::sort(p.begin(), p.end(),
+                [&](int i, int j)
+                { 
+                    return idx2[i] < idx2[j];
+                });
+
+        // Permute columns and data according to p
+        std::vector<bool> done(row_size);
+        for (int i = 0; i < row_size; i++)
+        {
+            if (done[i]) continue;
+
+            done[i] = true;
+            int prev_j = i;
+            int j = p[i];
+            while (i != j)
+            {
+                std::swap(idx2[prev_j + orig_row_start], idx2[j + orig_row_start]);
+                std::swap(vals[prev_j + orig_row_start], vals[j + orig_row_start]);
+                done[j] = true;
+                prev_j = j;
+                j = p[j];
+            }
+        }
+
+        // Remove Duplicates
+        int col = idx2[orig_row_start];
+        double val = vals[orig_row_start];
+        idx2[new_row_start] = col;
+        vals[new_row_start] = val;
+        int prev_col = col;
+        int ctr = 1;
+        for (int j = orig_row_start + 1; j < orig_row_end; j++)
+        {
+            col = idx2[j];
+            val = vals[j];
+            if (col == prev_col)
+            {
+                vals[ctr - 1 + new_row_start] += val;
+            }
+            else
+            {
+                idx2[ctr + new_row_start] = col;
+                vals[ctr + new_row_start] = val;
+                ctr++;
+                prev_col = col;
+            }
+        }
+        orig_row_start = orig_row_end;
+        idx1[row+1] = idx1[row] + ctr;
+    }
+}
+
+/**************************************************************
+*****  CSRMatrix Apply Function
+**************************************************************
+***** Apply function, passed as a paramter, to every nonzero
+***** in the CSR Matrix.
+*****
+***** Parameters
+***** -------------
+***** func_ptr : std::function<void(int, int, double)>
+*****    Function that should be applied to every nonzero in 
+*****    matrix.  This function needs to know only the row,
+*****    column, and value of every nonzero.
+**************************************************************/
+void CSRMatrix::apply_func(std::function<void(int, int, double)> func_ptr)
+{
+    for (int i = 0; i < n_rows; i++)
+    {
+        int row_start = idx1[i];
+        int row_end = idx1[i+1];
+        for (int j = row_start; j < row_end; j++)
+        {
+            func_ptr(i, idx2[j], vals[j]);
+        }
+    }
+}
+
+/**************************************************************
+*****  CSRMatrix Apply Function
+**************************************************************
+***** Apply function, passed as a paramter, to every nonzero
+***** in the CSR Matrix.  For an example, look at the method mult.
+*****
+***** Parameters
+***** -------------
+***** func_ptr : std::function<void(int, int, double, double*, double*)>
+*****    Function that should be applied to every nonzero in 
+*****    matrix.  This function needs to know the row,
+*****    column, and value of every nonzero, as well as the two
+*****    double* values passed as arguments.
+***** xd : double* 
+*****    Array of doubles that are used in function
+***** bd : double*
+*****    Array of doubles that are used in function
+**************************************************************/
+void CSRMatrix::apply_func(double* xd, double* bd, 
+        std::function<void(int, int, double, double*, double*)> func_ptr)
+{
+    for (int i = 0; i < n_rows; i++)
+    {
+        int row_start = idx1[i];
+        int row_end = idx1[i+1];
+        for (int j = row_start; j < row_end; j++)
+        {
+            func_ptr(i, idx2[j], vals[j], xd, bd);
+        }
+    }
+}   
+
+/**************************************************************
+*****  CSCMatrix Add Value
+**************************************************************
+***** Inserts value into the position (row, col) of the matrix.
+***** Values must be inserted in column-wise order, so if the col
+***** is not equal to the col of the previously inserted value,
+***** indptr is edited, and it is assumed that col is complete.
+***** TODO -- this method needs further testing
+*****
+***** Parameters
+***** -------------
+***** row : int
+*****    Row in which to insert value 
+***** col : int
+*****    Column in which to insert value
+***** value : double
+*****    Nonzero value to be inserted into the matrix
+**************************************************************/
+void CSCMatrix::add_value(int row, int col, double value)
+{
+    int last_col = 0;
+    if (nnz) last_col = idx1[nnz - 1];
+    while (last_col < col)
+    {
+        idx1[++last_col] = nnz;
+    }
+
+    idx2.push_back(row);
+    vals.push_back(value);
+    nnz++;
+}
+
+/**************************************************************
+*****   CSCMatrix Condense Rows
+**************************************************************
+***** Removes zero rows from the matrix, and initializes 
+***** row_list, which points from new row index to original 
+***** row index.
+**************************************************************/
+void CSCMatrix::condense_rows()
+{
+    std::set<int> row_set;
+    std::map<int, int> orig_to_new;
+    int ctr = 0;
+
+    // Find all rows that contain nonzeros
+    for (std::vector<int>::iterator it = idx2.begin(); it != idx2.end(); ++it)
+    {
+        row_set.insert(*it);
+    }
+
+    // Condense matrix, removing zero rows, by creating map of original row
+    // index to new (condensed) row index
+    for (std::set<int>::iterator it = row_set.begin(); 
+            it != row_set.end(); ++it)
+    {
+        orig_to_new[*it] = row_list.size();
+        row_list.push_back(*it);
+    }
+
+    // Resize matrix to remove zero rows
+    n_rows = row_set.size();
+
+    // Map original row to new condensed row
+    for (std::vector<int>::iterator it = idx2.begin(); it != idx2.end(); ++it)
+    {
+        *it = orig_to_new[*it];
+    }
+}
+
+/**************************************************************
+*****   CSCMatrix Condense Columns
+**************************************************************
+***** Removes zero columns from the matrix, and initializes 
+***** col_list, which points from new column index to original 
+***** column index.
+**************************************************************/
+void CSCMatrix::condense_cols()
+{
+    std::vector<int> orig_to_new;
+    orig_to_new.resize(n_cols);
+    col_list.reserve(n_cols);
+    int ctr = 0;
+
+    for (int i = 0; i < n_cols; i++)
+    {
+        int col_size = idx1[i+1] - idx1[i];
+        if (col_size)
+        {
+            orig_to_new[i] = col_list.size();
+            col_list.push_back(i);
+        }
+    }
+
+    for (std::vector<int>::iterator it = col_list.begin(); 
+            it != col_list.end(); ++it)
+    {
+        idx1[ctr+1] = idx1[*it + 1];
+        ctr++;
+    }
+    n_cols = col_list.size();
+}
+
+/**************************************************************
+*****   CSCMatrix Sort
+**************************************************************
+***** Sorts the sparse matrix by rows within each column.  
+***** Removes duplicates, summing their values 
+***** together.
+**************************************************************/
+void CSCMatrix::sort()
+{
+    // Sort the columns of each row (and data accordingly) and remove
+    // duplicates (summing values together)
+    int orig_col_start = idx1[0];
+    for (int col = 0; col < n_cols; col++)
+    {
+        int new_col_start = idx1[col];
+        int orig_col_end = idx1[col+1];
+        int col_size = orig_col_end - orig_col_start;
+        if (col_size == 0) 
+        {
+            orig_col_start = orig_col_end;
+            idx1[col+1] = idx1[col];
+            continue;
+        }
+
+        // Create permutation vector p for row
+        std::vector<int> p(col_size);
+        std::iota(p.begin(), p.end(), 0);
+        std::sort(p.begin(), p.end(),
+                [&](int i, int j)
+                { 
+                    return idx2[i] < idx2[j];
+                });
+
+        // Permute columns and data according to p
+        std::vector<bool> done(col_size);
+        for (int i = 0; i < col_size; i++)
+        {
+            if (done[i]) continue;
+
+            done[i] = true;
+            int prev_j = i;
+            int j = p[i];
+            while (i != j)
+            {
+                std::swap(idx2[prev_j + orig_col_start], idx2[j + orig_col_start]);
+                std::swap(vals[prev_j + orig_col_start], vals[j + orig_col_start]);
+                done[j] = true;
+                prev_j = j;
+                j = p[j];
+            }
+        }
+
+        // Remove Duplicates
+        int row = idx2[orig_col_start];
+        double val = vals[orig_col_start];
+        idx2[new_col_start] = row;
+        vals[new_col_start] = val;
+        int prev_row = row;
+        int ctr = 1;
+        for (int j = orig_col_start + 1; j < orig_col_end; j++)
+        {
+            row = idx2[j];
+            val = vals[j];
+            if (row == prev_row)
+            {
+                vals[ctr - 1 + new_col_start] += val;
+            }
+            else
+            {
+                idx2[ctr + new_col_start] = row;
+                vals[ctr + new_col_start] = val;
+                ctr++;
+                prev_row = row;
+            }
+        }
+        orig_col_start = orig_col_end;
+        idx1[col+1] = idx1[col] + ctr;
+    }
+}
+
+/**************************************************************
+*****  CSCMatrix Apply Function
+**************************************************************
+***** Apply function, passed as a paramter, to every nonzero
+***** in the CSC Matrix.
+*****
+***** Parameters
+***** -------------
+***** func_ptr : std::function<void(int, int, double)>
+*****    Function that should be applied to every nonzero in 
+*****    matrix.  This function needs to know only the row,
+*****    column, and value of every nonzero.
+**************************************************************/
+void CSCMatrix::apply_func(std::function<void(int, int, double)> func_ptr)
+{
+    for (int i = 0; i < n_cols; i++)
+    {
+        int col_start = idx1[i];
+        int col_end = idx1[i+1];
+        for (int j = col_start; j < col_end; j++)
+        {
+            func_ptr(idx2[j], i, vals[j]);
+        }
+    }
+}
+
+/**************************************************************
+*****  CSCMatrix Apply Function
+**************************************************************
+***** Apply function, passed as a paramter, to every nonzero
+***** in the CSC Matrix.  For an example, look at the method mult.
+*****
+***** Parameters
+***** -------------
+***** func_ptr : std::function<void(int, int, double, double*, double*)>
+*****    Function that should be applied to every nonzero in 
+*****    matrix.  This function needs to know the row,
+*****    column, and value of every nonzero, as well as the two
+*****    double* values passed as arguments.
+***** xd : double* 
+*****    Array of doubles that are used in function
+***** bd : double*
+*****    Array of doubles that are used in function
+**************************************************************/
+void CSCMatrix::apply_func(double* xd, double* bd, 
+        std::function<void(int, int, double, double*, double*)> func_ptr)
+{
+    for (int i = 0; i < n_cols; i++)
+    {
+        int col_start = idx1[i];
+        int col_end = idx1[i+1];
+        for (int j = col_start; j < col_end; j++)
+        {
+            func_ptr(idx2[j], i, vals[j], xd, bd);
+        }
+    }
+}  
+
+

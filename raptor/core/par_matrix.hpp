@@ -5,8 +5,8 @@
 
 #include <mpi.h>
 #include <math.h>
+#include <set>
 
-#include "array.hpp"
 #include "matrix.hpp"
 #include "par_comm.hpp"
 #include "types.hpp"
@@ -34,12 +34,12 @@
  *****    Matrix storing local diagonal block
  ***** offd : Matrix*
  *****    Matrix storing local off-diagonal block
- ***** local_to_global : Array<index_t>
- *****    Array that converts local columns in offd matrix to global
+ ***** local_to_global : std::vector<index_t>
+ *****    std::vector that converts local columns in offd matrix to global
  ***** global_to_local : std::map<index_t, index_t>
  *****    Maps global columns to local columns in offd matrix
- ***** global_col_starts : Array<index_t>
- *****    Array of first column to be in the diagonal block of
+ ***** global_col_starts : std::vector<index_t>
+ *****    std::vector of first column to be in the diagonal block of
  *****    each process
  ***** offd_num_cols : index_t
  *****    Number of columns in the off-diagonal matrix
@@ -96,7 +96,7 @@ public:
     *****    Communicator containing all processes that are
     *****    creating this matrix
     **************************************************************/
-    ParMatrix(index_t _glob_rows, index_t _glob_cols, MPI_Comm _comm_mat = MPI_COMM_WORLD, format_t diag_f = CSR, format_t offd_f = CSC)
+    ParMatrix(index_t _glob_rows, index_t _glob_cols, MPI_Comm _comm_mat = MPI_COMM_WORLD)
     {
         // Initialize matrix dimensions
         global_rows = _glob_rows;
@@ -106,8 +106,8 @@ public:
         // Create Partition
         create_partition(_comm_mat);
 
-        diag = new Matrix(local_rows, local_cols, diag_f);
-        offd = new Matrix(local_rows, local_cols, offd_f);
+        diag = new COOMatrix(local_rows, local_cols, 5);
+        offd = new COOMatrix(local_rows, local_cols, 5);
     }
 
     /**************************************************************
@@ -137,7 +137,11 @@ public:
     ***** offd_f : format_t (optional)
     *****    Format of off-diagonal matrix (default CSC)
     **************************************************************/
-    ParMatrix(index_t _glob_rows, index_t _glob_cols, index_t _local_rows, index_t _local_cols, index_t _first_row, index_t _first_col_diag, MPI_Comm _comm_mat = MPI_COMM_WORLD, format_t diag_f = CSR, format_t offd_f = CSC)
+    ParMatrix(index_t _glob_rows, index_t _glob_cols, index_t _local_rows, 
+            index_t _local_cols, index_t _first_row, index_t _first_col_diag, 
+            MPI_Comm _comm_mat = MPI_COMM_WORLD, int nnz_per_row_diag = 5, 
+            int nnz_per_row_offd = 5, format_t diag_f = CSR, format_t offd_f = CSC, 
+            bool need_part = true)
     {
         global_rows = _glob_rows;
         global_cols = _glob_cols;
@@ -147,10 +151,11 @@ public:
         first_col_diag = _first_col_diag;
         offd_num_cols = 0;
 
-        gather_partition(_comm_mat);
+        if (need_part)
+            gather_partition(_comm_mat);
 
-        diag = new Matrix(local_rows, local_cols, diag_f);
-        offd = new Matrix(local_rows, local_cols, offd_f);
+        diag = new COOMatrix(local_rows, local_cols, nnz_per_row_diag);
+        diag = new COOMatrix(local_rows, local_cols, nnz_per_row_offd);
     }
 
     /**************************************************************
@@ -172,7 +177,7 @@ public:
     ***** offd_f : format_t (optional)
     *****    Format of off-diagonal matrix (default CSC)
     **************************************************************/
-    ParMatrix(index_t _glob_rows, index_t _glob_cols, data_t* values, MPI_Comm _comm_mat = MPI_COMM_WORLD, format_t diag_f = CSR, format_t offd_f = CSC)
+    ParMatrix(index_t _glob_rows, index_t _glob_cols, data_t* values, MPI_Comm _comm_mat = MPI_COMM_WORLD)
     {
         global_rows = _glob_rows; 
         global_cols = _glob_cols;
@@ -182,8 +187,8 @@ public:
         create_partition(_comm_mat);
 
         // Initialize empty diag/offd matrices
-        diag = new Matrix(local_rows, local_cols, diag_f);
-        offd = new Matrix(local_rows, local_cols, offd_f);
+        diag = new COOMatrix(local_rows, local_cols, 5);
+        offd = new COOMatrix(local_rows, local_cols, 5);
 
         // Add values to diag/offd matrices
         index_t val_start = first_row * global_cols;
@@ -232,6 +237,9 @@ public:
         local_rows = 0;
         local_cols = 0;
         offd_num_cols = 0;
+        diag = new CSRMatrix(0, 0, 0);
+        comm = new ParComm();
+
     }
 
     /**************************************************************
@@ -242,7 +250,7 @@ public:
     **************************************************************/
     ~ParMatrix()
     {
-        if (offd_num_cols)
+        if (this->offd_num_cols)
         {
             delete offd;
         }
@@ -311,7 +319,8 @@ public:
     ***** row_global : index_t (optional)
     *****    Determines if the row is a global value (default 0 -- local)
     **************************************************************/
-    void add_value(index_t row, index_t global_col, data_t value, index_t row_global = 0);
+    void add_value(index_t row, index_t global_col, data_t value);
+    void add_global_value(int row, int global_col, double value);
 
     /**************************************************************
     *****   ParMatrix Finalize
@@ -320,7 +329,7 @@ public:
     ***** the local_to_global indices, and creates the parallel
     ***** communicator
     **************************************************************/
-    void finalize();
+    void finalize(bool create_comm = true);
 
 
     index_t global_rows;
@@ -330,14 +339,17 @@ public:
     index_t local_cols;
     Matrix* diag;
     Matrix* offd;
-    Array<index_t> local_to_global;
-    Array<index_t> global_col_starts;
+    std::vector<index_t> local_to_global;
+    std::vector<index_t> global_col_starts;
     std::map<index_t, index_t> global_to_local;
+    std::set<int> global_column_set;
     index_t offd_num_cols;
     index_t first_col_diag;
     index_t first_row;
     ParComm* comm;
     MPI_Comm comm_mat;
+
+
 };
 }
 #endif

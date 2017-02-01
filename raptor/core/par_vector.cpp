@@ -18,7 +18,6 @@ using namespace raptor;
 ***** alpha : data_t
 *****    Constant value to multiply each element of vector by
 **************************************************************/
-
 void ParVector::axpy(ParVector* x, data_t alpha)
 {
     if (local_n)
@@ -37,14 +36,15 @@ void ParVector::axpy(ParVector* x, data_t alpha)
 ***** alpha : data_t
 *****    Constant value to multiply each element of vector by
 **************************************************************/
-
 void ParVector::scale(data_t alpha)
 {
     if (local_n)
     {
         local->scale(alpha);
     }
-}/**************************************************************
+}
+
+/**************************************************************
 *****   ParVector Set Constant Value
 **************************************************************
 ***** Sets each element of the local vector to a constant value
@@ -61,6 +61,7 @@ void ParVector::set_const_value(data_t alpha)
         local->set_const_value(alpha);
     }
 }
+
 /**************************************************************
 *****   ParVector Set Random Values
 **************************************************************

@@ -1,7 +1,7 @@
 // Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#ifndef STENCIL_HPP
-#define STENCIL_HPP
+#ifndef RANDOM_HPP
+#define RANDOM_HPP
 
 #include <mpi.h>
 #include <float.h>
@@ -13,6 +13,6 @@
 
 using namespace raptor;
 
-ParMatrix* stencil_grid(data_t* stencil, int* grid, int dim, format_t format = CSR);
+ParMatrix* random_mat(int global_rows, int global_cols, int nnz_per_row);
 
 #endif

@@ -9,30 +9,6 @@
 using namespace std;
 using namespace mfem;
 
-/**************************************************************
- *****   MFEM Laplace Matrix
- **************************************************************
- ***** Creates a Laplacian matrix from MFEM
- *****
- ***** Parameters
- ***** -------------
- ***** A : raptor::ParMatrix**
- *****    Pointer to uninitialized parallel matrix for laplacian to be stored in
- ***** x : ParVector**
- *****    Pointer to uninitialized parallel vector for solution vector
- ***** y : ParVector**
- *****    Pointer to uninitialized parallel vector for rhs vector
- ***** mesh_file : char (const)
- *****    Location of file containing mesh for MFEM to use
- ***** num_elements: int
- *****    Maximum size for refined serial mesh
- ***** order : int (optional)
- *****    Use continuous Lagrange finite elements of this order.
- *****    If order < 1, uses isoparametric/isogeometric space.
- *****    Default = 3
- ***** comm_mat : MPI_Comm (optional)
- *****    MPI_Communicator for A.  Default = MPI_COMM_WORLD.
- **************************************************************/
 void mfem_laplace(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x_raptor_ptr, raptor::ParVector** b_raptor_ptr, const char* mesh_file, int num_elements, int order, MPI_Comm comm_mat)
 {
     int myid, num_procs;
@@ -147,7 +123,7 @@ void mfem_laplace(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x_raptor
    
    delete B;
    delete X;
-   remove_shared_ptrs(A_hypre);
+   //remove_shared_ptrs(A_hypre);
    hypre_ParCSRMatrixDestroy(A_hypre);
    delete A;
   

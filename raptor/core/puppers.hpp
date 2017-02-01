@@ -1,9 +1,3 @@
-// Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
-// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-
-#ifndef RAPTOR_CORE_PUPPERS_HPP
-#define RAPTOR_CORE_PUPPERS_HPP
-
 #include "types.hpp"
 #include "par_matrix.hpp"
 #include "par_vector.hpp"
@@ -14,19 +8,6 @@
 #include "level.hpp"
 #include "hierarchy.hpp"
 
-/**************************************************************
- *****  Pupper Method for Array Class (Helper)
- **************************************************************
- ***** Packs, transfers, and unpacks the Array class
- ***** in AMPI.  Must be called from another pup method.
- *****
- ***** Parameters
- ***** -------------
- ***** p : pup_er
- *****    Pup AMPI Object
- ***** a_tmp : void*
- *****    Pointer to the Array
- **************************************************************/
 template <typename T> 
 void pup_array_helper(pup_er p, void* a_tmp)
 {
@@ -46,19 +27,6 @@ void pup_array_helper(pup_er p, void* a_tmp)
     pup_bytes(p, (void*) a.data_ptr, a.alloc_n*sizeof(T));
 }
 
-/**************************************************************
- *****  Pupper Method for Array Class 
- **************************************************************
- ***** Packs, transfers, and unpacks the Array class
- ***** in AMPI.  NOT to be called from another pup method.
- *****
- ***** Parameters
- ***** -------------
- ***** p : pup_er
- *****    Pup AMPI Object
- ***** a_tmp : void*
- *****    Pointer to the Array
- **************************************************************/
 template <typename T>
 void pup_array(pup_er p, void* a_tmp)
 {
@@ -76,19 +44,6 @@ void pup_array(pup_er p, void* a_tmp)
     }
 }
 
-/**************************************************************
- *****  Pupper Method for Vector Class (Helper)
- **************************************************************
- ***** Packs, transfers, and unpacks the Vector class
- ***** in AMPI.  Must be called from another pup method.
- *****
- ***** Parameters
- ***** -------------
- ***** p : pup_er
- *****    Pup AMPI Object
- ***** v_tmp : void*
- *****    Pointer to the Vector
- **************************************************************/
 void pup_vector_helper(pup_er p, void* v_tmp)
 {
     Vector** v_ptr = (Vector**) v_tmp;
@@ -102,19 +57,6 @@ void pup_vector_helper(pup_er p, void* v_tmp)
     }
 }
 
-/**************************************************************
- *****  Pupper Method for Vector Class 
- **************************************************************
- ***** Packs, transfers, and unpacks the Vector class
- ***** in AMPI.  NOT to be called from another pup method.
- *****
- ***** Parameters
- ***** -------------
- ***** p : pup_er
- *****    Pup AMPI Object
- ***** v_tmp : void*
- *****    Pointer to the Vector
- **************************************************************/
 void pup_vector(pup_er p, void* v_tmp)
 {
     Vector** v_ptr = (Vector**) v_tmp;
@@ -132,19 +74,6 @@ void pup_vector(pup_er p, void* v_tmp)
     }
 }
 
-/**************************************************************
- *****  Pupper Method for ParVector Class (Helper)
- **************************************************************
- ***** Packs, transfers, and unpacks the ParVector class
- ***** in AMPI.  Must be called from another pup method.
- *****
- ***** Parameters
- ***** -------------
- ***** p : pup_er
- *****    Pup AMPI Object
- ***** v_tmp : void*
- *****    Pointer to the ParVector
- **************************************************************/
 void pup_par_vector_helper(pup_er p, void* v_tmp)
 {
     ParVector** v_ptr = (ParVector**) v_tmp;
@@ -161,19 +90,6 @@ void pup_par_vector_helper(pup_er p, void* v_tmp)
     }
 }
 
-/**************************************************************
- *****  Pupper Method for ParVector Class 
- **************************************************************
- ***** Packs, transfers, and unpacks the ParVector class
- ***** in AMPI.  NOT to be called from another pup method.
- *****
- ***** Parameters
- ***** -------------
- ***** p : pup_er
- *****    Pup AMPI Object
- ***** v_tmp : void*
- *****    Pointer to the ParVector
- **************************************************************/
 void pup_par_vector(pup_er p, void* v_tmp)
 {
     ParVector** v_ptr = (ParVector**) v_tmp;
@@ -192,19 +108,6 @@ void pup_par_vector(pup_er p, void* v_tmp)
     }
 }
 
-/**************************************************************
- *****  Pupper Method for ParComm Class (Helper)
- **************************************************************
- ***** Packs, transfers, and unpacks the ParComm class
- ***** in AMPI.  Must be called from another pup method.
- *****
- ***** Parameters
- ***** -------------
- ***** p : pup_er
- *****    Pup AMPI Object
- ***** c_tmp : void*
- *****    Pointer to the ParComm
- **************************************************************/
 void pup_par_comm_helper(pup_er p, void* c_tmp)
 {
     ParComm** c_ptr = (ParComm**) c_tmp;
@@ -248,19 +151,6 @@ void pup_par_comm_helper(pup_er p, void* c_tmp)
     }
 }
 
-/**************************************************************
- *****  Pupper Method for ParComm Class 
- **************************************************************
- ***** Packs, transfers, and unpacks the ParComm class
- ***** in AMPI.  NOT to be called from another pup method.
- *****
- ***** Parameters
- ***** -------------
- ***** p : pup_er
- *****    Pup AMPI Object
- ***** c_tmp : void*
- *****    Pointer to the ParComm
- **************************************************************/
 void pup_par_comm(pup_er p, void* c_tmp)
 {
     ParComm** c_ptr = (ParComm**) c_tmp;
@@ -287,19 +177,6 @@ void pup_par_comm(pup_er p, void* c_tmp)
     }
 }
 
-/**************************************************************
- *****  Pupper Method for Matrix Class (Helper)
- **************************************************************
- ***** Packs, transfers, and unpacks the Matrix class
- ***** in AMPI.  Must be called from another pup method.
- *****
- ***** Parameters
- ***** -------------
- ***** p : pup_er
- *****    Pup AMPI Object
- ***** c_tmp : void*
- *****    Pointer to the Matrix
- **************************************************************/
 void pup_matrix_helper(pup_er p, void* m_tmp)
 {
     Matrix** m_ptr = (Matrix**) m_tmp;
@@ -318,19 +195,6 @@ void pup_matrix_helper(pup_er p, void* m_tmp)
     pup_array_helper<data_t>(p, &(m->data));
 }
     
-/**************************************************************
- *****  Pupper Method for Matrix Class 
- **************************************************************
- ***** Packs, transfers, and unpacks the Matrix class
- ***** in AMPI.  NOT be called from another pup method.
- *****
- ***** Parameters
- ***** -------------
- ***** p : pup_er
- *****    Pup AMPI Object
- ***** c_tmp : void*
- *****    Pointer to the Matrix
- **************************************************************/
 void pup_matrix(pup_er p, void* m_tmp)
 {
     Matrix** m_ptr = (Matrix**) m_tmp;
@@ -347,19 +211,6 @@ void pup_matrix(pup_er p, void* m_tmp)
     }
 }
 
-/**************************************************************
- *****  Pupper Method for ParMatrix Class (Helper)
- **************************************************************
- ***** Packs, transfers, and unpacks the ParMatrix class
- ***** in AMPI.  Must be called from another pup method.
- *****
- ***** Parameters
- ***** -------------
- ***** p : pup_er
- *****    Pup AMPI Object
- ***** c_tmp : void*
- *****    Pointer to the ParMatrix
- **************************************************************/
 void pup_par_matrix_helper(pup_er p, void* m_tmp)
 {
     ParMatrix** m_ptr = (ParMatrix**) m_tmp;
@@ -396,19 +247,6 @@ void pup_par_matrix_helper(pup_er p, void* m_tmp)
     }
 }
 
-/**************************************************************
- *****  Pupper Method for ParMatrix Class 
- **************************************************************
- ***** Packs, transfers, and unpacks the ParMatrix class
- ***** in AMPI.  NOT to be called from another pup method.
- *****
- ***** Parameters
- ***** -------------
- ***** p : pup_er
- *****    Pup AMPI Object
- ***** c_tmp : void*
- *****    Pointer to the ParMatrix
- **************************************************************/
 void pup_par_matrix(pup_er p, void* m_tmp)
 {
     ParMatrix** m_ptr = (ParMatrix**) m_tmp;
@@ -428,19 +266,6 @@ void pup_par_matrix(pup_er p, void* m_tmp)
     }
 }
 
-/**************************************************************
- *****  Pupper Method for ParLevel Class (Helper)
- **************************************************************
- ***** Packs, transfers, and unpacks the ParLevel class
- ***** in AMPI.  Must be called from another pup method.
- *****
- ***** Parameters
- ***** -------------
- ***** p : pup_er
- *****    Pup AMPI Object
- ***** c_tmp : void*
- *****    Pointer to the ParLevel
- **************************************************************/
 void pup_par_level_helper(pup_er p, void* l_tmp)
 {
     Level** l_ptr = (Level**) l_tmp;
@@ -477,19 +302,6 @@ void pup_par_level_helper(pup_er p, void* l_tmp)
     }
 }
 
-/**************************************************************
- *****  Pupper Method for ParLevel Class 
- **************************************************************
- ***** Packs, transfers, and unpacks the ParLevel class
- ***** in AMPI.  NOT to be called from another pup method.
- *****
- ***** Parameters
- ***** -------------
- ***** p : pup_er
- *****    Pup AMPI Object
- ***** c_tmp : void*
- *****    Pointer to the ParLevel
- **************************************************************/
 void pup_par_level(pup_er p, void* l_tmp)
 {
     Level** l_ptr = (Level**) l_tmp;
@@ -509,19 +321,6 @@ void pup_par_level(pup_er p, void* l_tmp)
 
 }
 
-/**************************************************************
- *****  Pupper Method for Hierarchy Class 
- **************************************************************
- ***** Packs, transfers, and unpacks the Hierarchy class
- ***** in AMPI.  NOT to be called from another pup method.
- *****
- ***** Parameters
- ***** -------------
- ***** p : pup_er
- *****    Pup AMPI Object
- ***** c_tmp : void*
- *****    Pointer to the Hierarchy
- **************************************************************/
 void pup_hierarchy(pup_er p, void* h_tmp)
 {
     Hierarchy** h_ptr = (Hierarchy**) h_tmp;
@@ -553,4 +352,4 @@ void pup_hierarchy(pup_er p, void* h_tmp)
     }       
 }
 
-#endif
+

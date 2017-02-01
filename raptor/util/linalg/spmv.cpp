@@ -4,457 +4,6 @@
 #include "spmv.hpp"
 
 /**************************************************************
- *****   Sequential Matrix-Vector Multiplication
- **************************************************************
- ***** Performs matrix-vector multiplication on inner indices
- ***** y[inner] = alpha * A[inner, outer] * x[outer] + beta*y[inner]
- *****
- ***** Parameters
- ***** -------------
- ***** A : Matrix*
- *****    Matrix to be multipled
- ***** x : Vector*
- *****    Vector to be multiplied
- ***** y : Vector*
- *****    Vector result is added to
- ***** alpha : data_t
- *****    Scalar to multipy A*x by
- ***** beta : data_t
- *****    Scalar to multiply original y by
- **************************************************************/
-void seq_inner_spmv(Matrix* A, const data_t* x, data_t* y, const data_t alpha, const data_t beta, data_t* result = NULL, int outer_start = 0, int n_outer = -1)
-{
-    index_t* ptr = A->indptr.data();
-    index_t* idx = A->indices.data();
-    data_t* values = A->data.data();
-
-    index_t alpha_zero = (fabs(alpha) < zero_tol);
-    index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
-    index_t alpha_neg_one = (fabs(alpha + 1.0) < zero_tol);
-
-    index_t beta_zero = (fabs(beta) < zero_tol);
-    index_t beta_one = (fabs(beta - 1.0) < zero_tol);
-
-    index_t n_inner = A->n_inner;
-    if (n_outer < 0)
-    {
-        n_outer = A->n_outer;
-    }
-    index_t outer_end = outer_start + n_outer;
-
-    index_t ptr_start;
-    index_t ptr_end;
-
-    if (result == NULL)
-    {
-        result = y;
-    }
-
-    if (alpha_one)
-    {
-        if (beta_zero)
-        {
-            for (index_t inner = 0; inner < n_inner; inner++)
-            {
-                result[inner] = 0.0;
-            }
-        }
-        else if (!beta_one)
-        {
-            for (index_t inner = 0; inner < n_inner; inner++)
-            {
-                result[inner] = beta * y[inner];
-            }
-        }
-        for (index_t outer = outer_start; outer < outer_end; outer++)
-        {
-            ptr_start = ptr[outer];
-            ptr_end = ptr[outer + 1];
-            data_t x_val = x[outer];
-            for (index_t j = ptr_start; j < ptr_end; j++)
-            {
-                index_t inner = idx[j];
-                result[inner] += values[j] * x_val;
-            }
-        }
-    }
-    else if (alpha_neg_one)
-    {
-        if (!beta_one)
-        {
-            for (index_t inner = 0; inner < n_inner; inner++)
-            {
-                result[inner] = beta * y[inner];
-            }
-        }
-        for (index_t outer = outer_start; outer < outer_end; outer++)
-        {
-            ptr_start = ptr[outer];
-            ptr_end = ptr[outer + 1];
-            data_t x_val = x[outer];
-            for (index_t j = ptr_start; j < ptr_end; j++)
-            {
-                index_t inner = idx[j];
-                result[inner] -= values[j] * x_val;
-            }
-        }
-    }
-    else if (alpha_zero)
-    {
-        if (beta_zero)
-        {
-            for (index_t inner = 0; inner < n_inner; inner++)
-            {
-                result[inner] = 0.0;
-            }
-        }
-        else if (!beta_one)
-        {
-            for (index_t inner = 0; inner < n_inner; inner++)
-            {
-                result[inner] = beta * y[inner];
-            }
-        }
-    }
-    else
-    {
-        if (!beta_one)
-        {
-            for (index_t inner = 0; inner < n_inner; inner++)
-            {
-                result[inner] = beta * y[inner];
-            }
-        }
-        for (index_t outer = outer_start; outer < outer_end; outer++)
-        {
-            ptr_start = ptr[outer];
-            ptr_end = ptr[outer + 1];
-            data_t x_val = x[outer];
-            for (index_t j = ptr_start; j < ptr_end; j++)
-            {
-                index_t inner = idx[j];
-                result[inner] += alpha * values[j] * x_val;
-            }
-        }
-    }
-}
-
-/**************************************************************
- *****   Sequential Matrix-Vector Multiplication
- **************************************************************
- ***** Performs matrix-vector multiplication on outer indices
- ***** y[outer] = alpha * A[outer, inner] * x[inner] + beta*y[outer]
- *****
- ***** Parameters
- ***** -------------
- ***** A : Matrix*
- *****    Matrix to be multipled
- ***** x : Vector*
- *****    Vector to be multiplied
- ***** y : Vector*
- *****    Vector result is added to
- ***** alpha : data_t
- *****    Scalar to multipy A*x by
- ***** beta : data_t
- *****    Scalar to multiply original y by
- **************************************************************/
-void seq_outer_spmv(Matrix* A, const data_t* x, data_t* y, const data_t alpha, const data_t beta, data_t* result = NULL, int outer_start = 0, int n_outer = -1)
-{
-    index_t alpha_zero = (fabs(alpha) < zero_tol);
-    index_t alpha_one = (fabs(alpha - 1.0) < zero_tol);
-    index_t alpha_neg_one = (fabs(alpha + 1.0) < zero_tol);
-
-    index_t beta_zero = (fabs(beta) < zero_tol);
-    index_t beta_one = (fabs(beta - 1.0) < zero_tol);
-
-    index_t* ptr = A->indptr.data();
-    index_t* idx = A->indices.data();
-    data_t* values = A->data.data();
-
-    if (n_outer <= 0)
-    {
-        n_outer = A->n_outer;
-    }
-    index_t outer_end = outer_start + n_outer;
-
-    index_t ptr_start;
-    index_t ptr_end;
-
-    if (result == NULL)
-    {
-        result = y;
-    }
-    else
-    {
-        for (int i = 0; i < n_outer; i++)
-        {
-            result[i] = 0.0;
-        }
-    }
-
-    if (alpha_one)
-    {
-        if (beta_one)
-        {
-            //Ax + y
-            for (index_t outer = outer_start; outer < outer_end; outer++)
-            {
-                ptr_start = ptr[outer];
-                ptr_end = ptr[outer+1];
-
-                for (index_t j = ptr_start; j < ptr_end; j++)
-                {
-                    index_t inner = idx[j];
-                    result[outer] += values[j] * x[inner];
-                }
-            }
-        }
-        else if (beta_zero)
-        {
-            //Ax
-            for (index_t outer = outer_start; outer < outer_end; outer++)
-            {
-                ptr_start = ptr[outer];
-                ptr_end = ptr[outer+1];
-
-                if (ptr_start < ptr_end)
-                {
-                    result[outer] = values[ptr_start] * x[idx[ptr_start]];
-                }
-                else
-                {
-                    result[outer] = 0.0;
-                }
-
-                for (index_t j = ptr_start + 1; j < ptr_end; j++)
-                {
-                    index_t inner = idx[j];
-                    result[outer] += values[j] * x[inner];
-
-                }
-            }
-        }
-        else
-        {
-            //Ax + beta * y
-            for (index_t outer = outer_start; outer < outer_end; outer++)
-            {
-                ptr_start = ptr[outer];
-                ptr_end = ptr[outer+1];
-
-                result[outer] *= beta;
-
-                for (index_t j = ptr_start + 1; j < ptr_end; j++)
-                {
-                    index_t inner = idx[j];
-                    result[outer] += values[j] * x[inner];
-                }
-            }
-        }
-    }
-    else if (alpha_neg_one)
-    {
-        if (beta_one)
-        {
-            //-Ax + y
-            for (index_t outer = outer_start; outer < outer_end; outer++)
-            {
-                ptr_start = ptr[outer];
-                ptr_end = ptr[outer+1];
-
-                for (index_t j = ptr_start; j < ptr_end; j++)
-                {
-                    index_t inner = idx[j];
-                    result[outer] -= values[j] * x[inner];
-                }
-            }
-        }
-        else if (beta_zero)
-        {
-            //Ax
-            for (index_t outer = outer_start; outer < outer_end; outer++)
-            {
-                ptr_start = ptr[outer];
-                ptr_end = ptr[outer+1];
-
-                if (ptr_start < ptr_end)
-                {
-                    result[outer] = - (values[ptr_start] * x[idx[ptr_start]]);
-                }
-                else
-                {
-                    result[outer] = 0.0;
-                }
-
-                for (index_t j = ptr_start + 1; j < ptr_end; j++)
-                {
-                    index_t inner = idx[j];
-                    result[outer] -= values[j] * x[inner];
-                }
-            }
-        }
-        else
-        {
-            //Ax + beta * y
-            for (index_t outer = outer_start; outer < outer_end; outer++)
-            {
-                ptr_start = ptr[outer];
-                ptr_end = ptr[outer+1];
-
-                result[outer] *= beta;
-
-                for (index_t j = ptr_start + 1; j < ptr_end; j++)
-                {
-                    index_t inner = idx[j];
-                    result[outer] -= values[j] * x[inner];
-                }
-            }
-        }
-    }
-    else if (alpha_zero)
-    {
-        if (beta_zero)
-        {
-            //return 0
-            for (index_t outer = outer_start; outer < outer_end; outer++)
-            {
-                result[outer] = 0.0;
-            }
-        }
-        else if (!beta_one)
-        {
-            //beta * y
-            for (index_t outer = outer_start; outer < outer_end; outer++)
-            {
-                result[outer] *= beta;
-            }
-        }
-    }
-    else
-    {
-        if (beta_one)
-        {
-            //alpha*Ax + y
-            for (index_t outer = outer_start; outer < outer_end; outer++)
-            {
-                ptr_start = ptr[outer];
-                ptr_end = ptr[outer+1];
-
-                for (index_t j = ptr_start; j < ptr_end; j++)
-                {
-                    index_t inner = idx[j];
-                    result[outer] += alpha * values[j] * x[inner];
-                }
-            }
-        }
-        else if (beta_zero)
-        {
-            //alpha*Ax
-            for (index_t outer = outer_start; outer < outer_end; outer++)
-            {
-                ptr_start = ptr[outer];
-                ptr_end = ptr[outer+1];
-
-                if (ptr_start < ptr_end)
-                {
-                    result[outer] = alpha * values[ptr_start] * x[idx[ptr_start]];
-                }
-                else
-                {
-                    result[outer] = 0.0;
-                }
-
-                for (index_t j = ptr_start + 1; j < ptr_end; j++)
-                {
-                    index_t inner = idx[j];
-                    result[outer] += alpha * values[j] * x[inner];
-                }
-            }
-        }
-        else
-        {
-            //alpha * Ax + beta * y
-            for (index_t outer = outer_start; outer < outer_end; outer++)
-            {
-                ptr_start = ptr[outer];
-                ptr_end = ptr[outer+1];
-
-                result[outer] *= beta;
-
-                for (index_t j = ptr_start + 1; j < ptr_end; j++)
-                {
-                    index_t inner = idx[j];
-                    result[outer] += alpha * values[j] * x[inner];
-                }
-            }
-        }
-    }
-}
-
-/**************************************************************
- *****   Sequential Matrix-Vector Multiplication
- **************************************************************
- ***** Performs partial matrix-vector multiplication, calling
- ***** method appropriate for matrix format
- *****
- ***** Parameters
- ***** -------------
- ***** A : Matrix*
- *****    Matrix to be multipled
- ***** x : Vector*
- *****    Vector to be multiplied
- ***** y : Vector*
- *****    Vector result is added to
- ***** alpha : data_t
- *****    Scalar to multipy A*x by
- ***** beta : data_t
- *****    Scalar to multiply original y by
- **************************************************************/
-void sequential_spmv(Matrix* A, const data_t* x, data_t* y, const data_t alpha,
-    const data_t beta, data_t* result, int outer_start, int outer_end)
-{
-    if (A->format == CSR)
-    {
-        seq_outer_spmv(A, x, y, alpha, beta, result, outer_start, outer_end);
-    }
-    else
-    {
-        seq_inner_spmv(A, x, y, alpha, beta, result, outer_start, outer_end);
-    }   
-}
-
-/**************************************************************
- *****   Sequential Transpose Matrix-Vector Multiplication
- **************************************************************
- ***** Performs partial transpose matrix-vector multiplication, 
- ***** calling method appropriate for matrix format
- *****
- ***** Parameters
- ***** -------------
- ***** A : Matrix*
- *****    Matrix to be multipled
- ***** x : Vector*
- *****    Vector to be multiplied
- ***** y : Vector*
- *****    Vector result is added to
- ***** alpha : data_t
- *****    Scalar to multipy A*x by
- ***** beta : data_t
- *****    Scalar to multiply original y by
- **************************************************************/
-void sequential_spmv_T(Matrix* A, const data_t* x, data_t* y, const data_t alpha, const data_t beta, data_t* result, int outer_start, int outer_end)
-{
-    if (A->format == CSR)
-    {
-        seq_inner_spmv(A, x, y, alpha, beta, result, outer_start, outer_end);
-    }
-    else
-    {
-        seq_outer_spmv(A, x, y, alpha, beta, result, outer_start, outer_end);
-    }   
-}
-
-/**************************************************************
  *****   Parallel Matrix-Vector Multiplication
  **************************************************************
  ***** Performs parallel matrix-vector multiplication
@@ -523,8 +72,7 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
 
     if (A->local_rows)
     {
-        // Compute partial SpMV with local information
-        sequential_spmv(A->diag, x_data, y_data, alpha, beta, result_data);
+        A->diag->mult(x_data, y_data);
     }
 
     // Once data is available, add contribution of off-diagonals
@@ -537,8 +85,7 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
         comm->complete_recvs();
 
         // Add received data to Vector
-        sequential_spmv(A->offd, comm->recv_buffer, y_data, alpha, 
-                    1.0, result_data); 
+        A->offd->mult(comm->recv_buffer, y_data);
     }
 
     // TODO Add an error check on the status
@@ -570,10 +117,11 @@ void parallel_spmv(const ParMatrix* A, const ParVector* x, ParVector* y, const d
  ***** async : index_t
  *****    Boolean flag for updating SpMV asynchronously
  **************************************************************/
+// TODO -- Make this work with new matrix class
 void parallel_spmv_T(const ParMatrix* A, const ParVector* x, ParVector* y, const data_t alpha, const data_t beta, const int async, ParVector* result)
 {
     // Get MPI Information
-    MPI_Comm comm_mat = A->comm_mat;
+/*    MPI_Comm comm_mat = A->comm_mat;
 
     // TODO must enforce that y and x are not aliased, or this will NOT work
     //    or we could use blocking sends as long as we post the iRecvs first
@@ -628,13 +176,13 @@ void parallel_spmv_T(const ParMatrix* A, const ParVector* x, ParVector* y, const
 
         index_t proc, num_send, send_start, send_end;
 
-        sequential_spmv_T(A->offd, x_data, send_buffer, alpha, 0.0);
+        //sequential_spmv_T(A->offd, x_data, send_buffer, alpha, 0.0);
         comm->init_sends_T(comm_mat);
     }
 
     if (A->local_rows)
     {
-        sequential_spmv_T(A->diag, x_data, y_data, alpha, beta);
+        //sequential_spmv_T(A->diag, x_data, y_data, alpha, beta);
     }
 
     if (num_recvs)
@@ -659,5 +207,5 @@ void parallel_spmv_T(const ParMatrix* A, const ParVector* x, ParVector* y, const
         // Wait for all sends to finish
         comm->complete_sends_T();
     }
-
+*/
 }

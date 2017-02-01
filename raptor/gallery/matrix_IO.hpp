@@ -1,9 +1,6 @@
 #ifndef MATRIX_IO_H
 #define MATRIX_IO_H
 
-//TODO -- Comment this.. but I think this started with someone else's code?
-// Do we need to add something about where this code came from?
-
 #include <mpi.h>
 #include <stdio.h>
 #include <string.h>
@@ -32,10 +29,11 @@ int mm_write_mtx_crd_size(FILE *f, index_t M, index_t N, index_t nz);
 int mm_write_mtx_array_size(FILE *f, index_t M, index_t N);
 
 int mm_read_sparse(const char *fname, index_t start, index_t stop, index_t *M_, index_t *N_,
-                ParMatrix* A, int symmetric);
+                ParMatrix* A, int symmetric, int read_sym, ParMatrix* Asym, int striped, 
+                int* global_col_starts);
 
-ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int symmetric);
-void distParMatrix(char* filename);
+ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int symmetric = 1,
+                int read_sym = 0, ParMatrix** Asymptr = NULL, int striped = 0);
 int mm_dist_sparse(const char *fname, index_t start, index_t stop);
 int mm_copy_header(const char* fname);
 int mm_write_lcl_size(const char* fname, index_t start, index_t stop);

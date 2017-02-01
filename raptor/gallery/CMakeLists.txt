@@ -11,6 +11,8 @@ set(gallery_SOURCES
     gallery/laplacian27pt.cpp
     gallery/matrix_IO.cpp
     gallery/stencil.cpp
+    gallery/random.cpp
+    gallery/exxon_reader.cpp
     ${external_gallery_SOURCES}
     PARENT_SCOPE)
 
