@@ -291,6 +291,31 @@ void COOMatrix::sort()
         }
     }
     nnz = ctr;
+
+    // Move diagonal entry to first in row
+    int row_start = 0;
+    prev_row = 0;
+    for (int i = 0; i < nnz; i++)
+    {
+        int row = idx1[i];
+        int col = idx2[i];
+        if (row != prev_row)
+        {
+            prev_row = row;
+            row_start = i;
+        }
+        else if (row == col)
+        {
+            double tmp = vals[i];
+            for (int j = i; j > row_start; j--)
+            {
+                idx2[j] = idx2[j-1];
+                vals[j] = vals[j-1];
+            }
+            idx2[row_start] = row;
+            vals[row_start] = tmp;
+        }
+    }
 }
 
 /**************************************************************
@@ -528,6 +553,29 @@ void CSRMatrix::sort()
         }
         orig_row_start = orig_row_end;
         idx1[row+1] = idx1[row] + ctr;
+    }
+
+    // Move diagonal values to beginning of each row
+    for (int i = 0; i < n_rows; i++)
+    {
+        int row_start = idx1[i];
+        int row_end = idx1[i+1];
+        for (int j = row_start; j < row_end; j++)
+        {
+            int col = idx2[j];
+            if (col == i)
+            {
+                double tmp = vals[j];
+                for (int k = j; k > row_start; k--)
+                {
+                    idx2[k] = idx2[k-1];
+                    vals[k] = vals[k-1];
+                }
+                idx2[row_start] = i;
+                vals[row_start] = tmp;
+                break;
+            }
+        }
     }
 }
 
@@ -769,6 +817,29 @@ void CSCMatrix::sort()
         }
         orig_col_start = orig_col_end;
         idx1[col+1] = idx1[col] + ctr;
+    }
+        
+    // Move diagonal values to beginning of each column
+    for (int i = 0; i < n_cols; i++)
+    {
+        int col_start = idx1[i];
+        int col_end = idx1[i+1];
+        for (int j = col_start; j < col_end; j++)
+        {
+            int row = idx2[j];
+            if (row == i)
+            {
+                double tmp = vals[j];
+                for (int k = j; k > col_start; k--)
+                {
+                    idx2[k] = idx2[k-1];
+                    vals[k] = vals[k-1];
+                }
+                idx2[col_start] = i;
+                vals[col_start] = tmp;
+                break;
+            }
+        }
     }
 }
 

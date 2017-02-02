@@ -25,6 +25,8 @@ int main(int argc, char* argv[])
         A->add_value(0, 0, 1.0);
         A->add_value(7, 11, 1.0);
         A->add_value(0, 0, 0.5);
+        A->add_value(21, 21, 4.0);
+        A->add_value(11, 11, 2.0);
 
         printf("Original COO Matrix:\n");
         A->print();
