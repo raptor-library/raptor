@@ -1,129 +1,159 @@
-#include <mpi.h>
 #include <math.h>
 #include <core/types.hpp>
-#include <core/matrix.hpp>
+#include <core/seq/matrix.hpp>
 
 using namespace raptor;
 
 int main(int argc, char* argv[])
 {
-    // Initialize MPI
-    MPI_Init(&argc, &argv);
+    COOMatrix A(25, 25, 5);
+    A.add_value(0, 1, 1.0);
+    A.add_value(21, 9, 2.0);
+    A.add_value(1, 0, 1.0);
+    A.add_value(5, 3, 2.0);
+    A.add_value(0, 0, 1.0);
+    A.add_value(7, 11, 1.0);
+    A.add_value(0, 0, 0.5);
 
-    // Get Local Process Rank, Number of Processes
-    int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    COOMatrix B(25, 5, 1);
+    B.add_value(0, 0, 1);
+    B.add_value(1, 0, 1);
+    B.add_value(2, 0, 1);
+    B.add_value(3, 0, 1);
+    B.add_value(4, 1, 1);
+    B.add_value(5, 1, 1);
+    B.add_value(6, 1, 1);
+    B.add_value(7, 1, 1);
+    B.add_value(8, 1, 1);
+    B.add_value(9, 1, 1);
+    B.add_value(10, 2, 1);
+    B.add_value(11, 2, 1);
+    B.add_value(12, 2, 1);
+    B.add_value(13, 2, 1);
+    B.add_value(14, 2, 1);
+    B.add_value(15, 2, 1);
+    B.add_value(16, 3, 1);
+    B.add_value(17, 3, 1);
+    B.add_value(18, 3, 1);
+    B.add_value(19, 3, 1);
+    B.add_value(20, 4, 1);
+    B.add_value(21, 4, 1);
+    B.add_value(22, 4, 1);
+    B.add_value(23, 4, 1);
+    B.add_value(24, 4, 1);
+    
 
-    if (rank == 0)
+    printf("Original COO Matrix:\n");
+    A.print();
+
+    printf("\nCOO converted to CSR Matrix:\n");
+    CSRMatrix Acsr(&A);
+    Acsr.print();
+
+    printf("\nCOO converted to CSC Matrix:\n");
+    CSCMatrix Acsc(&A);
+    Acsc.print();
+
+    printf("\nCSR converted to CSC Matrix: \n");
+    CSCMatrix Acsr_csc(&Acsr);
+    Acsr_csc.print();
+
+    printf("\nCSC converted to CSR Matrix: \n");
+    CSRMatrix Acsc_csr(&Acsc);
+    Acsc_csr.print();
+
+    printf("\nSorted COO Matrix:\n");
+    A.sort();
+    A.print();
+
+    printf("\nSorted CSR Matrix:\n");
+    Acsr.sort();
+    Acsr.print();
+
+    printf("\nSorted CSC Matrix:\n");
+    Acsc.sort();
+    Acsc.print();
+
+    printf("\nCreate X, B and Initialize X = 1.0\n");                
+    Vector x(A.n_cols);
+    Vector b(A.n_rows);
+    x.set_const_value(1.0);
+   
+    printf("\nVector B = A(COO) * X\n");        
+    A.mult(x, b);
+    b.print("B");
+
+    printf("\nVector B = A(CSR) * X\n");                
+    b.set_const_value(1.0);
+    Acsr.mult(x, b);
+    b.print("B");
+
+    printf("\nVector B = A(CSC) * X\n");        
+    b.set_const_value(1.0);
+    Acsc.mult(x, b);
+    b.print("B");
+
+    printf("\nChange a couple values in B\n");                
+    b[2] += 0.1;
+    b[4] += 0.1;
+    Vector r(A.n_rows);
+    
+    printf("\nVector R = B - A(COO) * X\n");                
+    A.residual(x, b, r);
+    r.print("R");
+
+    CSRMatrix Bcsr(&B);
+    CSRMatrix Ccsr(Acsr.n_rows, Bcsr.n_cols, 1.5*Acsr.nnz);
+    Acsr.mult(Bcsr, Ccsr);
+
+    printf("\nC = A*B:\n");
+    Ccsr.print();
+
+    printf("\nCOO Matrix with Condensed Cols:\n");
+    A.condense_cols();
+    A.print();
+
+    printf("\nCOO Matrix with Condensed Rows:\n");
+    A.condense_rows();
+    A.print();
+
+    printf("\nCSR Matrix with Condensed Cols:\n");
+    Acsr.condense_cols();
+    Acsr.print();
+
+    printf("\nCSR Matrix with Condensed Rows:\n");
+    Acsr.condense_rows();
+    Acsr.print();
+
+    printf("\nCSC Matrix with Condensed Cols:\n");
+    Acsc.condense_cols();
+    Acsc.print();
+
+    printf("\nCSC Matrix with Condensed Rowss:\n");
+    Acsc.condense_rows();
+    Acsc.print();
+
+
+    Vector relax_x(Acsr.n_cols);
+    Vector relax_b(Acsr.n_rows);
+    Vector relax_tmp(Acsr.n_cols);
+    Vector relax_r(Acsr.n_rows);
+
+    relax_x.set_const_value(1.0);
+    relax_b.set_rand_values();
+
+    relax_b.print("B");
+
+    double r_norm = 0.0;
+
+    for (int i = 0; i < 100; i++)
     {
-        COOMatrix* A = new COOMatrix(25, 25, 5);
-        A->add_value(0, 1, 1.0);
-        A->add_value(21, 9, 2.0);
-        A->add_value(1, 0, 1.0);
-        A->add_value(5, 3, 2.0);
-        A->add_value(0, 0, 1.0);
-        A->add_value(7, 11, 1.0);
-        A->add_value(0, 0, 0.5);
-        A->add_value(21, 21, 4.0);
-        A->add_value(11, 11, 2.0);
-
-        printf("Original COO Matrix:\n");
-        A->print();
-
-        printf("\nCOO converted to CSR Matrix:\n");
-        CSRMatrix* Acsr = new CSRMatrix(A);
-        Acsr->print();
-
-        printf("\nCOO converted to CSC Matrix:\n");
-        CSCMatrix* Acsc = new CSCMatrix(A);
-        Acsc->print();
-
-        printf("\nCSR converted to CSC Matrix: \n");
-        CSCMatrix* Acsr_csc = new CSCMatrix(Acsr);
-        Acsr_csc->print();
-
-        printf("\nCSC converted to CSR Matrix: \n");
-        CSRMatrix* Acsc_csr = new CSRMatrix(Acsc);
-        Acsc_csr->print();
-
-        printf("\nSorted COO Matrix:\n");
-        A->sort();
-        A->print();
-
-        printf("\nSorted CSR Matrix:\n");
-        Acsr->sort();
-        Acsr->print();
-
-        printf("\nSorted CSC Matrix:\n");
-        Acsc->sort();
-        Acsc->print();
-
-        delete Acsc_csr;
-        delete Acsr_csc;
-
-        printf("\nCreate X, B and Initialize X = 1.0\n");                
-        Vector* x = new Vector(A->n_cols);
-        Vector* b = new Vector(A->n_rows);
-        x->set_const_value(1.0);
-        
-        printf("\nVector B = A(COO) * X\n");        
-        A->mult(x, b);
-        b->print("B");
-
-        printf("\nVector B = A(CSR) * X\n");                
-        b->set_const_value(1.0);
-        Acsr->mult(x, b);
-        b->print("B");
-
-        printf("\nVector B = A(CSC) * X\n");        
-        b->set_const_value(1.0);
-        Acsc->mult(x, b);
-        b->print("B");
-
-        printf("\nChange a couple values in B\n");                
-        b->data()[2] += 0.1;
-        b->data()[4] += 0.1;
-        Vector* r = new Vector(A->n_rows);
-        
-        printf("\nVector R = B - A(COO) * X\n");                
-        A->residual(x, b, r);
-        r->print("R");
-
-        delete x;
-        delete b;
-        delete r;
-
-        printf("\nCOO Matrix with Condensed Cols:\n");
-        A->condense_cols();
-        A->print();
-
-        printf("\nCOO Matrix with Condensed Rows:\n");
-        A->condense_rows();
-        A->print();
-
-        printf("\nCSR Matrix with Condensed Cols:\n");
-        Acsr->condense_cols();
-        Acsr->print();
-
-        printf("\nCSR Matrix with Condensed Rows:\n");
-        Acsr->condense_rows();
-        Acsr->print();
-
-        printf("\nCSC Matrix with Condensed Cols:\n");
-        Acsc->condense_cols();
-        Acsc->print();
-
-        printf("\nCSC Matrix with Condensed Rowss:\n");
-        Acsc->condense_rows();
-        Acsc->print();
-
-        delete Acsr;
-        delete Acsc;
-        delete A;
-
+        Acsr.jacobi(relax_x, relax_b, relax_tmp);
+        Acsr.residual(relax_x, relax_b, relax_r);
+        r_norm = relax_r.norm(2);
+        printf("Residual = %e\n", r_norm);
     }
-
-    MPI_Finalize();
+    
 }
    
+

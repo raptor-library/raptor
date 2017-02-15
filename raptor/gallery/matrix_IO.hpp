@@ -28,12 +28,10 @@ int mm_write_banner(FILE *f, MM_typecode matcode);
 int mm_write_mtx_crd_size(FILE *f, index_t M, index_t N, index_t nz);
 int mm_write_mtx_array_size(FILE *f, index_t M, index_t N);
 
-int mm_read_sparse(const char *fname, index_t start, index_t stop, index_t *M_, index_t *N_,
-                ParMatrix* A, int symmetric, int read_sym, ParMatrix* Asym, int striped, 
-                int* global_col_starts);
-
-ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int symmetric = 1,
-                int read_sym = 0, ParMatrix** Asymptr = NULL, int striped = 0);
+int mm_read_sparse(const char *fname, index_t start, index_t stop, 
+        index_t *M_, index_t *N_, ParMatrix* A, int symmetric);
+ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, 
+        int symmetric = 1);
 int mm_dist_sparse(const char *fname, index_t start, index_t stop);
 int mm_copy_header(const char* fname);
 int mm_write_lcl_size(const char* fname, index_t start, index_t stop);

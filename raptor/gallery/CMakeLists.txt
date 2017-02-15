@@ -7,13 +7,13 @@ if(WITH_HYPRE)
 endif(WITH_HYPRE)
 
 set(gallery_SOURCES
-    gallery/diffusion.cpp
-    gallery/laplacian27pt.cpp
-    gallery/matrix_IO.cpp
-    gallery/stencil.cpp
-    gallery/random.cpp
-    gallery/exxon_reader.cpp
-    ${external_gallery_SOURCES}
+    #gallery/diffusion.cpp
+    #gallery/laplacian27pt.cpp
+    #gallery/matrix_IO.cpp
+    #gallery/stencil.cpp
+    #gallery/random.cpp
+    #gallery/exxon_reader.cpp
+    #${external_gallery_SOURCES}
     PARENT_SCOPE)
 
 

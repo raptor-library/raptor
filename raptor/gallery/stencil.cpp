@@ -57,8 +57,8 @@ ParMatrix* stencil_grid(data_t* stencil, int* grid, int dim, format_t format)
 
     A = new ParMatrix(N_v, N_v);
 
-    n_v = A->local_rows;
-    first_local_row = A->first_row;
+    n_v = A->local_num_rows;
+    first_local_row = A->first_local_row;
     last_local_row = first_local_row + n_v - 1;
 
     index_t nnz_per;

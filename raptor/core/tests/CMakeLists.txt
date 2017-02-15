@@ -1,3 +1,4 @@
-add_unit(test_par_vector test_par_vector.cpp 2)
-add_unit(test_mat_mult test_mat_mult.cpp 2)
+add_executable(test_matrix test_matrix.cpp)
+target_link_libraries(test_matrix raptor ${MPI_LIBRARIES})
+add_test(MatrixTest ./test_matrix)
 

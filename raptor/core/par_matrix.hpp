@@ -20,52 +20,47 @@
  *****
  ***** Attributes
  ***** -------------
- ***** global_rows : index_t
+ ***** global_num_rows : index_t
  *****    Number of rows in the global parallel matrix
- ***** global_cols : index_t
+ ***** global_num_cols : index_t
  *****    Number of columns in the parallel matrix
- ***** local_nnz : index_t
+ ***** local_nnz : int
  *****    Number of nonzeros stored locally
- ***** local_rows : index_t
+ ***** local_num_rows : int
  *****    Number of rows stored locally
- ***** local_cols : index_t 
+ ***** local_num_cols : int 
  *****    Number of columns stored locally
+ ***** first_local_row : index_t
+ *****    Global index of first row local to process
+ ***** first_local_col : index_t
+ *****    Global index of first column to fall in local block
  ***** diag : Matrix*
  *****    Matrix storing local diagonal block
  ***** offd : Matrix*
  *****    Matrix storing local off-diagonal block
- ***** local_to_global : std::vector<index_t>
- *****    std::vector that converts local columns in offd matrix to global
- ***** global_to_local : std::map<index_t, index_t>
- *****    Maps global columns to local columns in offd matrix
- ***** global_col_starts : std::vector<index_t>
- *****    std::vector of first column to be in the diagonal block of
- *****    each process
  ***** offd_num_cols : index_t
  *****    Number of columns in the off-diagonal matrix
- ***** first_col_diag : index_t
- *****    First column in the diagonal block 
- ***** first_row : index_t
- *****    First row of parallel matrix stored locally
+ ***** offd_column_map : std::vector<index_t>
+ *****    Maps local columns of offd Matrix to global
  ***** comm : ParComm*
  *****    Parallel communicator for matrix
- ***** comm_mat : MPI_Comm
- *****    MPI_Communicator for containing active processors (all
- *****    processes that hold at least one row of the matrix)
  ***** 
  ***** Methods
  ***** -------
- ***** create_partition()
- *****    Partitions the global matrix across the processors
- ***** create_comm_mat()
- *****    Creates an MPI_Communicator for active processors
- *****    (those holding rows of the global matrix)
+ ***** initalize_partition()
+ *****    Determines which rows are local to process and which 
+ *****    columns fall in local block 
  ***** add_value()
- *****    Adds a value to a given row/columns.  Determines
- *****    if this value is in the diagonal or off-diagonal block
+ *****    Adds a value to a given local row and global column.  
+ *****    Determines if this value is in the diagonal or 
+ *****    off-diagonal block.
+ ***** add_global_value()
+ *****    Adds a value to a given global row and global column.  
+ *****    Determines if this value is in the diagonal or 
+ *****    off-diagonal block.
  ***** finalize()
  *****    Finalizes a matrix after values have been added.  
- *****    Converts the matrix to the appropriate format and 
+ *****    Converts the matrices to the appropriate formats and 
  *****    creates the parallel communicator.
  **************************************************************/
 namespace raptor
@@ -79,35 +74,36 @@ public:
     ***** Initializes an empty ParMatrix, setting the dimensions
     ***** to the passed values.  The matrix is evenly partitioned 
     ***** across all processes.  The off-diagonal matrix is set
-    ***** to have num_cols equal to the local number of columns
-    ***** in the diagonal block (this should later be adjusted)
+    ***** to have num_cols equal to the global number of columns
+    ***** in the off-diagonal block (this should later be adjusted
+    ***** to the number of columns with non-zeros)
     *****
     ***** Parameters
     ***** -------------
-    ***** _glob_rows : index_t
+    ***** glob_rows : index_t
     *****    Global number of rows in parallel matrix
-    ***** _glob_cols : index_t
+    ***** glob_cols : index_t
     *****    Global number of columns in parallel matrix
-    ***** diag_f : format_t (optional)
-    *****    Format of diagonal matrix (default CSR)
-    ***** offd_f : format_t (optional)
-    *****    Format of off-diagonal matrix (default CSC)
-    ***** comm_mat : MPI_Comm (optional)
-    *****    Communicator containing all processes that are
-    *****    creating this matrix
+    ***** nnz_per_row : int (optional)
+    *****    Estimate for number of non-zeros per row, used to 
+    *****    reserve space in Matrix classes.
     **************************************************************/
-    ParMatrix(index_t _glob_rows, index_t _glob_cols, MPI_Comm _comm_mat = MPI_COMM_WORLD)
+    ParMatrix(index_t glob_rows, 
+            index_t glob_cols, 
+            int nnz_per_row = 5)
     {
         // Initialize matrix dimensions
-        global_rows = _glob_rows;
-        global_cols = _glob_cols;
-        offd_num_cols = 0;
+        global_num_rows = glob_rows;
+        global_num_cols = glob_cols;
 
-        // Create Partition
-        create_partition(_comm_mat);
+        // Initialize matrix partition information
+        initialize_partition();
 
-        diag = new COOMatrix(local_rows, local_cols, 5);
-        offd = new COOMatrix(local_rows, local_cols, 5);
+        // Initialize diag and offd matrices as COO for adding entries
+        // This should later be changed to CSR or CSC
+        // A guess of 5 nnz per row is used for reserving matrix space
+        diag = new COOMatrix(local_num_rows, local_num_cols, nnz_per_row);
+        offd = new COOMatrix(local_num_rows, global_num_cols, nnz_per_row);
     }
 
     /**************************************************************
@@ -116,116 +112,99 @@ public:
     ***** Initializes an empty ParMatrix, setting the dimensions
     ***** to the passed values.  The local dimensions of the matrix
     ***** are passed as an argument, and the matrix is partitioned
-    ***** according to the combination of all process's local dimensions
+    ***** according to the combination of all process's local dimensions.
+    ***** The off-diagonal matrix is set
+    ***** to have num_cols equal to the global number of columns
+    ***** in the off-diagonal block (this should later be adjusted
+    ***** to the number of columns with non-zeros).
     *****
     ***** Parameters
     ***** -------------
-    ***** _glob_rows : index_t
+    ***** glob_rows : index_t
     *****    Global number of rows in parallel matrix
-    ***** _glob_cols : index_t
+    ***** glob_cols : index_t
     *****    Global number of columns in parallel matrix
-    ***** _local_rows : index_t
+    ***** local_num_rows : int
     *****    Number of rows stored locally
-    ***** _local_cols : index_t
+    ***** local_num_cols : int
     *****    Number of columns in the diagonal block
-    ***** _first_row : index_t
+    ***** first_local_row : index_t
     *****    Position of local matrix in global parallel matrix
-    ***** _first_col_diag : index_t
+    ***** first_col : index_t
     *****    First column of parallel matrix in diagonal block
-    ***** diag_f : format_t (optional)
-    *****    Format of diagonal matrix (default CSR)
-    ***** offd_f : format_t (optional)
-    *****    Format of off-diagonal matrix (default CSC)
+    ***** nnz_per_row : int (optional)
+    *****    Estimate for number of non-zeros per row, used to 
+    *****    reserve space in Matrix classes.
     **************************************************************/
-    ParMatrix(index_t _glob_rows, index_t _glob_cols, index_t _local_rows, 
-            index_t _local_cols, index_t _first_row, index_t _first_col_diag, 
-            MPI_Comm _comm_mat = MPI_COMM_WORLD, int nnz_per_row_diag = 5, 
-            int nnz_per_row_offd = 5, format_t diag_f = CSR, format_t offd_f = CSC, 
-            bool need_part = true)
+    ParMatrix(index_t glob_rows, 
+            index_t glob_cols, 
+            int local_num_rows, 
+            int local_num_cols, 
+            index_t first_local_row, 
+            index_t first_col, 
+            int nnz_per_row = 5)
     {
-        global_rows = _glob_rows;
-        global_cols = _glob_cols;
-        local_rows = _local_rows;
-        local_cols = _local_cols;
-        first_row = _first_row;
-        first_col_diag = _first_col_diag;
-        offd_num_cols = 0;
+        global_num_rows = glob_rows;
+        global_num_cols = glob_cols;
+        local_num_rows = local_num_rows;
+        local_num_cols = local_num_cols;
+        first_local_row = first_local_row;
+        first_local_col = first_col;
 
-        if (need_part)
-            gather_partition(_comm_mat);
-
-        diag = new COOMatrix(local_rows, local_cols, nnz_per_row_diag);
-        diag = new COOMatrix(local_rows, local_cols, nnz_per_row_offd);
+        diag = new COOMatrix(local_num_rows, local_num_cols, nnz_per_row);
+        diag = new COOMatrix(local_num_rows, global_num_cols, nnz_per_row);
     }
 
     /**************************************************************
     *****   ParMatrix Class Constructor
     **************************************************************
-    ***** Initializes a ParMatrix from a dense array of values
+    ***** Initializes a ParMatrix from a dense array of values.
     *****
     ***** Parameters
     ***** -------------
-    ***** _glob_rows : index_t
+    ***** glob_rows : index_t
     *****    Global number of rows in parallel matrix
-    ***** _glob_cols : index_t
+    ***** glob_cols : index_t
     *****    Global number of columns in parallel matrix
     ***** values : data_t*
     *****    Pointer to dense list of values to be put into 
     *****    the parallel matrix (zeros will be ignored)
-    ***** diag_f : format_t (optional)
-    *****    Format of diagonal matrix (default CSR)
-    ***** offd_f : format_t (optional)
-    *****    Format of off-diagonal matrix (default CSC)
+    ***** nnz_per_row : int (optional)
+    *****    Estimate for number of non-zeros per row, used to 
+    *****    reserve space in Matrix classes.
     **************************************************************/
-    ParMatrix(index_t _glob_rows, index_t _glob_cols, data_t* values, MPI_Comm _comm_mat = MPI_COMM_WORLD)
+    ParMatrix(index_t glob_rows, 
+            index_t glob_cols, 
+            data_t* values,
+            int nnz_per_row = 5)
     {
-        global_rows = _glob_rows; 
-        global_cols = _glob_cols;
-        offd_num_cols = 0;
-       
-        // Create Partition
-        create_partition(_comm_mat);
+        // Set parallel matrix and local partition dimensions
+        global_num_rows = glob_rows;
+        global_num_cols = glob_cols;
+        initialize_partition();
 
         // Initialize empty diag/offd matrices
-        diag = new COOMatrix(local_rows, local_cols, 5);
-        offd = new COOMatrix(local_rows, local_cols, 5);
+        diag = new COOMatrix(local_num_rows, local_num_cols, nnz_per_row);
+        offd = new COOMatrix(local_num_rows, global_num_cols, nnz_per_row);
 
         // Add values to diag/offd matrices
-        index_t val_start = first_row * global_cols;
-        index_t val_end = (first_row + local_rows) * global_cols;
+        index_t val_start = first_local_row * global_num_cols;
+        index_t val_end = (first_local_row + local_num_rows) * global_num_cols;
         for (index_t i = val_start; i < val_end; i++)
         {
             if (fabs(values[i]) > zero_tol)
             {
-                index_t global_col = i % global_cols;
-                index_t global_row = i / global_cols;
-                add_value(global_row - first_row, global_col, values[i]);
+                index_t global_col = i % global_num_cols;
+                index_t global_row = i / global_num_cols;
+                add_value(global_row - first_local_row, global_col, values[i]);
             }
         }
 
-        // Convert diag/offd to compressed formats, create parallel communicator
+        // Convert diag/offd to compressed formats and
+        // create parallel communicator
         finalize();
-    }
+    }  
        
-    /**************************************************************
-    *****   ParMatrix Class Constructor
-    **************************************************************
-    ***** Copies an existing parallel matrix 
-    ***** TODO -- how do we want to copy matrices?
-    *****
-    ***** Parameters
-    ***** -------------
-    ***** A : ParMatrix* 
-    *****    Parallel matrix to be copied
-    **************************************************************/
-    ParMatrix(ParMatrix* A)
-    {
-        global_rows = A->global_rows;
-        global_cols = A->global_cols;
-        diag = A->diag; // should we mark as not owning? (we should think about move semantics or if people really love pointers we could use smart pointers).
-        offd = A->offd;
-    }
-
     /**************************************************************
     *****   ParMatrix Class Constructor
     **************************************************************
@@ -234,8 +213,8 @@ public:
     **************************************************************/
     ParMatrix()
     {
-        local_rows = 0;
-        local_cols = 0;
+        local_num_rows = 0;
+        local_num_cols = 0;
         offd_num_cols = 0;
         diag = new CSRMatrix(0, 0, 0);
         comm = new ParComm();
@@ -250,7 +229,7 @@ public:
     **************************************************************/
     ~ParMatrix()
     {
-        if (this->offd_num_cols)
+        if (offd_num_cols)
         {
             delete offd;
         }
@@ -259,67 +238,100 @@ public:
     }
 
     /**************************************************************
-    *****   ParMatrix Create Partition
+    *****   ParMatrix Add Value
     **************************************************************
-    ***** Partitions the matrix evenly across all processes
-    ***** in the MPI communicator
-    *****
-    ***** Parameters
-    ***** -------------
-    ***** _comm_mat : MPI_Comm (optional)
-    *****    MPI Communicator containing all processes that will
-    *****    call this method (default MPI_COMM_WORLD)
+    ***** Initializes information about the local partition of
+    ***** the parallel matrix.  Determines values for:
+    *****     local_num_rows
+    *****     local_num_cols
+    *****     first_local_row
+    *****     first_local_col
+    ***** NOTE: The values for global_num_rows and global_num_cols
+    ***** must be set before calling this method.
     **************************************************************/
-    void create_partition(MPI_Comm _comm_mat = MPI_COMM_WORLD);
+    void initialize_partition()
+    {
+        // Find MPI Information
+        int rank, num_procs;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    /**************************************************************
-    *****   ParMatrix Gather Partition
-    **************************************************************
-    ***** All processes gather the previously created partition
-    *****
-    ***** Parameters
-    ***** -------------
-    ***** _comm_mat : MPI_Comm (optional)
-    *****    MPI Communicator containing all processes that will
-    *****    call this method (default MPI_COMM_WORLD)
-    **************************************************************/
-    void gather_partition(MPI_Comm _comm_mat = MPI_COMM_WORLD);
+        // Determine the number of local rows per process
+        int avg_local_num_rows = global_num_rows / num_procs;
+        int extra_rows = global_num_rows % num_procs;
 
-    /**************************************************************
-    *****   ParMatrix Create Comm Mat
-    **************************************************************
-    ***** Creates MPI communicator (on top of that passed as
-    ***** an argument) containing all active procs, or those
-    ***** that will hold at least one row of the matrix.
-    *****
-    ***** Parameters
-    ***** -------------
-    ***** _comm_mat : MPI_Comm (optional)
-    *****    MPI Communicator containing all processes that will
-    *****    call this method (default MPI_COMM_WORLD)
-    **************************************************************/
-    void create_comm_mat(MPI_Comm _comm_mat = MPI_COMM_WORLD);
+        // Initialize local matrix rows
+        first_local_row = avg_local_num_rows * rank;
+        local_num_rows = avg_local_num_rows;
+        if (extra_rows > rank)
+        {
+            first_local_row += rank;
+            local_num_rows++;
+        }
+        else
+        {
+            first_local_row += extra_rows;
+        }
+
+        // Determine the number of local columns per process
+        if (global_num_rows < num_procs)
+        {
+            num_procs = global_num_rows;
+        }
+        int avg_local_num_cols = global_num_cols / num_procs;
+        int extra_cols = global_num_cols % num_procs;
+
+        // Initialize local matrix columns
+        if (local_num_rows)
+        {
+            first_local_col = avg_local_num_cols * rank;
+            local_num_cols = avg_local_num_cols;
+            if (extra_cols > rank)
+            {
+                first_local_col += rank;
+                local_num_cols++;
+            }
+            else
+            {
+                first_local_col += extra_cols;
+            }
+        }
+    }
 
     /**************************************************************
     *****   ParMatrix Add Value
     **************************************************************
     ***** Adds a value to the local portion of the parallel matrix,
     ***** determining whether it should be added to diagonal or 
-    ***** off-diagonal block.  Local_to_global, global_to_local, and
-    ***** offd_num_cols are appended as necessary
+    ***** off-diagonal block.  
     *****
     ***** Parameters
     ***** -------------
-    ***** row : index_t
-    *****    Row of value (default as local row)
+    ***** local_row : index_t
+    *****    Local row of value 
     ***** global_col : index_t 
     *****    Global column of value
     ***** value : data_t
     *****    Value to be added to parallel matrix
-    ***** row_global : index_t (optional)
-    *****    Determines if the row is a global value (default 0 -- local)
     **************************************************************/
     void add_value(index_t row, index_t global_col, data_t value);
+
+    /**************************************************************
+    *****   ParMatrix Add Global Value
+    **************************************************************
+    ***** Adds a value to the local portion of the parallel matrix,
+    ***** determining whether it should be added to diagonal or 
+    ***** off-diagonal block.  
+    *****
+    ***** Parameters
+    ***** -------------
+    ***** global_row : index_t
+    *****    Global row of value 
+    ***** global_col : index_t 
+    *****    Global column of value
+    ***** value : data_t
+    *****    Value to be added to parallel matrix
+    **************************************************************/
     void add_global_value(int row, int global_col, double value);
 
     /**************************************************************
@@ -331,24 +343,21 @@ public:
     **************************************************************/
     void finalize(bool create_comm = true);
 
+    void mult(ParVector* x, ParVector* b);
+    void residual(ParVector* x, ParVector* b, ParVector* r);
 
-    index_t global_rows;
-    index_t global_cols;
-    index_t local_nnz;
-    index_t local_rows;
-    index_t local_cols;
+    index_t global_num_rows;
+    index_t global_num_cols;
+    int local_nnz;
+    int local_num_rows;
+    int local_num_cols;
+    index_t first_local_row;
+    index_t first_local_col;
     Matrix* diag;
     Matrix* offd;
-    std::vector<index_t> local_to_global;
-    std::vector<index_t> global_col_starts;
-    std::map<index_t, index_t> global_to_local;
-    std::set<int> global_column_set;
-    index_t offd_num_cols;
-    index_t first_col_diag;
-    index_t first_row;
+    std::vector<index_t> offd_column_map;
+    int offd_num_cols;
     ParComm* comm;
-    MPI_Comm comm_mat;
-
 
 };
 }

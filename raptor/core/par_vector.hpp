@@ -8,6 +8,7 @@
 
 #include "types.hpp"
 #include "vector.hpp"
+#include "par_comm.hpp"
 
 /**************************************************************
  *****   ParVector Class
@@ -41,6 +42,9 @@
  **************************************************************/
 namespace raptor
 {
+    // Foward Declaration
+    class ParComm;
+
 
     class ParVector
     {
@@ -80,18 +84,6 @@ namespace raptor
         {
             local_n = 0;
         }
-
-        /**************************************************************
-        *****   ParVector Class Constructor
-        **************************************************************
-        ***** Copies a ParVector  TODO -- implement this
-        *****
-        ***** Parameters
-        ***** -------------
-        ***** x : ParVector&&
-        *****    Parallel vector to be copied
-        **************************************************************/
-        ParVector(ParVector&& x) = default;
 
         /**************************************************************
         *****   ParVector Class Destructor
@@ -134,11 +126,23 @@ namespace raptor
         ***** Parameters
         ***** -------------
         ***** y : ParVector* y
-        *****    Vector to be summed with
+        *****    ParVector to be summed with
         ***** alpha : data_t
         *****    Constant value to multiply each element of vector by
         **************************************************************/
         void axpy(ParVector* y, data_t alpha);
+
+        /**************************************************************
+        *****   Vector Copy
+        **************************************************************
+        ***** Copies values of local vector in y into local 
+        *****
+        ***** Parameters
+        ***** -------------
+        ***** y : ParVector* y
+        *****    ParVector to be copied
+        **************************************************************/
+        void copy(ParVector* y);
         
         /**************************************************************
         *****   Vector Scale
@@ -163,6 +167,10 @@ namespace raptor
         *****    Determines which p-norm to calculate
         **************************************************************/
         data_t norm(index_t p);
+
+        void communicate(ParComm* comm_pkg, MPI_Comm comm = MPI_COMM_WORLD);
+        void init_comm(ParComm* comm_pkg, MPI_Comm comm = MPI_COMM_WORLD);
+        void complete_comm(ParComm* comm_pkg);
 
         Vector* local;
         int global_n;

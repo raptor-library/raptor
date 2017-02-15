@@ -2,7 +2,7 @@
 #include <float.h>
 #include <stdio.h>
 
-ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int symmetric, int read_sym, ParMatrix** Asymptr, int striped)
+ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int symmetric)
 {
     index_t num_rows, num_cols, nnz;
     int comm_size, rank, ret_code;
@@ -10,7 +10,6 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int sy
     index_t* col;
     data_t* data;
     ParMatrix* A;
-    ParMatrix* Asym = NULL;
     
     if (single_file) 
     {
@@ -33,12 +32,11 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int sy
         fclose(infile);
 
         A = new ParMatrix(num_rows, num_cols, MPI_COMM_WORLD);
-        if (!symmetric && read_sym) Asym = new ParMatrix(num_rows, num_cols, MPI_COMM_WORLD);
 
         // read the file knowing our local rows
-        ret_code = mm_read_sparse(filename, A->first_row,
-            A->first_row + A->local_rows, &num_rows, &num_cols,
-            A, symmetric, read_sym, Asym, striped, A->global_col_starts.data());
+        ret_code = mm_read_sparse(filename, A->first_local_row,
+            A->first_local_row + A->local_num_rows, &num_rows, &num_cols,
+            A, symmetric);
 
         if (ret_code != 0)
         {
@@ -47,12 +45,6 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int sy
     }
 
     A->finalize();
-
-    if (!symmetric && read_sym)
-    { 
-        Asym->finalize();
-        *Asymptr = Asym;
-    }
 
     return A;
 }
@@ -239,8 +231,8 @@ int mm_dist_sparse(const char* fname, index_t start, index_t stop)
 
 }
 
-int mm_read_sparse(const char *fname, index_t start, index_t stop, index_t *M_, index_t *N_,
-                ParMatrix* A, int symmetric, int read_sym, ParMatrix* Asym, int striped, int* global_col_starts)
+int mm_read_sparse(const char *fname, index_t start, index_t stop, 
+        index_t *M_, index_t *N_, ParMatrix* A, int symmetric)
 {
     FILE *f;
     MM_typecode matcode;
@@ -256,18 +248,16 @@ int mm_read_sparse(const char *fname, index_t start, index_t stop, index_t *M_, 
         printf("mm_read_unsymetric: Could not process Matrix Market banner ");
         printf(" in file [%s]\n", fname);
         return -1;
+    } 
+ 
+    if ( mm_is_complex(matcode) || !(mm_is_matrix(matcode) &&
+            mm_is_sparse(matcode)))
+    {
+        fprintf(stderr, "Sorry, this application does not support ");
+        fprintf(stderr, "Market Market type: [%s]\n",
+                mm_typecode_to_str(matcode));
+        return -1;
     }
- 
- 
- 
-//    if ( mm_is_complex(matcode) || !(mm_is_matrix(matcode) &&
-//            mm_is_sparse(matcode)))
-//    {
-//        fprintf(stderr, "Sorry, this application does not support ");
-//        fprintf(stderr, "Market Market type: [%s]\n",
-//                mm_typecode_to_str(matcode));
-//        return -1;
-//    }
  
     /* find out size of sparse matrix: M, N, nz .... */
  
@@ -288,87 +278,24 @@ int mm_read_sparse(const char *fname, index_t start, index_t stop, index_t *M_, 
     {
         char buf[sizeof(index_t)*2 + sizeof(double) + sizeof(char)];
 
-        if (striped)
-        {
-            int rank, num_procs;
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
-            for (i = 0; i < nz; i++)
-            {
-        int row, col;
-        int new_row, new_col;
-        int new_row_rank, new_col_rank;
-        double value;
-                fscanf(f, "%d %d %lg\n", &row, &col, &value);
-                if (fabs(value) < zero_tol) continue;
-
-                if ((row-1) % num_procs == rank)
-                {
-                    new_row = (row-1) / num_procs + start;
-                    new_col_rank = (col - 1) % num_procs;
-                    new_col = (col-1) / num_procs + global_col_starts[new_col_rank];
-                    A->add_global_value(new_row, new_col, value);
-                    if (!symmetric && read_sym) Asym->add_global_value(new_row, new_col, value);
-                }
-                if ((col-1) % num_procs == rank)
-                {
-                    new_row_rank = (row-1) % num_procs;
-                    new_row = (row-1) / num_procs + global_col_starts[new_row_rank];
-                    new_col = (col-1) / num_procs + start;
-                    if (symmetric) A->add_global_value(new_col, new_row, value);
-                    else if (read_sym) Asym->add_global_value(new_col, new_row, value);
-                }
-            }
-        }
-        else
-        {
-            for (i=0; i<nz; i++)
-            {
-        int row, col;
-        double value;
-                fscanf(f, "%d %d %lg\n", &row, &col, &value);
-
-                if (fabs(value) < zero_tol) continue;
-
-                if (row > start && row <= stop)
-                {
-                    A->add_global_value(row-1, col-1, value);
-                    if (!symmetric && read_sym) 
-                        Asym->add_global_value(row-1, col-1, value);
-                }
-                if (col > start && col <= stop && col != row)
-                {
-                    if (symmetric)
-                        A->add_global_value(col-1, row-1, value);
-                    else if (read_sym)
-                        Asym->add_global_value(col-1, row-1, value);
-                }
-            }
-        }
-    }
-   /* else
-    {
-        char buf[sizeof(index_t)*2 + sizeof(double) + sizeof(char)];
         for (i=0; i<nz; i++)
         {
-            index_t row, col;
-            data_t value;
+            int row, col;
+            double value;
+            fscanf(f, "%d %d %lg\n", &row, &col, &value);
 
-            fscanf(f, "%d %d\n", &row, &col);
-
-            value = 1.0;
+            if (fabs(value) < zero_tol) continue;
 
             if (row > start && row <= stop)
             {
-                A->add_value(row-1, col-1, value, 1);
+                A->add_global_value(row-1, col-1, value);
             }
-            if (symmetric && col > start && col <= stop && col != row)
+            if (symmetric && (col > start && col <= stop && col != row))
             {
-                A->add_value(col-1, row-1, value, 1);
+                A->add_global_value(col-1, row-1, value);
             }
         }
-    }*/
+    }
 
 
     fclose(f);

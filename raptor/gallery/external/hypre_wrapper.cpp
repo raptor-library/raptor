@@ -41,12 +41,12 @@ HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap, MPI_Comm comm_mat)
     MPI_Comm_rank(comm_mat, &rank);
     MPI_Comm_size(comm_mat, &num_procs);
 
-    n_rows = A_rap->local_rows;
+    n_rows = A_rap->local_num_rows;
     if (n_rows)
     {
-        n_cols = A_rap->local_cols;
-        local_row_start = A_rap->first_row;
-        local_col_start = A_rap->first_col_diag;
+        n_cols = A_rap->local_num_cols;
+        local_row_start = A_rap->first_local_row;
+        local_col_start = A_rap->first_local_col;
     }
 
     /**********************************
@@ -60,10 +60,10 @@ HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap, MPI_Comm comm_mat)
     {
         HYPRE_Int row_start = A_rap->diag->idx1[i];
         HYPRE_Int row_end = A_rap->diag->idx1[i+1];
-        HYPRE_Int global_row = i + A_rap->first_row;
+        HYPRE_Int global_row = i + A_rap->first_local_row;
         for (int j = row_start; j < row_end; j++)
         {
-            HYPRE_Int global_col = A_rap->diag->idx2[j] + A_rap->first_col_diag;
+            HYPRE_Int global_col = A_rap->diag->idx2[j] + A_rap->first_local_col;
             HYPRE_Real value = A_rap->diag->vals[j];
             HYPRE_IJMatrixSetValues(A, 1, &one, &global_row, &global_col, &value);
         }
@@ -75,10 +75,10 @@ HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap, MPI_Comm comm_mat)
         {
             HYPRE_Int col_start = A_rap->offd->idx1[i];
             HYPRE_Int col_end = A_rap->offd->idx1[i+1];
-            HYPRE_Int global_col = A_rap->local_to_global[i];
+            HYPRE_Int global_col = A_rap->offd_column_map[i];
             for (int j = col_start; j < col_end; j++)
             {
-                HYPRE_Int global_row = A_rap->offd->idx2[j] + A_rap->first_row;
+                HYPRE_Int global_row = A_rap->offd->idx2[j] + A_rap->first_local_row;
                 HYPRE_Real value = A_rap->offd->vals[j];
                 HYPRE_IJMatrixSetValues(A, 1, &one, &global_row, &global_col, &value);
             }
@@ -114,13 +114,13 @@ raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre, MPI_Comm comm_mat)
         offd_data = hypre_CSRMatrixData(A_hypre_offd);
     }
 
-    HYPRE_Int first_row = hypre_ParCSRMatrixFirstRowIndex(A_hypre);
-    HYPRE_Int first_col_diag = hypre_ParCSRMatrixFirstColDiag(A_hypre);
+    HYPRE_Int first_local_row = hypre_ParCSRMatrixFirstRowIndex(A_hypre);
+    HYPRE_Int first_local_col = hypre_ParCSRMatrixFirstColDiag(A_hypre);
     HYPRE_Int* col_map_offd = hypre_ParCSRMatrixColMapOffd(A_hypre);
     HYPRE_Int global_rows = hypre_ParCSRMatrixGlobalNumRows(A_hypre);
     HYPRE_Int global_cols = hypre_ParCSRMatrixGlobalNumCols(A_hypre);
 
-    ParMatrix* A = new ParMatrix(global_rows, global_cols, diag_rows, diag_cols, first_row, first_col_diag);
+    ParMatrix* A = new ParMatrix(global_rows, global_cols, diag_rows, diag_cols, first_local_row, first_local_col);
 
     for (int i = 0; i < diag_rows; i++)
     {
@@ -128,7 +128,7 @@ raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre, MPI_Comm comm_mat)
         int row_end = diag_i[i+1];
         for (int j = row_start; j < row_end; j++)
         {
-            int global_col = diag_j[j] + first_col_diag;
+            int global_col = diag_j[j] + first_local_col;
             A->add_value(i, global_col, diag_data[j]);
         }
     
@@ -179,8 +179,8 @@ raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre, MPI_Comm comm_mat)
         offd_data = hypre_CSRMatrixData(A_hypre_offd);
     }
 
-    HYPRE_Int first_row = hypre_ParCSRMatrixFirstRowIndex(A_hypre);
-    HYPRE_Int first_col_diag = hypre_ParCSRMatrixFirstColDiag(A_hypre);
+    HYPRE_Int first_local_row = hypre_ParCSRMatrixFirstRowIndex(A_hypre);
+    HYPRE_Int first_local_col = hypre_ParCSRMatrixFirstColDiag(A_hypre);
     HYPRE_Int* col_map_offd = hypre_ParCSRMatrixColMapOffd(A_hypre);
     HYPRE_Int global_rows = hypre_ParCSRMatrixGlobalNumRows(A_hypre);
     HYPRE_Int global_cols = hypre_ParCSRMatrixGlobalNumCols(A_hypre);
@@ -208,16 +208,16 @@ raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre, MPI_Comm comm_mat)
     A->global_rows = global_rows;
     A->global_cols = global_cols;
     A->global_col_starts.resize(num_procs);
-    MPI_Allgather(&first_col_diag, 1, MPI_INT, A->global_col_starts.data(), 1, MPI_INT, MPI_COMM_WORLD);
-    A->local_rows = diag_rows;
-    A->local_cols = diag_cols;
-    A->first_row = first_row;
-    A->first_col_diag = first_col_diag;
+    MPI_Allgather(&first_local_col, 1, MPI_INT, A->global_col_starts.data(), 1, MPI_INT, MPI_COMM_WORLD);
+    A->local_num_rows = diag_rows;
+    A->local_num_cols = diag_cols;
+    A->first_local_row = first_local_row;
+    A->first_local_col = first_local_col;
     A->comm_mat = comm_mat;
 
     // Copy local to global index data
     A->offd_num_cols = offd_cols;
-    A->local_to_global.set_data(offd_cols, col_map_offd);
+    A->offd_column_map.set_data(offd_cols, col_map_offd);
 
     // Copy diagonal matrix
     A->diag = new Matrix(diag_rows, diag_cols, CSR);

@@ -27,6 +27,22 @@ void ParVector::axpy(ParVector* x, data_t alpha)
 }
 
 /**************************************************************
+*****   Vector Copy
+**************************************************************
+***** Copies values of local vector in y into local 
+*****
+***** Parameters
+***** -------------
+***** y : ParVector* y
+*****    ParVector to be copied
+**************************************************************/
+void ParVector::copy(ParVector* y)
+{
+    if (local_n)
+        local->copy(y->local);
+}
+
+/**************************************************************
 *****   Vector Scale
 **************************************************************
 ***** Multiplies the local vector by a constant, alpha
@@ -99,5 +115,83 @@ data_t ParVector::norm(index_t p)
     }
     MPI_Allreduce(MPI_IN_PLACE, &result, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
     return pow(result, 1./p);
+}
+
+void ParVector::communicate(ParComm* comm_pkg, MPI_Comm comm)
+{
+    init_comm(comm_pkg, comm);
+    complete_comm(comm_pkg);
+}
+
+void ParVector::init_comm(ParComm* comm_pkg, MPI_Comm comm)
+{
+    CommData* send_data = comm_pkg->send_data;
+    CommData* recv_data = comm_pkg->recv_data;
+
+    if (send_data->num_msgs)
+    {
+        int send_start;
+        int send_end;
+        int proc;
+
+        data_t* local_data = local->data();
+        std::vector<int>& procs = send_data->procs;
+        std::vector<int>& indptr = send_data->indptr;
+        std::vector<int>& indices = send_data->indices;
+        double* buffer = send_data->buffer;
+        MPI_Request* requests = send_data->requests;
+
+        // Add local data to buffer, and send to appropriate procs
+        for (int i = 0; i < send_data->num_msgs; i++)
+        {
+            proc = procs[i];
+            send_start = indptr[i];
+            send_end = indptr[i+1];
+            for (int j = send_start; j < send_end; j++)
+            {
+                buffer[j] = local_data[indices[j]];
+            }
+            MPI_Isend(&(buffer[send_start]), send_end - send_start,
+                    MPI_DATA_T, proc, 0, comm, &(requests[i]));
+        }
+    }
+
+    if (recv_data->num_msgs)
+    {
+        int recv_start;
+        int recv_end;
+        int proc;
+
+        std::vector<int>& procs = recv_data->procs;
+        std::vector<int>& indptr = recv_data->indptr;
+        double* buffer = recv_data->buffer;
+        MPI_Request* requests = recv_data->requests;
+
+        for (int i = 0; i < recv_data->num_msgs; i++)
+        {
+            proc = procs[i];
+            recv_start = indptr[i];
+            recv_end = indptr[i+1];
+            MPI_Irecv(&(buffer[recv_start]), recv_end - recv_start, 
+                    MPI_DATA_T, proc, 0, comm, &(requests[i]));
+        }
+    }
+}
+
+void ParVector::complete_comm(ParComm* comm_pkg)
+{
+    if (comm_pkg->send_data->num_msgs)
+    {
+        MPI_Waitall(comm_pkg->send_data->num_msgs,
+                comm_pkg->send_data->requests,
+                MPI_STATUS_IGNORE);
+    }
+
+    if (comm_pkg->recv_data->num_msgs)
+    {
+        MPI_Waitall(comm_pkg->recv_data->num_msgs,
+                comm_pkg->recv_data->requests,
+                MPI_STATUS_IGNORE);
+    }
 }
 

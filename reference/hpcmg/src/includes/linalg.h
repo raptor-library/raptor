@@ -1,5 +1,0 @@
-#include "linalg/seq/vector.h"
-#include "linalg/seq/csrmatrix.h"
-#include "linalg/par/vector.h"
-#include "linalg/par/csrmatrix.h"
-#include "linalg/par/partition.h"

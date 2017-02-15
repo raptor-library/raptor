@@ -56,11 +56,11 @@ namespace raptor
 
               if (idx > 0)
               {
-                  x = new ParVector(A->global_cols, A->local_cols, A->first_col_diag);
-                  b = new ParVector(A->global_rows, A->local_rows, A->first_row);
+                  x = new ParVector(A->global_num_cols, A->local_num_cols, A->first_local_col);
+                  b = new ParVector(A->global_num_rows, A->local_num_rows, A->first_local_row);
                   has_vec = true;
               }
-              tmp = new ParVector(A->global_rows, A->local_rows, A->first_row);
+              tmp = new ParVector(A->global_num_rows, A->local_num_rows, A->first_local_row);
           }
     
           /**************************************************************
@@ -82,8 +82,8 @@ namespace raptor
 
               if (idx > 0)
               {
-                  x = new ParVector(A->global_cols, A->local_cols, A->first_col_diag);
-                  b = new ParVector(A->global_rows, A->local_rows, A->first_row);
+                  x = new ParVector(A->global_num_cols, A->local_num_cols, A->first_local_col);
+                  b = new ParVector(A->global_num_rows, A->local_num_rows, A->first_local_row);
                   has_vec = true;
               }
 

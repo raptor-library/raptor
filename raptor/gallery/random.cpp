@@ -12,10 +12,10 @@ ParMatrix* random_mat(int global_rows, int global_cols, int nnz_per_row)
     ParMatrix* A;
     
     A = new ParMatrix(global_rows, global_cols);
-    int local_nnz = nnz_per_row * A->local_rows;
+    int local_nnz = nnz_per_row * A->local_num_rows;
     for (int i = 0; i < local_nnz; i++)
     {
-        A->add_value(rand() % A->local_rows, rand() % global_cols, 1.0);
+        A->add_value(rand() % A->local_num_rows, rand() % global_cols, 1.0);
     }
 
     A->finalize();

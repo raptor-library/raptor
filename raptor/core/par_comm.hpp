@@ -8,6 +8,7 @@
 
 #include "matrix.hpp"
 #include "par_vector.hpp"
+#include "comm_data.hpp"
 #include <map>
 
 /**************************************************************
@@ -64,66 +65,18 @@ class ParComm
 {
 public:
     /**************************************************************
-    *****   ParComm Init ColToProc
-    **************************************************************
-    ***** Initializes col_to_proc, adding the process that corresponds
-    ***** to each column of the off-diagonal block
-    *****
-    ***** Parameters
-    ***** -------------
-    ***** comm_mat : MPI_Comm (const)
-    *****    MPI Communicator containing all active processes
-    ***** num_cols : index_t (const)
-    *****    Number of columns in the off-diagonal block
-    ***** global_to_local : std::map<index_t, index_t>&
-    *****    Maps global columns of the parallel matrix to local
-    *****    columns of the off-diagonal blocks
-    ***** global_col_starts : std::vector<index_t>&
-    *****    Describes the partition of the parallel matrix
-    **************************************************************/
-    void init_col_to_proc(const MPI_Comm comm_mat, const index_t num_cols, std::map<index_t, index_t>& global_to_local, std::vector<index_t>& global_col_starts);
-
-    /**************************************************************
-    *****   ParComm Init Communicator Recvs
-    **************************************************************
-    ***** Initializes the recv data for communication.  Sets the
-    *****
-    *****
-    ***** Parameters
-    ***** -------------
-    ***** comm_mat : MPI_Comm (const)
-    *****    MPI Communicator containing all active processes
-    ***** num_cols : index_t (const)
-    *****    Number of columns in the off-diagonal block
-    ***** global_to_local : std::map<index_t, index_t>&
-    *****    Maps global columns of the parallel matrix to local
-    *****    columns of the off-diagonal blocks
-    ***** global_col_starts : std::vector<index_t>&
-    *****    Describes the partition of the parallel matrix
-    **************************************************************/
-    void init_comm_recvs(const MPI_Comm comm_mat, const index_t num_cols, std::map<index_t, index_t>& global_to_local);
-    void init_comm_sends_unsym(const MPI_Comm comm_mat, std::vector<index_t>& map_to_global, std::vector<index_t>& global_col_starts);
-
-    void init_sends(const data_t* x_data, MPI_Comm comm = MPI_COMM_WORLD);
-    void init_recvs(MPI_Comm comm = MPI_COMM_WORLD);
-    void complete_sends();
-    void complete_recvs();
-    int init_mat_comm(int* row_starts, csr_data* tmp_data, MPI_Datatype csr_type, MPI_Comm comm = MPI_COMM_WORLD);
-    void clean_mat_comm();
-
-    /**************************************************************
     *****   ParComm Class Constructor
     **************************************************************
     ***** Initializes an empty ParComm, setting send and recv
     ***** sizes to 0
+    ***** _key : int (optional)
+    *****    Tag to be used in MPI Communication (default 0)
     **************************************************************/
     ParComm(int _key = 0)
     {
-        num_sends = 0;
-        size_sends = 0;
-        num_recvs = 0;
-        size_recvs = 0;
         key = _key;
+        send_data = new CommData();
+        recv_data = new CommData();
     }
 
     /**************************************************************
@@ -133,36 +86,39 @@ public:
     *****
     ***** Parameters
     ***** -------------
-    ***** offd : Matrix*
-    *****    Matrix holding local off-diagonal block
-    ***** map_to_global : std::vector<index_t>&
-    *****    Maps local columns of offd block to global columns
-    *****    of the parallel matrix
-    ***** global_to_local : std::map<index_t, index_t>&
-    *****    Maps global columns of the parallel matrix to local
-    *****    columns of the off-diagonal block
-    ***** global_col_starts : std::vector<index_t>& 
-    *****    Describes the partition of the parallel matrix
-    *****    across the processors
-    ***** comm_mat : MPI_Comm
-    *****    MPI Communicator containing all active processes
-    *****    (all processes containing at least on row of the matrix)
+    ***** offd_column_map : std::vector<index_t>&
+    *****    Maps local offd columns indices to global
+    ***** first_local_row : index_t
+    *****    Global row index of first row local to process
+    ***** first_local_col : index_t
+    *****    Global row index of first column to fall in local block
+    ***** _key : int (optional)
+    *****    Tag to be used in MPI Communication (default 9999)
     **************************************************************/
-    ParComm(std::vector<index_t>& local_to_global, std::vector<index_t>& global_col_starts, int first_row, const MPI_Comm comm_mat = MPI_COMM_WORLD, int _key = 9999)
+    ParComm(std::vector<index_t>& offd_column_map,
+            index_t first_local_row, 
+            index_t first_local_col,
+            int _key = 9999,
+            MPI_Comm comm = MPI_COMM_WORLD)
     {
-        num_sends = 0;
-        size_sends = 0;
-        num_recvs = 0;
-        size_recvs = 0;
-        key = _key;
 
         // Get MPI Information
         int rank, num_procs;
-        MPI_Comm_rank(comm_mat, &rank);
-        MPI_Comm_size(comm_mat, &num_procs);
+        MPI_Comm_rank(comm, &rank);
+        MPI_Comm_size(comm, &num_procs);
+
+        // Initialize class variables
+        key = _key;
+        send_data = new CommData();
+        recv_data = new CommData();
+
+        // Create global_row_starts (first global row on each proc)
+        int* global_row_starts = new int[num_procs];
+        MPI_Allgather(&first_local_row, 1, MPI_INT, 
+                global_row_starts, 1, MPI_INT, MPI_COMM_WORLD);
 
         // Declare communication variables
-        index_t offd_num_cols = local_to_global.size();
+        index_t offd_num_cols = offd_column_map.size();
         int* proc_sends;
         int* proc_recvs;
         int ctr;
@@ -176,88 +132,98 @@ public:
         MPI_Status recv_status;
         int* tmp_send_buffer;
 
+        // Allocate space for processes I send to / recv from
         proc_sends = new int[num_procs]();
         proc_recvs = new int[num_procs];
+
+        // Determine recv variables, and note processes in recv_procs
+        // as I will need to send them which column indices I must recv
+        int* col_to_proc = new int[offd_num_cols];
         proc = 0;
-        prev_proc = -1;
         for (int i = 0; i < offd_num_cols; i++)
         {
-            global_col = local_to_global[i];
+            global_col = offd_column_map[i];
             while (proc + 1 < num_procs && 
-                    global_col >= global_col_starts[proc + 1])
+                    global_col >= global_row_starts[proc + 1])
                 proc++;
+            col_to_proc[i] = proc;
+        }
+        delete[] global_row_starts;
+
+        prev_proc = col_to_proc[0];
+        proc_sends[prev_proc] = 1;
+        int prev_idx = 0;
+        for (int i = 1; i < offd_num_cols; i++)
+        {
+            proc = col_to_proc[i];
             if (proc != prev_proc)
             {
-                recv_procs.push_back(proc);
-                recv_col_starts.push_back(i);
-                proc_sends[proc] = 1;
+                recv_data->add_msg(prev_proc, i - prev_idx);
                 prev_proc = proc;
+                prev_idx = i;
+                proc_sends[proc] = 1;
             }
         }
-        recv_col_starts.push_back(offd_num_cols);
-        num_recvs = recv_procs.size();
-        size_recvs = recv_col_starts[num_recvs];
-        if (num_recvs)
-        {
-            recv_requests = new MPI_Request[num_recvs];
-            recv_buffer = new data_t[size_recvs];
-        }
-        
-        MPI_Allreduce(proc_sends, proc_recvs, num_procs, MPI_INT, MPI_SUM, comm_mat);
-        num_sends = proc_recvs[rank];
+        recv_data->add_msg(prev_proc, offd_num_cols - prev_idx);
+        recv_data->finalize();
+        delete[] col_to_proc;
 
-        if (size_recvs) tmp_send_buffer = new int[size_recvs];
-        for (int i = 0; i < num_recvs; i++)
+        
+        // Find the number of processes that must recv from me
+        MPI_Allreduce(proc_sends, proc_recvs, num_procs, MPI_INT, MPI_SUM, comm);
+        int num_sends = proc_recvs[rank];
+
+        // For each process I recv from, send the global column indices
+        // for which I must recv corresponding rows 
+        if (recv_data->size_msgs) tmp_send_buffer = new int[recv_data->size_msgs];
+        for (int i = 0; i < recv_data->num_msgs; i++)
         {
-            proc = recv_procs[i];
-            send_start = recv_col_starts[i];
-            send_end = recv_col_starts[i+1];
+            proc = recv_data->procs[i];
+            send_start = recv_data->indptr[i];
+            send_end = recv_data->indptr[i+1];
             for (int j = send_start; j < send_end; j++)
             {
-                tmp_send_buffer[j] = local_to_global[j];
+                tmp_send_buffer[j] = offd_column_map[j];
             }
             MPI_Isend(&(tmp_send_buffer[send_start]), send_end - send_start, MPI_INT, 
-                    proc, tag, comm_mat, &(recv_requests[i]));
+                    proc, tag, comm, &(recv_data->requests[i]));
         }
 
+        // Receive any messages, regardless of source (which is unknown)
         n_recvd = 0;
         ctr = 0;
-        send_row_starts.push_back(0);
         while (n_recvd < num_sends)
         {
             // Wait until message is in buffer
-            MPI_Probe(MPI_ANY_SOURCE, tag, comm_mat, &recv_status);
+            MPI_Probe(MPI_ANY_SOURCE, tag, comm, &recv_status);
 
             // Find size of message
             MPI_Get_count(&recv_status, MPI_INT, &count);
+
+            // Find process sending message
             proc = recv_status.MPI_SOURCE;
 
             // Recv first message in buffer
             int recvbuf[count];
-            MPI_Recv(recvbuf, count, MPI_INT, proc, tag, comm_mat, 
+            MPI_Recv(recvbuf, count, MPI_INT, proc, tag, comm, 
                     &recv_status);
     
-            send_row_starts.push_back(send_row_starts[ctr++] + count);
-            send_procs.push_back(proc);
-
+            // Add destination process to send_procs as this process
+            // will send vector values to me
             for (int i = 0; i < count; i++)
-            {
-                global_row = recvbuf[i];
-                local_row = global_row - first_row;
-                send_row_indices.push_back(local_row);
-            }
+                recvbuf[i] -= first_local_row;
+            send_data->add_msg(proc, count, recvbuf);
+
             n_recvd++;
         }
-        size_sends = send_row_starts[num_sends];
-        if (num_sends)
-        {
-            send_requests = new MPI_Request[num_sends];
-            send_buffer = new data_t[size_sends];
-        }
+        send_data->finalize();
+        
+        // Wait for sends to complete
+        if (recv_data->num_msgs) 
+            MPI_Waitall(recv_data->num_msgs, recv_data->requests, MPI_STATUS_IGNORE);
 
-        if (num_recvs) MPI_Waitall(num_recvs, recv_requests, MPI_STATUS_IGNORE);
-
-        if (size_recvs) delete[] tmp_send_buffer;
+        // Delete variables
+        if (recv_data->size_msgs) delete[] tmp_send_buffer;
         delete[] proc_sends;
         delete[] proc_recvs;
     }
@@ -269,39 +235,14 @@ public:
     **************************************************************/
     ~ParComm()
     {
-        if (num_sends)
-        {
-            delete[] send_requests;
-            delete[] send_buffer;
-        }
-        
-        if (num_recvs)
-        {
-            delete[] recv_requests;
-            delete[] recv_buffer;
-        }
+        delete send_data;
+        delete recv_data;
     };
 
-    index_t num_sends;
-    index_t num_recvs;
-    index_t size_sends;
-    index_t size_recvs;
     int key;
-    std::vector<index_t> send_procs;
-    std::vector<index_t> send_row_starts;
-    std::vector<index_t> send_row_indices;
-    std::vector<index_t> recv_procs;
-    std::vector<index_t> recv_col_starts;
-    std::vector<index_t> col_to_proc;
-    MPI_Request* send_requests;
-    MPI_Request* recv_requests; 
-    data_t* send_buffer;
-    data_t* recv_buffer;
-    int* row_send_buffer;
-    int* row_recv_buffer;
-    int* csr_row_starts;
-    csr_data* csr_send_buffer;
-    csr_data* csr_recv_buffer;
+    CommData* send_data;
+    CommData* recv_data;
+
 };
 }
 #endif

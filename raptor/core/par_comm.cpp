@@ -5,7 +5,7 @@
 
 using namespace raptor;
 
-void ParComm::init_sends(const data_t* x_data, MPI_Comm comm)
+/*void ParComm::init_sends(const data_t* x_data, MPI_Comm comm)
 {
     if (num_sends == 0) return;
     
@@ -184,4 +184,4 @@ void ParComm::clean_mat_comm()
     {
         delete[] csr_send_buffer;
     }
-}
+}*/

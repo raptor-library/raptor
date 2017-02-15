@@ -7,7 +7,6 @@
 #include "par_matrix.hpp"
 #include "par_vector.hpp"
 #include "level.hpp"
-#include "util/linalg/spmv.hpp"
 #include "util/linalg/relax.hpp"
 #include "util/linalg/gauss_elimination.hpp"
 

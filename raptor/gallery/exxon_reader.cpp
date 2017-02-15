@@ -7,7 +7,7 @@
 #include <sstream>
 #include <stdio.h>
 
-ParMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix, int** global_rows)
+ParMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix, int** global_num_rows)
 {
     // Get MPI Info
     int rank, num_procs;
@@ -16,7 +16,7 @@ ParMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix, in
 
     // Declare Matrix Variables
     ParMatrix* A = NULL;
-    int diag_num_cols;
+/*    int diag_num_cols;
     int offd_num_cols;
     int block_diag_num_cols;
     int block_offd_num_cols;
@@ -41,7 +41,7 @@ ParMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix, in
     // Declare info for reading row/column of matrix entry
     int pos[2];
     int pos_size = 2;
-    int first_row, first_col;
+    int first_local_row, first_col;
     int local_row, local_col;
     int global_block_rows;
     int n_data;
@@ -126,7 +126,7 @@ int g_count;
         local_row = pos[0];
         local_col = pos[1];
         fread(data, dsize, n_data, infile);
-        first_row = local_row * block_size;
+        first_local_row = local_row * block_size;
 
         if (local_col >= first_block_row && local_col <= last_block_row)
         {
@@ -138,7 +138,7 @@ int g_count;
                     value = data[i*block_size + j];
                     if (fabs(value) > zero_tol)
                     {
-                        A->diag->add_value(first_row + i, first_col + j, value);
+                        A->diag->add_value(first_local_row + i, first_col + j, value);
                     }
 count++;
                 }
@@ -154,7 +154,7 @@ count++;
                     value = data[i*block_size + j];
                     if (fabs(value) > zero_tol)
                     {
-                        A->offd->add_value(first_row + i, first_col + j, value);
+                        A->offd->add_value(first_local_row + i, first_col + j, value);
                         offd_col_set.insert(first_col + j);
                     }
 count++;
@@ -173,8 +173,8 @@ MPI_Reduce(&tmpl, &tmpg, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     delete[] data;
     fclose(infile);
 
-    A->local_rows = diag_num_cols;
-    A->local_cols = diag_num_cols;
+    A->local_num_rows = diag_num_cols;
+    A->local_num_cols = diag_num_cols;
     A->offd_num_cols = offd_num_cols;
 
     global_block_rows = 0;
@@ -235,33 +235,27 @@ MPI_Reduce(&tmpl, &tmpg, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
         }
     }
 
-    A->comm_mat = MPI_COMM_WORLD;
-    A->global_rows = global_block_rows * block_size;
-    A->global_cols = A->global_rows;
-    A->first_row = first_block_row * block_size;
-    A->first_col_diag = A->first_row;
-    A->global_col_starts.resize(num_procs);
-    for (int i = 0; i < num_procs; i++)
-    {
-        A->global_col_starts[i] = displs[i]*block_size;
-    }
+    A->global_num_rows = global_block_rows * block_size;
+    A->global_num_cols = A->global_num_rows;
+    A->first_local_row = first_block_row * block_size;
+    A->first_local_col = A->first_local_row;
 
     A->local_nnz = A->diag->nnz + A->offd->nnz;
-    if (A->offd_num_cols) A->local_to_global.resize(A->offd_num_cols);
+    if (A->offd_num_cols) A->offd_column_map.resize(A->offd_num_cols);
 
     ctr = 0;
     for (std::set<int>::iterator it = offd_col_set.begin(); it != offd_col_set.end(); ++it)
     {
-        A->local_to_global[ctr] = *it;
+        A->offd_column_map[ctr] = *it;
         A->global_to_local[*it] = ctr++;
     }
 
     if (A->offd_num_cols)
     {
-        std::sort(A->local_to_global.begin(), A->local_to_global.end());
-        for (index_t i = 0; i < A->local_to_global.size(); i++)
+        std::sort(A->offd_column_map.begin(), A->offd_column_map.end());
+        for (index_t i = 0; i < A->offd_column_map.size(); i++)
         {
-            index_t global_col = A->local_to_global[i];
+            index_t global_col = A->offd_column_map[i];
             std::map<index_t, index_t>::iterator map_it = 
                 A->global_to_local.find(global_col);
             map_it->second = i;
@@ -288,18 +282,16 @@ MPI_Reduce(&tmpl, &tmpg, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
         delete A->offd;
     }
 
-    if (A->local_rows)
+    if (A->local_num_rows)
     {
-        A->comm = new ParComm(A->local_to_global, A->global_col_starts, A->first_row);
+        A->comm = new ParComm(A->offd_column_map,  A->first_local_row, A->first_local_col);
     }
     else
     {
         A->comm = new ParComm();
-        A->comm->num_sends = 0;
-        A->comm->num_recvs = 0;
     }
 
-    int* global_tmp = new int[A->local_rows];
+    int* global_tmp = new int[A->local_num_rows];
     for (int i = 0; i < block_diag_num_cols; i++)
     {
         for (int j = 0; j < block_size; j++)
@@ -307,12 +299,12 @@ MPI_Reduce(&tmpl, &tmpg, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
             global_tmp[i*block_size + j] = global_indices[i]*block_size + j;
         }
     }
-    *global_rows = global_tmp;
+    *global_num_rows = global_tmp;
     
     delete[] orig_block_rows;
     delete[] sizes;
     delete[] displs;
     delete[] local_block_to_global;
-
+*/
     return A;
 }
