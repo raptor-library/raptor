@@ -1,39 +1,39 @@
 // Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
+#ifndef PARSTENCIL_HPP
+#define PARSTENCIL_HPP
 
-#include "stencil.hpp"
+#include <float.h>
+#include <cmath>
+#include <stdlib.h>
 
-ParMatrix* stencil_grid(data_t* stencil, int* grid, int dim, format_t format)
+#include "core/types.hpp"
+#include "core/par_matrix.hpp"
+
+using namespace raptor;
+
+void par_stencil_grid(ParMatrix* A, data_t* stencil, int* grid, int dim)
 {
     // Get MPI Information
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    // Declare stencil grid variables
-    data_t value;
-    data_t* nonzero_stencil;
-    data_t* data;
-    int stencil_len;
-    index_t N_v; // global num rows
-    int n_v; // local num rows
-    int N_s; // number of stencil elements
-    int extra;
-    index_t first_local_row;
-    index_t last_local_row;
-    int ctr;
-    int init_step;
-    int idx;
-    int len;
-    int step;
-    int current_step;
-    index_t col;
-    int nnz;
-    int* diags;
-    int* strides;
-    int* stack_indices;
+    std::vector<int> diags;
+    std::vector<double> nonzero_stencil;
+    std::vector<int> strides(dim);
+    std::vector<double> data;
+    std::vector<int> stack_indices;
 
-    ParMatrix* A;
+    int stencil_len, ctr;
+    int N_v;  // Number of rows (and cols) in matrix
+    int N_s;  // Number of nonzero stencil entries
+    int n_v;  // Local number of rows (and cols)
+    int extra, first_local, last_local;
+    int init_step, idx;
+    int len, step, current_step;
+    int col;
+    double value;
 
     // Initialize variables
     stencil_len = (index_t)pow(3, dim); // stencil - 3 ^ dim
@@ -55,7 +55,9 @@ ParMatrix* stencil_grid(data_t* stencil, int* grid, int dim, format_t format)
         }
     }
 
-    A = new ParMatrix(N_v, N_v);
+    A->global_rows = N_v;
+    A->global_cols = N_v;
+    A->initialize_partition();
 
     n_v = A->local_num_rows;
     first_local_row = A->first_local_row;
@@ -153,7 +155,6 @@ ParMatrix* stencil_grid(data_t* stencil, int* grid, int dim, format_t format)
                 len *= grid[k];
             }
             step = len * grid[0];
-            current_step = 0;
 
             //zeros at beginning
             if (idx > 0)
@@ -228,3 +229,7 @@ ParMatrix* stencil_grid(data_t* stencil, int* grid, int dim, format_t format)
 
     return A;
 } 
+
+#endif
+
+

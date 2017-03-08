@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <math.h>
 #include <core/types.hpp>
-#include <core/seq/matrix.hpp>
+#include <core/matrix.hpp>
 
 using namespace raptor;
 
@@ -32,9 +32,9 @@ int main(int argc, char* argv[])
         A.jacobi(x, b, r, 1.0);
         A.residual(x, b, r);
         r_norm = r.norm(2);
-        if (r_norm < 1e08) break;
-        prev_r_norm = r_norm;
         printf("Jacobi[%d]: RNorm = %e\n", i, r_norm);
+        if (r_norm < 1e-08) break;
+        prev_r_norm = r_norm;
     }
 
     x.set_const_value(1.0);
@@ -47,10 +47,10 @@ int main(int argc, char* argv[])
         A.gauss_seidel(x, b);
         A.residual(x, b, r);
         r_norm = r.norm(2);
-        if (r_norm < 1e08) break;
+        printf("GaussSeidel[%d]: RNorm = %e\n", i, r_norm);
+        if (r_norm < 1e-08) break;
         assert(prev_r_norm >= r_norm);
         prev_r_norm = r_norm;
-        printf("GaussSeidel[%d]: RNorm = %e\n", i, r_norm);
     }
 
     x.set_const_value(1.0);
@@ -63,10 +63,10 @@ int main(int argc, char* argv[])
         A.SOR(x, b);
         A.residual(x, b, r);
         r_norm = r.norm(2);
-        if (r_norm < 1e08) break;
+        printf("SOR[%d]: RNorm = %e\n", i, r_norm);
+        if (r_norm < 1e-08) break;
         assert(r_norm <= prev_r_norm);
         prev_r_norm = r_norm;
-        printf("SOR[%d]: RNorm = %e\n", i, r_norm);
     }
 
 }

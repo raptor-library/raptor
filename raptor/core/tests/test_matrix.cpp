@@ -1,8 +1,8 @@
 #include <assert.h>
 
 #include "core/types.hpp"
-#include "core/seq/matrix.hpp"
-#include "core/seq/vector.hpp"
+#include "core/matrix.hpp"
+#include "core/vector.hpp"
 
 using namespace raptor;
 

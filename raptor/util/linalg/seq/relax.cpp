@@ -1,14 +1,47 @@
 // Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "core/types.hpp"
-#include "core/seq/matrix.hpp"
-#include "core/seq/vector.hpp"
+#include "core/matrix.hpp"
+#include "core/vector.hpp"
 
 using namespace raptor;
 
+void CSCMatrix::jacobi(Vector& x, Vector& b, Vector& tmp, double omega)
+{
+    int col_start, col_end, row;
+    std::vector<double> diags(n_rows, 0);
+
+    // Tmp[i] will gather row sum
+    for (int i = 0; i < n_rows; i++)
+    {
+        tmp[i] = 0;
+    }
+
+    // Find diagonal values and row_sums
+    for (int i = 0; i < n_cols; i++)
+    {
+        col_start = idx1[i];
+        col_end = idx1[i+1];
+        if (col_end - col_start)
+            diags[i] = vals[col_start];
+        for (int j = col_start+1; j < col_end; j++)
+        {
+            row = idx2[j];
+            tmp[row] += vals[j] * x[i];
+        }
+    }
+
+    // Update x
+    for (int i = 0; i < n_rows; i++)
+    {
+        if (fabs(diags[i]) > zero_tol)
+            x[i] = ((1.0 - omega)*x[i]) + (omega*((b[i] - tmp[i]) / diags[i]));
+    }
+}
+
 void Matrix::jacobi(Vector& x, Vector& b, Vector& tmp, double omega)
 {
-    if (format() == COO || format() == CSC)
+    if (format() == COO)
     {
         printf("This matrix format is not supported.\n");
         return;

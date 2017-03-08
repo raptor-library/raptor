@@ -1,12 +1,11 @@
-#include <math.h>
 #include <core/types.hpp>
-#include <core/seq/matrix.hpp>
+#include <core/matrix.hpp>
 
 using namespace raptor;
 
 int main(int argc, char* argv[])
 {
-    COOMatrix A(25, 25, 5);
+    COOMatrix A(25, 25, 1);
     A.add_value(0, 1, 1.0);
     A.add_value(21, 9, 2.0);
     A.add_value(1, 0, 1.0);
@@ -103,10 +102,23 @@ int main(int argc, char* argv[])
     r.print("R");
 
     CSRMatrix Bcsr(&B);
-    CSRMatrix Ccsr(Acsr.n_rows, Bcsr.n_cols, 1.5*Acsr.nnz);
-    Acsr.mult(Bcsr, Ccsr);
+    CSCMatrix Bcsc(&B);
+    CSRMatrix Ccsr;
 
-    printf("\nC = A*B:\n");
+    printf("\nC = A*B: (CSR, CSR, CSR)\n");
+    Acsr.mult(Bcsr, &Ccsr);
+    Ccsr.print();
+
+    printf("\nC = A*B: (CSR, CSC, CSR)\n");
+    Acsr.mult(Bcsc, &Ccsr);
+    Ccsr.print();
+
+    printf("\nC = A_T*B: (CSC, CSC, CSR)\n");
+    Acsc.mult_T(Bcsc, &Ccsr);
+    Ccsr.print();
+
+    printf("\nC = A_T*B: (CSC, CSR, CSR)\n");
+    Acsc.mult_T(Bcsr, &Ccsr);
     Ccsr.print();
 
     printf("\nCOO Matrix with Condensed Cols:\n");
@@ -129,31 +141,9 @@ int main(int argc, char* argv[])
     Acsc.condense_cols();
     Acsc.print();
 
-    printf("\nCSC Matrix with Condensed Rowss:\n");
+    printf("\nCSC Matrix with Condensed Rows:\n");
     Acsc.condense_rows();
     Acsc.print();
-
-
-    Vector relax_x(Acsr.n_cols);
-    Vector relax_b(Acsr.n_rows);
-    Vector relax_tmp(Acsr.n_cols);
-    Vector relax_r(Acsr.n_rows);
-
-    relax_x.set_const_value(1.0);
-    relax_b.set_rand_values();
-
-    relax_b.print("B");
-
-    double r_norm = 0.0;
-
-    for (int i = 0; i < 100; i++)
-    {
-        Acsr.jacobi(relax_x, relax_b, relax_tmp);
-        Acsr.residual(relax_x, relax_b, relax_r);
-        r_norm = relax_r.norm(2);
-        printf("Residual = %e\n", r_norm);
-    }
-    
 }
    
 

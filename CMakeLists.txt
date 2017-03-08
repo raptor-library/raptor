@@ -1,31 +1,35 @@
-#TODO -- Currently using enviroment variables for HYPRE_INC, HYPRE_LIB, METIS_INC, METIS_LIB, MFEM_INC, MFEM_LIB (or HYPRE_DIR, METIS_DIR, MFEM_DIR).  Should we be using something else?
-
 cmake_minimum_required(VERSION 2.8)
 project(raptor)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
-include(options)
-include(testing)
-include(cxx11)
-include(source)
-include(mpi_config)
-include(cxx_config)
 include(FeatureSummary)
-
-include_directories("external")
-set(raptor_INCDIR ${CMAKE_CURRENT_SOURCE_DIR}/raptor)
-set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
 option(CRAYXE "Running on Cray XE" OFF)
 option(BGQ "Running on BGQ" OFF)
 option(WITH_HYPRE "Add Hypre" OFF)
 option(WITH_MFEM "Add MFEM" OFF)
 option(WITH_AMPI "Using AMPI" OFF)
+option(WITH_MPI "Using MPI" ON)
 add_feature_info(hypre WITH_HYPRE "Hypre preconditioner")
 add_feature_info(mfem WITH_MFEM "MFEM matrix gallery")
 add_feature_info(ampi WITH_AMPI "Compile with AMPI")
 add_feature_info(crayxe CRAYXE "Compile on CrayXE")
 add_feature_info(bgq BGQ "Compile on BGQ")
+add_feature_info(mpi WITH_MPI "Compile with MPI")
+
+include(options)
+include(testing)
+include(cxx11)
+include(source)
+include(cxx_config)
+
+if (WITH_MPI)
+    include(mpi_config)
+endif (WITH_MPI)
+
+include_directories("external")
+set(raptor_INCDIR ${CMAKE_CURRENT_SOURCE_DIR}/raptor)
+set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
 SET(HYPRE_DIR "" CACHE STRING "Directory of HYPRE")
 SET(METIS_DIR "" CACHE STRING "Directory of metis")

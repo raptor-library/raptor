@@ -3,11 +3,13 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
  
 # Create a variable called linalg_SOURCES containing all .cpp files:
 set(linalg_SOURCES 
-util/linalg/seq/spmv.cpp
-util/linalg/seq/matmult.cpp
-util/linalg/seq/relax.cpp
-#util/linalg/gauss_elimination.cpp 
-PARENT_SCOPE)
+    util/linalg/seq/spmv.cpp
+    util/linalg/seq/subtract.cpp
+    util/linalg/seq/matmult.cpp
+    util/linalg/seq/relax.cpp
+    #util/linalg/gauss_elimination.cpp 
+    PARENT_SCOPE
+    )
 
 
 
