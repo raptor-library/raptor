@@ -87,7 +87,24 @@ void Matrix::gauss_seidel(Vector& x, Vector& b)
     int row_start, row_end;
     double diag_inv;
 
+    // Forward Sweep
     for (int i = 0; i < n_rows; i++)
+    {
+        x[i] = b[i];
+        row_start = idx1[i];
+        row_end = idx1[i+1];
+        if (row_start == row_end) continue;
+
+        diag_inv = 1.0 / vals[row_start];
+        for (int j = row_start + 1; j < row_end; j++)
+        {
+            x[i] -= vals[j] * x[idx2[j]];
+        }
+        x[i] *= diag_inv;
+    }
+
+    // Backward Sweep
+    for (int i = n_rows-1; i >= 0; i--)
     {
         x[i] = b[i];
         row_start = idx1[i];

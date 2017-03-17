@@ -45,12 +45,12 @@ void fit_candidates(CSCMatrix& AggOp, CSCMatrix* T, data_t* B, data_t* R, int nu
                 T->idx2.push_back(row);
                 T->vals.push_back(val);
             }
-            T->idx1[i*num_candidates + j] = T->idx2.size();
+            T->idx1[i*num_candidates + j + 1] = T->idx2.size();
         }
     }
     T->nnz = T->idx2.size();
-
-/*    for (int i = 0; i < AggOp.n_cols; i++)
+      
+    for (int i = 0; i < AggOp.n_cols; i++)
     {
         int idx_R = i * num_candidates * num_candidates;
 
@@ -123,8 +123,5 @@ void fit_candidates(CSCMatrix& AggOp, CSCMatrix* T, data_t* B, data_t* R, int nu
                 T->vals[k] *= scale;
             }
         }
-    }*/
+    }
 }
-
-
-

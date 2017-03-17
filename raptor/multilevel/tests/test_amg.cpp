@@ -1,6 +1,7 @@
 #include <assert.h>
 
 #include "core/types.hpp"
+#include "core/matrix.hpp"
 #include "multilevel/multilevel.hpp"
 #include "gallery/stencil.hpp"
 #include "gallery/diffusion.hpp"

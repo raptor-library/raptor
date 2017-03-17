@@ -71,7 +71,7 @@ namespace raptor
 
                 num_levels = levels.size();
 
-/*                CSRMatrix& Ac = levels[last_level]->A;
+                CSRMatrix& Ac = levels[last_level]->A;
                 coarse_n = Ac.n_rows;
                 A_coarse.resize(coarse_n*coarse_n, 0);
                 for (int i = 0; i < coarse_n; i++)
@@ -86,9 +86,9 @@ namespace raptor
 
                 LU_permute.resize(coarse_n);
                 int info;
-//                dgetrf_(&coarse_n, &coarse_n, A_coarse.data(), &coarse_n, 
-//                        LU_permute.data(), &info);
-*/
+                dgetrf_(&coarse_n, &coarse_n, A_coarse.data(), &coarse_n, 
+                        LU_permute.data(), &info);
+
                 printf("Num Levels = %d\n", num_levels);
             }
 
@@ -156,17 +156,16 @@ namespace raptor
 
                 if (level == num_levels - 1)
                 {
-//                    char trans = 'N'; //No transpose
-//                    int nhrs = 1; // Number of right hand sides
-//                    int info; // result
-//                    double b_data[b.size];
-//                    for (int i = 0; i < b.size; i++)
-//                        b_data[i] = b.data()[i];
-//                    dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
-//                            LU_permute.data(), b_data, &coarse_n, &info);
-//                    for (int i = 0; i < b.size; i++)
-//                        x.data()[i] = b_data[i];
-A.gauss_seidel(x, b); 
+                    char trans = 'N'; //No transpose
+                    int nhrs = 1; // Number of right hand sides
+                    int info; // result
+                    double b_data[b.size];
+                    for (int i = 0; i < b.size; i++)
+                        b_data[i] = b.data()[i];
+                    dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
+                            LU_permute.data(), b_data, &coarse_n, &info);
+                    for (int i = 0; i < b.size; i++)
+                        x.data()[i] = b_data[i];
                 }
                 else
                 {
@@ -192,11 +191,11 @@ A.gauss_seidel(x, b);
                 // Iterate until convergence or max iterations
                 Vector resid(rhs.size);
                 levels[0]->A.residual(levels[0]->x, levels[0]->b, resid);
-               // if (fabs(b_norm) > zero_tol)
+//                if (fabs(b_norm) > zero_tol)
                 {
-              //      r_norm = resid.norm(2) / b_norm;
+//                    r_norm = resid.norm(2) / b_norm;
                 }
-              //  else
+//                else
                 {
                     r_norm = resid.norm(2);
                 }
@@ -208,11 +207,11 @@ A.gauss_seidel(x, b);
                     iter++;
 
                     levels[0]->A.residual(levels[0]->x, levels[0]->b, resid);
-              //      if (fabs(b_norm) > zero_tol)
+//                    if (fabs(b_norm) > zero_tol)
                     {
-              //          r_norm = resid.norm(2) / b_norm;
+//                        r_norm = resid.norm(2) / b_norm;
                     }
-              //      else
+//                    else
                     {
                         r_norm = resid.norm(2);
                     }

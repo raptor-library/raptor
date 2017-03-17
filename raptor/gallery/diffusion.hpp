@@ -56,7 +56,7 @@ using namespace raptor;
 //
 data_t* diffusion_stencil_2d(data_t eps = 1.0, data_t theta = 0.0)
 {
-    data_t* stencil = (data_t*) malloc (sizeof(data_t) * 9);
+    data_t* stencil = new data_t[9];
 
     data_t C = cos(theta);
     data_t S = sin(theta);
