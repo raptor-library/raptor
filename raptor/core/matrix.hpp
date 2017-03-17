@@ -455,13 +455,14 @@ namespace raptor
     *****    Prediction of (approximately) number of nonzeros 
     *****    per row, used in reserving space
     **************************************************************/
-    CSRMatrix(int _nrows, int _ncols, int _nnz): Matrix(_nrows, _ncols)
+    CSRMatrix(int _nrows, int _ncols, int _nnz = 0): Matrix(_nrows, _ncols)
     {
-
         idx1.reserve(_nrows + 1);
-        idx2.reserve(_nnz);
-        vals.reserve(_nnz);
-        nnz = _nnz;
+        if (_nnz)
+        {
+            idx2.reserve(_nnz);
+            vals.reserve(_nnz);
+        }
     }
 
     CSRMatrix(int _nrows, int _ncols, double* _data) : Matrix(_nrows, _ncols)

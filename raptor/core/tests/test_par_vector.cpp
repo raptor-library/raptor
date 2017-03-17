@@ -1,25 +1,59 @@
-#include <gtest/gtest.h>
+#include <assert.h>
 
-#include <mpi.h>
+#include "core/types.hpp"
+#include "core/vector.hpp"
+#include "core/par_vector.hpp"
 
-#include "../par_vector.hpp"
+using namespace raptor;
 
-TEST(core, vecnorm) {
-	int rank;
-	int comm_size;
+int main(int argc, char* argv[])
+{
+    MPI_Init(&argc, &argv);
+    int rank, num_procs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+    int global_n = 100;
+    int local_n = global_n / num_procs;
+    int first_n = rank * ( global_n / num_procs);
+    if (global_n % num_procs > rank)
+    {
+        local_n++;
+        first_n += rank;
+    }
+    else
+    {
+        first_n += (global_n % num_procs);
+    }
 
-	ASSERT_EQ(comm_size, 2);
+    Vector v(global_n);
+    ParVector v_par(global_n, local_n, first_n);
 
-	using namespace raptor;
+    v.set_const_value(1.0);
+    v_par.set_const_value(1.0);
 
-	ParVector v(10,5, rank*5);
+    Vector& v_par_l = v_par.local;
+    for (int i = 0; i < local_n; i++)
+    {
+        assert(v[first_n+i] == v_par_l[i]);
+    }
 
-	v.set_const_value((rank+1)*.5);
+    for (int i = 0; i < global_n; i++)
+    {
+        srand(i);
+        v[i] = ((double)rand()) / RAND_MAX;
+    }
 
-	auto norm = v.norm<2>();
+    for (int i = 0; i < local_n; i++)
+    {
+        srand(i+first_n);
+        v_par_l[i] = ((double)rand()) / RAND_MAX;
+    }
+    for (int i = 0; i < local_n; i++)
+    {
+        assert(v[first_n+i] == v_par_l[i]);
+    }
 
-	ASSERT_EQ(norm, 2.5);
+    MPI_Finalize();
 }
+

@@ -69,11 +69,11 @@ void Vector::axpy(Vector& x, data_t alpha)
 *****    Vector to be copied.  Must have same local rows
 *****    and same first row
 **************************************************************/
-void Vector::copy(Vector* y)
+void Vector::copy(Vector& y)
 {
     for (int i = 0; i < size; i++)
     {
-        values[i] = y->values[i];
+        values[i] = y.values[i];
     }
 }
 
@@ -108,9 +108,12 @@ void Vector::scale(data_t alpha)
 data_t Vector::norm(index_t p)
 {
     data_t result = 0.0;
+    double val;
     for (index_t i = 0; i < size; i++)
     {
-        result += pow(values[i], p);
+        val = values[i];
+        if (fabs(val) > zero_tol)
+            result += pow(val, p);
     }
     return pow(result, 1.0/p);
 }

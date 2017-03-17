@@ -6,6 +6,7 @@ set(aggregation_SOURCES
     aggregation/strength.cpp
     aggregation/aggregate.cpp
     aggregation/prolongation.cpp
+    aggregation/candidates.cpp
 PARENT_SCOPE)
 
 

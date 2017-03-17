@@ -70,17 +70,33 @@ void COOMatrix::copy(const COOMatrix* A)
     idx2.clear();
     vals.clear();
 
-    Matrix* mat = (Matrix*) A;
-    idx1.reserve(mat->nnz);
-    idx2.reserve(mat->nnz);
-    vals.reserve(mat->nnz);
-    for (int i = 0; i < mat->nnz; i++)
+    idx1.reserve(A->nnz);
+    idx2.reserve(A->nnz);
+    vals.reserve(A->nnz);
+    for (int i = 0; i < A->nnz; i++)
     {
-        idx1.push_back(mat->idx1[i]);
-        idx2.push_back(mat->idx2[i]);
-        vals.push_back(mat->vals[i]);
+        idx1.push_back(A->idx1[i]);
+        idx2.push_back(A->idx2[i]);
+        vals.push_back(A->vals[i]);
     }
     
+    if (A->col_list.size())
+    {
+        col_list.resize(A->col_list.size());
+        for (int i = 0; i < col_list.size(); i++)
+        {
+            col_list[i] = A->col_list[i];
+        }
+    }
+
+    if (A->row_list.size())
+    {
+        row_list.resize(A->row_list.size());
+        for (int i = 0; i < row_list.size(); i++)
+        {
+            row_list[i] = A->row_list[i];
+        }
+    }
 }
 void COOMatrix::copy(const CSRMatrix* A)
 {
@@ -92,19 +108,36 @@ void COOMatrix::copy(const CSRMatrix* A)
     idx2.clear();
     vals.clear();
 
-    Matrix* mat = (Matrix*) A;
-    idx1.reserve(mat->nnz);
-    idx2.reserve(mat->nnz);
-    vals.reserve(mat->nnz);
-    for (int i = 0; i < mat->n_rows; i++)
+    idx1.reserve(A->nnz);
+    idx2.reserve(A->nnz);
+    vals.reserve(A->nnz);
+    for (int i = 0; i < A->n_rows; i++)
     {
-        int row_start = mat->idx1[i];
-        int row_end = mat->idx1[i+1];
+        int row_start = A->idx1[i];
+        int row_end = A->idx1[i+1];
         for (int j = row_start; j < row_end; j++)
         {
             idx1.push_back(i);
-            idx2.push_back(mat->idx2[j]);
-            vals.push_back(mat->vals[j]);
+            idx2.push_back(A->idx2[j]);
+            vals.push_back(A->vals[j]);
+        }
+    }
+    
+    if (A->col_list.size())
+    {
+        col_list.resize(A->col_list.size());
+        for (int i = 0; i < col_list.size(); i++)
+        {
+            col_list[i] = A->col_list[i];
+        }
+    }
+
+    if (A->row_list.size())
+    {
+        row_list.resize(A->row_list.size());
+        for (int i = 0; i < row_list.size(); i++)
+        {
+            row_list[i] = A->row_list[i];
         }
     }
 }
@@ -118,19 +151,36 @@ void COOMatrix::copy(const CSCMatrix* A)
     idx2.clear();
     vals.clear();
 
-    Matrix* mat = (Matrix*) A;
-    idx1.reserve(mat->nnz);
-    idx2.reserve(mat->nnz);
-    vals.reserve(mat->nnz);
-    for (int i = 0; i < mat->n_cols; i++)
+    idx1.reserve(A->nnz);
+    idx2.reserve(A->nnz);
+    vals.reserve(A->nnz);
+    for (int i = 0; i < A->n_cols; i++)
     {
-        int col_start = mat->idx1[i];
-        int col_end = mat->idx1[i+1];
+        int col_start = A->idx1[i];
+        int col_end = A->idx1[i+1];
         for (int j = col_start; j < col_end; j++)
         {
-            idx1.push_back(mat->idx2[j]);
+            idx1.push_back(A->idx2[j]);
             idx2.push_back(i);
-            vals.push_back(mat->vals[j]);
+            vals.push_back(A->vals[j]);
+        }
+    }
+    
+    if (A->col_list.size())
+    {
+        col_list.resize(A->col_list.size());
+        for (int i = 0; i < col_list.size(); i++)
+        {
+            col_list[i] = A->col_list[i];
+        }
+    }
+
+    if (A->row_list.size())
+    {
+        row_list.resize(A->row_list.size());
+        for (int i = 0; i < row_list.size(); i++)
+        {
+            row_list[i] = A->row_list[i];
         }
     }
 }
@@ -377,13 +427,7 @@ void COOMatrix::apply_func(Vector& xd, Vector& bd,
 **************************************************************/
 void CSRMatrix::add_value(int row, int col, double value)
 {
-    int last_row = 0;
-    if (nnz) last_row = idx1[nnz - 1];
-    while (last_row < row)
-    {
-        idx1[++last_row] = nnz;
-    }
-
+    // Assumes idx1 is created separately
     idx2.push_back(col);
     vals.push_back(value);
     nnz++;
@@ -421,6 +465,24 @@ void CSRMatrix::copy(const COOMatrix* A)
         idx2[index] = col;
         vals[index] = val;
     }
+    
+    if (A->col_list.size())
+    {
+        col_list.resize(A->col_list.size());
+        for (int i = 0; i < col_list.size(); i++)
+        {
+            col_list[i] = A->col_list[i];
+        }
+    }
+
+    if (A->row_list.size())
+    {
+        row_list.resize(A->row_list.size());
+        for (int i = 0; i < row_list.size(); i++)
+        {
+            row_list[i] = A->row_list[i];
+        }
+    }
 }
 void CSRMatrix::copy(const CSRMatrix* A)
 {
@@ -428,12 +490,10 @@ void CSRMatrix::copy(const CSRMatrix* A)
     n_cols = A->n_cols;
     nnz = A->nnz;
 
-    idx2.clear();
-    vals.clear();
-
     idx1.resize(A->n_rows + 1);
-    idx2.reserve(A->nnz);
-    vals.reserve(A->nnz);
+    idx2.resize(A->nnz);
+    vals.resize(A->nnz);
+
     idx1[0] = 0;
     for (int i = 0; i < A->n_rows; i++)
     {
@@ -444,6 +504,24 @@ void CSRMatrix::copy(const CSRMatrix* A)
         {
             idx2[j] = A->idx2[j];
             vals[j] = A->vals[j];
+        }
+    }
+    
+    if (A->col_list.size())
+    {
+        col_list.resize(A->col_list.size());
+        for (int i = 0; i < col_list.size(); i++)
+        {
+            col_list[i] = A->col_list[i];
+        }
+    }
+
+    if (A->row_list.size())
+    {
+        row_list.resize(A->row_list.size());
+        for (int i = 0; i < row_list.size(); i++)
+        {
+            row_list[i] = A->row_list[i];
         }
     }
 }
@@ -457,41 +535,55 @@ void CSRMatrix::copy(const CSCMatrix* A)
     idx2.clear();
     vals.clear();
 
-    Matrix* mat = (Matrix*) A;
-
     // Resize vectors to appropriate dimensions
-    idx1.resize(mat->n_rows + 1);
-    idx2.resize(mat->nnz);
-    vals.resize(mat->nnz);
+    idx1.resize(A->n_rows + 1);
+    idx2.resize(A->nnz);
+    vals.resize(A->nnz);
 
     // Create indptr, summing number times row appears in CSC
-    for (int i = 0; i <= mat->n_rows; i++) idx1[i] = 0;
-    for (int i = 0; i < mat->nnz; i++)
+    for (int i = 0; i <= A->n_rows; i++) idx1[i] = 0;
+    for (int i = 0; i < A->nnz; i++)
     {
-        idx1[mat->idx2[i] + 1]++;
+        idx1[A->idx2[i] + 1]++;
     }
-    for (int i = 1; i <= mat->n_rows; i++)
+    for (int i = 1; i <= A->n_rows; i++)
     {
         idx1[i] += idx1[i-1];
     }
 
     // Add values to indices and data
     std::vector<int> ctr(n_rows, 0);
-    for (int i = 0; i < mat->n_cols; i++)
+    for (int i = 0; i < A->n_cols; i++)
     {
-        int col_start = mat->idx1[i];
-        int col_end = mat->idx1[i+1];
+        int col_start = A->idx1[i];
+        int col_end = A->idx1[i+1];
         for (int j = col_start; j < col_end; j++)
         {
-            int row = mat->idx2[j];
+            int row = A->idx2[j];
             int idx = idx1[row] + ctr[row]++;
             idx2[idx] = i;
-            vals[idx] = mat->vals[j];
+            vals[idx] = A->vals[j];
+        }
+    }
+    
+    if (A->col_list.size())
+    {
+        col_list.resize(A->col_list.size());
+        for (int i = 0; i < col_list.size(); i++)
+        {
+            col_list[i] = A->col_list[i];
+        }
+    }
+
+    if (A->row_list.size())
+    {
+        row_list.resize(A->row_list.size());
+        for (int i = 0; i < row_list.size(); i++)
+        {
+            row_list[i] = A->row_list[i];
         }
     }
 }
-
-
 
 /**************************************************************
 *****   CSRMatrix Condense Rows
@@ -747,13 +839,7 @@ void CSRMatrix::apply_func(Vector& xd, Vector& bd,
 **************************************************************/
 void CSCMatrix::add_value(int row, int col, double value)
 {
-    int last_col = 0;
-    if (nnz) last_col = idx1[nnz - 1];
-    while (last_col < col)
-    {
-        idx1[++last_col] = nnz;
-    }
-
+    // Assumes idx1 is created separately
     idx2.push_back(row);
     vals.push_back(value);
     nnz++;
@@ -795,6 +881,24 @@ void CSCMatrix::copy(const COOMatrix* A)
         idx2[index] = row;
         vals[index] = val;
     }        
+
+    if (A->col_list.size())
+    {
+        col_list.resize(A->col_list.size());
+        for (int i = 0; i < col_list.size(); i++)
+        {
+            col_list[i] = A->col_list[i];
+        }
+    }
+
+    if (A->row_list.size())
+    {
+        row_list.resize(A->row_list.size());
+        for (int i = 0; i < row_list.size(); i++)
+        {
+            row_list[i] = A->row_list[i];
+        }
+    }    
 }
 void CSCMatrix::copy(const CSRMatrix* A)
 {
@@ -802,44 +906,56 @@ void CSCMatrix::copy(const CSRMatrix* A)
     n_cols = A->n_cols;
     nnz = A->nnz;
 
-    idx1.clear();
-    idx2.clear();
-    vals.clear();
-
-    Matrix* mat = (Matrix*) A;
-
     // Resize vectors to appropriate dimensions
-    idx1.resize(mat->n_cols + 1);
-    idx2.resize(mat->nnz);
-    vals.resize(mat->nnz);
+    idx1.resize(A->n_cols + 1);
+    idx2.resize(A->nnz);
+    vals.resize(A->nnz);
 
     // Create indptr, summing number times col appears in CSR
-    for (int i = 0; i <= mat->n_cols; i++) idx1[i] = 0;
-    for (int i = 0; i < mat->nnz; i++)
+    for (int i = 0; i <= A->n_cols; i++) idx1[i] = 0;
+    for (int i = 0; i < A->nnz; i++)
     {
-        idx1[mat->idx2[i] + 1]++;
+        idx1[A->idx2[i] + 1]++;
     }
-    for (int i = 1; i <= mat->n_cols; i++)
+    for (int i = 1; i <= A->n_cols; i++)
     {
         idx1[i] += idx1[i-1];
     }
 
     // Add values to indices and data
-    std::vector<int> ctr(mat->n_cols, 0);
-    for (int i = 0; i < mat->n_rows; i++)
+    std::vector<int> ctr(A->n_cols, 0);
+    for (int i = 0; i < A->n_rows; i++)
     {
-        int row_start = mat->idx1[i];
-        int row_end = mat->idx1[i+1];
+        int row_start = A->idx1[i];
+        int row_end = A->idx1[i+1];
         for (int j = row_start; j < row_end; j++)
         {
-            int col = mat->idx2[j];
+            int col = A->idx2[j];
             int idx = idx1[col] + ctr[col]++;
             idx2[idx] = i;
-            vals[idx] = mat->vals[j];
+            vals[idx] = A->vals[j];
         }
     }
 
+    if (A->col_list.size())
+    {
+        col_list.resize(A->col_list.size());
+        for (int i = 0; i < col_list.size(); i++)
+        {
+            col_list[i] = A->col_list[i];
+        }
+    }
+
+    if (A->row_list.size())
+    {
+        row_list.resize(A->row_list.size());
+        for (int i = 0; i < row_list.size(); i++)
+        {
+            row_list[i] = A->row_list[i];
+        }
+    }
 }
+
 void CSCMatrix::copy(const CSCMatrix* A)
 {
     n_rows = A->n_rows;
@@ -860,6 +976,24 @@ void CSCMatrix::copy(const CSCMatrix* A)
         {
             idx2[j] = A->idx2[j];
             vals[j] = A->vals[j];
+        }
+    }
+    
+    if (A->col_list.size())
+    {
+        col_list.resize(A->col_list.size());
+        for (int i = 0; i < col_list.size(); i++)
+        {
+            col_list[i] = A->col_list[i];
+        }
+    }
+
+    if (A->row_list.size())
+    {
+        row_list.resize(A->row_list.size());
+        for (int i = 0; i < row_list.size(); i++)
+        {
+            row_list[i] = A->row_list[i];
         }
     }
 }

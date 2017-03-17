@@ -8,6 +8,7 @@
 #include "core/vector.hpp"
 #include "aggregation/aggregate.hpp"
 #include "aggregation/prolongation.hpp"
+#include "aggregation/candidates.hpp"
 
 // Coarse Matrices (A) are CSC
 // Prolongation Matrices (P) are CSC
@@ -18,69 +19,9 @@ namespace raptor
     {
         public:
 
-            // Create level using fine A
-            Level(CSRMatrix& Af, double theta = 0.0, double omega = 4.0/3, 
-                    int num_smooth_steps = 1, int max_coarse = 50)
+            Level()
             {
-                // Copy fine level matrix to level
-                A = CSRMatrix(Af);
-                A.sort();
-
-                // If n_rows > max_coarse, create P
-                if (A.n_rows > max_coarse)
-                {
-                    // Create strength of connection matrix
-                    CSRMatrix S;
-                    A.symmetric_strength(&S, theta);
-
-                    // Create tentative interpolation
-                    CSCMatrix T;
-                    std::vector<int> c_points;
-                    standard_aggregation(S, T, c_points);
-
-                    // Smooth T to form prolongation (P)
-                    jacobi_prolongation(A, T, P, omega, num_smooth_steps);
-                }
-
-                // Initalize space for x, b, tmp
-                x = Vector(A.n_rows);
-                b = Vector(A.n_rows);
-                tmp = Vector(A.n_rows);
-            }
-
-
-            // Create level using finer A, P
-            Level(CSRMatrix& Af, CSCMatrix& Pf, double theta = 0.0, 
-                    double omega = 4.0/3, int num_smooth_steps = 1, 
-                    int max_coarse = 50)
-            {
-                // Create coarse matrix (A = Pf^(T)*Af*Pf)
-                //CSRMatrix Atmp;
-                //Af.mult(Pf, &Atmp);
-                //Pf.mult_T(Atmp, &A);
-                Af.RAP(Pf, &A);
-                A.sort();
-
-                // If n_rows > max_coarse, create P
-                if (A.n_rows > max_coarse)
-                {
-                    // Create strength of connection matrix
-                    CSRMatrix S;
-                    A.symmetric_strength(&S, theta);
-
-                    // Create tentative interpolation
-                    CSCMatrix T;
-                    std::vector<int> c_points;
-                    standard_aggregation(S, T, c_points);
-
-                    // Smooth T to form prolongation (P)
-                    jacobi_prolongation(A, T, P, omega, num_smooth_steps);
-                }
-                                
-                // Initalize space for x, b, tmp
-                x = Vector(A.n_rows);
-                b = Vector(A.n_rows);
-                tmp = Vector(A.n_rows);
+              
             }
 
             CSRMatrix A;

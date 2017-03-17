@@ -55,28 +55,33 @@ void par_stencil_grid(ParMatrix* A, data_t* stencil, int* grid, int dim)
         }
     }
 
-    A->global_rows = N_v;
-    A->global_cols = N_v;
+    A->global_num_rows = N_v;
+    A->global_num_cols = N_v;
     A->initialize_partition();
 
     n_v = A->local_num_rows;
-    first_local_row = A->first_local_row;
-    last_local_row = first_local_row + n_v - 1;
+    int first_local_row = A->first_local_row;
+    int last_local_row = first_local_row + n_v - 1;
 
-    index_t nnz_per;
-    if (n_v < N_s)
-    {
-        nnz_per = n_v;
-    }
-    else
-    {
-        nnz_per = N_s;
-    }
+    A->on_proc->n_rows = n_v;
+    A->on_proc->n_cols = n_v;
+    A->on_proc->nnz = 0;
+    A->on_proc->idx1.resize(n_v+1);
+    A->on_proc->idx2.reserve(n_v*stencil_len);
+    A->on_proc->vals.reserve(n_v*stencil_len);
 
-    diags = new int[N_s]();
-    nonzero_stencil = new data_t[N_s];
+    A->off_proc->n_rows = n_v;
+    A->off_proc->n_cols = N_v;
+    A->off_proc->nnz = 0;
+    A->off_proc->idx1.resize(n_v+1);
+    A->off_proc->idx2.reserve(0.3*n_v*stencil_len);
+    A->off_proc->vals.reserve(0.3*n_v*stencil_len);
+
+
+    diags.resize(N_s, 0);
+    nonzero_stencil.resize(N_s);
+    strides.resize(dim);
     //Calculate strides for index offset for each dof in stencil
-    strides = new int[dim];
     strides[0] = 1;
     for (index_t i = 0; i < dim-1; i++)
     {
@@ -111,7 +116,7 @@ void par_stencil_grid(ParMatrix* A, data_t* stencil, int* grid, int dim)
     } 
 
     //Initial data array
-    data = new data_t[N_s*n_v];
+    data.resize(N_s*n_v);
     for (index_t i = 0; i < N_s; i++)
     {
         for (index_t j = 0; j < n_v; j++)
@@ -121,7 +126,7 @@ void par_stencil_grid(ParMatrix* A, data_t* stencil, int* grid, int dim)
     }
 
     //Vertically stack indices (reorder)
-    stack_indices = new int[N_s*dim];
+    stack_indices.resize(N_s*dim);
     for (index_t i = 0; i < N_s; i++)
     {
         for (index_t j = 0; j < dim; j++)
@@ -205,6 +210,8 @@ void par_stencil_grid(ParMatrix* A, data_t* stencil, int* grid, int dim)
     }
 
     //Add diagonals to ParMatrix A
+    A->on_proc->idx1[0] = 0;
+    A->off_proc->idx1[0] = 0;
     for (index_t i = 0; i < n_v; i++)
     {
         for (index_t d = 0; d < N_s; d++)
@@ -217,17 +224,14 @@ void par_stencil_grid(ParMatrix* A, data_t* stencil, int* grid, int dim)
                 A->add_value(i, col, value);
             }
         }
+        A->on_proc->idx1[i+1] = A->on_proc->idx2.size();
+        A->off_proc->idx1[i+1] = A->off_proc->idx2.size();
     }
+
+    A->on_proc->nnz = A->on_proc->idx2.size();
+    A->off_proc->nnz = A->off_proc->idx2.size();
     
     A->finalize();
-
-    delete[] nonzero_stencil;
-    delete[] data;
-    delete[] diags;
-    delete[] strides;
-    delete[] stack_indices;
-
-    return A;
 } 
 
 #endif

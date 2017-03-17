@@ -21,7 +21,7 @@ int main(int argc, char* argv[])
 
     Multilevel ml(A, 0, 4.0/3, 1, 50);
 
-    CSCMatrix& P = ml.levels[0].P;
+    CSCMatrix& P = ml.levels[0]->P;
     
     CSRMatrix Ac;
     CSRMatrix Atmp;

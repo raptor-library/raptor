@@ -1,12 +1,9 @@
 #include <assert.h>
 
 #include "core/types.hpp"
-#include "multilevel/level.hpp"
 #include "multilevel/multilevel.hpp"
 #include "gallery/stencil.hpp"
 #include "gallery/diffusion.hpp"
-#include "aggregation/aggregate.hpp"
-#include "aggregation/prolongation.hpp"
 
 using namespace raptor;
 
@@ -23,10 +20,15 @@ int main(int argc, char* argv[])
     Vector b(A.n_rows);
     x.set_const_value(1.0);
     A.mult(x, b);
-    x.set_rand_values();
+    x.set_const_value(0.0);
 
-    Multilevel ml(A, 0, 4.0/3, 1, 50);
-    ml.solve(x, b);
+    data_t* B = new data_t[A.n_rows];
+    for (int i = 0; i < A.n_rows; i++)
+        B[i] = 1.0;
 
+    Multilevel ml(A, B, 1, 0, 4.0/3, 1, 50);
+    //ml.solve(x, b);
+
+    delete[] B;
     delete[] stencil;
 }

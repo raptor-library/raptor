@@ -33,6 +33,48 @@ public:
         indptr.push_back(0);
     }
 
+    CommData(CommData* data)
+    {
+        num_msgs = data->num_msgs;
+        size_msgs = data->size_msgs;
+        if (data->procs.size())
+        {
+            procs.resize(data->procs.size());
+            for (int i = 0; i < data->procs.size(); i++)
+            {
+                procs[i] = data->procs[i];
+            }
+        }
+
+        if (data->indptr.size())
+        {
+            indptr.resize(data->indptr.size());
+            for (int i = 0; i < data->indptr.size(); i++)
+            {
+                indptr[i] = data->indptr[i];
+            }
+        }
+
+        if (data->indices.size())
+        {
+            indices.resize(data->indices.size());
+            for (int i = 0; i < data->indices.size(); i++)
+            {
+                indices[i] = data->indices[i];
+            }
+        }
+
+        if (num_msgs)
+        {
+            requests = new MPI_Request[num_msgs];
+        }
+
+        if (size_msgs)
+        {
+            buffer.set_size(size_msgs);
+        }
+    }
+
     /**************************************************************
     *****   ParComm Class Destructor
     **************************************************************
@@ -43,10 +85,6 @@ public:
         if (num_msgs)
         {
             delete[] requests;
-        }
-        if (size_msgs)
-        {
-            delete[] buffer;
         }
     };
 
@@ -70,7 +108,11 @@ public:
             int msg_size)
     {
         int last_ptr = indptr[num_msgs];
-        int idx_start = indices[size_msgs-1];
+        int idx_start = 0;
+        if (size_msgs)
+        {
+            idx_start = indices[size_msgs-1];
+        }
         procs.push_back(proc);
         indptr.push_back(last_ptr + msg_size);
 
@@ -89,10 +131,7 @@ public:
         {
             requests = new MPI_Request[num_msgs];
         }
-        if (size_msgs)
-        {
-            buffer = new data_t[size_msgs];
-        }
+        buffer.set_size(size_msgs);
     }
 
     int num_msgs;
@@ -101,7 +140,7 @@ public:
     std::vector<int> indptr;
     std::vector<int> indices;
     MPI_Request* requests;
-    data_t* buffer;
+    Vector buffer;
 };
 }
 #endif

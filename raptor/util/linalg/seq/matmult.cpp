@@ -81,8 +81,8 @@ void CSCMatrix::mult(const CSCMatrix& B, CSCMatrix* C)
         int row_end_BT = B.idx1[row_BT+1];
         for (int j = row_start_BT; j < row_end_BT; j++)
         {
-            int col_BT = idx2[j];
-            double val_BT = vals[j];
+            int col_BT = B.idx2[j];
+            double val_BT = B.vals[j];
             int row_start_AT = idx1[col_BT];
             int row_end_AT = idx1[col_BT+1];
             for (int k = row_start_AT; k < row_end_AT; k++)
@@ -179,7 +179,7 @@ void CSRMatrix::mult(const CSCMatrix& B, CSRMatrix* C)
 void CSRMatrix::mult(const CSCMatrix& B, CSCMatrix* C)
 {
     std::vector<double> col_vals(B.n_rows, 0);
-    std::vector<int> next(B.n_rows, -1);
+    std::vector<int> next(B.n_rows);
     C->nnz = 0;
 
     C->n_rows = n_rows;
@@ -226,10 +226,8 @@ void CSRMatrix::mult(const CSCMatrix& B, CSCMatrix* C)
 
         for (int j = 0; j < length; j++)
         {
-            int tmp = head;
+            col_vals[head] = 0;
             head = next[head];
-            next[tmp] = -1;
-            col_vals[tmp] = 0;
         }
 
         C->idx1[col_B+1] = C->idx2.size();

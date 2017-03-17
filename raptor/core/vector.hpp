@@ -56,10 +56,9 @@ public:
     ***** len : index_t
     *****    Size of the vector
     **************************************************************/
-    Vector(index_t len)
+    Vector(int len)
     {
-        values.resize(len);
-        size = len;
+        set_size(len);
     }
 
     /**************************************************************
@@ -70,6 +69,12 @@ public:
     Vector()
     {
         size = 0;
+    }
+
+    void set_size(int len)
+    {
+        values.resize(len);
+        size = len;
     }
 
     /**************************************************************
@@ -117,7 +122,7 @@ public:
     ***** y : Vector&
     *****    Vector to be copied
     **************************************************************/
-    void copy(Vector* y);
+    void copy(Vector& y);
     
     /**************************************************************
     *****   Vector Scale

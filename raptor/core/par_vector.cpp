@@ -22,7 +22,7 @@ void ParVector::axpy(ParVector* x, data_t alpha)
 {
     if (local_n)
     {
-        local->axpy(*x->local, alpha);
+        local.axpy(x->local, alpha);
     }
 }
 
@@ -39,7 +39,7 @@ void ParVector::axpy(ParVector* x, data_t alpha)
 void ParVector::copy(ParVector* y)
 {
     if (local_n)
-        local->copy(y->local);
+        local.copy(y->local);
 }
 
 /**************************************************************
@@ -56,7 +56,7 @@ void ParVector::scale(data_t alpha)
 {
     if (local_n)
     {
-        local->scale(alpha);
+        local.scale(alpha);
     }
 }
 
@@ -74,7 +74,7 @@ void ParVector::set_const_value(data_t alpha)
 {
     if (local_n)
     {
-        local->set_const_value(alpha);
+        local.set_const_value(alpha);
     }
 }
 
@@ -87,7 +87,7 @@ void ParVector::set_rand_values()
 {
     if (local_n)
     {
-        local->set_rand_values();
+        local.set_rand_values();
     }
 }
 
@@ -103,24 +103,20 @@ void ParVector::set_rand_values()
 **************************************************************/
 data_t ParVector::norm(index_t p)
 {
-    data_t result;
+    data_t result = 0.0;
     if (local_n)
     {
-        result = local->norm(p);
+        result = local.norm(p);
         result = pow(result, p); // undoing root of p from local operation
-    }
-    else
-    {
-        result = 0.0;
     }
     MPI_Allreduce(MPI_IN_PLACE, &result, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
     return pow(result, 1./p);
 }
 
-void ParVector::communicate(ParComm* comm_pkg, MPI_Comm comm)
+Vector& ParVector::communicate(ParComm* comm_pkg, MPI_Comm comm)
 {
     init_comm(comm_pkg, comm);
-    complete_comm(comm_pkg);
+    return complete_comm(comm_pkg);
 }
 
 void ParVector::init_comm(ParComm* comm_pkg, MPI_Comm comm)
@@ -134,11 +130,11 @@ void ParVector::init_comm(ParComm* comm_pkg, MPI_Comm comm)
         int send_end;
         int proc;
 
-        data_t* local_data = local->data();
+        data_t* local_data = local.data();
         std::vector<int>& procs = send_data->procs;
         std::vector<int>& indptr = send_data->indptr;
         std::vector<int>& indices = send_data->indices;
-        double* buffer = send_data->buffer;
+        double* buffer = send_data->buffer.data();
         MPI_Request* requests = send_data->requests;
 
         // Add local data to buffer, and send to appropriate procs
@@ -164,7 +160,7 @@ void ParVector::init_comm(ParComm* comm_pkg, MPI_Comm comm)
 
         std::vector<int>& procs = recv_data->procs;
         std::vector<int>& indptr = recv_data->indptr;
-        double* buffer = recv_data->buffer;
+        double* buffer = recv_data->buffer.data();
         MPI_Request* requests = recv_data->requests;
 
         for (int i = 0; i < recv_data->num_msgs; i++)
@@ -178,7 +174,7 @@ void ParVector::init_comm(ParComm* comm_pkg, MPI_Comm comm)
     }
 }
 
-void ParVector::complete_comm(ParComm* comm_pkg)
+Vector& ParVector::complete_comm(ParComm* comm_pkg)
 {
     if (comm_pkg->send_data->num_msgs)
     {
@@ -193,5 +189,7 @@ void ParVector::complete_comm(ParComm* comm_pkg)
                 comm_pkg->recv_data->requests,
                 MPI_STATUS_IGNORE);
     }
+
+    return comm_pkg->recv_data->buffer;
 }
 

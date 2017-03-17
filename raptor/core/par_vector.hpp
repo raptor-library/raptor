@@ -69,10 +69,7 @@ namespace raptor
             global_n = glbl_n;
             local_n = lcl_n;
             first_local = first_lcl;
-            if (local_n)
-            {
-                local = new Vector(local_n);
-            }
+            local.set_size(local_n);
         }
 
         /**************************************************************
@@ -92,10 +89,6 @@ namespace raptor
         **************************************************************/
         ~ParVector()
         {
-            if (local_n)
-            {
-                delete local;
-            }
         }
 
         /**************************************************************
@@ -168,11 +161,11 @@ namespace raptor
         **************************************************************/
         data_t norm(index_t p);
 
-        void communicate(ParComm* comm_pkg, MPI_Comm comm = MPI_COMM_WORLD);
+        Vector& communicate(ParComm* comm_pkg, MPI_Comm comm = MPI_COMM_WORLD);
         void init_comm(ParComm* comm_pkg, MPI_Comm comm = MPI_COMM_WORLD);
-        void complete_comm(ParComm* comm_pkg);
+        Vector& complete_comm(ParComm* comm_pkg);
 
-        Vector* local;
+        Vector local;
         int global_n;
         int local_n;
         int first_local;

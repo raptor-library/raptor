@@ -11,6 +11,7 @@
 #include "par_comm.hpp"
 #include "types.hpp"
 
+// Making Par Matrix an abstract Class
 /**************************************************************
  *****   ParMatrix Class
  **************************************************************
@@ -65,32 +66,15 @@
  **************************************************************/
 namespace raptor
 {
-class ParMatrix
-{
-public:
-    /**************************************************************
-    *****   ParMatrix Class Constructor
-    **************************************************************
-    ***** Initializes an empty ParMatrix, setting the dimensions
-    ***** to the passed values.  The matrix is evenly partitioned 
-    ***** across all processes.  The off-diagonal matrix is set
-    ***** to have num_cols equal to the global number of columns
-    ***** in the off-diagonal block (this should later be adjusted
-    ***** to the number of columns with non-zeros)
-    *****
-    ***** Parameters
-    ***** -------------
-    ***** glob_rows : index_t
-    *****    Global number of rows in parallel matrix
-    ***** glob_cols : index_t
-    *****    Global number of columns in parallel matrix
-    ***** nnz_per_row : int (optional)
-    *****    Estimate for number of non-zeros per row, used to 
-    *****    reserve space in Matrix classes.
-    **************************************************************/
+  class ParCOOMatrix;
+  class ParCSRMatrix;
+  class ParCSCMatrix;
+
+  class ParMatrix
+  {
+  public:
     ParMatrix(index_t glob_rows, 
-            index_t glob_cols, 
-            int nnz_per_row = 5)
+            index_t glob_cols)
     {
         // Initialize matrix dimensions
         global_num_rows = glob_rows;
@@ -98,44 +82,9 @@ public:
 
         // Initialize matrix partition information
         initialize_partition();
-
-        // Initialize diag and offd matrices as COO for adding entries
-        // This should later be changed to CSR or CSC
-        // A guess of 5 nnz per row is used for reserving matrix space
-        diag = new COOMatrix(local_num_rows, local_num_cols, nnz_per_row);
-        offd = new COOMatrix(local_num_rows, global_num_cols, nnz_per_row);
+        comm = NULL;
     }
 
-    /**************************************************************
-    *****   ParMatrix Class Constructor
-    **************************************************************
-    ***** Initializes an empty ParMatrix, setting the dimensions
-    ***** to the passed values.  The local dimensions of the matrix
-    ***** are passed as an argument, and the matrix is partitioned
-    ***** according to the combination of all process's local dimensions.
-    ***** The off-diagonal matrix is set
-    ***** to have num_cols equal to the global number of columns
-    ***** in the off-diagonal block (this should later be adjusted
-    ***** to the number of columns with non-zeros).
-    *****
-    ***** Parameters
-    ***** -------------
-    ***** glob_rows : index_t
-    *****    Global number of rows in parallel matrix
-    ***** glob_cols : index_t
-    *****    Global number of columns in parallel matrix
-    ***** local_num_rows : int
-    *****    Number of rows stored locally
-    ***** local_num_cols : int
-    *****    Number of columns in the diagonal block
-    ***** first_local_row : index_t
-    *****    Position of local matrix in global parallel matrix
-    ***** first_col : index_t
-    *****    First column of parallel matrix in diagonal block
-    ***** nnz_per_row : int (optional)
-    *****    Estimate for number of non-zeros per row, used to 
-    *****    reserve space in Matrix classes.
-    **************************************************************/
     ParMatrix(index_t glob_rows, 
             index_t glob_cols, 
             int local_num_rows, 
@@ -151,152 +100,25 @@ public:
         first_local_row = first_local_row;
         first_local_col = first_col;
 
-        diag = new COOMatrix(local_num_rows, local_num_cols, nnz_per_row);
-        diag = new COOMatrix(local_num_rows, global_num_cols, nnz_per_row);
+        comm = NULL;
     }
-
-    /**************************************************************
-    *****   ParMatrix Class Constructor
-    **************************************************************
-    ***** Initializes a ParMatrix from a dense array of values.
-    *****
-    ***** Parameters
-    ***** -------------
-    ***** glob_rows : index_t
-    *****    Global number of rows in parallel matrix
-    ***** glob_cols : index_t
-    *****    Global number of columns in parallel matrix
-    ***** values : data_t*
-    *****    Pointer to dense list of values to be put into 
-    *****    the parallel matrix (zeros will be ignored)
-    ***** nnz_per_row : int (optional)
-    *****    Estimate for number of non-zeros per row, used to 
-    *****    reserve space in Matrix classes.
-    **************************************************************/
-    ParMatrix(index_t glob_rows, 
-            index_t glob_cols, 
-            data_t* values,
-            int nnz_per_row = 5)
-    {
-        // Set parallel matrix and local partition dimensions
-        global_num_rows = glob_rows;
-        global_num_cols = glob_cols;
-        initialize_partition();
-
-        // Initialize empty diag/offd matrices
-        diag = new COOMatrix(local_num_rows, local_num_cols, nnz_per_row);
-        offd = new COOMatrix(local_num_rows, global_num_cols, nnz_per_row);
-
-        // Add values to diag/offd matrices
-        index_t val_start = first_local_row * global_num_cols;
-        index_t val_end = (first_local_row + local_num_rows) * global_num_cols;
-        for (index_t i = val_start; i < val_end; i++)
-        {
-            if (fabs(values[i]) > zero_tol)
-            {
-                index_t global_col = i % global_num_cols;
-                index_t global_row = i / global_num_cols;
-                add_value(global_row - first_local_row, global_col, values[i]);
-            }
-        }
-
-        // Convert diag/offd to compressed formats and
-        // create parallel communicator
-        finalize();
-    }  
        
-    /**************************************************************
-    *****   ParMatrix Class Constructor
-    **************************************************************
-    ***** Initializes an empty ParMatrix, setting dimensions
-    ***** to zero
-    **************************************************************/
     ParMatrix()
     {
         local_num_rows = 0;
         local_num_cols = 0;
-        offd_num_cols = 0;
-        diag = new CSRMatrix(0, 0, 0);
-        comm = new ParComm();
+        off_proc_num_cols = 0;
 
+        comm = NULL;
     }
 
-    /**************************************************************
-    *****   ParMatrix Class Destructor
-    **************************************************************
-    ***** Deletes local Matrices, Parallel Communicator, and 
-    ***** array of diagonal elements
-    **************************************************************/
     ~ParMatrix()
     {
-        if (offd_num_cols)
-        {
-            delete offd;
-        }
-        delete diag;
+        delete off_proc;
+        delete on_proc;
         delete comm;
     }
 
-    /**************************************************************
-    *****   ParMatrix Add Value
-    **************************************************************
-    ***** Initializes information about the local partition of
-    ***** the parallel matrix.  Determines values for:
-    *****     local_num_rows
-    *****     local_num_cols
-    *****     first_local_row
-    *****     first_local_col
-    ***** NOTE: The values for global_num_rows and global_num_cols
-    ***** must be set before calling this method.
-    **************************************************************/
-    void initialize_partition()
-    {
-        // Find MPI Information
-        int rank, num_procs;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
-        // Determine the number of local rows per process
-        int avg_local_num_rows = global_num_rows / num_procs;
-        int extra_rows = global_num_rows % num_procs;
-
-        // Initialize local matrix rows
-        first_local_row = avg_local_num_rows * rank;
-        local_num_rows = avg_local_num_rows;
-        if (extra_rows > rank)
-        {
-            first_local_row += rank;
-            local_num_rows++;
-        }
-        else
-        {
-            first_local_row += extra_rows;
-        }
-
-        // Determine the number of local columns per process
-        if (global_num_rows < num_procs)
-        {
-            num_procs = global_num_rows;
-        }
-        int avg_local_num_cols = global_num_cols / num_procs;
-        int extra_cols = global_num_cols % num_procs;
-
-        // Initialize local matrix columns
-        if (local_num_rows)
-        {
-            first_local_col = avg_local_num_cols * rank;
-            local_num_cols = avg_local_num_cols;
-            if (extra_cols > rank)
-            {
-                first_local_col += rank;
-                local_num_cols++;
-            }
-            else
-            {
-                first_local_col += extra_cols;
-            }
-        }
-    }
 
     /**************************************************************
     *****   ParMatrix Add Value
@@ -343,22 +165,245 @@ public:
     **************************************************************/
     void finalize(bool create_comm = true);
 
-    void mult(ParVector* x, ParVector* b);
-    void residual(ParVector* x, ParVector* b, ParVector* r);
+    void initialize_partition();
 
-    index_t global_num_rows;
-    index_t global_num_cols;
+    void residual(ParVector& x, ParVector& b, ParVector& r);
+    void mult(ParVector& x, ParVector& b);
+    void mult(ParCSRMatrix& B, ParCSRMatrix* C);
+    void mult(ParCSCMatrix& B, ParCSCMatrix* C);
+    void mult(ParCSCMatrix& B, ParCSRMatrix* C);
+
+    virtual void copy(ParCSRMatrix* A) = 0;
+    virtual void copy(ParCSCMatrix* A) = 0;
+    virtual void copy(ParCOOMatrix* A) = 0;
+    virtual Matrix* communicate(ParComm* comm) = 0;
+
+    // Store dimensions of parallel matrix
     int local_nnz;
     int local_num_rows;
     int local_num_cols;
+    index_t global_num_rows;
+    index_t global_num_cols;
     index_t first_local_row;
     index_t first_local_col;
-    Matrix* diag;
-    Matrix* offd;
-    std::vector<index_t> offd_column_map;
-    int offd_num_cols;
+
+    // Store two matrices: on_proc containing columns 
+    // corresponding to vector values stored on_process
+    // and off_proc columns correspond to vector values
+    // stored off process (on other processes)
+    Matrix* on_proc; 
+    Matrix* off_proc;
+
+    // Store information about columns of off_proc
+    // It will be condensed to only store columns with 
+    // nonzeros, and these must be mapped to 
+    // global column indices
+    std::vector<index_t> off_proc_column_map;
+    int off_proc_num_cols;
+
+    // Parallel communication package indicating which 
+    // processes hold vector values associated with off_proc,
+    // and which processes need vector values from this proc
     ParComm* comm;
 
-};
+  };
+
+  class ParCOOMatrix : public ParMatrix
+  {
+  public:
+    ParCOOMatrix() : ParMatrix()
+    {
+        on_proc = new COOMatrix(0, 0, 0);
+        off_proc = new COOMatrix(0, 0, 0);
+    }
+
+    ParCOOMatrix(index_t glob_rows, 
+            index_t glob_cols, 
+            int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols)
+    {
+        // Initialize diag and offd matrices as COO for adding entries
+        // This should later be changed to CSR or CSC
+        // A guess of 5 nnz per row is used for reserving matrix space
+        on_proc = new COOMatrix(local_num_rows, local_num_cols, nnz_per_row);
+        off_proc = new COOMatrix(local_num_rows, global_num_cols, nnz_per_row);
+    }
+
+    ParCOOMatrix(index_t glob_rows, index_t glob_cols, int local_num_rows, 
+            int local_num_cols, index_t first_local_row, index_t first_col, 
+            int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols,
+                local_num_rows, local_num_cols, first_local_row, first_col)
+    {
+        on_proc = new COOMatrix(local_num_rows, local_num_cols, nnz_per_row);
+        off_proc = new COOMatrix(local_num_rows, global_num_cols, nnz_per_row);
+    }
+
+
+    ParCOOMatrix(index_t glob_rows, 
+            index_t glob_cols, 
+            data_t* values) : ParMatrix(glob_rows, glob_cols)
+    {
+        // Initialize empty diag/offd matrices
+        on_proc = new COOMatrix(local_num_rows, local_num_cols, local_num_rows*5);
+        off_proc = new COOMatrix(local_num_rows, global_num_cols, local_num_rows*5);
+
+        // Add values to on/off proc matrices
+        int val_start = first_local_row * global_num_cols;
+        int val_end = (first_local_row + local_num_rows) * global_num_cols;
+        for (index_t i = val_start; i < val_end; i++)
+        {
+            if (fabs(values[i]) > zero_tol)
+            {
+                int global_col = i % global_num_cols;
+                int global_row = i / global_num_cols;
+                add_value(global_row - first_local_row, global_col, values[i]);
+            }
+        }
+
+        // Convert diag/offd to compressed formats and
+        // create parallel communicator
+        finalize();
+    }  
+
+    void copy(ParCSRMatrix* A);
+    void copy(ParCSCMatrix* A);
+    void copy(ParCOOMatrix* A);
+    Matrix* communicate(ParComm* comm);
+    void mult(ParVector& x, ParVector& b);
+  };
+
+  class ParCSRMatrix : public ParMatrix
+  {
+  public:
+    ParCSRMatrix() : ParMatrix()
+    {
+        on_proc = new CSRMatrix(0, 0, 0);
+        off_proc = new CSRMatrix(0, 0, 0);
+    }
+
+    ParCSRMatrix(index_t glob_rows, 
+            index_t glob_cols, 
+            int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols)
+    {
+        // Initialize diag and offd matrices as COO for adding entries
+        // This should later be changed to CSR or CSC
+        // A guess of 5 nnz per row is used for reserving matrix space
+        on_proc = new CSRMatrix(local_num_rows, local_num_cols, nnz_per_row);
+        off_proc = new CSRMatrix(local_num_rows, global_num_cols, nnz_per_row);
+    }
+
+    ParCSRMatrix(index_t glob_rows, index_t glob_cols, int local_num_rows, 
+            int local_num_cols, index_t first_local_row, index_t first_col, 
+            int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols,
+                local_num_rows, local_num_cols, first_local_row, first_col)
+    {
+        on_proc = new CSRMatrix(local_num_rows, local_num_cols, nnz_per_row);
+        off_proc = new CSRMatrix(local_num_rows, global_num_cols, nnz_per_row);
+    }
+
+
+    ParCSRMatrix(index_t glob_rows, 
+            index_t glob_cols, 
+            data_t* values) : ParMatrix(glob_rows, glob_cols)
+    {
+        // Initialize empty diag/offd matrices
+        on_proc = new COOMatrix(local_num_rows, local_num_cols, local_num_rows*5);
+        off_proc = new COOMatrix(local_num_rows, global_num_cols, local_num_rows*5);
+
+        // Add values to on/off proc matrices
+        on_proc->idx1[0] = 0;
+        off_proc->idx1[0] = 0;
+
+        int val_start = first_local_row * global_num_cols;
+        for (int i = 0; i < local_num_rows; i++)
+        {
+            for (int j = 0; j < global_num_cols; j++)
+            {
+                int idx = val_start + (i*global_num_cols) + j;
+
+                if (fabs(values[idx]) > zero_tol)
+                {
+                    int global_col = idx % global_num_cols;
+                    int global_row = idx / global_num_cols;
+                    if (global_col >= first_local_col && 
+                        global_col < first_local_col + local_num_cols)
+                    {
+                        on_proc->idx2.push_back(global_col - first_local_col);
+                        on_proc->vals.push_back(values[idx]);
+                    }
+                    else
+                    {
+                        off_proc->idx2.push_back(global_col);
+                        off_proc->vals.push_back(values[idx]);
+                    }
+
+                }
+            }
+            on_proc->idx1[i+1] = on_proc->idx2.size();
+            off_proc->idx1[i+1] = off_proc->idx2.size();
+        }
+        on_proc->nnz = on_proc->idx2.size();
+        off_proc->nnz = off_proc->idx2.size();
+
+        // Convert on/off proc to compressed formats and
+        // create parallel communicator
+        finalize();
+    }  
+
+    void copy(ParCSRMatrix* A);
+    void copy(ParCSCMatrix* A);
+    void copy(ParCOOMatrix* A);
+    Matrix* communicate(ParComm* comm);
+
+    void mult(ParVector& x, ParVector& b);
+    void mult(ParCSRMatrix& B, ParCSRMatrix* C);
+    void mult(ParCSCMatrix& B, ParCSCMatrix* C);
+    void mult(ParCSCMatrix& B, ParCSRMatrix* C);
+  };
+
+  class ParCSCMatrix : public ParMatrix
+  {
+  public:
+    ParCSCMatrix() : ParMatrix()
+    {
+        on_proc = new CSCMatrix(0, 0, 0);
+        off_proc = new CSCMatrix(0, 0, 0);
+    }
+
+    ParCSCMatrix(index_t glob_rows, 
+            index_t glob_cols, 
+            int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols)
+    {
+        // Initialize diag and offd matrices as COO for adding entries
+        // This should later be changed to CSR or CSC
+        // A guess of 5 nnz per row is used for reserving matrix space
+        on_proc = new CSCMatrix(local_num_rows, local_num_cols, nnz_per_row);
+        off_proc = new CSCMatrix(local_num_rows, global_num_cols, nnz_per_row);
+    }
+
+    ParCSCMatrix(index_t glob_rows, index_t glob_cols, int local_num_rows, 
+            int local_num_cols, index_t first_local_row, index_t first_col, 
+            int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols,
+                local_num_rows, local_num_cols, first_local_row, first_col)
+    {
+        on_proc = new CSCMatrix(local_num_rows, local_num_cols, nnz_per_row);
+        off_proc = new CSCMatrix(local_num_rows, global_num_cols, nnz_per_row);
+    }
+
+
+    ParCSCMatrix(index_t glob_rows, 
+            index_t glob_cols, 
+            data_t* values) : ParMatrix(glob_rows, glob_cols)
+    {
+        printf("Only currently supported for COO and CSR ParMatrices.\n");
+    }  
+
+    void copy(ParCSRMatrix* A);
+    void copy(ParCSCMatrix* A);
+    void copy(ParCOOMatrix* A);
+    Matrix* communicate(ParComm* comm);
+
+    void mult(ParVector& x, ParVector& b);
+    void mult(ParCSCMatrix& B, ParCSCMatrix* C);
+  };
 }
 #endif

@@ -24,9 +24,8 @@ int main(int argc, char* argv[])
     A.symmetric_strength(&S, 0.3);
 
     CSCMatrix T;
-    std::vector<int> c_points;
 
-    int n_agg = standard_aggregation(S, T, c_points);
+    int n_agg = standard_aggregation(S, &T);
     printf("N_agg = %d\n", n_agg);
     T.print();
 

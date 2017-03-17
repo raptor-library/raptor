@@ -5,25 +5,23 @@
 
 using namespace raptor;
 
-int standard_aggregation(CSRMatrix& S, CSCMatrix& T, 
-        std::vector<int>& c_points)
+int standard_aggregation(CSRMatrix& S, CSCMatrix* T)
 {
     if (S.n_rows == 0)
     {
-        T.n_rows = 0;
-        T.n_cols = 0;
-        T.nnz = 0;
-        T.idx1.resize(1);
-        T.idx1[0] = 0;
+        T->n_rows = 0;
+        T->n_cols = 0;
+        T->nnz = 0;
+        T->idx1.resize(1);
+        T->idx1[0] = 0;
         return 0;
     }
 
     // Fill Aggregates Vector with 0 (to n_rows)
     std::vector<int> aggregates(S.n_rows, 0);
-
+    
     // Clear anything in c_points vector and guess size
-    c_points.clear();
-    c_points.reserve(0.2*S.n_rows);
+    std::vector<int> c_points(0.2*S.n_rows);
 
     // Number of aggs + 1
     int next_aggregate = 1;
@@ -152,10 +150,10 @@ int standard_aggregation(CSRMatrix& S, CSCMatrix& T,
     // If no aggregates, return 0 matrix
     if (!next_aggregate)
     {
-        T.n_rows = S.n_rows; 
-        T.n_cols = 0;
-        T.nnz = 0;
-        T.idx1.resize(1, 0);
+        T->n_rows = S.n_rows; 
+        T->n_cols = 0;
+        T->nnz = 0;
+        T->idx1.resize(1, 0);
     }
 
     // Add aggregates to CSCMatrix T, so that each row
@@ -163,16 +161,16 @@ int standard_aggregation(CSRMatrix& S, CSCMatrix& T,
     // If aggregate[row] is -1, leave a 0 row
     else
     {
-        T.n_rows = S.n_rows;
-        T.n_cols = next_aggregate;
+        T->n_rows = S.n_rows;
+        T->n_cols = next_aggregate;
 
-        T.idx1.resize(T.n_cols + 1);
-        T.idx2.resize(T.n_rows);
-        T.vals.resize(T.n_rows);
+        T->idx1.resize(T->n_cols + 1);
+        T->idx2.resize(T->n_rows);
+        T->vals.resize(T->n_rows);
 
         // Find the number of aggregates in each column
-        std::vector<int> col_ctr(T.n_cols, 0);
-        for (int i = 0; i < T.n_rows; i++)
+        std::vector<int> col_ctr(T->n_cols, 0);
+        for (int i = 0; i < T->n_rows; i++)
         {
             col = aggregates[i];
             if (col >= 0)
@@ -182,23 +180,23 @@ int standard_aggregation(CSRMatrix& S, CSCMatrix& T,
         }
 
         // Create column pointer in T
-        T.idx1[0] = 0;
-        for (int i = 0; i < T.n_cols; i++)
+        T->idx1[0] = 0;
+        for (int i = 0; i < T->n_cols; i++)
         {
-            T.idx1[i+1] = T.idx1[i] + col_ctr[i];
+            T->idx1[i+1] = T->idx1[i] + col_ctr[i];
             col_ctr[i] = 0;
         }
-        T.nnz = T.idx1[T.n_cols];
+        T->nnz = T->idx1[T->n_cols];
     
         // Add row indices and values to T
-        for (int i = 0; i < T.n_rows; i++)
+        for (int i = 0; i < T->n_rows; i++)
         {
             col = aggregates[i];
             if (col >= 0)
             {
-                int pos = T.idx1[col] + col_ctr[col]++;
-                T.idx2[pos] = i;
-                T.vals[pos] = 1.0;
+                int pos = T->idx1[col] + col_ctr[col]++;
+                T->idx2[pos] = i;
+                T->vals[pos] = 1.0;
             }
         }
     }
