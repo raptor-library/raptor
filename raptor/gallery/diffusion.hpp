@@ -3,9 +3,6 @@
 #ifndef DIFFUSION_HPP
 #define DIFFUSION_HPP
 
-#include <mpi.h>
-#include <cmath>
-
 #include "core/types.hpp"
 
 using namespace raptor;

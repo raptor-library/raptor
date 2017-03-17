@@ -27,8 +27,9 @@ int main(int argc, char* argv[])
         B[i] = 1.0;
 
     Multilevel ml(A, B, 1, 0, 4.0/3, 1, 50);
-    //ml.solve(x, b);
+    ml.solve(x, b);
 
     delete[] B;
+
     delete[] stencil;
 }

@@ -70,8 +70,8 @@ namespace raptor
                 delete[] level_B;
 
                 num_levels = levels.size();
-/*
-                CSRMatrix& Ac = levels[last_level]->A;
+
+/*                CSRMatrix& Ac = levels[last_level]->A;
                 coarse_n = Ac.n_rows;
                 A_coarse.resize(coarse_n*coarse_n, 0);
                 for (int i = 0; i < coarse_n; i++)
@@ -86,8 +86,8 @@ namespace raptor
 
                 LU_permute.resize(coarse_n);
                 int info;
-                dgetrf_(&coarse_n, &coarse_n, A_coarse.data(), &coarse_n, 
-                        LU_permute.data(), &info);
+//                dgetrf_(&coarse_n, &coarse_n, A_coarse.data(), &coarse_n, 
+//                        LU_permute.data(), &info);
 */
                 printf("Num Levels = %d\n", num_levels);
             }
@@ -134,6 +134,9 @@ namespace raptor
                 levels[level_ctr-1]->A.RAP(levels[level_ctr-1]->P,
                         &(levels[level_ctr]->A));
 
+		// Sort coarse A
+		levels[level_ctr]->A.sort();
+
                 // Resize vectors to equal shape of A
                 levels[level_ctr]->x.set_size(levels[level_ctr]->A.n_rows);
                 levels[level_ctr]->b.set_size(levels[level_ctr]->A.n_rows);
@@ -153,16 +156,17 @@ namespace raptor
 
                 if (level == num_levels - 1)
                 {
-                    char trans = 'N'; //No transpose
-                    int nhrs = 1; // Number of right hand sides
-                    int info; // result
-                    double b_data[b.size];
-                    for (int i = 0; i < b.size; i++)
-                        b_data[i] = b.data()[i];
-                    dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
-                            LU_permute.data(), b_data, &coarse_n, &info);
-                    for (int i = 0; i < b.size; i++)
-                        x.data()[i] = b_data[i];
+//                    char trans = 'N'; //No transpose
+//                    int nhrs = 1; // Number of right hand sides
+//                    int info; // result
+//                    double b_data[b.size];
+//                    for (int i = 0; i < b.size; i++)
+//                        b_data[i] = b.data()[i];
+//                    dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
+//                            LU_permute.data(), b_data, &coarse_n, &info);
+//                    for (int i = 0; i < b.size; i++)
+//                        x.data()[i] = b_data[i];
+A.gauss_seidel(x, b); 
                 }
                 else
                 {

@@ -4,10 +4,6 @@
 #define RAPTOR_CORE_VECTOR_HPP
 
 #include "core/types.hpp"
-#include <vector>
-#include <time.h>
-#include <stdlib.h>
-#include <cmath>
 
 /**************************************************************
  *****   Vector Class

@@ -520,12 +520,12 @@ void Matrix::RAP(const CSCMatrix& P, CSRMatrix* C)
 
     // Store a column of P, to multiply with each row of A
     std::vector<double> col_vals(P.n_rows, 0);
-    std::vector<int> next(P.n_rows, -1);
+    std::vector<int> next(P.n_rows);
 
     // Store a column of AP after it is computed
     // to then multiply with each row of PT
     std::vector<double> col_AP(n_rows, 0);
-    std::vector<int> next_AP(n_rows, -1);
+    std::vector<int> next_AP(n_rows);
 
     // Keep track of number of nonzeros added
     // to each row (for converting to CSR)
@@ -602,19 +602,15 @@ void Matrix::RAP(const CSCMatrix& P, CSRMatrix* C)
         // Clear AP vectors
         for (int j = 0; j < length_AP; j++)
         {
-            int tmp = head_AP;
+            col_AP[head_AP] = 0;
             head_AP = next_AP[head_AP];
-            next_AP[tmp] = -1;
-            col_AP[tmp] = 0;
         }
 
         // Clear vectors
         for (int j = 0; j < length; j++)
         {
-            int tmp = head;
+            col_vals[head] = 0;
             head = next[head];
-            next[tmp] = -1;
-            col_vals[tmp] = 0;
         }
          
         Ctmp.idx1[col_P+1] = Ctmp.idx2.size();

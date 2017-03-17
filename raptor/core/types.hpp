@@ -3,19 +3,22 @@
 #ifndef RAPTOR_CORE_TYPES_HPP
 #define RAPTOR_CORE_TYPES_HPP
 
-#include "mpi.h"
 #include <float.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <time.h>
+#include <vector>
 
 //TODO -- should be std::numeric_limits<data_t>::epsilon ...
 //#define zero_tol DBL_EPSILON
 #define zero_tol 1e-16
 #define MPI_INDEX_T MPI_INT
 #define MPI_DATA_T MPI_DOUBLE
-#define WITH_OMP FALSE 
-#define OMP_TPP 16
+
+#ifdef WITH_MPI
+#include <mpi.h>
+#endif
 
 namespace raptor
 {
@@ -36,6 +39,8 @@ namespace raptor
         data_t value;
     };
 }
+
+#ifdef WITH_MPI
     static void create_coo_type(MPI_Datatype* coo_type)
     {
         int blocks[2] = {2, 1};
@@ -67,5 +72,6 @@ namespace raptor
 
         MPI_Type_struct(2, blockcounts, offsets, oldtypes, csr_type);
     }
+#endif
 
 #endif
