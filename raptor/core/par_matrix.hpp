@@ -8,6 +8,7 @@
 #include <set>
 
 #include "matrix.hpp"
+#include "par_vector.hpp"
 #include "par_comm.hpp"
 #include "types.hpp"
 

@@ -113,83 +113,55 @@ data_t ParVector::norm(index_t p)
     return pow(result, 1./p);
 }
 
+Vector& ParVector::communicate(TAPComm* comm_pkg, MPI_Comm comm)
+{
+    int idx;
+
+    // Initial redistribution among node
+    init_comm_helper(local, comm_pkg->local_S_par_comm, comm_pkg->local_comm);
+    Vector& S_recv = complete_comm_helper(comm_pkg->local_S_par_comm);
+
+    // Inter-node communication
+    init_comm_helper(S_recv, comm_pkg->global_par_comm, MPI_COMM_WORLD);
+    Vector& G_recv = complete_comm_helper(comm_pkg->global_par_comm);
+
+    // Redistributing recvd inter-node values
+    init_comm_helper(G_recv, comm_pkg->local_R_par_comm, comm_pkg->local_comm);
+    Vector& R_recv = complete_comm_helper(comm_pkg->local_R_par_comm);
+
+    // Messages with origin and final destination on node
+    init_comm_helper(local, comm_pkg->local_L_par_comm, comm_pkg->local_comm);
+    Vector& L_recv = complete_comm_helper(comm_pkg->local_L_par_comm);
+
+    // Add values from L_recv and R_recv to appropriate positions in 
+    // Vector recv
+    for (int i = 0; i < R_recv.size; i++)
+    {
+        idx = comm_pkg->R_to_orig[i];
+        comm_pkg->recv_buffer.values[idx] = R_recv.values[i];
+    }
+
+    for (int i = 0; i < L_recv.size; i++)
+    {
+        idx = comm_pkg->L_to_orig[i];
+        comm_pkg->recv_buffer.values[idx] = L_recv.values[i];
+    }
+
+    return comm_pkg->recv_buffer;
+}
+
 Vector& ParVector::communicate(ParComm* comm_pkg, MPI_Comm comm)
 {
-    init_comm(comm_pkg, comm);
-    return complete_comm(comm_pkg);
+    return communicate_helper(local, comm_pkg, comm);
 }
 
 void ParVector::init_comm(ParComm* comm_pkg, MPI_Comm comm)
 {
-    CommData* send_data = comm_pkg->send_data;
-    CommData* recv_data = comm_pkg->recv_data;
-
-    if (send_data->num_msgs)
-    {
-        int send_start;
-        int send_end;
-        int proc;
-
-        data_t* local_data = local.data();
-        std::vector<int>& procs = send_data->procs;
-        std::vector<int>& indptr = send_data->indptr;
-        std::vector<int>& indices = send_data->indices;
-        double* buffer = send_data->buffer.data();
-        MPI_Request* requests = send_data->requests;
-
-        // Add local data to buffer, and send to appropriate procs
-        for (int i = 0; i < send_data->num_msgs; i++)
-        {
-            proc = procs[i];
-            send_start = indptr[i];
-            send_end = indptr[i+1];
-            for (int j = send_start; j < send_end; j++)
-            {
-                buffer[j] = local_data[indices[j]];
-            }
-            MPI_Isend(&(buffer[send_start]), send_end - send_start,
-                    MPI_DATA_T, proc, 0, comm, &(requests[i]));
-        }
-    }
-
-    if (recv_data->num_msgs)
-    {
-        int recv_start;
-        int recv_end;
-        int proc;
-
-        std::vector<int>& procs = recv_data->procs;
-        std::vector<int>& indptr = recv_data->indptr;
-        double* buffer = recv_data->buffer.data();
-        MPI_Request* requests = recv_data->requests;
-
-        for (int i = 0; i < recv_data->num_msgs; i++)
-        {
-            proc = procs[i];
-            recv_start = indptr[i];
-            recv_end = indptr[i+1];
-            MPI_Irecv(&(buffer[recv_start]), recv_end - recv_start, 
-                    MPI_DATA_T, proc, 0, comm, &(requests[i]));
-        }
-    }
+    init_comm_helper(local, comm_pkg, comm);
 }
 
 Vector& ParVector::complete_comm(ParComm* comm_pkg)
 {
-    if (comm_pkg->send_data->num_msgs)
-    {
-        MPI_Waitall(comm_pkg->send_data->num_msgs,
-                comm_pkg->send_data->requests,
-                MPI_STATUS_IGNORE);
-    }
-
-    if (comm_pkg->recv_data->num_msgs)
-    {
-        MPI_Waitall(comm_pkg->recv_data->num_msgs,
-                comm_pkg->recv_data->requests,
-                MPI_STATUS_IGNORE);
-    }
-
-    return comm_pkg->recv_data->buffer;
+    return complete_comm_helper(comm_pkg);
 }
 

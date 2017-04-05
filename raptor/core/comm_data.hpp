@@ -3,12 +3,11 @@
 #ifndef RAPTOR_CORE_COMMDATA_HPP
 #define RAPTOR_CORE_COMMDATA_HPP
 
-#include <mpi.h>
-#include <math.h>
+#define WITH_MPI 1
 
-#include "matrix.hpp"
-#include "par_vector.hpp"
-#include <map>
+#include <mpi.h>
+#include "types.hpp"
+#include "vector.hpp"
 
 /**************************************************************
  *****   CommData Class
@@ -16,6 +15,9 @@
  **************************************************************/
 namespace raptor
 {
+    // Forward Declaration
+    class Vector;
+
 class CommData
 {
 public:
@@ -37,28 +39,31 @@ public:
     {
         num_msgs = data->num_msgs;
         size_msgs = data->size_msgs;
-        if (data->procs.size())
+        int n_procs = data->procs.size();
+        int n_indptr = data->indptr.size();
+        int n_indices = data->indices.size();
+        if (n_procs)
         {
-            procs.resize(data->procs.size());
-            for (int i = 0; i < data->procs.size(); i++)
+            procs.resize(n_procs);
+            for (int i = 0; i < n_procs; i++)
             {
                 procs[i] = data->procs[i];
             }
         }
 
-        if (data->indptr.size())
+        if (n_indptr)
         {
-            indptr.resize(data->indptr.size());
-            for (int i = 0; i < data->indptr.size(); i++)
+            indptr.resize(n_indptr);
+            for (int i = 0; i < n_indptr; i++)
             {
                 indptr[i] = data->indptr[i];
             }
         }
 
-        if (data->indices.size())
+        if (n_indices)
         {
-            indices.resize(data->indices.size());
-            for (int i = 0; i < data->indices.size(); i++)
+            indices.resize(n_indices);
+            for (int i = 0; i < n_indices; i++)
             {
                 indices[i] = data->indices[i];
             }

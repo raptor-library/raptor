@@ -4,12 +4,7 @@
 #define RAPTOR_CORE_PARCOMM_HPP
 
 #include <mpi.h>
-#include <math.h>
-
-#include "matrix.hpp"
-#include "par_vector.hpp"
 #include "comm_data.hpp"
-#include <map>
 
 /**************************************************************
  *****   ParComm Class
@@ -98,6 +93,8 @@ public:
     ParComm(std::vector<int>& off_proc_column_map,
             int first_local_row, 
             int first_local_col,
+            int global_num_cols,
+            int local_num_cols,
             int _key = 9999,
             MPI_Comm comm = MPI_COMM_WORLD)
     {
@@ -112,71 +109,44 @@ public:
         recv_data = new CommData();
 
         // Declare communication variables
-        int* global_col_starts;
-        int* proc_sends;
-        int* proc_recvs;
-        int* tmp_send_buffer;
-        int* col_to_proc;
-        int n_recvd, ctr;
         int send_start, send_end;
-        int num_sends;
         int proc, prev_proc;
-        int global_col, global_row, local_row;
         int count;
         int tag = 2345;  // TODO -- switch this to key?
         int off_proc_num_cols = off_proc_column_map.size();
         MPI_Status recv_status;
 
-        // Allocate space for processes I send to / recv from
-        proc_sends = new int[num_procs]();
-        proc_recvs = new int[num_procs];
+        std::vector<int> off_proc_col_to_proc(off_proc_num_cols);
+        std::vector<int> tmp_send_buffer;
 
-        // Create global_col_starts (first global col on each proc)
-        global_col_starts = new int[num_procs];
-        MPI_Allgather(&first_local_col, 1, MPI_INT, 
-                global_col_starts, 1, MPI_INT, MPI_COMM_WORLD);
-
-        // Map columns of off_proc to the processes on 
-        // which associated vector values are stored
-        col_to_proc = new int[off_proc_num_cols];
-        proc = 0;
-        for (int i = 0; i < off_proc_num_cols; i++)
-        {
-            global_col = off_proc_column_map[i];
-            while (proc + 1 < num_procs && 
-                    global_col >= global_col_starts[proc + 1])
-                proc++;
-            col_to_proc[i] = proc;
-        }
+        form_col_to_proc(first_local_col, global_num_cols, local_num_cols, 
+                off_proc_column_map, off_proc_col_to_proc);
 
         // Determine processes columns are received from,
         // and adds corresponding messages to recv data.
         // Assumes columns are partitioned across processes
         // in contiguous blocks, and are sorted
-        prev_proc = col_to_proc[0];
-        proc_sends[prev_proc] = 1;
+        prev_proc = off_proc_col_to_proc[0];
         int prev_idx = 0;
         for (int i = 1; i < off_proc_num_cols; i++)
         {
-            proc = col_to_proc[i];
+            proc = off_proc_col_to_proc[i];
             if (proc != prev_proc)
             {
                 recv_data->add_msg(prev_proc, i - prev_idx);
                 prev_proc = proc;
                 prev_idx = i;
-                proc_sends[proc] = 1;
             }
         }
         recv_data->add_msg(prev_proc, off_proc_num_cols - prev_idx);
         recv_data->finalize();
 
-        // Find the number of processes that must recv from me
-        MPI_Allreduce(proc_sends, proc_recvs, num_procs, MPI_INT, MPI_SUM, comm);
-        num_sends = proc_recvs[rank];
-
         // For each process I recv from, send the global column indices
         // for which I must recv corresponding rows 
-        if (recv_data->size_msgs) tmp_send_buffer = new int[recv_data->size_msgs];
+        if (recv_data->size_msgs)
+        {
+            tmp_send_buffer.resize(recv_data->size_msgs);
+        }
         for (int i = 0; i < recv_data->num_msgs; i++)
         {
             proc = recv_data->procs[i];
@@ -186,52 +156,55 @@ public:
             {
                 tmp_send_buffer[j] = off_proc_column_map[j];
             }
-            MPI_Isend(&(tmp_send_buffer[send_start]), send_end - send_start, MPI_INT, 
+            MPI_Issend(&(tmp_send_buffer[send_start]), send_end - send_start, MPI_INT, 
                     proc, tag, comm, &(recv_data->requests[i]));
         }
 
         // Determine which processes to which I send messages,
         // and what vector indices to send to each.
         // Receive any messages, regardless of source (which is unknown)
-        n_recvd = 0;
-        ctr = 0;
-        while (n_recvd < num_sends)
+        int finished, msg_avail;
+        MPI_Request barrier_request;
+        MPI_Testall(recv_data->num_msgs, recv_data->requests, &finished,
+                MPI_STATUSES_IGNORE);
+        while (!finished)
         {
-            // Wait until message is in buffer
-            MPI_Probe(MPI_ANY_SOURCE, tag, comm, &recv_status);
-
-            // Find size of message
-            MPI_Get_count(&recv_status, MPI_INT, &count);
-
-            // Find process sending message
-            proc = recv_status.MPI_SOURCE;
-
-            // Recv first message in buffer
-            int recvbuf[count];
-            MPI_Recv(recvbuf, count, MPI_INT, proc, tag, comm, 
-                    &recv_status);
-    
-            // Add destination process to send_procs as this process
-            // will send vector values to me
-            for (int i = 0; i < count; i++)
-                recvbuf[i] -= first_local_row;
-            send_data->add_msg(proc, count, recvbuf);
-
-            n_recvd++;
+            MPI_Iprobe(MPI_ANY_SOURCE, tag, comm, &msg_avail, &recv_status);
+            if (msg_avail)
+            {
+                MPI_Get_count(&recv_status, MPI_INT, &count);
+                proc = recv_status.MPI_SOURCE;
+                int recvbuf[count];
+                MPI_Recv(recvbuf, count, MPI_INT, proc, tag, comm, &recv_status);
+                for (int i = 0; i < count; i++)
+                {
+                    recvbuf[i] -= first_local_row;
+                }
+                send_data->add_msg(proc, count, recvbuf);
+            }
+            MPI_Testall(recv_data->num_msgs, recv_data->requests, &finished,
+                    MPI_STATUSES_IGNORE);
+        }
+        MPI_Ibarrier(comm, &barrier_request);
+        MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
+        while (!finished)
+        {
+            MPI_Iprobe(MPI_ANY_SOURCE, tag, comm, &msg_avail, &recv_status);
+            if (msg_avail)
+            {
+                MPI_Get_count(&recv_status, MPI_INT, &count);
+                proc = recv_status.MPI_SOURCE;
+                int recvbuf[count];
+                MPI_Recv(recvbuf, count, MPI_INT, proc, tag, comm, &recv_status);
+                for (int i = 0; i < count; i++)
+                {
+                    recvbuf[i] -= first_local_row;
+                }
+                send_data->add_msg(proc, count, recvbuf);
+            }
+            MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
         }
         send_data->finalize();
-        
-        // Wait for sends to complete
-        if (recv_data->num_msgs) 
-            MPI_Waitall(recv_data->num_msgs, recv_data->requests, MPI_STATUS_IGNORE);
-
-        // Delete variables
-        if (recv_data->size_msgs) 
-            delete[] tmp_send_buffer;
-        delete[] col_to_proc;
-        delete[] global_col_starts;
-        delete[] proc_sends;
-        delete[] proc_recvs;
     }
 
     ParComm(ParComm* comm)
@@ -251,6 +224,279 @@ public:
         delete send_data;
         delete recv_data;
     };
+
+    int find_proc_col_starts(int first_local_col, int last_local_col,
+            int global_num_cols, std::vector<int>& col_starts, 
+            std::vector<int>& col_start_procs)
+    {
+        // Get MPI Information
+        int rank, num_procs;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+        // Delcare variables
+        int part;
+        int first, last;
+        int proc;
+        int num_procs_extra;
+        int ctr;
+        int tmp;
+        int recvbuf;
+        std::vector<int> send_buffer;
+        std::vector<MPI_Request> send_requests;
+        MPI_Status status;
+
+        // Find assumed partition (cols per proc) and extra cols
+        // which are assumed to be placed one per proc on first
+        // "extra" num procs
+        part = global_num_cols / num_procs;
+        if (global_num_cols % num_procs) part++;
+
+        // Find assumed first and last col on rank
+        first = rank * part;
+        last = (rank + 1) * part;
+            
+        // If last_local_col != last, exchange data with neighbors
+        // Send to proc that is assumed to hold my last local col
+        // and recv from all procs of which i hold their assumed last local cols
+        proc = last_local_col / part - 1; // first col of rank + 1
+        num_procs_extra = proc - rank; 
+        ctr = 0;
+        if (num_procs_extra > 0)
+        {
+            send_buffer.resize(num_procs_extra);
+            send_requests.resize(num_procs_extra);
+            for (int i = rank+1; i < proc; i++)
+            {
+                send_buffer[ctr] = first_local_col;
+                MPI_Isend(&(send_buffer[ctr]), 1, MPI_INT, i, 2345, 
+                        MPI_COMM_WORLD, &(send_requests[ctr]));
+                ctr++;
+            }
+        }
+        tmp = first_local_col;
+        proc = rank - 1;
+        col_starts.push_back(first_local_col);
+        while (first < tmp && proc >= 0)
+        {
+            MPI_Recv(&recvbuf, 1, MPI_INT, proc, 2345, MPI_COMM_WORLD, &status);
+            tmp = recvbuf;
+            col_starts.push_back(first);
+            proc--;
+        }
+        if (ctr)
+        {
+            MPI_Waitall(ctr, send_requests.data(), MPI_STATUSES_IGNORE);
+        }
+
+        // Reverse order of col_starts (lowest proc first)
+        std::reverse(col_starts.begin(), col_starts.end());
+        for (int i = col_starts.size() - 1; i >= 0; i--)
+        {
+            col_start_procs.push_back(rank - i);
+        }
+
+        // If first_local_col != first, exchange data with neighbors
+        // Send to proc that is assumed to hold my first local col
+        // and recv from all procs of which i hold their assumed first local cols
+        proc = first_local_col / part;
+        num_procs_extra = rank - proc;
+        ctr = 0;
+        if (num_procs_extra > 0)
+        {
+            send_buffer.resize(num_procs_extra);
+            send_requests.resize(num_procs_extra);
+            for (int i = proc; i < rank; i++)
+            {
+                send_buffer[ctr] = last_local_col;
+                MPI_Isend(&(send_buffer[ctr]), 1, MPI_INT, i, 2345,
+                        MPI_COMM_WORLD, &(send_requests[ctr]));
+                ctr++;
+            }
+        }
+        tmp = last_local_col;
+        proc = rank + 1;
+        col_starts.push_back(last_local_col);
+        col_start_procs.push_back(proc);
+        while (last > tmp && proc < num_procs)
+        {
+            MPI_Recv(&recvbuf, 1, MPI_INT, proc, 2345, MPI_COMM_WORLD, &status);
+            tmp = recvbuf;
+            col_starts.push_back(recvbuf);
+            col_start_procs.push_back(++proc);
+        }
+        if (ctr)
+        {
+            MPI_Waitall(ctr, send_requests.data(), MPI_STATUSES_IGNORE);
+        }
+
+        return part;
+    }
+
+    void form_col_to_proc(int first_local_col, int global_num_cols,
+            int local_num_cols, std::vector<int>& off_proc_column_map,
+            std::vector<int>& off_proc_col_to_proc)
+    {            
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+        std::vector<int> col_starts;
+        std::vector<int> col_start_procs;
+        int last_local_col = first_local_col + local_num_cols;
+        int assumed_part = find_proc_col_starts(first_local_col, last_local_col,
+            global_num_cols, col_starts, col_start_procs);
+
+        int off_proc_num_cols = off_proc_column_map.size();
+        int col_start_size = col_starts.size();
+        int prev_proc;
+        int num_sends = 0;
+        int proc, start, end;
+        int col;
+        std::vector<int> send_procs;
+        std::vector<int> send_proc_starts;
+        std::vector<MPI_Request> send_requests;
+
+        if (off_proc_num_cols)
+        {
+            off_proc_col_to_proc.resize(off_proc_num_cols);
+            prev_proc = off_proc_column_map[0] / assumed_part;
+            send_procs.push_back(prev_proc);
+            send_proc_starts.push_back(0);
+            for (int i = 1; i < off_proc_num_cols; i++)
+            {
+                proc = off_proc_column_map[i] / assumed_part;
+                if (proc != prev_proc)
+                {
+                    send_procs.push_back(proc);
+                    send_proc_starts.push_back(i);
+                    prev_proc = proc;
+                }
+            }
+            send_proc_starts.push_back(off_proc_num_cols);
+
+            num_sends = send_procs.size();
+            send_requests.resize(num_sends);
+            for (int i = 0; i < num_sends; i++)
+            {
+                proc = send_procs[i];
+                start = send_proc_starts[i];
+                end = send_proc_starts[i+1];
+
+                if (proc == rank)
+                {
+                    int k = 0;
+                    for (int j = start; j < end; j++)
+                    {
+                        col = off_proc_column_map[j];
+                        while (k + 1 < col_start_size && 
+                                col >= col_starts[k+1])
+                        {
+                            k++;
+                        }
+                        proc = col_start_procs[k];
+                        off_proc_col_to_proc[j] = proc;
+                    }
+                    send_requests[i] = MPI_REQUEST_NULL;
+                }
+                else
+                {
+                    MPI_Issend(&(off_proc_column_map[start]), end - start, MPI_INT,
+                            proc, 9753, MPI_COMM_WORLD, &(send_requests[i]));
+                }
+            }
+        }
+
+        std::vector<int> sendbuf_procs;
+        std::vector<int> sendbuf_starts;
+        std::vector<int> sendbuf;
+        int finished, msg_avail;
+        int count;
+        MPI_Request barrier_request;
+        MPI_Status status;
+        MPI_Testall(num_sends, send_requests.data(), &finished, MPI_STATUSES_IGNORE);
+        while (!finished)
+        {
+            MPI_Iprobe(MPI_ANY_SOURCE, 9753, MPI_COMM_WORLD, &msg_avail, &status);
+            if (msg_avail)
+            {
+                MPI_Get_count(&status, MPI_INT, &count);
+                proc = status.MPI_SOURCE;
+                int recvbuf[count];
+                MPI_Recv(recvbuf, count, MPI_INT, proc, 9753, 
+                        MPI_COMM_WORLD, &status);
+                sendbuf_procs.push_back(proc);
+                sendbuf_starts.push_back(sendbuf.size());
+                int k = 0;
+                for (int i = 0; i < count; i++)
+                {
+                    col = recvbuf[i];
+                    while (k + 1 < col_start_size &&
+                            col >= col_starts[k + 1])
+                    {
+                        k++;
+                    }
+                    proc = col_start_procs[k];
+                    sendbuf.push_back(proc);    
+                }
+            }
+            MPI_Testall(num_sends, send_requests.data(), &finished, MPI_STATUSES_IGNORE);
+        }
+        MPI_Ibarrier(MPI_COMM_WORLD, &barrier_request);
+        MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
+        while (!finished)
+        {
+            MPI_Iprobe(MPI_ANY_SOURCE, 9753, MPI_COMM_WORLD, &msg_avail, &status);
+            if (msg_avail)
+            {
+                MPI_Get_count(&status, MPI_INT, &count);
+                proc = status.MPI_SOURCE;
+                int recvbuf[count];
+                MPI_Recv(recvbuf, count, MPI_INT, proc, 9753, 
+                        MPI_COMM_WORLD, &status);
+                sendbuf_procs.push_back(proc);
+                sendbuf_starts.push_back(sendbuf.size());
+                int k = 0;
+                for (int i = 0; i < count; i++)
+                {
+                    col = recvbuf[i];
+                    while (k + 1 < col_start_size &&
+                            col >= col_starts[k + 1])
+                    {
+                        k++;
+                    }
+                    proc = col_start_procs[k];
+                    sendbuf.push_back(proc);
+                }
+            }
+            MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
+        }
+        sendbuf_starts.push_back(sendbuf.size());
+
+        int n_sendbuf = sendbuf_procs.size();
+        std::vector<MPI_Request> sendbuf_requests(n_sendbuf);
+        for (int i = 0; i < n_sendbuf; i++)
+        {
+            int proc = sendbuf_procs[i];
+            int start = sendbuf_starts[i];
+            int end = sendbuf_starts[i+1];
+            MPI_Isend(&(sendbuf[start]), end-start, MPI_INT, proc,
+                    8642, MPI_COMM_WORLD, &(sendbuf_requests[i]));
+        }
+            
+        for (int i = 0; i < num_sends; i++)
+        {
+            int proc = send_procs[i];
+            if (proc == rank) 
+                continue;
+            int start = send_proc_starts[i];
+            int end = send_proc_starts[i+1];
+            MPI_Irecv(&(off_proc_col_to_proc[start]), end - start, MPI_INT, proc,
+                    8642, MPI_COMM_WORLD, &(send_requests[i]));
+        }
+
+        MPI_Waitall(n_sendbuf, sendbuf_requests.data(), MPI_STATUSES_IGNORE);
+        MPI_Waitall(num_sends, send_requests.data(), MPI_STATUSES_IGNORE);
+    }
 
     int key;
     CommData* send_data;

@@ -3,13 +3,8 @@
 #ifndef RAPTOR_CORE_MATRIX_HPP
 #define RAPTOR_CORE_MATRIX_HPP
 
+#include "types.hpp"
 #include "vector.hpp"
-#include <map>
-#include <numeric>
-#include <algorithm>
-#include <functional>
-#include <set>
-#include <map>
 
 /**************************************************************
  *****   Matrix Base Class
