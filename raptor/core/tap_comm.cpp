@@ -8,8 +8,10 @@ void TAPComm::split_off_proc_cols(std::vector<int>& off_proc_column_map,
         std::vector<int>& off_proc_col_to_proc,
         std::vector<int>& on_node_column_map,
         std::vector<int>& on_node_col_to_proc,
+        std::vector<int>& on_node_to_off_proc,
         std::vector<int>& off_node_column_map,
-        std::vector<int>& off_node_col_to_node)
+        std::vector<int>& off_node_col_to_node,
+        std::vector<int>& off_node_to_off_proc)
 {
     int rank, rank_node, num_procs;
     int proc;
@@ -36,11 +38,13 @@ void TAPComm::split_off_proc_cols(std::vector<int>& off_proc_column_map,
         {
             on_node_column_map.push_back(global_col);
             on_node_col_to_proc.push_back(get_local_proc(proc));
+            on_node_to_off_proc.push_back(i);
         }
         else
         {
             off_node_column_map.push_back(global_col);
             off_node_col_to_node.push_back(node);
+            off_node_to_off_proc.push_back(i);
         }
     }
 }
@@ -193,20 +197,17 @@ void TAPComm::find_global_comm_procs(std::vector<int>& nodal_off_node_col_nodes,
     for (int i = local_rank; i < n_send_procs; i += PPN)
     {
         send_procs[n_sends++] = send_procs[i];
-        printf("SendProcs[%d] = %d\n", i, send_procs[i]);
     }
     if (n_sends)
     {
         // Each process sends to all procs in "send_procs" 
         send_procs.resize(n_sends);
         requests.resize(n_sends);
-        printf("Nsends = %d\n", n_sends);
         for (int i = 0; i < n_sends; i++)
         {
             proc = send_procs[i];
-            printf("SendProcs[%d of %d] = %d\n", i, n_sends, proc);
             MPI_Isend(&(send_procs[i]), 1, MPI_INT, proc, 6789, MPI_COMM_WORLD,
-                    &(requests[n_sends++]));
+                    &(requests[i]));
         }
     }
     else
@@ -230,6 +231,8 @@ void TAPComm::find_global_comm_procs(std::vector<int>& nodal_off_node_col_nodes,
     }
 }
 
+//TODO -- R_recv_buffer should include messages that rank
+// recvs in global_par_comm
 void TAPComm::form_local_R_par_comm(std::vector<int>& off_node_column_map,
         std::vector<int>& off_node_col_to_node,
         std::vector<int>& recv_nodes,
@@ -268,7 +271,7 @@ void TAPComm::form_local_R_par_comm(std::vector<int>& off_node_column_map,
     {
         node = off_node_col_to_node[i];
         local_proc = node_to_proc[node];
-        if (local_proc == local_rank) continue;
+        //if (local_proc == local_rank) continue;
         local_recv_sizes[local_proc]++;
     }
     // Create displs based on local_recv_sizes

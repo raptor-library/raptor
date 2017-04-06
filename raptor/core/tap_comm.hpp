@@ -112,6 +112,8 @@ public:
         std::vector<int> on_node_col_to_proc;
         std::vector<int> off_node_column_map;
         std::vector<int> off_node_col_to_node;
+        std::vector<int> on_node_to_off_proc;
+        std::vector<int> off_node_to_off_proc;
         std::vector<int> nodal_off_node_col_nodes;
 
         global_par_comm->form_col_to_proc(first_local_col, global_num_cols,
@@ -119,8 +121,11 @@ public:
 
         // Partition off_proc cols into on_node and off_node
         split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
-               on_node_column_map, on_node_col_to_proc,
-               off_node_column_map, off_node_col_to_node);
+               on_node_column_map, on_node_col_to_proc, on_node_to_off_proc,
+               off_node_column_map, off_node_col_to_node, off_node_to_off_proc);
+
+        int on_node_num_cols = on_node_column_map.size();
+        int off_node_num_cols = off_node_column_map.size();
 
         gather_off_node_nodes(off_node_col_to_node, nodal_off_node_col_nodes);
 
@@ -140,28 +145,26 @@ public:
         form_local_L_par_comm(on_node_column_map, on_node_col_to_proc,
                 first_local_row);
 
-        recv_buffer.set_size(local_R_par_comm->recv_data->size_msgs + 
-                local_L_par_comm->recv_data->size_msgs);
-
         // TODO there is a much cheaper way to do this
         // I know I recv from each local proc in order, and each recv is ordered
         // so I can figure out idx_R and idx_L for each off_proc_col
-        std::map<int, int> global_to_local;
-        for (int i = 0; i < off_proc_num_cols; i++)
+        int recv_size = local_R_par_comm->recv_data->size_msgs +
+            local_L_par_comm->recv_data->size_msgs;
+        if (recv_size)
         {
-            global_to_local[off_proc_column_map[i]] = i;
-        }
-
-        for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
-        {
-            global_col = local_R_par_comm->recv_data->indices[i];
-            R_to_orig[i] = global_to_local[global_col];
-        }
-
-        for (int i = 0; i < local_L_par_comm->recv_data->size_msgs; i++)
-        {
-            global_col = local_L_par_comm->recv_data->indices[i];
-            L_to_orig[i] = global_to_local[global_col];
+            recv_buffer.set_size(recv_size);
+            R_to_orig.resize(local_R_par_comm->recv_data->size_msgs);
+            for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
+            {
+                int idx = local_R_par_comm->recv_data->indices[i];
+                R_to_orig[i] = off_node_to_off_proc[idx];
+            }
+            L_to_orig.resize(local_L_par_comm->recv_data->size_msgs);
+            for (int i = 0; i < local_L_par_comm->recv_data->size_msgs; i++)
+            {
+                int idx = local_L_par_comm->recv_data->indices[i];
+                L_to_orig[i] = on_node_to_off_proc[idx];
+            }
         }
     }
 
@@ -192,8 +195,10 @@ public:
             std::vector<int>& off_proc_col_to_proc,
             std::vector<int>& on_node_column_map,
             std::vector<int>& on_node_col_to_proc,
+            std::vector<int>& on_node_to_off_proc,
             std::vector<int>& off_node_column_map,
-            std::vector<int>& off_node_col_to_node);
+            std::vector<int>& off_node_col_to_node,
+            std::vector<int>& off_node_to_off_proc);
 
     void gather_off_node_nodes(std::vector<int>& off_node_col_to_node,
             std::vector<int>& nodal_off_node_col_nodes);

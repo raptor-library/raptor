@@ -116,14 +116,14 @@ public:
         int idx_start = 0;
         if (size_msgs)
         {
-            idx_start = indices[size_msgs-1];
+            idx_start = indices[size_msgs-1] + 1;
         }
         procs.push_back(proc);
         indptr.push_back(last_ptr + msg_size);
 
         for (int i = 0; i < msg_size; i++)
         {
-            indices.push_back(idx_start + i + 1);
+            indices.push_back(idx_start + i);
         }
 
         num_msgs++;
