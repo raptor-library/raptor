@@ -60,12 +60,15 @@ void TAPComm::gather_off_node_nodes(std::vector<int>& off_node_col_to_node,
     }
     std::vector<int> recv_nodes(N, 0);
     std::vector<int> nodal_recv_nodes(N, 0);
+    std::vector<int> node_sizes(num_nodes, 0);
+    std::vector<int> nodal_off_node_sizes;
     for (std::vector<int>::iterator it = off_node_col_to_node.begin();
             it != off_node_col_to_node.end(); ++it)
     {
         int idx = *it / int_size;
         int pos = *it % int_size;
         recv_nodes[idx] |= 1 << pos;
+        node_sizes[*it]++;
     }
 
     MPI_Allreduce(recv_nodes.data(), nodal_recv_nodes.data(), N, MPI_INT,
@@ -86,6 +89,60 @@ void TAPComm::gather_off_node_nodes(std::vector<int>& off_node_col_to_node,
     if (ctr)
     {
         nodal_off_node_col_nodes.resize(ctr);
+
+        // Collect the number of bytes sent to each node
+        nodal_off_node_sizes.resize(ctr);
+        for (int i = 0; i < ctr; i++)
+        {
+            int node = nodal_off_node_col_nodes[i];
+            nodal_off_node_sizes[i] = node_sizes[node];
+        }
+        MPI_Allreduce(MPI_IN_PLACE, nodal_off_node_sizes.data(), ctr, MPI_INT,
+                MPI_SUM, local_comm);
+
+        // Find the average number of send bytes per process
+        int total_size = 0;
+        for (std::vector<int>::iterator it = nodal_off_node_sizes.begin();
+                it != nodal_off_node_sizes.end(); ++it)
+        {
+            total_size += *it;
+        }
+        double avg_proc_size = total_size / PPN;
+        double avg_msg_size = avg_proc_size / ((ctr-1) / PPN+1);
+ 
+        // Sort nodes, descending by msg size (find permutation)
+        std::vector<int> p(ctr);
+        std::iota(p.begin(), p.end(), 0);
+        std::sort(p.begin(), p.end(), 
+                [&](const int lhs, const int rhs)
+                {
+                    return nodal_off_node_sizes[lhs] > nodal_off_node_sizes[rhs];
+                });
+
+        // If a single message is larger than the avg_size, split it across
+        // local processes
+        for (int i = 0; i < ctr; i++)
+        {
+            int idx = p[i];
+            int node = nodal_off_node_col_nodes[idx];
+            int size = nodal_off_node_sizes[idx];
+            if (size < PPN) break;
+
+            int n_procs = size / avg_msg_size;
+            if (n_procs > 1)
+            {
+                if (n_procs > PPN) n_procs = PPN;
+                for (int i = 0; i < n_procs - 1; i++)
+                {
+                    nodal_off_node_col_nodes.push_back(node);
+                }
+            }
+            else
+            {
+                break;
+            }
+        }
+        std::sort(nodal_off_node_col_nodes.begin(), nodal_off_node_col_nodes.end());
     }
     else
     {
@@ -98,9 +155,8 @@ void TAPComm::gather_off_node_nodes(std::vector<int>& off_node_col_to_node,
 // Then, node allreduces send_procs
 // Then each proc sends message to each proc telling it they will be sending to
 // them
-void TAPComm::find_global_comm_procs(std::vector<int>& nodal_off_node_col_nodes,
-        std::vector<int>& send_procs, std::vector<int>& recv_procs,
-        std::vector<int>& recv_nodes)
+void TAPComm::find_global_comm_procs(std::vector<int>& recv_nodes,
+        std::vector<int>& send_procs, std::vector<int>& recv_procs)
 {
     int rank;
     int local_rank;
@@ -121,20 +177,6 @@ void TAPComm::find_global_comm_procs(std::vector<int>& nodal_off_node_col_nodes,
     std::vector<int> send_sizes(PPN);
     std::vector<int> send_displs(PPN+1);
     std::vector<MPI_Request> requests;
-
-    for (std::vector<int>::iterator it = nodal_off_node_col_nodes.begin();
-            it != nodal_off_node_col_nodes.end(); ++it)
-    {
-        node_list[*it] = 1;
-    }
-
-    for (int i = 0; i < num_nodes; i++)
-    {
-        if (node_list[i])
-        {
-            recv_nodes.push_back(i);
-        }
-    }
 
     n_recv_nodes = recv_nodes.size();
     requests.resize(n_recv_nodes / PPN + 1, MPI_REQUEST_NULL);
@@ -252,27 +294,40 @@ void TAPComm::form_local_R_par_comm(std::vector<int>& off_node_column_map,
     int count;
     MPI_Status recv_status;
     std::vector<int> node_to_proc(num_nodes);
+    std::vector<int> proc_ctr(num_nodes, 0);
+    std::vector<int> proc_idx(num_nodes, 0);
+
     std::vector<int> local_recv_procs(PPN, 0);
     std::vector<int> local_recv_sizes(PPN, 0);
     std::vector<int> local_send_procs(PPN);
     std::vector<int> local_recv_displs(PPN+1, 0);
     std::vector<int> local_recv_indices(off_node_num_cols);
+    std::vector<int> off_node_col_to_lcl_proc(off_node_num_cols);
 
     // Map nodes to procs
     for (int i = 0; i < num_recv_nodes; i++)
     {
         node = recv_nodes[i];
-        local_proc = i % PPN;
-        node_to_proc[node] = local_proc;
+        if (proc_ctr[node] == 0)
+        {
+            local_proc = i % PPN;
+            node_to_proc[node] = local_proc;
+        }
+        proc_ctr[node]++;
     }
 
     // Find number of recvd indices per local proc
     for (int i = 0; i < off_node_num_cols; i++)
     {
         node = off_node_col_to_node[i];
-        local_proc = node_to_proc[node];
+        local_proc = (node_to_proc[node] + proc_idx[node]) % PPN;
+        if (proc_idx[node] + 1 < proc_ctr[node])
+            proc_idx[node]++;
+        else
+            proc_idx[node] = 0;
         //if (local_proc == local_rank) continue;
         local_recv_sizes[local_proc]++;
+        off_node_col_to_lcl_proc[i] = local_proc;
     }
     // Create displs based on local_recv_sizes
     local_recv_displs[0] = 0;
@@ -285,8 +340,7 @@ void TAPComm::form_local_R_par_comm(std::vector<int>& off_node_column_map,
     // local_recv_displs
     for (int i = 0; i < off_node_num_cols; i++)
     {
-        node = off_node_col_to_node[i];
-        local_proc = node_to_proc[node];
+        local_proc = off_node_col_to_lcl_proc[i];
         idx = local_recv_displs[local_proc] + local_recv_sizes[local_proc]++;
         local_recv_indices[idx] = i;
     }
@@ -300,7 +354,7 @@ void TAPComm::form_local_R_par_comm(std::vector<int>& off_node_column_map,
         {
             local_R_par_comm->recv_data->add_msg(i, recv_size, 
                     &(local_recv_indices[recv_start]));
-            local_recv_procs[local_proc] = 1;
+            local_recv_procs[i] = 1;
         }
     }
     local_R_par_comm->recv_data->finalize();
@@ -323,11 +377,13 @@ void TAPComm::form_local_R_par_comm(std::vector<int>& off_node_column_map,
         recv_end = local_R_par_comm->recv_data->indptr[i+1];
         for (int j = recv_start; j < recv_end; j++)
         {
-            send_buffer[ctr++] = off_node_column_map[j];
+            idx = local_recv_indices[j];
+            send_buffer[ctr++] = off_node_column_map[idx];
         }
         for (int j = recv_start; j < recv_end; j++)
         {
-            send_buffer[ctr++] = off_node_col_to_node[j];
+            idx = local_recv_indices[j];
+            send_buffer[ctr++] = off_node_col_to_node[idx];
         }
         MPI_Isend(&(send_buffer[start_ctr]), 2*(recv_end - recv_start),
                 MPI_INT, recv_proc, 6543, local_comm, 

@@ -39,6 +39,7 @@ int main(int argc, char* argv[])
     Vector& tap_recv = x.communicate(tap_comm, MPI_COMM_WORLD);
     Vector& par_recv = x.communicate(A.comm, MPI_COMM_WORLD);
     assert(tap_recv.size == par_recv.size);
+
     for (int i = 0; i < par_recv.size; i++)
     {
         assert(fabs(par_recv[i] - tap_recv[i]) < zero_tol);

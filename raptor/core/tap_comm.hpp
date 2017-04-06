@@ -114,7 +114,7 @@ public:
         std::vector<int> off_node_col_to_node;
         std::vector<int> on_node_to_off_proc;
         std::vector<int> off_node_to_off_proc;
-        std::vector<int> nodal_off_node_col_nodes;
+        std::vector<int> recv_nodes;
 
         global_par_comm->form_col_to_proc(first_local_col, global_num_cols,
             local_num_cols, off_proc_column_map, off_proc_col_to_proc);
@@ -127,13 +127,12 @@ public:
         int on_node_num_cols = on_node_column_map.size();
         int off_node_num_cols = off_node_column_map.size();
 
-        gather_off_node_nodes(off_node_col_to_node, nodal_off_node_col_nodes);
+        gather_off_node_nodes(off_node_col_to_node, recv_nodes);
 
         std::vector<int> send_procs;
         std::vector<int> recv_procs;
-        std::vector<int> recv_nodes;
-        find_global_comm_procs(nodal_off_node_col_nodes, send_procs, 
-                recv_procs, recv_nodes);
+        find_global_comm_procs(recv_nodes, send_procs, 
+                recv_procs);
 
         std::vector<int> orig_nodes;
         form_local_R_par_comm(off_node_column_map, off_node_col_to_node,
@@ -201,11 +200,10 @@ public:
             std::vector<int>& off_node_to_off_proc);
 
     void gather_off_node_nodes(std::vector<int>& off_node_col_to_node,
-            std::vector<int>& nodal_off_node_col_nodes);
-
-    void find_global_comm_procs(std::vector<int>& nodal_off_node_col_nodes,
-            std::vector<int>& send_procs, std::vector<int>& recv_procs,
             std::vector<int>& recv_nodes);
+
+    void find_global_comm_procs(std::vector<int>& recv_nodes,
+            std::vector<int>& send_procs, std::vector<int>& recv_procs);
 
     void form_local_R_par_comm(std::vector<int>& off_node_column_map,
             std::vector<int>& off_node_col_to_node,
