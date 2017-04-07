@@ -9,7 +9,7 @@
 // When using TAPSpMV, must either export 
 // MPICH_RANK_REORDER_METHOD and PPN before running
 // program, or set these defines to defaults
-#define STANDARD_PPN 4
+#define STANDARD_PPN 16
 #define STANDARD_PROC_LAYOUT 1
 
 /**************************************************************

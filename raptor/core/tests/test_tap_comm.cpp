@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
 
     double eps = 0.001;
     double theta = M_PI / 8.0;
-    int grid[2] = {10, 10};
+    int grid[2] = {25, 25};
     double* stencil = diffusion_stencil_2d(eps, theta);
 
     ParCSRMatrix A;
