@@ -4,6 +4,9 @@
 
 using namespace raptor;
 
+#define bw_cutoff 9000
+#define ideal_n_comm 4
+
 /**************************************************************
 *****   Split Off Proc Cols
 **************************************************************
@@ -164,22 +167,14 @@ void TAPComm::gather_off_node_nodes(const std::vector<int>& off_node_col_to_node
         for (int i = 0; i < ctr; i++)
         {
             int idx = p[i];
-            int node = nodal_off_node_col_nodes[idx];
             int size = nodal_off_node_sizes[idx];
-            if (size < PPN) break;
+            if (size < bw_cutoff) break;
 
-            int n_procs = size / avg_msg_size;
-            if (n_procs > 1)
+            int node = nodal_off_node_col_nodes[idx];
+
+            for (int j = 0; j < ideal_n_comm; j++)
             {
-                if (n_procs > PPN) n_procs = PPN;
-                for (int i = 0; i < n_procs - 1; i++)
-                {
-                    nodal_off_node_col_nodes.push_back(node);
-                }
-            }
-            else
-            {
-                break;
+                nodal_off_node_col_nodes.push_back(node);
             }
         }
         std::sort(nodal_off_node_col_nodes.begin(), nodal_off_node_col_nodes.end());
