@@ -90,11 +90,11 @@ public:
     ***** _key : int (optional)
     *****    Tag to be used in MPI Communication (default 9999)
     **************************************************************/
-    ParComm(std::vector<int>& off_proc_column_map,
-            int first_local_row, 
-            int first_local_col,
-            int global_num_cols,
-            int local_num_cols,
+    ParComm(const std::vector<int>& off_proc_column_map,
+            const int first_local_row, 
+            const int first_local_col,
+            const int global_num_cols,
+            const int local_num_cols,
             int _key = 9999,
             MPI_Comm comm = MPI_COMM_WORLD)
     {
@@ -225,8 +225,8 @@ public:
         delete recv_data;
     };
 
-    int find_proc_col_starts(int first_local_col, int last_local_col,
-            int global_num_cols, std::vector<int>& col_starts, 
+    int find_proc_col_starts(const int first_local_col, const int last_local_col,
+            const int global_num_cols, std::vector<int>& col_starts, 
             std::vector<int>& col_start_procs)
     {
         // Get MPI Information
@@ -333,8 +333,8 @@ public:
         return part;
     }
 
-    void form_col_to_proc(int first_local_col, int global_num_cols,
-            int local_num_cols, std::vector<int>& off_proc_column_map,
+    void form_col_to_proc(const int first_local_col, const int global_num_cols,
+            const int local_num_cols, const std::vector<int>& off_proc_column_map,
             std::vector<int>& off_proc_col_to_proc)
     {            
         int rank;

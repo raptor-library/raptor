@@ -4,8 +4,35 @@
 
 using namespace raptor;
 
-void TAPComm::split_off_proc_cols(std::vector<int>& off_proc_column_map,
-        std::vector<int>& off_proc_col_to_proc,
+/**************************************************************
+*****   Split Off Proc Cols
+**************************************************************
+***** Splits off_proc_column_map into on_node_column_map and 
+***** off_node_column map.  Also maps each of these columns to 
+***** their corresponding process, and maps each local index
+***** in on_node and off_node to off_proc
+*****
+***** Parameters
+***** -------------
+***** off_proc_column_map : std::vector<int>&
+*****    Vector holding rank's off_proc_columns
+***** off_proc_col_to_proc : std::vector<int>&
+*****    Vector mapping rank's off_proc_columns to distant procs
+***** on_node_column_map : std::vector<int>&
+*****    Will be returned holding on_node columns
+***** on_node_col_to_proc : std::vector<int>&
+*****    Will be returned holding procs corresponding to on_node cols
+***** on_node_to_off_proc : std::vector<int>&
+*****    Will be returned holding map from on_node to off_proc
+***** off_node_column_map : std::vector<int>&
+*****    Will be returned holding off_node columns
+***** off_node_col_to_node : std::vector<int>&
+*****    Will be returned holding procs corresponding to off_node cols
+***** off_node_to_off_proc : std::vector<int>&
+*****    Will be returned holding map from off_node to off_proc
+**************************************************************/
+void TAPComm::split_off_proc_cols(const std::vector<int>& off_proc_column_map,
+        const std::vector<int>& off_proc_col_to_proc,
         std::vector<int>& on_node_column_map,
         std::vector<int>& on_node_col_to_proc,
         std::vector<int>& on_node_to_off_proc,
@@ -49,7 +76,20 @@ void TAPComm::split_off_proc_cols(std::vector<int>& off_proc_column_map,
     }
 }
 
-void TAPComm::gather_off_node_nodes(std::vector<int>& off_node_col_to_node,
+/**************************************************************
+*****   Gather off node nodes
+**************************************************************
+***** Gathers nodes with which any local processes communicates
+*****
+***** Parameters
+***** -------------
+***** off_node_col_to_node : std::vector<int>&
+*****    Vector holding rank's off_node_columns
+***** recv_nodes : std::vector<int>&
+*****    Returned holding all nodes with which any local
+*****    process communicates (union of off_node_col_to_node)
+**************************************************************/
+void TAPComm::gather_off_node_nodes(const std::vector<int>& off_node_col_to_node,
         std::vector<int>& nodal_off_node_col_nodes)
 {
     int int_size = sizeof(int);
@@ -62,7 +102,7 @@ void TAPComm::gather_off_node_nodes(std::vector<int>& off_node_col_to_node,
     std::vector<int> nodal_recv_nodes(N, 0);
     std::vector<int> node_sizes(num_nodes, 0);
     std::vector<int> nodal_off_node_sizes;
-    for (std::vector<int>::iterator it = off_node_col_to_node.begin();
+    for (std::vector<int>::const_iterator it = off_node_col_to_node.begin();
             it != off_node_col_to_node.end(); ++it)
     {
         int idx = *it / int_size;
@@ -102,7 +142,7 @@ void TAPComm::gather_off_node_nodes(std::vector<int>& off_node_col_to_node,
 
         // Find the average number of send bytes per process
         int total_size = 0;
-        for (std::vector<int>::iterator it = nodal_off_node_sizes.begin();
+        for (std::vector<int>::const_iterator it = nodal_off_node_sizes.begin();
                 it != nodal_off_node_sizes.end(); ++it)
         {
             total_size += *it;
@@ -150,12 +190,22 @@ void TAPComm::gather_off_node_nodes(std::vector<int>& off_node_col_to_node,
     }
 }   
 
-// TODO - refactor this so that each process sends to corresponding proc on
-// node, telling them they recv from node
-// Then, node allreduces send_procs
-// Then each proc sends message to each proc telling it they will be sending to
-// them
-void TAPComm::find_global_comm_procs(std::vector<int>& recv_nodes,
+/**************************************************************
+*****   Find global comm procs
+**************************************************************
+***** Determine which processes with which rank will communicate
+***** during inter-node communication
+*****
+***** Parameters
+***** -------------
+***** recv_nodes : std::vector<int>&
+*****    All nodes with which any local process communicates 
+***** send_procs : std::vector<int>&
+*****    Returns with all off_node processes to which rank sends
+***** recv_procs : std::vector<int>&
+*****    Returns wiht all off_node process from which rank recvs
+**************************************************************/
+void TAPComm::find_global_comm_procs(const std::vector<int>& recv_nodes,
         std::vector<int>& send_procs, std::vector<int>& recv_procs)
 {
     int rank;
@@ -273,11 +323,27 @@ void TAPComm::find_global_comm_procs(std::vector<int>& recv_nodes,
     }
 }
 
-//TODO -- R_recv_buffer should include messages that rank
-// recvs in global_par_comm
-void TAPComm::form_local_R_par_comm(std::vector<int>& off_node_column_map,
-        std::vector<int>& off_node_col_to_node,
-        std::vector<int>& recv_nodes,
+/**************************************************************
+*****   Form local_R_par_comm
+**************************************************************
+***** Find which local processes recv needed vector values
+***** from inter-node communication
+*****
+***** Parameters
+***** -------------
+***** off_node_column_map : std::vector<int>&
+*****    Columns that correspond to values stored off_node 
+***** off_node_col_to_node : std::vector<int>&
+*****    Nodes corresponding to each value in off_node_column_map
+***** recv_nodes : std::vector<int>&
+*****    All nodes with which any local process communicates 
+***** orig_nodes : std::vector<int>&
+*****    Returns nodes on which local_R_par_comm->send_data->indices
+*****    originate (needed in forming global communication)
+**************************************************************/
+void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
+        const std::vector<int>& off_node_col_to_node,
+        const std::vector<int>& recv_nodes,
         std::vector<int>& orig_nodes)
 {
     int local_rank;
@@ -418,10 +484,23 @@ void TAPComm::form_local_R_par_comm(std::vector<int>& off_node_column_map,
             MPI_STATUS_IGNORE);
 }
 
-// Send procs are procs to which rank sends.  Recv_procs are
-// procs from which rank recvs.
-void TAPComm::form_global_par_comm(std::vector<int>& send_procs, 
-        std::vector<int>& recv_procs, std::vector<int>& orig_nodes)
+/**************************************************************
+*****   Find global comm procs
+**************************************************************
+***** Determine which processes with which rank will communicate
+***** during inter-node communication
+*****
+***** Parameters
+***** -------------
+***** recv_nodes : std::vector<int>&
+*****    All nodes with which any local process communicates 
+***** send_procs : std::vector<int>&
+*****    Returns with all off_node processes to which rank sends
+***** recv_procs : std::vector<int>&
+*****    Returns wiht all off_node process from which rank recvs
+**************************************************************/
+void TAPComm::form_global_par_comm(const std::vector<int>& send_procs, 
+        const std::vector<int>& recv_procs, const std::vector<int>& orig_nodes)
 {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -521,7 +600,19 @@ void TAPComm::form_global_par_comm(std::vector<int>& send_procs,
 
 }
 
-void TAPComm::form_local_S_par_comm(int first_local_col)
+/**************************************************************
+*****   Form local_S_par_comm
+**************************************************************
+***** Find which local processes the values originating on rank
+***** must be sent to, and which processes store values rank must
+***** send as inter-node communication.
+*****
+***** Parameters
+***** -------------
+***** first_local_col : int
+*****    First column local to rank 
+**************************************************************/
+void TAPComm::form_local_S_par_comm(const int first_local_col)
 {
     int rank;
     int local_rank;
@@ -645,8 +736,18 @@ void TAPComm::form_local_S_par_comm(int first_local_col)
             MPI_STATUS_IGNORE);
 }
 
-
-void TAPComm::adjust_send_indices(int first_local_row)
+/**************************************************************
+*****   Adjust Send Indices
+**************************************************************
+***** Adjust send indices from global row index to index of 
+***** global column in previous recv buffer.  
+*****
+***** Parameters
+***** -------------
+***** first_local_row : int
+*****    First row local to rank 
+**************************************************************/
+void TAPComm::adjust_send_indices(const int first_local_row)
 {
     int idx;
 
@@ -683,8 +784,24 @@ void TAPComm::adjust_send_indices(int first_local_row)
     }
 }
 
-void TAPComm::form_local_L_par_comm(std::vector<int>& on_node_column_map,
-        std::vector<int>& on_node_col_to_proc, int first_local_row)
+/**************************************************************
+*****  Form local_L_par_comm 
+**************************************************************
+***** Adjust send indices from global row index to index of 
+***** global column in previous recv buffer.  
+*****
+***** Parameters
+***** -------------
+***** on_node_column_map : std::vector<int>&
+*****    Columns corresponding to on_node processes
+***** on_node_col_to_proc : std::vector<int>&
+*****    On node process corresponding to each column
+*****    in on_node_column_map
+***** first_local_row : int
+*****    First row local to rank 
+**************************************************************/
+void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
+        const std::vector<int>& on_node_col_to_proc, const int first_local_row)
 {
     int local_rank;
     MPI_Comm_rank(local_comm, &local_rank);
