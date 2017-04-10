@@ -12,6 +12,12 @@
 #define STANDARD_PPN 16
 #define STANDARD_PROC_LAYOUT 1
 
+// If greater than bw_cutoff, inter-node message
+// is split across ideal_n_comm processes
+#define eager_cutoff 1000 // Where eager switches to rendezvous
+#define short_cutoff 62 // Where short switches to eager
+#define ideal_n_comm 4 // If msg remains rendezvous, max speedup at 4 procs
+
 /**************************************************************
  *****   TAPComm Class
  **************************************************************
@@ -121,7 +127,6 @@ public:
         global_par_comm = new ParComm(5678);
 
         // Initialize Variables
-        int global_col;
         int local_rank;
         int idx;
         int rank_node;
@@ -134,6 +139,7 @@ public:
         std::vector<int> on_node_to_off_proc;
         std::vector<int> off_node_to_off_proc;
         std::vector<int> recv_nodes;
+        std::vector<int> nodal_num_local;
         std::vector<int> send_procs;
         std::vector<int> recv_procs;
         std::vector<int> orig_nodes;
@@ -178,15 +184,15 @@ public:
                off_node_column_map, off_node_col_to_node, off_node_to_off_proc);
 
         // Gather all nodes with which any local process must communication
-        gather_off_node_nodes(off_node_col_to_node, recv_nodes);
+        gather_off_node_nodes(off_node_col_to_node, recv_nodes, nodal_num_local);
 
         // Find global processes with which rank communications
-        find_global_comm_procs(recv_nodes, send_procs, recv_procs);
+        find_global_comm_procs(recv_nodes, nodal_num_local, send_procs, recv_procs);
 
         // Form local_R_par_comm: communication for redistribution of inter-node
         //  communication        
         form_local_R_par_comm(off_node_column_map, off_node_col_to_node,
-                recv_nodes, orig_nodes);
+                recv_nodes, nodal_num_local, orig_nodes);
 
         // Form inter-node communication
         form_global_par_comm(send_procs, recv_procs, orig_nodes);
@@ -332,7 +338,7 @@ public:
     *****    process communicates (union of off_node_col_to_node)
     **************************************************************/
     void gather_off_node_nodes(const std::vector<int>& off_node_col_to_node,
-            std::vector<int>& recv_nodes);
+            std::vector<int>& recv_nodes, std::vector<int>& nodal_num_local);
 
     /**************************************************************
     *****   Find global comm procs
@@ -350,6 +356,7 @@ public:
     *****    Returns wiht all off_node process from which rank recvs
     **************************************************************/
     void find_global_comm_procs(const std::vector<int>& recv_nodes,
+            std::vector<int>& nodal_num_local,
             std::vector<int>& send_procs, std::vector<int>& recv_procs);
 
     /**************************************************************
@@ -372,7 +379,7 @@ public:
     **************************************************************/
     void form_local_R_par_comm(const std::vector<int>& off_node_column_map,
             const std::vector<int>& off_node_col_to_node,
-            const std::vector<int>& recv_nodes,
+            const std::vector<int>& recv_nodes, std::vector<int>& nodal_num_local,
             std::vector<int>& orig_nodes);
 
     /**************************************************************
