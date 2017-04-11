@@ -1,6 +1,6 @@
 // Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#include "tap_comm.hpp"
+#include "comm_pkg.hpp"
 
 using namespace raptor;
 
@@ -896,5 +896,138 @@ void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
             local_L_par_comm->recv_data->requests, MPI_STATUSES_IGNORE);
 }
 
+/**************************************************************
+*****  Get Node 
+**************************************************************
+***** Find node on which global rank lies
+*****
+***** Returns
+***** -------------
+***** int : node on which proc lies
+*****
+***** Parameters
+***** -------------
+***** proc : int
+*****    Global rank of process 
+**************************************************************/
+int TAPComm::get_node(int proc)
+{
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    if (rank_ordering == 0)
+    {
+        return proc % num_nodes;
+    }
+    else if (rank_ordering == 1)
+    {
+        return proc / PPN;
+    }
+    else if (rank_ordering == 2)
+    {
+        if ((proc / num_nodes) % 2 == 0)
+        {
+            return proc % num_nodes;
+        }
+        else
+        {
+            return num_nodes - (proc % num_nodes) - 1;
+        }
+    }
+    else
+    { 
+        if (rank == 0)
+        {
+            printf("This MPI rank ordering is not supported!\n");
+        }
+        return -1;
+    }
+}
+
+/**************************************************************
+*****  Get Local Proc 
+**************************************************************
+***** Find rank local to node from global rank
+*****
+***** Returns
+***** -------------
+***** int : rank local to processes on node
+*****
+***** Parameters
+***** -------------
+***** proc : int
+*****    Global rank of process 
+**************************************************************/
+int TAPComm::get_local_proc(int proc)
+{
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    if (rank_ordering == 0 || rank_ordering == 2)
+    {
+        return proc / num_nodes;
+    }
+    else if (rank_ordering == 1)
+    {
+        return proc % PPN;
+    }
+    else
+    { 
+        if (rank == 0)
+        {
+            printf("This MPI rank ordering is not supported!\n");
+        }
+        return -1;
+    }
+}
+
+/**************************************************************
+*****  Get Global Proc 
+**************************************************************
+***** Find global rank from node and local rank
+*****
+***** Returns
+***** -------------
+***** int : Global rank of process
+*****
+***** Parameters
+***** -------------
+***** node : int
+*****    Node on which process lies 
+***** local_proc : int
+*****    Rank of process local to node
+**************************************************************/
+int TAPComm::get_global_proc(int node, int local_proc)
+{
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    if (rank_ordering == 0)
+    {
+        return local_proc * num_nodes + node;
+    }
+    else if (rank_ordering == 1)
+    {
+        return local_proc + (node * PPN);
+    }
+    else if (rank_ordering == 2)
+    {
+        if ((rank / num_nodes) % 2 == 0)
+        {
+            return local_proc * num_nodes + node;
+        }
+        else
+        {
+            return local_proc * num_nodes + num_nodes - node - 1;                
+        }
+    }
+    else
+    { 
+        if (rank == 0)
+        {
+            printf("This MPI rank ordering is not supported!\n");
+        }
+        return -1;
+    }
+}
 

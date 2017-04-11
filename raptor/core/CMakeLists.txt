@@ -5,11 +5,9 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 if (WITH_MPI)
     set(par_core_comm_SOURCES
         core/comm_data.hpp
-        core/par_comm.hpp
-        core/tap_comm.hpp
+        core/comm_pkg.hpp
         core/tap_comm.cpp
-        core/communicate.hpp
-        core/communicate.cpp
+        core/comm_pkg.cpp
         )
     set(par_core_SOURCES
         core/par_vector.hpp

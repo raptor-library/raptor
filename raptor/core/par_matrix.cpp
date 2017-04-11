@@ -170,15 +170,25 @@ void ParMatrix::copy(ParCSRMatrix* A)
     local_num_cols = A->local_num_cols;
 
     off_proc_num_cols = A->off_proc_num_cols;
-    off_proc_column_map.resize(off_proc_num_cols);
-    for (int i = 0; i < off_proc_num_cols; i++)
+    if (off_proc_num_cols)
     {
-        off_proc_column_map[i] = A->off_proc_column_map[i];
+        off_proc_column_map.resize(off_proc_num_cols);
+        for (int i = 0; i < off_proc_num_cols; i++)
+        {
+            off_proc_column_map[i] = A->off_proc_column_map[i];
+        }
     }
 
     if (A->comm)
     {
-        comm = new ParComm(A->comm);
+        if (A->comm->topo_aware)
+        {
+            // TODO!
+        }
+        else
+        {
+            comm = new ParComm((ParComm*) A->comm);
+        }
     }
 }
 
@@ -192,9 +202,26 @@ void ParMatrix::copy(ParCSCMatrix* A)
     local_num_rows = A->local_num_rows;
     local_num_cols = A->local_num_cols;
 
+    off_proc_num_cols = A->off_proc_num_cols;
+    if (off_proc_num_cols)
+    {
+        off_proc_column_map.resize(off_proc_num_cols);
+        for (int i = 0; i < off_proc_num_cols; i++)
+        {
+            off_proc_column_map[i] = A->off_proc_column_map[i];
+        }
+    }
+
     if (A->comm)
     {
-        comm = new ParComm(A->comm);
+        if (A->comm->topo_aware)
+        {
+            // TODO!
+        }
+        else
+        {
+            comm = new ParComm((ParComm*) A->comm);
+        }
     }
 }
 
@@ -208,15 +235,33 @@ void ParMatrix::copy(ParCOOMatrix* A)
     local_num_rows = A->local_num_rows;
     local_num_cols = A->local_num_cols;
 
+    off_proc_num_cols = A->off_proc_num_cols;
+    if (off_proc_num_cols)
+    {
+        off_proc_column_map.resize(off_proc_num_cols);
+        for (int i = 0; i < off_proc_num_cols; i++)
+        {
+            off_proc_column_map[i] = A->off_proc_column_map[i];
+        }
+    }
+
     if (A->comm)
     {
-        comm = new ParComm(A->comm);
+        if (A->comm->topo_aware)
+        {
+            // TODO!
+        }
+        else
+        {
+            comm = new ParComm((ParComm*) A->comm);
+        }
     }
 }
 
 
 
 // Communication helper -- on_proc and off_proc must be CSRMatrix*
+// TODO -- fix this so it works for ParComm or TAPComm
 CSRMatrix* comm_csr(ParComm* comm, 
         Matrix* on_proc, 
         Matrix* off_proc,
@@ -224,9 +269,11 @@ CSRMatrix* comm_csr(ParComm* comm,
         std::vector<int>& off_proc_column_map,
         int first_local_col)
 {
+    Vector& recvbuf = comm->get_recv_buffer();
+
     // Number of rows in recv_mat == size_recvs
     // Number of columns is unknown (and does not matter)
-    CSRMatrix* recv_mat = new CSRMatrix(comm->recv_data->size_msgs,
+    CSRMatrix* recv_mat = new CSRMatrix(recvbuf.size,
             global_num_cols);
 
     // Calculate nnz/row, for each row to be communicated

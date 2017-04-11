@@ -7,7 +7,11 @@ if(WITH_HYPRE)
 endif(WITH_HYPRE)
 
 set(gallery_SOURCES
-    #gallery/diffusion.cpp
+    gallery/diffusion.hpp
+    gallery/stencil.hpp
+    gallery/random.hpp
+    gallery/par_stencil.hpp
+    gallery/par_random.hpp
     #gallery/laplacian27pt.cpp
     #gallery/matrix_IO.cpp
     #gallery/stencil.cpp

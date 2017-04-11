@@ -9,7 +9,7 @@
 
 #include "matrix.hpp"
 #include "par_vector.hpp"
-#include "par_comm.hpp"
+#include "comm_pkg.hpp"
 #include "types.hpp"
 
 // Making Par Matrix an abstract Class
@@ -84,6 +84,7 @@ namespace raptor
         // Initialize matrix partition information
         initialize_partition();
         comm = NULL;
+        tap_comm = NULL;
     }
 
     ParMatrix(index_t glob_rows, 
@@ -102,6 +103,7 @@ namespace raptor
         first_local_col = first_col;
 
         comm = NULL;
+        tap_comm = NULL;
     }
        
     ParMatrix()
@@ -111,13 +113,15 @@ namespace raptor
         off_proc_num_cols = 0;
 
         comm = NULL;
+        tap_comm = NULL;
     }
 
-    ~ParMatrix()
+    virtual ~ParMatrix()
     {
         delete off_proc;
         delete on_proc;
         delete comm;
+        delete tap_comm;
     }
 
 
@@ -169,7 +173,9 @@ namespace raptor
     void initialize_partition();
 
     void residual(ParVector& x, ParVector& b, ParVector& r);
+    void tap_residual(ParVector& x, ParVector& b, ParVector& r);
     void mult(ParVector& x, ParVector& b);
+    void tap_mult(ParVector& x, ParVector& b);
     void mult(ParCSRMatrix& B, ParCSRMatrix* C);
     void mult(ParCSCMatrix& B, ParCSCMatrix* C);
     void mult(ParCSCMatrix& B, ParCSRMatrix* C);
@@ -206,6 +212,7 @@ namespace raptor
     // processes hold vector values associated with off_proc,
     // and which processes need vector values from this proc
     ParComm* comm;
+    TAPComm* tap_comm;
 
   };
 
@@ -265,11 +272,28 @@ namespace raptor
         finalize();
     }  
 
+    ParCOOMatrix(ParCSRMatrix* A)
+    {
+        copy(A);
+    }
+
+    ParCOOMatrix(ParCSCMatrix* A)
+    {
+        copy(A);
+    }
+
+    ParCOOMatrix(ParCOOMatrix* A)
+    {
+        copy(A);
+    }
+
+
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
     Matrix* communicate(ParComm* comm);
     void mult(ParVector& x, ParVector& b);
+    void tap_mult(ParVector& x, ParVector& b);
   };
 
   class ParCSRMatrix : public ParMatrix
@@ -350,12 +374,28 @@ namespace raptor
         finalize();
     }  
 
+    ParCSRMatrix(ParCSRMatrix* A)
+    {
+        copy(A);
+    }
+
+    ParCSRMatrix(ParCSCMatrix* A)
+    {
+        copy(A);
+    }
+
+    ParCSRMatrix(ParCOOMatrix* A)
+    {
+        copy(A);
+    }
+
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
     Matrix* communicate(ParComm* comm);
 
     void mult(ParVector& x, ParVector& b);
+    void tap_mult(ParVector& x, ParVector& b);
     void mult(ParCSRMatrix& B, ParCSRMatrix* C);
     void mult(ParCSCMatrix& B, ParCSCMatrix* C);
     void mult(ParCSCMatrix& B, ParCSRMatrix* C);
@@ -398,12 +438,29 @@ namespace raptor
         printf("Only currently supported for COO and CSR ParMatrices.\n");
     }  
 
+    ParCSCMatrix(ParCSRMatrix* A)
+    {
+        copy(A);
+    }
+
+    ParCSCMatrix(ParCSCMatrix* A)
+    {
+        copy(A);
+    }
+
+    ParCSCMatrix(ParCOOMatrix* A)
+    {
+        copy(A);
+    }
+
+
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
     Matrix* communicate(ParComm* comm);
 
     void mult(ParVector& x, ParVector& b);
+    void tap_mult(ParVector& x, ParVector& b);
     void mult(ParCSCMatrix& B, ParCSCMatrix* C);
   };
 }
