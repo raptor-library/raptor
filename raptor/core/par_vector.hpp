@@ -8,9 +8,7 @@
 
 #include "types.hpp"
 #include "vector.hpp"
-#include "par_comm.hpp"
-#include "tap_comm.hpp"
-#include "communicate.hpp"
+#include "comm_pkg.hpp"
 
 /**************************************************************
  *****   ParVector Class
@@ -162,10 +160,9 @@ namespace raptor
         **************************************************************/
         data_t norm(index_t p);
 
-        Vector& communicate(TAPComm* comm_pkg, MPI_Comm comm = MPI_COMM_WORLD);
-        Vector& communicate(ParComm* comm_pkg, MPI_Comm comm = MPI_COMM_WORLD);
-        void init_comm(ParComm* comm_pkg, MPI_Comm comm = MPI_COMM_WORLD);
-        Vector& complete_comm(ParComm* comm_pkg);
+        Vector& communicate(CommPkg* comm_pkg, MPI_Comm comm = MPI_COMM_WORLD);
+        void init_comm(CommPkg* comm_pkg, MPI_Comm comm = MPI_COMM_WORLD);
+        Vector& complete_comm(CommPkg* comm_pkg);
 
 
         Vector local;

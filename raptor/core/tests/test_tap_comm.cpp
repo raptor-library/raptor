@@ -3,7 +3,7 @@
 #include "core/types.hpp"
 #include "core/matrix.hpp"
 #include "core/par_matrix.hpp"
-#include "core/tap_comm.hpp"
+#include "core/comm_pkg.hpp"
 #include "gallery/stencil.hpp"
 #include "gallery/par_stencil.hpp"
 #include "gallery/diffusion.hpp"
