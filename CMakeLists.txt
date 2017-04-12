@@ -58,9 +58,9 @@ elseif (BGQ)
     set(EXTERNAL_LIBS ${LAPACK_LIB} ${BLAS_LIB} ${ESSL_LIB} ${XLF_LIB} 
         ${XLOPT_LIB} ${XLFMATH_LIB} ${XL_LIB} ${XLSMP_LIB})
 else()
-    find_library(LAPACK_LIB NAMES liblapack lapack)
-    find_library(BLAS_LIB NAMES libblas blas)
-    set(EXTERNAL_LIBS ${LAPACK_LIB} ${BLAS_LIB})
+	find_library(LAPACK_LIB NAMES liblapack.so.3 lapack HINTS "/usr/lib")
+	find_library(BLAS_LIB NAMES libblas.so.3 blas HINTS "/usr/lib/")
+	set(EXTERNAL_LIBS ${LAPACK_LIB} ${BLAS_LIB})
 endif()
 
 

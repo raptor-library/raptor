@@ -63,15 +63,15 @@ int main(int argc, char* argv[])
 
     // Create Sequential Matrix A on each process
     CSRMatrix A;
-    stencil_grid(&A, stencil, grid, 2);
     CSRMatrix B;
-    stencil_grid(&B, stencil, grid, 2);
     CSRMatrix C;
+    stencil_grid(&A, stencil, grid, 2);
+    stencil_grid(&B, stencil, grid, 2);
     A.mult(B, &C);
 
     // Create Parallel Matrix A_par (and vectors x_par
     // and b_par) and mult b_par <- A_par*x_par
-    ParCSRMatrix A_par;
+/*    ParCSRMatrix A_par;
     par_stencil_grid(&A_par, stencil, grid, 2);
     ParCSRMatrix B_par;
     par_stencil_grid(&B_par, stencil, grid, 2);
@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
 
     A_par.mult(B_par_csc, &C_par);
     compare(C, C_par);
-
+*/
     delete[] stencil;
 
     MPI_Finalize();
