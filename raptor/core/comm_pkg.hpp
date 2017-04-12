@@ -518,6 +518,42 @@ namespace raptor
             //TODO -- Write this constructor
         }
 
+        TAPComm(TAPComm* tap_comm)
+        {
+            topo_aware = true;
+
+            global_par_comm = new ParComm(tap_comm->global_par_comm);
+            local_S_par_comm = new ParComm(tap_comm->local_S_par_comm);
+            local_R_par_comm = new ParComm(tap_comm->local_R_par_comm);
+            local_L_par_comm = new ParComm(tap_comm->local_L_par_comm);
+
+            PPN = tap_comm->PPN;
+            num_nodes = tap_comm->num_nodes;
+            rank_ordering = tap_comm->rank_ordering;
+
+            int recv_size = tap_comm->recv_buffer.size;
+            if (recv_size)
+            {
+                recv_buffer.set_size(recv_size);
+                if (tap_comm->L_to_orig.size())
+                {
+                    L_to_orig.resize(tap_comm->L_to_orig.size());
+                }
+                if (tap_comm->R_to_orig.size())
+                {
+                    R_to_orig.resize(tap_comm->R_to_orig.size());
+                }
+                for (int i = 0; i < L_to_orig.size(); i++)
+                {
+                    L_to_orig[i] = tap_comm->L_to_orig[i];
+                }
+                for (int i = 0; i < R_to_orig.size(); i++)
+                {
+                    R_to_orig[i] = tap_comm->R_to_orig[i];
+                }
+            }
+        }
+
         /**************************************************************
         *****   ParComm Class Destructor
         **************************************************************
