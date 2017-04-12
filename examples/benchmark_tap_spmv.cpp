@@ -24,12 +24,17 @@ int main(int argc, char *argv[])
 
     int n = 100;
     int m = 100;
+    int n_tests = 5;
     if (argc > 1)
     {
         n = atoi(argv[1]);
         if (argc > 2)
         {
             m = atoi(argv[2]);
+            if (argc > 3)
+            {
+                n_tests = atoi(argv[3]);
+            }
         }
     }
 
@@ -46,7 +51,6 @@ int main(int argc, char *argv[])
     }
     b.set_const_value(0.0);
 
-    int n_tests = 500;
     double t0, tfinal;
     double t_par, t_tap;
     double b_norm, b_tap_norm;

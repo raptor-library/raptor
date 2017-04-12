@@ -247,7 +247,7 @@ void ParMatrix::copy(ParCOOMatrix* A)
     local_num_rows = A->local_num_rows;
     local_num_cols = A->local_num_cols;
 
-    off_proc_num_cols = A->off_proc_num_cols;
+    off_proc_num_cols = A->off_proc_column_map.size();
     if (off_proc_num_cols)
     {
         off_proc_column_map.resize(off_proc_num_cols);

@@ -28,8 +28,8 @@ ParCSRMatrix* random_mat(int global_rows, int global_cols, int nnz_per_row)
         A_coo->add_value(rand() % A_coo->local_num_rows, rand() % global_cols, 1.0);
     }
 
-    A_coo->finalize();
     ParCSRMatrix* A = new ParCSRMatrix(A_coo);
+    A->finalize();
     delete A_coo;
 
     return A;

@@ -440,8 +440,11 @@ void CSRMatrix::copy(const COOMatrix* A)
     nnz = A->nnz;
 
     idx1.resize(n_rows + 1, 0);
-    idx2.resize(nnz);
-    vals.resize(nnz);
+    if (nnz)
+    {
+        idx2.resize(nnz);
+        vals.resize(nnz);
+    }
 
     // Calculate indptr
     for (int i = 0; i < nnz; i++)
@@ -455,7 +458,11 @@ void CSRMatrix::copy(const COOMatrix* A)
     }
 
     // Add indices and data
-    std::vector<int> ctr(n_rows, 0);
+    std::vector<int> ctr;
+    if (n_rows)
+    {
+    	ctr.resize(n_rows, 0);
+    }
     for (int i = 0; i < nnz; i++)
     {
         int row = A->idx1[i];
