@@ -181,14 +181,20 @@ void ParMatrix::copy(ParCSRMatrix* A)
 
     if (A->comm)
     {
-        if (A->comm->topo_aware)
-        {
-            // TODO!
-        }
-        else
-        {
-            comm = new ParComm((ParComm*) A->comm);
-        }
+        comm = new ParComm((ParComm*) A->comm);
+    }
+    else
+    {   
+        comm = NULL;
+    }
+    
+    if (A->tap_comm)
+    {
+        tap_comm = new TAPComm((TAPComm*) A->tap_comm);
+    }
+    else
+    {
+        tap_comm = NULL;
     }
 }
 
@@ -214,14 +220,20 @@ void ParMatrix::copy(ParCSCMatrix* A)
 
     if (A->comm)
     {
-        if (A->comm->topo_aware)
-        {
-            // TODO!
-        }
-        else
-        {
-            comm = new ParComm((ParComm*) A->comm);
-        }
+        comm = new ParComm((ParComm*) A->comm);
+    }
+    else
+    {   
+        comm = NULL;
+    }
+    
+    if (A->tap_comm)
+    {
+        tap_comm = new TAPComm((TAPComm*) A->tap_comm);
+    }
+    else
+    {
+        tap_comm = NULL;
     }
 }
 
@@ -247,14 +259,20 @@ void ParMatrix::copy(ParCOOMatrix* A)
 
     if (A->comm)
     {
-        if (A->comm->topo_aware)
-        {
-            // TODO!
-        }
-        else
-        {
-            comm = new ParComm((ParComm*) A->comm);
-        }
+        comm = new ParComm((ParComm*) A->comm);
+    }
+    else
+    {   
+        comm = NULL;
+    }
+    
+    if (A->tap_comm)
+    {
+        tap_comm = new TAPComm((TAPComm*) A->tap_comm);
+    }
+    else
+    {
+        tap_comm = NULL;
     }
 }
 
