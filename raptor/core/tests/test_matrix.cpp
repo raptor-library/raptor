@@ -60,10 +60,6 @@ int main(int argc, char* argv[])
     int ctr = 0;
     for (int i = 0; i < 26; i++)
     {
-        printf("Acsr idx[%d] = %d, row_ctr[%d] = %d\n", i, A_csr.idx1[i], i, row_ctr[i]);
         assert(A_csr.idx1[i] == row_ctr[i]);
     }
-
-
-
 }

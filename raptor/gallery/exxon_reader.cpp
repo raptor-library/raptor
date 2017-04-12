@@ -7,7 +7,7 @@
 #include <sstream>
 #include <stdio.h>
 
-ParMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix, int** global_num_rows)
+ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix, int** global_num_rows)
 {
     // Get MPI Info
     int rank, num_procs;
@@ -15,8 +15,8 @@ ParMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix, in
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     // Declare Matrix Variables
-    ParMatrix* A = NULL;
-/*    int diag_num_cols;
+    ParCOOMatrix* A_coo = NULL;
+    int diag_num_cols;
     int offd_num_cols;
     int block_diag_num_cols;
     int block_offd_num_cols;
@@ -92,7 +92,7 @@ ParMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix, in
     fclose(infile);
 
     // Create a new, empty Parallel Matrix Object
-    A = new ParMatrix();
+    A_coo = new ParCOOMatrix();
 
     // Open matrix file, and read the first/last block row/col 
     // as well as the block size.  
@@ -114,9 +114,9 @@ ParMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix, in
     data = new double[n_data];
     std::set<int> offd_col_set;
 
-    A->diag = new COOMatrix(diag_num_cols, diag_num_cols, 5);
+    A_coo->on_proc->resize(diag_num_cols, diag_num_cols);
     if (block_offd_num_cols)
-        A->offd = new COOMatrix(diag_num_cols, block_offd_num_cols*block_size, 5);
+        A_coo->off_proc->resize(diag_num_cols, block_offd_num_cols*block_size);
 
 
 int count = 0;
@@ -138,7 +138,7 @@ int g_count;
                     value = data[i*block_size + j];
                     if (fabs(value) > zero_tol)
                     {
-                        A->diag->add_value(first_local_row + i, first_col + j, value);
+                        A_coo->on_proc->add_value(first_local_row + i, first_col + j, value);
                     }
 count++;
                 }
@@ -154,7 +154,7 @@ count++;
                     value = data[i*block_size + j];
                     if (fabs(value) > zero_tol)
                     {
-                        A->offd->add_value(first_local_row + i, first_col + j, value);
+                        A_coo->off_proc->add_value(first_local_row + i, first_col + j, value);
                         offd_col_set.insert(first_col + j);
                     }
 count++;
@@ -166,16 +166,16 @@ count++;
 
 MPI_Reduce(&count, &g_count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
-int tmpl = A->diag->nnz + A->offd->nnz;
+int tmpl = A_coo->on_proc->nnz + A_coo->off_proc->nnz;
 int tmpg;
 MPI_Reduce(&tmpl, &tmpg, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
     delete[] data;
     fclose(infile);
 
-    A->local_num_rows = diag_num_cols;
-    A->local_num_cols = diag_num_cols;
-    A->offd_num_cols = offd_num_cols;
+    A_coo->local_num_rows = diag_num_cols;
+    A_coo->local_num_cols = diag_num_cols;
+    A_coo->off_proc_num_cols = offd_num_cols;
 
     global_block_rows = 0;
     sizes = new int[num_procs];
@@ -235,61 +235,37 @@ MPI_Reduce(&tmpl, &tmpg, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
         }
     }
 
-    A->global_num_rows = global_block_rows * block_size;
-    A->global_num_cols = A->global_num_rows;
-    A->first_local_row = first_block_row * block_size;
-    A->first_local_col = A->first_local_row;
+    A_coo->global_num_rows = global_block_rows * block_size;
+    A_coo->global_num_cols = A_coo->global_num_rows;
+    A_coo->first_local_row = first_block_row * block_size;
+    A_coo->first_local_col = A_coo->first_local_row;
 
-    A->local_nnz = A->diag->nnz + A->offd->nnz;
-    if (A->offd_num_cols) A->offd_column_map.resize(A->offd_num_cols);
+    A_coo->local_nnz = A_coo->on_proc->nnz + A_coo->off_proc->nnz;
+    if (A_coo->off_proc_num_cols) A_coo->off_proc_column_map.resize(A_coo->off_proc_num_cols);
+    std::map<int, int> global_to_local;
 
     ctr = 0;
     for (std::set<int>::iterator it = offd_col_set.begin(); it != offd_col_set.end(); ++it)
     {
-        A->offd_column_map[ctr] = *it;
-        A->global_to_local[*it] = ctr++;
+        A_coo->off_proc_column_map[ctr] = *it;
+        global_to_local[*it] = ctr++;
     }
 
-    if (A->offd_num_cols)
+    if (A_coo->offd_num_cols)
     {
-        std::sort(A->offd_column_map.begin(), A->offd_column_map.end());
-        for (index_t i = 0; i < A->offd_column_map.size(); i++)
+        std::sort(A_coo->offd_column_map.begin(), A_coo->offd_column_map.end());
+        for (index_t i = 0; i < A_coo->offd_column_map.size(); i++)
         {
-            index_t global_col = A->offd_column_map[i];
+            index_t global_col = A_coo->offd_column_map[i];
             std::map<index_t, index_t>::iterator map_it = 
-                A->global_to_local.find(global_col);
+                global_to_local.find(global_col);
             map_it->second = i;
         }
     }
 
-    {
-        Matrix* tmp = A->diag;
-        A->diag = new CSRMatrix((COOMatrix*) tmp);
-        A->diag->sort();
-        delete tmp;
-    }
-
-    if (offd_num_cols)
-    {
-        A->offd->condense_cols();
-        Matrix* tmp = A->offd;
-        A->offd = new CSCMatrix((COOMatrix*) tmp);
-        A->offd->sort();
-        delete tmp;
-    }
-    else
-    {
-        delete A->offd;
-    }
-
-    if (A->local_num_rows)
-    {
-        A->comm = new ParComm(A->offd_column_map,  A->first_local_row, A->first_local_col);
-    }
-    else
-    {
-        A->comm = new ParComm();
-    }
+    ParMatrix* A = new ParMatrix(A_coo);
+    A->finalize();
+    delete A_coo;
 
     int* global_tmp = new int[A->local_num_rows];
     for (int i = 0; i < block_diag_num_cols; i++)
@@ -305,6 +281,6 @@ MPI_Reduce(&tmpl, &tmpg, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     delete[] sizes;
     delete[] displs;
     delete[] local_block_to_global;
-*/
+
     return A;
 }

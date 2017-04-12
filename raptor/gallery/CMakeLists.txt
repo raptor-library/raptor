@@ -12,12 +12,7 @@ set(gallery_SOURCES
     gallery/random.hpp
     gallery/par_stencil.hpp
     gallery/par_random.hpp
-    #gallery/laplacian27pt.cpp
-    #gallery/matrix_IO.cpp
-    #gallery/stencil.cpp
-    #gallery/random.cpp
-    #gallery/exxon_reader.cpp
-    #${external_gallery_SOURCES}
+    gallery/exxon_reader.hpp
     PARENT_SCOPE)
 
 
