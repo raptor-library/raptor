@@ -7,6 +7,7 @@
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
 #include "gallery/par_random.hpp"
+#include "gallery/exxon_reader.hpp"
 
 #include <assert.h>
 
@@ -23,7 +24,7 @@ int main(int argc, char *argv[])
     ParVector b;
 
     int n_tests = 5;
-    char* folder = "/home/bienz2/exxonmobildata/SPE10-4x4-20141227/matrix_blk_coord";
+    char* folder = "/home/bienz2/exxonmobildata/SPE10-4x4-20141227/matrix_blk_coord/mat_64";
     char* iname = "index_R";
     char* fname = "matrix_blk_coord_TS414_TSA0_NI0_FT0.010000_R";
     char* suffix = ".bcoord";
