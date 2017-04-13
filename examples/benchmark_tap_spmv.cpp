@@ -22,23 +22,24 @@ int main(int argc, char *argv[])
     ParVector x;
     ParVector b;
 
-    int n = 100;
-    int m = 100;
     int n_tests = 5;
+    char* folder = "/home/bienz2/exxonmobildata/SPE10-4x4-20141227/matrix_blk_coord";
+    char* iname = "index_R";
+    char* fname = "matrix_blk_coord_TS414_TSA0_NI0_FT0.010000_R";
+    char* suffix = ".bcoord";
+    int* global_num_rows;
+
+    // Can pass number of tests and folder as parameters
     if (argc > 1)
     {
-        n = atoi(argv[1]);
+        n_tests = atoi(argv[1]);
         if (argc > 2)
         {
-            m = atoi(argv[2]);
-            if (argc > 3)
-            {
-                n_tests = atoi(argv[3]);
-            }
+            folder = argv[2];
         }
     }
 
-    A = random_mat(n, m, 25);
+    A = exxon_reader(folder, iname, fname, suffix, &global_num_rows);
     b = ParVector(A->global_num_rows, A->local_num_rows, A->first_local_row);
     x = ParVector(A->global_num_cols, A->local_num_cols, A->first_local_col);
     A->tap_comm = new TAPComm(A->off_proc_column_map,
@@ -116,6 +117,7 @@ int main(int argc, char *argv[])
         }
     }
 
+    delete[] global_num_rows;
     delete A;
     MPI_Finalize();
 
