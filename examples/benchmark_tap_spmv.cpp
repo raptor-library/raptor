@@ -8,6 +8,8 @@
 #include "core/par_vector.hpp"
 #include "gallery/par_random.hpp"
 #include "gallery/exxon_reader.hpp"
+#include "gallery/par_stencil.hpp"
+#include "gallery/laplacian27pt.hpp"
 
 #include <assert.h>
 
@@ -24,11 +26,11 @@ int main(int argc, char *argv[])
     ParVector b;
 
     int n_tests = 5;
-    char* folder = "/home/bienz2/exxonmobildata/SPE10-4x4-20141227/matrix_blk_coord/mat_64";
-    char* iname = "index_R";
-    char* fname = "matrix_blk_coord_TS414_TSA0_NI0_FT0.010000_R";
-    char* suffix = ".bcoord";
-    int* global_num_rows;
+//    char* folder = "/home/bienz2/exxonmobildata/SPE10-4x4-20141227/matrix_blk_coord/mat_128";
+//    char* iname = "index_R";
+//    char* fname = "matrix_blk_coord_TS414_TSA0_NI0_FT0.010000_R";
+//    char* suffix = ".bcoord";
+//    int* global_num_rows;
 
     // Can pass number of tests and folder as parameters
     if (argc > 1)
@@ -36,11 +38,16 @@ int main(int argc, char *argv[])
         n_tests = atoi(argv[1]);
         if (argc > 2)
         {
-            folder = argv[2];
+//            folder = argv[2];
         }
     }
 
-    A = exxon_reader(folder, iname, fname, suffix, &global_num_rows);
+int dim = 3;
+int grid[3] = {60, 220, 85};
+double* stencil = laplace_stencil_27pt();
+A = par_stencil_grid(stencil, grid, dim);
+delete[] stencil;
+    //A = exxon_reader(folder, iname, fname, suffix, &global_num_rows);
     b = ParVector(A->global_num_rows, A->local_num_rows, A->first_local_row);
     x = ParVector(A->global_num_cols, A->local_num_cols, A->first_local_col);
     A->tap_comm = new TAPComm(A->off_proc_column_map,
@@ -118,7 +125,8 @@ int main(int argc, char *argv[])
         }
     }
 
-    delete[] global_num_rows;
+//    delete[] global_num_rows;
+
     delete A;
     MPI_Finalize();
 

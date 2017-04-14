@@ -247,7 +247,7 @@ void TAPComm::find_global_comm_procs(const std::vector<int>& recv_nodes,
     std::vector<MPI_Request> requests;
 
     n_recv_nodes = recv_nodes.size();
-    requests.resize(n_recv_nodes / PPN + 1, MPI_REQUEST_NULL);
+    requests.resize(n_recv_nodes, MPI_REQUEST_NULL);
     n_recvs = 0;
 
     int ctr = 0;

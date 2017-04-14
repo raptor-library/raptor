@@ -252,14 +252,14 @@ int CommPkg::find_proc_col_starts(const int first_local_col,
     // If last_local_col != last, exchange data with neighbors
     // Send to proc that is assumed to hold my last local col
     // and recv from all procs of which i hold their assumed last local cols
-    proc = last_local_col / part - 1; // first col of rank + 1
+    proc = (last_local_col-1) / part; // first col of rank + 1
     num_procs_extra = proc - rank; 
     ctr = 0;
     if (num_procs_extra > 0)
     {
         send_buffer.resize(num_procs_extra);
         send_requests.resize(num_procs_extra);
-        for (int i = rank+1; i < proc; i++)
+        for (int i = rank + 1; i <= proc; i++)
         {
             send_buffer[ctr] = first_local_col;
             MPI_Isend(&(send_buffer[ctr]), 1, MPI_INT, i, 2345, 
@@ -269,12 +269,12 @@ int CommPkg::find_proc_col_starts(const int first_local_col,
     }
     tmp = first_local_col;
     proc = rank - 1;
-    col_starts.push_back(first_local_col);
-    while (first < tmp && proc >= 0)
+    col_starts.push_back(tmp);
+    while (first < tmp)
     {
         MPI_Recv(&recvbuf, 1, MPI_INT, proc, 2345, MPI_COMM_WORLD, &status);
         tmp = recvbuf;
-        col_starts.push_back(first);
+        col_starts.push_back(tmp);
         proc--;
     }
     if (ctr)

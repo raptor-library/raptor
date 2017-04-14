@@ -12,7 +12,7 @@
 
 using namespace raptor;
 
-void par_stencil_grid(ParMatrix* A, data_t* stencil, int* grid, int dim)
+ParCSRMatrix* par_stencil_grid(data_t* stencil, int* grid, int dim)
 {
     // Get MPI Information
     int rank, num_procs;
@@ -55,6 +55,7 @@ void par_stencil_grid(ParMatrix* A, data_t* stencil, int* grid, int dim)
         }
     }
 
+    ParCSRMatrix* A = new ParCSRMatrix();
     A->global_num_rows = N_v;
     A->global_num_cols = N_v;
     A->initialize_partition();
@@ -232,6 +233,8 @@ void par_stencil_grid(ParMatrix* A, data_t* stencil, int* grid, int dim)
     A->off_proc->nnz = A->off_proc->idx2.size();
     
     A->finalize();
+
+    return A;
 } 
 
 #endif

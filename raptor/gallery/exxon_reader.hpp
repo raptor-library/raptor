@@ -271,11 +271,7 @@ MPI_Reduce(&tmpl, &tmpg, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
         }
     }
 
-    ParCSRMatrix* A = new ParCSRMatrix(A_coo);
-    A->finalize();
-    delete A_coo;
-
-    int* global_tmp = new int[A->local_num_rows];
+    int* global_tmp = new int[A_coo->local_num_rows];
     for (int i = 0; i < block_diag_num_cols; i++)
     {
         for (int j = 0; j < block_size; j++)
@@ -285,6 +281,11 @@ MPI_Reduce(&tmpl, &tmpg, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     }
     *global_num_rows = global_tmp;
     
+    ParCSRMatrix* A = new ParCSRMatrix(A_coo);
+    A->finalize();
+
+    delete A_coo;
+
     delete[] orig_block_rows;
     delete[] sizes;
     delete[] displs;
