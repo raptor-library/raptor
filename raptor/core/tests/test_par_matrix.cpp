@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
     ParCSRMatrix A_par;
 
     stencil_grid(&A, stencil, grid, 2);
-    par_stencil_grid(&A_par, stencil, grid, 2);
+    A_par = par_stencil_grid(stencil, grid, 2);
 
     ParCSCMatrix A_par_csc;
     A_par_csc.copy(&A_par);

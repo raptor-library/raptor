@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     // Create A from diffusion stencil
-    char* folder = "/home/bienz2/exxonmobildata/SPE10-4x4-20141227/matrix_blk_coord";
+    char* folder = "/u/sciteam/bienz/scratch/exxonmat_2014/mat_128/matrix_blk_coord";
     char* iname = "index_R";
     char* fname = "matrix_blk_coord_TS414_TSA0_NI0_FT0.010000_R";
     char* suffix = ".bcoord";

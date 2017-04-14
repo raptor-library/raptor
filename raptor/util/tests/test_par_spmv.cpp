@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
     // Create Parallel Matrix A_par (and vectors x_par
     // and b_par) and mult b_par <- A_par*x_par
     ParCSRMatrix A_par;
-    par_stencil_grid(&A_par, stencil, grid, 2);
+    A_par = par_stencil_grid(stencil, grid, 2);
     ParVector x_par(A_par.global_num_cols, A_par.local_num_cols, A_par.first_local_col);
     ParVector b_par(A_par.global_num_rows, A_par.local_num_rows, A_par.first_local_row);
     x_par.set_const_value(1.0);

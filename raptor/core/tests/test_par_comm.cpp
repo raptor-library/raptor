@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
     stencil_grid(&A_seq, stencil, grid, 2);
 
     ParCSRMatrix A;
-    par_stencil_grid(&A, stencil, grid, 2);
+    A = par_stencil_grid(stencil, grid, 2);
 
     ParVector x(A.global_num_rows, A.local_num_rows, A.first_local_row);
     Vector& x_lcl = x.local;
