@@ -43,7 +43,8 @@ int main(int argc, char *argv[])
     }
 
 int dim = 3;
-int grid[3] = {60, 220, 85};
+//int grid[3] = {60, 220, 85};
+int grid[3] = {10, 20, 15};
 double* stencil = laplace_stencil_27pt();
 A = par_stencil_grid(stencil, grid, dim);
 delete[] stencil;
@@ -71,7 +72,7 @@ delete[] stencil;
         A->comm = NULL;
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        ParComm* comm = new ParComm(A->off_proc_column_map, 
+        A->comm = new ParComm(A->off_proc_column_map, 
                 A->first_local_row, A->first_local_col,
                 A->global_num_cols, A->local_num_cols);
         tfinal = (MPI_Wtime() - t0) / n_tests;

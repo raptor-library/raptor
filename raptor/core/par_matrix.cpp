@@ -149,6 +149,7 @@ void ParMatrix::finalize(bool create_comm)
     on_proc->sort();
     off_proc_column_map = off_proc->get_col_list();
     off_proc_num_cols = off_proc_column_map.size();   
+    off_proc->resize(local_num_rows, off_proc_num_cols);
         
     local_nnz = on_proc->nnz + off_proc->nnz;
 
@@ -297,9 +298,9 @@ CSRMatrix* comm_csr(ParComm* comm,
     // Calculate nnz/row, for each row to be communicated
     std::vector<int> send_row_sizes(comm->send_data->size_msgs, 0);
     std::vector<int> row_sizes;
-    if (off_proc->n_cols)
+    if (comm->recv_data->size_msgs)
     {
-        row_sizes.resize(off_proc->n_cols, 0);
+        row_sizes.resize(comm->recv_data->size_msgs);
     }
 
     int send_mat_size = 0;
@@ -335,30 +336,49 @@ CSRMatrix* comm_csr(ParComm* comm,
     }
 
     // Wait for row communication to complete
-    MPI_Waitall(comm->recv_data->num_msgs,
-            comm->recv_data->requests,
-            MPI_STATUS_IGNORE);
+    
+    if (comm->recv_data->num_msgs)
+    {
+        MPI_Waitall(comm->recv_data->num_msgs,
+                comm->recv_data->requests,
+                MPI_STATUS_IGNORE);
+    }
 
-    MPI_Waitall(comm->send_data->num_msgs,
-            comm->send_data->requests,
-            MPI_STATUS_IGNORE);
-        
+    if (comm->send_data->num_msgs)
+    {
+        MPI_Waitall(comm->send_data->num_msgs,
+                comm->send_data->requests,
+                MPI_STATUS_IGNORE);
+    }
+
     // Allocate Matrix Space
     recv_mat->idx1[0] = 0;
-    for (int i = 0; i < off_proc->n_cols; i++)
+    for (int i = 0; i < comm->recv_data->size_msgs; i++)
     {
         recv_mat->idx1[i+1] = recv_mat->idx1[i] + row_sizes[i];
     }
-    recv_mat->nnz = recv_mat->idx1[off_proc->n_cols];
-    recv_mat->idx2.resize(recv_mat->nnz);
-    recv_mat->vals.resize(recv_mat->nnz);
+    recv_mat->nnz = recv_mat->idx1[comm->recv_data->size_msgs];
+    if (recv_mat->nnz)
+    {
+        recv_mat->idx2.resize(recv_mat->nnz);
+        recv_mat->vals.resize(recv_mat->nnz);
+    }
 
     struct PairData{ 
         double val; 
         int   index; 
     }; 
-    PairData* send_data = new PairData[send_mat_size];
-    PairData* recv_data = new PairData[recv_mat->nnz];
+    PairData* send_data = NULL;
+    PairData* recv_data = NULL;
+
+    if (send_mat_size)
+    {
+        send_data = new PairData[send_mat_size];
+    }
+    if (recv_mat->nnz)
+    {
+        recv_data = new PairData[recv_mat->nnz];
+    }
 
     // Send pair_data (column indices + values) for each row
     // Can use MPI_DOUBLE_INT
@@ -393,9 +413,16 @@ CSRMatrix* comm_csr(ParComm* comm,
         }
 
         // Send nnz/row for each row to be communicated
-        MPI_Isend(&(send_data[prev_ctr]), ctr - prev_ctr, MPI_DOUBLE_INT, 
-                proc, comm->key, MPI_COMM_WORLD, &(comm->send_data->requests[i]));
-        prev_ctr = ctr;
+        if (ctr - prev_ctr)
+        {
+            MPI_Isend(&(send_data[prev_ctr]), ctr - prev_ctr, MPI_DOUBLE_INT, 
+                    proc, comm->key, MPI_COMM_WORLD, &(comm->send_data->requests[i]));
+            prev_ctr = ctr;
+        }
+        else
+        {
+            comm->send_data->requests[i] = MPI_REQUEST_NULL;
+        }
     }
 
     // Recv pair_data corresponding to each off_proc column
@@ -408,18 +435,31 @@ CSRMatrix* comm_csr(ParComm* comm,
 
         int start_idx = recv_mat->idx1[start];
         int end_idx = recv_mat->idx1[end];
+        if (end_idx - start_idx)
+        {
+            MPI_Irecv(&(recv_data[start_idx]), end_idx - start_idx, MPI_DOUBLE_INT,
+                    proc, comm->key, MPI_COMM_WORLD, &(comm->recv_data->requests[i]));
+        }
+        else
+        {
+            comm->recv_data->requests[i] = MPI_REQUEST_NULL;
+        }
 
-        MPI_Irecv(&(recv_data[start_idx]), end_idx - start_idx, MPI_DOUBLE_INT,
-                proc, comm->key, MPI_COMM_WORLD, &(comm->recv_data->requests[i]));
     }
 
-    MPI_Waitall(comm->recv_data->num_msgs,
-            comm->recv_data->requests,
-            MPI_STATUS_IGNORE);
+    if (comm->recv_data->num_msgs)
+    {
+        MPI_Waitall(comm->recv_data->num_msgs,
+                comm->recv_data->requests,
+                MPI_STATUS_IGNORE);
+    }
 
-    MPI_Waitall(comm->send_data->num_msgs,
-            comm->send_data->requests,
-            MPI_STATUS_IGNORE);
+    if (comm->send_data->num_msgs)
+    {
+        MPI_Waitall(comm->send_data->num_msgs,
+                comm->send_data->requests,
+                MPI_STATUS_IGNORE);
+    }
 
     for (int i = 0; i < recv_mat->nnz; i++)
     {

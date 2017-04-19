@@ -5,6 +5,8 @@
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
 
+#include "assert.h"
+
 using namespace raptor;
 
 /**************************************************************

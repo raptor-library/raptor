@@ -110,33 +110,37 @@ void CommPkg::form_col_to_proc(const int first_local_col,
     int count;
     MPI_Request barrier_request;
     MPI_Status status;
-    MPI_Testall(num_sends, send_requests.data(), &finished, MPI_STATUSES_IGNORE);
-    while (!finished)
+
+    if (num_sends)
     {
-        MPI_Iprobe(MPI_ANY_SOURCE, 9753, MPI_COMM_WORLD, &msg_avail, &status);
-        if (msg_avail)
-        {
-            MPI_Get_count(&status, MPI_INT, &count);
-            proc = status.MPI_SOURCE;
-            int recvbuf[count];
-            MPI_Recv(recvbuf, count, MPI_INT, proc, 9753, 
-                    MPI_COMM_WORLD, &status);
-            sendbuf_procs.push_back(proc);
-            sendbuf_starts.push_back(sendbuf.size());
-            int k = 0;
-            for (int i = 0; i < count; i++)
-            {
-                col = recvbuf[i];
-                while (k + 1 < col_start_size &&
-                        col >= col_starts[k + 1])
-                {
-                    k++;
-                }
-                proc = col_start_procs[k];
-                sendbuf.push_back(proc);    
-            }
-        }
         MPI_Testall(num_sends, send_requests.data(), &finished, MPI_STATUSES_IGNORE);
+        while (!finished)
+        {
+            MPI_Iprobe(MPI_ANY_SOURCE, 9753, MPI_COMM_WORLD, &msg_avail, &status);
+            if (msg_avail)
+            {
+                MPI_Get_count(&status, MPI_INT, &count);
+                proc = status.MPI_SOURCE;
+                int recvbuf[count];
+                MPI_Recv(recvbuf, count, MPI_INT, proc, 9753, 
+                        MPI_COMM_WORLD, &status);
+                sendbuf_procs.push_back(proc);
+                sendbuf_starts.push_back(sendbuf.size());
+                int k = 0;
+                for (int i = 0; i < count; i++)
+                {
+                    col = recvbuf[i];
+                    while (k + 1 < col_start_size &&
+                            col >= col_starts[k + 1])
+                    {
+                        k++;
+                    }
+                    proc = col_start_procs[k];
+                    sendbuf.push_back(proc);    
+                }
+            }
+            MPI_Testall(num_sends, send_requests.data(), &finished, MPI_STATUSES_IGNORE);
+        }
     }
     MPI_Ibarrier(MPI_COMM_WORLD, &barrier_request);
     MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
@@ -193,6 +197,7 @@ void CommPkg::form_col_to_proc(const int first_local_col,
 
     MPI_Waitall(n_sendbuf, sendbuf_requests.data(), MPI_STATUSES_IGNORE);
     MPI_Waitall(num_sends, send_requests.data(), MPI_STATUSES_IGNORE);
+
 }
 
 /**************************************************************

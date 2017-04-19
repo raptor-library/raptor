@@ -16,7 +16,7 @@ HYPRE_IJVector convert(raptor::ParVector* x_rap, MPI_Comm comm_mat)
     {
         rows[i] = i+first_local;
     }
-    HYPRE_Real* x_data = x_rap->local->data();
+    HYPRE_Real* x_data = x_rap->local.data();
     HYPRE_IJVectorSetValues(x, local_n, rows, x_data);
 
     HYPRE_IJVectorAssemble(x);
@@ -26,8 +26,7 @@ HYPRE_IJVector convert(raptor::ParVector* x_rap, MPI_Comm comm_mat)
     return x;
 }
 
-// TODO - Create a shallow copy for conversion
-HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap, MPI_Comm comm_mat)
+HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, MPI_Comm comm_mat)
 {
     HYPRE_IJMatrix A;
 
@@ -56,32 +55,32 @@ HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap, MPI_Comm comm_mat)
     HYPRE_IJMatrixSetObjectType(A, HYPRE_PARCSR);
     HYPRE_IJMatrixInitialize(A);
 
-    for (int i = 0; i < A_rap->diag->n_rows; i++)
+    HYPRE_Int row_start, row_end;
+    HYPRE_Int global_row, global_col;
+    HYPRE_Real value;
+
+    for (int i = 0; i < A_rap->on_proc->n_rows; i++)
     {
-        HYPRE_Int row_start = A_rap->diag->idx1[i];
-        HYPRE_Int row_end = A_rap->diag->idx1[i+1];
-        HYPRE_Int global_row = i + A_rap->first_local_row;
+        row_start = A_rap->on_proc->idx1[i];
+        row_end = A_rap->on_proc->idx1[i+1];
+        global_row = i + A_rap->first_local_row;
         for (int j = row_start; j < row_end; j++)
         {
-            HYPRE_Int global_col = A_rap->diag->idx2[j] + A_rap->first_local_col;
-            HYPRE_Real value = A_rap->diag->vals[j];
+            global_col = A_rap->on_proc->idx2[j] + A_rap->first_local_col;
+            value = A_rap->on_proc->vals[j];
             HYPRE_IJMatrixSetValues(A, 1, &one, &global_row, &global_col, &value);
         }
     }
-
-    if (A_rap->offd_num_cols)
+    for (int i = 0; i < A_rap->off_proc->n_rows; i++)
     {
-        for (int i = 0; i < A_rap->offd->n_cols; i++)
+        row_start = A_rap->off_proc->idx1[i];
+        row_end = A_rap->off_proc->idx1[i+1];
+        HYPRE_Int global_row = i + A_rap->first_local_row;
+        for (int j = row_start; j < row_end; j++)
         {
-            HYPRE_Int col_start = A_rap->offd->idx1[i];
-            HYPRE_Int col_end = A_rap->offd->idx1[i+1];
-            HYPRE_Int global_col = A_rap->offd_column_map[i];
-            for (int j = col_start; j < col_end; j++)
-            {
-                HYPRE_Int global_row = A_rap->offd->idx2[j] + A_rap->first_local_row;
-                HYPRE_Real value = A_rap->offd->vals[j];
-                HYPRE_IJMatrixSetValues(A, 1, &one, &global_row, &global_col, &value);
-            }
+            global_col = A_rap->off_proc_column_map[A_rap->off_proc->idx2[j]];
+            value = A_rap->off_proc->vals[j];
+            HYPRE_IJMatrixSetValues(A, 1, &one, &global_row, &global_col, &value);
         }
     }
     HYPRE_IJMatrixAssemble(A);
@@ -89,7 +88,7 @@ HYPRE_IJMatrix convert(raptor::ParMatrix* A_rap, MPI_Comm comm_mat)
     return A;
 }
 
-raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre, MPI_Comm comm_mat)
+raptor::ParCSRMatrix* convert(hypre_ParCSRMatrix* A_hypre, MPI_Comm comm_mat)
 {
     int num_procs;
     int rank;
@@ -120,31 +119,42 @@ raptor::ParMatrix* convert(hypre_ParCSRMatrix* A_hypre, MPI_Comm comm_mat)
     HYPRE_Int global_rows = hypre_ParCSRMatrixGlobalNumRows(A_hypre);
     HYPRE_Int global_cols = hypre_ParCSRMatrixGlobalNumCols(A_hypre);
 
-    ParMatrix* A = new ParMatrix(global_rows, global_cols, diag_rows, diag_cols, first_local_row, first_local_col);
+    ParCSRMatrix* A = new ParCSRMatrix(global_rows, global_cols, 
+            diag_rows, diag_cols, 
+            first_local_row, first_local_col);
 
+    A->on_proc->idx1.push_back(0);
     for (int i = 0; i < diag_rows; i++)
     {
         int row_start = diag_i[i];
         int row_end = diag_i[i+1];
         for (int j = row_start; j < row_end; j++)
         {
-            int global_col = diag_j[j] + first_local_col;
-            A->add_value(i, global_col, diag_data[j]);
+            A->on_proc->idx2.push_back(diag_j[j]);
+            A->on_proc->vals.push_back(diag_data[j]);
         }
+        A->on_proc->idx1.push_back(A->on_proc->idx2.size());
+    }
     
+    A->off_proc->idx1.push_back(0);
+    for (int i = 0; i < diag_rows; i++)
+    {
         if (num_cols_offd)
         {
-            row_start = offd_i[i];
-            row_end = offd_i[i+1];
+            int row_start = offd_i[i];
+            int row_end = offd_i[i+1];
             for (int j = row_start; j < row_end; j++)
             {
                 int global_col = col_map_offd[offd_j[j]];
-                A->add_value(i, global_col, offd_data[j]);
+                A->off_proc->idx2.push_back(global_col);
+                A->off_proc->vals.push_back(offd_data[j]);
             }
         }
+        A->off_proc->idx1.push_back(A->off_proc->idx2.size());
     }
 
     A->finalize();
+
     return A;
 
 }
@@ -357,7 +367,7 @@ void remove_shared_ptrs(hypre_ParAMGData* amg_data)
     remove_shared_ptrs(A_array[num_levels-1]);
 }*/
 
-raptor::Hierarchy* convert(hypre_ParAMGData* amg_data, MPI_Comm comm_mat)
+/*raptor::Hierarchy* convert(hypre_ParAMGData* amg_data, MPI_Comm comm_mat)
 {
     HYPRE_Int num_levels = hypre_ParAMGDataNumLevels(amg_data);
     hypre_ParCSRMatrix** A_array = hypre_ParAMGDataAArray(amg_data);
@@ -376,7 +386,7 @@ raptor::Hierarchy* convert(hypre_ParAMGData* amg_data, MPI_Comm comm_mat)
     ml->add_level(A);
 
     return ml;
-}
+}*/
 
 HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
                                 hypre_ParVector* b,
@@ -407,7 +417,7 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
     return amg_data;
 }
 
-raptor::Hierarchy* create_wrapped_hierarchy(raptor::ParMatrix* A_rap,
+/*raptor::Hierarchy* create_wrapped_hierarchy(raptor::ParMatrix* A_rap,
                                 raptor::ParVector* x_rap,
                                 raptor::ParVector* b_rap,
                                 int coarsen_type,
@@ -445,5 +455,5 @@ raptor::Hierarchy* create_wrapped_hierarchy(raptor::ParMatrix* A_rap,
     HYPRE_IJVectorDestroy(b);
 
     return ml;
-}
+}*/
 

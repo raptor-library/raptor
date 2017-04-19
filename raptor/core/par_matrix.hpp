@@ -89,17 +89,16 @@ namespace raptor
 
     ParMatrix(index_t glob_rows, 
             index_t glob_cols, 
-            int local_num_rows, 
-            int local_num_cols, 
-            index_t first_local_row, 
-            index_t first_col, 
-            int nnz_per_row = 5)
+            int local_rows, 
+            int local_cols, 
+            index_t first_row, 
+            index_t first_col)
     {
         global_num_rows = glob_rows;
         global_num_cols = glob_cols;
-        local_num_rows = local_num_rows;
-        local_num_cols = local_num_cols;
-        first_local_row = first_local_row;
+        local_num_rows = local_rows;
+        local_num_cols = local_cols;
+        first_local_row = first_row;
         first_local_col = first_col;
 
         comm = NULL;
@@ -236,10 +235,10 @@ namespace raptor
         off_proc = new COOMatrix(local_num_rows, global_num_cols, nnz_per_row);
     }
 
-    ParCOOMatrix(index_t glob_rows, index_t glob_cols, int local_num_rows, 
-            int local_num_cols, index_t first_local_row, index_t first_col, 
+    ParCOOMatrix(index_t glob_rows, index_t glob_cols, int local_rows, 
+            int local_cols, index_t first_row, index_t first_col, 
             int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols,
-                local_num_rows, local_num_cols, first_local_row, first_col)
+                local_rows, local_cols, first_row, first_col)
     {
         on_proc = new COOMatrix(local_num_rows, local_num_cols, nnz_per_row);
         off_proc = new COOMatrix(local_num_rows, global_num_cols, nnz_per_row);
@@ -316,10 +315,10 @@ namespace raptor
         off_proc = new CSRMatrix(local_num_rows, global_num_cols, nnz_per_row);
     }
 
-    ParCSRMatrix(index_t glob_rows, index_t glob_cols, int local_num_rows, 
-            int local_num_cols, index_t first_local_row, index_t first_col, 
+    ParCSRMatrix(index_t glob_rows, index_t glob_cols, int local_rows, 
+            int local_cols, index_t first_row, index_t first_col, 
             int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols,
-                local_num_rows, local_num_cols, first_local_row, first_col)
+                local_rows, local_cols, first_row, first_col)
     {
         on_proc = new CSRMatrix(local_num_rows, local_num_cols, nnz_per_row);
         off_proc = new CSRMatrix(local_num_rows, global_num_cols, nnz_per_row);

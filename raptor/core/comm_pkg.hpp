@@ -160,7 +160,7 @@ namespace raptor
             int send_start, send_end;
             int proc, prev_proc;
             int count;
-            int tag = 2345;  // TODO -- switch this to key?
+            int tag = 12345;  // TODO -- switch this to key?
             int off_proc_num_cols = off_proc_column_map.size();
             MPI_Status recv_status;
 
@@ -226,7 +226,7 @@ namespace raptor
                     MPI_Recv(recvbuf, count, MPI_INT, proc, tag, comm, &recv_status);
                     for (int i = 0; i < count; i++)
                     {
-                        recvbuf[i] -= first_local_row;
+                        recvbuf[i] -= first_local_col;
                     }
                     send_data->add_msg(proc, count, recvbuf);
                 }
@@ -246,7 +246,7 @@ namespace raptor
                     MPI_Recv(recvbuf, count, MPI_INT, proc, tag, comm, &recv_status);
                     for (int i = 0; i < count; i++)
                     {
-                        recvbuf[i] -= first_local_row;
+                        recvbuf[i] -= first_local_col;
                     }
                     send_data->add_msg(proc, count, recvbuf);
                 }

@@ -11,7 +11,8 @@ if (WITH_MFEM)
 endif()
 
 set(external_gallery_SOURCES
+    gallery/external/hypre_wrapper.hpp
     gallery/external/hypre_wrapper.cpp 
-    ${external_mfem_SOURCES}
+    #    ${external_mfem_SOURCES}
     PARENT_SCOPE)
 

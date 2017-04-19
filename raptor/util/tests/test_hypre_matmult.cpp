@@ -66,26 +66,55 @@ int main(int argc, char *argv[])
         MPI_Barrier(MPI_COMM_WORLD);
         ParCSRMatrix* P_l = convert(P_h_l);
 
-        for (int j = 0; j < 5; j++)
-        {
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            hypre_ParCSRMatrix* C_h_l = hypre_ParMatmul(A_h_l, P_h_l);
-            tfinal = MPI_Wtime() - t0;
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("HYPRE Matmult time = %e\n", t0);
-            hypre_ParCSRMatrixDestroy(C_h_l);
+        MPI_Barrier(MPI_COMM_WORLD);
+        t0 = MPI_Wtime();
+        hypre_ParCSRMatrix* C_h_l = hypre_ParMatmul(A_h_l, P_h_l);
+        tfinal = MPI_Wtime() - t0;
+        MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("HYPRE Matmult time = %e\n", t0);
 
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            ParCSRMatrix* C_l = new ParCSRMatrix();
-            A_l->mult(*P_l, C_l);
-            tfinal = MPI_Wtime() - t0;
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("Raptor Matmult time = %e\n", t0);
-            delete C_l;
+
+        MPI_Barrier(MPI_COMM_WORLD);
+        t0 = MPI_Wtime();
+        ParCSRMatrix* C_l = new ParCSRMatrix();
+        A_l->mult(*P_l, C_l);
+        tfinal = MPI_Wtime() - t0;
+        MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Raptor Matmult time = %e\n", t0);
+
+        // Multiply hypre resulting matrix by vector of ones
+        hypre_ParVector* f_h_l = f_array[i];
+        hypre_ParVector* f_h_lc = f_array[i+1];
+        int f_h_l_size = hypre_VectorSize(hypre_ParVectorLocalVector(f_h_l));
+        int f_h_lc_size = hypre_VectorSize(hypre_ParVectorLocalVector(f_h_lc));
+        double* f_h_l_data = hypre_VectorData(hypre_ParVectorLocalVector(f_h_l));
+        double* f_h_lc_data = hypre_VectorData(hypre_ParVectorLocalVector(f_h_lc));
+        for (int j = 0; j < f_h_lc_size; j++)
+        {
+            f_h_lc_data[j] = 1.0;
         }
 
+        hypre_ParCSRMatrixMatvec(1.0, C_h_l, f_h_lc, 0.0, f_h_l);
+
+        // Multiply raptor resulting matrix by vector of ones
+        ParVector x = ParVector(P_l->global_num_cols, P_l->local_num_cols, 
+                P_l->first_local_col);
+        ParVector b = ParVector(P_l->global_num_rows, P_l->local_num_rows, 
+                P_l->first_local_row);
+        x.set_const_value(1.0);
+        b.set_const_value(0.0);
+        C_l->mult(x, b);
+
+        int b_size = b.local_n;        
+        double* b_data = b.local.data();
+
+        for (int j = 0; j < b_size; j++)
+        {
+            assert(fabs(f_h_l_data[i] - b_data[i]) < 1e-05);
+        }
+        
+        hypre_ParCSRMatrixDestroy(C_h_l);
+        delete C_l;
         delete A_l;
         delete P_l;
     }
