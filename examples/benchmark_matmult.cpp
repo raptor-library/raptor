@@ -21,7 +21,13 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
     int dim = 3;
-    int grid[3] = {25, 25, 25};
+    int n = 5;
+    if (argc > 1)
+        n = atoi(argv[1]);
+    int grid[3];
+    grid[0] = n;
+    grid[1] = n;
+    grid[2] = n;
     double* stencil = laplace_stencil_27pt();
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, dim);
     ParVector x = ParVector(A->global_num_cols, A->local_num_cols, A->first_local_col);
@@ -38,12 +44,15 @@ int main(int argc, char *argv[])
     hypre_ParVector* par_b;
     HYPRE_IJVectorGetObject(b_h, (void **) &par_b);
 
-    int coarsen_type = 10;
-    int interp_type = 6;
-    int Pmx = 0;
-    int agg_num_levels = 1;
+    //int coarsen_type = 10;
+    //int interp_type = 6;
+    //int Pmx = 0;
+    //int agg_num_levels = 1;
     int p_max_elmts = 0;
     double strong_threshold = 0.25;
+    int coarsen_type = 6;
+    int interp_type = 0;
+    int agg_num_levels = 0;
 
     HYPRE_Solver solver_data = hypre_create_hierarchy(parcsr_A, par_x, par_b, 
                             coarsen_type, interp_type, p_max_elmts, agg_num_levels, 

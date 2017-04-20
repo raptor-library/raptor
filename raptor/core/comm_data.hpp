@@ -135,8 +135,8 @@ public:
         if (num_msgs)
         {
             requests = new MPI_Request[num_msgs];
+            buffer.set_size(size_msgs);
         }
-        buffer.set_size(size_msgs);
     }
 
     int num_msgs;

@@ -174,20 +174,23 @@ namespace raptor
             // and adds corresponding messages to recv data.
             // Assumes columns are partitioned across processes
             // in contiguous blocks, and are sorted
-            prev_proc = off_proc_col_to_proc[0];
-            int prev_idx = 0;
-            for (int i = 1; i < off_proc_num_cols; i++)
+            if (off_proc_num_cols)
             {
-                proc = off_proc_col_to_proc[i];
-                if (proc != prev_proc)
+                prev_proc = off_proc_col_to_proc[0];
+                int prev_idx = 0;
+                for (int i = 1; i < off_proc_num_cols; i++)
                 {
-                    recv_data->add_msg(prev_proc, i - prev_idx);
-                    prev_proc = proc;
-                    prev_idx = i;
+                    proc = off_proc_col_to_proc[i];
+                    if (proc != prev_proc)
+                    {
+                        recv_data->add_msg(prev_proc, i - prev_idx);
+                        prev_proc = proc;
+                        prev_idx = i;
+                    }
                 }
+                recv_data->add_msg(prev_proc, off_proc_num_cols - prev_idx);
+                recv_data->finalize();
             }
-            recv_data->add_msg(prev_proc, off_proc_num_cols - prev_idx);
-            recv_data->finalize();
 
             // For each process I recv from, send the global column indices
             // for which I must recv corresponding rows 
@@ -252,7 +255,10 @@ namespace raptor
                 }
                 MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
             }
-            send_data->finalize();
+            if (send_data->num_msgs)
+            {
+                send_data->finalize();
+            }
         }
 
         ParComm(ParComm* comm)
