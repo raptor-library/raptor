@@ -26,7 +26,7 @@ using namespace raptor;
 
 data_t* laplace_stencil_27pt()
 {
-    data_t* stencil = (data_t*) malloc (sizeof(data_t) * 27);
+    data_t* stencil = new data_t[27];
 
     for (int i = 0; i < 27; i++)
     {
