@@ -22,7 +22,7 @@ void ParCSRMatrix::mult(ParCSRMatrix& B, ParCSRMatrix* C)
 
     // Resize variables of on_proc
     C->on_proc->n_rows = on_proc->n_rows;
-    C->on_proc->n_cols = B.on_proc->n_cols;
+    C->on_proc->n_cols = B.local_num_cols;
     C->on_proc->nnz = 0;
     C->on_proc->idx1.resize(local_num_rows + 1);
     C->on_proc->idx2.clear();
@@ -82,8 +82,8 @@ void ParCSRMatrix::mult(ParCSRMatrix& B, ParCSRMatrix* C)
     C->off_proc->vals.reserve(local_nnz);
 
     // Variables for calculating row sums
-    std::vector<double> on_proc_sums(C->on_proc->n_cols, 0);
-    std::vector<int> on_proc_next(C->on_proc->n_cols, -1);
+    std::vector<double> on_proc_sums(C->local_num_cols, 0);
+    std::vector<int> on_proc_next(C->local_num_cols, -1);
 
     std::vector<double> off_proc_sums(C->off_proc_num_cols, 0);
     std::vector<int> off_proc_next(C->off_proc_num_cols, -1);
@@ -168,7 +168,7 @@ void ParCSRMatrix::mult(ParCSRMatrix& B, ParCSRMatrix* C)
                 {
                     int col_C = global_col - C->first_local_col;
                     on_proc_sums[col_C] += val * recv_mat->vals[k];
-                    if (on_proc_sums[col_C] == -1)
+                    if (on_proc_next[col_C] == -1)
                     {
                         on_proc_next[col_C] = on_proc_head;
                         on_proc_head = col_C;

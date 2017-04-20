@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
     int dim = 3;
-    int grid[3] = {5, 15, 10};
+    int grid[3] = {25, 25, 25};
     double* stencil = laplace_stencil_27pt();
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, dim);
     ParVector x = ParVector(A->global_num_cols, A->local_num_cols, A->first_local_col);
@@ -63,7 +63,6 @@ int main(int argc, char *argv[])
         // TODO -- fix this!  Right now, creating two communicators without
         // barrier between can cause race condition...
         ParCSRMatrix* A_l = convert(A_h_l);
-        MPI_Barrier(MPI_COMM_WORLD);
         ParCSRMatrix* P_l = convert(P_h_l);
 
         for (int j = 0; j < 5; j++)
