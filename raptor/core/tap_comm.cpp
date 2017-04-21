@@ -387,16 +387,25 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
     MPI_Status recv_status;
 
     std::vector<int> node_to_idx(num_nodes);
-
-    std::vector<int> node_to_proc(num_recv_nodes);
-    std::vector<int> proc_idx(num_recv_nodes, 0);
-
     std::vector<int> local_recv_procs(PPN, 0);
     std::vector<int> local_recv_sizes(PPN, 0);
     std::vector<int> local_send_procs(PPN);
     std::vector<int> local_recv_displs(PPN+1, 0);
-    std::vector<int> local_recv_indices(off_node_num_cols);
-    std::vector<int> off_node_col_to_lcl_proc(off_node_num_cols);
+    std::vector<int> node_to_proc;
+    std::vector<int> proc_idx;
+    std::vector<int> local_recv_indices;
+    std::vector<int> off_node_col_to_lcl_proc;
+
+    if (num_recv_nodes)
+    {
+        node_to_proc.resize(num_recv_nodes);
+        proc_idx.resize(num_recv_nodes, 0);
+    }
+    if (off_node_num_cols)
+    {
+        local_recv_indices.resize(off_node_num_cols);
+        off_node_col_to_lcl_proc.resize(off_node_num_cols);
+    }
 
     // Map nodes to procs
     ctr = 0;
@@ -425,6 +434,7 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
         local_recv_sizes[local_proc]++;
         off_node_col_to_lcl_proc[i] = local_proc;
     }
+
     // Create displs based on local_recv_sizes
     local_recv_displs[0] = 0;
     for (int i = 0; i < PPN; i++)
@@ -463,7 +473,11 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
 
     // Send recv_indices to each recv_proc along with their origin 
     // node
-    std::vector<int> send_buffer(2*local_R_par_comm->recv_data->size_msgs);
+    std::vector<int> send_buffer;
+    if (local_R_par_comm->recv_data->size_msgs)
+    {
+        send_buffer.resize(2*local_R_par_comm->recv_data->size_msgs);
+    }
     ctr = 0;
     start_ctr = 0;
     for (int i = 0; i < local_R_par_comm->recv_data->num_msgs; i++)
@@ -509,9 +523,12 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
     local_R_par_comm->send_data->finalize();
 
     // Wait for all sends to complete
-    MPI_Waitall(local_R_par_comm->recv_data->num_msgs,
-            local_R_par_comm->recv_data->requests,
-            MPI_STATUS_IGNORE);
+    if (local_R_par_comm->recv_data->num_msgs)
+    {
+        MPI_Waitall(local_R_par_comm->recv_data->num_msgs,
+                local_R_par_comm->recv_data->requests,
+                MPI_STATUS_IGNORE);
+    }
 }
 
 /**************************************************************
@@ -547,9 +564,18 @@ void TAPComm::form_global_par_comm(const std::vector<int>& send_procs,
     // Send origin nodes of each column recvd in local_R_par_comm
     std::vector<int> node_sizes(num_nodes, 0);
     std::vector<int> node_recv_idx(num_nodes);
-    std::vector<int> node_recv_sizes(recv_procs.size(), 0);
-    std::vector<int> node_recv_displs(recv_procs.size()+1, 0);
-    std::vector<int> node_recv_indices(local_R_par_comm->send_data->size_msgs);
+    std::vector<int> node_recv_sizes;
+    std::vector<int> node_recv_displs(n_recv_procs + 1, 0);
+    std::vector<int> node_recv_indices;
+
+    if (n_recv_procs)
+    {
+        node_recv_sizes.resize(n_recv_procs, 0);
+    }
+    if (local_R_par_comm->send_data->size_msgs)
+    {
+        node_recv_indices.resize(local_R_par_comm->send_data->size_msgs);
+    }
 
     // Find how many values are send to local processes from each node
     // THIS CONTAINS DUPLICATES
@@ -624,10 +650,12 @@ void TAPComm::form_global_par_comm(const std::vector<int>& send_procs,
     }
     global_par_comm->send_data->finalize();
 
-    MPI_Waitall(global_par_comm->recv_data->num_msgs,
-            global_par_comm->recv_data->requests,
-            MPI_STATUS_IGNORE);
-
+    if (global_par_comm->recv_data->num_msgs)
+    {
+        MPI_Waitall(global_par_comm->recv_data->num_msgs,
+                global_par_comm->recv_data->requests,
+                MPI_STATUS_IGNORE);
+    }
 }
 
 /**************************************************************
@@ -761,9 +789,12 @@ void TAPComm::form_local_S_par_comm(const int first_local_col)
     }
     local_S_par_comm->send_data->finalize();
 
-    MPI_Waitall(local_S_par_comm->recv_data->num_msgs,
-            local_S_par_comm->recv_data->requests,
-            MPI_STATUS_IGNORE);
+    if (local_S_par_comm->recv_data->num_msgs)
+    {
+        MPI_Waitall(local_S_par_comm->recv_data->num_msgs,
+                local_S_par_comm->recv_data->requests,
+                MPI_STATUS_IGNORE);
+    }
 }
 
 /**************************************************************
@@ -892,8 +923,11 @@ void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
     }
     local_L_par_comm->send_data->finalize();
     
-    MPI_Waitall(local_L_par_comm->recv_data->num_msgs,
-            local_L_par_comm->recv_data->requests, MPI_STATUSES_IGNORE);
+    if (local_L_par_comm->recv_data->num_msgs)
+    {
+        MPI_Waitall(local_L_par_comm->recv_data->num_msgs,
+                local_L_par_comm->recv_data->requests, MPI_STATUSES_IGNORE);
+    }
 }
 
 /**************************************************************
