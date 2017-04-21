@@ -220,26 +220,29 @@ namespace raptor
             // Receive any messages, regardless of source (which is unknown)
             int finished, msg_avail;
             MPI_Request barrier_request;
-            MPI_Testall(recv_data->num_msgs, recv_data->requests, &finished,
-                    MPI_STATUSES_IGNORE);
-            while (!finished)
-            {
-                MPI_Iprobe(MPI_ANY_SOURCE, tag, comm, &msg_avail, &recv_status);
-                if (msg_avail)
-                {
-                    MPI_Get_count(&recv_status, MPI_INT, &count);
-                    proc = recv_status.MPI_SOURCE;
-                    int recvbuf[count];
-                    MPI_Recv(recvbuf, count, MPI_INT, proc, tag, comm, &recv_status);
-                    for (int i = 0; i < count; i++)
-                    {
-                        recvbuf[i] -= first_local_col;
-                    }
-                    send_data->add_msg(proc, count, recvbuf);
-                }
-                MPI_Testall(recv_data->num_msgs, recv_data->requests, &finished,
+	    if (recv_data->num_msgs)
+	    {
+            	MPI_Testall(recv_data->num_msgs, recv_data->requests, &finished,
                         MPI_STATUSES_IGNORE);
-            }
+                while (!finished)
+                {
+                    MPI_Iprobe(MPI_ANY_SOURCE, tag, comm, &msg_avail, &recv_status);
+                    if (msg_avail)
+                    {
+                        MPI_Get_count(&recv_status, MPI_INT, &count);
+                        proc = recv_status.MPI_SOURCE;
+                        int recvbuf[count];
+                        MPI_Recv(recvbuf, count, MPI_INT, proc, tag, comm, &recv_status);
+                        for (int i = 0; i < count; i++)
+                        {
+                            recvbuf[i] -= first_local_col;
+                        }
+                        send_data->add_msg(proc, count, recvbuf);
+                    }
+                    MPI_Testall(recv_data->num_msgs, recv_data->requests, &finished,
+                            MPI_STATUSES_IGNORE);
+                }
+	    }
             MPI_Ibarrier(comm, &barrier_request);
             MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
             while (!finished)
