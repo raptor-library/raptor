@@ -135,6 +135,7 @@ raptor::ParCSRMatrix* convert(hypre_ParCSRMatrix* A_hypre, MPI_Comm comm_mat)
         }
         A->on_proc->idx1.push_back(A->on_proc->idx2.size());
     }
+    A->on_proc->nnz = A->on_proc->idx1[diag_rows];
     
     A->off_proc->idx1.push_back(0);
     for (int i = 0; i < diag_rows; i++)
@@ -152,6 +153,7 @@ raptor::ParCSRMatrix* convert(hypre_ParCSRMatrix* A_hypre, MPI_Comm comm_mat)
         }
         A->off_proc->idx1.push_back(A->off_proc->idx2.size());
     }
+    A->off_proc->nnz = A->off_proc->idx1[diag_rows];
 
     A->finalize();
 

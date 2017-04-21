@@ -281,7 +281,7 @@ void ParMatrix::copy(ParCOOMatrix* A)
 
 // Communication helper -- on_proc and off_proc must be CSRMatrix*
 // TODO -- fix this so it works for ParComm or TAPComm
-CSRMatrix* comm_csr(ParComm* comm, 
+CSRMatrix* comm_csr(CommPkg* comm, 
         Matrix* on_proc, 
         Matrix* off_proc,
         int global_num_cols, 
@@ -290,190 +290,46 @@ CSRMatrix* comm_csr(ParComm* comm,
 {
     Vector& recvbuf = comm->get_recv_buffer();
 
-    // Number of rows in recv_mat == size_recvs
-    // Number of columns is unknown (and does not matter)
-    CSRMatrix* recv_mat = new CSRMatrix(recvbuf.size,
-            global_num_cols);
+    int start, end;
+    int ctr;
+    int global_col;
 
-    // Calculate nnz/row, for each row to be communicated
-    std::vector<int> send_row_sizes(comm->send_data->size_msgs, 0);
-    std::vector<int> row_sizes;
-    if (comm->recv_data->size_msgs)
+    int nnz = on_proc->nnz + off_proc->nnz;
+    std::vector<int> rowptr(on_proc->n_rows + 1);
+    std::vector<int> col_indices;
+    std::vector<double> values;
+    if (nnz)
     {
-        row_sizes.resize(comm->recv_data->size_msgs);
+        col_indices.resize(nnz);
+        values.resize(nnz);
     }
 
-    int send_mat_size = 0;
-    for (int i = 0; i < comm->send_data->num_msgs; i++)
+    ctr = 0;
+    rowptr[0] = ctr;
+    for (int i = 0; i < on_proc->n_rows; i++)
     {
-        int start = comm->send_data->indptr[i];
-        int end = comm->send_data->indptr[i+1];
-        int proc = comm->send_data->procs[i];
-
+        start = on_proc->idx1[i];
+        end = on_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            int row = comm->send_data->indices[j];
-            int row_size = (on_proc->idx1[row+1] - on_proc->idx1[row])
-                + (off_proc->idx1[row+1] - off_proc->idx1[row]);
-            send_row_sizes[j] = row_size;
-            send_mat_size += row_size;
+            global_col = on_proc->idx2[j] + first_local_col;
+            col_indices[ctr] = global_col;
+            values[ctr++] = on_proc->vals[j];
         }
 
-        // Send nnz/row for each row to be communicated
-        MPI_Isend(&(send_row_sizes[start]), end - start, MPI_INT, proc, comm->key,
-                MPI_COMM_WORLD, &(comm->send_data->requests[i]));
-    }
-
-    // Recv row sizes corresponding to each off_proc column
-    for (int i = 0; i < comm->recv_data->num_msgs; i++)
-    {
-        int start = comm->recv_data->indptr[i];
-        int end = comm->recv_data->indptr[i+1];
-        int proc = comm->recv_data->procs[i];
-
-        MPI_Irecv(&(row_sizes[start]), end - start, MPI_INT, proc, comm->key,
-               MPI_COMM_WORLD, &(comm->recv_data->requests[i])); 
-    }
-
-    // Wait for row communication to complete
-    
-    if (comm->recv_data->num_msgs)
-    {
-        MPI_Waitall(comm->recv_data->num_msgs,
-                comm->recv_data->requests,
-                MPI_STATUS_IGNORE);
-    }
-
-    if (comm->send_data->num_msgs)
-    {
-        MPI_Waitall(comm->send_data->num_msgs,
-                comm->send_data->requests,
-                MPI_STATUS_IGNORE);
-    }
-
-    // Allocate Matrix Space
-    recv_mat->idx1[0] = 0;
-    for (int i = 0; i < comm->recv_data->size_msgs; i++)
-    {
-        recv_mat->idx1[i+1] = recv_mat->idx1[i] + row_sizes[i];
-    }
-    recv_mat->nnz = recv_mat->idx1[comm->recv_data->size_msgs];
-    if (recv_mat->nnz)
-    {
-        recv_mat->idx2.resize(recv_mat->nnz);
-        recv_mat->vals.resize(recv_mat->nnz);
-    }
-
-    struct PairData{ 
-        double val; 
-        int   index; 
-    }; 
-    PairData* send_data = NULL;
-    PairData* recv_data = NULL;
-
-    if (send_mat_size)
-    {
-        send_data = new PairData[send_mat_size];
-    }
-    if (recv_mat->nnz)
-    {
-        recv_data = new PairData[recv_mat->nnz];
-    }
-
-    // Send pair_data (column indices + values) for each row
-    // Can use MPI_DOUBLE_INT
-    int ctr = 0;
-    int prev_ctr = 0;
-    for (int i = 0; i < comm->send_data->num_msgs; i++)
-    {
-        int start = comm->send_data->indptr[i];
-        int end = comm->send_data->indptr[i+1];
-        int proc = comm->send_data->procs[i];
-
+        start = off_proc->idx1[i];
+        end = off_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            int row = comm->send_data->indices[j];
-
-            // Send value / column indices for all nonzeros in row
-            int row_start = on_proc->idx1[row];
-            int row_end = on_proc->idx1[row+1];
-            for (int k = row_start; k < row_end; k++)
-            {
-                send_data[ctr].val = on_proc->vals[k];
-                send_data[ctr++].index = on_proc->idx2[k] + first_local_col;
-            }
-
-            row_start = off_proc->idx1[row];
-            row_end = off_proc->idx1[row+1];
-            for (int k = row_start; k < row_end; k++)
-            {
-                send_data[ctr].val = off_proc->vals[k];
-                send_data[ctr++].index = off_proc_column_map[off_proc->idx2[k]];
-            }
+            global_col = off_proc_column_map[off_proc->idx2[j]];
+            col_indices[ctr] = global_col;
+            values[ctr++] = off_proc->vals[j];
         }
-
-        // Send nnz/row for each row to be communicated
-        if (ctr - prev_ctr)
-        {
-            MPI_Isend(&(send_data[prev_ctr]), ctr - prev_ctr, MPI_DOUBLE_INT, 
-                    proc, comm->key, MPI_COMM_WORLD, &(comm->send_data->requests[i]));
-            prev_ctr = ctr;
-        }
-        else
-        {
-            comm->send_data->requests[i] = MPI_REQUEST_NULL;
-        }
+        rowptr[i+1] = ctr;
     }
 
-    // Recv pair_data corresponding to each off_proc column
-    // and add it to correct location in matrix
-    for (int i = 0; i < comm->recv_data->num_msgs; i++)
-    {
-        int start = comm->recv_data->indptr[i];
-        int end = comm->recv_data->indptr[i+1];
-        int proc = comm->recv_data->procs[i];
-
-        int start_idx = recv_mat->idx1[start];
-        int end_idx = recv_mat->idx1[end];
-        if (end_idx - start_idx)
-        {
-            MPI_Irecv(&(recv_data[start_idx]), end_idx - start_idx, MPI_DOUBLE_INT,
-                    proc, comm->key, MPI_COMM_WORLD, &(comm->recv_data->requests[i]));
-        }
-        else
-        {
-            comm->recv_data->requests[i] = MPI_REQUEST_NULL;
-        }
-
-    }
-
-    if (comm->recv_data->num_msgs)
-    {
-        MPI_Waitall(comm->recv_data->num_msgs,
-                comm->recv_data->requests,
-                MPI_STATUS_IGNORE);
-    }
-
-    if (comm->send_data->num_msgs)
-    {
-        MPI_Waitall(comm->send_data->num_msgs,
-                comm->send_data->requests,
-                MPI_STATUS_IGNORE);
-    }
-
-    for (int i = 0; i < recv_mat->nnz; i++)
-    {
-        recv_mat->idx2[i] = recv_data[i].index;
-        recv_mat->vals[i] = recv_data[i].val;
-    }
-
-    delete[] send_data;
-    delete[] recv_data;
-
-    return recv_mat;
+    return comm->communicate(rowptr, col_indices, values, MPI_COMM_WORLD);
 }
-
-
 
 void ParCOOMatrix::copy(ParCSRMatrix* A)
 {
@@ -508,7 +364,7 @@ void ParCOOMatrix::copy(ParCOOMatrix* A)
     off_proc = new COOMatrix((COOMatrix*) A->off_proc);
 }
 
-Matrix* ParCOOMatrix::communicate(ParComm* comm)
+Matrix* ParCOOMatrix::communicate(CommPkg* comm)
 {
     printf("Not implemented for COO Matrices.\n");
     return NULL;
@@ -544,7 +400,7 @@ void ParCSRMatrix::copy(ParCOOMatrix* A)
     off_proc = new CSRMatrix((COOMatrix*) A->off_proc);
 }
 
-Matrix* ParCSRMatrix::communicate(ParComm* comm)
+Matrix* ParCSRMatrix::communicate(CommPkg* comm)
 {
     return comm_csr(comm, on_proc, off_proc, global_num_cols,
             off_proc_column_map, first_local_col);
@@ -583,7 +439,7 @@ void ParCSCMatrix::copy(ParCOOMatrix* A)
     off_proc = new CSCMatrix((COOMatrix*) A->off_proc);
 }
 
-Matrix* ParCSCMatrix::communicate(ParComm* comm)
+Matrix* ParCSCMatrix::communicate(CommPkg* comm)
 {
     Matrix* on_proc_csr = new CSRMatrix((CSCMatrix*) on_proc);
     Matrix* off_proc_csr = new CSRMatrix((CSCMatrix*) off_proc);

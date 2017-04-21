@@ -175,6 +175,7 @@ namespace raptor
     void tap_residual(ParVector& x, ParVector& b, ParVector& r);
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
+    void tap_mult(ParCSRMatrix& B, ParCSRMatrix* C);
     void mult(ParCSRMatrix& B, ParCSRMatrix* C);
     void mult(ParCSCMatrix& B, ParCSCMatrix* C);
     void mult(ParCSCMatrix& B, ParCSRMatrix* C);
@@ -182,7 +183,7 @@ namespace raptor
     virtual void copy(ParCSRMatrix* A) = 0;
     virtual void copy(ParCSCMatrix* A) = 0;
     virtual void copy(ParCOOMatrix* A) = 0;
-    virtual Matrix* communicate(ParComm* comm) = 0;
+    virtual Matrix* communicate(CommPkg* comm) = 0;
 
     // Store dimensions of parallel matrix
     int local_nnz;
@@ -290,9 +291,10 @@ namespace raptor
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
-    Matrix* communicate(ParComm* comm);
+    Matrix* communicate(CommPkg* comm);
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
+    void tap_mult(ParCSRMatrix& B, ParCSRMatrix* C);
   };
 
   class ParCSRMatrix : public ParMatrix
@@ -391,10 +393,11 @@ namespace raptor
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
-    Matrix* communicate(ParComm* comm);
+    Matrix* communicate(CommPkg* comm);
 
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
+    void tap_mult(ParCSRMatrix& B, ParCSRMatrix* C);
     void mult(ParCSRMatrix& B, ParCSRMatrix* C);
     void mult(ParCSCMatrix& B, ParCSCMatrix* C);
     void mult(ParCSCMatrix& B, ParCSRMatrix* C);
@@ -456,10 +459,11 @@ namespace raptor
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
-    Matrix* communicate(ParComm* comm);
+    Matrix* communicate(CommPkg* comm);
 
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
+    void tap_mult(ParCSRMatrix& B, ParCSRMatrix* C);
     void mult(ParCSCMatrix& B, ParCSCMatrix* C);
   };
 }

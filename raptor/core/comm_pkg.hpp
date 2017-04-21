@@ -5,6 +5,7 @@
 
 #include <mpi.h>
 #include "comm_data.hpp"
+#include "matrix.hpp"
 
 #define STANDARD_PPN 4
 #define STANDARD_PROC_LAYOUT 1
@@ -44,6 +45,9 @@ namespace raptor
         virtual void communicate(data_t* values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
         virtual void init_comm(data_t* values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
         virtual void complete_comm() = 0;
+        virtual CSRMatrix* communicate(std::vector<int>& rowptr, 
+                std::vector<int>& col_indices,
+                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
         virtual Vector& get_recv_buffer() = 0;
         int find_proc_col_starts(const int first_local_col, 
                 const int last_local_col,
@@ -282,6 +286,9 @@ namespace raptor
         void communicate(data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
         void init_comm(data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
         void complete_comm();
+        CSRMatrix* communicate(std::vector<int>& rowptr, std::vector<int>& col_indices,
+                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
+
         Vector& get_recv_buffer()
         {
             return recv_data->buffer;
@@ -484,13 +491,17 @@ namespace raptor
             {
                 // Want a single recv buffer local_R and local_L par_comms
                 recv_buffer.set_size(recv_size);
+                orig_to_R.resize(recv_size, -1);
+                orig_to_L.resize(recv_size, -1);
 
                 // Map local_R recvs to original off_proc_column_map
                 R_to_orig.resize(local_R_par_comm->recv_data->size_msgs);
                 for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
                 {
                     idx = local_R_par_comm->recv_data->indices[i];
-                    R_to_orig[i] = off_node_to_off_proc[idx];
+                    int orig_i = off_node_to_off_proc[idx];
+                    R_to_orig[i] = orig_i;
+                    orig_to_R[orig_i] = i;
                 }
 
                 // Map local_L recvs to original off_proc_column_map
@@ -498,7 +509,9 @@ namespace raptor
                 for (int i = 0; i < local_L_par_comm->recv_data->size_msgs; i++)
                 {
                     idx = local_L_par_comm->recv_data->indices[i];
-                    L_to_orig[i] = on_node_to_off_proc[idx];
+                    int orig_i = on_node_to_off_proc[idx];
+                    L_to_orig[i] = orig_i;
+                    orig_to_L[orig_i] = i;
                 }
             }
         }
@@ -611,6 +624,8 @@ namespace raptor
         void communicate(data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
         void init_comm(data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
         void complete_comm();
+        CSRMatrix* communicate(std::vector<int>& rowptr, std::vector<int>& col_indices,
+                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
         Vector& get_recv_buffer()
         {
             return recv_buffer;
@@ -624,6 +639,8 @@ namespace raptor
         Vector recv_buffer;
         std::vector<int> L_to_orig;
         std::vector<int> R_to_orig;
+        std::vector<int> orig_to_L;
+        std::vector<int> orig_to_R;
         MPI_Comm local_comm;
         int PPN;
         int num_nodes;
