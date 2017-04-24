@@ -44,15 +44,14 @@ int main(int argc, char *argv[])
     hypre_ParVector* par_b;
     HYPRE_IJVectorGetObject(b_h, (void **) &par_b);
 
-    //int coarsen_type = 10;
-    //int interp_type = 6;
-    //int Pmx = 0;
-    //int agg_num_levels = 1;
+    int coarsen_type = 10;
+    int interp_type = 6;
+    int agg_num_levels = 1;
     int p_max_elmts = 0;
     double strong_threshold = 0.25;
-    int coarsen_type = 6;
-    int interp_type = 0;
-    int agg_num_levels = 0;
+    //int coarsen_type = 6;
+    //int interp_type = 0;
+    //int agg_num_levels = 0;
 
     HYPRE_Solver solver_data = hypre_create_hierarchy(parcsr_A, par_x, par_b, 
                             coarsen_type, interp_type, p_max_elmts, agg_num_levels, 
@@ -78,7 +77,7 @@ int main(int argc, char *argv[])
                 A_l->first_local_row, A_l->first_local_col, 
                 A_l->global_num_cols, A_l->local_num_cols);
 
-        for (int j = 0; j < 1; j++)
+        for (int j = 0; j < 5; j++)
         {
             MPI_Barrier(MPI_COMM_WORLD);
             t0 = MPI_Wtime();
@@ -95,6 +94,7 @@ int main(int argc, char *argv[])
             tfinal = MPI_Wtime() - t0;
             MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
             if (rank == 0) printf("Raptor Matmult time = %e\n", t0);
+            delete C_l;
 
             MPI_Barrier(MPI_COMM_WORLD);
             t0 = MPI_Wtime();
@@ -102,41 +102,7 @@ int main(int argc, char *argv[])
             A_l->tap_mult(*P_l, C_l_tap);
             tfinal = MPI_Wtime() - t0;
             MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("Raptor Matmult time = %e\n", t0);
-
-            assert(C_l->local_nnz == C_l_tap->local_nnz);
-            for (int i = 0; i < C_l->local_num_rows; i++)
-            {
-                int start = C_l->on_proc->idx1[i];
-                int end = C_l->on_proc->idx1[i+1];
-
-                assert(start == C_l_tap->on_proc->idx1[i]);
-                assert(end == C_l_tap->on_proc->idx1[i+1]);
-
-                for (int j = start; j < end; j++)
-                {
-                    assert(C_l->on_proc->idx2[j] == C_l_tap->on_proc->idx2[j]);
-                    assert(fabs(C_l->on_proc->vals[j] - 
-                                C_l_tap->on_proc->vals[j]) < 1e-06);
-                }
-
-                start = C_l->off_proc->idx1[i];
-                end = C_l->off_proc->idx1[i+1];
-
-                assert(start == C_l_tap->off_proc->idx1[i]);
-                assert(end == C_l_tap->off_proc->idx1[i+1]);
-
-                for (int j = start; j < end; j++)
-                {
-                    assert(C_l->off_proc->idx2[j] == C_l_tap->off_proc->idx2[j]);
-                    assert(fabs(C_l->off_proc->vals[j] - 
-                                C_l_tap->off_proc->vals[j]) < 1e-06);
-                }
-
-
-            }
-
-            delete C_l;
+            if (rank == 0) printf("Raptor TAPMatmult time = %e\n", t0);
             delete C_l_tap;
         }
 

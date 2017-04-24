@@ -441,6 +441,21 @@ namespace raptor
                 rank_ordering = STANDARD_PROC_LAYOUT;
             }
 
+            if (rank_ordering == 3)
+            {
+                custom_rank_order.resize(num_procs);
+                char* rank_order_file = "/u/sciteam/bienz/mpich/custom_rank_order.txt";
+                char* file_setting = "r";
+                FILE *infile = fopen(rank_order_file, file_setting);
+                int in_rank;
+                for (int i = 0; i < num_procs; i++)
+                {
+                    fread(&in_rank, 4, 1, infile);
+                    custom_rank_order[in_rank] = i;
+                }
+                fclose(infile);
+            }
+
             num_nodes = num_procs / PPN;
             if (num_procs % PPN) num_nodes++;
             rank_node = get_node(rank);
@@ -644,6 +659,7 @@ namespace raptor
         std::vector<int> R_to_orig;
         std::vector<int> orig_to_L;
         std::vector<int> orig_to_R;
+        std::vector<int> custom_rank_order;
         MPI_Comm local_comm;
         int PPN;
         int num_nodes;
