@@ -444,8 +444,7 @@ namespace raptor
             if (rank_ordering == 3)
             {
                 custom_rank_order.resize(num_procs);
-                char* rank_order_file = 
-                    "/Users/abienz/Documents/Parallel/mpich/custom_rank_order.txt";
+                char* rank_order_file = "/u/sciteam/bienz/mpich/custom_rank_order.txt";
                 char* file_setting = "r";
                 FILE *infile = fopen(rank_order_file, file_setting);
                 int in_rank;

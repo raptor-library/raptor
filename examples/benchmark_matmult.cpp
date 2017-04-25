@@ -44,15 +44,15 @@ int main(int argc, char *argv[])
     hypre_ParVector* par_b;
     HYPRE_IJVectorGetObject(b_h, (void **) &par_b);
 
-    //int coarsen_type = 10;
-    //int interp_type = 6;
-    //int Pmx = 0;
-    //int agg_num_levels = 1;
+    int coarsen_type = 10;
+    int interp_type = 6;
+    int Pmx = 0;
+    int agg_num_levels = 1;
     int p_max_elmts = 0;
     double strong_threshold = 0.25;
-    int coarsen_type = 6;
-    int interp_type = 0;
-    int agg_num_levels = 0;
+//    int coarsen_type = 6;
+//    int interp_type = 0;
+//    int agg_num_levels = 0;
 
     HYPRE_Solver solver_data = hypre_create_hierarchy(parcsr_A, par_x, par_b, 
                             coarsen_type, interp_type, p_max_elmts, agg_num_levels, 

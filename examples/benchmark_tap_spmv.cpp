@@ -26,29 +26,20 @@ int main(int argc, char *argv[])
     ParVector b;
 
     int n_tests = 5;
-//    char* folder = "/home/bienz2/exxonmobildata/SPE10-4x4-20141227/matrix_blk_coord/mat_128";
-//    char* iname = "index_R";
-//    char* fname = "matrix_blk_coord_TS414_TSA0_NI0_FT0.010000_R";
-//    char* suffix = ".bcoord";
-//    int* global_num_rows;
 
-    // Can pass number of tests and folder as parameters
+    int mat_n = 1024;
     if (argc > 1)
     {
-        n_tests = atoi(argv[1]);
-        if (argc > 2)
-        {
-//            folder = argv[2];
-        }
+        mat_n = atoi(argv[1]);
     }
 
-int dim = 3;
-//int grid[3] = {60, 220, 85};
-int grid[3] = {10, 20, 15};
-double* stencil = laplace_stencil_27pt();
-A = par_stencil_grid(stencil, grid, dim);
-delete[] stencil;
-    //A = exxon_reader(folder, iname, fname, suffix, &global_num_rows);
+    char* folder = "/u/sciteam/bienz/scratch/exxon_10_16/mat_1024/spe10-1024-blk_coord";
+    char* iname = "index_R";
+    char* fname = "spe10-1024-blk_coord_TS24_TSA0_NI1_R";
+    char* suffix = ".bcoord_bin";
+    int* global_num_rows;
+
+    A = exxon_reader(folder, iname, fname, suffix, &global_num_rows);
     b = ParVector(A->global_num_rows, A->local_num_rows, A->first_local_row);
     x = ParVector(A->global_num_cols, A->local_num_cols, A->first_local_col);
     A->tap_comm = new TAPComm(A->off_proc_column_map,
@@ -126,7 +117,7 @@ delete[] stencil;
         }
     }
 
-//    delete[] global_num_rows;
+    delete[] global_num_rows;
 
     delete A;
     MPI_Finalize();
