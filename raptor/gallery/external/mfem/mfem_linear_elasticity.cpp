@@ -9,7 +9,8 @@
 using namespace std;
 using namespace mfem;
 
-void mfem_linear_elasticity(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector** x_raptor_ptr, raptor::ParVector** b_raptor_ptr, const char* mesh_file, int num_elements, int order, MPI_Comm comm_mat)
+raptor::ParCSRMatrix* mfem_linear_elasticity(const char* mesh_file, int num_elements, 
+        int order, MPI_Comm comm_mat)
 {
     int myid, num_procs;
     MPI_Comm_rank(comm_mat, &myid);
@@ -25,7 +26,7 @@ void mfem_linear_elasticity(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector*
       if (myid == 0)
          cerr << "\nCan not open mesh file: " << mesh_file << '\n' << endl;
       MPI_Finalize();
-      return;
+      return NULL;
    }
    mesh = new Mesh(imesh, 1, 1);
    imesh.close();
@@ -38,7 +39,7 @@ void mfem_linear_elasticity(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector*
               << "two boundary attributes! (See schematic in ex2.cpp)\n"
               << endl;
       MPI_Finalize();
-      return;
+      return NULL;
    }
 
    // 4. Select the order of the finite element discretization space. For NURBS
@@ -160,20 +161,7 @@ void mfem_linear_elasticity(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector*
    delete b;
 
    hypre_ParCSRMatrix *A_hypre = A->StealData();
-   double* b_hypre = B->GetData();
-   double* x_hypre = X->GetData();
-
-   raptor::ParMatrix *A_raptor = convert(A_hypre, comm_mat);
-   raptor::ParVector* b_raptor = new raptor::ParVector(A_raptor->global_rows, A_raptor->local_rows, A_raptor->first_row);
-   raptor::ParVector* x_raptor = new raptor::ParVector(A_raptor->global_rows, A_raptor->local_rows, A_raptor->first_row);
-
-   raptor::data_t* x_raptor_data = x_raptor->local->data();
-   raptor::data_t* b_raptor_data = b_raptor->local->data();
-   for (int i = 0; i < A_raptor->local_rows; i++)
-   {
-      x_raptor_data[i] = x_hypre[i];
-      b_raptor_data[i] = b_hypre[i];
-   }
+   raptor::ParCSRMatrix *A_raptor = convert(A_hypre, comm_mat);
    
    delete B;
    delete X;
@@ -181,8 +169,5 @@ void mfem_linear_elasticity(raptor::ParMatrix** A_raptor_ptr, raptor::ParVector*
    //remove_shared_ptrs(A_hypre);
    hypre_ParCSRMatrixDestroy(A_hypre);
 
-   *A_raptor_ptr = A_raptor;
-   *x_raptor_ptr = x_raptor;
-   *b_raptor_ptr = b_raptor;
-
+   return A_raptor;
 }

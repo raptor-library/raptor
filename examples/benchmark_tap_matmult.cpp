@@ -11,6 +11,7 @@
 #include "gallery/laplacian27pt.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/external/hypre_wrapper.hpp"
+#include "gallery/external/mfem_wrapper.hpp"
 
 //using namespace raptor;
 int main(int argc, char *argv[])
@@ -28,53 +29,78 @@ int main(int argc, char *argv[])
     if (argc > 1)
     {
         system = atoi(argv[1]);
-        if (argc > 2)
-        {
-            n = atoi(argv[2]);
-        }
     }
 
     ParCSRMatrix* A;
     ParVector x;
     ParVector b;
 
-    double* stencil;
-    std::vector<int> grid;
     int coarsen_type = 6;
     int interp_type = 0;
     double strong_threshold = 0.25;
     int agg_num_levels = 0;
     int p_max_elmts = 0;
-    if (system == 0)
+
+    if (system < 2)
     {
-        dim = 3;
-        grid.resize(dim, n);
-        stencil = laplace_stencil_27pt();
-        agg_num_levels = 1;
-        interp_type = 6;
-        coarsen_type = 10;
-    }
-    else if (system == 1)
-    {
-        dim = 2;
-        grid.resize(dim, n);
-        double eps = 0.001;
-        double theta = M_PI/8.0;
-        if (argc > 3)
+        double* stencil = NULL;
+        std::vector<int> grid;
+        if (argc > 2)
         {
-            eps = atof(argv[3]);
-            if (argc > 4)
-            {
-                theta = atof(argv[4]);
-            }
+            n = atoi(argv[2]);
         }
 
-        stencil = diffusion_stencil_2d(eps, theta);
+        if (system == 0)
+        {
+            dim = 3;
+            grid.resize(dim, n);
+            stencil = laplace_stencil_27pt();
+            agg_num_levels = 1;
+            interp_type = 6;
+            coarsen_type = 10;
+        }
+        else if (system == 1)
+        {
+            dim = 2;
+            grid.resize(dim, n);
+            double eps = 0.001;
+            double theta = M_PI/8.0;
+            if (argc > 3)
+            {
+                eps = atof(argv[3]);
+                if (argc > 4)
+                {
+                    theta = atof(argv[4]);
+                }
+            }
+            stencil = diffusion_stencil_2d(eps, theta);
+        }
+        A = par_stencil_grid(stencil, grid.data(), dim);
+        delete[] stencil;
     }
-    A = par_stencil_grid(stencil, grid.data(), dim);
+    else if (system == 2)
+    {
+        char* mesh_file = "/Users/abienz/Documents/Parallel/mfem/data/beam-tet.mesh";
+        int num_elements = 2;
+        int order = 3;
+        if (argc > 2)
+        {
+            num_elements = atoi(argv[2]);
+            if (argc > 3)
+            {
+                order = atoi(argv[3]);
+                if (argc > 4)
+                {
+                    mesh_file = argv[4];
+                }
+            }
+        }
+        A = mfem_linear_elasticity(mesh_file, num_elements, order);
+    }
+
     x = ParVector(A->global_num_cols, A->local_num_cols, A->first_local_col);
     b = ParVector(A->global_num_rows, A->local_num_rows, A->first_local_row);
-    delete[] stencil;
+
     
     HYPRE_IJMatrix A_h = convert(A);
     HYPRE_IJVector x_h = convert(&x);
