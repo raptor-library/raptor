@@ -10,6 +10,8 @@ set(gallery_SOURCES
     gallery/diffusion.hpp
     gallery/stencil.hpp
     gallery/random.hpp
+    gallery/matrix_IO.hpp
+    gallery/matrix_IO.cpp
     gallery/par_stencil.hpp
     gallery/par_random.hpp
     gallery/exxon_reader.hpp

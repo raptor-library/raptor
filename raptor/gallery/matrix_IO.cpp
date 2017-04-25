@@ -2,14 +2,14 @@
 #include <float.h>
 #include <stdio.h>
 
-ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int symmetric)
+ParCSRMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int symmetric)
 {
     index_t num_rows, num_cols, nnz;
     int comm_size, rank, ret_code;
     index_t* row_ptr;
     index_t* col;
     data_t* data;
-    ParMatrix* A;
+    ParCOOMatrix* A;
     
     if (single_file) 
     {
@@ -31,7 +31,7 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int sy
         
         fclose(infile);
 
-        A = new ParMatrix(num_rows, num_cols, MPI_COMM_WORLD);
+        A = new ParCOOMatrix(num_rows, num_cols, MPI_COMM_WORLD);
 
         // read the file knowing our local rows
         ret_code = mm_read_sparse(filename, A->first_local_row,
@@ -44,9 +44,13 @@ ParMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int sy
         }
     }
 
+    printf("A->onproc->nnz = %d, A->off->nnz = %d\n", 
+            A->on_proc->nnz, A->off_proc->nnz);
     A->finalize();
+    ParCSRMatrix* A_csr = new ParCSRMatrix(A);
+    delete A;
 
-    return A;
+    return A_csr;
 }
 
 int mm_copy_header(const char* fname)

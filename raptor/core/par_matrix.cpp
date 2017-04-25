@@ -144,12 +144,23 @@ void ParMatrix::finalize(bool create_comm)
 {
     // Condense columns in off_proc, storing global
     // columns as 0-num_cols, and store mapping
-    off_proc->condense_cols();
-    off_proc->sort();
-    on_proc->sort();
-    off_proc_column_map = off_proc->get_col_list();
-    off_proc_num_cols = off_proc_column_map.size();   
-    off_proc->resize(local_num_rows, off_proc_num_cols);
+    if (off_proc->nnz)
+    {
+        off_proc->condense_cols();
+        off_proc->sort();
+        off_proc_column_map = off_proc->get_col_list();
+        off_proc_num_cols = off_proc_column_map.size();   
+        off_proc->resize(local_num_rows, off_proc_num_cols);
+    }
+    else
+    {
+        off_proc_num_cols = 0;
+    }
+
+    if (on_proc->nnz)
+    {
+        on_proc->sort();
+    }
         
     local_nnz = on_proc->nnz + off_proc->nnz;
 
