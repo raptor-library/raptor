@@ -4,16 +4,16 @@ using namespace raptor;
 
 // Assumes C is already initialized
 
-void ParCSRMatrix::tap_mult(ParCSRMatrix& B, ParCSRMatrix* C)
+void ParCSRMatrix::mult_helper(ParCSRMatrix& B, ParCSRMatrix* C, 
+        CSRMatrix* recv_mat)
 {
-    // Check that communication package has been initialized
-    if (tap_comm == NULL)
-    {
-        tap_comm = new TAPComm(off_proc_column_map, first_local_row,
-            first_local_col, global_num_cols, local_num_cols);
-    }
-
-    CSRMatrix* recv_mat = (CSRMatrix*) B.communicate(tap_comm);
+    // Declare Variables
+    int row_start, row_end;
+    int row_start_B, row_end_B;
+    int row_start_recv, row_end_recv;
+    int global_col, col, col_B, col_C;
+    int tmp;
+    double val;
 
     // Set dimensions of C
     C->global_num_rows = global_num_rows;
@@ -41,19 +41,51 @@ void ParCSRMatrix::tap_mult(ParCSRMatrix& B, ParCSRMatrix* C)
     C->off_proc->col_list.clear();
     C->off_proc->row_list.clear();
 
+
+    // Split recv_mat into on and off proc portions
+    std::vector<int> recv_on_rowptr(recv_mat->n_rows+1);
+    std::vector<int> recv_on_cols;
+    std::vector<double> recv_on_vals;
+
+    std::vector<int> recv_off_rowptr(recv_mat->n_rows+1);
+    std::vector<int> recv_off_cols;
+    std::vector<double> recv_off_vals;
+
+    recv_on_rowptr[0] = 0;
+    recv_off_rowptr[0] = 0;
+    for (int i = 0; i < recv_mat->n_rows; i++)
+    {
+        row_start = recv_mat->idx1[i];
+        row_end = recv_mat->idx1[i+1];
+        for (int j = row_start; j < row_end; j++)
+        {
+            global_col = recv_mat->idx2[j];
+            if (global_col < C->first_local_col ||
+                    global_col >= C->first_local_col + C->local_num_cols)
+            {
+                recv_off_cols.push_back(global_col);
+                recv_off_vals.push_back(recv_mat->vals[j]);
+            }
+            else
+            {
+                recv_on_cols.push_back(global_col - C->first_local_col);
+                recv_on_vals.push_back(recv_mat->vals[j]);
+            }
+        }
+        recv_on_rowptr[i+1] = recv_on_cols.size();
+        recv_off_rowptr[i+1] = recv_off_cols.size();
+    }
+
     // Calculate global_to_C and B_to_C column maps
     std::map<int, int> global_to_C;
     std::vector<int> B_to_C(B.off_proc_num_cols);
 
     // Create set of global columns in B_off_proc and recv_mat
     std::set<int> C_col_set;
-    for (std::vector<int>::iterator it = recv_mat->idx2.begin(); 
-            it != recv_mat->idx2.end(); ++it)
+    for (std::vector<int>::iterator it = recv_off_cols.begin(); 
+            it != recv_off_cols.end(); ++it)
     {
-        if (*it < C->first_local_row || *it >= (C->first_local_row + C->local_num_rows))
-        {
-            C_col_set.insert(*it);
-        }
+        C_col_set.insert(*it);
     }
     for (std::vector<int>::iterator it = B.off_proc_column_map.begin(); 
             it != B.off_proc_column_map.end(); ++it)
@@ -73,8 +105,13 @@ void ParCSRMatrix::tap_mult(ParCSRMatrix& B, ParCSRMatrix* C)
     
     for (int i = 0; i < B.off_proc_num_cols; i++)
     {
-        int global_col = B.off_proc_column_map[i];
+        global_col = B.off_proc_column_map[i];
         B_to_C[i] = global_to_C[global_col];
+    }
+    for (std::vector<int>::iterator it = recv_off_cols.begin(); 
+            it != recv_off_cols.end(); ++it)
+    {
+        *it = global_to_C[*it];
     }
 
     // Resize variables of off_proc
@@ -104,19 +141,19 @@ void ParCSRMatrix::tap_mult(ParCSRMatrix& B, ParCSRMatrix* C)
         int off_proc_length = 0;
 
         // Go through A_on_proc first (multiply but local rows of B)
-        int row_start = on_proc->idx1[i];
-        int row_end = on_proc->idx1[i+1];
+        row_start = on_proc->idx1[i];
+        row_end = on_proc->idx1[i+1];
         for (int j = row_start; j < row_end; j++)
         {
-            int col = on_proc->idx2[j];
-            double val = on_proc->vals[j];
+            col = on_proc->idx2[j];
+            val = on_proc->vals[j];
 
             // C_on_proc <- A_on_proc * B_on_proc
-            int row_start_B = B.on_proc->idx1[col];
-            int row_end_B = B.on_proc->idx1[col+1];
+            row_start_B = B.on_proc->idx1[col];
+            row_end_B = B.on_proc->idx1[col+1];
             for (int k = row_start_B; k < row_end_B; k++)
             {
-                int col_B = B.on_proc->idx2[k];
+                col_B = B.on_proc->idx2[k];
                 on_proc_sums[col_B] += val * B.on_proc->vals[k];
                 if (on_proc_next[col_B] == -1)
                 {
@@ -131,8 +168,8 @@ void ParCSRMatrix::tap_mult(ParCSRMatrix& B, ParCSRMatrix* C)
             row_end_B = B.off_proc->idx1[col+1];
             for (int k = row_start_B; k < row_end_B; k++)
             {
-                int col_B = B.off_proc->idx2[k];
-                int col_C = B_to_C[col_B];
+                col_B = B.off_proc->idx2[k];
+                col_C = B_to_C[col_B];
                 off_proc_sums[col_C] += val * B.off_proc->vals[k];
                 if (off_proc_next[col_C] == -1)
                 {
@@ -148,38 +185,34 @@ void ParCSRMatrix::tap_mult(ParCSRMatrix& B, ParCSRMatrix* C)
         row_end = off_proc->idx1[i+1];
         for (int j = row_start; j < row_end; j++)
         {
-            int col = off_proc->idx2[j]; // off_proc col corresponds to row in recv_mat
-            double val = off_proc->vals[j];
+            col = off_proc->idx2[j]; // off_proc col corresponds to row in recv_mat
+            val = off_proc->vals[j];
 
-            // C_on_proc <- A_off_proc * recv_mat_on_proc
-            // C_off_proc <- A_off_proc * recv_mat_off_proc
-            int row_start_recv_mat = recv_mat->idx1[col];
-            int row_end_recv_mat = recv_mat->idx1[col+1];
-            for (int k = row_start_recv_mat; k < row_end_recv_mat; k++)
+            row_start_recv = recv_on_rowptr[col];
+            row_end_recv = recv_on_rowptr[col+1];
+            for (int k = row_start_recv; k < row_end_recv; k++)
             {
-                int global_col = recv_mat->idx2[k];
-                if (global_col < C->first_local_col || 
-                        global_col >= C->first_local_col + C->local_num_cols)
+                col_C = recv_on_cols[k];
+                on_proc_sums[col_C] += val * recv_on_vals[k];
+                if (on_proc_next[col_C] == -1)
                 {
-                    int col_C = global_to_C[global_col];
-                    off_proc_sums[col_C] += val * recv_mat->vals[k];
-                    if (off_proc_next[col_C] == -1)
-                    {
-                        off_proc_next[col_C] = off_proc_head;
-                        off_proc_head = col_C;
-                        off_proc_length++;
-                    }
+                    on_proc_next[col_C] = on_proc_head;
+                    on_proc_head = col_C;
+                    on_proc_length++;
                 }
-                else
+            }
+
+            row_start_recv = recv_off_rowptr[col];
+            row_end_recv = recv_off_rowptr[col+1];
+            for (int k = row_start_recv; k < row_end_recv; k++)
+            {
+                col_C = recv_off_cols[k];
+                off_proc_sums[col_C] += val * recv_off_vals[k];
+                if (off_proc_next[col_C] == -1)
                 {
-                    int col_C = global_col - C->first_local_col;
-                    on_proc_sums[col_C] += val * recv_mat->vals[k];
-                    if (on_proc_next[col_C] == -1)
-                    {
-                        on_proc_next[col_C] = on_proc_head;
-                        on_proc_head = col_C;
-                        on_proc_length++;
-                    }
+                    off_proc_next[col_C] = off_proc_head;
+                    off_proc_head = col_C;
+                    off_proc_length++;
                 }
             }
         }
@@ -187,13 +220,13 @@ void ParCSRMatrix::tap_mult(ParCSRMatrix& B, ParCSRMatrix* C)
         // Add sums to C and update rowptrs
         for (int j = 0; j < on_proc_length; j++)
         {
-            double val = on_proc_sums[on_proc_head];
+            val = on_proc_sums[on_proc_head];
             if (fabs(val) > zero_tol)
             {
                 C->on_proc->idx2.push_back(on_proc_head);
                 C->on_proc->vals.push_back(val);
             }
-            int tmp = on_proc_head;
+            tmp = on_proc_head;
             on_proc_head = on_proc_next[on_proc_head];
             on_proc_next[tmp] = -1;
             on_proc_sums[tmp] = 0;
@@ -202,13 +235,13 @@ void ParCSRMatrix::tap_mult(ParCSRMatrix& B, ParCSRMatrix* C)
 
         for (int j = 0; j < off_proc_length; j++)
         {
-            double val = off_proc_sums[off_proc_head];
+            val = off_proc_sums[off_proc_head];
             if (fabs(val) > zero_tol)
             {
                 C->off_proc->idx2.push_back(off_proc_head);
                 C->off_proc->vals.push_back(val);
             }
-            int tmp = off_proc_head;
+            tmp = off_proc_head;
             off_proc_head = off_proc_next[off_proc_head];
             off_proc_next[tmp] = -1;
             off_proc_sums[tmp] = 0;
@@ -224,6 +257,21 @@ void ParCSRMatrix::tap_mult(ParCSRMatrix& B, ParCSRMatrix* C)
 
     C->local_nnz = C->on_proc->nnz + C->off_proc->nnz;
     C->off_proc_column_map = C->off_proc->get_col_list();
+
+}
+
+void ParCSRMatrix::tap_mult(ParCSRMatrix& B, ParCSRMatrix* C)
+{
+    // Check that communication package has been initialized
+    if (tap_comm == NULL)
+    {
+        tap_comm = new TAPComm(off_proc_column_map, first_local_row,
+            first_local_col, global_num_cols, local_num_cols);
+    }
+
+    CSRMatrix* recv_mat = (CSRMatrix*) B.communicate(tap_comm);
+
+    mult_helper(B, C, recv_mat);
 
     delete recv_mat;
 
@@ -238,217 +286,10 @@ void ParCSRMatrix::mult(ParCSRMatrix& B, ParCSRMatrix* C)
                 global_num_cols, local_num_cols);
     }
 
+
     CSRMatrix* recv_mat = (CSRMatrix*) B.communicate(comm);
 
-    // Set dimensions of C
-    C->global_num_rows = global_num_rows;
-    C->global_num_cols = B.global_num_cols;
-    C->local_num_rows = local_num_rows;
-    C->local_num_cols = B.local_num_cols;
-    C->first_local_row = first_local_row;
-    C->first_local_col = B.first_local_col;
-    
-    // Initialize nnz as 0 (will increment this as nonzeros are added)
-    C->local_nnz = 0;
-
-    // Resize variables of on_proc
-    C->on_proc->n_rows = on_proc->n_rows;
-    C->on_proc->n_cols = B.local_num_cols;
-    C->on_proc->nnz = 0;
-    C->on_proc->idx1.resize(local_num_rows + 1);
-    C->on_proc->idx2.clear();
-    C->on_proc->vals.clear();
-    C->on_proc->idx2.reserve(local_nnz);
-    C->on_proc->vals.reserve(local_nnz);
-
-    C->on_proc->col_list.clear();
-    C->on_proc->row_list.clear();
-    C->off_proc->col_list.clear();
-    C->off_proc->row_list.clear();
-
-    // Calculate global_to_C and B_to_C column maps
-    std::map<int, int> global_to_C;
-    std::vector<int> B_to_C(B.off_proc_num_cols);
-
-    // Create set of global columns in B_off_proc and recv_mat
-    std::set<int> C_col_set;
-    for (std::vector<int>::iterator it = recv_mat->idx2.begin(); 
-            it != recv_mat->idx2.end(); ++it)
-    {
-        if (*it < C->first_local_row || *it >= (C->first_local_row + C->local_num_rows))
-        {
-            C_col_set.insert(*it);
-        }
-    }
-    for (std::vector<int>::iterator it = B.off_proc_column_map.begin(); 
-            it != B.off_proc_column_map.end(); ++it)
-    {
-        C_col_set.insert(*it);
-    }
-
-    // Map global column indices to local enumeration
-    // and initialize C->off_proc_column_map
-    for (std::set<int>::iterator it = C_col_set.begin(); 
-            it != C_col_set.end(); ++it)
-    {
-        global_to_C[*it] = C->off_proc->col_list.size();
-        C->off_proc->col_list.push_back(*it);
-    }
-    C->off_proc_num_cols = C->off_proc->col_list.size();
-    
-    for (int i = 0; i < B.off_proc_num_cols; i++)
-    {
-        int global_col = B.off_proc_column_map[i];
-        B_to_C[i] = global_to_C[global_col];
-    }
-
-    // Resize variables of off_proc
-    C->off_proc->n_rows = local_num_rows;
-    C->off_proc->n_cols = C->off_proc_num_cols;
-    C->off_proc->nnz = 0;
-    C->off_proc->idx1.resize(local_num_rows + 1);
-    C->off_proc->idx2.clear();
-    C->off_proc->vals.clear();
-    C->off_proc->idx2.reserve(local_nnz);
-    C->off_proc->vals.reserve(local_nnz);
-
-    // Variables for calculating row sums
-    std::vector<double> on_proc_sums(C->local_num_cols, 0);
-    std::vector<int> on_proc_next(C->local_num_cols, -1);
-
-    std::vector<double> off_proc_sums(C->off_proc_num_cols, 0);
-    std::vector<int> off_proc_next(C->off_proc_num_cols, -1);
-
-    C->on_proc->idx1[0] = 0;
-    C->off_proc->idx1[0] = 0;
-    for (int i = 0; i < local_num_rows; i++)
-    {
-        int on_proc_head = -2;
-        int on_proc_length = 0;
-        int off_proc_head = -2;
-        int off_proc_length = 0;
-
-        // Go through A_on_proc first (multiply but local rows of B)
-        int row_start = on_proc->idx1[i];
-        int row_end = on_proc->idx1[i+1];
-        for (int j = row_start; j < row_end; j++)
-        {
-            int col = on_proc->idx2[j];
-            double val = on_proc->vals[j];
-
-            // C_on_proc <- A_on_proc * B_on_proc
-            int row_start_B = B.on_proc->idx1[col];
-            int row_end_B = B.on_proc->idx1[col+1];
-            for (int k = row_start_B; k < row_end_B; k++)
-            {
-                int col_B = B.on_proc->idx2[k];
-                on_proc_sums[col_B] += val * B.on_proc->vals[k];
-                if (on_proc_next[col_B] == -1)
-                {
-                    on_proc_next[col_B] = on_proc_head;
-                    on_proc_head = col_B;
-                    on_proc_length++;
-                }
-            }
-
-            // C_off_proc <- A_on_proc * B_off_proc
-            row_start_B = B.off_proc->idx1[col];
-            row_end_B = B.off_proc->idx1[col+1];
-            for (int k = row_start_B; k < row_end_B; k++)
-            {
-                int col_B = B.off_proc->idx2[k];
-                int col_C = B_to_C[col_B];
-                off_proc_sums[col_C] += val * B.off_proc->vals[k];
-                if (off_proc_next[col_C] == -1)
-                {
-                    off_proc_next[col_C] = off_proc_head;
-                    off_proc_head = col_C;
-                    off_proc_length++;
-                }
-            }
-        }
-
-        // Go through A_off_proc (multiply but rows in recv_mat)
-        row_start = off_proc->idx1[i];
-        row_end = off_proc->idx1[i+1];
-        for (int j = row_start; j < row_end; j++)
-        {
-            int col = off_proc->idx2[j]; // off_proc col corresponds to row in recv_mat
-            double val = off_proc->vals[j];
-
-            // C_on_proc <- A_off_proc * recv_mat_on_proc
-            // C_off_proc <- A_off_proc * recv_mat_off_proc
-            int row_start_recv_mat = recv_mat->idx1[col];
-            int row_end_recv_mat = recv_mat->idx1[col+1];
-            for (int k = row_start_recv_mat; k < row_end_recv_mat; k++)
-            {
-                int global_col = recv_mat->idx2[k];
-                if (global_col < C->first_local_col || 
-                        global_col >= C->first_local_col + C->local_num_cols)
-                {
-                    int col_C = global_to_C[global_col];
-                    off_proc_sums[col_C] += val * recv_mat->vals[k];
-                    if (off_proc_next[col_C] == -1)
-                    {
-                        off_proc_next[col_C] = off_proc_head;
-                        off_proc_head = col_C;
-                        off_proc_length++;
-                    }
-                }
-                else
-                {
-                    int col_C = global_col - C->first_local_col;
-                    on_proc_sums[col_C] += val * recv_mat->vals[k];
-                    if (on_proc_next[col_C] == -1)
-                    {
-                        on_proc_next[col_C] = on_proc_head;
-                        on_proc_head = col_C;
-                        on_proc_length++;
-                    }
-                }
-            }
-        }
-
-        // Add sums to C and update rowptrs
-        for (int j = 0; j < on_proc_length; j++)
-        {
-            double val = on_proc_sums[on_proc_head];
-            if (fabs(val) > zero_tol)
-            {
-                C->on_proc->idx2.push_back(on_proc_head);
-                C->on_proc->vals.push_back(val);
-            }
-            int tmp = on_proc_head;
-            on_proc_head = on_proc_next[on_proc_head];
-            on_proc_next[tmp] = -1;
-            on_proc_sums[tmp] = 0;
-        }
-        C->on_proc->idx1[i+1] = C->on_proc->idx2.size();
-
-        for (int j = 0; j < off_proc_length; j++)
-        {
-            double val = off_proc_sums[off_proc_head];
-            if (fabs(val) > zero_tol)
-            {
-                C->off_proc->idx2.push_back(off_proc_head);
-                C->off_proc->vals.push_back(val);
-            }
-            int tmp = off_proc_head;
-            off_proc_head = off_proc_next[off_proc_head];
-            off_proc_next[tmp] = -1;
-            off_proc_sums[tmp] = 0;
-        }
-        C->off_proc->idx1[i+1] = C->off_proc->idx2.size();
-    }
-
-    C->on_proc->nnz = C->on_proc->idx2.size();
-    C->off_proc->nnz = C->off_proc->idx2.size();
-
-    C->on_proc->sort();
-    C->off_proc->sort();
-
-    C->local_nnz = C->on_proc->nnz + C->off_proc->nnz;
-    C->off_proc_column_map = C->off_proc->get_col_list();
+    mult_helper(B, C, recv_mat);
 
     delete recv_mat;
 }

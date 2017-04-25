@@ -401,6 +401,7 @@ namespace raptor
     void mult(ParCSRMatrix& B, ParCSRMatrix* C);
     void mult(ParCSCMatrix& B, ParCSCMatrix* C);
     void mult(ParCSCMatrix& B, ParCSRMatrix* C);
+    void mult_helper(ParCSRMatrix& B, ParCSRMatrix* C, CSRMatrix* recv);
   };
 
   class ParCSCMatrix : public ParMatrix

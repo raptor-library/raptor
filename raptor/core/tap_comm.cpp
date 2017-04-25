@@ -968,6 +968,10 @@ int TAPComm::get_node(int proc)
             return num_nodes - (proc % num_nodes) - 1;
         }
     }
+    else if (rank_ordering == 3)
+    {
+        return custom_rank_order[proc] / PPN;
+    }
     else
     { 
         if (rank == 0)
@@ -1004,6 +1008,10 @@ int TAPComm::get_local_proc(int proc)
     else if (rank_ordering == 1)
     {
         return proc % PPN;
+    }
+    else if (rank_ordering == 3)
+    {
+        return custom_rank_order[proc] % PPN;
     }
     else
     { 
@@ -1054,6 +1062,10 @@ int TAPComm::get_global_proc(int node, int local_proc)
         {
             return local_proc * num_nodes + num_nodes - node - 1;                
         }
+    }
+    else if (rank_ordering == 3)
+    {
+        return custom_rank_order[node*PPN + local_proc];
     }
     else
     { 
