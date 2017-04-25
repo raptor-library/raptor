@@ -12,6 +12,7 @@
 #include "gallery/diffusion.hpp"
 #include "gallery/external/hypre_wrapper.hpp"
 #include "gallery/external/mfem_wrapper.hpp"
+#include "gallery/matrix_IO.hpp"
 
 //using namespace raptor;
 int main(int argc, char *argv[])
@@ -96,6 +97,11 @@ int main(int argc, char *argv[])
             }
         }
         A = mfem_linear_elasticity(mesh_file, num_elements, order);
+    }
+    else if (system == 3)
+    {
+        char* file = "/Users/abienz/Documents/Parallel/raptor_topo/examples/LFAT5.mtx";
+        A = readParMatrix(file, MPI_COMM_WORLD, 1, 1);
     }
 
     x = ParVector(A->global_num_cols, A->local_num_cols, A->first_local_col);
