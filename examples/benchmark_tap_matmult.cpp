@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
     }
     else if (system == 2)
     {
-        char* mesh_file = "/Users/abienz/Documents/Parallel/mfem/data/beam-tet.mesh";
+        char* mesh_file = "/u/sciteam/bienz/mfem/data/beam-tet.mesh";
         int num_elements = 2;
         int order = 3;
         if (argc > 2)
