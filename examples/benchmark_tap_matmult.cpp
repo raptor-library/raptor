@@ -4,6 +4,8 @@
 #include <iostream>
 #include <assert.h>
 
+#include "clear_cache.hpp"
+
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
 #include "core/types.hpp"
@@ -41,6 +43,10 @@ int main(int argc, char *argv[])
     double strong_threshold = 0.25;
     int agg_num_levels = 0;
     int p_max_elmts = 0;
+
+    int cache_len = 10000;
+    double* cache_array = new double[cache_len];
+    int num_tests = 10;
 
     if (system < 2)
     {
@@ -144,37 +150,56 @@ int main(int argc, char *argv[])
 
         for (int j = 0; j < 5; j++)
         {
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            hypre_ParCSRMatrix* C_h_l = hypre_ParMatmul(A_h_l, P_h_l);
-            tfinal = MPI_Wtime() - t0;
+            tfinal = 0.0;
+            for (int k = 0; k < num_tests; k++)
+            {
+                MPI_Barrier(MPI_COMM_WORLD);
+                t0 = MPI_Wtime();
+                hypre_ParCSRMatrix* C_h_l = hypre_ParMatmul(A_h_l, P_h_l);
+                tfinal += MPI_Wtime() - t0;
+                hypre_ParCSRMatrixDestroy(C_h_l);
+                clear_cache(cache_len, cache_array);  
+            }
+            tfinal /= num_tests;
             MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
             if (rank == 0) printf("HYPRE Matmult time = %e\n", t0);
-            hypre_ParCSRMatrixDestroy(C_h_l);
-
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            ParCSRMatrix* C_l = new ParCSRMatrix();
-            A_l->mult(*P_l, C_l);
-            tfinal = MPI_Wtime() - t0;
+          
+            tfinal = 0.0;
+            for (int k = 0; k < num_tests; k++)
+            {
+                MPI_Barrier(MPI_COMM_WORLD);
+                t0 = MPI_Wtime();
+                ParCSRMatrix* C_l = new ParCSRMatrix();
+                A_l->mult(*P_l, C_l);
+                tfinal += MPI_Wtime() - t0;
+                delete C_l;
+                clear_cache(cache_len, cache_array);  
+            }
+            tfinal /= num_tests;
             MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
             if (rank == 0) printf("Raptor Matmult time = %e\n", t0);
-            delete C_l;
 
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            ParCSRMatrix* C_l_tap = new ParCSRMatrix();
-            A_l->tap_mult(*P_l, C_l_tap);
-            tfinal = MPI_Wtime() - t0;
+            tfinal = 0.0;
+            for (int k = 0; k < num_tests; k++)
+            {
+                MPI_Barrier(MPI_COMM_WORLD);
+                t0 = MPI_Wtime();
+                ParCSRMatrix* C_l_tap = new ParCSRMatrix();
+                A_l->tap_mult(*P_l, C_l_tap);
+                tfinal += MPI_Wtime() - t0;
+                delete C_l_tap;
+                clear_cache(cache_len, cache_array);  
+            }
+            tfinal /= num_tests;
             MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("Raptor TAPMatmult time = %e\n", t0);
-            delete C_l_tap;
+            if (rank == 0) printf("Raptor Matmult time = %e\n", t0);
         }
 
         delete A_l;
         delete P_l;
     }
     
+    delete[] cache_array;
     delete A;
     hypre_BoomerAMGDestroy(solver_data);     
     HYPRE_IJMatrixDestroy(A_h);
