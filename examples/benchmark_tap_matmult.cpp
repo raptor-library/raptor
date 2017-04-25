@@ -9,6 +9,7 @@
 #include "core/types.hpp"
 #include "gallery/par_stencil.hpp"
 #include "gallery/laplacian27pt.hpp"
+#include "gallery/diffusion.hpp"
 #include "gallery/external/hypre_wrapper.hpp"
 
 //using namespace raptor;
@@ -20,18 +21,59 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
-    int dim = 3;
+    int dim;
     int n = 5;
+    int system = 0;
+
     if (argc > 1)
-        n = atoi(argv[1]);
-    int grid[3];
-    grid[0] = n;
-    grid[1] = n;
-    grid[2] = n;
-    double* stencil = laplace_stencil_27pt();
-    ParCSRMatrix* A = par_stencil_grid(stencil, grid, dim);
-    ParVector x = ParVector(A->global_num_cols, A->local_num_cols, A->first_local_col);
-    ParVector b = ParVector(A->global_num_rows, A->local_num_rows, A->first_local_row);
+    {
+        system = atoi(argv[1]);
+        if (argc > 2)
+        {
+            n = atoi(argv[2]);
+        }
+    }
+
+    ParCSRMatrix* A;
+    ParVector x;
+    ParVector b;
+
+    double* stencil;
+    std::vector<int> grid;
+    int coarsen_type = 6;
+    int interp_type = 0;
+    double strong_threshold = 0.25;
+    int agg_num_levels = 0;
+    int p_max_elmts = 0;
+    if (system == 0)
+    {
+        dim = 3;
+        grid.resize(dim, n);
+        stencil = laplace_stencil_27pt();
+        agg_num_levels = 1;
+        interp_type = 6;
+        coarsen_type = 10;
+    }
+    else if (system == 1)
+    {
+        dim = 2;
+        grid.resize(dim, n);
+        double eps = 0.001;
+        double theta = M_PI/8.0;
+        if (argc > 3)
+        {
+            eps = atof(argv[3]);
+            if (argc > 4)
+            {
+                theta = atof(argv[4]);
+            }
+        }
+
+        stencil = diffusion_stencil_2d(eps, theta);
+    }
+    A = par_stencil_grid(stencil, grid.data(), dim);
+    x = ParVector(A->global_num_cols, A->local_num_cols, A->first_local_col);
+    b = ParVector(A->global_num_rows, A->local_num_rows, A->first_local_row);
     delete[] stencil;
     
     HYPRE_IJMatrix A_h = convert(A);
@@ -43,15 +85,6 @@ int main(int argc, char *argv[])
     HYPRE_IJVectorGetObject(x_h, (void **) &par_x);
     hypre_ParVector* par_b;
     HYPRE_IJVectorGetObject(b_h, (void **) &par_b);
-
-    int coarsen_type = 10;
-    int interp_type = 6;
-    int agg_num_levels = 1;
-    int p_max_elmts = 0;
-    double strong_threshold = 0.25;
-    //int coarsen_type = 6;
-    //int interp_type = 0;
-    //int agg_num_levels = 0;
 
     HYPRE_Solver solver_data = hypre_create_hierarchy(parcsr_A, par_x, par_b, 
                             coarsen_type, interp_type, p_max_elmts, agg_num_levels, 
