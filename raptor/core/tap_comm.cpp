@@ -2,8 +2,192 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "comm_pkg.hpp"
 
+//#include <pmi.h>
+//#include <rca_lib.h>
+
 using namespace raptor;
 
+/*int TAPComm::form_global_partition()
+{
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    rca_mesh_coord_t topo_mesh_coords;
+    int my_nid;
+    int my_loc[4];
+    int min_loc[4];
+    int max_loc[4];
+    int max_size[4];
+    rca_mesh_coord_t dims;
+
+    // Get node id
+    PMI_Get_nid(rank, &my_nid);
+
+    // Get x,y,z coordinates of node id
+    rca_get_meshcoord(my_nid, &topo_mesh_coords);
+
+    // Get maximum x, y, z coordinates for topology
+    rca_get_max_meshcoord(&dims);
+
+    // Add my x, y, z coords to my_loc
+    my_loc[0] = topo_mesh_coords.mesh_x;
+    my_loc[1] = topo_mesh_coords.mesh_y;
+    my_loc[2] = topo_mesh_coords.mesh_z;
+    my_loc[3] = my_nid % 2;
+
+    // Add max size coordinates to max_size_loc
+    max_size[0] = dims.mesh_x + 1;
+    max_size[1] = dims.mesh_y + 1;
+    max_size[2] = dims.mesh_z + 1;
+    max_size[3] = 2;
+
+    // Find min and max x, y, z coordinates for each 
+    MPI_Allreduce(my_loc, min_loc, 4, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+    MPI_Allreduce(my_loc, max_loc, 4, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+
+    int torus[3] = {0, 0, 0};
+    if (min_loc[0] == 0 && max_loc[0] == max_size[0] - 1)
+        torus[0] = 1;
+    if (min_loc[1] == 0 && max_loc[1] == max_size[1] - 1)
+        torus[1] = 1;
+    if (min_loc[2] == 0 && max_loc[2] == max_size[2] - 1)
+        torus[2] = 1;
+
+    int MAX_NID_ID = max_size[0] * max_size[1] * max_size[2] - 1;
+
+    int my_nid_id = ((my_loc[0] * max_size[0] + my_loc[1] ) * max_size[1] 
+            + my_loc[2]) * max_size[2];
+
+    // For each NID in partition, find x,y,z coords and NID_ID
+    int nid;
+    int num_nids = num_procs / (2*PPN);
+    std::vector<int> nid_ids(num_nids);
+    std::vector<rca_mesh_coord_t> meshcoords(num_nids, -1);
+    std::map<int, int> id_to_nid_idx;
+    int ctr = 0;
+    int nid_idx, id;
+    for (int i = 0; i < num_procs; i++)
+    {
+        if (get_local_proc[i] == 0)
+        {
+            PMI_Get_nid(i, &nid);
+            nid_idx = nid / 2;
+            if (nid_ids[nid_idx] == -1)
+            {
+                rca_get_meshcoord(nid, &meshcoords[nid_idx]);
+                id = (((meshcoords[nid_idx].mesh_x * max_size[1])
+                           + meshcoords[nid_idx].mesh_y) * max_size[2])
+                           + meshcoords[nid_idx].mesh_z;
+                nid_ids[nid_idx] = id;
+                id_to_nid_idx[id] = nid_idx;
+            }
+        }
+    }
+
+    std::vector<int> nid_mat(num_nids * num_nids, 0);
+    for (int i = 0; i < num_nids; i++)
+    {
+        PMI_Get_nid(i, &nid);
+        row = nid / 2;
+
+        NID_ID = nid_ids[row];
+        plus_x = NID_ID + (max_size[1]*max_size[2]);
+        minus_x = NID_ID - (max_size[1]*max_size[2]);
+        plus_y = NID_ID + (max_size[2]);
+        minus_y = NID_ID - (max_size[2]);
+        plus_z = NID_ID + 1;
+        minus_z = NID_ID - 1;
+
+        // If on boundary of x, set plus/minus x appropriately
+        if (meshcoords[nid_idx].x == 0)
+        {
+            if (torus[0])
+            {
+                minus_x = (((max_size[0] - 1)*max_size[1] + meshcoords[row].mesh_y) 
+                            * max_size[2]) + meshcoords[row].mesh_z;
+            }
+            else
+            {
+                minus_x = - 1;
+            }
+        }
+        else if (meshcoords[row].x == max_size[0] - 1)
+        {
+            if (torus[0])
+            {
+                plus_x = (meshcoords[row].mesh_y * max_size[2]) 
+                    + meshcoords[row].mesh_z;
+            }
+            else
+            {
+                plus_x = -1;
+            }
+        }
+
+        if (meshcoords[row].y == 0)
+        {
+            if (torus[1])
+            {
+                minus_y = (((meshcoords[row].mesh_x * max_size[1]) 
+                            + (max_size[1] - 1)) * max_size[2]) 
+                            + meshcoords[row].mesh_z;
+            }
+            else
+            {
+                minus_y = -1;
+            }
+        }
+        else if (meshcoords[row].y == max_size[1] - 1)
+        {
+            if (torus[1])
+            {
+                plus_y = (meshcoords[row].mesh_x * max_size[1]* max_size[2]) 
+                            + meshcoords[row].mesh_z;
+
+            }
+            else
+            {
+                plus_y = -1;
+            }
+
+        }
+
+        if (meshcoords[nid_idx].z == 0)
+        {
+            if (torus[2])
+            {
+                minus_z = (((meshcoords[row].mesh_x * max_size[1]) 
+                            + meshcoords[row].mesh_y) * max_size[2])
+                            + max_size[2] - 1;
+            }
+            else
+            {
+                minus_z = -1;
+            }
+
+        }
+        else if (meshcoords[row].z == max_size[2] - 1)
+        {
+            if (torus[2])
+            {
+                plus_z = (((meshcoords[row].mesh_x * max_size[1]) 
+                            + meshcoords[row].mesh_y) * max_size[2]);
+            }
+            else
+            {
+                plus_z = -1;
+            }
+
+        }
+    }
+
+
+
+
+
+}
+
+*/
 /**************************************************************
 *****   Split Off Proc Cols
 **************************************************************

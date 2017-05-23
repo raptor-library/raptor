@@ -48,6 +48,9 @@ namespace raptor
         virtual CSRMatrix* communicate(std::vector<int>& rowptr, 
                 std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
+        virtual CSRMatrix* communicate_T(std::vector<int>& rowptr, 
+                std::vector<int>& col_indices,
+                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
         virtual Vector& get_recv_buffer() = 0;
         int find_proc_col_starts(const int first_local_col, 
                 const int last_local_col,
@@ -291,6 +294,11 @@ namespace raptor
         void complete_comm();
         CSRMatrix* communicate(std::vector<int>& rowptr, std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
+        CSRMatrix* communicate_T(std::vector<int>& rowptr, std::vector<int>& col_indices,
+                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
+        CSRMatrix* communication_helper(std::vector<int>& rowptr, 
+                std::vector<int>& col_indices, std::vector<double>& values,
+                MPI_Comm comm, CommData* send_comm, CommData* recv_comm);
 
         Vector& get_recv_buffer()
         {
@@ -643,6 +651,8 @@ namespace raptor
         void init_comm(data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
         void complete_comm();
         CSRMatrix* communicate(std::vector<int>& rowptr, std::vector<int>& col_indices,
+                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
+        CSRMatrix* communicate_T(std::vector<int>& rowptr, std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
         Vector& get_recv_buffer()
         {

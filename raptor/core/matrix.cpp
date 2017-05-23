@@ -859,8 +859,11 @@ void CSCMatrix::copy(const COOMatrix* A)
     nnz = A->nnz;
 
     idx1.resize(n_cols + 1);
-    idx2.resize(nnz);
-    vals.resize(nnz);
+    if (nnz)
+    {
+        idx2.resize(nnz);
+        vals.resize(nnz);
+    }
 
     // Calculate indptr
     for (int i = 0; i < n_cols + 1; i++)
@@ -869,8 +872,7 @@ void CSCMatrix::copy(const COOMatrix* A)
     }
     for (int i = 0; i < A->nnz; i++)
     {
-        int col = A->idx2[i];
-        idx1[col+1]++;
+        idx1[A->idx2[i]+1]++;
     }
     for (int i = 0; i < A->n_cols; i++)
     {
@@ -878,7 +880,11 @@ void CSCMatrix::copy(const COOMatrix* A)
     }
 
     // Add indices and data
-    std::vector<int> ctr(n_cols, 0);
+    std::vector<int> ctr;
+    if (n_cols)
+    {
+        ctr.resize(n_cols, 0);
+    }
     for (int i = 0; i < A->nnz; i++)
     {
         int row = A->idx1[i];
@@ -915,32 +921,41 @@ void CSCMatrix::copy(const CSRMatrix* A)
 
     // Resize vectors to appropriate dimensions
     idx1.resize(A->n_cols + 1);
-    idx2.resize(A->nnz);
-    vals.resize(A->nnz);
+    if (A->nnz)
+    {
+        idx2.resize(A->nnz);
+        vals.resize(A->nnz);
+    }
 
     // Create indptr, summing number times col appears in CSR
-    for (int i = 0; i <= A->n_cols; i++) idx1[i] = 0;
+    for (int i = 0; i <= A->n_cols; i++) 
+    {
+        idx1[i] = 0;
+    }
     for (int i = 0; i < A->nnz; i++)
     {
         idx1[A->idx2[i] + 1]++;
     }
-    for (int i = 1; i <= A->n_cols; i++)
+    for (int i = 0; i < A->n_cols; i++)
     {
-        idx1[i] += idx1[i-1];
+        idx1[i+1] += idx1[i];
     }
 
     // Add values to indices and data
-    std::vector<int> ctr(A->n_cols, 0);
-    for (int i = 0; i < A->n_rows; i++)
+    if (A->n_cols)
     {
-        int row_start = A->idx1[i];
-        int row_end = A->idx1[i+1];
-        for (int j = row_start; j < row_end; j++)
+        std::vector<int> ctr(A->n_cols, 0);
+        for (int i = 0; i < A->n_rows; i++)
         {
-            int col = A->idx2[j];
-            int idx = idx1[col] + ctr[col]++;
-            idx2[idx] = i;
-            vals[idx] = A->vals[j];
+            int row_start = A->idx1[i];
+            int row_end = A->idx1[i+1];
+            for (int j = row_start; j < row_end; j++)
+            {
+                int col = A->idx2[j];
+                int idx = idx1[col] + ctr[col]++;
+                idx2[idx] = i;
+                vals[idx] = A->vals[j];
+            }
         }
     }
 
