@@ -113,8 +113,8 @@ void compare(ParCSRMatrix* A_sol, ParCSRMatrix* A_par)
 
     if (A_sol->local_num_cols)
     {
-        row_vals.resize(A_sol->local_num_cols, 0);
-        next.resize(A_sol->local_num_cols);
+        row_vals.resize(A_sol->global_num_cols, 0);
+        next.resize(A_sol->global_num_cols);
     }
 
     for (int row = 0; row < A_sol->local_num_rows; row++)

@@ -54,8 +54,8 @@ ParCSRMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file,
         }
     }
 
-    A->finalize();
     ParCSRMatrix* A_csr = new ParCSRMatrix(A);
+    A_csr->finalize();
     delete A;
 
     return A_csr;
@@ -296,7 +296,7 @@ int mm_read_sparse(const char *fname, index_t start, index_t stop,
             double value;
             fscanf(f, "%d %d %lg\n", &row, &col, &value);
 
-            if (fabs(value) < zero_tol) continue;
+            if (fabs(value) < 1e-15) continue;
 
             if (row > start && row <= stop)
             {
