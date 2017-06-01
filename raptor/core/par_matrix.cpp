@@ -288,25 +288,120 @@ void ParMatrix::copy(ParCOOMatrix* A)
     }
 }
 
-
-
-// Communication helper -- on_proc and off_proc must be CSRMatrix*
-// TODO -- fix this so it works for ParComm or TAPComm
-CSRMatrix* comm_csr(CommPkg* comm, 
-        Matrix* on_proc, 
-        Matrix* off_proc,
-        int global_num_cols, 
-        std::vector<int>& off_proc_column_map,
-        int first_local_col)
+void ParCOOMatrix::copy(ParCSRMatrix* A)
 {
-    Vector& recvbuf = comm->get_recv_buffer();
+    ParMatrix::copy(A);
 
+    if (on_proc)
+    {   
+        delete on_proc;
+    }
+    if (off_proc)
+    {
+        delete off_proc;
+    }
+
+    on_proc = new COOMatrix((CSRMatrix*) A->on_proc);
+    off_proc = new COOMatrix((CSRMatrix*) A->off_proc);
+}
+
+void ParCOOMatrix::copy(ParCSCMatrix* A)
+{
+    ParMatrix::copy(A);
+
+    if (on_proc)
+    {   
+        delete on_proc;
+    }
+    if (off_proc)
+    {
+        delete off_proc;
+    }
+
+    on_proc = new COOMatrix((CSCMatrix*) A->on_proc);
+    off_proc = new COOMatrix((CSCMatrix*) A->off_proc);
+}
+
+void ParCOOMatrix::copy(ParCOOMatrix* A)
+{
+    ParMatrix::copy(A);
+
+    if (on_proc)
+    {   
+        delete on_proc;
+    }
+    if (off_proc)
+    {
+        delete off_proc;
+    }
+
+    on_proc = new COOMatrix((COOMatrix*) A->on_proc);
+    off_proc = new COOMatrix((COOMatrix*) A->off_proc);
+}
+
+COOMatrix* ParCOOMatrix::communicate(CommPkg* comm)
+{
+    printf("Not implemented for COO Matrices.\n");
+    return NULL;
+}
+
+void ParCSRMatrix::copy(ParCSRMatrix* A)
+{
+    ParMatrix::copy(A);
+
+    if (on_proc)
+    {   
+        delete on_proc;
+    }
+    if (off_proc)
+    {
+        delete off_proc;
+    }
+    on_proc = new CSRMatrix((CSRMatrix*) A->on_proc);
+    off_proc = new CSRMatrix((CSRMatrix*) A->off_proc);
+}
+
+void ParCSRMatrix::copy(ParCSCMatrix* A)
+{
+    ParMatrix::copy(A);
+
+    if (on_proc)
+    {   
+        delete on_proc;
+    }
+    if (off_proc)
+    {
+        delete off_proc;
+    }
+    on_proc = new CSRMatrix((CSCMatrix*) A->on_proc);
+    off_proc = new CSRMatrix((CSCMatrix*) A->off_proc);
+}
+
+void ParCSRMatrix::copy(ParCOOMatrix* A)
+{
+    ParMatrix::copy(A);
+
+    if (on_proc)
+    {   
+        delete on_proc;
+    }
+    if (off_proc)
+    {
+        delete off_proc;
+    }
+
+    on_proc = new CSRMatrix((COOMatrix*) A->on_proc);
+    off_proc = new CSRMatrix((COOMatrix*) A->off_proc);
+}
+
+CSRMatrix* ParCSRMatrix::communicate(CommPkg* comm)
+{
     int start, end;
     int ctr;
     int global_col;
 
     int nnz = on_proc->nnz + off_proc->nnz;
-    std::vector<int> rowptr(on_proc->n_rows + 1);
+    std::vector<int> rowptr(local_num_rows + 1);
     std::vector<int> col_indices;
     std::vector<double> values;
     if (nnz)
@@ -317,7 +412,7 @@ CSRMatrix* comm_csr(CommPkg* comm,
 
     ctr = 0;
     rowptr[0] = ctr;
-    for (int i = 0; i < on_proc->n_rows; i++)
+    for (int i = 0; i < local_num_rows; i++)
     {
         start = on_proc->idx1[i];
         end = on_proc->idx1[i+1];
@@ -342,87 +437,18 @@ CSRMatrix* comm_csr(CommPkg* comm,
     return comm->communicate(rowptr, col_indices, values, MPI_COMM_WORLD);
 }
 
-void ParCOOMatrix::copy(ParCSRMatrix* A)
-{
-    ParMatrix::copy(A);
-
-    delete on_proc;
-    delete off_proc;
-
-    on_proc = new COOMatrix((CSRMatrix*) A->on_proc);
-    off_proc = new COOMatrix((CSRMatrix*) A->off_proc);
-}
-
-void ParCOOMatrix::copy(ParCSCMatrix* A)
-{
-    ParMatrix::copy(A);
-
-    delete on_proc;
-    delete off_proc;
-
-    on_proc = new COOMatrix((CSCMatrix*) A->on_proc);
-    off_proc = new COOMatrix((CSCMatrix*) A->off_proc);
-}
-
-void ParCOOMatrix::copy(ParCOOMatrix* A)
-{
-    ParMatrix::copy(A);
-
-    delete on_proc;
-    delete off_proc;
-
-    on_proc = new COOMatrix((COOMatrix*) A->on_proc);
-    off_proc = new COOMatrix((COOMatrix*) A->off_proc);
-}
-
-Matrix* ParCOOMatrix::communicate(CommPkg* comm)
-{
-    printf("Not implemented for COO Matrices.\n");
-    return NULL;
-}
-
-void ParCSRMatrix::copy(ParCSRMatrix* A)
-{
-    ParMatrix::copy(A);
-
-    delete on_proc;
-    delete off_proc;
-
-    on_proc = new CSRMatrix((CSRMatrix*) A->on_proc);
-    off_proc = new CSRMatrix((CSRMatrix*) A->off_proc);
-}
-
-void ParCSRMatrix::copy(ParCSCMatrix* A)
-{
-    ParMatrix::copy(A);
-
-    delete on_proc;
-    delete off_proc;
-
-    on_proc = new CSRMatrix((CSCMatrix*) A->on_proc);
-    off_proc = new CSRMatrix((CSCMatrix*) A->off_proc);
-}
-
-void ParCSRMatrix::copy(ParCOOMatrix* A)
-{
-    ParMatrix::copy(A);
-
-    on_proc = new CSRMatrix((COOMatrix*) A->on_proc);
-    off_proc = new CSRMatrix((COOMatrix*) A->off_proc);
-}
-
-Matrix* ParCSRMatrix::communicate(CommPkg* comm)
-{
-    return comm_csr(comm, on_proc, off_proc, global_num_cols,
-            off_proc_column_map, first_local_col);
-}
-
 void ParCSCMatrix::copy(ParCSRMatrix* A)
 {
     ParMatrix::copy(A);
-    
-    delete on_proc;
-    delete off_proc;
+ 
+    if (on_proc)
+    {   
+        delete on_proc;
+    }
+    if (off_proc)
+    {
+        delete off_proc;
+    }
 
     on_proc = new CSCMatrix((CSRMatrix*) A->on_proc);
     off_proc = new CSCMatrix((CSRMatrix*) A->off_proc);
@@ -432,8 +458,14 @@ void ParCSCMatrix::copy(ParCSCMatrix* A)
 {
     ParMatrix::copy(A);
 
-    delete on_proc;
-    delete off_proc;
+    if (on_proc)
+    {   
+        delete on_proc;
+    }
+    if (off_proc)
+    {
+        delete off_proc;
+    }
 
     on_proc = new CSCMatrix((CSCMatrix*) A->on_proc);
     off_proc = new CSCMatrix((CSCMatrix*) A->off_proc);
@@ -443,27 +475,103 @@ void ParCSCMatrix::copy(ParCOOMatrix* A)
 {
     ParMatrix::copy(A);
 
-    delete on_proc;
-    delete off_proc;
+    if (on_proc)
+    {   
+        delete on_proc;
+    }
+    if (off_proc)
+    {
+        delete off_proc;
+    }
 
     on_proc = new CSCMatrix((COOMatrix*) A->on_proc);
     off_proc = new CSCMatrix((COOMatrix*) A->off_proc);
 }
 
-Matrix* ParCSCMatrix::communicate(CommPkg* comm)
+CSCMatrix* ParCSCMatrix::communicate(CommPkg* comm)
 {
-    Matrix* on_proc_csr = new CSRMatrix((CSCMatrix*) on_proc);
-    Matrix* off_proc_csr = new CSRMatrix((CSCMatrix*) off_proc);
+    int start, end;
+    int ctr, row, idx;
+    int global_col;
 
-    CSRMatrix* recv_mat_csr = comm_csr(comm, on_proc_csr, off_proc_csr, 
-            global_num_cols, off_proc_column_map, first_local_col);
+    int nnz = on_proc->nnz + off_proc->nnz;
+    std::vector<int> rowptr(local_num_rows + 1);
+    std::vector<int> col_indices;
+    std::vector<double> values;
+    if (nnz)
+    {
+        col_indices.resize(nnz);
+        values.resize(nnz);
+    }
+    std::vector<int> row_ctr;
+    if (local_num_rows)
+    {
+        row_ctr.resize(local_num_rows, 0);
+    }
+
+    // Determine nnz per row
+    for (int i = 0; i < local_num_cols; i++)
+    {
+        start = on_proc->idx1[i];
+        end = on_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            row_ctr[on_proc->idx2[j]]++;
+        }
+    }
+    for (int i = 0; i < off_proc_num_cols; i++)
+    {
+        start = off_proc->idx1[i];
+        end = off_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            row_ctr[off_proc->idx2[j]]++;
+        }
+    }
+
+    // Set rowptr values
+    rowptr[0] = 0;
+    for (int i = 0; i < local_num_rows; i++)
+    {
+        rowptr[i+1] = rowptr[i] + row_ctr[i];
+        row_ctr[i] = 0;
+    }
+
+    // Set col_indices / values
+    for (int i = 0; i < local_num_cols; i++)
+    {
+        global_col = i + first_local_col;
+        start = on_proc->idx1[i];
+        end = on_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            row = on_proc->idx2[j];
+            idx = rowptr[row] + row_ctr[row]++;
+            col_indices[idx] = global_col;
+            values[idx] = on_proc->vals[j];
+        }
+    }
+    for (int i = 0; i < off_proc_num_cols; i++)
+    {
+        global_col = off_proc_column_map[i];
+        start = off_proc->idx1[i];
+        end = off_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            row = off_proc->idx2[j];
+            idx = rowptr[row] + row_ctr[row]++;
+            col_indices[idx] = global_col;
+            values[idx] = off_proc->vals[j];
+        }
+    }
+
+    CSRMatrix* recv_mat_csr = comm->communicate(rowptr, 
+            col_indices, values, MPI_COMM_WORLD);
     recv_mat_csr->condense_cols();
-    delete on_proc_csr;
-    delete off_proc_csr;
-
-
     CSCMatrix* recv_mat = new CSCMatrix(recv_mat_csr);
     delete recv_mat_csr;
 
     return recv_mat;
 }
+
+

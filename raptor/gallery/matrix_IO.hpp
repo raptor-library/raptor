@@ -31,7 +31,8 @@ int mm_write_mtx_array_size(FILE *f, index_t M, index_t N);
 int mm_read_sparse(const char *fname, index_t start, index_t stop, 
         index_t *M_, index_t *N_, ParMatrix* A, int symmetric);
 ParCSRMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, 
-        int symmetric = 1);
+        int symmetric = 1, int local_num_rows = -1, int local_num_cols = -1,
+        int first_local_row = -1, int first_local_col = -1);
 int mm_dist_sparse(const char *fname, index_t start, index_t stop);
 int mm_copy_header(const char* fname);
 int mm_write_lcl_size(const char* fname, index_t start, index_t stop);

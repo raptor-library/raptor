@@ -24,10 +24,10 @@ ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix,
 
     // Declare Matrix Variables
     ParCOOMatrix* A_coo = NULL;
-    int diag_num_cols;
-    int offd_num_cols;
-    int block_diag_num_cols;
-    int block_offd_num_cols;
+    int on_proc_num_cols;
+    int off_proc_num_cols;
+    int block_on_proc_num_cols;
+    int block_off_proc_num_cols;
 
     // Delcare File Reader Info
     int isize = 4;
@@ -114,21 +114,26 @@ ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix,
     block_size = header[4];
     delete[] header;
 
-    block_diag_num_cols = (last_block_row - first_block_row + 1);
-    diag_num_cols = block_diag_num_cols * block_size;
-    block_offd_num_cols = (last_block_col - first_block_col + 1) - block_diag_num_cols;
-    offd_num_cols = block_offd_num_cols * block_size;
+    // Determine number of columns (and block cols) in on and off
+    // process blocks of matrix to be read in
+    block_on_proc_num_cols = (last_block_row - first_block_row + 1);
+    on_proc_num_cols = block_on_proc_num_cols * block_size;
+    block_off_proc_num_cols = (last_block_col - first_block_col + 1) 
+        - block_on_proc_num_cols;
+    off_proc_num_cols = block_off_proc_num_cols * block_size;
+
+    // Determine the number of values per block and initialize 
+    // variable in which to read values
     n_data = block_size * block_size;
     data = new double[n_data];
-    std::set<int> offd_col_set;
 
-    A_coo->on_proc->resize(diag_num_cols, diag_num_cols);
-    if (block_offd_num_cols)
-        A_coo->off_proc->resize(diag_num_cols, block_offd_num_cols*block_size);
+    // Resize on_proc and off_proc matrices
+    A_coo->on_proc->resize(on_proc_num_cols, on_proc_num_cols);
+    if (block_off_proc_num_cols)
+        A_coo->off_proc->resize(on_proc_num_cols, off_proc_num_cols);
 
-
-int count = 0;
-int g_count;
+    // Read in nonzeros of matrix, adding to appropriate block
+    // (on_proc or off_proc)
     while (fread(pos, isize, 2, infile) == pos_size) 
     {
         local_row = pos[0];
@@ -138,141 +143,83 @@ int g_count;
 
         if (local_col >= first_block_row && local_col <= last_block_row)
         {
-            first_col = local_col * block_size;
+            first_col = local_col * block_size;            
             for (int i = 0; i < block_size; i++)
             {
                 for (int j = 0; j < block_size; j++)
                 {
                     value = data[i*block_size + j];
-                    if (fabs(value) > zero_tol)
+                    if (fabs(value) > 1e-15) // Only add if large enough
                     {
-                        A_coo->on_proc->add_value(first_local_row + i, first_col + j, value);
+                        A_coo->on_proc->add_value(first_local_row + i, 
+                                first_col + j, value);
                     }
-count++;
                 }
             }
         }
         else
         {   
-            first_col = global_indices[local_col]*block_size;
+            first_col = (local_col - block_on_proc_num_cols) * block_size;
             for (int i = 0; i < block_size; i++)
             {
                 for (int j = 0; j < block_size; j++)
                 {
                     value = data[i*block_size + j];
-                    if (fabs(value) > zero_tol)
+                    if (fabs(value) > 1e-15) // Only add if large enough
                     {
-                        A_coo->off_proc->add_value(first_local_row + i, first_col + j, value);
-                        offd_col_set.insert(first_col + j);
+                        A_coo->off_proc->add_value(first_local_row + i, 
+                                first_col + j, value);
                     }
-count++;
                 }
             }
         }
     }
-    offd_num_cols = offd_col_set.size();
 
-MPI_Reduce(&count, &g_count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-
-int tmpl = A_coo->on_proc->nnz + A_coo->off_proc->nnz;
-int tmpg;
-MPI_Reduce(&tmpl, &tmpg, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-
+    // Delete variable into which data was read,
+    // and close matrix file
     delete[] data;
     fclose(infile);
 
-    A_coo->local_num_rows = diag_num_cols;
-    A_coo->local_num_cols = diag_num_cols;
-    A_coo->off_proc_num_cols = offd_num_cols;
-
-    global_block_rows = 0;
-    sizes = new int[num_procs];
-    displs = new int[num_procs+1];
-    MPI_Allgather(&block_diag_num_cols, 1, MPI_INT, sizes, 1, MPI_INT, MPI_COMM_WORLD);
-    displs[0] = 0;
-    for (int i = 0; i < num_procs; i++)
-    {
-        displs[i+1] = displs[i] + sizes[i];
-    }
-    global_block_rows = displs[num_procs];
-    first_block_row = displs[rank];
-
-    orig_block_rows = new int[global_block_rows];
-    MPI_Allgatherv(global_indices.data(), block_diag_num_cols, MPI_INT, orig_block_rows, 
-            sizes, displs, MPI_INT, MPI_COMM_WORLD);
-    
-
-    // offd-columns, local to original values
-    int* local_block_to_global = new int[block_offd_num_cols];
-    
-    // Add diag orig values to vector and sort
-    std::vector<int> orig_vector;
-    orig_vector.reserve(block_offd_num_cols);
-    for (int i = 0; i < block_offd_num_cols; i++)
-    {
-        orig_vector.push_back(global_indices[block_diag_num_cols + i]);
-    }
-    std::sort(orig_vector.begin(), orig_vector.end());
-
-    // Go through global indices, one process at a time
-    std::vector<std::pair<int, int>> proc_rows;
-    std::vector<std::pair<int,int>>::iterator it;
-    for (int proc = 0; proc < num_procs; proc++)
-    {
-        // Add new and global indices to list
-        proc_start = displs[proc];
-        proc_end = displs[proc+1];
-        proc_rows.resize(proc_end - proc_start);
-        for (int i = proc_start; i < proc_end; i++)
-        {
-            proc_rows[i-proc_start] = std::make_pair(orig_block_rows[i], i);
-        }
-        std::sort(proc_rows.begin(), proc_rows.end(),
-                [](const std::pair<int, int>& lhs,
-                    const std::pair<int, int>& rhs)
-                { return lhs.first < rhs.first; } );
-
-        ctr = 0;
-        for (it = proc_rows.begin(); it != proc_rows.end(); ++it)
-        {
-            while (ctr + 1 < block_offd_num_cols && orig_vector[ctr+1] <= it->first) ctr++;
-            if (orig_vector[ctr] == it->first)
-            {
-                local_block_to_global[ctr] = it->second;
-            }
-        }
-    }
-
-    A_coo->global_num_rows = global_block_rows * block_size;
+    // Set dimensions of matrix    
+    // All reduce global number of rows in matrix
+    MPI_Allreduce(&on_proc_num_cols, &(A_coo->global_num_rows), 1, MPI_INT,
+            MPI_SUM, MPI_COMM_WORLD);
+    A_coo->local_num_rows = on_proc_num_cols;
+    A_coo->local_num_cols = A_coo->local_num_rows;
     A_coo->global_num_cols = A_coo->global_num_rows;
-    A_coo->first_local_row = first_block_row * block_size;
-    A_coo->first_local_col = A_coo->first_local_row;
-
     A_coo->local_nnz = A_coo->on_proc->nnz + A_coo->off_proc->nnz;
-    if (A_coo->off_proc_num_cols) A_coo->off_proc_column_map.resize(A_coo->off_proc_num_cols);
-    std::map<int, int> global_to_local;
 
-    ctr = 0;
-    for (std::set<int>::iterator it = offd_col_set.begin(); it != offd_col_set.end(); ++it)
-    {
-        A_coo->off_proc_column_map[ctr] = *it;
-        global_to_local[*it] = ctr++;
-    }
+    std::vector<int> on_proc_column_map(A_coo->on_proc->n_cols);
+    A_coo->off_proc_num_cols = A_coo->off_proc->n_cols;
+    A_coo->off_proc_column_map.resize(A_coo->off_proc_num_cols);
 
-    if (A_coo->off_proc_num_cols)
+    // Create column maps from all local to global columns
+    int first_local_col;
+    int first_global_col;
+    for (int i = first_block_row; i <= last_block_row; i++)
     {
-        std::sort(A_coo->off_proc_column_map.begin(), A_coo->off_proc_column_map.end());
-        for (index_t i = 0; i < A_coo->off_proc_column_map.size(); i++)
+        first_local_col = i*block_size;
+        first_global_col = global_indices[i] * block_size;
+        for (int j = 0; j < block_size; j++)
         {
-            index_t global_col = A_coo->off_proc_column_map[i];
-            std::map<index_t, index_t>::iterator map_it = 
-                global_to_local.find(global_col);
-            map_it->second = i;
+            on_proc_column_map[first_local_col + j] = first_global_col + j;
         }
     }
+    for (int i = block_on_proc_num_cols; i <= last_block_col; i++)
+    {
+        first_local_col = (i - block_on_proc_num_cols) * block_size;
+        first_global_col = global_indices[i] * block_size;
+        for (int j = 0; j < block_size; j++)
+        {
+            A_coo->off_proc_column_map[first_local_col + j] = first_global_col + j;
+        }
+    }
+
+    A_coo->comm = new ParComm(A_coo->off_proc_column_map, on_proc_column_map,
+            A_coo->global_num_cols);
 
     int* global_tmp = new int[A_coo->local_num_rows];
-    for (int i = 0; i < block_diag_num_cols; i++)
+    for (int i = 0; i < block_on_proc_num_cols; i++)
     {
         for (int j = 0; j < block_size; j++)
         {
@@ -282,17 +229,80 @@ MPI_Reduce(&tmpl, &tmpg, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     *global_num_rows = global_tmp;
     
     ParCSRMatrix* A = new ParCSRMatrix(A_coo);
-    A->finalize();
+    if (A->on_proc->nnz)
+    {
+        A->on_proc->sort();
+    }
+    if (A->off_proc->nnz)
+    {
+        A->off_proc->sort();
+    }
 
     delete A_coo;
 
     delete[] orig_block_rows;
     delete[] sizes;
     delete[] displs;
-    delete[] local_block_to_global;
 
     return A;
 }
 
+void exxon_vector_reader(char* folder, char* fname, char* suffix, ParVector& x)
+{
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    int first_block_row, last_block_row, block_size;
+    int block_row;
+    int first_idx;
+    std::vector<double> block_values;
+
+    // Delcare File Reader Info
+    int isize = 4;
+    int dsize = 8;
+
+    // Declare strings for names of index/matrix files
+    std::ostringstream oss;
+    std::string fname_string;
+    char fname_r[1024];
+    FILE* infile;
+    unsigned char bytes[4];
+
+    // Find names of index and matrix files corresponding to my rank
+    oss << folder << "/" << fname << rank << suffix;
+    fname_string = oss.str();
+    strncpy(fname_r, fname_string.c_str(), sizeof(fname_r));
+    fname_r[sizeof(fname_r)-1] = 0;
+
+    // Open index file, and read local number of rows (n),
+    // block size (bs) and global row indices (index)
+    infile = fopen(fname_r, "rb");
+    fread(&first_block_row, isize, 1, infile);
+    fread(&last_block_row, isize, 1, infile);
+    fread(&block_size, isize, 1, infile);
+
+    int local_size = (last_block_row - first_block_row + 1) * block_size;
+    x.local_n = local_size;
+    x.local.size = local_size;
+    if (local_size)
+    {
+        x.local.values.resize(local_size);
+    }
+
+    block_values.resize(block_size);
+
+    while (fread(&block_row, isize, 1, infile) == 1)
+    {
+        first_idx = block_row * block_size;
+        fread(block_values.data(), dsize, block_size, infile);
+        for (int i = 0; i < block_size; i++)
+        {
+            x.local.values[first_idx + i] = block_values[i];
+        }
+    }
+
+    // Close index file
+    fclose(infile);
+}
 
 #endif

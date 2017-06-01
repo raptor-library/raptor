@@ -48,17 +48,32 @@ namespace raptor
         virtual CSRMatrix* communicate(std::vector<int>& rowptr, 
                 std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
+        virtual CSRMatrix* communicate_T(std::vector<int>& rowptr, 
+                std::vector<int>& col_indices,
+                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
         virtual Vector& get_recv_buffer() = 0;
         int find_proc_col_starts(const int first_local_col, 
                 const int last_local_col,
                 const int global_num_cols, 
                 std::vector<int>& col_starts, 
                 std::vector<int>& col_start_procs);
+        int find_proc_col_starts(const int global_num_cols,
+                const std::vector<int>& on_proc_column_map,
+                std::vector<int>& assumed_col_procs);
         void form_col_to_proc(const int first_local_col, 
                 const int global_num_cols,
-            const int local_num_cols, 
-            const std::vector<int>& off_proc_column_map,
-            std::vector<int>& off_proc_col_to_proc);
+                const int local_num_cols, 
+                const std::vector<int>& off_proc_column_map,
+                std::vector<int>& off_proc_col_to_proc);
+        void form_col_to_proc(const int global_num_cols,
+                const std::vector<int>& on_proc_column_map,
+                const std::vector<int>& off_proc_column_map,
+                std::vector<int>& off_proc_col_to_proc);
+        int form_send_data(const int part,
+                const std::vector<int>& column_map,
+                std::vector<int>& send_procs,
+                std::vector<int>& send_ptr,
+                std::vector<int>& send_indices);
         
         bool topo_aware;
     };
@@ -268,6 +283,154 @@ namespace raptor
             }
         }
 
+        ParComm(const std::vector<int>& off_proc_column_map,
+                const std::vector<int>& on_proc_column_map,
+                const int global_num_cols, 
+                int _key = 9999,
+                MPI_Comm comm = MPI_COMM_WORLD)
+        {
+            topo_aware = false;
+
+            // Get MPI Information
+            int rank, num_procs;
+            MPI_Comm_rank(comm, &rank);
+            MPI_Comm_size(comm, &num_procs);
+
+            // Initialize class variables
+            key = _key;
+            send_data = new CommData();
+            recv_data = new CommData();
+
+            // Declare communication variables
+            int start, end;
+            int proc, prev_proc;
+            int count, size, idx;
+            int global_col;
+            int tag = 12345;  // TODO -- switch this to key?
+            int off_proc_num_cols = off_proc_column_map.size();
+            int local_num_cols = on_proc_column_map.size();
+            MPI_Status recv_status;
+            std::vector<int> send_buffer;
+            std::vector<int> send_sizes(num_procs, 0);
+            std::vector<int> off_proc_col_to_proc(off_proc_num_cols);
+
+            form_col_to_proc(global_num_cols, on_proc_column_map,
+                    off_proc_column_map, off_proc_col_to_proc);
+
+            for (int i = 0; i < off_proc_num_cols; i++)
+            {
+                proc = off_proc_col_to_proc[i];
+                send_sizes[proc]++;
+            }
+            
+            // Add to recv_data
+            recv_data->indices.resize(off_proc_num_cols);
+            for (int i = 0; i < num_procs; i++)
+            {
+                size = send_sizes[i];
+                if (size)
+                {
+                    send_sizes[i] = recv_data->size_msgs;
+                    recv_data->size_msgs += size;
+                    recv_data->num_msgs++;
+                    recv_data->procs.push_back(i);
+                    recv_data->indptr.push_back(recv_data->size_msgs);
+                }
+            }
+            for (int i = 0; i < off_proc_num_cols; i++)
+            {
+                proc = off_proc_col_to_proc[i];
+                idx = send_sizes[proc]++;
+                recv_data->indices[idx] = i;
+            }
+            if (recv_data->num_msgs)
+            {
+                recv_data->finalize();
+            }
+
+
+            // Send global column indices for which I must recv corresponding
+            // rows to each process from which rank recvs 
+            if (recv_data->size_msgs)
+            {
+                send_buffer.resize(recv_data->size_msgs);
+            }
+            for (int i = 0; i < recv_data->num_msgs; i++)
+            {
+                proc = recv_data->procs[i];
+                start = recv_data->indptr[i];
+                end = recv_data->indptr[i+1];
+                for (int j = start; j < end; j++)
+                {
+                    idx = recv_data->indices[j];
+                    send_buffer[j] = off_proc_column_map[idx];
+                }
+                MPI_Issend(&(send_buffer[start]), end - start, MPI_INT, proc, 
+                        tag, comm, &(recv_data->requests[i]));
+            }
+                       
+            // Recv any messages, regardless of source (which is unknown)
+            // to determine the processes to which rank sends messages,
+            // and what indices to send to each
+            // Initially creates send_data with global send indices
+            // (this will be fixed after communication is complete)
+            int finished, msg_avail;
+            MPI_Request barrier_request;
+            if (recv_data->num_msgs)
+            {
+                MPI_Testall(recv_data->num_msgs, recv_data->requests, &finished, 
+                        MPI_STATUSES_IGNORE);
+                while (!finished)
+                {
+                    MPI_Iprobe(MPI_ANY_SOURCE, tag, comm, &msg_avail, &recv_status);
+                    if (msg_avail)
+                    {
+                        MPI_Get_count(&recv_status, MPI_INT, &count);
+                        proc = recv_status.MPI_SOURCE;
+                        int recvbuf[count];
+                        MPI_Recv(recvbuf, count, MPI_INT, proc, tag, comm, &recv_status);
+                        send_data->add_msg(proc, count, recvbuf);
+                    }
+                    MPI_Testall(recv_data->num_msgs, recv_data->requests, &finished,
+                            MPI_STATUSES_IGNORE);
+                }
+            }
+            MPI_Ibarrier(comm, &barrier_request);
+            MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
+            while (!finished)
+            {
+                MPI_Iprobe(MPI_ANY_SOURCE, tag, comm, &msg_avail, &recv_status);
+                if (msg_avail)
+                {
+                    MPI_Get_count(&recv_status, MPI_INT, &count);
+                    proc = recv_status.MPI_SOURCE;
+                    int recvbuf[count];
+                    MPI_Recv(recvbuf, count, MPI_INT, proc, tag, comm, &recv_status);
+                    send_data->add_msg(proc, count, recvbuf);
+                }
+                MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
+            }
+
+            // Edit send indices from global indices to local
+            std::map<int, int> global_to_local;
+            for (int i = 0; i < local_num_cols; i++)
+            {
+                global_to_local[on_proc_column_map[i]] = i;
+            }
+            for (int i = 0; i < send_data->size_msgs; i++)
+            {
+                global_col = send_data->indices[i];
+                send_data->indices[i] = global_to_local[global_col];
+            }
+
+            if (send_data->num_msgs)
+            {
+                send_data->finalize();
+            }
+
+        }
+
+
         ParComm(ParComm* comm)
         {
             send_data = new CommData(comm->send_data);
@@ -291,6 +454,11 @@ namespace raptor
         void complete_comm();
         CSRMatrix* communicate(std::vector<int>& rowptr, std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
+        CSRMatrix* communicate_T(std::vector<int>& rowptr, std::vector<int>& col_indices,
+                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
+        CSRMatrix* communication_helper(std::vector<int>& rowptr, 
+                std::vector<int>& col_indices, std::vector<double>& values,
+                MPI_Comm comm, CommData* send_comm, CommData* recv_comm);
 
         Vector& get_recv_buffer()
         {
@@ -643,6 +811,8 @@ namespace raptor
         void init_comm(data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
         void complete_comm();
         CSRMatrix* communicate(std::vector<int>& rowptr, std::vector<int>& col_indices,
+                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
+        CSRMatrix* communicate_T(std::vector<int>& rowptr, std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
         Vector& get_recv_buffer()
         {

@@ -113,6 +113,9 @@ namespace raptor
 
         comm = NULL;
         tap_comm = NULL;
+
+        on_proc = NULL;
+        off_proc = NULL;
     }
 
     virtual ~ParMatrix()
@@ -175,10 +178,12 @@ namespace raptor
     void tap_residual(ParVector& x, ParVector& b, ParVector& r);
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
-    void tap_mult(ParCSRMatrix& B, ParCSRMatrix* C);
-    void mult(ParCSRMatrix& B, ParCSRMatrix* C);
-    void mult(ParCSCMatrix& B, ParCSCMatrix* C);
-    void mult(ParCSCMatrix& B, ParCSRMatrix* C);
+    ParMatrix* mult(ParCSRMatrix* B);
+    ParMatrix* mult(ParCSCMatrix* B);
+    ParMatrix* tap_mult(ParCSRMatrix* B);
+    ParMatrix* tap_mult(ParCSCMatrix* B);
+    ParMatrix* mult_T(ParCSCMatrix* B);
+    ParMatrix* tap_mult_T(ParCSCMatrix* B);
 
     virtual void copy(ParCSRMatrix* A) = 0;
     virtual void copy(ParCSCMatrix* A) = 0;
@@ -291,10 +296,9 @@ namespace raptor
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
-    Matrix* communicate(CommPkg* comm);
+    COOMatrix* communicate(CommPkg* comm);
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
-    void tap_mult(ParCSRMatrix& B, ParCSRMatrix* C);
   };
 
   class ParCSRMatrix : public ParMatrix
@@ -393,15 +397,23 @@ namespace raptor
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
-    Matrix* communicate(CommPkg* comm);
+    CSRMatrix* communicate(CommPkg* comm);
 
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
-    void tap_mult(ParCSRMatrix& B, ParCSRMatrix* C);
-    void mult(ParCSRMatrix& B, ParCSRMatrix* C);
-    void mult(ParCSCMatrix& B, ParCSCMatrix* C);
-    void mult(ParCSCMatrix& B, ParCSRMatrix* C);
-    void mult_helper(ParCSRMatrix& B, ParCSRMatrix* C, CSRMatrix* recv);
+
+    ParCSRMatrix* mult(ParCSRMatrix* B);
+    ParCSRMatrix* mult(ParCSCMatrix* B);
+    ParCSRMatrix* tap_mult(ParCSRMatrix* B);
+    ParCSRMatrix* tap_mult(ParCSCMatrix* B);
+    ParCSRMatrix* mult_T(ParCSCMatrix* A);
+    ParCSRMatrix* tap_mult_T(ParCSCMatrix* A);
+    
+    CSRMatrix* mult_T_partial(ParCSCMatrix* A);
+    void mult_T_combine(ParCSCMatrix* A, ParCSRMatrix* C, CSRMatrix* recv);
+
+    void mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, CSRMatrix* recv);
+    void mult_helper(ParCSCMatrix* B, ParCSRMatrix* C, CSCMatrix* recv);
   };
 
   class ParCSCMatrix : public ParMatrix
@@ -460,12 +472,18 @@ namespace raptor
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
-    Matrix* communicate(CommPkg* comm);
+    CSCMatrix* communicate(CommPkg* comm);
 
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
-    void tap_mult(ParCSRMatrix& B, ParCSRMatrix* C);
-    void mult(ParCSCMatrix& B, ParCSCMatrix* C);
+
+    ParCSCMatrix* mult(ParCSCMatrix* B);
+    ParCSCMatrix* tap_mult(ParCSCMatrix* B);
+    ParCSCMatrix* mult_T(ParCSCMatrix* B);
+    ParCSCMatrix* tap_mult_T(ParCSCMatrix* B);
+    void mult_helper(ParCSCMatrix* B, ParCSCMatrix* C, CSCMatrix* recv);
+    CSRMatrix* mult_T_partial(ParCSCMatrix* B);
+    void mult_T_combine(ParCSCMatrix* B, ParCSCMatrix* C, CSCMatrix* recv);
   };
 }
 #endif

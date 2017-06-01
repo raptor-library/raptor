@@ -3,6 +3,7 @@
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "gallery/exxon_reader.hpp"
+#include "gallery/matrix_IO.hpp"
 
 using namespace raptor;
 
@@ -13,21 +14,28 @@ int main(int argc, char* argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     // Create A from diffusion stencil
-    char* folder = "/u/sciteam/bienz/scratch/exxonmat_2014/mat_128/matrix_blk_coord";
+    char* folder = "/home/bienz2/verification-twomatrices/DA_V5_blk_coord_binary-3x3-blk-np16";
+    char* fname = "DA_V5_blk_coord_binary-3x3-blk-np16_TS6_TSA0_NI0_R";
     char* iname = "index_R";
-    char* fname = "matrix_blk_coord_TS414_TSA0_NI0_FT0.010000_R";
-    char* suffix = ".bcoord";
+    char* suffix = ".bcoord_bin";
+    char* suffix_x = ".sol_bin";
+    char* suffix_b = ".rhs_bin";
 
     int* global_num_rows;
 
     ParCSRMatrix* A = exxon_reader(folder, iname, fname, suffix, &global_num_rows);
-    ParVector x = ParVector(A->global_num_cols, A->local_num_cols, A->first_local_col);
-    ParVector b = ParVector(A->global_num_rows, A->local_num_rows, A->first_local_row);
-    x.set_const_value(1.0);
-    
-    A->mult(x, b);
-    double bnorm = b.norm(2);
-    if (rank == 0) printf("Bnorm = %e\n", bnorm);
+    ParVector x;
+    ParVector b;
+    exxon_vector_reader(folder, fname, suffix_x, x);
+    exxon_vector_reader(folder, fname, suffix_b, b);
+
+    ParVector b_rap = ParVector(A->global_num_rows, A->local_num_rows, A->first_local_row);
+    A->mult(x, b_rap);
+
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        assert(fabs(b.local[i] - b_rap.local[i]) < 1e-08);
+    }
 
     delete A;
 

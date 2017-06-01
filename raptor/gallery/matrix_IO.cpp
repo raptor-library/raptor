@@ -2,7 +2,9 @@
 #include <float.h>
 #include <stdio.h>
 
-ParCSRMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int symmetric)
+ParCSRMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, 
+        int symmetric, int local_num_rows, int local_num_cols, 
+        int first_local_row, int first_local_col)
 {
     index_t num_rows, num_cols, nnz;
     int comm_size, rank, ret_code;
@@ -31,7 +33,15 @@ ParCSRMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int
         
         fclose(infile);
 
-        A = new ParCOOMatrix(num_rows, num_cols, MPI_COMM_WORLD);
+        if (first_local_col >= 0)
+        {
+            A = new ParCOOMatrix(num_rows, num_cols, local_num_rows, local_num_cols,
+                    first_local_row, first_local_col);
+        }
+        else
+        {
+            A = new ParCOOMatrix(num_rows, num_cols);
+        }
 
         // read the file knowing our local rows
         ret_code = mm_read_sparse(filename, A->first_local_row,
@@ -44,10 +54,8 @@ ParCSRMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, int
         }
     }
 
-    printf("A->onproc->nnz = %d, A->off->nnz = %d\n", 
-            A->on_proc->nnz, A->off_proc->nnz);
-    A->finalize();
     ParCSRMatrix* A_csr = new ParCSRMatrix(A);
+    A_csr->finalize();
     delete A;
 
     return A_csr;
@@ -288,7 +296,7 @@ int mm_read_sparse(const char *fname, index_t start, index_t stop,
             double value;
             fscanf(f, "%d %d %lg\n", &row, &col, &value);
 
-            if (fabs(value) < zero_tol) continue;
+            if (fabs(value) < 1e-15) continue;
 
             if (row > start && row <= stop)
             {
