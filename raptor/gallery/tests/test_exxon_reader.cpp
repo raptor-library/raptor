@@ -14,48 +14,30 @@ int main(int argc, char* argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     // Create A from diffusion stencil
-    char* folder = "/Users/abienz/Documents/Parallel/exxon/mat_32";
-    char* fname = "matrix_blk_coord_TS880_TSA0_NI1_FT0.010000_R";
+    char* folder = "/home/bienz2/verification-twomatrices/DA_V5_blk_coord_binary-3x3-blk-np16";
+    char* fname = "DA_V5_blk_coord_binary-3x3-blk-np16_TS6_TSA0_NI0_R";
     char* iname = "index_R";
-    char* suffix = ".bcoord";
-    char* fname_mat = "/Users/abienz/Documents/Parallel/exxon/mat_32/exxonmat32_reordered.mtx";
-    char* fname_rows = "/Users/abienz/Documents/Parallel/exxon/mat_32/exxonmat32_rows.txt";
+    char* suffix = ".bcoord_bin";
+    char* suffix_x = ".sol_bin";
+    char* suffix_b = ".rhs_bin";
 
     int* global_num_rows;
 
     ParCSRMatrix* A = exxon_reader(folder, iname, fname, suffix, &global_num_rows);
-    ParVector x = ParVector(A->global_num_cols, A->local_num_cols, A->first_local_col);
-    ParVector b = ParVector(A->global_num_rows, A->local_num_rows, A->first_local_row);
-    x.set_const_value(1.0);
+    ParVector x;
+    ParVector b;
+    exxon_vector_reader(folder, fname, suffix_x, x);
+    exxon_vector_reader(folder, fname, suffix_b, b);
 
-/*    int local_num_rows;
-    int first_local_row = 0;
-    FILE* row_file = fopen(fname_rows, "r");
-    for (int i = 0; i < rank; i++)
+    ParVector b_rap = ParVector(A->global_num_rows, A->local_num_rows, A->first_local_row);
+    A->mult(x, b_rap);
+
+    for (int i = 0; i < A->local_num_rows; i++)
     {
-        fscanf(row_file, "%d\n", &local_num_rows);
-        first_local_row += local_num_rows;
+        assert(fabs(b.local[i] - b_rap.local[i]) < 1e-08);
     }
-    fscanf(row_file, "%d\n", &local_num_rows);
-    fclose(row_file);
-    ParCSRMatrix* Amtx = readParMatrix(fname_mat, MPI_COMM_WORLD, 1, 0, local_num_rows,
-            local_num_rows, first_local_row, first_local_row);
 
-    A->mult(x, b);
-    double bnorm = b.norm(2);
-    if (rank == 0) printf("Bnorm = %e\n", bnorm);
-    printf("A->comm->num_sends = %d\n", A->comm->send_data->num_msgs);
-
-    assert(A->local_num_rows == Amtx->local_num_rows);
-    assert(A->local_num_cols == Amtx->local_num_cols);
-    assert(A->local_nnz == Amtx->local_nnz);
-    assert(A->comm->send_data->num_msgs == Amtx->comm->send_data->num_msgs);
-    assert(A->comm->recv_data->num_msgs == Amtx->comm->recv_data->num_msgs);
-    assert(A->comm->send_data->size_msgs == Amtx->comm->send_data->size_msgs);
-    assert(A->comm->recv_data->size_msgs == Amtx->comm->recv_data->size_msgs);
-*/
     delete A;
-//    delete Amtx;
 
     MPI_Finalize();
 }   
