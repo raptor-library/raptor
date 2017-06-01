@@ -247,5 +247,62 @@ ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix,
     return A;
 }
 
+void exxon_vector_reader(char* folder, char* fname, char* suffix, ParVector& x)
+{
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    int first_block_row, last_block_row, block_size;
+    int block_row;
+    int first_idx;
+    std::vector<double> block_values;
+
+    // Delcare File Reader Info
+    int isize = 4;
+    int dsize = 8;
+
+    // Declare strings for names of index/matrix files
+    std::ostringstream oss;
+    std::string fname_string;
+    char fname_r[1024];
+    FILE* infile;
+    unsigned char bytes[4];
+
+    // Find names of index and matrix files corresponding to my rank
+    oss << folder << "/" << fname << rank << suffix;
+    fname_string = oss.str();
+    strncpy(fname_r, fname_string.c_str(), sizeof(fname_r));
+    fname_r[sizeof(fname_r)-1] = 0;
+
+    // Open index file, and read local number of rows (n),
+    // block size (bs) and global row indices (index)
+    infile = fopen(fname_r, "rb");
+    fread(&first_block_row, isize, 1, infile);
+    fread(&last_block_row, isize, 1, infile);
+    fread(&block_size, isize, 1, infile);
+
+    int local_size = (last_block_row - first_block_row + 1) * block_size;
+    x.local_n = local_size;
+    x.local.size = local_size;
+    if (local_size)
+    {
+        x.local.values.resize(local_size);
+    }
+
+    block_values.resize(block_size);
+
+    while (fread(&block_row, isize, 1, infile) == 1)
+    {
+        first_idx = block_row * block_size;
+        fread(block_values.data(), dsize, block_size, infile);
+        for (int i = 0; i < block_size; i++)
+        {
+            x.local.values[first_idx + i] = block_values[i];
+        }
+    }
+
+    // Close index file
+    fclose(infile);
+}
 
 #endif
