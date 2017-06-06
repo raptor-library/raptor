@@ -157,37 +157,6 @@ void TAPComm::gather_off_node_nodes(const std::vector<int>& off_node_col_to_proc
                     return nodal_off_node_sizes[lhs] > nodal_off_node_sizes[rhs];
                 });
 
-        // If not all processes are communicating and there are any
-        // "large" (sent as eager or rendezvous), split these messages
-        // across multiple local processes.
-        // Split all rendezvous messages up.
-        for (int i = 0; i < ctr; i++)
-        {
-            int idx = p[i];
-            int size = nodal_off_node_sizes[idx];
-            if (size > eager_cutoff)
-            {
-                n_procs = size / eager_cutoff;
-                if (n_procs >= PPN)
-                {
-                    n_procs = ideal_n_comm;
-                }
-            }
-            else if (size > short_cutoff && ctr < PPN)
-            {
-                n_procs = size / short_cutoff;
-                if (n_procs >= PPN)
-                {
-                    n_procs = PPN;
-                }
-            }
-            else
-            {
-                break;
-            }
-            nodal_num_local[idx] = n_procs;
-        } 
-
         // Sort recv nodes by total num bytes recvd from node
         std::vector<bool> done(ctr);
         for (int i = 0; i < ctr; i++)
@@ -200,11 +169,28 @@ void TAPComm::gather_off_node_nodes(const std::vector<int>& off_node_col_to_proc
             while (i != j)
             {
                 std::swap(recv_nodes[prev_j], recv_nodes[j]);
-                std::swap(nodal_num_local[prev_j], nodal_num_local[j]);
+                std::swap(nodal_off_node_sizes[prev_j], nodal_off_node_sizes[j]);
                 done[j] = true;
                 prev_j = j;
                 j = p[j];
             }
+        }
+
+        // If not all processes are communicating and there are any
+        // "large" (sent as eager or rendezvous), split these messages
+        // across multiple local processes.
+        // Split all rendezvous messages up.
+        int idx = 0;
+        int size = nodal_off_node_sizes[0];
+        int nodal_num_recvs = ctr;
+        while (ctr < ideal_n_comm && size > short_cutoff)
+        {
+            size = nodal_off_node_sizes[idx] / ++nodal_num_local[idx];
+            if (idx + 1 < nodal_num_recvs && size < nodal_off_node_sizes[idx+1])
+            {
+                size = nodal_off_node_sizes[++idx];
+            }
+            ctr++;
         }
     }
     else
