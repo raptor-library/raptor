@@ -551,6 +551,188 @@ namespace raptor
         *****    Number of columns local to rank
         **************************************************************/
         TAPComm(const std::vector<int>& off_proc_column_map,
+                const std::vector<int>& on_proc_column_map,
+                const int global_num_cols, 
+                const int local_num_cols,
+                MPI_Comm comm = MPI_COMM_WORLD)
+        {
+            topo_aware = true;
+
+            // Get MPI Information
+            int rank, num_procs;
+            MPI_Comm_rank(comm, &rank);
+            MPI_Comm_size(comm, &num_procs);
+
+            // Initialize class variables
+            local_S_par_comm = new ParComm(2345);
+            local_R_par_comm = new ParComm(3456);
+            local_L_par_comm = new ParComm(4567);
+            global_par_comm = new ParComm(5678);
+
+            // Initialize Variables
+            int local_rank;
+            int idx;
+            int rank_node;
+            int recv_size;
+            int ctr;
+            std::vector<int> off_proc_col_to_proc;
+            std::vector<int> on_node_column_map;
+            std::vector<int> on_node_col_to_proc;
+            std::vector<int> off_node_column_map;
+            std::vector<int> off_node_col_to_node;
+            std::vector<int> on_node_to_off_proc;
+            std::vector<int> off_node_to_off_proc;
+            std::vector<int> recv_nodes;
+            std::vector<int> nodal_num_local;
+            std::vector<int> send_procs;
+            std::vector<int> recv_procs;
+            std::vector<int> orig_procs;
+            std::vector<int> global_send_orig_procs;
+            std::map<int, int> global_to_local;
+
+            ctr = 0;
+            for (std::vector<int>::const_iterator it = on_proc_column_map.begin();
+                    it != on_proc_column_map.end(); ++it)
+            {
+                global_to_local[*it] = ctr++;
+            }
+
+            // Map procs to nodes -- Topology Aware Portion
+            char* proc_layout_c = std::getenv("MPICH_RANK_REORDER_METHOD");
+            char* PPN_c = std::getenv("PPN");
+            if (PPN_c) 
+            {
+                PPN = atoi(PPN_c);
+            }
+            else
+            {
+                PPN = STANDARD_PPN;
+            }
+
+            if (proc_layout_c)
+            {
+                rank_ordering = atoi(proc_layout_c);
+            }
+            else
+            {
+                rank_ordering = STANDARD_PROC_LAYOUT;
+            }
+
+            if (rank_ordering == 3)
+            {
+                custom_rank_order.resize(num_procs);
+                char* rank_order_file = "/u/sciteam/bienz/mpich/custom_rank_order.txt";
+                char* file_setting = "r";
+                FILE *infile = fopen(rank_order_file, file_setting);
+                int in_rank;
+                for (int i = 0; i < num_procs; i++)
+                {
+                    fread(&in_rank, 4, 1, infile);
+                    custom_rank_order[in_rank] = i;
+                }
+                fclose(infile);
+            }
+
+            num_nodes = num_procs / PPN;
+            if (num_procs % PPN) num_nodes++;
+            rank_node = get_node(rank);
+
+            // Create intra-node communicator
+            MPI_Comm_split(MPI_COMM_WORLD, rank_node, rank, &local_comm);
+            MPI_Comm_rank(local_comm, &local_rank);
+
+            // Find process on which vector value associated with each column is
+            // stored
+            global_par_comm->form_col_to_proc(global_num_cols, on_proc_column_map,
+                    off_proc_column_map, off_proc_col_to_proc);
+
+            // Partition off_proc cols into on_node and off_node
+            split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
+                   on_node_column_map, on_node_col_to_proc, on_node_to_off_proc,
+                   off_node_column_map, off_node_col_to_node, off_node_to_off_proc);
+
+            // Gather all nodes with which any local process must communication
+            gather_off_node_nodes(off_node_col_to_node, recv_nodes);
+
+            // Find global processes with which rank communications
+            find_global_comm_procs(recv_nodes, send_procs, recv_procs);
+
+            // Form local_R_par_comm: communication for redistribution of inter-node
+            //  communication        
+            form_local_R_par_comm(off_node_column_map, off_node_col_to_node,
+                    recv_nodes, orig_procs);
+
+            // Form inter-node communication
+            form_global_par_comm(send_procs, recv_procs, orig_procs, 
+                    global_send_orig_procs);
+
+            // Form local_S_par_comm: initial distribution of values among local
+            // processes, before inter-node communication
+            form_local_S_par_comm(global_send_orig_procs);
+
+            // Adjust send indices (currently global vector indices) to be index 
+            // of global vector value from previous recv
+            adjust_send_indices(global_to_local);
+
+            // Form local_L_par_comm: fully local communication (origin and
+            // destination processes both local to node)
+            form_local_L_par_comm(on_node_column_map, on_node_col_to_proc,
+                    global_to_local);
+
+            // Determine size of final recvs (should be equal to 
+            // number of off_proc cols)
+            recv_size = local_R_par_comm->recv_data->size_msgs +
+                local_L_par_comm->recv_data->size_msgs;
+            if (recv_size)
+            {
+                // Want a single recv buffer local_R and local_L par_comms
+                recv_buffer.set_size(recv_size);
+                orig_to_R.resize(recv_size, -1);
+                orig_to_L.resize(recv_size, -1);
+
+                // Map local_R recvs to original off_proc_column_map
+                R_to_orig.resize(local_R_par_comm->recv_data->size_msgs);
+                for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
+                {
+                    idx = local_R_par_comm->recv_data->indices[i];
+                    int orig_i = off_node_to_off_proc[idx];
+                    R_to_orig[i] = orig_i;
+                    orig_to_R[orig_i] = i;
+                }
+
+                // Map local_L recvs to original off_proc_column_map
+                L_to_orig.resize(local_L_par_comm->recv_data->size_msgs);
+                for (int i = 0; i < local_L_par_comm->recv_data->size_msgs; i++)
+                {
+                    idx = local_L_par_comm->recv_data->indices[i];
+                    int orig_i = on_node_to_off_proc[idx];
+                    L_to_orig[i] = orig_i;
+                    orig_to_L[orig_i] = i;
+                }
+            }
+        }
+ 
+        /**************************************************************
+        *****   TAPComm Class Constructor
+        **************************************************************
+        ***** Initializes a TAPComm for a matrix without contiguous
+        ***** row-wise partitions across processes.  Instead, each
+        ***** process holds a random assortment of rows. 
+        *****
+        ***** Parameters
+        ***** -------------
+        ***** off_proc_column_map : std::vector<int>&
+        *****    Maps local off_proc columns indices to global
+        ***** first_local_row : int
+        *****    Global row index of first row local to process
+        ***** first_local_col : int
+        *****    Global row index of first column to fall in local block
+        ***** global_num_cols : int
+        *****    Number of global columns in matrix
+        ***** local_num_cols : int
+        *****    Number of columns local to rank
+        **************************************************************/
+        TAPComm(const std::vector<int>& off_proc_column_map,
                 const int first_local_row, 
                 const int first_local_col,
                 const int global_num_cols, 
@@ -586,7 +768,8 @@ namespace raptor
             std::vector<int> nodal_num_local;
             std::vector<int> send_procs;
             std::vector<int> recv_procs;
-            std::vector<int> orig_nodes;
+            std::vector<int> orig_procs;
+            std::vector<int> global_send_orig_procs;
 
             // Map procs to nodes -- Topology Aware Portion
             char* proc_layout_c = std::getenv("MPICH_RANK_REORDER_METHOD");
@@ -643,22 +826,23 @@ namespace raptor
                    off_node_column_map, off_node_col_to_node, off_node_to_off_proc);
 
             // Gather all nodes with which any local process must communication
-            gather_off_node_nodes(off_node_col_to_node, recv_nodes, nodal_num_local);
+            gather_off_node_nodes(off_node_col_to_node, recv_nodes);
 
             // Find global processes with which rank communications
-            find_global_comm_procs(recv_nodes, nodal_num_local, send_procs, recv_procs);
+            find_global_comm_procs(recv_nodes, send_procs, recv_procs);
 
             // Form local_R_par_comm: communication for redistribution of inter-node
             //  communication        
             form_local_R_par_comm(off_node_column_map, off_node_col_to_node,
-                    recv_nodes, nodal_num_local, orig_nodes);
+                    recv_nodes, orig_procs);
 
             // Form inter-node communication
-            form_global_par_comm(send_procs, recv_procs, orig_nodes);
+            form_global_par_comm(send_procs, recv_procs, orig_procs, 
+                    global_send_orig_procs);
 
             // Form local_S_par_comm: initial distribution of values among local
             // processes, before inter-node communication
-            form_local_S_par_comm(first_local_col);
+            form_local_S_par_comm(global_send_orig_procs);
 
             // Adjust send indices (currently global vector indices) to be index 
             // of global vector value from previous recv
@@ -783,22 +967,25 @@ namespace raptor
                 std::vector<int>& off_node_col_to_node,
                 std::vector<int>& off_node_to_off_proc);
         void gather_off_node_nodes(const std::vector<int>& off_node_col_to_node,
-                std::vector<int>& recv_nodes, 
-                std::vector<int>& nodal_num_local);
+                std::vector<int>& recv_nodes);
         void find_global_comm_procs(const std::vector<int>& recv_nodes,
-                std::vector<int>& nodal_num_local,
                 std::vector<int>& send_procs, 
                 std::vector<int>& recv_procs);
         void form_local_R_par_comm(const std::vector<int>& off_node_column_map,
                 const std::vector<int>& off_node_col_to_node,
                 const std::vector<int>& recv_nodes, 
-                std::vector<int>& nodal_num_local,
-                std::vector<int>& orig_nodes);
+                std::vector<int>& orig_procs);
         void form_global_par_comm(const std::vector<int>& send_procs,
                 const std::vector<int>& recv_procs, 
-                const std::vector<int>& orig_nodes);
+                const std::vector<int>& orig_procs,
+                std::vector<int>& global_send_orig_procs);
+        void form_local_S_par_comm(const std::vector<int>& global_send_orig_procs);
         void form_local_S_par_comm(const int first_local_col);
+        void adjust_send_indices(std::map<int, int>& global_to_local);
         void adjust_send_indices(const int first_local_row);
+        void form_local_L_par_comm(const std::vector<int>& on_node_column_map,
+                const std::vector<int>& on_node_col_to_proc,
+                std::map<int, int>& global_to_local);
         void form_local_L_par_comm(const std::vector<int>& on_node_column_map,
                 const std::vector<int>& on_node_col_to_proc,
                 const int first_local_row);
