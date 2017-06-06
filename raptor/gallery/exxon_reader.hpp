@@ -55,9 +55,6 @@ ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix,
     int global_block_rows;
     int n_data;
     double value;
-    int* sizes;
-    int* displs;
-    int* orig_block_rows;
     double* data;
     Matrix* tmp_mat;
 
@@ -236,10 +233,6 @@ ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix,
     }
 
     delete A_coo;
-
-    delete[] orig_block_rows;
-    delete[] sizes;
-    delete[] displs;
 
     return A;
 }
