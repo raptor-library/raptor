@@ -647,7 +647,7 @@ namespace raptor
                     off_proc_column_map, off_proc_col_to_proc);
 
             // Partition off_proc cols into on_node and off_node
-            split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
+ /*           split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
                    on_node_column_map, on_node_col_to_proc, on_node_to_off_proc,
                    off_node_column_map, off_node_col_to_node, off_node_to_off_proc);
 
@@ -709,7 +709,7 @@ namespace raptor
                     L_to_orig[i] = orig_i;
                     orig_to_L[orig_i] = i;
                 }
-            }
+            }*/
         }
  
         /**************************************************************

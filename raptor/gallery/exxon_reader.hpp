@@ -15,7 +15,8 @@
 
 using namespace raptor;
 
-ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix, int** global_num_rows)
+ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix, std::vector<int>& on_proc_column_map)
+
 {
     // Get MPI Info
     int rank, num_procs;
@@ -189,9 +190,15 @@ ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix,
     A_coo->global_num_cols = A_coo->global_num_rows;
     A_coo->local_nnz = A_coo->on_proc->nnz + A_coo->off_proc->nnz;
 
-    std::vector<int> on_proc_column_map(A_coo->on_proc->n_cols);
+    if (A_coo->on_proc->n_cols)
+    {
+        on_proc_column_map.resize(A_coo->on_proc->n_cols);
+    }
     A_coo->off_proc_num_cols = A_coo->off_proc->n_cols;
-    A_coo->off_proc_column_map.resize(A_coo->off_proc_num_cols);
+    if (A_coo->off_proc_num_cols)
+    {
+        A_coo->off_proc_column_map.resize(A_coo->off_proc_num_cols);
+    }
 
     // Create column maps from all local to global columns
     int first_local_col;
@@ -217,16 +224,6 @@ ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix,
 
     A_coo->comm = new ParComm(A_coo->off_proc_column_map, on_proc_column_map,
             A_coo->global_num_cols);
-
-    int* global_tmp = new int[A_coo->local_num_rows];
-    for (int i = 0; i < block_on_proc_num_cols; i++)
-    {
-        for (int j = 0; j < block_size; j++)
-        {
-            global_tmp[i*block_size + j] = global_indices[i]*block_size + j;
-        }
-    }
-    *global_num_rows = global_tmp;
     
     ParCSRMatrix* A = new ParCSRMatrix(A_coo);
     if (A->on_proc->nnz)
