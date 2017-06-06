@@ -647,20 +647,20 @@ namespace raptor
                     off_proc_column_map, off_proc_col_to_proc);
 
             // Partition off_proc cols into on_node and off_node
- /*           split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
+            split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
                    on_node_column_map, on_node_col_to_proc, on_node_to_off_proc,
                    off_node_column_map, off_node_col_to_node, off_node_to_off_proc);
 
             // Gather all nodes with which any local process must communication
-            gather_off_node_nodes(off_node_col_to_node, recv_nodes);
+            gather_off_node_nodes(off_node_col_to_node, recv_nodes, nodal_num_local);
 
             // Find global processes with which rank communications
-            find_global_comm_procs(recv_nodes, send_procs, recv_procs);
+            find_global_comm_procs(recv_nodes, nodal_num_local, send_procs, recv_procs);
 
             // Form local_R_par_comm: communication for redistribution of inter-node
             //  communication        
             form_local_R_par_comm(off_node_column_map, off_node_col_to_node,
-                    recv_nodes, orig_procs);
+                    recv_nodes, nodal_num_local, orig_procs);
 
             // Form inter-node communication
             form_global_par_comm(send_procs, recv_procs, orig_procs, 
@@ -709,7 +709,7 @@ namespace raptor
                     L_to_orig[i] = orig_i;
                     orig_to_L[orig_i] = i;
                 }
-            }*/
+            }
         }
  
         /**************************************************************
@@ -967,10 +967,20 @@ namespace raptor
                 std::vector<int>& off_node_col_to_node,
                 std::vector<int>& off_node_to_off_proc);
         void gather_off_node_nodes(const std::vector<int>& off_node_col_to_node,
+                std::vector<int>& recv_nodes, std::vector<int>& nodal_num_local);
+        void gather_off_node_nodes(const std::vector<int>& off_node_col_to_node,
                 std::vector<int>& recv_nodes);
+        void find_global_comm_procs(const std::vector<int>& recv_nodes,
+                std::vector<int>& nodal_num_local,
+                std::vector<int>& send_procs, 
+                std::vector<int>& recv_procs);
         void find_global_comm_procs(const std::vector<int>& recv_nodes,
                 std::vector<int>& send_procs, 
                 std::vector<int>& recv_procs);
+        void form_local_R_par_comm(const std::vector<int>& off_node_column_map,
+                const std::vector<int>& off_node_col_to_node,
+                const std::vector<int>& recv_nodes, std::vector<int>& nodal_num_local,
+                std::vector<int>& orig_procs);
         void form_local_R_par_comm(const std::vector<int>& off_node_column_map,
                 const std::vector<int>& off_node_col_to_node,
                 const std::vector<int>& recv_nodes, 
