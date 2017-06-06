@@ -826,15 +826,15 @@ namespace raptor
                    off_node_column_map, off_node_col_to_node, off_node_to_off_proc);
 
             // Gather all nodes with which any local process must communication
-            gather_off_node_nodes(off_node_col_to_node, recv_nodes);
+            gather_off_node_nodes(off_node_col_to_node, recv_nodes, nodal_num_local);
 
             // Find global processes with which rank communications
-            find_global_comm_procs(recv_nodes, send_procs, recv_procs);
+            find_global_comm_procs(recv_nodes, nodal_num_local, send_procs, recv_procs);
 
             // Form local_R_par_comm: communication for redistribution of inter-node
             //  communication        
             form_local_R_par_comm(off_node_column_map, off_node_col_to_node,
-                    recv_nodes, orig_procs);
+                    recv_nodes, nodal_num_local, orig_procs);
 
             // Form inter-node communication
             form_global_par_comm(send_procs, recv_procs, orig_procs, 
