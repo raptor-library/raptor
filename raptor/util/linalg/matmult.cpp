@@ -126,6 +126,33 @@ ParCSCMatrix* ParCSCMatrix::mult(ParCSCMatrix* B)
     return C;
 }
 
+ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A)
+{
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    if (A->tap_comm == NULL)
+    {
+        A->tap_comm = new TAPComm(off_proc_column_map, first_local_row, first_local_col,
+                global_num_cols, local_num_cols);
+    }
+
+    // Initialize C (matrix to be returned)
+    ParCSRMatrix* C = new ParCSRMatrix();
+
+    CSRMatrix* Ctmp = mult_T_partial(A);
+    CSRMatrix* recv_mat = A->tap_comm->communicate_T(Ctmp->idx1, Ctmp->idx2,
+            Ctmp->vals, MPI_COMM_WORLD);
+    mult_T_combine(A, C, recv_mat);
+
+    // Clean up
+    delete Ctmp;
+    delete recv_mat;
+
+    // Return matrix containing product
+    return C;
+}
+
 ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A)
 {
     int rank;
@@ -147,6 +174,50 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A)
 
     // Clean up
     delete Ctmp;
+    delete recv_mat;
+
+    // Return matrix containing product
+    return C;
+}
+
+ParCSCMatrix* ParCSCMatrix::tap_mult_T(ParCSCMatrix* A)
+{
+    if (A->tap_comm == NULL)
+    {
+        A->tap_comm = new TAPComm(off_proc_column_map, first_local_row, first_local_col,
+                global_num_cols, local_num_cols);
+    }
+
+    // Initialize C (matrix to be returned)
+    ParCSCMatrix* C = new ParCSCMatrix();
+
+    // Multiply off_proc rows of AT, forming matrix that must
+    // be communicated to other processes
+    CSRMatrix* Ctmp = mult_T_partial(A);
+
+    // Communicate values of Ctmp to other processes
+    CSRMatrix* recv_mat_csr = A->tap_comm->communicate_T(Ctmp->idx1, Ctmp->idx2,
+            Ctmp->vals, MPI_COMM_WORLD);
+
+    // Change cols from global to local
+    recv_mat_csr->condense_cols();
+
+    // Convert recv_mat_csr to CSC (needed for final multiply step)
+    CSCMatrix* recv_mat = new CSCMatrix(recv_mat_csr);
+
+    // Re-index rows, to correspond with local rows
+    for (std::vector<int>::iterator it = recv_mat->idx2.begin();
+            it != recv_mat->idx2.end(); ++it)
+    {
+        *it = A->tap_comm->local_S_par_comm->send_data->indices[*it];
+    }
+
+    // Multiply local rows of AT, and combine with recv_mat
+    mult_T_combine(A, C, recv_mat);
+
+    // Clean up
+    delete Ctmp;
+    delete recv_mat_csr;
     delete recv_mat;
 
     // Return matrix containing product

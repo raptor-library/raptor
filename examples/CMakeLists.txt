@@ -9,8 +9,8 @@ target_link_libraries(benchmark_tap_spmv raptor ${MPI_LIBRARIES})
 #add_executable(benchmark_matmult benchmark_matmult.cpp)
 #target_link_libraries(benchmark_matmult raptor ${MPI_LIBRARIES})
 
-#add_executable(benchmark_tap_matmult benchmark_tap_matmult.cpp)
-#target_link_libraries(benchmark_tap_matmult raptor ${MPI_LIBRARIES})
+add_executable(benchmark_tap_matmult benchmark_tap_matmult.cpp)
+target_link_libraries(benchmark_tap_matmult raptor ${MPI_LIBRARIES})
 
 #add_executable(benchmark_exxon_comm benchmark_exxon_comm.cpp)
 #target_link_libraries(benchmark_exxon_comm raptor ${MPI_LIBRARIES})

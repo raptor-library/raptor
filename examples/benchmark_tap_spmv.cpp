@@ -25,25 +25,28 @@ int main(int argc, char *argv[])
     ParVector x;
     ParVector b;
 
-    int n_tests = 5;
+    std::vector<int> on_proc_column_map;
 
-    int mat_n = 1024;
-    if (argc > 1)
-    {
-        mat_n = atoi(argv[1]);
-    }
+    int n_tests = 5;
 
     char* folder = "/u/sciteam/bienz/scratch/exxon_10_16/mat_1024/spe10-1024-blk_coord";
     char* iname = "index_R";
     char* fname = "spe10-1024-blk_coord_TS24_TSA0_NI1_R";
     char* suffix = ".bcoord_bin";
-    int* global_num_rows;
 
-    A = exxon_reader(folder, iname, fname, suffix, &global_num_rows);
+    if (argc > 1)
+    {
+        folder = argv[1];
+        if (argc > 2)
+        {
+            fname = argv[2];
+        }
+    }
+
+    A = exxon_reader(folder, iname, fname, suffix, on_proc_column_map);
     b = ParVector(A->global_num_rows, A->local_num_rows, A->first_local_row);
     x = ParVector(A->global_num_cols, A->local_num_cols, A->first_local_col);
-    A->tap_comm = new TAPComm(A->off_proc_column_map,
-            A->first_local_row, A->first_local_col, 
+    A->tap_comm = new TAPComm(A->off_proc_column_map, on_proc_column_map,
             A->global_num_cols, A->local_num_cols);
 
     for (int i = 0; i < x.local_n; i++)
@@ -63,9 +66,8 @@ int main(int argc, char *argv[])
         A->comm = NULL;
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        A->comm = new ParComm(A->off_proc_column_map, 
-                A->first_local_row, A->first_local_col,
-                A->global_num_cols, A->local_num_cols);
+        A->comm = new ParComm(A->off_proc_column_map, on_proc_column_map,
+                A->global_num_cols);
         tfinal = (MPI_Wtime() - t0) / n_tests;
         MPI_Reduce(&tfinal, &t_par, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         
@@ -73,8 +75,7 @@ int main(int argc, char *argv[])
         A->tap_comm = NULL;
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        A->tap_comm = new TAPComm(A->off_proc_column_map,
-                A->first_local_row, A->first_local_col, 
+        A->tap_comm = new TAPComm(A->off_proc_column_map, on_proc_column_map,
                 A->global_num_cols, A->local_num_cols);
         tfinal = (MPI_Wtime() - t0) / n_tests;
         MPI_Reduce(&tfinal, &t_tap, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
@@ -116,8 +117,6 @@ int main(int argc, char *argv[])
             assert(fabs(b_norm - b_tap_norm) < zero_tol);
         }
     }
-
-    delete[] global_num_rows;
 
     delete A;
     MPI_Finalize();

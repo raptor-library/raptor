@@ -142,12 +142,15 @@ int main(int argc, char *argv[])
         // TODO -- fix this!  Right now, creating two communicators without
         // barrier between can cause race condition...
         ParCSRMatrix* A_l = convert(A_h_l);
-        ParCSRMatrix* P_l = convert(P_h_l);
+        ParCSRMatrix* P_l_csr = convert(P_h_l);
+        ParCSCMatrix* P_l = new ParCSCMatrix(P_l_csr);
+        ParCSRMatrix* AP_l = A_l->mult(P_l);
 
         A_l->tap_comm = new TAPComm(A_l->off_proc_column_map,
                 A_l->first_local_row, A_l->first_local_col, 
                 A_l->global_num_cols, A_l->local_num_cols);
 
+        if (rank == 0) printf("Original SpGEMM (A*P)\n");
         for (int j = 0; j < 5; j++)
         {
             tfinal = 0.0;
@@ -169,8 +172,7 @@ int main(int argc, char *argv[])
             {
                 MPI_Barrier(MPI_COMM_WORLD);
                 t0 = MPI_Wtime();
-                ParCSRMatrix* C_l = new ParCSRMatrix();
-                A_l->mult(*P_l, C_l);
+                ParCSRMatrix* C_l = A_l->mult(P_l);
                 tfinal += MPI_Wtime() - t0;
                 delete C_l;
                 clear_cache(cache_len, cache_array);  
@@ -184,8 +186,39 @@ int main(int argc, char *argv[])
             {
                 MPI_Barrier(MPI_COMM_WORLD);
                 t0 = MPI_Wtime();
-                ParCSRMatrix* C_l_tap = new ParCSRMatrix();
-                A_l->tap_mult(*P_l, C_l_tap);
+                ParCSRMatrix* C_l_tap = A_l->tap_mult(P_l);
+                tfinal += MPI_Wtime() - t0;
+                delete C_l_tap;
+                clear_cache(cache_len, cache_array);  
+            }
+            tfinal /= num_tests;
+            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+            if (rank == 0) printf("Raptor Matmult time = %e\n", t0);
+        }
+
+        if (rank == 0) printf("Tanspose SpGEMM (P^T*(AP))\n");
+        for (int j = 0; j < 5; j++)
+        {
+            tfinal = 0.0;
+            for (int k = 0; k < num_tests; k++)
+            {
+                MPI_Barrier(MPI_COMM_WORLD);
+                t0 = MPI_Wtime();
+                ParCSRMatrix* C_l = AP_l->mult_T(P_l);
+                tfinal += MPI_Wtime() - t0;
+                delete C_l;
+                clear_cache(cache_len, cache_array);  
+            }
+            tfinal /= num_tests;
+            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+            if (rank == 0) printf("Raptor Matmult time = %e\n", t0);
+
+            tfinal = 0.0;
+            for (int k = 0; k < num_tests; k++)
+            {
+                MPI_Barrier(MPI_COMM_WORLD);
+                t0 = MPI_Wtime();
+                ParCSRMatrix* C_l_tap = AP_l->tap_mult_T(P_l);
                 tfinal += MPI_Wtime() - t0;
                 delete C_l_tap;
                 clear_cache(cache_len, cache_array);  
