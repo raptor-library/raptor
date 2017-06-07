@@ -39,15 +39,15 @@ int main(int argc, char* argv[])
 
     // Create Parallel Matrix A_par (and vectors x_par
     // and b_par) and mult b_par <- A_par*x_par
-    ParCSRMatrix A_par;
+    ParCSRMatrix* A_par;
     A_par = par_stencil_grid(stencil, grid, 2);
-    ParVector x_par(A_par.global_num_cols, A_par.local_num_cols, A_par.first_local_col);
-    ParVector b_par(A_par.global_num_rows, A_par.local_num_rows, A_par.first_local_row);
-    ParVector b_tap(A_par.global_num_rows, A_par.local_num_rows, A_par.first_local_row);
+    ParVector x_par(A_par->global_num_cols, A_par->local_num_cols, A_par->first_local_col);
+    ParVector b_par(A_par->global_num_rows, A_par->local_num_rows, A_par->first_local_row);
+    ParVector b_tap(A_par->global_num_rows, A_par->local_num_rows, A_par->first_local_row);
     x_par.set_const_value(1.0);
 
-    A_par.mult(x_par, b_par);
-    A_par.tap_mult(x_par, b_tap);
+    A_par->mult(x_par, b_par);
+    A_par->tap_mult(x_par, b_tap);
     compare(b_par, b_tap);
 
     // Set x and x_par to same random values
@@ -56,11 +56,12 @@ int main(int argc, char* argv[])
         srand(i+x_par.first_local);
         x_par.local[i] = ((double)rand()) / RAND_MAX;
     }
-    A_par.mult(x_par, b_par);
-    A_par.tap_mult(x_par, b_tap);
+    A_par->mult(x_par, b_par);
+    A_par->tap_mult(x_par, b_tap);
     compare(b_par, b_tap);
 
     delete[] stencil;
+    delete A_par;
 
     MPI_Finalize();
 }
