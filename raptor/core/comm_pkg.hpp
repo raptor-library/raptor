@@ -48,9 +48,9 @@ namespace raptor
         virtual CSRMatrix* communicate(std::vector<int>& rowptr, 
                 std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
-        virtual CSRMatrix* communicate_T(std::vector<int>& rowptr, 
+        CSRMatrix* communicate_T(std::vector<int>& rowptr, 
                 std::vector<int>& col_indices,
-                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
+                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD){}
         virtual Vector& get_recv_buffer() = 0;
         int find_proc_col_starts(const int first_local_col, 
                 const int last_local_col,
@@ -846,12 +846,12 @@ namespace raptor
 
             // Adjust send indices (currently global vector indices) to be index 
             // of global vector value from previous recv
-            adjust_send_indices(first_local_row);
+            adjust_send_indices(first_local_col);
 
             // Form local_L_par_comm: fully local communication (origin and
             // destination processes both local to node)
             form_local_L_par_comm(on_node_column_map, on_node_col_to_proc,
-                    first_local_row);
+                    first_local_col);
 
             // Determine size of final recvs (should be equal to 
             // number of off_proc cols)
@@ -992,13 +992,13 @@ namespace raptor
         void form_local_S_par_comm(const std::vector<int>& global_send_orig_procs);
         void form_local_S_par_comm(const int first_local_col);
         void adjust_send_indices(std::map<int, int>& global_to_local);
-        void adjust_send_indices(const int first_local_row);
+        void adjust_send_indices(const int first_local_col);
         void form_local_L_par_comm(const std::vector<int>& on_node_column_map,
                 const std::vector<int>& on_node_col_to_proc,
                 std::map<int, int>& global_to_local);
         void form_local_L_par_comm(const std::vector<int>& on_node_column_map,
                 const std::vector<int>& on_node_col_to_proc,
-                const int first_local_row);
+                const int first_local_col);
         int get_node(int proc);
         int get_local_proc(int proc);
         int get_global_proc(int node, int local_proc);
@@ -1009,8 +1009,9 @@ namespace raptor
         void complete_comm();
         CSRMatrix* communicate(std::vector<int>& rowptr, std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
-        CSRMatrix* communicate_T(std::vector<int>& rowptr, std::vector<int>& col_indices,
-                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
+        std::pair<CSRMatrix*, CSRMatrix*> communicate_T(std::vector<int>& rowptr, 
+                std::vector<int>& col_indices, std::vector<double>& values, 
+                MPI_Comm comm = MPI_COMM_WORLD);
         Vector& get_recv_buffer()
         {
             return recv_buffer;

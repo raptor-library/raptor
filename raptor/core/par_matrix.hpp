@@ -410,7 +410,8 @@ namespace raptor
     ParCSRMatrix* tap_mult_T(ParCSCMatrix* A);
     
     CSRMatrix* mult_T_partial(ParCSCMatrix* A);
-    void mult_T_combine(ParCSCMatrix* A, ParCSRMatrix* C, CSRMatrix* recv);
+    void mult_T_combine(ParCSCMatrix* A, ParCSRMatrix* C, CSRMatrix* recv_on,
+            CSRMatrix* recv_off);
 
     void mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, CSRMatrix* recv);
     void mult_helper(ParCSCMatrix* B, ParCSRMatrix* C, CSCMatrix* recv);

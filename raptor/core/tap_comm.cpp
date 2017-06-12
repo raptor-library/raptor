@@ -837,7 +837,7 @@ void TAPComm::form_local_S_par_comm(const std::vector<int>& global_send_orig_pro
 ***** first_local_row : int
 *****    First row local to rank 
 **************************************************************/
-void TAPComm::adjust_send_indices(std::map<int, int>& global_to_local)
+void TAPComm::adjust_send_indices(std::map<int, int>& init_global_to_local)
 {
     int idx, global_col;
 
@@ -845,7 +845,7 @@ void TAPComm::adjust_send_indices(std::map<int, int>& global_to_local)
     for (int i = 0; i < local_S_par_comm->send_data->size_msgs; i++)
     {
         global_col = local_S_par_comm->send_data->indices[i];
-        local_S_par_comm->send_data->indices[i] = global_to_local[global_col];
+        local_S_par_comm->send_data->indices[i] = init_global_to_local[global_col];
     }
 
     // Update global_par_comm->send_data->indices (global rows) to 
@@ -854,42 +854,7 @@ void TAPComm::adjust_send_indices(std::map<int, int>& global_to_local)
     for (int i = 0; i < local_S_par_comm->recv_data->size_msgs; i++)
     {
         S_global_to_local[local_S_par_comm->recv_data->indices[i]] = i;
-    }
-    for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
-    {
-        idx = global_par_comm->send_data->indices[i];
-        global_par_comm->send_data->indices[i] = S_global_to_local[idx];
-    }
-
-    // Update local_R_par_comm->send_data->indices (global_rows)
-    // to index of global row in global_par_comm->recv_data
-    for (int i = 0; i < global_par_comm->recv_data->size_msgs; i++)
-    {
-        global_to_local[global_par_comm->recv_data->indices[i]] = i;
-    }
-    for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
-    {
-        idx = local_R_par_comm->send_data->indices[i];
-        local_R_par_comm->send_data->indices[i] = global_to_local[idx];
-    }
-}
-
-void TAPComm::adjust_send_indices(const int first_local_row)
-{
-    int idx;
-
-    // Update global row index with local row to send 
-    for (int i = 0; i < local_S_par_comm->send_data->size_msgs; i++)
-    {
-        local_S_par_comm->send_data->indices[i] -= first_local_row;
-    }
-
-    // Update global_par_comm->send_data->indices (global rows) to 
-    // index of global row in local_S_par_comm->recv_data->indices
-    std::map<int, int> S_global_to_local;
-    for (int i = 0; i < local_S_par_comm->recv_data->size_msgs; i++)
-    {
-        S_global_to_local[local_S_par_comm->recv_data->indices[i]] = i;
+        local_S_par_comm->recv_data->indices[i] = i;
     }
     for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
     {
@@ -903,6 +868,46 @@ void TAPComm::adjust_send_indices(const int first_local_row)
     for (int i = 0; i < global_par_comm->recv_data->size_msgs; i++)
     {
         global_to_local[global_par_comm->recv_data->indices[i]] = i;
+        global_par_comm->recv_data->indices[i] = i;
+    }
+    for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
+    {
+        idx = local_R_par_comm->send_data->indices[i];
+        local_R_par_comm->send_data->indices[i] = global_to_local[idx];
+    }
+}
+
+void TAPComm::adjust_send_indices(const int first_local_col)
+{
+    int idx;
+
+    // Update global row index with local row to send 
+    for (int i = 0; i < local_S_par_comm->send_data->size_msgs; i++)
+    {
+        local_S_par_comm->send_data->indices[i] -= first_local_col;
+    }
+
+    // Update global_par_comm->send_data->indices (global rows) to 
+    // index of global row in local_S_par_comm->recv_data->indices
+    std::map<int, int> S_global_to_local;
+    for (int i = 0; i < local_S_par_comm->recv_data->size_msgs; i++)
+    {
+        S_global_to_local[local_S_par_comm->recv_data->indices[i]] = i;
+        local_S_par_comm->recv_data->indices[i] = i;
+    }
+    for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
+    {
+        idx = global_par_comm->send_data->indices[i];
+        global_par_comm->send_data->indices[i] = S_global_to_local[idx];
+    }
+
+    // Update local_R_par_comm->send_data->indices (global_rows)
+    // to index of global row in global_par_comm->recv_data
+    std::map<int, int> global_to_local;
+    for (int i = 0; i < global_par_comm->recv_data->size_msgs; i++)
+    {
+        global_to_local[global_par_comm->recv_data->indices[i]] = i;
+        global_par_comm->recv_data->indices[i] = i;
     }
     for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
     {
@@ -998,7 +1003,7 @@ void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
 }
 
 void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
-        const std::vector<int>& on_node_col_to_proc, const int first_local_row)
+        const std::vector<int>& on_node_col_to_proc, const int first_local_col)
 {
     int local_rank;
     MPI_Comm_rank(local_comm, &local_rank);
@@ -1053,7 +1058,7 @@ void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
         MPI_Recv(recvbuf, count, MPI_INT, proc, 7890, local_comm, &recv_status);
         for (int i = 0; i < count; i++)
         {
-            recvbuf[i] -= first_local_row;
+            recvbuf[i] -= first_local_col;
         }
         local_L_par_comm->send_data->add_msg(proc, count, recvbuf);
     }

@@ -270,9 +270,12 @@ namespace raptor
         if (nnz_per_row)
         {
             int _nnz = nnz_per_row * _nrows;
-            idx1.reserve(_nnz);
-            idx2.reserve(_nnz);
-            vals.reserve(_nnz);
+            if (_nnz)
+            {
+                idx1.reserve(_nnz);
+                idx2.reserve(_nnz);
+                vals.reserve(_nnz);
+            }
         }        
     }
 
@@ -281,9 +284,12 @@ namespace raptor
         nnz = 0;
         int nnz_dense = n_rows*n_cols;
 
-        idx1.reserve(nnz_dense);
-        idx2.reserve(nnz_dense);
-        vals.reserve(nnz_dense);
+        if (nnz_dense)
+        {
+            idx1.reserve(nnz_dense);
+            idx2.reserve(nnz_dense);
+            vals.reserve(nnz_dense);
+        }
 
         for (int i = 0; i < n_rows; i++)
         {
@@ -452,7 +458,7 @@ namespace raptor
     **************************************************************/
     CSRMatrix(int _nrows, int _ncols, int _nnz = 0): Matrix(_nrows, _ncols)
     {
-        idx1.reserve(_nrows + 1);
+        idx1.resize(_nrows + 1);
         if (_nnz)
         {
             idx2.reserve(_nnz);
@@ -469,8 +475,11 @@ namespace raptor
         int nnz_dense = n_rows*n_cols;
 
         idx1.resize(n_rows + 1);
-        idx2.reserve(nnz_dense);
-        vals.reserve(nnz_dense);
+        if (nnz_dense)
+        {
+            idx2.reserve(nnz_dense);
+            vals.reserve(nnz_dense);
+        }
 
         idx1[0] = 0;
         for (int i = 0; i < n_rows; i++)
@@ -632,9 +641,12 @@ namespace raptor
 
     CSCMatrix(int _nrows, int _ncols, int _nnz): Matrix(_nrows, _ncols)
     {
-        idx1.reserve(_ncols + 1);
-        idx2.reserve(_nnz);
-        vals.reserve(_nnz);
+        idx1.resize(_ncols + 1);
+        if (_nnz)
+        {
+            idx2.reserve(_nnz);
+            vals.reserve(_nnz);
+        }
         nnz = _nnz;
     }
 
@@ -643,8 +655,11 @@ namespace raptor
         int nnz_dense = n_rows*n_cols;
 
         idx1.resize(n_cols + 1);
-        idx2.reserve(nnz_dense);
-        vals.reserve(nnz_dense);
+        if (nnz_dense)
+        {
+            idx2.reserve(nnz_dense);
+            vals.reserve(nnz_dense);
+        }
 
         idx1[0] = 0;
         for (int i = 0; i < n_cols; i++)

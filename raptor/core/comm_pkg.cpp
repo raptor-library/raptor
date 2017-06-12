@@ -775,6 +775,7 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
     int ctr, prev_ctr;
     int row_start, row_end;
     int start_idx, end_idx;
+    int nsends, nrecvs;
 
     // Calculate nnz/row for each row to be sent to a proc
     std::vector<int> send_row_buffer;
@@ -863,6 +864,7 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
     // Send pair_data for each row using MPI_DOUBLE_INT
     ctr = 0;
     prev_ctr = 0;
+    nsends = 0;
     for (int i = 0; i < send_comm->num_msgs; i++)
     {
         start = send_comm->indptr[i];
@@ -884,17 +886,14 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
         if (ctr - prev_ctr)
         {
             MPI_Isend(&(send_buffer[prev_ctr]), ctr - prev_ctr, MPI_DOUBLE_INT, proc, 
-                    key, comm, &(send_comm->requests[i]));
+                    key, comm, &(send_comm->requests[nsends++]));
             prev_ctr = ctr;
-        }
-        else
-        {
-            send_comm->requests[i] = MPI_REQUEST_NULL;
         }
     }
 
     // Recv pair_data corresponding to each off_proc column and add it to
     // correct location in matrix
+    nrecvs = 0;
     for (int i = 0; i < recv_comm->num_msgs; i++)
     {
         start = recv_comm->indptr[i];
@@ -907,21 +906,17 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
         if (end_idx - start_idx)
         {
             MPI_Irecv(&(recv_buffer[start_idx]), end_idx - start_idx, MPI_DOUBLE_INT,
-                    proc, key, comm, &(recv_comm->requests[i]));
-        }
-        else
-        {
-            recv_comm->requests[i] = MPI_REQUEST_NULL;
+                    proc, key, comm, &(recv_comm->requests[nrecvs++]));
         }
     }
 
     if (recv_comm->num_msgs)
     {
-        MPI_Waitall(recv_comm->num_msgs, recv_comm->requests, MPI_STATUS_IGNORE);
+        MPI_Waitall(nrecvs, recv_comm->requests, MPI_STATUSES_IGNORE);
     }
     if (send_comm->num_msgs)
     {
-        MPI_Waitall(send_comm->num_msgs, send_comm->requests, MPI_STATUS_IGNORE);
+        MPI_Waitall(nsends, send_comm->requests, MPI_STATUSES_IGNORE);
     }
 
     // Add recvd values to matrix
@@ -992,6 +987,7 @@ CSRMatrix* TAPComm::communicate(std::vector<int>& rowptr,
         }
         recv_mat->idx1[i+1] = ctr;
     }
+    recv_mat->nnz = ctr;
     
     delete R_mat;
     delete L_mat;
@@ -1018,68 +1014,72 @@ CSRMatrix* ParComm::communicate_T(std::vector<int>& rowptr,
     
 
 // TODO -- this needs fixed (how to do transpose TAP comm)??
-CSRMatrix* TAPComm::communicate_T(std::vector<int>& rowptr, 
+std::pair<CSRMatrix*, CSRMatrix*> TAPComm::communicate_T(std::vector<int>& rowptr, 
         std::vector<int>& col_indices, std::vector<double>& values,
         MPI_Comm comm)
 {   
     int ctr, idx;
     int start, end;
+    int row_R, row_L;
 
-    CSRMatrix* S_mat = local_S_par_comm->communicate(rowptr, col_indices, values,
+    // Split rowptr, col_indices, and values into R and L portions
+    // (local_R_par_comm->recv_data->indices represent index in
+    //  off_node columns, not off_proc columns)
+    std::vector<int> R_rowptr;
+    std::vector<int> L_rowptr;
+    std::vector<int> R_col_indices;
+    std::vector<int> L_col_indices;
+    std::vector<double> R_values;
+    std::vector<double> L_values;
+
+    int n_rows = rowptr.size() - 1;
+
+    R_rowptr.push_back(0);
+    L_rowptr.push_back(0);
+    for (int i = 0; i < n_rows; i++)
+    {
+        start = rowptr[i];
+        end = rowptr[i+1];
+        row_R = orig_to_R[i];
+        if (row_R >= 0)
+        {
+            for (int j = start; j < end; j++)
+            {
+                R_col_indices.push_back(col_indices[j]);
+                R_values.push_back(values[j]);
+            }
+            R_rowptr.push_back(R_col_indices.size());
+        }
+
+        row_L = orig_to_L[i];
+        if (row_L >= 0)
+        {
+            for (int j = start; j < end; j++)
+            {
+                L_col_indices.push_back(col_indices[j]);
+                L_values.push_back(values[j]);
+            }
+            L_rowptr.push_back(L_col_indices.size());
+        }
+    }
+    
+
+
+    CSRMatrix* R_mat = local_R_par_comm->communicate_T(R_rowptr, R_col_indices, R_values,
             local_comm);
-    CSRMatrix* G_mat = global_par_comm->communicate(S_mat->idx1, S_mat->idx2,
-            S_mat->vals, comm);
-    delete S_mat;
 
-    CSRMatrix* R_mat = local_R_par_comm->communicate(G_mat->idx1, G_mat->idx2,
+    CSRMatrix* G_mat = global_par_comm->communicate_T(R_mat->idx1, R_mat->idx2,
+            R_mat->vals, comm);
+    delete R_mat;
+
+    CSRMatrix* S_mat = local_S_par_comm->communicate_T(G_mat->idx1, G_mat->idx2,
             G_mat->vals, local_comm);
     delete G_mat;
 
-    CSRMatrix* L_mat = local_L_par_comm->communicate(rowptr, col_indices, values,
+    CSRMatrix* L_mat = local_L_par_comm->communicate_T(L_rowptr, L_col_indices, L_values,
             local_comm);
 
-    // Create recv_mat (combo of L_mat and R_mat)
-    CSRMatrix* recv_mat = new CSRMatrix(L_mat->n_rows + R_mat->n_rows, -1);
-    int nnz = L_mat->nnz + R_mat->nnz;
-    if (nnz)
-    {
-        recv_mat->idx2.resize(nnz);
-        recv_mat->vals.resize(nnz);
-    }
-
-    ctr = 0;
-    recv_mat->idx1[0] = ctr;
-    for (int i = 0; i < recv_mat->n_rows; i++)
-    {
-        if (orig_to_R[i] >= 0)
-        {
-            idx = orig_to_R[i];
-            start = R_mat->idx1[idx];
-            end = R_mat->idx1[idx+1];
-            for (int j = start; j < end; j++)
-            {
-                recv_mat->idx2[ctr] = R_mat->idx2[j];
-                recv_mat->vals[ctr++] = R_mat->vals[j];
-            }
-        }
-        else
-        {
-            idx = orig_to_L[i];
-            start = L_mat->idx1[idx];
-            end = L_mat->idx1[idx+1];
-            for (int j = start; j < end; j++)
-            {
-                recv_mat->idx2[ctr] = L_mat->idx2[j];
-                recv_mat->vals[ctr++] = L_mat->vals[j];
-            }
-        }
-        recv_mat->idx1[i+1] = ctr;
-    }
-    
-    delete R_mat;
-    delete L_mat;
-
-    return recv_mat;
+    return std::make_pair(L_mat, S_mat);
 }
 
 
