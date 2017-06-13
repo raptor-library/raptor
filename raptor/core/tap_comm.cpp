@@ -250,7 +250,7 @@ void TAPComm::find_global_comm_procs(const std::vector<int>& recv_nodes,
             {
                 node = recv_nodes[i];
                 proc = get_global_proc(node, local_rank);
-                MPI_Issend(&(recv_nodes[i]), 1, MPI_INT, proc, 9876, MPI_COMM_WORLD,
+                MPI_Isend(&(recv_nodes[i]), 1, MPI_INT, proc, 9876, MPI_COMM_WORLD,
                         &(requests[n_recvs++]));
             }
         }
@@ -943,27 +943,51 @@ void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
     int prev_proc, prev_idx;
     int num_sends;
     int proc, start, end;
-    int count;
+    int count, idx;
     MPI_Status recv_status;
     std::vector<int> recv_procs(PPN, 0);
+    std::vector<int> proc_sizes(PPN, 0);
+    std::vector<int> proc_ctr(PPN+1);
+    std::vector<int> proc_cols;
+    std::vector<int> proc_cols_gbl;
 
     if (on_node_num_cols)
     {
-        prev_proc = on_node_col_to_proc[0];
-        recv_procs[prev_proc] = 1;
-        prev_idx = 0;
-        for (int i = 1; i < on_node_num_cols; i++)
+        proc_cols.resize(on_node_num_cols);
+        proc_cols_gbl.resize(on_node_num_cols);
+
+        for (int i = 0; i < on_node_num_cols; i++)
         {
             proc = on_node_col_to_proc[i];
-            if (proc != prev_proc)
+            proc_sizes[proc]++;
+        }
+
+        proc_ctr[0] = 0;
+        for (int i = 0; i < PPN; i++)
+        {
+            proc_ctr[i+1] = proc_ctr[i] + proc_sizes[i];
+            proc_sizes[i] = 0;
+        }
+
+        for (int i = 0; i < on_node_num_cols; i++)
+        {
+            proc = on_node_col_to_proc[i];
+            idx = proc_ctr[proc] + proc_sizes[proc]++;
+
+            proc_cols[idx] = i;
+            proc_cols_gbl[idx] = on_node_column_map[i];
+        }
+
+        for (int i = 0; i < PPN; i++)
+        {
+            start = proc_ctr[i];
+            end = proc_ctr[i+1];
+            if (end - start)
             {
-                local_L_par_comm->recv_data->add_msg(prev_proc, i - prev_idx);
-                prev_proc = proc;
-                prev_idx = i;
-                recv_procs[proc] = 1;
+                recv_procs[i] = 1;
+                local_L_par_comm->recv_data->add_msg(i, end - start, &(proc_cols[start])); 
             }
         }
-        local_L_par_comm->recv_data->add_msg(prev_proc, on_node_num_cols - prev_idx);
         local_L_par_comm->recv_data->finalize();
     }
 
@@ -976,8 +1000,8 @@ void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
         proc = local_L_par_comm->recv_data->procs[i];
         start = local_L_par_comm->recv_data->indptr[i];
         end = local_L_par_comm->recv_data->indptr[i+1];
-        MPI_Isend(&(on_node_column_map[start]), end - start, MPI_INT, proc,
-                7890, local_comm, &(local_L_par_comm->recv_data->requests[i]));
+        MPI_Isend(&(proc_cols_gbl[start]), end - start, MPI_INT, 
+                proc, 7890, local_comm, &(local_L_par_comm->recv_data->requests[i]));
     }
 
     for (int i = 0; i < num_sends; i++)

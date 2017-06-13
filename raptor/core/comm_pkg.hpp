@@ -706,8 +706,8 @@ namespace raptor
                 {
                     idx = local_L_par_comm->recv_data->indices[i];
                     int orig_i = on_node_to_off_proc[idx];
-                    L_to_orig[i] = orig_i;
-                    orig_to_L[orig_i] = i;
+                    L_to_orig[idx] = orig_i;
+                    orig_to_L[orig_i] = idx;
                 }
             }
         }
