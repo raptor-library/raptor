@@ -15,6 +15,7 @@ set(gallery_SOURCES
     gallery/par_stencil.hpp
     gallery/par_random.hpp
     gallery/exxon_reader.hpp
+    gallery/noncontiguous.hpp
     ${external_gallery_SOURCES}
     PARENT_SCOPE)
 
