@@ -510,11 +510,11 @@ namespace raptor
                     recv_nodes, nodal_num_local, orig_procs);
 
             // Form inter-node communication
-            form_global_par_comm(send_procs, recv_procs, orig_procs);
+            form_global_par_comm(send_procs, recv_procs, orig_procs, 
+                    global_send_orig_procs);
 
             // Form local_S_par_comm: initial distribution of values among local
             // processes, before inter-node communication
-            //form_local_S_par_comm(global_send_orig_procs);
             form_local_S_par_comm(first_local_col);
 
             // Adjust send indices (currently global vector indices) to be index 
@@ -651,8 +651,8 @@ namespace raptor
                 std::vector<int>& orig_procs);
         void form_global_par_comm(const std::vector<int>& send_procs,
                 const std::vector<int>& recv_procs, 
-                const std::vector<int>& orig_procs);
-        //void form_local_S_par_comm(const std::vector<int>& global_send_orig_procs);
+                const std::vector<int>& orig_procs,
+                std::vector<int>& global_send_orig_procs);
         void form_local_S_par_comm(const int first_local_col);
         void adjust_send_indices(const int first_local_col);
         void form_local_L_par_comm(const std::vector<int>& on_node_column_map,

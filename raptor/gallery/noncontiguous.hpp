@@ -36,6 +36,7 @@ ParCSRMatrix* noncontiguous(ParCOOMatrix* A_coo, std::vector<int>& on_proc_colum
     int proc, proc_idx, idx, ctr;
     int num_sends, n_sent, send_size;
     int size_recvs;
+    int send_key, recv_key;
     int row, col, cur_row;
     int start, end;
     int assumed_col, local_col;
@@ -86,6 +87,8 @@ ParCSRMatrix* noncontiguous(ParCOOMatrix* A_coo, std::vector<int>& on_proc_colum
     assumed_num_cols = ((A_coo->global_num_cols - 1) / num_procs) + 1;
     assumed_first_col = assumed_num_cols * rank;
     assumed_last_col = assumed_first_col + assumed_num_cols;
+    if (assumed_first_col > A_coo->global_num_cols)
+        assumed_first_col = A_coo->global_num_cols;
     if (assumed_last_col > A_coo->global_num_cols)
         assumed_last_col = A_coo->global_num_cols;
     local_assumed_num_cols = assumed_last_col - assumed_first_col;
@@ -140,6 +143,7 @@ ParCSRMatrix* noncontiguous(ParCOOMatrix* A_coo, std::vector<int>& on_proc_colum
 
     n_sent = 0;
     size_recvs = 0;
+    send_key = 7568;
     for (int i = 0; i < num_sends; i++)
     {
         proc = send_procs[i];
@@ -148,7 +152,7 @@ ParCSRMatrix* noncontiguous(ParCOOMatrix* A_coo, std::vector<int>& on_proc_colum
         if (proc != rank)
         {
             MPI_Issend(&(send_buffer[start]), (end - start), MPI_INT, proc, 
-                    7568, MPI_COMM_WORLD, &(send_requests[n_sent++]));
+                    send_key, MPI_COMM_WORLD, &(send_requests[n_sent++]));
         }
         else
         {
@@ -166,11 +170,11 @@ ParCSRMatrix* noncontiguous(ParCOOMatrix* A_coo, std::vector<int>& on_proc_colum
     MPI_Status recv_status;
     while (size_recvs < local_assumed_num_cols)
     {
-        MPI_Probe(MPI_ANY_SOURCE, 7568, MPI_COMM_WORLD, &recv_status);
+        MPI_Probe(MPI_ANY_SOURCE, send_key, MPI_COMM_WORLD, &recv_status);
         MPI_Get_count(&recv_status, MPI_INT, &count);
         proc = recv_status.MPI_SOURCE;
         int recvbuf[count];
-        MPI_Recv(recvbuf, count, MPI_INT, proc, 7568, MPI_COMM_WORLD, &recv_status);
+        MPI_Recv(recvbuf, count, MPI_INT, proc, send_key, MPI_COMM_WORLD, &recv_status);
         for (int i = 0; i < count; i+= 2)
         {
             orig_col = recvbuf[i];
@@ -245,6 +249,8 @@ ParCSRMatrix* noncontiguous(ParCOOMatrix* A_coo, std::vector<int>& on_proc_colum
     // of column.  If assumed proc is rank, find new col and add to
     // off_proc_col_to_new
     n_sent = 0;
+    send_key = 7980;
+    recv_key = 8976;
     for (int i = 0; i < num_sends; i++)
     {
         proc = send_procs[i];
@@ -253,9 +259,9 @@ ParCSRMatrix* noncontiguous(ParCOOMatrix* A_coo, std::vector<int>& on_proc_colum
 
         if (proc != rank)
         {
-            MPI_Issend(&(send_buffer[start]), end - start, MPI_INT, proc, 7980, 
+            MPI_Issend(&(send_buffer[start]), end - start, MPI_INT, proc, send_key, 
                     MPI_COMM_WORLD, &(send_requests[n_sent]));
-            MPI_Irecv(&(recv_buffer[start]), end - start, MPI_INT, proc, 8976, 
+            MPI_Irecv(&(recv_buffer[start]), end - start, MPI_INT, proc, recv_key, 
                     MPI_COMM_WORLD, &(recv_requests[n_sent++]));
         }
         else
@@ -277,13 +283,13 @@ ParCSRMatrix* noncontiguous(ParCOOMatrix* A_coo, std::vector<int>& on_proc_colum
         MPI_Testall(n_sent, send_requests.data(), &finished, MPI_STATUSES_IGNORE);
         while (!finished)
         {
-            MPI_Iprobe(MPI_ANY_SOURCE, 7980, MPI_COMM_WORLD, &msg_avail, &recv_status);
+            MPI_Iprobe(MPI_ANY_SOURCE, send_key, MPI_COMM_WORLD, &msg_avail, &recv_status);
             if (msg_avail)
             {
                 MPI_Get_count(&recv_status, MPI_INT, &count);
                 proc = recv_status.MPI_SOURCE;
                 int recvbuf[count];
-                MPI_Recv(recvbuf, count, MPI_INT, proc, 7980, MPI_COMM_WORLD, 
+                MPI_Recv(recvbuf, count, MPI_INT, proc, send_key, MPI_COMM_WORLD, 
                         &recv_status);
                 for (int i = 0; i < count; i++)
                 {
@@ -292,7 +298,7 @@ ParCSRMatrix* noncontiguous(ParCOOMatrix* A_coo, std::vector<int>& on_proc_colum
                     new_col = assumed_col_to_new[assumed_col];
                     recvbuf[i] = new_col;
                 }
-                MPI_Send(recvbuf, count, MPI_INT, proc, 8976, MPI_COMM_WORLD);
+                MPI_Send(recvbuf, count, MPI_INT, proc, recv_key, MPI_COMM_WORLD);
             }
             MPI_Testall(n_sent, send_requests.data(), &finished, MPI_STATUSES_IGNORE);
         }
@@ -301,13 +307,13 @@ ParCSRMatrix* noncontiguous(ParCOOMatrix* A_coo, std::vector<int>& on_proc_colum
     MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
     while (!finished)
     {
-        MPI_Iprobe(MPI_ANY_SOURCE, 7980, MPI_COMM_WORLD, &msg_avail, &recv_status);
+        MPI_Iprobe(MPI_ANY_SOURCE, send_key, MPI_COMM_WORLD, &msg_avail, &recv_status);
         if (msg_avail)
         {
             MPI_Get_count(&recv_status, MPI_INT, &count);
             proc = recv_status.MPI_SOURCE;
             int recvbuf[count];
-            MPI_Recv(recvbuf, count, MPI_INT, proc, 7980, MPI_COMM_WORLD, 
+            MPI_Recv(recvbuf, count, MPI_INT, proc, send_key, MPI_COMM_WORLD, 
                     &recv_status);
             for (int i = 0; i < count; i++)
             {
@@ -316,7 +322,7 @@ ParCSRMatrix* noncontiguous(ParCOOMatrix* A_coo, std::vector<int>& on_proc_colum
                 new_col = assumed_col_to_new[assumed_col];
                 recvbuf[i] = new_col;
             }
-            MPI_Send(recvbuf, count, MPI_INT, proc, 8976, MPI_COMM_WORLD);
+            MPI_Send(recvbuf, count, MPI_INT, proc, recv_key, MPI_COMM_WORLD);
         }
         MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
     }
