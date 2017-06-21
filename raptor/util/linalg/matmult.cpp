@@ -86,46 +86,6 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSCMatrix* B)
     return C;
 }
 
-ParCSCMatrix* ParCSCMatrix::tap_mult(ParCSCMatrix* B)
-{
-    if (tap_comm == NULL)
-    {
-        tap_comm = new TAPComm(off_proc_column_map, first_local_row,
-            first_local_col, global_num_cols, local_num_cols);
-    }
-
-    // Initialize C (matrix to be returned)
-    ParCSCMatrix* C = new ParCSCMatrix();
-
-    // Communicate data and multiply
-    CSCMatrix* recv_mat = B->communicate(tap_comm);
-    mult_helper(B, C, recv_mat);
-    delete recv_mat;
-
-    // Return matrix containing product
-    return C;
-}
-
-ParCSCMatrix* ParCSCMatrix::mult(ParCSCMatrix* B)
-{
-    if (comm == NULL)
-    {
-        comm = new ParComm(off_proc_column_map, first_local_row, first_local_col,
-                global_num_cols, local_num_cols);
-    }
-
-    // Initialize C (matrix to be returned)
-    ParCSCMatrix* C = new ParCSCMatrix();
-
-    // Communicate data and multiply
-    CSCMatrix* recv_mat = B->communicate(comm);
-    mult_helper(B, C, recv_mat);
-    delete recv_mat;
-
-    // Return matrix containing product
-    return C;
-}
-
 ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A)
 {
     int rank;
@@ -393,95 +353,272 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A)
     return C;
 }
 
-ParCSCMatrix* ParCSCMatrix::tap_mult_T(ParCSCMatrix* A)
+ParCSRMatrix* ParCSCMatrix::tap_mult_T(ParCSCMatrix* A)
 {
-/*    if (A->tap_comm == NULL)
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    int row, col, idx;
+    int row_start, row_end;
+
+    if (A->tap_comm == NULL)
     {
         A->tap_comm = new TAPComm(A->off_proc_column_map, A->first_local_row, 
                 A->first_local_col, A->global_num_cols, A->local_num_cols);
     }
 
     // Initialize C (matrix to be returned)
-    ParCSCMatrix* C = new ParCSCMatrix();
+    ParCSRMatrix* C = new ParCSRMatrix();
 
-    // Multiply off_proc rows of AT, forming matrix that must
-    // be communicated to other processes
     CSRMatrix* Ctmp = mult_T_partial(A);
+    std::pair<CSRMatrix*, CSRMatrix*> recv_pair = A->tap_comm->communicate_T(Ctmp->idx1, 
+            Ctmp->idx2, Ctmp->vals, MPI_COMM_WORLD);
+    CSRMatrix* L_recv = std::get<0>(recv_pair);
+    CSRMatrix* S_recv = std::get<1>(recv_pair);
 
-    // Communicate values of Ctmp to other processes
-    CSRMatrix* recv_mat_csr = A->tap_comm->communicate_T(Ctmp->idx1, Ctmp->idx2,
-            Ctmp->vals, MPI_COMM_WORLD);
-
-    // Change cols from global to local
-    recv_mat_csr->condense_cols();
-
-    // Convert recv_mat_csr to CSC (needed for final multiply step)
-    CSCMatrix* recv_mat = new CSCMatrix(recv_mat_csr);
-
-    // Re-index rows, to correspond with local rows
-    for (std::vector<int>::iterator it = recv_mat->idx2.begin();
-            it != recv_mat->idx2.end(); ++it)
+    // Split recv_mat into on and off proc portions
+    CSRMatrix* recv_on = new CSRMatrix(A->local_num_cols, -1);
+    CSRMatrix* recv_off = new CSRMatrix(A->local_num_cols, -1);
+    std::vector<int> recv_on_ctr;
+    std::vector<int> recv_off_ctr;
+    if (A->local_num_cols)
     {
-        *it = A->tap_comm->local_S_par_comm->send_data->indices[*it];
+        recv_on_ctr.resize(A->local_num_cols, 0);
+        recv_off_ctr.resize(A->local_num_cols ,0);
+    }
+    int last_local_col = first_local_col + local_num_cols;
+
+    // Find number of nonzeros in each row of L_recv
+    for (int i = 0; i < A->tap_comm->local_L_par_comm->send_data->size_msgs; i++)
+    {
+        row = A->tap_comm->local_L_par_comm->send_data->indices[i];
+        row_start = L_recv->idx1[i];
+        row_end = L_recv->idx1[i+1];
+        for (int j = row_start; j < row_end; j++)
+        {
+            col = L_recv->idx2[j];
+            if (col < first_local_col || col >= last_local_col)
+            {
+                recv_off_ctr[row]++;
+            }
+            else
+            {
+                recv_on_ctr[row]++;
+            }
+        }
     }
 
-    // Multiply local rows of AT, and combine with recv_mat
-    mult_T_combine(A, C, recv_mat);
+    // Find number of nonzeros in each row of S_recv
+    for (int i = 0; i < A->tap_comm->local_S_par_comm->send_data->size_msgs; i++)
+    {
+        row = A->tap_comm->local_S_par_comm->send_data->indices[i];
+        row_start = S_recv->idx1[i];
+        row_end = S_recv->idx1[i+1];
+        for (int j = row_start; j < row_end; j++)
+        {
+            col = S_recv->idx2[j];
+            if (col < first_local_col || col >= last_local_col)
+            {
+                recv_off_ctr[row]++;
+            }
+            else
+            {
+                recv_on_ctr[row]++;
+            }
+        }
+    }
+
+    recv_on->idx1[0] = 0;
+    recv_off->idx1[0] = 0;
+    for (int i = 0; i < A->local_num_cols; i++)
+    {
+        recv_on->idx1[i+1] = recv_on->idx1[i] + recv_on_ctr[i];
+        recv_on_ctr[i] = 0;
+        recv_off->idx1[i+1] = recv_off->idx1[i] + recv_off_ctr[i];
+        recv_off_ctr[i] = 0;
+    }
+    int recv_on_nnz = recv_on->idx1[A->local_num_cols];
+    int recv_off_nnz = recv_off->idx1[A->local_num_cols];
+    if (recv_on_nnz)
+    {
+        recv_on->idx2.resize(recv_on_nnz);
+        recv_on->vals.resize(recv_on_nnz);
+    }
+    if (recv_off_nnz)
+    {
+        recv_off->idx2.resize(recv_off_nnz);
+        recv_off->vals.resize(recv_off_nnz);
+    }
+
+    // Add nonzeros in L_recv to recv_on and recv_off
+    for (int i = 0; i < A->tap_comm->local_L_par_comm->send_data->size_msgs; i++)
+    {
+        row = A->tap_comm->local_L_par_comm->send_data->indices[i];
+        row_start = L_recv->idx1[i];
+        row_end = L_recv->idx1[i+1];
+        for (int j = row_start; j < row_end; j++)
+        {
+            col = L_recv->idx2[j];
+            if (col < first_local_col || col >= last_local_col)
+            {
+                idx = recv_off->idx1[row] + recv_off_ctr[row]++;
+                recv_off->idx2[idx] = col;
+                recv_off->vals[idx] = L_recv->vals[j];
+            }
+            else
+            {
+                idx = recv_on->idx1[row] + recv_on_ctr[row]++;
+                recv_on->idx2[idx] = col - first_local_col;
+                recv_on->vals[idx] = L_recv->vals[j];
+            }
+        }
+    }
+
+    // Add nonzeros in S_recv to recv_on and recv_off
+    for (int i = 0; i < A->tap_comm->local_S_par_comm->send_data->size_msgs; i++)
+    {
+        row = A->tap_comm->local_S_par_comm->send_data->indices[i];
+        row_start = S_recv->idx1[i];
+        row_end = S_recv->idx1[i+1];
+        for (int j = row_start; j < row_end; j++)
+        {
+            col = S_recv->idx2[j];
+            if (col < first_local_col || col >= last_local_col)
+            {
+                idx = recv_off->idx1[row] + recv_off_ctr[row]++;
+                recv_off->idx2[idx] = col;
+                recv_off->vals[idx] = S_recv->vals[j];
+            }
+            else
+            {
+                idx = recv_on->idx1[row] + recv_on_ctr[row]++;
+                recv_on->idx2[idx] = col - first_local_col;
+                recv_on->vals[idx] = S_recv->vals[j];
+            }
+        }
+    }
+
+    mult_T_combine(A, C, recv_on, recv_off);
 
     // Clean up
     delete Ctmp;
-    delete recv_mat_csr;
-    delete recv_mat;
+    delete L_recv;
+    delete S_recv;
+    delete recv_on;
+    delete recv_off;
 
     // Return matrix containing product
-    return C;*/
-return NULL;
+    return C;
 }
 
-ParCSCMatrix* ParCSCMatrix::mult_T(ParCSCMatrix* A)
+ParCSRMatrix* ParCSCMatrix::mult_T(ParCSCMatrix* A)
 {
-/*    if (A->comm == NULL)
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    int row_start, row_end;
+    int row, col, idx;
+
+    if (A->comm == NULL)
     {
         A->comm = new ParComm(A->off_proc_column_map, A->first_local_row, 
                 A->first_local_col, A->global_num_cols, A->local_num_cols);
     }
 
     // Initialize C (matrix to be returned)
-    ParCSCMatrix* C = new ParCSCMatrix();
+    ParCSRMatrix* C = new ParCSRMatrix();
 
-    // Multiply off_proc rows of AT, forming matrix that must
-    // be communicated to other processes
     CSRMatrix* Ctmp = mult_T_partial(A);
-
-    // Communicate values of Ctmp to other processes
-    CSRMatrix* recv_mat_csr = A->comm->communicate_T(Ctmp->idx1, Ctmp->idx2, 
+    CSRMatrix* recv_mat = A->comm->communicate_T(Ctmp->idx1, Ctmp->idx2, 
             Ctmp->vals, MPI_COMM_WORLD);
 
-    // Change cols from global to local
-    recv_mat_csr->condense_cols();
 
-    // Convert recv_mat_csr to CSC (needed for final multiply step)
-    CSCMatrix* recv_mat = new CSCMatrix(recv_mat_csr);
-
-    // Re-index rows, to correspond with local rows
-    for (std::vector<int>::iterator it = recv_mat->idx2.begin(); 
-            it != recv_mat->idx2.end(); ++it)
+    // Split recv_mat into on and off proc portions
+    CSRMatrix* recv_on = new CSRMatrix(A->local_num_cols, -1);
+    CSRMatrix* recv_off = new CSRMatrix(A->local_num_cols, -1);
+    std::vector<int> recv_on_ctr;
+    std::vector<int> recv_off_ctr;
+    if (A->local_num_cols)
     {
-        *it = A->comm->send_data->indices[*it];
+        recv_on_ctr.resize(A->local_num_cols, 0);
+        recv_off_ctr.resize(A->local_num_cols ,0);
+    }
+    int last_local_col = first_local_col + local_num_cols;
+    for (int i = 0; i < A->comm->send_data->size_msgs; i++)
+    {
+        row = A->comm->send_data->indices[i];
+        row_start = recv_mat->idx1[i];
+        row_end = recv_mat->idx1[i+1];
+        for (int j = row_start; j < row_end; j++)
+        {
+            col = recv_mat->idx2[j];
+            if (col < first_local_col || col >= last_local_col)
+            {
+                recv_off_ctr[row]++;
+            }
+            else
+            {
+                recv_on_ctr[row]++;
+            }
+        }
+    }
+    recv_on->idx1[0] = 0;
+    recv_off->idx1[0] = 0;
+    for (int i = 0; i < A->local_num_cols; i++)
+    {
+        recv_on->idx1[i+1] = recv_on->idx1[i] + recv_on_ctr[i];
+        recv_on_ctr[i] = 0;
+        recv_off->idx1[i+1] = recv_off->idx1[i] + recv_off_ctr[i];
+        recv_off_ctr[i] = 0;
+    }
+    int recv_on_nnz = recv_on->idx1[A->local_num_cols];
+    int recv_off_nnz = recv_off->idx1[A->local_num_cols];
+    if (recv_on_nnz)
+    {
+        recv_on->idx2.resize(recv_on_nnz);
+        recv_on->vals.resize(recv_on_nnz);
+    }
+    if (recv_off_nnz)
+    {
+        recv_off->idx2.resize(recv_off_nnz);
+        recv_off->vals.resize(recv_off_nnz);
     }
 
-    // Multiply local rows of AT, and combine with recv_mat
-    mult_T_combine(A, C, recv_mat);
+    for (int i = 0; i < A->comm->send_data->size_msgs; i++)
+    {
+        row = A->comm->send_data->indices[i];
+        row_start = recv_mat->idx1[i];
+        row_end = recv_mat->idx1[i+1];
+        for (int j = row_start; j < row_end; j++)
+        {
+            col = recv_mat->idx2[j];
+            if (col < first_local_col || col >= last_local_col)
+            {
+                idx = recv_off->idx1[row] + recv_off_ctr[row]++;
+                recv_off->idx2[idx] = col;
+                recv_off->vals[idx] = recv_mat->vals[j];
+            }
+            else
+            {
+                idx = recv_on->idx1[row] + recv_on_ctr[row]++;
+                recv_on->idx2[idx] = col - first_local_col;
+                recv_on->vals[idx] = recv_mat->vals[j];
+            }
+        }
+    }
+
+    mult_T_combine(A, C, recv_on, recv_off);
 
     // Clean up
-    delete Ctmp;
-    delete recv_mat_csr;
     delete recv_mat;
+    delete recv_on;
+    delete recv_off;
+    delete Ctmp;
 
     // Return matrix containing product
-    return C;*/
-return NULL;
+    return C;
 }
+
 
 ParMatrix* ParMatrix::mult(ParCSRMatrix* B)
 {
@@ -1013,254 +1150,6 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C,
 
 }
 
-void ParCSCMatrix::mult_helper(ParCSCMatrix* B, ParCSCMatrix* C, CSCMatrix* recv_mat)
-{
-    // Set dimensions of C
-    C->global_num_rows = global_num_rows;
-    C->global_num_cols = B->global_num_cols;
-    C->local_num_rows = local_num_rows;
-    C->local_num_cols = B->local_num_cols;
-    C->first_local_row = first_local_row;
-    C->first_local_col = B->first_local_col;
-    
-    // Initialize nnz as 0 (will increment this as nonzeros are added)
-    C->local_nnz = 0;
-
-    // Resize variables of on_proc
-    C->on_proc->n_rows = on_proc->n_rows;
-    C->on_proc->n_cols = B->on_proc->n_cols;
-    C->on_proc->nnz = 0;
-    C->on_proc->idx1.resize(local_num_cols + 1);
-    C->on_proc->idx2.reserve(local_nnz);
-    C->on_proc->vals.reserve(local_nnz);
-
-    // Create recv_to_B_on_proc and recv_to_B_off_proc
-    std::set<int> off_proc_global_cols;
-    std::vector<int> on_proc_to_recv(B->local_num_cols, -1);
-
-    for (int i = 0; i < B->off_proc_num_cols; i++)
-    {
-        off_proc_global_cols.insert(B->off_proc_column_map[i]);
-    }
-    for (int i = 0; i < recv_mat->n_cols; i++)
-    {
-        int global_col = recv_mat->col_list[i];
-        if (global_col >= B->first_local_col && 
-                global_col < B->first_local_col + B->local_num_cols)
-        {
-            on_proc_to_recv[global_col - B->first_local_col] = i;
-        }
-        else
-        {
-            off_proc_global_cols.insert(global_col);
-        }
-    }
-    C->off_proc_num_cols = off_proc_global_cols.size();
-    C->off_proc->col_list.reserve(C->off_proc_num_cols);
-
-    std::map<int, int> global_to_C;
-    for (std::set<int>::iterator it = off_proc_global_cols.begin();
-            it != off_proc_global_cols.end(); ++it)
-    {
-        global_to_C[*it] = C->off_proc->col_list.size();
-        C->off_proc->col_list.push_back(*it);
-    }    
-
-    // Everything is columnwise
-    // We will go through the columns of C
-    // and need to map the column of C to
-    // the columns of B and recv_mat
-    std::vector<int> C_to_B(C->off_proc_num_cols, -1);
-    std::vector<int> C_to_recv(C->off_proc_num_cols, -1);
-
-    std::vector<int> B_to_C(B->off_proc_num_cols);
-    for (int i = 0; i < B->off_proc_num_cols; i++)
-    {
-        int global_col = B->off_proc_column_map[i];
-        int col_C = global_to_C[global_col];
-        C_to_B[col_C] = i;
-    }
-    for (int i = 0; i < recv_mat->n_cols; i++)
-    {
-        int global_col = recv_mat->col_list[i];
-        if (global_col < B->first_local_col || 
-                global_col >= B->first_local_col + B->local_num_cols)
-        {
-            int col_C = global_to_C[global_col];
-            C_to_recv[col_C] = i;
-        }
-    }
-
-    // Resize variables of off_proc
-    C->off_proc->n_rows = local_num_rows;
-    C->off_proc->n_cols = C->off_proc_num_cols;
-    C->off_proc->nnz = 0;
-    C->off_proc->idx1.resize(C->off_proc->n_cols + 1);
-    C->off_proc->idx2.clear();
-    C->off_proc->vals.clear();
-    C->off_proc->idx2.reserve(local_nnz);
-    C->off_proc->vals.reserve(local_nnz);
-
-    // Variables for calculating row sums
-    std::vector<double> sums(B->local_num_rows, 0);
-    std::vector<int> next(B->local_num_rows, -1);
-
-    // Calculate C->on_proc
-    C->on_proc->idx1[0] = 0; 
-    for (int col_B = 0; col_B < B->local_num_cols; col_B++)
-    {
-        int head = -2;
-        int length = 0;
-
-        // C_on_proc <- A_on_proc * B_on_proc
-        int col_start_B = B->on_proc->idx1[col_B];
-        int col_end_B = B->on_proc->idx1[col_B+1];
-        for (int j = col_start_B; j < col_end_B; j++)
-        {
-            int row_B = B->on_proc->idx2[j];
-            double val_B = B->on_proc->vals[j];
-
-            int col_start = on_proc->idx1[row_B];
-            int col_end = on_proc->idx1[row_B+1];
-            for (int k = col_start; k < col_end; k++)
-            {
-                int row_A = on_proc->idx2[k];
-                sums[row_A] += val_B * on_proc->vals[k];
-                if (next[row_A] == -1)
-                {
-                    next[row_A] = head;
-                    head = row_A;
-                    length++;
-                }
-            }
-        }
-
-        // C_on_proc <- A_off_proc * recv_on_proc
-        int col_recv = on_proc_to_recv[col_B];
-        if (col_recv >= 0)
-        {
-            int col_start_recv = recv_mat->idx1[col_recv];
-            int col_end_recv = recv_mat->idx1[col_recv+1];
-            for (int j = col_start_recv; j < col_end_recv; j++)
-            {
-                int row_recv = recv_mat->idx2[j];
-                double val_recv = recv_mat->vals[j];
-
-                int col_start = off_proc->idx1[row_recv];
-                int col_end = off_proc->idx1[row_recv+1];
-                for (int k = col_start; k < col_end; k++)
-                {
-                    int row_A = off_proc->idx2[k];
-                    sums[row_A] += val_recv * off_proc->vals[k];
-                    if (next[row_A] == -1)
-                    {
-                        next[row_A] = head;
-                        head = row_A;
-                        length++;
-                    }
-                }
-            }
-        }
-
-        for (int j = 0; j < length; j++)
-        {
-            double sum = sums[head];
-            if (fabs(sum) > zero_tol)
-            {
-                C->on_proc->idx2.push_back(head);
-                C->on_proc->vals.push_back(sum);
-            }
-            int tmp = head;
-            head = next[head];
-            next[tmp] = -1;
-            sums[tmp] = 0;
-        }
-        C->on_proc->idx1[col_B+1] = C->on_proc->idx2.size();
-    }
-    C->on_proc->nnz = C->on_proc->idx2.size();
-
-    // Calculate C_off_proc
-    C->off_proc->idx1[0] = 0;     
-    for (int i = 0; i < C->off_proc_num_cols; i++)
-    {
-        int head = -2;
-        int length = 0;
-
-        // C_off_proc <- A_on_proc * B_off_proc
-        int col_B = C_to_B[i];
-        if (col_B >= 0)
-        {
-            int col_start_B = B->off_proc->idx1[col_B];
-            int col_end_B = B->off_proc->idx1[col_B+1];
-            for (int j = col_start_B; j < col_end_B; j++)
-            {
-                int row_B = B->off_proc->idx2[j];
-                double val_B = B->off_proc->vals[j];
-
-                int col_start = on_proc->idx1[row_B];
-                int col_end = on_proc->idx1[row_B+1];
-                for (int k = col_start; k < col_end; k++)
-                {
-                    int row_A = on_proc->idx2[k];
-                    sums[row_A] += val_B * on_proc->vals[k];
-                    if (next[row_A] == -1)
-                    {
-                        next[row_A] = head;
-                        head = row_A;
-                        length++;
-                    }
-                }
-            }
-        }
-
-        int col_recv = C_to_recv[i];
-        if (col_recv >= 0)
-        {
-            int col_start_recv = recv_mat->idx1[col_recv];
-            int col_end_recv = recv_mat->idx1[col_recv+1];
-            for (int j = col_start_recv; j < col_end_recv; j++)
-            {
-                int row_recv = recv_mat->idx2[j];
-                double val_recv = recv_mat->vals[j];
-
-                int col_start = off_proc->idx1[row_recv];
-                int col_end = off_proc->idx1[row_recv+1];
-                for (int k = col_start; k < col_end; k++)
-                {
-                    int row_A = off_proc->idx2[k];
-                    sums[row_A] += val_recv * off_proc->vals[k];
-                    if (next[row_A] == -1)
-                    {
-                        next[row_A] = head;
-                        head = row_A;
-                        length++;
-                    }
-                }
-            }
-        }
-
-        for (int j = 0; j < length; j++)
-        {
-            double sum = sums[head];
-            if (fabs(sum) > zero_tol)
-            {
-                C->off_proc->idx2.push_back(head);
-                C->off_proc->vals.push_back(sum);
-            }
-            int tmp = head;
-            head = next[head];
-            next[tmp] = -1;
-            sums[tmp] = 0;
-        }
-        C->off_proc->idx1[i+1] = C->off_proc->idx2.size();
-    }
-    C->off_proc->nnz = C->off_proc->idx2.size();
-
-
-    C->local_nnz = C->on_proc->nnz + C->off_proc->nnz;
-    C->off_proc_column_map = C->off_proc->get_col_list();
-}
-
 // A_T * self
 CSRMatrix* ParCSRMatrix::mult_T_partial(ParCSCMatrix* A)
 {
@@ -1617,10 +1506,10 @@ CSRMatrix* ParCSCMatrix::mult_T_partial(ParCSCMatrix* A)
     // Create vectors for holding sums of each row
     std::vector<double> row_vals;
     std::vector<int> next;
-    if (n_cols)
+    if (A->local_num_rows)
     {
-        row_vals.resize(n_cols, 0);
-        next.resize(n_cols);
+        row_vals.resize(A->local_num_rows, 0);
+        next.resize(A->local_num_rows);
     }
 
     // Multiply (A->off_proc)_T * (B->on_proc + B->off_proc)
@@ -1636,7 +1525,7 @@ CSRMatrix* ParCSCMatrix::mult_T_partial(ParCSCMatrix* A)
         for (int j = row_start_AT; j < row_end_AT; j++)
         {
             col_AT = A->off_proc->idx2[j]; // row of A == col of AT
-            row_vals[col_AT] = A->off_proc->idx2[j];
+            row_vals[col_AT] = A->off_proc->vals[j];
             next[col_AT] = head;
             head = col_AT;
             length++;
@@ -1667,7 +1556,7 @@ CSRMatrix* ParCSCMatrix::mult_T_partial(ParCSCMatrix* A)
             for (int k = col_start; k < col_end; k++)
             {
                 row = off_proc->idx2[k];
-                sum += row_vals[row + local_num_cols] * off_proc->vals[k];
+                sum += row_vals[row] * off_proc->vals[k];
             }
             if (fabs(sum) > zero_tol)
             {
@@ -1688,28 +1577,33 @@ CSRMatrix* ParCSCMatrix::mult_T_partial(ParCSCMatrix* A)
     return Ctmp;
 }
 
-void ParCSCMatrix::mult_T_combine(ParCSCMatrix* A, ParCSCMatrix* C, CSCMatrix* recv_mat)
+void ParCSCMatrix::mult_T_combine(ParCSCMatrix* A, ParCSRMatrix* C, CSRMatrix* recv_on,
+        CSRMatrix* recv_off)
 {
-    int global_col, col, row;
+    int row, idx;
+    int head, length, tmp;
+    int sums_head_on, sums_length_on;
+    int sums_head_off, sums_length_off;
     int row_start_AT, row_end_AT;
     int col_start, col_end;
-    int head, length, n_cols;
-    int sums_head, sums_length;
-    int row_recv, col_recv, tmp;
-    double sum;
+    int recv_start, recv_end;
+    int col_AT, col, col_C;
+    int global_col;
+    int recv_row;
+    double val, sum;
 
     // Set dimensions of C
-    C->global_num_rows = A->global_num_cols; // AT global_num_rows
+    C->global_num_rows = A->global_num_cols; // AT global rows
     C->global_num_cols = global_num_cols;
-    C->local_num_rows = A->local_num_cols; // AT local_num_rows
+    C->local_num_rows = A->local_num_cols; // AT local rows
     C->local_num_cols = local_num_cols;
-    C->first_local_row = A->first_local_col; // AT first_local_row
+    C->first_local_row = A->first_local_col; // AT fist local row
     C->first_local_col = first_local_col;
-    
+
     // Initialize nnz as 0 (will increment this as nonzeros are added)
     C->local_nnz = 0;
 
-    // Resize variables of on_proc
+    // Resize variables in on_proc
     C->on_proc->n_rows = C->local_num_rows;
     C->on_proc->n_cols = C->local_num_cols;
     C->on_proc->nnz = 0;
@@ -1720,72 +1614,52 @@ void ParCSCMatrix::mult_T_combine(ParCSCMatrix* A, ParCSCMatrix* C, CSCMatrix* r
         C->on_proc->vals.reserve(local_nnz);
     }
 
-    // Create recv_to_B_on_proc and recv_to_B_off_proc
-    std::set<int> off_proc_global_cols;
-    std::vector<int> on_proc_to_recv;
-    if (local_num_cols)
+    // Calculate global_to_C and map_to_C column maps
+    std::map<int, int> global_to_C;
+    std::vector<int> map_to_C;
+    if (off_proc_num_cols)
     {
-        on_proc_to_recv.resize(local_num_cols, -1);
+        map_to_C.reserve(off_proc_num_cols);
     }
 
+    // Create set of global columns in B_off_proc and recv_mat
+    std::set<int> C_col_set;
+    for (std::vector<int>::iterator it = recv_off->idx2.begin(); 
+            it != recv_off->idx2.end(); ++it)
+    {
+        C_col_set.insert(*it);
+    }
+    for (std::vector<int>::iterator it = off_proc_column_map.begin(); 
+            it != off_proc_column_map.end(); ++it)
+    {
+        C_col_set.insert(*it);
+    }
+
+    C->off_proc_num_cols = C_col_set.size();
+    if (C->off_proc_num_cols)
+    {
+        C->off_proc_column_map.reserve(C->off_proc_num_cols);
+    }
+    for (std::set<int>::iterator it = C_col_set.begin(); 
+            it != C_col_set.end(); ++it)
+    {
+        global_to_C[*it] = C->off_proc_column_map.size();
+        C->off_proc_column_map.push_back(*it);
+    }
+
+    // Map local off_proc_cols to C->off_proc_column_map
     for (std::vector<int>::iterator it = off_proc_column_map.begin();
             it != off_proc_column_map.end(); ++it)
     {
-        off_proc_global_cols.insert(*it);
-    }
-    int last_local_col = first_local_col + local_num_cols;
-    for (int i = 0; i < recv_mat->n_cols; i++)
-    {
-        int global_col = recv_mat->col_list[i];
-        if (global_col >= first_local_col && global_col < last_local_col)
-        {
-            on_proc_to_recv[global_col - first_local_col] = i;
-        }
-        else
-        {
-            off_proc_global_cols.insert(global_col);
-        }
-    }
-    C->off_proc_num_cols = off_proc_global_cols.size();
-    if (C->off_proc_num_cols)
-    {
-        C->off_proc->col_list.reserve(C->off_proc_num_cols);
+        col_C = global_to_C[*it];
+        map_to_C.push_back(col_C);
     }
 
-    std::map<int, int> global_to_C;
-    for (std::set<int>::iterator it = off_proc_global_cols.begin();
-            it != off_proc_global_cols.end(); ++it)
+    // Update recvd cols from global_col to local col in C
+    for (std::vector<int>::iterator it = recv_off->idx2.begin();
+            it != recv_off->idx2.end(); ++it)
     {
-        global_to_C[*it] = C->off_proc->col_list.size();
-        C->off_proc->col_list.push_back(*it);
-    }    
-
-    // Everything is columnwise
-    // We will go through the columns of C
-    // and need to map the column of C to
-    // the columns of B and recv_mat
-    std::vector<int> C_to_local;
-    std::vector<int> C_to_recv;
-    if (C->off_proc_num_cols)
-    {
-        C_to_local.resize(C->off_proc_num_cols, -1);
-        C_to_recv.resize(C->off_proc_num_cols, -1);
-    }
-
-    for (int i = 0; i < off_proc_num_cols; i++)
-    {
-        global_col = off_proc_column_map[i];
-        col = global_to_C[global_col];
-        C_to_local[col] = i;
-    }
-    for (int i = 0; i < recv_mat->n_cols; i++)
-    {
-        global_col = recv_mat->col_list[i];
-        if (global_col < first_local_col || global_col >= last_local_col)
-        {
-            col = global_to_C[global_col];
-            C_to_recv[col] = i;
-        }
+        *it = global_to_C[*it];
     }
 
     // Resize variables of off_proc
@@ -1799,214 +1673,171 @@ void ParCSCMatrix::mult_T_combine(ParCSCMatrix* A, ParCSCMatrix* C, CSCMatrix* r
         C->off_proc->vals.reserve(local_nnz);
     }
 
-    // Col_vals will hold values of each column (of self)
-    // to be multiplied by local rows of A
-    std::vector<double> col_vals;
+    // Allocate row_vals and initialize to 0
+    // Will hold nonzeros for each row of A^T to be
+    // multiplied to local cols
+    std::vector<double> row_vals;
     std::vector<int> next;
-    if (local_num_rows)
+    if (A->local_num_rows)
     {
-        col_vals.resize(local_num_rows, 0);
-        next.resize(local_num_rows);
+        row_vals.resize(A->local_num_rows, 0);
+        next.resize(A->local_num_rows);
     }
 
-    // Col_sums will hold sums of A*B combined
+    // Row_sums will hold sums of A*B combined
     // with recv_mat
-    std::vector<double> col_sums;
-    std::vector<int> sums_next;
-    if (C->local_num_rows)
+    std::vector<double> row_sums_on;
+    std::vector<int> sums_next_on;
+    std::vector<double> row_sums_off;
+    std::vector<int> sums_next_off;
+    if (C->local_num_cols)
     {
-        col_sums.resize(C->local_num_rows, 0);
-        sums_next.resize(C->local_num_rows, -1);
+        row_sums_on.resize(C->local_num_cols, 0);
+        sums_next_on.resize(C->local_num_cols, -1);
+    }
+    if (C->off_proc_num_cols)
+    {
+        row_sums_off.resize(C->off_proc_num_cols, 0);
+        sums_next_off.resize(C->off_proc_num_cols, -1);
     }
 
     // Multiply A_on_proc * each col of self
     // And combine sum with col of recv_mat
     C->on_proc->idx1[0] = 0;
-    for (int col_C = 0; col_C < C->local_num_cols; col_C++)
+    C->off_proc->idx1[0] = 0;
+    for (int row_AT = 0; row_AT < A->local_num_cols; row_AT++)
     {
         head = -2;
         length = 0;
-        sums_head = -2;
-        sums_length = 0;
+        sums_head_on = -2;
+        sums_length_on = 0;
+        sums_head_off = -2;
+        sums_length_off = 0;
 
-        // On_proc col_C == on_proc col_B
-        col_start = on_proc->idx1[col_C];
-        col_end = on_proc->idx1[col_C+1];
-        for (int j = col_start; j < col_end; j++)
+        row_start_AT = A->on_proc->idx1[row_AT];
+        row_end_AT = A->on_proc->idx1[row_AT+1];
+        for (int j = row_start_AT; j < row_end_AT; j++)
         {
-            row = on_proc->idx2[j];
-            col_vals[row] = on_proc->vals[j];
-            next[row] = head;
-            head = row;
+            col = A->on_proc->idx2[j];
+            row_vals[col] = A->on_proc->vals[j];
+            next[col] = head;
+            head = col;
             length++;
         }
 
-        // Go through all rows of A_T and multiply by
-        // col_vals (adding result to col_sums)
-        for (int row_AT = 0; row_AT < A->local_num_cols; row_AT++)
+        // Multiply row of AT by all local columns
+        for (int col = 0; col < local_num_cols; col++)
         {
             sum = 0;
-            row_start_AT = A->on_proc->idx1[row_AT];
-            row_end_AT = A->on_proc->idx1[row_AT+1];
-            for (int j = row_start_AT; j < row_end_AT; j++)
-            {
-                col = A->on_proc->idx2[j];
-                sum += A->on_proc->vals[j] * col_vals[col];
-            }
-
-            if (fabs(sum) > zero_tol)
-            {
-                col_sums[row_AT] += sum;
-                sums_next[row_AT] = sums_head;
-                sums_head = row_AT;
-                sums_length++;
-            }
-        }
-
-        // If col_C is in recv_mat, add values of recv_mat 
-        // to col_sums (at appropriate rows)
-        col_recv = on_proc_to_recv[col_C];
-        if (col_recv != -1)
-        {
-            col_start = recv_mat->idx1[col_recv];
-            col_end = recv_mat->idx1[col_recv+1];
+            col_start = on_proc->idx1[col];
+            col_end = on_proc->idx1[col+1];
             for (int j = col_start; j < col_end; j++)
             {
-                row = recv_mat->idx2[j];
-                col_sums[row] += recv_mat->vals[j];
-                if (sums_next[row] == -1)
-                {
-                    sums_next[row] = sums_head;
-                    sums_head = row;
-                    sums_length++;
-                }
+                row = on_proc->idx2[j];
+                sum += on_proc->vals[j] * row_vals[row];
             }
+            row_sums_on[col] = sum;
+            sums_next_on[col] = sums_head_on;
+            sums_head_on = col;
+            sums_length_on++;
         }
 
-        // Reset col_vals
-        for (int j = 0; j < length; j++)
+        // Multiply row of AT by all off_proc columns
+        for (int col = 0; col < off_proc_num_cols; col++)
         {
-            col_vals[head] = 0;
-            head = next[head];
-        }
-
-        // Add sums to C and reset col_sums
-        for (int j = 0; j < sums_length; j++)
-        {
-            tmp = sums_head;
-            sums_head = sums_next[sums_head];
-
-            if (fabs(col_sums[tmp]) > zero_tol)
-            {
-                C->on_proc->idx2.push_back(tmp);
-                C->on_proc->vals.push_back(col_sums[tmp]);
-            }
-
-            col_sums[tmp] = 0;
-            sums_next[tmp] = -1;
-        }
-        C->on_proc->idx1[col_C + 1] = C->on_proc->idx2.size();
-    }
-    C->on_proc->nnz = C->on_proc->idx2.size();
-
-
-    // Multiply A_on_proc * each col of self (off_proc)
-    // And combine sum with col of recv_mat
-    C->off_proc->idx1[0] = 0;
-    for (int col_C = 0; col_C < C->off_proc_num_cols; col_C++)
-    {
-        head = -2;
-        length = 0;
-        sums_head = -2;
-        sums_length = 0;
-
-        // If col_C has nonzeros in B, add to col_vals
-        col = C_to_local[col_C];
-        if (col != -1)
-        {
+            sum = 0;
+            col_C = map_to_C[col];
             col_start = off_proc->idx1[col];
             col_end = off_proc->idx1[col+1];
             for (int j = col_start; j < col_end; j++)
             {
                 row = off_proc->idx2[j];
-                col_vals[row] = off_proc->vals[j];
-                next[row] = head;
-                head = row;
-                length++;
+                sum += off_proc->vals[j] * row_vals[row];
             }
-    
-            // Only multiply by A if any nonzeros in col_vals
-            for (int row_AT = 0; row_AT < A->local_num_cols; row_AT++)
-            {
-                sum = 0;
-                row_start_AT = A->on_proc->idx1[row_AT];
-                row_end_AT = A->on_proc->idx1[row_AT+1];
-                for (int j = row_start_AT; j < row_end_AT; j++)
-                {
-                    col = A->on_proc->idx2[j];
-                    sum += A->on_proc->vals[j] * col_vals[col];
-                }
+            row_sums_off[col_C] = sum;
+            sums_next_off[col_C] = sums_head_off;
+            sums_head_off = col_C;
+            sums_length_off++;
+        }
 
-                if (fabs(sum) > zero_tol)
-                {
-                    col_sums[row_AT] += sum;
-                    sums_next[row_AT] = sums_head;
-                    sums_head = row_AT;
-                    sums_length++;
-                }
+        // Add row_AT of recv_on
+        recv_start = recv_on->idx1[row_AT];
+        recv_end = recv_on->idx1[row_AT+1];
+        for (int j = recv_start; j < recv_end; j++)
+        {
+            col = recv_on->idx2[j];
+            row_sums_on[col] += recv_on->vals[j];
+            if (sums_next_on[col] == -1)
+            {
+                sums_next_on[col] = sums_head_on;
+                sums_head_on = col;
+                sums_length_on++;
             }
         }
 
-        // If col_C has nonzeros in recv_mat, add these nonzeros to 
-        // col_sums
-        col_recv = C_to_recv[col_C];
-        if (col_recv != -1)
+        // Add row_AT of recv_off
+        recv_start = recv_off->idx1[row_AT];
+        recv_end = recv_off->idx1[row_AT+1];
+        for (int j = recv_start; j < recv_end; j++)
         {
-            col_start = recv_mat->idx1[col_recv];
-            col_end = recv_mat->idx1[col_recv+1];
-            for (int j = col_start; j < col_end; j++)
+            col = recv_off->idx2[j];
+            row_sums_off[col] += recv_off->vals[j];
+            if (sums_next_off[col] == -1)
             {
-                row = recv_mat->idx2[j];
-                col_sums[row] += recv_mat->vals[j];
-                if (sums_next[row] == -1)
-                {
-                    sums_next[row] = sums_head;
-                    sums_head = row;
-                    sums_length++;
-                }
+                sums_next_off[col] = sums_head_off;
+                sums_head_off = col;
+                sums_length_off++;
             }
-        }  
+        }
 
-        // Reset col_vals
+        // Reset row_vals
         for (int j = 0; j < length; j++)
         {
-            col_vals[head] = 0;
+            row_vals[head] = 0;
             head = next[head];
         }
 
-        // Add sums to C and reset col_sums
-        for (int j = 0; j < sums_length; j++)
+        // Add sums to C and reset row_sums
+        for (int j = 0; j < sums_length_on; j++)
         {
-            tmp = sums_head;
-            sums_head = sums_next[sums_head];
+            tmp = sums_head_on;
+            sums_head_on = sums_next_on[sums_head_on];
+            val = row_sums_on[tmp];
 
-            if (fabs(col_sums[tmp]) > zero_tol)
+            if (fabs(val) > zero_tol)
             {
-                C->off_proc->idx2.push_back(tmp);
-                C->off_proc->vals.push_back(col_sums[tmp]);
+                C->on_proc->idx2.push_back(tmp);
+                C->on_proc->vals.push_back(val);
             }
 
-            col_sums[tmp] = 0;
-            sums_next[tmp] = -1;
+            row_sums_on[tmp] = 0;
+            sums_next_on[tmp] = 0;
         }
 
-        C->off_proc->idx1[col_C + 1] = C->off_proc->idx2.size();
+        for (int j = 0; j < sums_length_off; j++)
+        {
+            tmp = sums_head_off;
+            sums_head_off = sums_next_off[sums_head_off];
+            val = row_sums_off[tmp];
+
+            if (fabs(val) > zero_tol)
+            {
+                C->off_proc->idx2.push_back(tmp);
+                C->off_proc->vals.push_back(val);
+            }
+
+            row_sums_off[tmp] = 0;
+            sums_next_off[tmp] = -1;
+        }
+
+        C->on_proc->idx1[row_AT + 1] = C->on_proc->idx2.size();
+        C->off_proc->idx1[row_AT + 1] = C->off_proc->idx2.size();
     }
+    C->on_proc->nnz = C->on_proc->idx2.size();
     C->off_proc->nnz = C->off_proc->idx2.size();
 
     C->local_nnz = C->on_proc->nnz + C->off_proc->nnz;
     C->off_proc_column_map = C->off_proc->get_col_list();
-
 }
 
 

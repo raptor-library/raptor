@@ -478,13 +478,11 @@ namespace raptor
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
 
-    ParCSCMatrix* mult(ParCSCMatrix* B);
-    ParCSCMatrix* tap_mult(ParCSCMatrix* B);
-    ParCSCMatrix* mult_T(ParCSCMatrix* B);
-    ParCSCMatrix* tap_mult_T(ParCSCMatrix* B);
-    void mult_helper(ParCSCMatrix* B, ParCSCMatrix* C, CSCMatrix* recv);
-    CSRMatrix* mult_T_partial(ParCSCMatrix* B);
-    void mult_T_combine(ParCSCMatrix* B, ParCSCMatrix* C, CSCMatrix* recv);
+    ParCSRMatrix* mult_T(ParCSCMatrix* A);
+    ParCSRMatrix* tap_mult_T(ParCSCMatrix* A);
+    CSRMatrix* mult_T_partial(ParCSCMatrix* A);
+    void mult_T_combine(ParCSCMatrix* B, ParCSRMatrix* C, CSRMatrix* recv_on,
+            CSRMatrix* recv_off);
   };
 }
 #endif
