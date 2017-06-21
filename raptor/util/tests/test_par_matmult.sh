@@ -6,5 +6,5 @@ cd ../../../build
 make
 cd ../raptor/util/tests/
 python test_par_matmult.py $TEST_PATH
-mpirun -n 16 $TEST_PATH"/./test_par_matmult"
+mpirun -n 16 valgrind $TEST_PATH"/./test_par_matmult"
 

@@ -208,17 +208,6 @@ int main(int argc, char* argv[])
     compare(APcsr, AP_sol_csr);
     delete APcsr;
 
-    // Test CSC <- CSC.mult(CSC)
-    ParCSCMatrix* APcsc = Acsc->mult(Pcsc);
-    compare(AP_sol_csc, APcsc);
-    compare(APcsc, AP_sol_csc);
-    delete APcsc;
-
-    APcsc = Acsc->tap_mult(Pcsc);
-    compare(AP_sol_csc, APcsc);
-    compare(APcsc, AP_sol_csc);
-    delete APcsc;
-
     // Test CSR <- CSR.mult_T(CSC)
     ParCSRMatrix* Accsr = AP_sol_csr->mult_T(Pcsc);
     compare(Ac_sol_csr, Accsr);
@@ -230,9 +219,11 @@ int main(int argc, char* argv[])
     compare(Accsr, Ac_sol_csr);
     delete Accsr;
 
-    // Test CSC <- CSC.mult_T(CSC)
-    //ParCSCMatrix* Accsc = Acsc->mult_T(Pcsc);
-    //delete Accsc;
+    // Test CSR <- CSR.mult_T(CSC)
+    Accsr = AP_sol_csc->mult_T(Pcsc);
+    compare(Ac_sol_csr, Accsr);
+    compare(Accsr, Ac_sol_csr);
+    delete Accsr;
 
     delete Acsr;
     delete Pcsr;
