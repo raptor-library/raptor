@@ -225,6 +225,11 @@ int main(int argc, char* argv[])
     compare(Accsr, Ac_sol_csr);
     delete Accsr;
 
+    Accsr = AP_sol_csc->tap_mult_T(Pcsc);
+    compare(Ac_sol_csr, Accsr);
+    compare(Accsr, Ac_sol_csr);
+    delete Accsr;
+
     delete Acsr;
     delete Pcsr;
     delete Acsc;

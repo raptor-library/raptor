@@ -129,30 +129,44 @@ int main(int argc, char *argv[])
                             strong_threshold);
     hypre_ParAMGData* amg_data = (hypre_ParAMGData*) solver_data;
 
-    HYPRE_Int num_levels = hypre_ParAMGDataNumLevels(amg_data);
-    hypre_ParCSRMatrix** A_array = hypre_ParAMGDataAArray(amg_data);
+    HYPRE_Int num_levels = hypre_ParAMGDataNumLevels((hypre_ParAMGData*) solver_data);
+    hypre_ParCSRMatrix** A_array = hypre_ParAMGDataAArray((hypre_ParAMGData*) solver_data);
     hypre_ParCSRMatrix** P_array = hypre_ParAMGDataPArray(amg_data);
     hypre_ParVector** f_array = hypre_ParAMGDataFArray(amg_data);
     double t0, tfinal;
+
     for (int i = 0; i < num_levels - 1; i++)
     {
         hypre_ParCSRMatrix* A_h_l = A_array[i];
         hypre_ParCSRMatrix* P_h_l = P_array[i];
+        hypre_ParCSRMatrix* AP_h_l = hypre_ParMatmul(A_h_l, P_h_l);
 
         // TODO -- fix this!  Right now, creating two communicators without
         // barrier between can cause race condition...
         ParCSRMatrix* A_l = convert(A_h_l);
         ParCSRMatrix* P_l = convert(P_h_l);
-        ParCSCMatrix* P_l_csc = new ParCSCMatrix(P_l);
         ParCSRMatrix* AP_l = A_l->mult(P_l);
+
+        ParCSCMatrix* P_l_csc = new ParCSCMatrix(P_l);
+        ParCSCMatrix* AP_l_csc = new ParCSCMatrix(AP_l);
 
         A_l->tap_comm = new TAPComm(A_l->off_proc_column_map,
                 A_l->first_local_row, A_l->first_local_col, 
                 A_l->global_num_cols, A_l->local_num_cols);
 
+        AP_l->comm = new ParComm(AP_l->off_proc_column_map,
+                AP_l->first_local_row, AP_l->first_local_col, 
+                AP_l->global_num_cols, AP_l->local_num_cols);
         AP_l->tap_comm = new TAPComm(AP_l->off_proc_column_map,
                 AP_l->first_local_row, AP_l->first_local_col, 
                 AP_l->global_num_cols, AP_l->local_num_cols);
+
+        AP_l_csc->comm = new ParComm(AP_l_csc->off_proc_column_map,
+                AP_l_csc->first_local_row, AP_l_csc->first_local_col, 
+                AP_l_csc->global_num_cols, AP_l_csc->local_num_cols);
+        AP_l_csc->tap_comm = new TAPComm(AP_l_csc->off_proc_column_map,
+                AP_l_csc->first_local_row, AP_l_csc->first_local_col, 
+                AP_l_csc->global_num_cols, AP_l_csc->local_num_cols);
 
         if (rank == 0) printf("Original SpGEMM (A*P)\n");
         for (int j = 0; j < 5; j++)
@@ -229,8 +243,24 @@ int main(int argc, char *argv[])
         }
 
         if (rank == 0) printf("Tanspose SpGEMM (P^T*(AP))\n");
+
         for (int j = 0; j < 5; j++)
         {
+            tfinal = 0.0;
+            for (int k = 0; k < num_tests; k++)
+            {
+                MPI_Barrier(MPI_COMM_WORLD);
+                t0 = MPI_Wtime();
+                hypre_ParCSRMatrix* C_h_l = hypre_ParTMatmul(P_h_l, AP_h_l);
+                tfinal += MPI_Wtime() - t0;
+                hypre_ParCSRMatrixDestroy(C_h_l);
+                clear_cache(cache_len, cache_array);  
+            }
+            tfinal /= num_tests;
+            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+            if (rank == 0) printf("HYPRE Matmult time = %e\n", t0);
+
+
             tfinal = 0.0;
             for (int k = 0; k < num_tests; k++)
             {
@@ -290,7 +320,10 @@ int main(int argc, char *argv[])
 
         delete A_l;
         delete P_l;
+        delete AP_l;
         delete P_l_csc;
+        delete AP_l_csc;
+        hypre_ParCSRMatrixDestroy(AP_h_l);
     }
     
     delete[] cache_array;
