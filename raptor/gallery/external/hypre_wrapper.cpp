@@ -6,8 +6,9 @@ HYPRE_IJVector convert(raptor::ParVector* x_rap, MPI_Comm comm_mat)
 
     HYPRE_Int first_local = x_rap->first_local;
     HYPRE_Int local_n = x_rap->local_n;
+    HYPRE_Int last_local = first_local + local_n - 1;
 
-    HYPRE_IJVectorCreate(comm_mat, first_local, first_local + local_n, &x);
+    HYPRE_IJVectorCreate(comm_mat, first_local, last_local, &x);
     HYPRE_IJVectorSetObjectType(x, HYPRE_PARCSR);
     HYPRE_IJVectorInitialize(x);
 
@@ -405,12 +406,12 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
       
     // Set Boomer AMG Parameters
     HYPRE_BoomerAMGSetPrintLevel(amg_data, 1);
-    HYPRE_BoomerAMGSetCoarsenType(amg_data, coarsen_type);
+    /*HYPRE_BoomerAMGSetCoarsenType(amg_data, coarsen_type);
     HYPRE_BoomerAMGSetInterpType(amg_data, interp_type);
     HYPRE_BoomerAMGSetPMaxElmts(amg_data, p_max_elmts);
     HYPRE_BoomerAMGSetAggNumLevels(amg_data, agg_num_levels);
     HYPRE_BoomerAMGSetStrongThreshold(amg_data, strong_threshold);
-    HYPRE_BoomerAMGSetMaxCoarseSize(amg_data, 15);
+    */HYPRE_BoomerAMGSetMaxCoarseSize(amg_data, 15);
     HYPRE_BoomerAMGSetMinCoarseSize(amg_data, 5);
 
     // Setup AMG
