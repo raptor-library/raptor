@@ -390,7 +390,8 @@ ParCSRMatrix* exxon_pressure_reader(char* folder, char* iname, char* fname, char
 }
 
 
-void exxon_vector_reader(char* folder, char* fname, char* suffix, ParVector& x)
+void exxon_vector_reader(char* folder, char* fname, char* suffix, 
+        int first_local, ParVector& x)
 {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -427,6 +428,7 @@ void exxon_vector_reader(char* folder, char* fname, char* suffix, ParVector& x)
     int local_size = (last_block_row - first_block_row + 1) * block_size;
     x.local_n = local_size;
     x.local.size = local_size;
+    x.first_local = first_local;
     if (local_size)
     {
         x.local.values.resize(local_size);
@@ -448,7 +450,8 @@ void exxon_vector_reader(char* folder, char* fname, char* suffix, ParVector& x)
     fclose(infile);
 }
 
-void exxon_pressure_vector_reader(char* folder, char* fname, char* suffix, ParVector& x)
+void exxon_pressure_vector_reader(char* folder, char* fname, char* suffix, 
+        int first_local,  ParVector& x)
 {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -485,6 +488,7 @@ void exxon_pressure_vector_reader(char* folder, char* fname, char* suffix, ParVe
     int local_size = last_block_row - first_block_row + 1;
     x.local_n = local_size;
     x.local.size = local_size;
+    x.first_local = first_local;
     if (local_size)
     {
         x.local.values.resize(local_size);
