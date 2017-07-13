@@ -1,31 +1,21 @@
 // Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
-#include "core/par_matrix.hpp"
+#include "core/matrix.hpp"
 
 using namespace raptor;
 
 // Assumes B and R are previously allocated
 // B - (rows_aggop, num_candidates)
 // R - (cols_aggop, num_candidates)
-ParCSRMatrix* ParCSRMatrix::fit_candidates(data_t* B, data_t* R, int num_candidates, 
-        double tol)
+CSRMatrix* CSRMatrix::fit_candidates(data_t* B, data_t* R, int num_candidates, double tol)
 {
-    CSCMatrix* on_proc_csc = new CSCMatrix(on_proc);
-    CSCMatrix* off_proc_csc = new CSCMatrix(off_proc);
-
-    ParCSCMatrix* T_csc = new ParCSCMatrix(global_num_rows, 
-            global_num_cols * num_candidates, local_num_rows,
-            local_num_cols * num_candidates, first_local_row,
-            first_local_col * num_candidates);
-
-    T_csc->on_proc->idx2.reserve(T_csc->on_proc->nnz * num_candidates);
-    T_csc->on_proc->vals.reserve(T_csc->on_proc->nnz * num_candidates);
-    T_csc->off_proc->idx2.reserve(T_csc->off_proc->nnz * num_candidates);
-    T_csc->off_proc->vals.reserve(T_csc->off_proc->nnz * num_candidates);
+    CSCMatrix* T_csc = new CSCMatrix(n_rows, n_cols * num_candidates);
+    T_csc->idx2.reserve(nnz * num_candidates);
+    T_csc->vals.reserve(nnz * num_candidates);
 
     // Set near nullspace candidates in R to 0
-    for (int i = 0; i < local_num_cols; i++)
+    for (int i = 0; i < n_cols; i++)
     {
         for (int j = 0; j < num_candidates; j++)
         {
@@ -33,58 +23,31 @@ ParCSRMatrix* ParCSRMatrix::fit_candidates(data_t* B, data_t* R, int num_candida
         }
     }
 
-    // Add columns of B to T (corresponding to pattern in AggOp)
-    T_csc->on_proc->idx1[0] = 0;
-    for (int i = 0; i < local_num_cols; i++)
-    {
-        col_start = on_proc_csc->idx1[i];
-        col_end = on_proc_csc->idx1[i+1];
-        for (int j = 0; j < num_candidates; j++)
-        {
-            for (int k = col_start; k < col_end; k++)
-            {
-                row = on_proc_csc->idx2[j];
-                idx_B = (j * local_num_rows) + row;
-                val = B[idx_B];
-                if (fabs(val) > zero_tol)
-                {
-                    T_csc->on_proc->idx2.push_back(row);
-                    T_csc->on_proc->vals.push_back(val);
-                }
-            }
-            T_csc->on_proc->idx1[(i*num_candidates)+j+1] = T_csc->on_proc->idx2.size();
-        }
-    }
-    T_csc->on_proc->nnz = T_csc->on_proc->idx2.size();
 
-    T_csc->on_proc->idx1[0] = 0;
-    for (int i = 0; i < off_proc_num_cols; i++)
+    // Add columns of B to T (corresponding to pattern in AggOp)
+    T_csc->idx1[0] = 0;
+    for (int i = 0; i < n_cols; i++)
     {
-        col_start = off_proc_csc->idx1[i];
-        col_end = off_proc_csc->idx1[i+1];
+        int col_start = idx1[i];
+        int col_end = idx1[i+1];
         for (int j = 0; j < num_candidates; j++)
         {
             for (int k = col_start; k < col_end; k++)
             {
-                row = off_proc_csc->idx2[j];
-                idx_B = (j * local_num_rows) + row;
-                val = B[idx_B];
-                if (fabs(val) > zero_tol)
-                {
-                    T_csc->off_proc->idx2.push_back(row);
-                    T_csc->off_proc->vals.push_back(val);
-                }
+                int row = idx2[k];
+                int idx_B = (j * n_rows) + row;
+                double val = B[idx_B];
+                T_csc->idx2.push_back(row);
+                T_csc->vals.push_back(val);
             }
-            T_csc->off_proc->idx1[(i*num_candidates)+j+1] = T_csc->off_proc->idx2.size();
+            T_csc->idx1[i*num_candidates + j + 1] = T_csc->idx2.size();
         }
     }
-    T_csc->off_proc->nnz = T_csc->off_proc->idx2.size();
+    T_csc->nnz = T_csc->idx2.size();
       
-    for (int i = 0; i < local_num_cols; i++)
+    for (int i = 0; i < n_cols; i++)
     {
         int idx_R = i * num_candidates * num_candidates;
-
-        // Need to calculate the norm of all columns
 
         for (int j = 0; j < num_candidates; j++)
         {
@@ -160,4 +123,3 @@ ParCSRMatrix* ParCSRMatrix::fit_candidates(data_t* B, data_t* R, int num_candida
     delete T_csc;
     return T;
 }
-

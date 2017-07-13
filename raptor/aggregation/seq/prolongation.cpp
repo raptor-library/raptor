@@ -4,24 +4,26 @@
 #include "prolongation.hpp"
 
 // Assuming weighting = local (not getting approx spectral radius)
-void jacobi_prolongation(CSRMatrix& A, CSCMatrix& T, CSCMatrix& P,
-        double omega, int num_smooth_steps)
+CSRMatrix* jacobi_prolongation(CSRMatrix* A, CSRMatrix* T, double omega, 
+        int num_smooth_steps)
 {
-    CSRMatrix scaled_A(&A);
-    P.copy(&T);
+    CSRMatrix* AP_tmp;
+    CSRMatrix* P_tmp;
+    CSRMatrix* P = new CSRMatrix(T);
+    CSRMatrix* scaled_A = new CSRMatrix(A);
 
     // Get absolute row sum for each row
     int row_start, row_end;
-    std::vector<double> inv_sums(A.n_rows, 0);
+    std::vector<double> inv_sums(A->n_rows, 0);
     double row_sum = 0;
-    for (int row = 0; row < A.n_rows; row++)
+    for (int row = 0; row < A->n_rows; row++)
     {
-        row_start = A.idx1[row];
-        row_end = A.idx1[row+1];
+        row_start = A->idx1[row];
+        row_end = A->idx1[row+1];
         row_sum = 0.0;
         for (int j = row_start; j < row_end; j++)
         {
-            row_sum += fabs(A.vals[j]);
+            row_sum += fabs(A->vals[j]);
         }
 
         if (row_sum)
@@ -31,18 +33,24 @@ void jacobi_prolongation(CSRMatrix& A, CSCMatrix& T, CSCMatrix& P,
 
         for (int j = row_start; j < row_end; j++)
         {
-            scaled_A.vals[j] *= inv_sums[row];
+            scaled_A->vals[j] *= inv_sums[row];
         }
     }
 
     // P = P - (scaled_A*P)
-    CSCMatrix P_tmp;
     for (int i = 0; i < num_smooth_steps; i++)
     {
         // TODO-- need to implement this to also return CSC
-        scaled_A.mult(P, &P_tmp);
-        P.subtract(P_tmp, T);
-        P.copy(&T);
+        AP_tmp = scaled_A->mult(P);
+        P_tmp = P->subtract(AP_tmp);
+        delete AP_tmp;
+        delete P;
+        P = P_tmp;
+        P_tmp = NULL;
     }
+
+    delete scaled_A;
+    
+    return P;
 }
 

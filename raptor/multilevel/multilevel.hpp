@@ -4,12 +4,10 @@
 #define RAPTOR_CORE_MULTILEVEL_H
 
 #include "core/types.hpp"
-#include "core/matrix.hpp"
-#include "core/vector.hpp"
+#include "core/par_matrix.hpp"
+#include "core/par_vector.hpp"
 #include "level.hpp"
-#include "aggregation/aggregate.hpp"
 #include "aggregation/prolongation.hpp"
-#include "aggregation/candidates.hpp"
 
 // Coarse Matrices (A) are CSC
 // Prolongation Matrices (P) are CSC
@@ -27,30 +25,33 @@ namespace raptor
     {
         public:
 
-            Multilevel(CSRMatrix& Af, data_t* B_ptr = NULL, int num_candidates = 1,
+            Multilevel(ParCSRMatrix* Af, data_t* B_ptr = NULL, int num_candidates = 1,
                     double theta = 0.0, double omega = 4.0/3, 
                     int num_smooth_steps = 1, int max_coarse = 50)
             {
                 // Always need levels with A, x, b (P and tmp are on all but
                 // coarsest)
                 levels.push_back(new Level());
-                levels[0]->A.copy(&Af);
-                levels[0]->A.sort();
-                levels[0]->x.set_size(Af.n_rows);
-                levels[0]->b.set_size(Af.n_rows);
-                levels[0]->tmp.set_size(Af.n_rows);
+                levels[0]->A = new ParCSRMatrix(Af);
+                levels[0]->A->sort();
+                levels[0]->x.set_size(Af->global_num_rows, Af->local_num_rows,
+                        Af->first_local_row);
+                levels[0]->b.set_size(Af->global_num_rows, Af->local_num_rows,
+                        Af->first_local_row);
+                levels[0]->tmp.set_size(Af->global_num_rows, Af->local_num_rows,
+                        Af->first_local_row);
 
-                double* level_B = new data_t[Af.n_rows];
+                double* level_B = new data_t[Af->local_num_rows];
                 if (B_ptr)
                 {
-                    for (int i = 0; i < Af.n_rows; i++)
+                    for (int i = 0; i < Af->local_num_rows; i++)
                     {
                         level_B[i] = B_ptr[i];
                     }
                 }
                 else
                 {
-                    for (int i = 0; i < Af.n_rows; i++)
+                    for (int i = 0; i < Af->local_num_rows; i++)
                     {
                         level_B[i] = 1.0;
                     }
@@ -58,7 +59,7 @@ namespace raptor
 
 
                 int last_level = 0;
-                while (levels[last_level]->A.n_rows > max_coarse)
+                while (levels[last_level]->A->global_num_rows > max_coarse)
                 {
                     double* R = extend_hierarchy(level_B, num_candidates,
                             theta, omega, num_smooth_steps, max_coarse);
@@ -71,16 +72,18 @@ namespace raptor
 
                 num_levels = levels.size();
 
-                CSRMatrix& Ac = levels[last_level]->A;
-                coarse_n = Ac.n_rows;
+                // TODO -- gather Ac so that each process with any local num
+                // rows has all of Ac stored locally (in a dense matrix)
+                ParCSRMatrix* Ac = levels[last_level]->A;
+                coarse_n = Ac->global_num_rows;
                 A_coarse.resize(coarse_n*coarse_n, 0);
                 for (int i = 0; i < coarse_n; i++)
                 {
-                    int row_start = Ac.idx1[i];
-                    int row_end = Ac.idx1[i+1];
+                    int row_start = Ac->idx1[i];
+                    int row_end = Ac->idx1[i+1];
                     for (int j = row_start; j < row_end; j++)
                     {
-                        A_coarse[i*coarse_n + Ac.idx2[j]] = Ac.vals[j];
+                        A_coarse[i*coarse_n + Ac->idx2[j]] = Ac->vals[j];
                     }
                 }
 
@@ -110,45 +113,48 @@ namespace raptor
             {
                 int level_ctr = levels.size()-1;
 
-                CSRMatrix S;
-                CSCMatrix AggOp;
-                CSCMatrix T;
-                
+                ParCSRMatrix* S;
+                ParCSRMatrix* AggOp;
+                ParCSRMatrix* T;
+                ParCSRMatrix* AP;
+                ParCSCMatrix* P_csc;
+
                 // Create Strength of Connection
-                levels[level_ctr]->A.symmetric_strength(&S, theta);
+                S = levels[level_ctr]->A->strength(theta);
 
                 // Use standard aggregation
-                standard_aggregation(S, &AggOp);
+                AggOp = S->aggregate();
 
                 // Create tentative interpolation
-                data_t* R = new data_t[AggOp.n_cols];
-                fit_candidates(AggOp, &T, B, R, num_candidates);
+                data_t* R = new data_t[AggOp->n_cols];
+                T = AggOp->fit_candidates(B, R, num_candidates);
 
                 // Smooth T to form prolongation
-                jacobi_prolongation(levels[level_ctr]->A, T, levels[level_ctr]->P, 
+                levels[level_ctr]->P = jacobi_prolongation(levels[level_ctr]->A, T, 
                         omega, num_smooth_steps);
 
                 // Create coarse A
                 levels.push_back(new Level());
+                AP = (levels[level_ctr]->A)->mult(levels[level_ctr]->P);
+                P_csc = new CSCMatrix(levels[level_ctr]->P);
+                levels[level_ctr+1]->A = AP->mult_T(P_csc);
                 level_ctr++;
-                levels[level_ctr-1]->A.RAP(levels[level_ctr-1]->P,
-                        &(levels[level_ctr]->A));
 
-		// Sort coarse A
-		levels[level_ctr]->A.sort();
+        	    // Sort coarse A
+		        levels[level_ctr]->A->sort();
 
                 // Resize vectors to equal shape of A
-                levels[level_ctr]->x.set_size(levels[level_ctr]->A.n_rows);
-                levels[level_ctr]->b.set_size(levels[level_ctr]->A.n_rows);
-                levels[level_ctr]->tmp.set_size(levels[level_ctr]->A.n_rows);
+                levels[level_ctr]->x.set_size(levels[level_ctr]->A->n_rows);
+                levels[level_ctr]->b.set_size(levels[level_ctr]->A->n_rows);
+                levels[level_ctr]->tmp.set_size(levels[level_ctr]->A->n_rows);
                 
                 return R;
             }
 
             void cycle(int level)
             {
-                CSRMatrix& A = levels[level]->A;
-                CSCMatrix& P = levels[level]->P;
+                CSRMatrix* A = levels[level]->A;
+                CSRMatrix* P = levels[level]->P;
                 Vector& x = levels[level]->x;
                 Vector& b = levels[level]->b;
                 Vector& tmp = levels[level]->tmp;
@@ -170,12 +176,12 @@ namespace raptor
                 else
                 {
                     levels[level+1]->x.set_const_value(0.0);
-                    A.gauss_seidel(x, b);
-                    A.residual(x, b, tmp);
-                    P.mult_T(tmp, levels[level+1]->b);
+                    A->gauss_seidel(x, b);
+                    A->residual(x, b, tmp);
+                    P->mult_T(tmp, levels[level+1]->b);
                     cycle(level+1);
-                    P.mult_append(levels[level+1]->x, x);
-                    A.gauss_seidel(x, b);
+                    P->mult_append(levels[level+1]->x, x);
+                    A->gauss_seidel(x, b);
                 }
             }
 
@@ -190,7 +196,7 @@ namespace raptor
 
                 // Iterate until convergence or max iterations
                 Vector resid(rhs.size);
-                levels[0]->A.residual(levels[0]->x, levels[0]->b, resid);
+                levels[0]->A->residual(levels[0]->x, levels[0]->b, resid);
 //                if (fabs(b_norm) > zero_tol)
                 {
 //                    r_norm = resid.norm(2) / b_norm;
@@ -206,7 +212,7 @@ namespace raptor
                     cycle(0);
                     iter++;
 
-                    levels[0]->A.residual(levels[0]->x, levels[0]->b, resid);
+                    levels[0]->A->residual(levels[0]->x, levels[0]->b, resid);
 //                    if (fabs(b_norm) > zero_tol)
                     {
 //                        r_norm = resid.norm(2) / b_norm;

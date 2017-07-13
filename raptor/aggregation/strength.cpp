@@ -1,162 +1,44 @@
-// Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
-// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#include <math.h>
-#include "core/types.hpp"
-#include "core/matrix.hpp"
-#include "core/vector.hpp"
+#include "core/par_matrix.hpp"
 
 using namespace raptor;
 
-void Matrix::classical_strength(CSRMatrix* S, double theta)
+// Assumes ParCSRMatrix is previously sorted
+// TODO -- have ParCSRMatrix bool sorted (and sort if not previously)
+
+ParCSRMatrix* ParCSRMatrix::strength(double theta)
 {
-    printf("This matrix format is not supported.\n");
-}
-
-void Matrix::symmetric_strength(CSCMatrix* S, double theta)
-{
-    printf("This matrix format is not supported.\n");
-}
-void Matrix::symmetric_strength(CSRMatrix* S, double theta)
-{
-    printf("This matrix format is not supported.\n");
-}
-
-void CSRMatrix::classical_strength(CSRMatrix* S, double theta)
-{
-    S->n_rows = n_rows;
-    S->n_cols = n_cols;
-    S->idx1.resize(n_rows + 1);
-    S->idx2.resize(nnz);
-    S->vals.resize(nnz);
-
-    int ctr = 0;
-    S->idx1[0] = ctr;
-
-    int row_start, row_end;
-    double val, max_val;
-
-    for (int i = 0; i < n_rows; i++)
-    {
-        row_start = idx1[i];
-        row_end = idx1[i+1];
-
-        // Find maximum off-diagonal value in row
-        max_val = 0;
-        for (int j = row_start + 1; j < row_end; j++)
-        {
-            val = fabs(vals[j]);
-            if (val > max_val)
-                max_val = val;
-        }
-
-        // Always add the diagonal
-        if (row_end - row_start)
-        {
-            S->idx2[ctr] = idx2[row_start];
-            S->vals[ctr] = 1.0;
-            ctr++;
-        }
-
-        // Add off-diagonal values if
-        // |Aij| >= theta * max(|Aik|) for k != i
-        for (int j = row_start+1; j < row_end; j++)
-        {
-            if (fabs(vals[j]) >= theta * max_val)
-            {
-                S->idx2[ctr] = idx2[j];
-                S->vals[ctr] = 1.0;
-                ctr++;
-            }
-        }
-
-        S->idx1[i+1] = ctr;
-    }
-    S->nnz = ctr;
-}
-
-void CSCMatrix::symmetric_strength(CSCMatrix* S, double theta)
-{
-    S->n_rows = n_rows;
-    S->n_cols = n_cols;
-    S->idx1.resize(n_cols + 1);
-    S->idx2.resize(nnz);
-    S->vals.resize(nnz);
-
-    int col_start, col_end;
-    int row;
-    double eps_diag;
-    double theta_sq = theta*theta;
-    double val, val_sq;
-
-    std::vector<double> abs_diag(n_cols);
-    for (int i = 0; i < n_cols; i++)
-    {
-        col_start = idx1[i];
-        if (idx1[i+1] - col_start)
-        {
-            abs_diag[i] = fabs(vals[col_start]);
-        }
-        else
-        {
-            abs_diag[i] = 0.0;
-        }
-    }
-
-    int ctr = 0;
-    S->idx1[0] = ctr;
-    for (int i = 0; i < n_cols; i++)
-    {
-        col_start = idx1[i];
-        col_end = idx1[i+1];
-
-        if (col_end - col_start)
-        {
-            eps_diag = abs_diag[i] * theta_sq;
-
-            S->idx2[ctr] = idx2[col_start];
-            S->vals[ctr] = 1.0;
-            ctr++;
-
-            for (int j = col_start+1; j < col_end; j++)
-            {
-                row = idx2[j];
-                val = vals[j];
-                val_sq = val*val;
-
-                if (val_sq >= eps_diag * abs_diag[row])
-                {
-                    S->idx2[ctr] = row;
-                    S->vals[ctr] = val;
-                    ctr++;
-                }
-            }
-        }
-        S->idx1[i+1] = ctr;
-    }
-    S->nnz = ctr;
-}
-
-void CSRMatrix::symmetric_strength(CSRMatrix* S, double theta)
-{
-    S->n_rows = n_rows;
-    S->n_cols = n_cols;
-    S->idx1.resize(n_rows + 1);
-    S->idx2.resize(nnz);
-    S->vals.resize(nnz);
-
     int row_start, row_end;
     int col;
+    double theta_sq = theta * theta;
     double eps_diag;
-    double theta_sq = theta*theta;
     double val, val_sq;
 
-    std::vector<double> abs_diag(n_rows);
-    for (int i = 0; i < n_rows; i++)
+    ParCSRMatrix* S = new ParCSRMatrix(global_num_rows, global_num_cols,
+            local_num_rows, local_num_cols, first_local_row, first_local_col);
+    
+    if (on_proc->nnz)
     {
-        row_start = idx1[i];
-        if (idx1[i+1] - row_start)
+        S->on_proc->idx2.reserve(on_proc->nnz);
+        S->on_proc->vals.reserve(on_proc->nnz);
+    }
+    if (off_proc->nnz)
+    {
+        S->off_proc->idx2.reserve(off_proc->nnz);
+        S->off_proc->vals.reserve(off_proc->nnz);
+    }
+
+    std::vector<double> abs_diag;
+    if (local_num_rows)
+    {
+        abs_diag.resize(local_num_rows);
+    }
+    for (int i = 0; i < local_num_rows; i++)
+    {
+        row_start = on_proc->idx1[i];
+        row_end = on_proc->idx1[i+1];
+        if (row_end - row_start)
         {
-            abs_diag[i] = fabs(vals[row_start]);
+            abs_diag[i] = fabs(on_proc->vals[row_start]);
         }
         else
         {
@@ -164,39 +46,75 @@ void CSRMatrix::symmetric_strength(CSRMatrix* S, double theta)
         }
     }
 
-    int ctr = 0;
-    S->idx1[0] = ctr;
-    for (int i = 0; i < n_rows; i++)
+    S->on_proc->idx1[0] = 0;
+    S->off_proc->idx1[0] = 0;
+    for (int i = 0; i < local_num_rows; i++)
     {
-        row_start = idx1[i];
-        row_end = idx1[i+1];
-
+        row_start = on_proc->idx1[i];
+        row_end = on_proc->idx1[i+1];
         if (row_end - row_start)
         {
             eps_diag = abs_diag[i] * theta_sq;
 
-            S->idx2[ctr] = idx2[row_start];
-            S->vals[ctr] = 1.0;
-            ctr++;
-
-            for (int j = row_start+1; j < row_end; j++)
+            S->on_proc->idx2.push_back(on_proc->idx2[row_start]);
+            S->on_proc->vals.push_back(1.0);
+            for (int j = row_start + 1; j < row_end; j++)
             {
-                col = idx2[j];
-                val = vals[j];
+                col = on_proc->idx2[j];
+                val = on_proc->vals[j];
                 val_sq = val*val;
 
                 if (val_sq >= eps_diag * abs_diag[col])
                 {
-                    S->idx2[ctr] = col;
-                    S->vals[ctr] = val;
-                    ctr++;
+                    S->on_proc->idx2.push_back(col);
+                    S->on_proc->vals.push_back(val);
+                }
+            }
+            
+            row_start = off_proc->idx1[i];
+            row_end = off_proc->idx1[i+1];
+            for (int j = row_start; j < row_end; j++)
+            {
+                col = off_proc->idx2[j];
+                val = off_proc->vals[j];
+                val_sq = val*val;
+                
+                if (val_sq >= eps_diag * abs_diag[col])
+                {
+                    S->off_proc->idx2.push_back(col);
+                    S->off_proc->vals.push_back(val);
                 }
             }
         }
-        S->idx1[i+1] = ctr;
+        S->on_proc->idx1[i+1] = S->on_proc->idx2.size();
+        S->off_proc->idx1[i+1] = S->off_proc->idx2.size();
     }
-    S->nnz = ctr;
+    S->on_proc->nnz = S->on_proc->idx2.size();
+    S->off_proc->nnz = S->off_proc->idx2.size();
+
+    S->off_proc_num_cols = off_proc_num_cols;
+    if (off_proc_num_cols)
+    {
+        S->off_proc_column_map.reserve(off_proc_num_cols);
+        for (std::vector<int>::iterator it = off_proc_column_map.begin();
+                it != off_proc_column_map.end(); ++it)
+        {
+            S->off_proc_column_map.push_back(*it);
+        }
+    }
+    S->local_nnz = S->on_proc->nnz + S->off_proc->nnz;
+
+    // Can copy A's comm pkg... may not need to communicate everything in comm,
+    // but this is probably less costly than creating a new communicator
+    if (comm)
+    {
+        S->comm = new ParComm((ParComm*) comm);
+    }
+
+    if (tap_comm)
+    {
+        S->tap_comm = new TAPComm((TAPComm*) comm);
+    }
+
+    return S;
 }
-
-
-
