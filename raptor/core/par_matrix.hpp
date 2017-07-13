@@ -185,6 +185,10 @@ namespace raptor
     ParMatrix* mult_T(ParCSCMatrix* B);
     ParMatrix* tap_mult_T(ParCSCMatrix* B);
 
+    ParCSRMatrix* subtract(ParCSRMatrix* B);
+    ParCSRMatrix* subtract(ParCSCMatrix* B);
+    ParCSRMatrix* subtract(ParCOOMatrix* B);
+
     virtual void copy(ParCSRMatrix* A) = 0;
     virtual void copy(ParCSCMatrix* A) = 0;
     virtual void copy(ParCOOMatrix* A) = 0;
@@ -401,6 +405,12 @@ namespace raptor
 
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
+    ParCSRMatrix* strength(double theta);
+    ParCSRMatrix* aggregate();
+    ParCSRMatrix* fit_candidates(double* B, double* R, int num_candidates, 
+            double tol = 1e-10);
+    int maximal_independent_set(std::vector<int>& local_states,
+            std::vector<int>& off_proc_states, int max_iters = -1);
 
     ParCSRMatrix* mult(ParCSRMatrix* B);
     ParCSRMatrix* mult(ParCSCMatrix* B);
@@ -408,6 +418,10 @@ namespace raptor
     ParCSRMatrix* tap_mult(ParCSCMatrix* B);
     ParCSRMatrix* mult_T(ParCSCMatrix* A);
     ParCSRMatrix* tap_mult_T(ParCSCMatrix* A);
+
+    ParCSRMatrix* subtract(ParCSRMatrix* B);
+    ParCSRMatrix* subtract(ParCSCMatrix* B);
+    ParCSRMatrix* subtract(ParCOOMatrix* B);
     
     CSRMatrix* mult_T_partial(ParCSCMatrix* A);
     void mult_T_combine(ParCSCMatrix* A, ParCSRMatrix* C, CSRMatrix* recv_on,

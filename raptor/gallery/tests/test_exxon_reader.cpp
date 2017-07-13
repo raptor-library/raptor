@@ -27,8 +27,8 @@ int main(int argc, char* argv[])
     ParCSRMatrix* A = exxon_reader(folder, iname, fname, suffix, on_proc_column_map);
     ParVector x;
     ParVector b;
-    exxon_vector_reader(folder, fname, suffix_x, x);
-    exxon_vector_reader(folder, fname, suffix_b, b);
+    exxon_vector_reader(folder, fname, suffix_x, A->first_local_col, x);
+    exxon_vector_reader(folder, fname, suffix_b, A->first_local_row, b);
 
     ParVector b_rap = ParVector(A->global_num_rows, A->local_num_rows, A->first_local_row);
     A->mult(x, b_rap);

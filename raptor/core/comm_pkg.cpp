@@ -761,6 +761,69 @@ void TAPComm::complete_comm()
     }
 }
 
+/*CSRMatrix* ParComm::binary_communication_helper(std::vector<int>& rowptr,
+        std::vector<int>& col_indices, MPI_Comm comm, CommData* send_comm,
+        CommData* recv_comm)
+{
+    // Number of rows in recv_mat = size_recvs
+    // Don't know number of columns, but does not matter (CSR)
+    CSRMatrix* recv_mat = new CSRMatrix(recv_comm->size_msgs, -1);
+
+    int start, end, proc;
+    int row, row_size;
+    int send_mat_size;
+    int ctr, prev_ctr;
+    int row_start, row_end;
+    int start_idx, end_idx;
+    int nsends, nrecvs;
+
+    // Calculate nnz/row for each row to be sent to a proc
+    std::vector<int> send_row_buffer;
+    std::vector<int> recv_row_buffer;
+
+    int send_size = 0;
+    for (int i = 0; i < send_comm->num_msgs; i++)
+    {
+        start = send_comm->indptr[i];
+        end = send_comm->indptr[i+1];
+        for (int j = start; j < end; j++)
+        {
+            row = send_comm->indices[j];
+            row_start = rowptr[row];
+            row_end = rowptr[row+1];
+            send_size += row_end - row_start;
+        }
+    }
+    if (send_size)
+    {
+        send_row_buffer.resize(send_size + send_comm->size_msgs);
+    }
+    ctr = 0;
+    prev_ctr = 0;
+    for (int i = 0; i < send_comm->num_msgs; i++)
+    {
+        start = send_comm->indptr[i];
+        end = send_comm->indptr[i+1];
+        proc = send_comm->procs[i];
+        for (int j = start; j < end; j++)
+        {
+            row = send_comm->indices[j];
+            row_start = rowptr[row];
+            row_end = rowptr[row+1];
+
+            send_buffer[ctr++] = row_end - row_start;
+            for (int k = row_start; k < row_end; k++)
+            {
+                send_buffer[ctr++] = col_indices[k];
+            }
+        }
+
+        MPI_Isend(&(send_row_buffer[prev_ctr]), ctr - prev_ctr, MPI_INT, proc,
+                key, comm, &(send_comm->requests[i]));
+        prev_ctr += ctr;
+    }
+}*/
+
 CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr, 
         std::vector<int>& col_indices, std::vector<double>& values,
         MPI_Comm comm, CommData* send_comm, CommData* recv_comm)

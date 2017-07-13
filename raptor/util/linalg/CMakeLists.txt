@@ -6,6 +6,7 @@ if (WITH_MPI)
     set(par_linalg_SOURCES
         util/linalg/spmv.cpp
         util/linalg/matmult.cpp
+        util/linalg/subtract.cpp
         )
 else ()
     set (par_linalg_SOURCES 

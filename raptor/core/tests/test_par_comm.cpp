@@ -21,8 +21,7 @@ int main(int argc, char* argv[])
     int grid[2] = {10, 10};
     double* stencil = diffusion_stencil_2d(eps, theta);
 
-    CSRMatrix A_seq;
-    stencil_grid(&A_seq, stencil, grid, 2);
+    CSRMatrix* A_seq = stencil_grid(stencil, grid, 2);
 
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
     ParCSCMatrix* Acsc = new ParCSCMatrix(A);
@@ -43,11 +42,11 @@ int main(int argc, char* argv[])
     }
 
     double A_dense[10000] = {0};
-    for (int i = 0; i < A_seq.n_rows; i++)
+    for (int i = 0; i < A_seq->n_rows; i++)
     {
-        for (int j = A_seq.idx1[i]; j < A_seq.idx1[i+1]; j++)
+        for (int j = A_seq->idx1[i]; j < A_seq->idx1[i+1]; j++)
         {
-            A_dense[i*100 + A_seq.idx2[j]] = A_seq.vals[j];
+            A_dense[i*100 + A_seq->idx2[j]] = A_seq->vals[j];
         }
     }
 

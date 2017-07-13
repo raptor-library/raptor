@@ -14,7 +14,7 @@
 #define ideal_n_comm 4
 
 /**************************************************************
- *****   CommPkg Class
+ *****   CommPkg Class:
  **************************************************************
  ***** This class constructs a parallel communicator, containing
  ***** which messages must be sent/recieved for matrix operations

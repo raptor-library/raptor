@@ -405,7 +405,6 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
     HYPRE_BoomerAMGCreate(&amg_data);
       
     // Set Boomer AMG Parameters
-    HYPRE_BoomerAMGSetPrintLevel(amg_data, 1);
     HYPRE_BoomerAMGSetCoarsenType(amg_data, coarsen_type);
     HYPRE_BoomerAMGSetInterpType(amg_data, interp_type);
     HYPRE_BoomerAMGSetPMaxElmts(amg_data, p_max_elmts);
@@ -414,7 +413,7 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
     HYPRE_BoomerAMGSetMaxCoarseSize(amg_data, 15);
     HYPRE_BoomerAMGSetMinCoarseSize(amg_data, 5);
 
-    HYPRE_BoomerAMGSetPrintLevel(amg_data, 2);
+    HYPRE_BoomerAMGSetPrintLevel(amg_data, 3);
     HYPRE_BoomerAMGSetMaxIter(amg_data, 100);
 
     // Setup AMG

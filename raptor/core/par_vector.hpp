@@ -63,12 +63,9 @@ namespace raptor
         ***** first_lcl : index_t
         *****    Position of local vector inside global vector
         **************************************************************/
-        ParVector(index_t glbl_n, index_t lcl_n, index_t first_lcl)
+        ParVector(index_t glbl_n, int lcl_n, index_t first_lcl)
         {
-            global_n = glbl_n;
-            local_n = lcl_n;
-            first_local = first_lcl;
-            local.set_size(local_n);
+            set_size(glbl_n, lcl_n, first_lcl);
         }
 
         /**************************************************************
@@ -88,6 +85,14 @@ namespace raptor
         **************************************************************/
         ~ParVector()
         {
+        }
+
+        void set_size(index_t glbl_n, int lcl_n, index_t first_lcl)
+        {
+            global_n = glbl_n;
+            local_n = lcl_n;
+            first_local = first_lcl;
+            local.set_size(local_n);
         }
 
         /**************************************************************
