@@ -129,12 +129,6 @@ namespace raptor
 
     void print();
 
-    void mult_append(Vector& x, Vector& b);
-    void mult_append_neg(Vector& x, Vector& b);
-    void mult_append_T(Vector& x, Vector& b);
-    void mult_append_neg_T(Vector& x, Vector& b);
-    void residual(Vector& x, Vector& b, Vector& r);
-
     virtual void apply_func( std::function<void(int, int, double)> func_ptr) = 0;
     virtual void apply_func( Vector& x, Vector& b, 
             std::function<void(int, int, double, Vector&, Vector&)> func_ptr) = 0;
@@ -147,24 +141,28 @@ namespace raptor
     void gauss_seidel(Vector& x, Vector& b);
     void SOR(Vector& x, Vector& b, double omega = .667);
 
-    void classical_strength(CSRMatrix* S, double theta = 0.0);
-    void symmetric_strength(CSRMatrix* S, double theta = 0.0);
-    void symmetric_strength(CSCMatrix* S, double theta = 0.0);
+    Matrix* strength(double theta = 0.0);
+    Matrix* aggregate();
 
-    void mult(Vector& x, Vector& b);
-    void mult_T(Vector& x, Vector& b);
-    void mult(const CSRMatrix& B, CSRMatrix* C);
-    void mult(const CSCMatrix& B, CSRMatrix* C);
-    void mult(const CSCMatrix& B, CSCMatrix* C);
-    void mult_T(const CSRMatrix& B, CSRMatrix* C);
-    void mult_T(const CSCMatrix& B, CSRMatrix* C);
-    void mult_T(const CSCMatrix& B, CSCMatrix* C);
+    virtual void mult(Vector& x, Vector& b)  = 0;
+    virtual void mult_T(Vector& x, Vector& b) = 0;
+    virtual void mult_append(Vector& x, Vector& b) = 0;
+    virtual void mult_append_neg(Vector& x, Vector& b) = 0;
+    virtual void mult_append_T(Vector& x, Vector& b) = 0;
+    virtual void mult_append_neg_T(Vector& x, Vector& b) = 0;
+    virtual void residual(Vector& x, Vector& b, Vector& r) = 0;
+
+    virtual CSRMatrix* mult(const CSRMatrix* B) = 0;
+    virtual CSRMatrix* mult(const CSCMatrix* B) = 0;
+    virtual CSRMatrix* mult(const COOMatrix* B) = 0;
+    virtual CSRMatrix* mult_T(const CSRMatrix* A) = 0; 
+    virtual CSRMatrix* mult_T(const CSCMatrix* A) = 0; 
+    virtual CSRMatrix* mult_T(const COOMatrix* A) = 0;
 
     void RAP(const CSCMatrix& P, CSCMatrix* Ac);
     void RAP(const CSCMatrix& P, CSRMatrix* Ac);
 
-    void subtract(CSRMatrix& B, CSRMatrix& C);
-    void subtract(CSCMatrix& B, CSCMatrix& C);
+    Matrix* subtract(Matrix* B);
 
     void resize(int _n_rows, int _n_cols);
 
@@ -375,6 +373,21 @@ namespace raptor
     void apply_func( Vector& x, Vector& b, 
             std::function<void(int, int, double, Vector&, Vector&)> func_ptr);
 
+    void mult(Vector& x, Vector& b);
+    void mult_T(Vector& x, Vector& b);
+    void mult_append(Vector& x, Vector& b);
+    void mult_append_neg(Vector& x, Vector& b);
+    void mult_append_T(Vector& x, Vector& b);
+    void mult_append_neg_T(Vector& x, Vector& b);
+    void residual(Vector& x, Vector& b, Vector& r);
+
+    CSRMatrix* mult(const CSRMatrix* B);
+    CSRMatrix* mult(const CSCMatrix* B);
+    CSRMatrix* mult(const COOMatrix* B);
+    CSRMatrix* mult_T(const CSRMatrix* A);
+    CSRMatrix* mult_T(const CSCMatrix* A);
+    CSRMatrix* mult_T(const COOMatrix* A);
+
     format_t format()
     {
         return COO;
@@ -509,7 +522,7 @@ namespace raptor
     ***** A : const COOMatrix*
     *****    COOMatrix A, from which to copy data
     **************************************************************/
-    explicit CSRMatrix(COOMatrix* A) 
+    explicit CSRMatrix(const COOMatrix* A) 
     {
         copy(A);
     }
@@ -524,7 +537,7 @@ namespace raptor
     ***** A : const CSCMatrix*
     *****    CSCMatrix A, from which to copy data
     **************************************************************/
-    explicit CSRMatrix(CSCMatrix* A)
+    explicit CSRMatrix(const CSCMatrix* A)
     {
         copy(A);
     }
@@ -565,14 +578,27 @@ namespace raptor
     void apply_func( Vector& x, Vector& b, 
             std::function<void(int, int, double, Vector&, Vector&)> func_ptr);
 
-    void mult(const CSRMatrix& B, CSRMatrix* C);
-    void mult(const CSCMatrix& B, CSRMatrix* C);
-    void mult(const CSCMatrix& B, CSCMatrix* C);
     void mult(Vector& x, Vector& b);
     void mult_T(Vector& x, Vector& b);
+    void mult_append(Vector& x, Vector& b);
+    void mult_append_neg(Vector& x, Vector& b);
+    void mult_append_T(Vector& x, Vector& b);
+    void mult_append_neg_T(Vector& x, Vector& b);
+    void residual(Vector& x, Vector& b, Vector& r);
 
-    void classical_strength(CSRMatrix* S, double theta = 0.0);
-    void symmetric_strength(CSRMatrix* S, double theta = 0.0);
+    CSRMatrix* mult(const CSRMatrix* B);
+    CSRMatrix* mult(const CSCMatrix* B);
+    CSRMatrix* mult(const COOMatrix* B);
+    CSRMatrix* mult_T(const CSCMatrix* A);
+    CSRMatrix* mult_T(const CSRMatrix* A);
+    CSRMatrix* mult_T(const COOMatrix* A);
+
+    CSRMatrix* subtract(CSRMatrix* B);
+
+    CSRMatrix* strength(double theta = 0.0);
+    CSRMatrix* aggregate();
+    CSRMatrix* fit_candidates(data_t* B, data_t* R, int num_candidates, 
+            double tol = 1e-10);
 
     format_t format()
     {
@@ -639,7 +665,7 @@ namespace raptor
 
   public:
 
-    CSCMatrix(int _nrows, int _ncols, int _nnz): Matrix(_nrows, _ncols)
+    CSCMatrix(int _nrows, int _ncols, int _nnz = 0): Matrix(_nrows, _ncols)
     {
         idx1.resize(_ncols + 1);
         if (_nnz)
@@ -689,7 +715,7 @@ namespace raptor
     ***** A : const COOMatrix*
     *****    COOMatrix A, from which to copy data
     **************************************************************/
-    explicit CSCMatrix(COOMatrix* A) 
+    explicit CSCMatrix(const COOMatrix* A) 
     {
         copy(A);
     }
@@ -704,7 +730,7 @@ namespace raptor
     ***** A : const CSRMatrix*
     *****    CSRMatrix A, from which to copy data
     **************************************************************/
-    explicit CSCMatrix(CSRMatrix* A) 
+    explicit CSCMatrix(const CSRMatrix* A) 
     {
         copy(A);
     }
@@ -747,15 +773,20 @@ namespace raptor
 
     void mult(Vector& x, Vector& b);
     void mult_T(Vector& x, Vector& b);
+    void mult_append(Vector& x, Vector& b);
+    void mult_append_neg(Vector& x, Vector& b);
+    void mult_append_T(Vector& x, Vector& b);
+    void mult_append_neg_T(Vector& x, Vector& b);
+    void residual(Vector& x, Vector& b, Vector& r);
 
-    void mult(const CSCMatrix& B, CSCMatrix* C);
-    void mult_T(const CSRMatrix& B, CSRMatrix* C);
-    void mult_T(const CSCMatrix& B, CSRMatrix* C);
-    void mult_T(const CSCMatrix& B, CSCMatrix* C);
+    CSRMatrix* mult(const CSRMatrix* B);
+    CSRMatrix* mult(const CSCMatrix* B);
+    CSRMatrix* mult(const COOMatrix* B);
+    CSRMatrix* mult_T(const CSRMatrix* A);
+    CSRMatrix* mult_T(const CSCMatrix* A);
+    CSRMatrix* mult_T(const COOMatrix* A);
 
     void jacobi(Vector& x, Vector& b, Vector& tmp, double omega = .667);    
-
-    void symmetric_strength(CSCMatrix* S, double theta = 0.0);
 
     format_t format()
     {
