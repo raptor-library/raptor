@@ -15,144 +15,223 @@ using namespace raptor;
 ***** C : Matrix*
 *****    CSRMatrix in which to place solution
 **************************************************************/
-void Matrix::subtract(CSRMatrix& B, CSRMatrix& C)
+CSRMatrix* CSRMatrix::subtract(CSRMatrix* B)
 {
-    if (format() == COO || format() == CSC)
+    int idx, idx_B;
+    int row_end, row_end_B;
+    int col, col_B;
+
+    int* col_ptr;
+    int* col_B_ptr;
+
+    std::vector<int> cols;
+    std::vector<int> cols_B;
+
+    CSRMatrix* C = new CSRMatrix(n_rows, n_cols);
+
+    sort();
+    B->sort();
+
+    if (col_list.size() || B->col_list.size())
     {
-        printf("Not currently implemented for this type of matrix.\n");
-        return;
+        // Create C col_list to be union of col_list and B->col_list
+        std::set<int> global_col_set;
+        for (std::vector<int>::iterator it = col_list.begin(); 
+                it != col_list.end(); ++it)
+        {
+            global_col_set.insert(*it);
+        }
+        for (std::vector<int>::iterator it = B->col_list.begin();
+                it != B->col_list.end(); ++it)
+        {
+            global_col_set.insert(*it);
+        }
+        std::map<int, int> global_to_local_C;
+        for (std::set<int>::iterator it = global_col_set.begin();
+                it != global_col_set.end(); ++it)
+        {
+            global_to_local_C[*it] = C->col_list.size();
+            C->col_list.push_back(*it);
+        }
+
+        // Map col_list values to C_col_list values
+        if (col_list.size())
+        {
+            std::vector<int> map_to_C;
+            map_to_C.reserve(col_list.size());
+            if (idx2.size())
+            {
+                cols.reserve(idx2.size());
+            }
+            for (std::vector<int>::iterator it = col_list.begin(); 
+                    it != col_list.end(); ++it)
+            {
+                map_to_C.push_back(global_to_local_C[*it]);
+            }
+
+            for (std::vector<int>::iterator it = idx2.begin(); it != idx2.end(); ++it)
+            {
+                cols.push_back(map_to_C[*it]);
+            }
+        }
+
+        // Map B_col_list values to C_col_list values
+        if (B->col_list.size())
+        {
+            std::vector<int> B_to_C;
+            B_to_C.reserve(B->col_list.size());
+            for (std::vector<int>::iterator it = B->col_list.begin();
+                    it != B->col_list.end(); ++it)
+            {
+                B_to_C.push_back(global_to_local_C[*it]);
+            }
+            if (B->idx2.size())
+            {
+                cols_B.reserve(B->idx2.size());
+            }
+            for (std::vector<int>::iterator it = B->idx2.begin(); 
+                    it != B->idx2.end(); ++it)
+            {
+                cols_B.push_back(B_to_C[*it]);
+            }
+        }
+
+        C->resize(n_rows, global_col_set.size());
+
+    }
+    if (col_list.size())
+    {
+        col_ptr = cols.data();
+    }
+    else
+    {
+        col_ptr = idx2.data();
     }
 
-    C.n_rows = n_rows;
-    C.n_cols = n_cols;
+    if (B->col_list.size())
+    {
+        col_B_ptr = cols_B.data();
+    }
+    else
+    {
+        col_B_ptr = B->idx2.data();
+    }
 
-    C.idx1.resize(n_rows + 1, 0);
-    C.idx2.clear();
-    C.idx2.reserve(2*nnz);
-    C.vals.clear();
-    C.vals.reserve(2*nnz);
-
-    int ctr = 0;
-    int idx, idx_b;
-    int row_end, row_end_b;
-    int col, col_b;
+    C->idx2.reserve(1.1*nnz);
+    C->vals.reserve(1.1*nnz);
 
     // Note -- diagonal values are first, and then others
-    C.idx1[0] = ctr;
+    C->idx1[0] = 0;
     for (int i = 0; i < n_rows; i++)
     {
         idx = idx1[i];
         row_end = idx1[i+1];
-        idx_b = B.idx1[i];
-        row_end_b = B.idx1[i+1];
+        idx_B = B->idx1[i];
+        row_end_B = B->idx1[i+1];
 
+        double val = 0.0;
         // Get inital column
         if (idx < row_end)
         {
-            col = idx2[idx];
+            col = col_ptr[idx];
+            if (col == i)
+            {
+                val = vals[idx];
+                idx++;
+                if (idx < row_end)
+                    col = col_ptr[idx];
+                else
+                    col = C->n_cols;
+            }
         }
         else
-            col = n_cols;
+            col = C->n_cols;
 
         // Get initial column of B
-        if (idx_b < row_end_b)
+        if (idx_B < row_end_B)
         {
-            col_b = B.idx2[idx_b];
+            col_B = col_B_ptr[idx_B];
+            if (col_B == i)
+            {
+                val -= B->vals[idx_B];
+                idx_B++;
+                if (idx_B < row_end_B)
+                    col_B = col_B_ptr[idx_B];
+                else
+                    col_B = C->n_cols;
+            }
         }
         else
-            col_b = n_cols;
+            col_B = C->n_cols;
 
         // If either col or col_b equals row, add val - val_b to C
-        double val = 0.0;
-        if (col == i)
-        {
-            val = vals[idx];
-            idx++;
-            if (idx < row_end)
-                col = idx2[idx];
-            else
-                col = n_cols;
-        }
-        if (col_b == i)
-        {
-            val -= B.vals[idx_b];
-            idx_b++;
-            if (idx_b < row_end_b)
-                col_b = B.idx2[idx_b];
-            else
-                col_b = n_cols;
-        }
         if (fabs(val) > zero_tol)
         {
-            C.idx2.push_back(i);
-            C.vals.push_back(val);
-            ctr++;
+            C->idx2.push_back(i);
+            C->vals.push_back(val);
         }
 
-        while (idx < row_end || idx_b < row_end_b)
+        while (idx < row_end || idx_B < row_end_B)
         {
             // If columns are equal, add val-B.val
-            if (col == col_b)
+            if (col == col_B)
             {
-                val = vals[idx] - B.vals[idx_b];
+                val = vals[idx] - B->vals[idx_B];
                 if (fabs(val) > zero_tol)
                 {
-                    C.idx2.push_back(col);
-                    C.vals.push_back(vals[idx] - B.vals[idx_b]);
-                    ctr++;
+                    C->idx2.push_back(col);
+                    C->vals.push_back(vals[idx] - B->vals[idx_B]);
                 }
                 // Increase index and find column of new index
                 idx++;
                 if (idx < row_end)
-                    col = idx2[idx];
+                    col = col_ptr[idx];
                 else
-                    col = n_cols;
+                    col = C->n_cols;
 
                 // Increase index of B and find column
-                idx_b++;
-                if (idx_b < row_end_b)
-                    col_b = B.idx2[idx_b];
+                idx_B++;
+                if (idx_B < row_end_B)
+                    col_B = col_B_ptr[idx_B];
                 else
-                    col_b = n_cols;
-
+                    col_B = C->n_cols;
             }
 
             // If column comes first, add val
-            else if (col < col_b)
+            else if (col < col_B)
             {
-                C.idx2.push_back(col);
-                C.vals.push_back(vals[idx]);
-                ctr++;
+                C->idx2.push_back(col);
+                C->vals.push_back(vals[idx]);
 
                 // Increase index and find column
                 idx++;
                 if (idx < row_end)
-                    col = idx2[idx];
+                    col = col_ptr[idx];
                 else
-                    col = n_cols;
+                    col = C->n_cols;
 
             }
 
             // If B.column comes first, add -B.val
             else
             {
-                C.idx2.push_back(col_b);
-                C.vals.push_back(-(B.vals[idx_b]));
-                ctr++;
+                C->idx2.push_back(col_B);
+                C->vals.push_back(-(B->vals[idx_B]));
                 
                 // Increase index of B and find column
-                idx_b++;
-                if (idx_b < row_end_b)
-                    col_b = B.idx2[idx_b];
+                idx_B++;
+                if (idx_B < row_end_B)
+                    col_B = col_B_ptr[idx_B];
                 else
-                    col_b = n_cols;
+                    col_B = C->n_cols;
             }
 
         }
-        C.idx1[i+1] = ctr;
+        C->idx1[i+1] = C->idx2.size();
     }
+    C->nnz = C->idx2.size();
 
-    C.nnz = C.idx2.size();
+    return C;
 }
 
 
@@ -169,144 +248,16 @@ void Matrix::subtract(CSRMatrix& B, CSRMatrix& C)
 ***** C : Matrix*
 *****    CSRMatrix in which to place solution
 **************************************************************/
-void Matrix::subtract(CSCMatrix& B, CSCMatrix& C)
+Matrix* Matrix::subtract(Matrix* B)
 {
-    if (format() == COO || format() == CSR)
+    if (format() == CSR && B->format() == CSR)
     {
-        printf("Not currently implemented for this type of matrix.\n");
-        return;
+        CSRMatrix* C = ((CSRMatrix*)this)->subtract((CSRMatrix*) B);
+        return C;
     }
 
-    C.n_rows = n_rows;
-    C.n_cols = n_cols;
-
-    C.idx1.resize(n_cols + 1, 0);
-    C.idx2.clear();
-    C.idx2.reserve(2*nnz);
-    C.vals.clear();
-    C.vals.reserve(2*nnz);
-
-    int ctr = 0;
-    int idx, idx_b;
-    int col_end, col_end_b;
-    int row, row_b;
-
-    // Note -- diagonal values are first, and then others
-    C.idx1[0] = ctr;
-    for (int i = 0; i < n_cols; i++)
-    {
-        idx = idx1[i];
-        col_end = idx1[i+1];
-        idx_b = B.idx1[i];
-        col_end_b = B.idx1[i+1];
-
-        // Get inital column
-        if (idx < col_end)
-        {
-            row = idx2[idx];
-        }
-        else
-            row = n_rows;
-
-        // Get initial column of B
-        if (idx_b < col_end_b)
-        {
-            row_b = B.idx2[idx_b];
-        }
-        else
-            row_b = n_rows;
-
-        // If either col or col_b equals row, add val - val_b to C
-        double val = 0.0;
-        if (row == i)
-        {
-            val = vals[idx];
-            idx++;
-            if (idx < col_end)
-                row = idx2[idx];
-            else
-                row = n_rows;
-        }
-        if (row_b == i)
-        {
-            val -= B.vals[idx_b];
-            idx_b++;
-            if (idx_b < col_end_b)
-                row_b = B.idx2[idx_b];
-            else
-                row_b = n_rows;
-        }
-        if (fabs(val) > zero_tol)
-        {
-            C.idx2.push_back(i);
-            C.vals.push_back(val);
-            ctr++;
-        }
-
-        while (idx < col_end || idx_b < col_end_b)
-        {
-            // If columns are equal, add val-B.val
-            if (row == row_b)
-            {
-                val = vals[idx] - B.vals[idx_b];
-                if (fabs(val) > zero_tol)
-                {
-                    C.idx2.push_back(row);
-                    C.vals.push_back(vals[idx] - B.vals[idx_b]);
-                    ctr++;
-                }
-                // Increase index and find column of new index
-                idx++;
-                if (idx < col_end)
-                    row = idx2[idx];
-                else
-                    row = n_rows;
-
-                // Increase index of B and find column
-                idx_b++;
-                if (idx_b < col_end_b)
-                    row_b = B.idx2[idx_b];
-                else
-                    row_b = n_rows;
-
-            }
-
-            // If column comes first, add val
-            else if (row < row_b)
-            {
-                C.idx2.push_back(row);
-                C.vals.push_back(vals[idx]);
-                ctr++;
-
-                // Increase index and find column
-                idx++;
-                if (idx < col_end)
-                    row = idx2[idx];
-                else
-                    row = n_rows;
-
-            }
-
-            // If B.column comes first, add -B.val
-            else
-            {
-                C.idx2.push_back(row_b);
-                C.vals.push_back(-(B.vals[idx_b]));
-                ctr++;
-                
-                // Increase index of B and find column
-                idx_b++;
-                if (idx_b < col_end_b)
-                    row_b = B.idx2[idx_b];
-                else
-                    row_b = n_rows;
-            }
-
-        }
-        C.idx1[i+1] = ctr;
-    }
-
-    C.nnz = C.idx2.size();
+    printf("Subtraction not implemented for these matrix types...\n");
+    return NULL;
 }
 
 
