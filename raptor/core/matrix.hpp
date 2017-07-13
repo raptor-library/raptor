@@ -129,10 +129,10 @@ namespace raptor
 
     void print();
 
-    void mult_append(Vector& x, Vector& b);
-    void mult_append_neg(Vector& x, Vector& b);
-    void mult_append_T(Vector& x, Vector& b);
-    void mult_append_neg_T(Vector& x, Vector& b);
+    virtual void mult_append(Vector& x, Vector& b) = 0;
+    virtual void mult_append_neg(Vector& x, Vector& b) = 0;
+    virtual void mult_append_T(Vector& x, Vector& b) = 0;
+    virtual void mult_append_neg_T(Vector& x, Vector& b) = 0;
     void residual(Vector& x, Vector& b, Vector& r);
 
     virtual void apply_func( std::function<void(int, int, double)> func_ptr) = 0;
@@ -375,6 +375,11 @@ namespace raptor
     void apply_func( Vector& x, Vector& b, 
             std::function<void(int, int, double, Vector&, Vector&)> func_ptr);
 
+    void mult_append(Vector& x, Vector& b);
+    void mult_append_neg(Vector& x, Vector& b);
+    void mult_append_T(Vector& x, Vector& b);
+    void mult_append_neg_T(Vector& x, Vector& b);
+
     format_t format()
     {
         return COO;
@@ -571,6 +576,11 @@ namespace raptor
     void mult(Vector& x, Vector& b);
     void mult_T(Vector& x, Vector& b);
 
+    void mult_append(Vector& x, Vector& b);
+    void mult_append_neg(Vector& x, Vector& b);
+    void mult_append_T(Vector& x, Vector& b);
+    void mult_append_neg_T(Vector& x, Vector& b);
+
     void classical_strength(CSRMatrix* S, double theta = 0.0);
     void symmetric_strength(CSRMatrix* S, double theta = 0.0);
 
@@ -752,6 +762,11 @@ namespace raptor
     void mult_T(const CSRMatrix& B, CSRMatrix* C);
     void mult_T(const CSCMatrix& B, CSRMatrix* C);
     void mult_T(const CSCMatrix& B, CSCMatrix* C);
+
+    void mult_append(Vector& x, Vector& b);
+    void mult_append_neg(Vector& x, Vector& b);
+    void mult_append_T(Vector& x, Vector& b);
+    void mult_append_neg_T(Vector& x, Vector& b);
 
     void jacobi(Vector& x, Vector& b, Vector& tmp, double omega = .667);    
 

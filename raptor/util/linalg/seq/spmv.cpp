@@ -93,13 +93,40 @@ void CSCMatrix::mult_T(Vector& x, Vector& b)
 ***** b : U*
 *****    Array in which to place solution
 **************************************************************/
-void Matrix::mult_append(Vector& x, Vector& b)
+void COOMatrix::mult_append(Vector& x, Vector& b)
 {    
-    apply_func(x, b, 
-            [](int row, int col, double val, Vector& xd, Vector& bd)
-            {
-                bd[row] += val * xd[col];
-            });
+    for (int i = 0; i < nnz; i++)
+    {
+        b[idx1[i]] += vals[i] * x[idx2[i]];
+    }
+}
+
+void CSRMatrix::mult_append(Vector& x, Vector& b)
+{
+    int start, end;
+    for (int i = 0; i < n_rows; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[i] += vals[j] * x[idx2[j]];
+        }
+    }
+}
+
+void CSCMatrix::mult_append(Vector& x, Vector& b)
+{
+    int start, end;
+    for (int i = 0; i < n_cols; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[idx2[j]] += vals[j] * x[i];
+        }
+    }
 }
 
 /**************************************************************
@@ -115,14 +142,42 @@ void Matrix::mult_append(Vector& x, Vector& b)
 ***** b : U*
 *****    Array in which to place solution
 **************************************************************/
-void Matrix::mult_append_T(Vector& x, Vector& b)
+void COOMatrix::mult_append_T(Vector& x, Vector& b)
 {    
-    apply_func(x, b, 
-            [](int row, int col, double val, Vector& xd, Vector& bd)
-            {
-                bd[col] += val * xd[row];
-            });
+    for (int i = 0; i < nnz; i++)
+    {
+        b[idx2[i]] += vals[i] * x[idx1[i]];
+    }
 }
+
+void CSRMatrix::mult_append_T(Vector& x, Vector& b)
+{
+    int start, end;
+    for (int i = 0; i < n_rows; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[idx2[j]] += vals[j] * x[i];
+        }
+    }
+}
+
+void CSCMatrix::mult_append_T(Vector& x, Vector& b)
+{
+    int start, end;
+    for (int i = 0; i < n_cols; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[i] += vals[j] * x[idx2[j]];
+        }
+    }
+}
+
 
 
 /**************************************************************
@@ -138,13 +193,40 @@ void Matrix::mult_append_T(Vector& x, Vector& b)
 ***** b : U*
 *****    Array in which to place solution
 **************************************************************/
-void Matrix::mult_append_neg(Vector& x, Vector& b)
+void COOMatrix::mult_append_neg(Vector& x, Vector& b)
+{    
+    for (int i = 0; i < nnz; i++)
+    {
+        b[idx1[i]] -= vals[i] * x[idx2[i]];
+    }
+}
+
+void CSRMatrix::mult_append_neg(Vector& x, Vector& b)
 {
-    apply_func(x, b, 
-            [](int row, int col, double val, Vector& xd, Vector& bd)
-            {
-                bd[row] -= val * xd[col];
-            });
+    int start, end;
+    for (int i = 0; i < n_rows; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[i] -= vals[j] * x[idx2[j]];
+        }
+    }
+}
+
+void CSCMatrix::mult_append_neg(Vector& x, Vector& b)
+{
+    int start, end;
+    for (int i = 0; i < n_cols; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[idx2[j]] -= vals[j] * x[i];
+        }
+    }
 }
 
 /**************************************************************
@@ -160,13 +242,40 @@ void Matrix::mult_append_neg(Vector& x, Vector& b)
 ***** b : U*
 *****    Array in which to place solution
 **************************************************************/
-void Matrix::mult_append_neg_T(Vector& x, Vector& b)
+void COOMatrix::mult_append_neg_T(Vector& x, Vector& b)
+{    
+    for (int i = 0; i < nnz; i++)
+    {
+        b[idx2[i]] -= vals[i] * x[idx1[i]];
+    }
+}
+
+void CSRMatrix::mult_append_neg_T(Vector& x, Vector& b)
 {
-    apply_func(x, b, 
-            [](int row, int col, double val, Vector& xd, Vector& bd)
-            {
-                bd[col] -= val * xd[row];
-            });
+    int start, end;
+    for (int i = 0; i < n_rows; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[idx2[j]] -= vals[j] * x[i];
+        }
+    }
+}
+
+void CSCMatrix::mult_append_neg_T(Vector& x, Vector& b)
+{
+    int start, end;
+    for (int i = 0; i < n_cols; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[i] -= vals[j] * x[idx2[j]];
+        }
+    }
 }
 
 /**************************************************************
@@ -189,11 +298,7 @@ void Matrix::residual(Vector& x, Vector& b, Vector& r)
     for (int i = 0; i < n_rows; i++)
         r[i] = b[i];
 
-    apply_func(x, r, 
-            [](int row, int col, double val, Vector& xd, Vector& rd)
-            {
-                rd[row] -= val * xd[col];
-            });
+    mult_append_neg(x, r);
 }
 
 
