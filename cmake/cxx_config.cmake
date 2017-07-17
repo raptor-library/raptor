@@ -6,8 +6,12 @@ else()
   message(FAIL_ERROR "A C++11 compiler is required.")
 endif()
 
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -fivopts -flax-vector-conversions -funsafe-math-optimizations")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -flto -fivopts -flax-vector-conversions -funsafe-math-optimizations")
+SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -flto")
+SET(CMAKE_AR  "gcc-ar")
+SET(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
+SET(CMAKE_CXX_ARCHIVE_FINISH   true)
+
 
 #if (DEFINED ENV{HYPRE_LIB})
 #    if (DEFINED ENV{MFEM_LIB} AND DEFINED ENV{METIS_LIB})
