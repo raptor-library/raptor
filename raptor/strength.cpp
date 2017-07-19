@@ -67,7 +67,8 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
                 if (val_sq >= eps_diag * abs_diag[col])
                 {
                     S->on_proc->idx2.push_back(col);
-                    S->on_proc->vals.push_back(val);
+                    //S->on_proc->vals.push_back(val);
+                    S->on_proc->vals.push_back(1.0);
                 }
             }
             
@@ -82,7 +83,8 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
                 if (val_sq >= eps_diag * abs_diag[col])
                 {
                     S->off_proc->idx2.push_back(col);
-                    S->off_proc->vals.push_back(val);
+                    //S->off_proc->vals.push_back(val);
+                    S->off_proc->vals.push_back(1.0);
                 }
             }
         }
