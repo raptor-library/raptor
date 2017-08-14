@@ -86,8 +86,7 @@ int main(int argc, char *argv[])
 
             MPI_Barrier(MPI_COMM_WORLD);
             t0 = MPI_Wtime();
-            ParCSRMatrix* C_l = new ParCSRMatrix();
-            A_l->mult(*P_l, C_l);
+            ParCSRMatrix* C_l = A_l->mult(P_l);
             tfinal = MPI_Wtime() - t0;
             MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
             if (rank == 0) printf("Raptor Matmult time = %e\n", t0);

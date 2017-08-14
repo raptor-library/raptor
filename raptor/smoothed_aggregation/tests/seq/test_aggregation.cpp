@@ -2,7 +2,7 @@
 #include <math.h>
 #include "core/types.hpp"
 #include "core/matrix.hpp"
-#include "aggregation/seq/prolongation.hpp"
+#include "smoothed_aggregation/seq/prolongation.hpp"
 
 using namespace raptor;
 

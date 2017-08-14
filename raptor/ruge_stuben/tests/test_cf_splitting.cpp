@@ -6,7 +6,7 @@
 #include "gallery/stencil.hpp"
 #include "gallery/par_stencil.hpp"
 #include "gallery/diffusion.hpp"
-#include "smoothed_aggregation/prolongation.hpp"
+#include "ruge_stuben/cf_splitting.hpp"
 
 using namespace raptor;
 
@@ -26,11 +26,13 @@ int main(int argc, char* argv[])
     A->off_proc->sort();
     ParCSRMatrix* S = A->strength(0.0);
 
-    ParCSRMatrix* T = S->aggregate();
-    ParCSRMatrix* P = jacobi_prolongation(A, T, 4.0/3, 2);
+    std::vector<int> states;
+    cf_splitting(S, states);
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+        printf("States[%d] = %d\n", i + S->first_local_row, states[i]);
+    }
 
-    delete P;
-    delete T;
     delete S;
     delete A;
 

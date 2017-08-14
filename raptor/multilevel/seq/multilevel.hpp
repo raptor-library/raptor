@@ -7,7 +7,7 @@
 #include "core/matrix.hpp"
 #include "core/vector.hpp"
 #include "level.hpp"
-#include "aggregation/seq/prolongation.hpp"
+#include "smoothed_aggregation/seq/prolongation.hpp"
 
 // Coarse Matrices (A) are CSC
 // Prolongation Matrices (P) are CSC
