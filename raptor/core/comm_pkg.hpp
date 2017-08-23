@@ -6,6 +6,7 @@
 #include <mpi.h>
 #include "comm_data.hpp"
 #include "matrix.hpp"
+#include "partition.hpp"
 
 #define STANDARD_PPN 4
 #define STANDARD_PROC_LAYOUT 1
@@ -52,28 +53,6 @@ namespace raptor
                 std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD){}
         virtual std::vector<double>& get_recv_buffer() = 0;
-        int find_proc_col_starts(const int first_local_col, 
-                const int last_local_col,
-                const int global_num_cols, 
-                std::vector<int>& col_starts, 
-                std::vector<int>& col_start_procs);
-        int find_proc_col_starts(const int global_num_cols,
-                const std::vector<int>& on_proc_column_map,
-                std::vector<int>& assumed_col_procs);
-        void form_col_to_proc(const int first_local_col, 
-                const int global_num_cols,
-                const int local_num_cols, 
-                const std::vector<int>& off_proc_column_map,
-                std::vector<int>& off_proc_col_to_proc);
-        void form_col_to_proc(const int global_num_cols,
-                const std::vector<int>& on_proc_column_map,
-                const std::vector<int>& off_proc_column_map,
-                std::vector<int>& off_proc_col_to_proc);
-        int form_send_data(const int part,
-                const std::vector<int>& column_map,
-                std::vector<int>& send_procs,
-                std::vector<int>& send_ptr,
-                std::vector<int>& send_indices);
         
     };
 
@@ -153,11 +132,8 @@ namespace raptor
         ***** _key : int (optional)
         *****    Tag to be used in MPI Communication (default 9999)
         **************************************************************/
-        ParComm(const std::vector<int>& off_proc_column_map,
-                const int first_local_row, 
-                const int first_local_col,
-                const int global_num_cols,
-                const int local_num_cols,
+        ParComm(const Partition* partition,
+                const std::vector<int>& off_proc_column_map,
                 int _key = 9999,
                 MPI_Comm comm = MPI_COMM_WORLD)
         {
@@ -182,8 +158,7 @@ namespace raptor
             std::vector<int> off_proc_col_to_proc(off_proc_num_cols);
             std::vector<int> tmp_send_buffer;
 
-            form_col_to_proc(first_local_col, global_num_cols, local_num_cols, 
-                    off_proc_column_map, off_proc_col_to_proc);
+            partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
 
             // Determine processes columns are received from,
             // and adds corresponding messages to recv data.
@@ -246,7 +221,7 @@ namespace raptor
                         MPI_Recv(recvbuf, count, MPI_INT, proc, tag, comm, &recv_status);
                         for (int i = 0; i < count; i++)
                         {
-                            recvbuf[i] -= first_local_col;
+                            recvbuf[i] -= partition->first_local_col;
                         }
                         send_data->add_msg(proc, count, recvbuf);
                     }
@@ -267,7 +242,7 @@ namespace raptor
                     MPI_Recv(recvbuf, count, MPI_INT, proc, tag, comm, &recv_status);
                     for (int i = 0; i < count; i++)
                     {
-                        recvbuf[i] -= first_local_col;
+                        recvbuf[i] -= partition->first_local_col;
                     }
                     send_data->add_msg(proc, count, recvbuf);
                 }
@@ -399,11 +374,8 @@ namespace raptor
         ***** local_num_cols : int
         *****    Number of columns local to rank
         **************************************************************/
-        TAPComm(const std::vector<int>& off_proc_column_map,
-                const int first_local_row, 
-                const int first_local_col,
-                const int global_num_cols, 
-                const int local_num_cols,
+        TAPComm(const Partition* partition, 
+                const std::vector<int>& off_proc_column_map,
                 MPI_Comm comm = MPI_COMM_WORLD)
         {
             // Get MPI Information
@@ -482,8 +454,7 @@ namespace raptor
 
             // Find process on which vector value associated with each column is
             // stored
-            global_par_comm->form_col_to_proc(first_local_col, global_num_cols,
-                local_num_cols, off_proc_column_map, off_proc_col_to_proc);
+            partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
 
             // Partition off_proc cols into on_node and off_node
             split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
@@ -507,16 +478,16 @@ namespace raptor
 
             // Form local_S_par_comm: initial distribution of values among local
             // processes, before inter-node communication
-            form_local_S_par_comm(first_local_col);
+            form_local_S_par_comm(partition->first_local_col);
 
             // Adjust send indices (currently global vector indices) to be index 
             // of global vector value from previous recv
-            adjust_send_indices(first_local_col);
+            adjust_send_indices(partition->first_local_col);
 
             // Form local_L_par_comm: fully local communication (origin and
             // destination processes both local to node)
             form_local_L_par_comm(on_node_column_map, on_node_col_to_proc,
-                    first_local_col);
+                    partition->first_local_col);
 
             // Determine size of final recvs (should be equal to 
             // number of off_proc cols)

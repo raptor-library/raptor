@@ -98,8 +98,7 @@ void ParMatrix::finalize(bool create_comm)
     local_nnz = on_proc->nnz + off_proc->nnz;
 
     if (create_comm)
-        comm = new ParComm(off_proc_column_map, partition->first_local_row, partition->first_local_col,
-                partition->global_num_cols, local_num_cols);
+        comm = new ParComm(partition, off_proc_column_map);
     else
         comm = new ParComm();
 }

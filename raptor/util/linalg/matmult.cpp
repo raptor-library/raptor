@@ -7,8 +7,7 @@ ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B)
     // Check that communication package has been initialized
     if (tap_comm == NULL)
     {
-        tap_comm = new TAPComm(off_proc_column_map, first_local_row,
-            first_local_col, global_num_cols, local_num_cols);
+        tap_comm = new TAPComm(partition, off_proc_column_map);
     }
 
     // Initialize C (matrix to be returned)
@@ -28,8 +27,7 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B)
     // Check that communication package has been initialized
     if (comm == NULL)
     {
-        comm = new ParComm(off_proc_column_map, first_local_row, first_local_col,
-                global_num_cols, local_num_cols);
+        comm = new ParComm(partition, off_proc_column_map);
     }
 
     // Initialize C (matrix to be returned)
@@ -49,8 +47,7 @@ ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSCMatrix* B)
     // Check that communication package has been initialized
     if (tap_comm == NULL)
     {
-        tap_comm = new TAPComm(off_proc_column_map, first_local_row,
-            first_local_col, global_num_cols, local_num_cols);
+        tap_comm = new TAPComm(partition, off_proc_column_map);
     }
 
     // Initialize C (matrix to be returned)
@@ -70,8 +67,7 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSCMatrix* B)
     // Check that communication package has been initialized
     if (comm == NULL)
     {
-        comm = new ParComm(off_proc_column_map, first_local_row, first_local_col,
-                global_num_cols, local_num_cols);
+        comm = new ParComm(partition, off_proc_column_map);
     }
 
     // Initialize C (matrix to be returned)
@@ -96,8 +92,7 @@ ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A)
 
     if (A->tap_comm == NULL)
     {
-        A->tap_comm = new TAPComm(A->off_proc_column_map, A->first_local_row, 
-                A->first_local_col, A->global_num_cols, A->local_num_cols);
+        A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
     }
 
     // Initialize C (matrix to be returned)
@@ -255,8 +250,7 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A)
 
     if (A->comm == NULL)
     {
-        A->comm = new ParComm(A->off_proc_column_map, A->first_local_row, 
-                A->first_local_col, A->global_num_cols, A->local_num_cols);
+        A->comm = new ParComm(A->partition, A->off_proc_column_map);
     }
 
     // Initialize C (matrix to be returned)
@@ -363,8 +357,7 @@ ParCSRMatrix* ParCSCMatrix::tap_mult_T(ParCSCMatrix* A)
 
     if (A->tap_comm == NULL)
     {
-        A->tap_comm = new TAPComm(A->off_proc_column_map, A->first_local_row, 
-                A->first_local_col, A->global_num_cols, A->local_num_cols);
+        A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
     }
 
     // Initialize C (matrix to be returned)
@@ -521,8 +514,7 @@ ParCSRMatrix* ParCSCMatrix::mult_T(ParCSCMatrix* A)
 
     if (A->comm == NULL)
     {
-        A->comm = new ParComm(A->off_proc_column_map, A->first_local_row, 
-                A->first_local_col, A->global_num_cols, A->local_num_cols);
+        A->comm = new ParComm(A->partition, A->off_proc_column_map);
     }
 
     // Initialize C (matrix to be returned)

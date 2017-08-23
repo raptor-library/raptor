@@ -27,8 +27,7 @@ void ParMatrix::mult(ParVector& x, ParVector& b)
     // Check that communication package has been initialized
     if (comm == NULL)
     {
-        comm = new ParComm(off_proc_column_map, first_local_row, first_local_col,
-                global_num_cols, local_num_cols);
+        comm = new ParComm(partition, off_proc_column_map);
     }
 
     // Initialize Isends and Irecvs to communicate
@@ -58,8 +57,7 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b)
     // Check that communication package has been initialized
     if (tap_comm == NULL)
     {
-        tap_comm = new TAPComm(off_proc_column_map, first_local_row,
-            first_local_col, global_num_cols, local_num_cols);
+        tap_comm = new TAPComm(partition, off_proc_column_map);
     }
 
     // Initialize Isends and Irecvs to communicate
@@ -135,8 +133,7 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r)
     // Check that communication package has been initialized
     if (comm == NULL)
     {
-        comm = new ParComm(off_proc_column_map, first_local_row, first_local_col,
-                global_num_cols, local_num_cols);
+        comm = new ParComm(partition, off_proc_column_map);
     }
 
     // Initialize Isends and Irecvs to communicate
@@ -169,8 +166,7 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r)
     // Check that communication package has been initialized
     if (tap_comm == NULL)
     {
-        tap_comm = new TAPComm(off_proc_column_map, first_local_row,
-            first_local_col, global_num_cols, local_num_cols);
+        tap_comm = new TAPComm(partition, off_proc_column_map);
     }
 
     // Initialize Isends and Irecvs to communicate
