@@ -55,10 +55,7 @@ ParCSRMatrix* par_stencil_grid(data_t* stencil, int* grid, int dim)
         }
     }
 
-    ParCSRMatrix* A = new ParCSRMatrix();
-    A->global_num_rows = N_v;
-    A->global_num_cols = N_v;
-    A->initialize_partition();
+    ParCSRMatrix* A = new ParCSRMatrix(N_v, N_v);
 
     n_v = A->local_num_rows;
     int first_local_row = A->first_local_row;

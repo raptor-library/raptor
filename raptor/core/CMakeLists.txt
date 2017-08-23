@@ -10,6 +10,8 @@ if (WITH_MPI)
         core/comm_pkg.cpp
         )
     set(par_core_SOURCES
+        core/topology.hpp
+        core/partition.hpp
         core/par_vector.hpp
         core/par_vector.cpp
         core/par_matrix.hpp

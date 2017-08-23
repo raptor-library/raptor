@@ -300,8 +300,9 @@ ParCSRMatrix* ParCSRMatrix::aggregate()
     std::vector<int> T_proc_starts(num_procs+1);
 
     ParCSRMatrix* S_sq = this->mult(this);
-    S_sq->comm = new ParComm(S_sq->off_proc_column_map, S_sq->first_local_row,
-            S_sq->first_local_col, S_sq->global_num_cols, S_sq->local_num_cols);
+    S_sq->comm = new ParComm(S_sq->off_proc_column_map, 
+            S_sq->partition->first_local_row, S_sq->partition->first_local_col, 
+            S_sq->partition->global_num_cols, S_sq->local_num_cols);
     int local_num_cols = S_sq->maximal_independent_set(local_states, off_proc_states);
     delete S_sq;
 

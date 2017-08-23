@@ -36,8 +36,8 @@ int main(int argc, char* argv[])
     TAPComm* tap_comm = new TAPComm(A->off_proc_column_map, A->first_local_row,
             A->first_local_col, A->global_num_cols, A->local_num_cols);
 
-    Vector& tap_recv = x.communicate(tap_comm, MPI_COMM_WORLD);
-    Vector& par_recv = x.communicate(A->comm, MPI_COMM_WORLD);
+    std::vector<double>& tap_recv = x.communicate(tap_comm, MPI_COMM_WORLD);
+    std::vector<double>& par_recv = x.communicate(A->comm, MPI_COMM_WORLD);
     assert(tap_recv.size() == par_recv.size());
 
     for (int i = 0; i < par_recv.size(); i++)

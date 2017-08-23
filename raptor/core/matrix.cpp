@@ -314,10 +314,16 @@ void COOMatrix::condense_cols()
 **************************************************************/
 void COOMatrix::sort()
 {
+    int k, prev_k;
+
+    if (nnz == 0) return;
+
+    std::vector<int> permutation(nnz);
+    std::vector<bool> done(nnz, false);
+
     // Create permutation vector p
-    std::vector<int> p(nnz);
-    std::iota(p.begin(), p.end(), 0);
-    std::sort(p.begin(), p.end(),
+    std::iota(permutation.begin(), permutation.end(), 0);
+    std::sort(permutation.begin(), permutation.end(),
         [&](int i, int j){ 
             if (idx1[i] == idx1[j])
                 return idx2[i] < idx2[j];
@@ -327,34 +333,86 @@ void COOMatrix::sort()
 
     // Permute all vectors (rows, cols, data) 
     // according to p
-    std::vector<bool> done(nnz);
     for (int i = 0; i < nnz; i++)
     {
         if (done[i]) continue;
 
         done[i] = true;
-        int prev_j = i;
-        int j = p[i];
-        while (i != j)
+        prev_k = i;
+        k = permutation[i];
+        while (i != k)
         {
-            std::swap(idx1[prev_j], idx1[j]);
-            std::swap(idx2[prev_j], idx2[j]);
-            std::swap(vals[prev_j], vals[j]);
-            done[j] = true;
-            prev_j = j;
-            j = p[j];
+            std::swap(idx1[prev_k], idx1[k]);
+            std::swap(idx2[prev_k], idx2[k]);
+            std::swap(vals[prev_k], vals[k]);
+            done[k] = true;
+            prev_k = k;
+            k = permutation[k];
         }
     }
 
+    sorted = true;
+}
+
+void COOMatrix::move_diag()
+{
+    if (!sorted)
+    {
+        sort();
+    }
+
+    int row_start, prev_row;
+    int row, col;
+    double tmp;
+
+    // Move diagonal entry to first in row
+    row_start = 0;
+    prev_row = 0;
+    for (int i = 0; i < nnz; i++)
+    {
+        row = idx1[i];
+        col = idx2[i];
+        if (row != prev_row)
+        {
+            prev_row = row;
+            row_start = i;
+        }
+        else if (row == col)
+        {
+            tmp = vals[i];
+            for (int j = i; j > row_start; j--)
+            {
+                idx2[j] = idx2[j-1];
+                vals[j] = vals[j-1];
+            }
+            idx2[row_start] = row;
+            vals[row_start] = tmp;
+        }
+    }
+
+    diag_first = true;
+}
+
+void COOMatrix::remove_duplicates()
+{
+    if (!sorted)
+    {
+        sort();
+    }
+
+    int prev_row, prev_col, ctr;
+    int row, col;
+    double val;
+
     // Remove duplicates (sum together)
-    int prev_row = idx1[0];
-    int prev_col = idx2[0];
-    int ctr = 1;
+    prev_row = idx1[0];
+    prev_col = idx2[0];
+    ctr = 1;
     for (int i = 1; i < nnz; i++)
     {
-        int row = idx1[i];
-        int col = idx2[i];
-        double val = vals[i];
+        row = idx1[i];
+        col = idx2[i];
+        val = vals[i];
         if (row == prev_row && col == prev_col)
         {
             vals[ctr-1] += val;
@@ -365,34 +423,13 @@ void COOMatrix::sort()
             idx2[ctr] = col;
             vals[ctr] = val;
             ctr++;
-        }
-    }
-    nnz = ctr;
 
-    // Move diagonal entry to first in row
-    int row_start = 0;
-    prev_row = 0;
-    for (int i = 0; i < nnz; i++)
-    {
-        int row = idx1[i];
-        int col = idx2[i];
-        if (row != prev_row)
-        {
             prev_row = row;
-            row_start = i;
-        }
-        else if (row == col)
-        {
-            double tmp = vals[i];
-            for (int j = i; j > row_start; j--)
-            {
-                idx2[j] = idx2[j-1];
-                vals[j] = vals[j-1];
-            }
-            idx2[row_start] = row;
-            vals[row_start] = tmp;
+            prev_col = col;
         }
     }
+
+    nnz = ctr;
 }
 
 /**************************************************************
@@ -660,98 +697,139 @@ void CSRMatrix::condense_cols()
 **************************************************************/
 void CSRMatrix::sort()
 {
+    int start, end, row_size;
+    int k, prev_k;
+
+    std::vector<int> permutation;
+    std::vector<bool> done;
+
     // Sort the columns of each row (and data accordingly) and remove
     // duplicates (summing values together)
-    int orig_row_start = idx1[0];
     for (int row = 0; row < n_rows; row++)
     {
-        int new_row_start = idx1[row];
-        int orig_row_end = idx1[row+1];
-        int row_size = orig_row_end - orig_row_start;
+        start = idx1[row];
+        end = idx1[row+1];
+        row_size = end - start;
         if (row_size == 0) 
         {
-            orig_row_start = orig_row_end;
-            idx1[row+1] = idx1[row];
             continue;
         }
 
         // Create permutation vector p for row
-        std::vector<int> p(row_size);
-        std::iota(p.begin(), p.end(), 0);
-        std::sort(p.begin(), p.end(),
+        permutation.resize(row_size);
+        std::iota(permutation.begin(), permutation.end(), 0);
+        std::sort(permutation.begin(), permutation.end(),
                 [&](int i, int j)
                 { 
-                    return idx2[i+orig_row_start] < idx2[j+orig_row_start];
+                    return idx2[i+start] < idx2[j+start];
                 });
 
 
         // Permute columns and data according to p
-        std::vector<bool> done(row_size);
+        done.resize(row_size);
+        for (int i = 0; i < row_size; i++)
+        {
+            done[i] = false;
+        }
         for (int i = 0; i < row_size; i++)
         {
             if (done[i]) continue;
 
             done[i] = true;
-            int prev_j = i;
-            int j = p[i];
-            while (i != j)
+            prev_k = i;
+            k = permutation[i];
+            while (i != k)
             {
-                std::swap(idx2[prev_j + orig_row_start], idx2[j + orig_row_start]);
-                std::swap(vals[prev_j + orig_row_start], vals[j + orig_row_start]);
-                done[j] = true;
-                prev_j = j;
-                j = p[j];
+                std::swap(idx2[prev_k + start], idx2[k + start]);
+                std::swap(vals[prev_k + start], vals[k + start]);
+                done[k] = true;
+                prev_k = k;
+                k = permutation[k];
             }
+        }
+    }
+
+    sorted = true;
+}
+
+void CSRMatrix::move_diag()
+{
+    int start, end;
+    int col;
+    double tmp;
+
+    // Move diagonal values to beginning of each row
+    for (int i = 0; i < n_rows; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = idx2[j];
+            if (col == i)
+            {
+                tmp = vals[j];
+                for (int k = j; k > start; k--)
+                {
+                    idx2[k] = idx2[k-1];
+                    vals[k] = vals[k-1];
+                }
+                idx2[start] = i;
+                vals[start] = tmp;
+                break;
+            }
+        }
+    }
+
+    diag_first = true;
+}
+
+void CSRMatrix::remove_duplicates()
+{
+    int orig_start, orig_end;
+    int new_start;
+    int col, prev_col;
+    int ctr, row_size;
+    double val;
+
+    orig_start = idx1[0];
+    for (int row = 0; row < n_rows; row++)
+    {
+        new_start = idx1[row];
+        orig_end = idx1[row+1];
+        row_size = orig_end - orig_start;
+        if (row_size == 0) 
+        {
+            orig_start = orig_end;
+            idx1[row+1] = idx1[row];
+            continue;
         }
 
         // Remove Duplicates
-        int col = idx2[orig_row_start];
-        double val = vals[orig_row_start];
-        idx2[new_row_start] = col;
-        vals[new_row_start] = val;
-        int prev_col = col;
-        int ctr = 1;
-        for (int j = orig_row_start + 1; j < orig_row_end; j++)
+        col = idx2[orig_start];
+        val = vals[orig_start];
+        idx2[new_start] = col;
+        vals[new_start] = val;
+        prev_col = col;
+        ctr = 1;
+        for (int j = orig_start + 1; j < orig_end; j++)
         {
             col = idx2[j];
             val = vals[j];
             if (col == prev_col)
             {
-                vals[ctr - 1 + new_row_start] += val;
+                vals[ctr - 1 + new_start] += val;
             }
             else
             {
-                idx2[ctr + new_row_start] = col;
-                vals[ctr + new_row_start] = val;
+                idx2[ctr + new_start] = col;
+                vals[ctr + new_start] = val;
                 ctr++;
                 prev_col = col;
             }
         }
-        orig_row_start = orig_row_end;
+        orig_start = orig_end;
         idx1[row+1] = idx1[row] + ctr;
-    }
-
-    // Move diagonal values to beginning of each row
-    for (int i = 0; i < n_rows; i++)
-    {
-        int row_start = idx1[i];
-        int row_end = idx1[i+1];
-        for (int j = row_start; j < row_end; j++)
-        {
-            int col = idx2[j];
-            if (col == i)
-            {
-                double tmp = vals[j];
-                for (int k = j; k > row_start; k--)
-                {
-                    idx2[k] = idx2[k-1];
-                    vals[k] = vals[k-1];
-                }
-                idx2[row_start] = i;
-                vals[row_start] = tmp;
-                break;
-            }
-        }
     }
 }
 
@@ -1030,98 +1108,149 @@ void CSCMatrix::condense_cols()
 **************************************************************/
 void CSCMatrix::sort()
 {
+    int start, end, col_size;
+    int prev_k, k;
+
+    std::vector<int> permutation;
+    std::vector<bool> done;
+
     // Sort the columns of each row (and data accordingly) and remove
     // duplicates (summing values together)
-    int orig_col_start = idx1[0];
     for (int col = 0; col < n_cols; col++)
     {
-        int new_col_start = idx1[col];
-        int orig_col_end = idx1[col+1];
-        int col_size = orig_col_end - orig_col_start;
-        if (col_size == 0) 
+        start  = idx1[col];
+        end = idx1[col+1];
+        col_size = end - start;
+        if (col_size == 0)
         {
-            orig_col_start = orig_col_end;
-            idx1[col+1] = idx1[col];
             continue;
         }
 
         // Create permutation vector p for row
-        std::vector<int> p(col_size);
-        std::iota(p.begin(), p.end(), 0);
-        std::sort(p.begin(), p.end(),
+        permutation.resize(col_size);
+        std::iota(permutation.begin(), permutation.end(), 0);
+        std::sort(permutation.begin(), permutation.end(),
                 [&](int i, int j)
                 { 
-                    return idx2[i + orig_col_start] < idx2[j + orig_col_start];
+                    return idx2[i + start] < idx2[j + start];
                 });
 
         // Permute columns and data according to p
-        std::vector<bool> done(col_size);
+        done.resize(col_size);
+        for (int i = 0; i < col_size; i++)
+        {
+            done[i] = false;
+        }
         for (int i = 0; i < col_size; i++)
         {
             if (done[i]) continue;
 
             done[i] = true;
-            int prev_j = i;
-            int j = p[i];
-            while (i != j)
+            prev_k = i;
+            k = permutation[i];
+            while (i != k)
             {
-                std::swap(idx2[prev_j + orig_col_start], idx2[j + orig_col_start]);
-                std::swap(vals[prev_j + orig_col_start], vals[j + orig_col_start]);
-                done[j] = true;
-                prev_j = j;
-                j = p[j];
+                std::swap(idx2[prev_k + start], idx2[k + start]);
+                std::swap(vals[prev_k + start], vals[k + start]);
+                done[k] = true;
+                prev_k = k;
+                k = permutation[k];
             }
+        }
+    }
+
+    sorted = true;
+}
+
+void CSCMatrix::remove_duplicates()
+{
+    if (!sorted)
+    {
+        sort();
+    }
+    
+    int orig_start, orig_end, new_start;
+    int col_size;
+    int row, prev_row, ctr;
+    double val;
+
+    // Sort the columns of each row (and data accordingly) and remove
+    // duplicates (summing values together)
+    orig_start = idx1[0];
+    for (int col = 0; col < n_cols; col++)
+    {
+        new_start = idx1[col];
+        orig_end = idx1[col+1];
+        col_size = orig_end - orig_start;
+        if (col_size == 0) 
+        {
+            orig_start = orig_end;
+            idx1[col+1] = idx1[col];
+            continue;
         }
 
         // Remove Duplicates
-        int row = idx2[orig_col_start];
-        double val = vals[orig_col_start];
-        idx2[new_col_start] = row;
-        vals[new_col_start] = val;
-        int prev_row = row;
-        int ctr = 1;
-        for (int j = orig_col_start + 1; j < orig_col_end; j++)
+        row = idx2[orig_start];
+        val = vals[orig_start];
+        idx2[new_start] = row;
+        vals[new_start] = val;
+        prev_row = row;
+        ctr = 1;
+        for (int j = orig_start + 1; j < orig_end; j++)
         {
             row = idx2[j];
             val = vals[j];
             if (row == prev_row)
             {
-                vals[ctr - 1 + new_col_start] += val;
+                vals[ctr - 1 + new_start] += val;
             }
             else
             {
-                idx2[ctr + new_col_start] = row;
-                vals[ctr + new_col_start] = val;
+                idx2[ctr + new_start] = row;
+                vals[ctr + new_start] = val;
                 ctr++;
                 prev_row = row;
             }
         }
-        orig_col_start = orig_col_end;
+        orig_start = orig_end;
         idx1[col+1] = idx1[col] + ctr;
     }
-        
+}
+
+void CSCMatrix::move_diag()
+{
+    if (!sorted)
+    {
+        sort();
+    }
+
+    int start, end, row;
+    double tmp;
+
     // Move diagonal values to beginning of each column
     for (int i = 0; i < n_cols; i++)
     {
-        int col_start = idx1[i];
-        int col_end = idx1[i+1];
-        for (int j = col_start; j < col_end; j++)
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
         {
-            int row = idx2[j];
+            row = idx2[j];
             if (row == i)
             {
-                double tmp = vals[j];
-                for (int k = j; k > col_start; k--)
+                tmp = vals[j];
+                for (int k = j; k > start; k--)
                 {
                     idx2[k] = idx2[k-1];
                     vals[k] = vals[k-1];
                 }
-                idx2[col_start] = i;
-                vals[col_start] = tmp;
+                idx2[start] = i;
+                vals[start] = tmp;
                 break;
             }
         }
     }
+
+    diag_first = true;
 }
 
 

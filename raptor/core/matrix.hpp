@@ -90,6 +90,8 @@ namespace raptor
         n_rows = _nrows;
         n_cols = _ncols;
         nnz = 0;
+        sorted = false;
+        diag_first = false;
     }
 
     /**************************************************************
@@ -107,12 +109,16 @@ namespace raptor
         n_rows = 0;
         n_cols = 0;
         nnz = 0;
+        sorted = false;
+        diag_first = false;
     }
 
     virtual ~Matrix(){}
 
     virtual format_t format() = 0;
     virtual void sort() = 0;
+    virtual void move_diag() = 0;
+    virtual void remove_duplicates() = 0;
     virtual void add_value(int row, int col, double val) = 0;
     virtual void condense_rows() = 0;
     virtual void condense_cols() = 0;
@@ -274,6 +280,10 @@ namespace raptor
     int n_rows;
     int n_cols;
     int nnz;
+
+    bool sorted;
+    bool diag_first;
+
   };
 
 
@@ -434,6 +444,8 @@ namespace raptor
     void condense_rows();
     void condense_cols();
     void sort();
+    void move_diag();
+    void remove_duplicates();
 
     template <typename T, typename U> void mult(T& x, U& b)
     { 
@@ -704,6 +716,8 @@ namespace raptor
     void condense_rows();
     void condense_cols();
     void sort();
+    void move_diag();
+    void remove_duplicates();
 
     template <typename T, typename U> void mult(T& x, U& b)
     { 
@@ -991,6 +1005,8 @@ namespace raptor
     void copy(const CSCMatrix* A);
 
     void sort();
+    void move_diag();
+    void remove_duplicates();
     void add_value(int row, int col, double value);
     void condense_rows();
     void condense_cols();

@@ -5,67 +5,6 @@
 using namespace raptor;
 
 /**************************************************************
-*****   ParMatrix Initialize Partition
-**************************************************************
-***** Initializes information about the local partition of
-***** the parallel matrix.  Determines values for:
-*****     local_num_rows
-*****     local_num_cols
-*****     first_local_row
-*****     first_local_col
-***** NOTE: The values for global_num_rows and global_num_cols
-***** must be set before calling this method.
-**************************************************************/
-void ParMatrix::initialize_partition()
-{
-    // Find MPI Information
-    int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
-    // Determine the number of local rows per process
-    int avg_local_num_rows = global_num_rows / num_procs;
-    int extra_rows = global_num_rows % num_procs;
-
-    // Initialize local matrix rows
-    first_local_row = avg_local_num_rows * rank;
-    local_num_rows = avg_local_num_rows;
-    if (extra_rows > rank)
-    {
-        first_local_row += rank;
-        local_num_rows++;
-    }
-    else
-    {
-        first_local_row += extra_rows;
-    }
-
-    // Determine the number of local columns per process
-    if (global_num_rows < num_procs)
-    {
-        num_procs = global_num_rows;
-    }
-    int avg_local_num_cols = global_num_cols / num_procs;
-    int extra_cols = global_num_cols % num_procs;
-
-    // Initialize local matrix columns
-    if (local_num_rows)
-    {
-        first_local_col = avg_local_num_cols * rank;
-        local_num_cols = avg_local_num_cols;
-        if (extra_cols > rank)
-        {
-            first_local_col += rank;
-            local_num_cols++;
-        }
-        else
-        {
-            first_local_col += extra_cols;
-        }
-    }
-}
-
-/**************************************************************
 *****   ParMatrix Add Value
 **************************************************************
 ***** Adds a value to the local portion of the parallel matrix,
@@ -86,9 +25,10 @@ void ParMatrix::add_value(
         index_t global_col, 
         data_t value)
 {
-    if (global_col >= first_local_col && global_col < first_local_col + local_num_cols)
+    if (global_col >= partition->first_local_col 
+            && global_col < partition->last_local_col)
     {
-        on_proc->add_value(row, global_col - first_local_col, value);
+        on_proc->add_value(row, global_col - partition->first_local_col, value);
     }
     else 
     {
@@ -117,14 +57,7 @@ void ParMatrix::add_global_value(
         index_t global_col, 
         data_t value)
 {
-    if (global_col >= first_local_col && global_col < first_local_col + local_num_cols)
-    {
-        on_proc->add_value(global_row-first_local_row, global_col - first_local_col, value);
-    }
-    else
-    {
-        off_proc->add_value(global_row-first_local_row, global_col, value);
-    }
+    add_value(global_row - partition->first_local_row, global_col, value);
 }
 
 /**************************************************************
@@ -165,18 +98,17 @@ void ParMatrix::finalize(bool create_comm)
     local_nnz = on_proc->nnz + off_proc->nnz;
 
     if (create_comm)
-        comm = new ParComm(off_proc_column_map, first_local_row, first_local_col,
-                global_num_cols, local_num_cols);
+        comm = new ParComm(off_proc_column_map, partition->first_local_row, partition->first_local_col,
+                partition->global_num_cols, local_num_cols);
     else
         comm = new ParComm();
 }
 
 void ParMatrix::copy(ParCSRMatrix* A)
 {
-    global_num_rows = A->global_num_rows;
-    global_num_cols = A->global_num_cols;
-    first_local_row = A->first_local_row;
-    first_local_col = A->first_local_col;
+    partition = A->partition;
+    partition->num_shared++;
+
     local_nnz = A->local_nnz;
     local_num_rows = A->local_num_rows;
     local_num_cols = A->local_num_cols;
@@ -212,10 +144,9 @@ void ParMatrix::copy(ParCSRMatrix* A)
 
 void ParMatrix::copy(ParCSCMatrix* A)
 {
-    global_num_rows = A->global_num_rows;
-    global_num_cols = A->global_num_cols;
-    first_local_row = A->first_local_row;
-    first_local_col = A->first_local_col;
+    partition = A->partition;
+    partition->num_shared++;
+
     local_nnz = A->local_nnz;
     local_num_rows = A->local_num_rows;
     local_num_cols = A->local_num_cols;
@@ -251,10 +182,9 @@ void ParMatrix::copy(ParCSCMatrix* A)
 
 void ParMatrix::copy(ParCOOMatrix* A)
 {
-    global_num_rows = A->global_num_rows;
-    global_num_cols = A->global_num_cols;
-    first_local_row = A->first_local_row;
-    first_local_col = A->first_local_col;
+    partition = A->partition;
+    partition->num_shared++;
+
     local_nnz = A->local_nnz;
     local_num_rows = A->local_num_rows;
     local_num_cols = A->local_num_cols;
@@ -418,7 +348,7 @@ CSRMatrix* ParCSRMatrix::communicate(CommPkg* comm)
         end = on_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            global_col = on_proc->idx2[j] + first_local_col;
+            global_col = on_proc->idx2[j] + partition->first_local_col;
             col_indices[ctr] = global_col;
             values[ctr++] = on_proc->vals[j];
         }
@@ -540,7 +470,7 @@ CSCMatrix* ParCSCMatrix::communicate(CommPkg* comm)
     // Set col_indices / values
     for (int i = 0; i < local_num_cols; i++)
     {
-        global_col = i + first_local_col;
+        global_col = i + partition->first_local_col;
         start = on_proc->idx1[i];
         end = on_proc->idx1[i+1];
         for (int j = start; j < end; j++)
