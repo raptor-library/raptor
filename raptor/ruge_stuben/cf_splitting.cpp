@@ -363,7 +363,7 @@ void initial_cljp_weights(const ParCSRMatrix* S,
     if (S->comm->send_data->num_msgs)
     {
         MPI_Waitall(S->comm->send_data->num_msgs, 
-                S->comm->send_data->requests,
+                S->comm->send_data->requests.data(),
                 MPI_STATUSES_IGNORE);
     }
 
@@ -378,7 +378,7 @@ void initial_cljp_weights(const ParCSRMatrix* S,
     if (S->comm->recv_data->num_msgs)
     {
         MPI_Waitall(S->comm->recv_data->num_msgs, 
-                S->comm->recv_data->requests,
+                S->comm->recv_data->requests.data(),
                 MPI_STATUSES_IGNORE);
     }
 
@@ -811,11 +811,11 @@ void find_off_proc_weights(const ParCSRMatrix* S,
 
     if (n_sends)
     {
-        MPI_Waitall(n_sends, S->comm->send_data->requests, MPI_STATUSES_IGNORE);
+        MPI_Waitall(n_sends, S->comm->send_data->requests.data(), MPI_STATUSES_IGNORE);
     }
     if (n_recvs)
     {
-        MPI_Waitall(n_recvs, S->comm->recv_data->requests, MPI_STATUSES_IGNORE);
+        MPI_Waitall(n_recvs, S->comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
     }
 
     for (int i = 0; i < ctr; i++)
@@ -916,7 +916,7 @@ void find_max_off_weights(const ParCSRMatrix* S,
     // Wait for recvs to complete
     if (n_recvs)
     {
-        MPI_Waitall(n_recvs, S->comm->send_data->requests, MPI_STATUSES_IGNORE);
+        MPI_Waitall(n_recvs, S->comm->send_data->requests.data(), MPI_STATUSES_IGNORE);
     }
 
     // Find max recvd weights associated with each local idx
@@ -936,7 +936,7 @@ void find_max_off_weights(const ParCSRMatrix* S,
     // Wait for sends to complete
     if (n_sends)
     {
-        MPI_Waitall(n_sends, S->comm->recv_data->requests, MPI_STATUSES_IGNORE);
+        MPI_Waitall(n_sends, S->comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
     }
 }
 
@@ -1092,7 +1092,7 @@ int find_off_proc_states(const ParCSRMatrix* S,
     // Wait for communication to complete
     if (n_recvs)
     {
-        MPI_Waitall(n_recvs, S->comm->recv_data->requests, MPI_STATUSES_IGNORE);
+        MPI_Waitall(n_recvs, S->comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
     }
     
     for (int i = 0; i < ctr; i++)
@@ -1107,7 +1107,7 @@ int find_off_proc_states(const ParCSRMatrix* S,
 
     if (n_sends)
     {
-        MPI_Waitall(n_sends, S->comm->send_data->requests, MPI_STATUSES_IGNORE);
+        MPI_Waitall(n_sends, S->comm->send_data->requests.data(), MPI_STATUSES_IGNORE);
     }
 
     return num_new_coarse;
@@ -1266,7 +1266,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
     // Wait for sends to complete
     if (n_sends)
     {
-        MPI_Waitall(n_sends, S->comm->send_data->requests, MPI_STATUSES_IGNORE);
+        MPI_Waitall(n_sends, S->comm->send_data->requests.data(), MPI_STATUSES_IGNORE);
     }
 }
 
@@ -1346,7 +1346,7 @@ void combine_weight_updates(const ParCSRMatrix* S,
 
     if (n_recvs)
     {
-        MPI_Waitall(n_recvs, S->comm->send_data->requests, MPI_STATUSES_IGNORE);
+        MPI_Waitall(n_recvs, S->comm->send_data->requests.data(), MPI_STATUSES_IGNORE);
     }
 
     for (int i = 0; i < ctr; i++)
@@ -1357,7 +1357,7 @@ void combine_weight_updates(const ParCSRMatrix* S,
 
     if (n_sends)
     {
-        MPI_Waitall(n_sends, S->comm->recv_data->requests, MPI_STATUSES_IGNORE);
+        MPI_Waitall(n_sends, S->comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
     }
 }
 
@@ -1447,7 +1447,7 @@ void cljp_final_step(ParCSRMatrix* S,
         }
         if (n_sends)
         {
-            MPI_Waitall(n_sends, S->comm->recv_data->requests, MPI_STATUSES_IGNORE);
+            MPI_Waitall(n_sends, S->comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
         }
 
         // Recv new states for all unassigned off proc cols (new coarse)
@@ -1478,7 +1478,7 @@ void cljp_final_step(ParCSRMatrix* S,
 
         if (n_recvs)
         {
-            MPI_Waitall(n_recvs, S->comm->recv_data->requests, MPI_STATUSES_IGNORE);
+            MPI_Waitall(n_recvs, S->comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
         }
         for (int i = 0; i < ctr; i++)
         {
@@ -1584,7 +1584,7 @@ void cljp_final_step(ParCSRMatrix* S,
         }
         if (n_sends)
         {
-            MPI_Waitall(n_sends, S->comm->recv_data->requests, MPI_STATUSES_IGNORE);
+            MPI_Waitall(n_sends, S->comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
         }
 
         // Find updates to off_proc_weights
@@ -1617,7 +1617,7 @@ void cljp_final_step(ParCSRMatrix* S,
         }
         if (n_recvs)
         {
-            MPI_Waitall(n_recvs, S->comm->recv_data->requests, MPI_STATUSES_IGNORE);
+            MPI_Waitall(n_recvs, S->comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
         }
 
         for (int i = 0; i < ctr; i++)

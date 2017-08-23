@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
     compare(b, b_par);
 
     // Set x and x_par to same random values
-    for (int i = 0; i < x.size; i++)
+    for (int i = 0; i < x.size(); i++)
     {
         srand(i);
         x[i] = ((double)rand()) / RAND_MAX;

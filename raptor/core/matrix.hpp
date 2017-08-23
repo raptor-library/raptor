@@ -35,9 +35,6 @@
  *****
  ***** Methods
  ***** -------
- ***** print()
- *****    Prints the nonzeros in the sparse matrix, along with 
- *****    the row and column of the nonzero
  ***** resize(int n_rows, int n_cols)
  *****    Resizes dimension of matrix to passed parameters
  ***** mult(Vector* x, Vector* b)
@@ -63,13 +60,6 @@
  *****     Removes zeros cols from sparse matrix, decreasing the indices
  *****     of remaining cols as needed.  Initializes col_list to contain
  *****     the original cols of the matrix (col_list[i] = orig_col[i])
- ***** apply_func (std::function<void(int, int, double)> func_ptr)
- *****     Applys function passed as paramter to each position of matrix.
- *****     For example call to this function, see method print()
- ***** apply_func (double* x, double* b, std::function<void(int, int, double ...)>)
- *****     Applys function passed as parameter to each position of matrix,
- *****     where function depends on double* x and double* b.
- *****     For example call to this function, see mult(Vector* x, Vector* b)
  **************************************************************/
 namespace raptor
 {
@@ -127,12 +117,6 @@ namespace raptor
     virtual void condense_rows() = 0;
     virtual void condense_cols() = 0;
 
-    void print();
-
-    virtual void apply_func( std::function<void(int, int, double)> func_ptr) = 0;
-    virtual void apply_func( Vector& x, Vector& b, 
-            std::function<void(int, int, double, Vector&, Vector&)> func_ptr) = 0;
-
     virtual void copy(const COOMatrix* A) = 0;
     virtual void copy(const CSRMatrix* A) = 0;
     virtual void copy(const CSCMatrix* A) = 0;
@@ -144,20 +128,107 @@ namespace raptor
     Matrix* strength(double theta = 0.0);
     Matrix* aggregate();
 
-    virtual void mult(Vector& x, Vector& b)  = 0;
-    virtual void mult_T(Vector& x, Vector& b) = 0;
-    virtual void mult_append(Vector& x, Vector& b) = 0;
-    virtual void mult_append_neg(Vector& x, Vector& b) = 0;
-    virtual void mult_append_T(Vector& x, Vector& b) = 0;
-    virtual void mult_append_neg_T(Vector& x, Vector& b) = 0;
-    virtual void residual(Vector& x, Vector& b, Vector& r) = 0;
+    void mult(Vector& x, Vector& b)
+    {
+        mult(x.values, b.values);
+    }
+    void mult(std::vector<double>& x, Vector& b)
+    {
+        mult(x, b.values);
+    }
+    void mult(Vector& x, std::vector<double>& b)
+    {
+        mult(x.values, b);
+    }
+    virtual void mult(std::vector<double>& x, std::vector<double>& b) = 0;
 
-    virtual CSRMatrix* mult(const CSRMatrix* B) = 0;
-    virtual CSRMatrix* mult(const CSCMatrix* B) = 0;
-    virtual CSRMatrix* mult(const COOMatrix* B) = 0;
-    virtual CSRMatrix* mult_T(const CSRMatrix* A) = 0; 
-    virtual CSRMatrix* mult_T(const CSCMatrix* A) = 0; 
-    virtual CSRMatrix* mult_T(const COOMatrix* A) = 0;
+    void mult_T(Vector& x, Vector& b)
+    {
+        mult_T(x.values, b.values);
+    }
+    void mult_T(std::vector<double>& x, Vector& b)
+    {
+        mult_T(x, b.values);
+    }
+    void mult_T(Vector& x, std::vector<double>& b)
+    {
+        mult_T(x.values, b);
+    }
+    virtual void mult_T(std::vector<double>& x, std::vector<double>& b) = 0;
+
+    void mult_append(Vector& x, Vector& b)
+    {
+        mult_append(x.values, b.values);
+    }
+    void mult_append(std::vector<double>& x, Vector& b)
+    {
+        mult_append(x, b.values);
+    }
+    void mult_append(Vector& x, std::vector<double>& b)
+    {
+        mult_append(x.values, b);
+    }
+    virtual void mult_append(std::vector<double>& x, std::vector<double>& b) = 0;
+
+    void mult_append_T(Vector& x, Vector& b)
+    {
+        mult_append_T(x.values, b.values);
+    }
+    void mult_append_T(std::vector<double>& x, Vector& b)
+    {
+        mult_append_T(x, b.values);
+    }
+    void mult_append_T(Vector& x, std::vector<double>& b)
+    {
+        mult_append_T(x.values, b);
+    }
+    virtual void mult_append_T(std::vector<double>& x, std::vector<double>& b) = 0;
+
+    void mult_append_neg(Vector& x, Vector& b)
+    {
+        mult_append_neg(x.values, b.values);
+    }
+    void mult_append_neg(std::vector<double>& x, Vector& b)
+    {
+        mult_append_neg(x, b.values);
+    }
+    void mult_append_neg(Vector& x, std::vector<double>& b)
+    {
+        mult_append_neg(x.values, b);
+    }
+    virtual void mult_append_neg(std::vector<double>& x, std::vector<double>& b) = 0;
+
+    void mult_append_neg_T(Vector& x, Vector& b)
+    {
+        mult_append_neg_T(x.values, b.values);
+    }
+    void mult_append_neg_T(std::vector<double>& x, Vector& b)
+    {
+        mult_append_neg_T(x, b.values);
+    }
+    void mult_append_neg_T(Vector& x, std::vector<double>& b)
+    {
+        mult_append_neg_T(x.values, b);
+    }
+    virtual void mult_append_neg_T(std::vector<double>& x, std::vector<double>& b) = 0;
+
+    void residual(Vector& x, Vector& b, Vector& r)
+    {
+        residual(x.values, b.values, r.values);
+    }
+    void residual(std::vector<double>& x, Vector& b, Vector& r)
+    {
+        residual(x, b.values, r.values);
+    }
+    virtual void residual(std::vector<double>& x, std::vector<double>& b,
+            std::vector<double>& r) = 0;
+
+    CSRMatrix* mult(const CSRMatrix* B){}
+    CSRMatrix* mult(const CSCMatrix* B){}
+    CSRMatrix* mult(const COOMatrix* B){}
+    CSRMatrix* mult_T(const CSRMatrix* A){}
+    CSRMatrix* mult_T(const CSCMatrix* A){}
+    CSRMatrix* mult_T(const COOMatrix* A){}
 
     void RAP(const CSCMatrix& P, CSCMatrix* Ac);
     void RAP(const CSCMatrix& P, CSRMatrix* Ac);
@@ -227,13 +298,6 @@ namespace raptor
  *****     Removes zeros cols from sparse matrix, decreasing the indices
  *****     of remaining cols as needed.  Initializes col_list to contain
  *****     the original cols of the matrix (col_list[i] = orig_col[i])
- ***** apply_func (std::function<void(int, int, double)> func_ptr)
- *****     Applys function passed as paramter to each position of matrix.
- *****     For example call to this function, see method print()
- ***** apply_func (double* x, double* b, std::function<void(int, int, double ...)>)
- *****     Applys function passed as parameter to each position of matrix,
- *****     where function depends on double* x and double* b.
- *****     For example call to this function, see mult(Vector* x, Vector* b)
  ***** rows()
  *****     Returns std::vector<int>& containing the rows corresponding
  *****     to each nonzero
@@ -355,11 +419,12 @@ namespace raptor
     {
         copy(A);
     }
-
     ~COOMatrix()
     {
 
     }
+
+    void print();
 
     void copy(const COOMatrix* A);
     void copy(const CSRMatrix* A);
@@ -369,17 +434,87 @@ namespace raptor
     void condense_rows();
     void condense_cols();
     void sort();
-    void apply_func( std::function<void(int, int, double)> func_ptr);
-    void apply_func( Vector& x, Vector& b, 
-            std::function<void(int, int, double, Vector&, Vector&)> func_ptr);
 
-    void mult(Vector& x, Vector& b);
-    void mult_T(Vector& x, Vector& b);
-    void mult_append(Vector& x, Vector& b);
-    void mult_append_neg(Vector& x, Vector& b);
-    void mult_append_T(Vector& x, Vector& b);
-    void mult_append_neg_T(Vector& x, Vector& b);
-    void residual(Vector& x, Vector& b, Vector& r);
+    template <typename T, typename U> void mult(T& x, U& b)
+    { 
+        Matrix::mult(x, b);
+    }
+    template <typename T, typename U> void mult_T(T& x, U& b)
+    { 
+        Matrix::mult_T(x, b);
+    }
+    template <typename T, typename U> void mult_append(T& x, U& b)
+    { 
+        Matrix::mult_append(x, b);
+    }
+    template <typename T, typename U> void mult_append_T(T& x, U& b)
+    { 
+        Matrix::mult_append_T(x, b);
+    }
+    template <typename T, typename U> void mult_append_neg(T& x, U& b)
+    { 
+        Matrix::mult_append_neg(x, b);
+    }
+    template <typename T, typename U> void mult_append_neg_T(T& x, U& b)
+    { 
+        Matrix::mult_append_neg_T(x, b);
+    }
+    template <typename T, typename U, typename V> void residual(T& x, U& b, V& r)
+    { 
+        Matrix::residual(x, b, r);
+    }
+
+    void mult(std::vector<double>& x, std::vector<double>& b)
+    {
+        for (int i = 0; i < n_rows; i++)
+            b[i] = 0.0;
+        mult_append(x, b);
+    }
+    void mult_T(std::vector<double>& x, std::vector<double>& b)
+    {
+        for (int i = 0; i < n_cols; i++)
+            b[i] = 0.0;
+
+        mult_append_T(x, b);
+    }
+    void mult_append(std::vector<double>& x, std::vector<double>& b)
+    { 
+        for (int i = 0; i < nnz; i++)
+        {
+            b[idx1[i]] += vals[i] * x[idx2[i]];
+        }
+    }
+    void mult_append_T(std::vector<double>& x, std::vector<double>& b)
+    {
+        for (int i = 0; i < nnz; i++)
+        {
+            b[idx2[i]] += vals[i] * x[idx1[i]];
+        }
+    }
+    void mult_append_neg(std::vector<double>& x, std::vector<double>& b)
+    {
+        for (int i = 0; i < nnz; i++)
+        {
+            b[idx1[i]] -= vals[i] * x[idx2[i]];
+        }
+    }
+    void mult_append_neg_T(std::vector<double>& x, std::vector<double>& b)
+    {
+        for (int i = 0; i < nnz; i++)
+        {
+            b[idx2[i]] -= vals[i] * x[idx1[i]];
+        }
+    }
+    void residual(std::vector<double>& x, std::vector<double>& b, std::vector<double>& r)
+    {
+        for (int i = 0; i < n_rows; i++)
+            r[i] = b[i];
+     
+        for (int i = 0; i < nnz; i++)
+        {
+            r[idx1[i]] -= vals[i] * x[idx2[i]];
+        }
+    }
 
     CSRMatrix* mult(const CSRMatrix* B);
     CSRMatrix* mult(const CSCMatrix* B);
@@ -432,13 +567,6 @@ namespace raptor
  *****     Removes zeros cols from sparse matrix, decreasing the indices
  *****     of remaining cols as needed.  Initializes col_list to contain
  *****     the original cols of the matrix (col_list[i] = orig_col[i])
- ***** apply_func (std::function<void(int, int, double)> func_ptr)
- *****     Applys function passed as paramter to each position of matrix.
- *****     For example call to this function, see method print()
- ***** apply_func (double* x, double* b, std::function<void(int, int, double ...)>)
- *****     Applys function passed as parameter to each position of matrix,
- *****     where function depends on double* x and double* b.
- *****     For example call to this function, see mult(Vector* x, Vector* b)
  ***** indptr()
  *****     Returns std::vector<int>& row pointer.  The ith element points to
  *****     the index of indices() corresponding to the first column to lie on 
@@ -566,6 +694,8 @@ namespace raptor
 
     }
 
+    void print();
+
     void copy(const COOMatrix* A);
     void copy(const CSRMatrix* A);
     void copy(const CSCMatrix* A);
@@ -574,17 +704,119 @@ namespace raptor
     void condense_rows();
     void condense_cols();
     void sort();
-    void apply_func( std::function<void(int, int, double)> func_ptr);
-    void apply_func( Vector& x, Vector& b, 
-            std::function<void(int, int, double, Vector&, Vector&)> func_ptr);
 
-    void mult(Vector& x, Vector& b);
-    void mult_T(Vector& x, Vector& b);
-    void mult_append(Vector& x, Vector& b);
-    void mult_append_neg(Vector& x, Vector& b);
-    void mult_append_T(Vector& x, Vector& b);
-    void mult_append_neg_T(Vector& x, Vector& b);
-    void residual(Vector& x, Vector& b, Vector& r);
+    template <typename T, typename U> void mult(T& x, U& b)
+    { 
+        Matrix::mult(x, b);
+    }
+    template <typename T, typename U> void mult_T(T& x, U& b)
+    { 
+        Matrix::mult_T(x, b);
+    }
+    template <typename T, typename U> void mult_append(T& x, U& b)
+    { 
+        Matrix::mult_append(x, b);
+    }
+    template <typename T, typename U> void mult_append_T(T& x, U& b)
+    { 
+        Matrix::mult_append_T(x, b);
+    }
+    template <typename T, typename U> void mult_append_neg(T& x, U& b)
+    { 
+        Matrix::mult_append_neg(x, b);
+    }
+    template <typename T, typename U> void mult_append_neg_T(T& x, U& b)
+    { 
+        Matrix::mult_append_neg_T(x, b);
+    }
+    template <typename T, typename U, typename V> void residual(T& x, U& b, V& r)
+    { 
+        Matrix::residual(x, b, r);
+    }
+
+    void mult(std::vector<double>& x, std::vector<double>& b)
+    {
+        for (int i = 0; i < n_rows; i++)
+            b[i] = 0.0;
+        mult_append(x, b);
+    }
+    void mult_T(std::vector<double>& x, std::vector<double>& b)
+
+    {
+        for (int i = 0; i < n_cols; i++)
+            b[i] = 0.0;
+
+        mult_append_T(x, b);    
+    }
+    void mult_append(std::vector<double>& x, std::vector<double>& b)
+    { 
+        int start, end;
+        for (int i = 0; i < n_rows; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                b[i] += vals[j] * x[idx2[j]];
+            }
+        }
+    }
+    void mult_append_T(std::vector<double>& x, std::vector<double>& b)
+    {
+        int start, end;
+        for (int i = 0; i < n_rows; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                b[idx2[j]] += vals[j] * x[i];
+            }
+        }
+    }
+    void mult_append_neg(std::vector<double>& x, std::vector<double>& b)
+    {
+        int start, end;
+        for (int i = 0; i < n_rows; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                b[i] -= vals[j] * x[idx2[j]];
+            }
+        }
+    }
+    void mult_append_neg_T(std::vector<double>& x, std::vector<double>& b)
+    {
+        int start, end;
+        for (int i = 0; i < n_rows; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                b[idx2[j]] -= vals[j] * x[i];
+            }
+        }
+    }
+    void residual(std::vector<double>& x, std::vector<double>& b, std::vector<double>& r)
+    {
+        for (int i = 0; i < n_rows; i++)
+            r[i] = b[i];
+     
+        int start, end;
+        for (int i = 0; i < n_rows; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                r[i] -= vals[j] * x[idx2[j]];
+            }
+        }
+    }
+
 
     CSRMatrix* mult(const CSRMatrix* B);
     CSRMatrix* mult(const CSCMatrix* B);
@@ -643,13 +875,6 @@ namespace raptor
  *****     Removes zeros cols from sparse matrix, decreasing the indices
  *****     of remaining cols as needed.  Initializes col_list to contain
  *****     the original cols of the matrix (col_list[i] = orig_col[i])
- ***** apply_func (std::function<void(int, int, double)> func_ptr)
- *****     Applys function passed as paramter to each position of matrix.
- *****     For example call to this function, see method print()
- ***** apply_func (double* x, double* b, std::function<void(int, int, double ...)>)
- *****     Applys function passed as parameter to each position of matrix,
- *****     where function depends on double* x and double* b.
- *****     For example call to this function, see mult(Vector* x, Vector* b)
  ***** indptr()
  *****     Returns std::vector<int>& column pointer.  The ith element points to
  *****     the index of indices() corresponding to the first row to lie on 
@@ -759,6 +984,8 @@ namespace raptor
 
     }
 
+    void print();
+
     void copy(const COOMatrix* A);
     void copy(const CSRMatrix* A);
     void copy(const CSCMatrix* A);
@@ -767,17 +994,117 @@ namespace raptor
     void add_value(int row, int col, double value);
     void condense_rows();
     void condense_cols();
-    void apply_func( std::function<void(int, int, double)> func_ptr);
-    void apply_func( Vector& x, Vector& b, 
-            std::function<void(int, int, double, Vector&, Vector&)> func_ptr);
 
-    void mult(Vector& x, Vector& b);
-    void mult_T(Vector& x, Vector& b);
-    void mult_append(Vector& x, Vector& b);
-    void mult_append_neg(Vector& x, Vector& b);
-    void mult_append_T(Vector& x, Vector& b);
-    void mult_append_neg_T(Vector& x, Vector& b);
-    void residual(Vector& x, Vector& b, Vector& r);
+    template <typename T, typename U> void mult(T& x, U& b)
+    { 
+        Matrix::mult(x, b);
+    }
+    template <typename T, typename U> void mult_T(T& x, U& b)
+    { 
+        Matrix::mult_T(x, b);
+    }
+    template <typename T, typename U> void mult_append(T& x, U& b)
+    { 
+        Matrix::mult_append(x, b);
+    }
+    template <typename T, typename U> void mult_append_T(T& x, U& b)
+    { 
+        Matrix::mult_append_T(x, b);
+    }
+    template <typename T, typename U> void mult_append_neg(T& x, U& b)
+    { 
+        Matrix::mult_append_neg(x, b);
+    }
+    template <typename T, typename U> void mult_append_neg_T(T& x, U& b)
+    { 
+        Matrix::mult_append_neg_T(x, b);
+    }
+    template <typename T, typename U, typename V> void residual(T& x, U& b, V& r)
+    { 
+        Matrix::residual(x, b, r);
+    }
+
+    void mult(std::vector<double>& x, std::vector<double>& b)
+    {
+        for (int i = 0; i < n_rows; i++)
+            b[i] = 0.0;
+        mult_append(x, b);
+    }
+    void mult_T(std::vector<double>& x, std::vector<double>& b)
+    {
+        for (int i = 0; i < n_cols; i++)
+            b[i] = 0.0;
+
+        mult_append_T(x, b);
+    }
+    void mult_append(std::vector<double>& x, std::vector<double>& b)
+    { 
+        int start, end;
+        for (int i = 0; i < n_cols; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                b[idx2[j]] += vals[j] * x[i];
+            }
+        }
+    }
+    void mult_append_T(std::vector<double>& x, std::vector<double>& b)
+    {
+        int start, end;
+        for (int i = 0; i < n_cols; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                b[i] += vals[j] * x[idx2[j]];
+            }
+        }
+    }
+    void mult_append_neg(std::vector<double>& x, std::vector<double>& b)
+    {
+        int start, end;
+        for (int i = 0; i < n_cols; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                b[idx2[j]] -= vals[j] * x[i];
+            }
+        }
+    }
+    void mult_append_neg_T(std::vector<double>& x, std::vector<double>& b)
+    {
+        int start, end;
+        for (int i = 0; i < n_cols; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                b[i] -= vals[j] * x[idx2[j]];
+            }
+        }
+    }
+    void residual(std::vector<double>& x, std::vector<double>& b, std::vector<double>& r)
+    {
+        for (int i = 0; i < n_rows; i++)
+            r[i] = b[i];
+
+        int start, end;
+        for (int i = 0; i < n_cols; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                r[idx2[j]] -= vals[j] * x[i];
+            }
+        }
+    }
 
     CSRMatrix* mult(const CSRMatrix* B);
     CSRMatrix* mult(const CSCMatrix* B);

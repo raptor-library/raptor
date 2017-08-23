@@ -65,7 +65,7 @@ namespace raptor
         **************************************************************/
         ParVector(index_t glbl_n, int lcl_n, index_t first_lcl)
         {
-            set_size(glbl_n, lcl_n, first_lcl);
+            resize(glbl_n, lcl_n, first_lcl);
         }
 
         /**************************************************************
@@ -87,12 +87,12 @@ namespace raptor
         {
         }
 
-        void set_size(index_t glbl_n, int lcl_n, index_t first_lcl)
+        void resize(index_t glbl_n, int lcl_n, index_t first_lcl)
         {
             global_n = glbl_n;
             local_n = lcl_n;
             first_local = first_lcl;
-            local.set_size(local_n);
+            local.resize(local_n);
         }
 
         /**************************************************************
@@ -165,9 +165,9 @@ namespace raptor
         **************************************************************/
         data_t norm(index_t p);
 
-        Vector& communicate(CommPkg* comm_pkg, MPI_Comm comm = MPI_COMM_WORLD);
+        std::vector<double>& communicate(CommPkg* comm_pkg, MPI_Comm comm = MPI_COMM_WORLD);
         void init_comm(CommPkg* comm_pkg, MPI_Comm comm = MPI_COMM_WORLD);
-        Vector& complete_comm(CommPkg* comm_pkg);
+        std::vector<double>& complete_comm(CommPkg* comm_pkg);
 
 
         Vector local;

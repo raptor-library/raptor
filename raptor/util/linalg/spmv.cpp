@@ -43,7 +43,7 @@ void ParMatrix::mult(ParVector& x, ParVector& b)
     }
 
     // Wait for Isends and Irecvs to complete
-    Vector& x_tmp = x.complete_comm(comm);
+    std::vector<double>& x_tmp = x.complete_comm(comm);
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -74,7 +74,7 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b)
     }
 
     // Wait for Isends and Irecvs to complete
-    Vector& x_tmp = x.complete_comm(tap_comm);
+    std::vector<double>& x_tmp = x.complete_comm(tap_comm);
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -154,7 +154,7 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r)
     }
 
     // Wait for Isends and Irecvs to complete
-    Vector& x_tmp = x.complete_comm(comm);
+    std::vector<double>& x_tmp = x.complete_comm(comm);
 
     // Multiply remaining columns, appending the negative
     // result to previous solution in b (b -= ...)
@@ -188,7 +188,7 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r)
     }
 
     // Wait for Isends and Irecvs to complete
-    Vector& x_tmp = x.complete_comm(tap_comm);
+    std::vector<double>& x_tmp = x.complete_comm(tap_comm);
 
     // Multiply remaining columns, appending the negative
     // result to previous solution in b (b -= ...)

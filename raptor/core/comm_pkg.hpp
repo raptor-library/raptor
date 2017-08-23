@@ -51,7 +51,7 @@ namespace raptor
         CSRMatrix* communicate_T(std::vector<int>& rowptr, 
                 std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD){}
-        virtual Vector& get_recv_buffer() = 0;
+        virtual std::vector<double>& get_recv_buffer() = 0;
         int find_proc_col_starts(const int first_local_col, 
                 const int last_local_col,
                 const int global_num_cols, 
@@ -75,7 +75,6 @@ namespace raptor
                 std::vector<int>& send_ptr,
                 std::vector<int>& send_indices);
         
-        bool topo_aware;
     };
 
 
@@ -132,7 +131,6 @@ namespace raptor
         **************************************************************/
         ParComm(int _key = 0)
         {
-            topo_aware = false;
 
             key = _key;
             send_data = new CommData();
@@ -163,8 +161,6 @@ namespace raptor
                 int _key = 9999,
                 MPI_Comm comm = MPI_COMM_WORLD)
         {
-            topo_aware = false;
-
             // Get MPI Information
             int rank, num_procs;
             MPI_Comm_rank(comm, &rank);
@@ -237,7 +233,7 @@ namespace raptor
             MPI_Request barrier_request;
 	    if (recv_data->num_msgs)
 	    {
-            	MPI_Testall(recv_data->num_msgs, recv_data->requests, &finished,
+            	MPI_Testall(recv_data->num_msgs, recv_data->requests.data(), &finished,
                         MPI_STATUSES_IGNORE);
                 while (!finished)
                 {
@@ -254,7 +250,7 @@ namespace raptor
                         }
                         send_data->add_msg(proc, count, recvbuf);
                     }
-                    MPI_Testall(recv_data->num_msgs, recv_data->requests, &finished,
+                    MPI_Testall(recv_data->num_msgs, recv_data->requests.data(), &finished,
                             MPI_STATUSES_IGNORE);
                 }
 	    }
@@ -312,7 +308,7 @@ namespace raptor
                 std::vector<int>& col_indices, std::vector<double>& values,
                 MPI_Comm comm, CommData* send_comm, CommData* recv_comm);
 
-        Vector& get_recv_buffer()
+        std::vector<double>& get_recv_buffer()
         {
             return recv_data->buffer;
         }
@@ -376,8 +372,6 @@ namespace raptor
 
         TAPComm()
         {
-            topo_aware = true;
-
             local_S_par_comm = new ParComm(2345);
             local_R_par_comm = new ParComm(3456);
             local_L_par_comm = new ParComm(4567);
@@ -412,8 +406,6 @@ namespace raptor
                 const int local_num_cols,
                 MPI_Comm comm = MPI_COMM_WORLD)
         {
-            topo_aware = true;
-
             // Get MPI Information
             int rank, num_procs;
             MPI_Comm_rank(comm, &rank);
@@ -533,7 +525,7 @@ namespace raptor
             if (recv_size)
             {
                 // Want a single recv buffer local_R and local_L par_comms
-                recv_buffer.set_size(recv_size);
+                recv_buffer.resize(recv_size);
                 orig_to_R.resize(recv_size, -1);
                 orig_to_L.resize(recv_size, -1);
 
@@ -575,15 +567,11 @@ namespace raptor
         **************************************************************/
         TAPComm(ParComm* orig_comm)
         {
-            topo_aware = true;
-
             //TODO -- Write this constructor
         }
 
         TAPComm(TAPComm* tap_comm)
         {
-            topo_aware = true;
-
             global_par_comm = new ParComm(tap_comm->global_par_comm);
             local_S_par_comm = new ParComm(tap_comm->local_S_par_comm);
             local_R_par_comm = new ParComm(tap_comm->local_R_par_comm);
@@ -593,10 +581,10 @@ namespace raptor
             num_nodes = tap_comm->num_nodes;
             rank_ordering = tap_comm->rank_ordering;
 
-            int recv_size = tap_comm->recv_buffer.size;
+            int recv_size = tap_comm->recv_buffer.size();
             if (recv_size)
             {
-                recv_buffer.set_size(recv_size);
+                recv_buffer.resize(recv_size);
                 if (tap_comm->L_to_orig.size())
                 {
                     L_to_orig.resize(tap_comm->L_to_orig.size());
@@ -671,7 +659,7 @@ namespace raptor
         std::pair<CSRMatrix*, CSRMatrix*> communicate_T(std::vector<int>& rowptr, 
                 std::vector<int>& col_indices, std::vector<double>& values, 
                 MPI_Comm comm = MPI_COMM_WORLD);
-        Vector& get_recv_buffer()
+        std::vector<double>& get_recv_buffer()
         {
             return recv_buffer;
         }
@@ -681,7 +669,7 @@ namespace raptor
         ParComm* local_R_par_comm;
         ParComm* local_L_par_comm;
         ParComm* global_par_comm;
-        Vector recv_buffer;
+        std::vector<double> recv_buffer;
         std::vector<int> L_to_orig;
         std::vector<int> R_to_orig;
         std::vector<int> orig_to_L;

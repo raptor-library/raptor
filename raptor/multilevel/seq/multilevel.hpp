@@ -34,9 +34,9 @@ namespace raptor
                 levels.push_back(new Level());
                 levels[0]->A = new CSRMatrix(Af);
                 levels[0]->A->sort();
-                levels[0]->x.set_size(Af->n_rows);
-                levels[0]->b.set_size(Af->n_rows);
-                levels[0]->tmp.set_size(Af->n_rows);
+                levels[0]->x.resize(Af->n_rows);
+                levels[0]->b.resize(Af->n_rows);
+                levels[0]->tmp.resize(Af->n_rows);
 
                 double* level_B = new data_t[Af->n_rows];
                 if (B_ptr)
@@ -139,9 +139,9 @@ namespace raptor
 		        levels[level_ctr]->A->sort();
 
                 // Resize vectors to equal shape of A
-                levels[level_ctr]->x.set_size(levels[level_ctr]->A->n_rows);
-                levels[level_ctr]->b.set_size(levels[level_ctr]->A->n_rows);
-                levels[level_ctr]->tmp.set_size(levels[level_ctr]->A->n_rows);
+                levels[level_ctr]->x.resize(levels[level_ctr]->A->n_rows);
+                levels[level_ctr]->b.resize(levels[level_ctr]->A->n_rows);
+                levels[level_ctr]->tmp.resize(levels[level_ctr]->A->n_rows);
                 
                 return R;
             }
@@ -160,12 +160,12 @@ namespace raptor
                     char trans = 'N'; //No transpose
                     int nhrs = 1; // Number of right hand sides
                     int info; // result
-                    double b_data[b.size];
-                    for (int i = 0; i < b.size; i++)
+                    double b_data[b.size()];
+                    for (int i = 0; i < b.size(); i++)
                         b_data[i] = b.data()[i];
                     dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
                             LU_permute.data(), b_data, &coarse_n, &info);
-                    for (int i = 0; i < b.size; i++)
+                    for (int i = 0; i < b.size(); i++)
                         x.data()[i] = b_data[i];
                 }
                 else
@@ -190,7 +190,7 @@ namespace raptor
                 levels[0]->b.copy(rhs);
 
                 // Iterate until convergence or max iterations
-                Vector resid(rhs.size);
+                Vector resid(rhs.size());
                 levels[0]->A->residual(levels[0]->x, levels[0]->b, resid);
 //                if (fabs(b_norm) > zero_tol)
                 {

@@ -16,8 +16,6 @@
 namespace raptor
 {
     // Forward Declaration
-    class Vector;
-
 class CommData
 {
 public:
@@ -71,12 +69,12 @@ public:
 
         if (num_msgs)
         {
-            requests = new MPI_Request[num_msgs];
+            requests.resize(num_msgs);
         }
 
         if (size_msgs)
         {
-            buffer.set_size(size_msgs);
+            buffer.resize(size_msgs);
         }
     }
 
@@ -87,10 +85,6 @@ public:
     **************************************************************/
     ~CommData()
     {
-        if (num_msgs)
-        {
-            delete[] requests;
-        }
     };
 
     void add_msg(int proc,
@@ -134,8 +128,8 @@ public:
     {
         if (num_msgs)
         {
-            requests = new MPI_Request[num_msgs];
-            buffer.set_size(size_msgs);
+            requests.resize(num_msgs);
+            buffer.resize(size_msgs);
         }
     }
 
@@ -144,8 +138,8 @@ public:
     std::vector<int> procs;
     std::vector<int> indptr;
     std::vector<int> indices;
-    MPI_Request* requests;
-    Vector buffer;
+    std::vector<MPI_Request> requests;
+    std::vector<double> buffer;
 };
 }
 #endif

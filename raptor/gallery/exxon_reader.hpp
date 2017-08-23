@@ -427,7 +427,7 @@ void exxon_vector_reader(char* folder, char* fname, char* suffix,
 
     int local_size = (last_block_row - first_block_row + 1) * block_size;
     x.local_n = local_size;
-    x.local.size = local_size;
+    x.local.num_values = local_size;
     x.first_local = first_local;
     if (local_size)
     {
@@ -487,7 +487,7 @@ void exxon_pressure_vector_reader(char* folder, char* fname, char* suffix,
 
     int local_size = last_block_row - first_block_row + 1;
     x.local_n = local_size;
-    x.local.size = local_size;
+    x.local.num_values = local_size;
     x.first_local = first_local;
     if (local_size)
     {

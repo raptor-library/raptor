@@ -54,7 +54,7 @@ public:
     **************************************************************/
     Vector(int len)
     {
-        set_size(len);
+        resize(len);
     }
 
     /**************************************************************
@@ -64,13 +64,13 @@ public:
     **************************************************************/
     Vector()
     {
-        size = 0;
+        num_values = 0;
     }
 
-    void set_size(int len)
+    void resize(int len)
     {
         values.resize(len);
-        size = len;
+        num_values = len;
     }
 
     /**************************************************************
@@ -177,10 +177,18 @@ public:
     ***** data_t*
     *****    Pointer to values of vector
     **************************************************************/
-    data_t* data();
+    data_t* data()
+    {
+        return values.data();
+    }
+
+    index_t size()
+    {
+        return num_values;
+    }
 
     std::vector<data_t> values;
-    index_t size;
+    index_t num_values;
 };
 
 }

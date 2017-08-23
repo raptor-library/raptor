@@ -11,12 +11,55 @@ using namespace raptor;
 ***** Print the nonzeros in the matrix, as well as the row
 ***** and column according to each nonzero
 **************************************************************/
-void Matrix::print()
+void COOMatrix::print()
 {
-    apply_func([] (int row, int col, double val)
+    int row, col;
+    double val;
+
+    for (int i = 0; i < nnz; i++)
+    {
+        row = idx1[i];
+        col = idx2[i];
+        val = vals[i];
+
+        printf("A[%d][%d] = %e\n", row, col, val);
+    }
+}
+void CSRMatrix::print()
+{
+    int col, start, end;
+    double val;
+
+    for (int row = 0; row < n_rows; row++)
+    {
+        start = idx1[row];
+        end = idx1[row+1];
+        for (int j = start; j < end; j++)
         {
+            col = idx2[j];
+            val = vals[j];
+
             printf("A[%d][%d] = %e\n", row, col, val);
-        });
+        }
+    }
+}
+void CSCMatrix::print()
+{
+    int row, start, end;
+    double val;
+
+    for (int col = 0; col < n_cols; col++)
+    {
+        start = idx1[col];
+        end = idx1[col+1];
+        for (int j = start; j < end; j++)
+        {
+            row = idx2[j];
+            val = vals[j];
+
+            printf("A[%d][%d] = %e\n", row, col, val);
+        }
+    }
 }
 
 /**************************************************************
@@ -351,61 +394,6 @@ void COOMatrix::sort()
         }
     }
 }
-
-/**************************************************************
-*****  COOMatrix Apply Function
-**************************************************************
-***** Apply function, passed as a paramter, to every nonzero
-***** in the COO Matrix.
-*****
-***** Parameters
-***** -------------
-***** func_ptr : std::function<void(int, int, double)>
-*****    Function that should be applied to every nonzero in 
-*****    matrix.  This function needs to know only the row,
-*****    column, and value of every nonzero.
-**************************************************************/
-void COOMatrix::apply_func(std::function<void(int, int, double)> func_ptr)
-{
-    for (int i = 0; i < nnz; i++)
-    {
-        int row = idx1[i];
-        int col = idx2[i];
-        double val = vals[i];
-        func_ptr(row, col, val);
-    }
-} 
-
-/**************************************************************
-*****  COOMatrix Apply Function
-**************************************************************
-***** Apply function, passed as a paramter, to every nonzero
-***** in the COO Matrix.  For an example, look at the method mult.
-*****
-***** Parameters
-***** -------------
-***** func_ptr : std::function<void(int, int, double, double*, double*)>
-*****    Function that should be applied to every nonzero in 
-*****    matrix.  This function needs to know the row,
-*****    column, and value of every nonzero, as well as the two
-*****    double* values passed as arguments.
-***** xd : double* 
-*****    Array of doubles that are used in function
-***** bd : double*
-*****    Array of doubles that are used in function
-**************************************************************/
-void COOMatrix::apply_func(Vector& xd, Vector& bd, 
-        std::function<void(int, int, double, Vector&, Vector&)> func_ptr)
-{
-    for (int i = 0; i < nnz; i++)
-    {
-        int row = idx1[i];
-        int col = idx2[i];
-        double val = vals[i];
-        func_ptr(row, col, val, xd, bd);
-    }
-}   
-
 
 /**************************************************************
 *****  CSRMatrix Add Value
@@ -766,65 +754,6 @@ void CSRMatrix::sort()
         }
     }
 }
-
-/**************************************************************
-*****  CSRMatrix Apply Function
-**************************************************************
-***** Apply function, passed as a paramter, to every nonzero
-***** in the CSR Matrix.
-*****
-***** Parameters
-***** -------------
-***** func_ptr : std::function<void(int, int, double)>
-*****    Function that should be applied to every nonzero in 
-*****    matrix.  This function needs to know only the row,
-*****    column, and value of every nonzero.
-**************************************************************/
-void CSRMatrix::apply_func(std::function<void(int, int, double)> func_ptr)
-{
-    for (int i = 0; i < n_rows; i++)
-    {
-        int row_start = idx1[i];
-        int row_end = idx1[i+1];
-        for (int j = row_start; j < row_end; j++)
-        {
-            func_ptr(i, idx2[j], vals[j]);
-        }
-    }
-}
-
-/**************************************************************
-*****  CSRMatrix Apply Function
-**************************************************************
-***** Apply function, passed as a paramter, to every nonzero
-***** in the CSR Matrix.  For an example, look at the method mult.
-*****
-***** Parameters
-***** -------------
-***** func_ptr : std::function<void(int, int, double, double*, double*)>
-*****    Function that should be applied to every nonzero in 
-*****    matrix.  This function needs to know the row,
-*****    column, and value of every nonzero, as well as the two
-*****    double* values passed as arguments.
-***** xd : double* 
-*****    Array of doubles that are used in function
-***** bd : double*
-*****    Array of doubles that are used in function
-**************************************************************/
-void CSRMatrix::apply_func(Vector& xd, Vector& bd, 
-        std::function<void(int, int, double, Vector&, Vector&)> func_ptr)
-{
-    for (int i = 0; i < n_rows; i++)
-    {
-        int row_start = idx1[i];
-        int row_end = idx1[i+1];
-        for (int j = row_start; j < row_end; j++)
-        {
-            func_ptr(i, idx2[j], vals[j], xd, bd);
-        }
-    }
-}  
-
 
 /**************************************************************
 *****  CSCMatrix Add Value
@@ -1194,63 +1123,5 @@ void CSCMatrix::sort()
         }
     }
 }
-
-/**************************************************************
-*****  CSCMatrix Apply Function
-**************************************************************
-***** Apply function, passed as a paramter, to every nonzero
-***** in the CSC Matrix.
-*****
-***** Parameters
-***** -------------
-***** func_ptr : std::function<void(int, int, double)>
-*****    Function that should be applied to every nonzero in 
-*****    matrix.  This function needs to know only the row,
-*****    column, and value of every nonzero.
-**************************************************************/
-void CSCMatrix::apply_func(std::function<void(int, int, double)> func_ptr)
-{
-    for (int i = 0; i < n_cols; i++)
-    {
-        int col_start = idx1[i];
-        int col_end = idx1[i+1];
-        for (int j = col_start; j < col_end; j++)
-        {
-            func_ptr(idx2[j], i, vals[j]);
-        }
-    }
-}
-
-/**************************************************************
-*****  CSCMatrix Apply Function
-**************************************************************
-***** Apply function, passed as a paramter, to every nonzero
-***** in the CSC Matrix.  For an example, look at the method mult.
-*****
-***** Parameters
-***** -------------
-***** func_ptr : std::function<void(int, int, double, double*, double*)>
-*****    Function that should be applied to every nonzero in 
-*****    matrix.  This function needs to know the row,
-*****    column, and value of every nonzero, as well as the two
-*****    double* values passed as arguments.
-***** xd : double* 
-*****    Array of doubles that are used in function
-***** bd : double*
-*****    Array of doubles that are used in function
-**************************************************************/
-void CSCMatrix::apply_func(Vector& xd, Vector& bd, 
-        std::function<void(int, int, double, Vector&, Vector&)> func_ptr)
-{
-    for (int i = 0; i < n_cols; i++)
-    {
-        int col_start = idx1[i];
-        int col_end = idx1[i+1];
-        for (int j = col_start; j < col_end; j++)
-        {
-            func_ptr(idx2[j], i, vals[j], xd, bd);
-        }
-    }
-}  
 
 

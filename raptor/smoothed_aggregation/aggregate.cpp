@@ -215,13 +215,15 @@ int ParCSRMatrix::maximal_independent_set(std::vector<int>& local_states,
             if (comm->send_data->num_msgs)
             {
                 MPI_Waitall(comm->send_data->num_msgs, 
-                        comm->send_data->requests, MPI_STATUSES_IGNORE);
+                        comm->send_data->requests.data(), 
+                        MPI_STATUSES_IGNORE);
             }
 
             if (comm->recv_data->num_msgs)
             {
                 MPI_Waitall(comm->recv_data->num_msgs, 
-                        comm->recv_data->requests, MPI_STATUSES_IGNORE);
+                        comm->recv_data->requests.data(), 
+                        MPI_STATUSES_IGNORE);
             }
         }
     }
@@ -261,13 +263,15 @@ int ParCSRMatrix::maximal_independent_set(std::vector<int>& local_states,
             if (comm->send_data->num_msgs)
             {
                 MPI_Waitall(comm->send_data->num_msgs, 
-                        comm->send_data->requests, MPI_STATUSES_IGNORE);
+                        comm->send_data->requests.data(), 
+                        MPI_STATUSES_IGNORE);
             }
 
             if (comm->recv_data->num_msgs)
             {
                 MPI_Waitall(comm->recv_data->num_msgs, 
-                        comm->recv_data->requests, MPI_STATUSES_IGNORE);
+                        comm->recv_data->requests.data(), 
+                        MPI_STATUSES_IGNORE);
             }
         }
         MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
@@ -371,13 +375,15 @@ ParCSRMatrix* ParCSRMatrix::aggregate()
     if (comm->send_data->num_msgs)
     {
         MPI_Waitall(comm->send_data->num_msgs, 
-                comm->send_data->requests, MPI_STATUSES_IGNORE);
+                comm->send_data->requests.data(), 
+                MPI_STATUSES_IGNORE);
     }
 
     if (comm->recv_data->num_msgs)
     {
         MPI_Waitall(comm->recv_data->num_msgs,
-                comm->recv_data->requests, MPI_STATUSES_IGNORE);
+                comm->recv_data->requests.data(), 
+                MPI_STATUSES_IGNORE);
     }    
     
     // Go through each row of S... if local_states[i] >= 0, coarse_col[i] =
@@ -462,13 +468,13 @@ ParCSRMatrix* ParCSRMatrix::aggregate()
     if (comm->send_data->num_msgs)
     {
         MPI_Waitall(comm->send_data->num_msgs, 
-                comm->send_data->requests, MPI_STATUSES_IGNORE);
+                comm->send_data->requests.data(), MPI_STATUSES_IGNORE);
     }
 
     if (comm->recv_data->num_msgs)
     {
         MPI_Waitall(comm->recv_data->num_msgs,
-                comm->recv_data->requests, MPI_STATUSES_IGNORE);
+                comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
     }  
 
 

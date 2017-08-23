@@ -649,52 +649,27 @@ void ParComm::communicate(data_t* values, MPI_Comm comm)
 
 void ParComm::init_comm(data_t* values, MPI_Comm comm)
 {
-    if (send_data->num_msgs)
+    int start, end;
+    int proc, idx;
+    for (int i = 0; i < send_data->num_msgs; i++)
     {
-        int send_start;
-        int send_end;
-        int proc;
-
-        std::vector<int>& procs = send_data->procs;
-        std::vector<int>& indptr = send_data->indptr;
-        std::vector<int>& indices = send_data->indices;
-        double* buffer = send_data->buffer.data();
-        MPI_Request* requests = send_data->requests;
-
-        // Add local data to buffer, and send to appropriate procs
-        for (int i = 0; i < send_data->num_msgs; i++)
+        proc = send_data->procs[i];
+        start = send_data->indptr[i];
+        end = send_data->indptr[i+1];
+        for (int j = start; j < end; j++)
         {
-            proc = procs[i];
-            send_start = indptr[i];
-            send_end = indptr[i+1];
-            for (int j = send_start; j < send_end; j++)
-            {
-                buffer[j] = values[indices[j]];
-            }
-            MPI_Isend(&(buffer[send_start]), send_end - send_start,
-                    MPI_DATA_T, proc, 0, comm, &(requests[i]));
+            send_data->buffer[j] = values[send_data->indices[j]];
         }
+        MPI_Isend(&(send_data->buffer[start]), end - start, MPI_DATA_T,
+                proc, key, comm, &(send_data->requests[i]));
     }
-
-    if (recv_data->num_msgs)
+    for (int i = 0; i < recv_data->num_msgs; i++)
     {
-        int recv_start;
-        int recv_end;
-        int proc;
-
-        std::vector<int>& procs = recv_data->procs;
-        std::vector<int>& indptr = recv_data->indptr;
-        double* buffer = recv_data->buffer.data();
-        MPI_Request* requests = recv_data->requests;
-
-        for (int i = 0; i < recv_data->num_msgs; i++)
-        {
-            proc = procs[i];
-            recv_start = indptr[i];
-            recv_end = indptr[i+1];
-            MPI_Irecv(&(buffer[recv_start]), recv_end - recv_start, 
-                    MPI_DATA_T, proc, 0, comm, &(requests[i]));
-        }
+        proc = recv_data->procs[i];
+        start = recv_data->indptr[i];
+        end = recv_data->indptr[i+1];
+        MPI_Irecv(&(recv_data->buffer[start]), end - start, MPI_DATA_T,
+                proc, key, comm, &(recv_data->requests[i]));
     }
 }
 
@@ -702,12 +677,12 @@ void ParComm::complete_comm()
 {
     if (send_data->num_msgs)
     {
-        MPI_Waitall(send_data->num_msgs, send_data->requests, MPI_STATUS_IGNORE);
+        MPI_Waitall(send_data->num_msgs, send_data->requests.data(), MPI_STATUS_IGNORE);
     }
 
     if (recv_data->num_msgs)
     {
-        MPI_Waitall(recv_data->num_msgs, recv_data->requests, MPI_STATUS_IGNORE);
+        MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUS_IGNORE);
     }
 }
 
@@ -741,23 +716,23 @@ void TAPComm::complete_comm()
     // Redistributing recvd inter-node values
     local_R_par_comm->init_comm(G_vals, local_comm);
     local_R_par_comm->complete_comm();
-    Vector& R_recv = local_R_par_comm->recv_data->buffer;
+    std::vector<double>& R_recv = local_R_par_comm->recv_data->buffer;
 
-    Vector& L_recv = local_L_par_comm->recv_data->buffer;
+    std::vector<double>& L_recv = local_L_par_comm->recv_data->buffer;
 
     // Add values from L_recv and R_recv to appropriate positions in 
     // Vector recv
     int idx;
-    for (int i = 0; i < R_recv.size; i++)
+    for (int i = 0; i < R_recv.size(); i++)
     {
         idx = R_to_orig[i];
-        recv_buffer.values[idx] = R_recv.values[i];
+        recv_buffer[idx] = R_recv[i];
     }
 
-    for (int i = 0; i < L_recv.size; i++)
+    for (int i = 0; i < L_recv.size(); i++)
     {
         idx = L_to_orig[i];
-        recv_buffer.values[idx] = L_recv.values[i];
+        recv_buffer[idx] = L_recv[i];
     }
 }
 
@@ -885,11 +860,11 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
     // Wait for communication to complete
     if (recv_comm->num_msgs)
     {
-        MPI_Waitall(recv_comm->num_msgs, recv_comm->requests, MPI_STATUS_IGNORE);
+        MPI_Waitall(recv_comm->num_msgs, recv_comm->requests.data(), MPI_STATUS_IGNORE);
     }
     if (send_comm->num_msgs)
     {
-        MPI_Waitall(send_comm->num_msgs, send_comm->requests, MPI_STATUS_IGNORE);
+        MPI_Waitall(send_comm->num_msgs, send_comm->requests.data(), MPI_STATUS_IGNORE);
     }
 
     // Allocate Matrix Space
@@ -975,11 +950,11 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
 
     if (recv_comm->num_msgs)
     {
-        MPI_Waitall(nrecvs, recv_comm->requests, MPI_STATUSES_IGNORE);
+        MPI_Waitall(nrecvs, recv_comm->requests.data(), MPI_STATUSES_IGNORE);
     }
     if (send_comm->num_msgs)
     {
-        MPI_Waitall(nsends, send_comm->requests, MPI_STATUSES_IGNORE);
+        MPI_Waitall(nsends, send_comm->requests.data(), MPI_STATUSES_IGNORE);
     }
 
     // Add recvd values to matrix

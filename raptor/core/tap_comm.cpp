@@ -517,7 +517,7 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
     if (local_R_par_comm->recv_data->num_msgs)
     {
         MPI_Waitall(local_R_par_comm->recv_data->num_msgs,
-                local_R_par_comm->recv_data->requests,
+                local_R_par_comm->recv_data->requests.data(),
                 MPI_STATUS_IGNORE);
     }
 }
@@ -703,7 +703,7 @@ void TAPComm::form_global_par_comm(const std::vector<int>& send_procs,
     if (global_par_comm->recv_data->num_msgs)
     {
         MPI_Waitall(global_par_comm->recv_data->num_msgs,
-                global_par_comm->recv_data->requests,
+                global_par_comm->recv_data->requests.data(),
                 MPI_STATUS_IGNORE);
     }
 }
@@ -840,7 +840,7 @@ void TAPComm::form_local_S_par_comm(const int first_local_col)
     if (local_S_par_comm->recv_data->num_msgs)
     {
         MPI_Waitall(local_S_par_comm->recv_data->num_msgs,
-                local_S_par_comm->recv_data->requests,
+                local_S_par_comm->recv_data->requests.data(),
                 MPI_STATUS_IGNORE);
     }
 }
@@ -966,7 +966,8 @@ void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
     if (local_L_par_comm->recv_data->num_msgs)
     {
         MPI_Waitall(local_L_par_comm->recv_data->num_msgs,
-                local_L_par_comm->recv_data->requests, MPI_STATUSES_IGNORE);
+                local_L_par_comm->recv_data->requests.data(), 
+                MPI_STATUSES_IGNORE);
     }
 }
 
