@@ -75,6 +75,7 @@ public:
         if (size_msgs)
         {
             buffer.resize(size_msgs);
+            int_buffer.resize(size_msgs);
         }
     }
 
@@ -130,6 +131,7 @@ public:
         {
             requests.resize(num_msgs);
             buffer.resize(size_msgs);
+            int_buffer.resize(size_msgs);
         }
     }
 
@@ -140,6 +142,7 @@ public:
     std::vector<int> indices;
     std::vector<MPI_Request> requests;
     std::vector<double> buffer;
+    std::vector<int> int_buffer;
 };
 }
 #endif

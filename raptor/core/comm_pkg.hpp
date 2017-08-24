@@ -47,13 +47,19 @@ namespace raptor
         {
         }
 
-        virtual std::vector<double>& complete_comm(){}
 
         std::vector<double>& communicate(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD);
         void init_comm(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD);
+
         virtual std::vector<double>& communicate(data_t* values, 
                 MPI_Comm comm = MPI_COMM_WORLD) = 0;
+        virtual std::vector<int>& communicate(int* values, 
+                MPI_Comm comm = MPI_COMM_WORLD) = 0;
         virtual void init_comm(data_t* values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
+        virtual void init_comm(int* values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
+        virtual std::vector<double>& complete_comm() = 0;
+        virtual std::vector<int>& complete_int_comm() = 0;
+
         virtual CSRMatrix* communicate(std::vector<int>& rowptr, 
                 std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
@@ -62,6 +68,7 @@ namespace raptor
                 std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) {}
         virtual std::vector<double>& get_recv_buffer() = 0;
+        virtual std::vector<int>& get_int_recv_buffer() = 0;
         
     };
 
@@ -282,8 +289,11 @@ namespace raptor
         }
 
         std::vector<double>& communicate(data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
+        std::vector<int>& communicate(int* values, MPI_Comm comm = MPI_COMM_WORLD);
         void init_comm(data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
+        void init_comm(int* values, MPI_Comm comm = MPI_COMM_WORLD);
         std::vector<double>& complete_comm();
+        std::vector<int>& complete_int_comm();
         CSRMatrix* communicate(std::vector<int>& rowptr, std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
         CSRMatrix* communicate_T(std::vector<int>& rowptr, std::vector<int>& col_indices,
@@ -308,6 +318,10 @@ namespace raptor
         std::vector<double>& get_recv_buffer()
         {
             return recv_data->buffer;
+        }
+        std::vector<int>& get_int_recv_buffer()
+        {
+            return recv_data->int_buffer;
         }
 
         int key;
@@ -519,6 +533,7 @@ namespace raptor
             {
                 // Want a single recv buffer local_R and local_L par_comms
                 recv_buffer.resize(recv_size);
+                int_recv_buffer.resize(recv_size);
                 orig_to_R.resize(recv_size, -1);
                 orig_to_L.resize(recv_size, -1);
 
@@ -578,6 +593,7 @@ namespace raptor
             if (recv_size)
             {
                 recv_buffer.resize(recv_size);
+                int_recv_buffer.resize(recv_size);
                 if (tap_comm->L_to_orig.size())
                 {
                     L_to_orig.resize(tap_comm->L_to_orig.size());
@@ -645,16 +661,24 @@ namespace raptor
 
         // Class Methods
         std::vector<double>& communicate(data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
+        std::vector<int>& communicate(int* values, MPI_Comm comm = MPI_COMM_WORLD);
         void init_comm(data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
+        void init_comm(int* values, MPI_Comm comm = MPI_COMM_WORLD);
         std::vector<double>& complete_comm();
+        std::vector<int>& complete_int_comm();
         CSRMatrix* communicate(std::vector<int>& rowptr, std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
         std::pair<CSRMatrix*, CSRMatrix*> communicate_T(std::vector<int>& rowptr, 
                 std::vector<int>& col_indices, std::vector<double>& values, 
                 MPI_Comm comm = MPI_COMM_WORLD);
+
         std::vector<double>& get_recv_buffer()
         {
             return recv_buffer;
+        }
+        std::vector<int>& get_int_recv_buffer()
+        {
+            return int_recv_buffer;
         }
 
         std::vector<double>& communicate(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD)
@@ -678,6 +702,7 @@ namespace raptor
         ParComm* local_L_par_comm;
         ParComm* global_par_comm;
         std::vector<double> recv_buffer;
+        std::vector<int> int_recv_buffer;
         std::vector<int> L_to_orig;
         std::vector<int> R_to_orig;
         std::vector<int> orig_to_L;

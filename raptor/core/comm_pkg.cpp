@@ -64,6 +64,11 @@ std::vector<double>& ParComm::communicate(data_t* values, MPI_Comm comm)
     init_comm(values, comm);
     return complete_comm();
 }
+std::vector<int>& ParComm::communicate(int* values, MPI_Comm comm)
+{
+    init_comm(values, comm);
+    return complete_int_comm();
+}
 
 void ParComm::init_comm(data_t* values, MPI_Comm comm)
 {
@@ -90,6 +95,31 @@ void ParComm::init_comm(data_t* values, MPI_Comm comm)
                 proc, key, comm, &(recv_data->requests[i]));
     }
 }
+void ParComm::init_comm(int* values, MPI_Comm comm)
+{
+    int start, end;
+    int proc, idx;
+    for (int i = 0; i < send_data->num_msgs; i++)
+    {
+        proc = send_data->procs[i];
+        start = send_data->indptr[i];
+        end = send_data->indptr[i+1];
+        for (int j = start; j < end; j++)
+        {
+            send_data->int_buffer[j] = values[send_data->indices[j]];
+        }
+        MPI_Isend(&(send_data->int_buffer[start]), end - start, MPI_INT,
+                proc, key, comm, &(send_data->requests[i]));
+    }
+    for (int i = 0; i < recv_data->num_msgs; i++)
+    {
+        proc = recv_data->procs[i];
+        start = recv_data->indptr[i];
+        end = recv_data->indptr[i+1];
+        MPI_Irecv(&(recv_data->int_buffer[start]), end - start, MPI_INT,
+                proc, key, comm, &(recv_data->requests[i]));
+    }
+}
 
 std::vector<double>& ParComm::complete_comm()
 {
@@ -103,13 +133,32 @@ std::vector<double>& ParComm::complete_comm()
         MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUS_IGNORE);
     }
 
-    return recv_data->buffer;
+    return get_recv_buffer();
+}
+std::vector<int>& ParComm::complete_int_comm()
+{
+    if (send_data->num_msgs)
+    {
+        MPI_Waitall(send_data->num_msgs, send_data->requests.data(), MPI_STATUS_IGNORE);
+    }
+
+    if (recv_data->num_msgs)
+    {
+        MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUS_IGNORE);
+    }
+
+    return get_int_recv_buffer();
 }
 
 std::vector<double>& TAPComm::communicate(data_t* values, MPI_Comm comm)
 {
     init_comm(values, comm);
     return complete_comm();
+}
+std::vector<int>& TAPComm::communicate(int* values, MPI_Comm comm)
+{
+    init_comm(values, comm);
+    return complete_int_comm();
 }
 
 void TAPComm::init_comm(data_t* values, MPI_Comm comm)
@@ -122,6 +171,21 @@ void TAPComm::init_comm(data_t* values, MPI_Comm comm)
     local_S_par_comm->init_comm(values, local_comm);
     local_S_par_comm->complete_comm();
     data_t* S_vals = local_S_par_comm->recv_data->buffer.data();
+
+    // Begin inter-node communication 
+    global_par_comm->init_comm(S_vals, comm);
+}
+
+void TAPComm::init_comm(int* values, MPI_Comm comm)
+{
+    // Messages with origin and final destination on node
+    local_L_par_comm->init_comm(values, local_comm);
+    local_L_par_comm->complete_int_comm();
+
+    // Initial redistribution among node
+    local_S_par_comm->init_comm(values, local_comm);
+    local_S_par_comm->complete_int_comm();
+    int* S_vals = local_S_par_comm->recv_data->int_buffer.data();
 
     // Begin inter-node communication 
     global_par_comm->init_comm(S_vals, comm);
@@ -155,7 +219,38 @@ std::vector<double>& TAPComm::complete_comm()
         recv_buffer[idx] = L_recv[i];
     }
 
-    return recv_buffer;
+    return get_recv_buffer();
+}
+
+std::vector<int>& TAPComm::complete_int_comm()
+{
+    // Complete inter-node communication
+    global_par_comm->complete_int_comm();
+    int* G_vals = global_par_comm->recv_data->int_buffer.data();
+
+    // Redistributing recvd inter-node values
+    local_R_par_comm->init_comm(G_vals, local_comm);
+    local_R_par_comm->complete_int_comm();
+    std::vector<int>& R_recv = local_R_par_comm->recv_data->int_buffer;
+
+    std::vector<int>& L_recv = local_L_par_comm->recv_data->int_buffer;
+
+    // Add values from L_recv and R_recv to appropriate positions in 
+    // Vector recv
+    int idx;
+    for (int i = 0; i < R_recv.size(); i++)
+    {
+        idx = R_to_orig[i];
+        int_recv_buffer[idx] = R_recv[i];
+    }
+
+    for (int i = 0; i < L_recv.size(); i++)
+    {
+        idx = L_to_orig[i];
+        int_recv_buffer[idx] = L_recv[i];
+    }
+
+    return get_int_recv_buffer();
 }
 
 CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr, 
