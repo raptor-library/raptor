@@ -8,7 +8,6 @@
 
 #include "types.hpp"
 #include "vector.hpp"
-#include "comm_pkg.hpp"
 
 /**************************************************************
  *****   ParVector Class
@@ -42,9 +41,6 @@
  **************************************************************/
 namespace raptor
 {
-    class ParComm;
-    class TAPComm;
-
     class ParVector
     {
     public:
@@ -164,11 +160,6 @@ namespace raptor
         *****    Determines which p-norm to calculate
         **************************************************************/
         data_t norm(index_t p);
-
-        std::vector<double>& communicate(CommPkg* comm_pkg, MPI_Comm comm = MPI_COMM_WORLD);
-        void init_comm(CommPkg* comm_pkg, MPI_Comm comm = MPI_COMM_WORLD);
-        std::vector<double>& complete_comm(CommPkg* comm_pkg);
-
 
         Vector local;
         int global_n;

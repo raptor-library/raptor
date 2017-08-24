@@ -268,12 +268,6 @@ void ParCOOMatrix::copy(ParCOOMatrix* A)
     off_proc = new COOMatrix((COOMatrix*) A->off_proc);
 }
 
-COOMatrix* ParCOOMatrix::communicate(CommPkg* comm)
-{
-    printf("Not implemented for COO Matrices.\n");
-    return NULL;
-}
-
 void ParCSRMatrix::copy(ParCSRMatrix* A)
 {
     ParMatrix::copy(A);
@@ -321,49 +315,6 @@ void ParCSRMatrix::copy(ParCOOMatrix* A)
 
     on_proc = new CSRMatrix((COOMatrix*) A->on_proc);
     off_proc = new CSRMatrix((COOMatrix*) A->off_proc);
-}
-
-CSRMatrix* ParCSRMatrix::communicate(CommPkg* comm)
-{
-    int start, end;
-    int ctr;
-    int global_col;
-
-    int nnz = on_proc->nnz + off_proc->nnz;
-    std::vector<int> rowptr(local_num_rows + 1);
-    std::vector<int> col_indices;
-    std::vector<double> values;
-    if (nnz)
-    {
-        col_indices.resize(nnz);
-        values.resize(nnz);
-    }
-
-    ctr = 0;
-    rowptr[0] = ctr;
-    for (int i = 0; i < local_num_rows; i++)
-    {
-        start = on_proc->idx1[i];
-        end = on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            global_col = on_proc->idx2[j] + partition->first_local_col;
-            col_indices[ctr] = global_col;
-            values[ctr++] = on_proc->vals[j];
-        }
-
-        start = off_proc->idx1[i];
-        end = off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            global_col = off_proc_column_map[off_proc->idx2[j]];
-            col_indices[ctr] = global_col;
-            values[ctr++] = off_proc->vals[j];
-        }
-        rowptr[i+1] = ctr;
-    }
-
-    return comm->communicate(rowptr, col_indices, values, MPI_COMM_WORLD);
 }
 
 void ParCSCMatrix::copy(ParCSRMatrix* A)
@@ -415,92 +366,6 @@ void ParCSCMatrix::copy(ParCOOMatrix* A)
 
     on_proc = new CSCMatrix((COOMatrix*) A->on_proc);
     off_proc = new CSCMatrix((COOMatrix*) A->off_proc);
-}
-
-CSCMatrix* ParCSCMatrix::communicate(CommPkg* comm)
-{
-    int start, end;
-    int ctr, row, idx;
-    int global_col;
-
-    int nnz = on_proc->nnz + off_proc->nnz;
-    std::vector<int> rowptr(local_num_rows + 1);
-    std::vector<int> col_indices;
-    std::vector<double> values;
-    if (nnz)
-    {
-        col_indices.resize(nnz);
-        values.resize(nnz);
-    }
-    std::vector<int> row_ctr;
-    if (local_num_rows)
-    {
-        row_ctr.resize(local_num_rows, 0);
-    }
-
-    // Determine nnz per row
-    for (int i = 0; i < local_num_cols; i++)
-    {
-        start = on_proc->idx1[i];
-        end = on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            row_ctr[on_proc->idx2[j]]++;
-        }
-    }
-    for (int i = 0; i < off_proc_num_cols; i++)
-    {
-        start = off_proc->idx1[i];
-        end = off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            row_ctr[off_proc->idx2[j]]++;
-        }
-    }
-
-    // Set rowptr values
-    rowptr[0] = 0;
-    for (int i = 0; i < local_num_rows; i++)
-    {
-        rowptr[i+1] = rowptr[i] + row_ctr[i];
-        row_ctr[i] = 0;
-    }
-
-    // Set col_indices / values
-    for (int i = 0; i < local_num_cols; i++)
-    {
-        global_col = i + partition->first_local_col;
-        start = on_proc->idx1[i];
-        end = on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            row = on_proc->idx2[j];
-            idx = rowptr[row] + row_ctr[row]++;
-            col_indices[idx] = global_col;
-            values[idx] = on_proc->vals[j];
-        }
-    }
-    for (int i = 0; i < off_proc_num_cols; i++)
-    {
-        global_col = off_proc_column_map[i];
-        start = off_proc->idx1[i];
-        end = off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            row = off_proc->idx2[j];
-            idx = rowptr[row] + row_ctr[row]++;
-            col_indices[idx] = global_col;
-            values[idx] = off_proc->vals[j];
-        }
-    }
-
-    CSRMatrix* recv_mat_csr = comm->communicate(rowptr, 
-            col_indices, values, MPI_COMM_WORLD);
-    recv_mat_csr->condense_cols();
-    CSCMatrix* recv_mat = new CSCMatrix(recv_mat_csr);
-    delete recv_mat_csr;
-
-    return recv_mat;
 }
 
 

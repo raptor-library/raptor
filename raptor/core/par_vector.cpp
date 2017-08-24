@@ -113,20 +113,4 @@ data_t ParVector::norm(index_t p)
     return pow(result, 1./p);
 }
 
-std::vector<double>& ParVector::communicate(CommPkg* comm_pkg, MPI_Comm comm)
-{
-    comm_pkg->communicate(local.data(), comm);
-    return comm_pkg->get_recv_buffer();
-}
-
-void ParVector::init_comm(CommPkg* comm_pkg, MPI_Comm comm)
-{
-    comm_pkg->init_comm(local.data(), comm);
-}
-
-std::vector<double>& ParVector::complete_comm(CommPkg* comm_pkg)
-{
-    comm_pkg->complete_comm();
-    return comm_pkg->get_recv_buffer();
-}
 

@@ -5,10 +5,64 @@
 
 using namespace raptor;
 
-void ParComm::communicate(data_t* values, MPI_Comm comm)
+std::vector<double>& CommPkg::communicate(ParVector& v, MPI_Comm comm)
+{
+    init_comm(v.local.data(), comm);
+    return complete_comm();
+}
+
+void CommPkg::init_comm(ParVector& v, MPI_Comm comm)
+{
+    init_comm(v.local.data(), comm);
+}
+
+CSRMatrix* CommPkg::communicate(ParCSRMatrix* A, MPI_Comm comm)
+{
+    int start, end;
+    int ctr;
+    int global_col;
+
+    int nnz = A->on_proc->nnz + A->off_proc->nnz;
+    std::vector<int> rowptr(A->local_num_rows + 1);
+    std::vector<int> col_indices;
+    std::vector<double> values;
+    if (nnz)
+    {
+        col_indices.resize(nnz);
+        values.resize(nnz);
+    }
+
+    ctr = 0;
+    rowptr[0] = ctr;
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        start = A->on_proc->idx1[i];
+        end = A->on_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            global_col = A->on_proc->idx2[j] + A->partition->first_local_col;
+            col_indices[ctr] = global_col;
+            values[ctr++] = A->on_proc->vals[j];
+        }
+
+        start = A->off_proc->idx1[i];
+        end = A->off_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            global_col = A->off_proc_column_map[A->off_proc->idx2[j]];
+            col_indices[ctr] = global_col;
+            values[ctr++] = A->off_proc->vals[j];
+        }
+        rowptr[i+1] = ctr;
+    }
+
+    return communicate(rowptr, col_indices, values, comm);
+}
+
+std::vector<double>& ParComm::communicate(data_t* values, MPI_Comm comm)
 {
     init_comm(values, comm);
-    complete_comm();
+    return complete_comm();
 }
 
 void ParComm::init_comm(data_t* values, MPI_Comm comm)
@@ -37,7 +91,7 @@ void ParComm::init_comm(data_t* values, MPI_Comm comm)
     }
 }
 
-void ParComm::complete_comm()
+std::vector<double>& ParComm::complete_comm()
 {
     if (send_data->num_msgs)
     {
@@ -48,12 +102,14 @@ void ParComm::complete_comm()
     {
         MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUS_IGNORE);
     }
+
+    return recv_data->buffer;
 }
 
-void TAPComm::communicate(data_t* values, MPI_Comm comm)
+std::vector<double>& TAPComm::communicate(data_t* values, MPI_Comm comm)
 {
     init_comm(values, comm);
-    complete_comm();
+    return complete_comm();
 }
 
 void TAPComm::init_comm(data_t* values, MPI_Comm comm)
@@ -71,7 +127,7 @@ void TAPComm::init_comm(data_t* values, MPI_Comm comm)
     global_par_comm->init_comm(S_vals, comm);
 }
 
-void TAPComm::complete_comm()
+std::vector<double>& TAPComm::complete_comm()
 {
     // Complete inter-node communication
     global_par_comm->complete_comm();
@@ -98,6 +154,8 @@ void TAPComm::complete_comm()
         idx = L_to_orig[i];
         recv_buffer[idx] = L_recv[i];
     }
+
+    return recv_buffer;
 }
 
 CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr, 

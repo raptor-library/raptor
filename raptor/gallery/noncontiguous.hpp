@@ -397,8 +397,7 @@ ParCSRMatrix* noncontiguous(ParCOOMatrix* A_coo, std::vector<int>& on_proc_colum
         }
     }
 
-    A_coo->comm = new ParComm(A_coo->off_proc_column_map, A_coo->first_local_row,
-            A_coo->first_local_col, A_coo->global_num_cols, A_coo->local_num_cols);
+    A_coo->comm = new ParComm(A_coo->partition, A_coo->off_proc_column_map);
     ParCSRMatrix* A = new ParCSRMatrix(A_coo);
 
     // Sort rows, removing duplicate entries and moving diagonal 

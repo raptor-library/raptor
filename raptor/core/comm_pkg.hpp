@@ -7,6 +7,8 @@
 #include "comm_data.hpp"
 #include "matrix.hpp"
 #include "partition.hpp"
+#include "par_vector.hpp"
+#include "par_matrix.hpp"
 
 #define STANDARD_PPN 4
 #define STANDARD_PROC_LAYOUT 1
@@ -31,6 +33,8 @@
  **************************************************************/
 namespace raptor
 {
+    class ParCSRMatrix;
+
     class CommPkg
     {
       public:
@@ -43,15 +47,20 @@ namespace raptor
         {
         }
 
-        virtual void communicate(data_t* values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
+        virtual std::vector<double>& complete_comm(){}
+
+        std::vector<double>& communicate(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD);
+        void init_comm(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD);
+        virtual std::vector<double>& communicate(data_t* values, 
+                MPI_Comm comm = MPI_COMM_WORLD) = 0;
         virtual void init_comm(data_t* values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
-        virtual void complete_comm() = 0;
         virtual CSRMatrix* communicate(std::vector<int>& rowptr, 
                 std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
+        CSRMatrix* communicate(ParCSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD);
         CSRMatrix* communicate_T(std::vector<int>& rowptr, 
                 std::vector<int>& col_indices,
-                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD){}
+                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) {}
         virtual std::vector<double>& get_recv_buffer() = 0;
         
     };
@@ -272,9 +281,9 @@ namespace raptor
             delete recv_data;
         }
 
-        void communicate(data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
+        std::vector<double>& communicate(data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
         void init_comm(data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
-        void complete_comm();
+        std::vector<double>& complete_comm();
         CSRMatrix* communicate(std::vector<int>& rowptr, std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
         CSRMatrix* communicate_T(std::vector<int>& rowptr, std::vector<int>& col_indices,
@@ -282,6 +291,19 @@ namespace raptor
         CSRMatrix* communication_helper(std::vector<int>& rowptr, 
                 std::vector<int>& col_indices, std::vector<double>& values,
                 MPI_Comm comm, CommData* send_comm, CommData* recv_comm);
+
+        std::vector<double>& communicate(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD)
+        {
+            return CommPkg::communicate(v, comm);
+        }
+        CSRMatrix* communicate(ParCSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
+        {
+            return CommPkg::communicate(A, comm);
+        }
+        std::vector<double>& init_comm(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD)
+        {
+            CommPkg::init_comm(v, comm);
+        }
 
         std::vector<double>& get_recv_buffer()
         {
@@ -622,9 +644,9 @@ namespace raptor
         int get_global_proc(int node, int local_proc);
 
         // Class Methods
-        void communicate(data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
+        std::vector<double>& communicate(data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
         void init_comm(data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
-        void complete_comm();
+        std::vector<double>& complete_comm();
         CSRMatrix* communicate(std::vector<int>& rowptr, std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
         std::pair<CSRMatrix*, CSRMatrix*> communicate_T(std::vector<int>& rowptr, 
@@ -634,6 +656,21 @@ namespace raptor
         {
             return recv_buffer;
         }
+
+        std::vector<double>& communicate(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD)
+        {
+            return CommPkg::communicate(v, comm);
+        }
+        CSRMatrix* communicate(ParCSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
+        {
+            return CommPkg::communicate(A, comm);
+        }
+        std::vector<double>& init_comm(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD)
+        {
+            CommPkg::init_comm(v, comm);
+        }
+
+
 
         // Class Attributes
         ParComm* local_S_par_comm;

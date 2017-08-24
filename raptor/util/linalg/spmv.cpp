@@ -32,7 +32,7 @@ void ParMatrix::mult(ParVector& x, ParVector& b)
 
     // Initialize Isends and Irecvs to communicate
     // values of x
-    x.init_comm(comm);
+    comm->init_comm(x);
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
@@ -42,7 +42,7 @@ void ParMatrix::mult(ParVector& x, ParVector& b)
     }
 
     // Wait for Isends and Irecvs to complete
-    std::vector<double>& x_tmp = x.complete_comm(comm);
+    std::vector<double>& x_tmp = comm->complete_comm();
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -62,7 +62,7 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b)
 
     // Initialize Isends and Irecvs to communicate
     // values of x
-    x.init_comm(tap_comm);
+    tap_comm->init_comm(x);
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
@@ -72,7 +72,7 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b)
     }
 
     // Wait for Isends and Irecvs to complete
-    std::vector<double>& x_tmp = x.complete_comm(tap_comm);
+    std::vector<double>& x_tmp = tap_comm->complete_comm();
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -138,7 +138,7 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r)
 
     // Initialize Isends and Irecvs to communicate
     // values of x
-    x.init_comm(comm);
+    comm->init_comm(x);
 
     // Set the values in r equal to the values in b
     r.copy(&b);
@@ -151,7 +151,7 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r)
     }
 
     // Wait for Isends and Irecvs to complete
-    std::vector<double>& x_tmp = x.complete_comm(comm);
+    std::vector<double>& x_tmp = comm->complete_comm();
 
     // Multiply remaining columns, appending the negative
     // result to previous solution in b (b -= ...)
@@ -171,7 +171,7 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r)
 
     // Initialize Isends and Irecvs to communicate
     // values of x
-    x.init_comm(tap_comm);
+    tap_comm->init_comm(x);
 
     // Set the values in r equal to the values in b
     r.copy(&b);
@@ -184,7 +184,7 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r)
     }
 
     // Wait for Isends and Irecvs to complete
-    std::vector<double>& x_tmp = x.complete_comm(tap_comm);
+    std::vector<double>& x_tmp = tap_comm->complete_comm();
 
     // Multiply remaining columns, appending the negative
     // result to previous solution in b (b -= ...)

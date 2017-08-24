@@ -42,8 +42,7 @@ int main(int argc, char* argv[])
 
     ParVector b_tap = ParVector(A->global_num_rows, A->local_num_rows, 
             A->first_local_row);
-    A->tap_comm = new TAPComm(A->off_proc_column_map, A->first_local_row, 
-            A->first_local_col, A->global_num_cols, A->local_num_cols);
+    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
     A->tap_mult(x, b_tap);
     for (int i = 0; i < A->local_num_rows; i++)
     {
