@@ -438,8 +438,6 @@ namespace raptor
             std::vector<int> on_node_to_off_proc;
             std::vector<int> off_node_to_off_proc;
             std::vector<int> recv_nodes;
-            std::vector<int> send_procs;
-            std::vector<int> recv_procs;
             std::vector<int> orig_procs;
             std::vector<int> global_send_orig_procs;
             std::vector<int> node_to_local_proc;
@@ -502,11 +500,7 @@ namespace raptor
                     recv_nodes, orig_procs);
 
             // Find global processes with which rank communications
-            find_global_comm_procs(orig_procs, send_procs, recv_procs);
-
-            // Form inter-node communication
-            form_global_par_comm(send_procs, recv_procs, orig_procs, 
-                    global_send_orig_procs);
+            find_global_comm_procs(orig_procs, global_send_orig_procs);
 
             // Form local_S_par_comm: initial distribution of values among local
             // processes, before inter-node communication
@@ -636,11 +630,6 @@ namespace raptor
                 const std::vector<int>& off_node_col_to_node,
                 std::vector<int>& recv_nodes, std::vector<int>& orig_procs);
         void find_global_comm_procs(std::vector<int>& recv_nodes,
-                std::vector<int>& send_procs, 
-                std::vector<int>& recv_procs);
-        void form_global_par_comm(const std::vector<int>& send_procs,
-                const std::vector<int>& recv_procs, 
-                const std::vector<int>& orig_procs,
                 std::vector<int>& global_send_orig_procs);
         void form_local_S_par_comm(const int first_local_col);
         void adjust_send_indices(const int first_local_col);
