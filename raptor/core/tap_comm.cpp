@@ -345,7 +345,7 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
 ***** recv_procs : std::vector<int>&
 *****    Returns with all off_node process from which rank recvs
 **************************************************************/
-void TAPComm::find_global_comm_procs(const std::vector<int>& recv_nodes,
+void TAPComm::find_global_comm_procs(std::vector<int>& orig_procs,
         std::vector<int>& send_procs, std::vector<int>& recv_procs)
 {
     int rank;
@@ -357,15 +357,20 @@ void TAPComm::find_global_comm_procs(const std::vector<int>& recv_nodes,
     int proc, node;
     int finished, msg_avail;
     int recvbuf;
-    int n_recv_nodes;
     int n_send_procs;
+    int recv_size;
+    int idx, node_idx;
     MPI_Status recv_status;
     MPI_Request barrier_request;
 
     std::vector<int> node_list(num_nodes, 0);
     std::vector<int> sendbuf;
+    std::vector<int> sendbuf_sizes;
     std::vector<int> send_sizes(PPN);
     std::vector<int> send_displs(PPN+1);
+    std::vector<int> node_sizes(num_nodes, 0);
+    std::vector<int> send_proc_sizes;
+    std::vector<int> node_to_idx(num_nodes, 0);
     std::vector<MPI_Request> requests;
 
 
@@ -374,22 +379,55 @@ void TAPComm::find_global_comm_procs(const std::vector<int>& recv_nodes,
     // global_par_comm->recv_procs and create global_par_comm->recv
     //
 
-    n_recv_nodes = recv_nodes.size();
-    requests.resize(n_recv_nodes, MPI_REQUEST_NULL);
+    requests.resize(num_nodes, MPI_REQUEST_NULL);
     n_recvs = 0;
 
-    int ctr = 0;
-    for (int i = 0; i < n_recv_nodes; i++)
+    for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
     {
-        if (ctr++ % PPN == local_rank)
+        proc = orig_procs[i];
+        node = get_node(proc);
+        node_sizes[node]++;
+    }
+
+    recv_size = 0;
+    for (int i = 0; i < num_nodes; i++)
+    {
+        if (node_sizes[i])
         {
-            node = recv_nodes[i];
-            proc = get_global_proc(node, local_rank);
-            MPI_Issend(&(recv_nodes[i]), 1, MPI_INT, proc, 9876, MPI_COMM_WORLD,
+            recv_size += node_sizes[i];
+            node_to_idx[i] = global_par_comm->recv_data->procs.size();
+  //          global_par_comm->recv_data->indptr.push_back(recv_size);
+            global_par_comm->recv_data->procs.push_back(i);  // currently have node 
+  //          node_sizes[i] = 0;
+        }
+    }
+    global_par_comm->recv_data->num_msgs = global_par_comm->recv_data->procs.size();
+    global_par_comm->recv_data->size_msgs = recv_size;
+
+//    global_par_comm->recv_data->indices.resize(recv_size);
+    for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
+    {
+//        proc = orig_procs[i];
+//        node = get_node(proc);
+//        node_idx = node_to_idx[node];
+//        idx = global_par_comm->recv_data->indptr[node_idx] + node_sizes[node]++;
+//        global_par_comm->recv_data->indices[idx] = i;
+    }
+//    global_par_comm->recv_data->finalize();
+
+
+    int ctr = 0;
+    for (int i = 0; i < num_nodes; i++)
+    {
+        if (node_sizes[i])
+        {
+            proc = get_global_proc(i, local_rank);
+            MPI_Issend(&(node_sizes[i]), 1, MPI_INT, proc, 9876, MPI_COMM_WORLD,
                     &(requests[n_recvs++]));
             
         }
     }
+
 
     if (n_recvs)
     {
@@ -403,6 +441,7 @@ void TAPComm::find_global_comm_procs(const std::vector<int>& recv_nodes,
                 MPI_Recv(&recvbuf, 1, MPI_INT, proc, 9876, MPI_COMM_WORLD, 
                         &recv_status);
                 sendbuf.push_back(proc);
+                sendbuf_sizes.push_back(recvbuf);
             }
             MPI_Testall(n_recvs, requests.data(), &finished, MPI_STATUSES_IGNORE);
         }    
@@ -417,6 +456,7 @@ void TAPComm::find_global_comm_procs(const std::vector<int>& recv_nodes,
             proc = recv_status.MPI_SOURCE;
             MPI_Recv(&recvbuf, 1, MPI_INT, proc, 9876, MPI_COMM_WORLD, &recv_status);
             sendbuf.push_back(proc);
+            sendbuf_sizes.push_back(recvbuf);
         }
         MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
     }
@@ -429,16 +469,46 @@ void TAPComm::find_global_comm_procs(const std::vector<int>& recv_nodes,
     {
         send_displs[i+1] = send_displs[i] + send_sizes[i];
     } 
-    send_procs.resize(send_displs[PPN]);
+    n_send_procs = send_displs[PPN];
+    send_procs.resize(n_send_procs);
+    send_proc_sizes.resize(n_send_procs);
     MPI_Allgatherv(sendbuf.data(), n_sends, MPI_INT, send_procs.data(), 
             send_sizes.data(), send_displs.data(), MPI_INT, local_comm);
+    MPI_Allgatherv(sendbuf_sizes.data(), n_sends, MPI_INT, send_proc_sizes.data(), 
+            send_sizes.data(), send_displs.data(), MPI_INT, local_comm);
 
-    n_send_procs = send_procs.size();
+    // Permute send_procs based on send_proc_sizes
+    std::vector<int> p(n_send_procs);
+    std::iota(p.begin(), p.end(), 0);
+    std::sort(p.begin(), p.end(), 
+            [&](const int lhs, const int rhs)
+            {
+                return send_proc_sizes[lhs] > send_proc_sizes[rhs];
+            });
+    std::vector<bool> done(n_send_procs);
+    for (int i = 0; i < n_send_procs; i++)
+    {
+        if (done[i]) continue;
+
+        done[i] = true;
+        int prev_j = i;
+        int j = p[i];
+        while (i != j)
+        {
+            std::swap(send_procs[prev_j], send_procs[j]);
+            std::swap(send_proc_sizes[prev_j], send_proc_sizes[j]);
+            done[j] = true;
+            prev_j = j; 
+            j = p[j];
+        }
+    }
+
 
     // Distribute send_procs across local procs
     n_sends = 0;
     for (int i = PPN - local_rank - 1; i < send_procs.size(); i += PPN)
     {
+        global_par_comm->send_data->procs.push_back(send_procs[i]);
         send_procs[n_sends++] = send_procs[i];
     }
     if (n_sends)
@@ -463,7 +533,10 @@ void TAPComm::find_global_comm_procs(const std::vector<int>& recv_nodes,
     {
         MPI_Probe(MPI_ANY_SOURCE, 6789, MPI_COMM_WORLD, &recv_status);
         proc = recv_status.MPI_SOURCE;
+        node = get_node(proc);
         MPI_Recv(&recvbuf, 1, MPI_INT, proc, 6789, MPI_COMM_WORLD, &recv_status);
+        idx = node_to_idx[node];
+        global_par_comm->recv_data->procs[idx] = proc;
         recv_procs.push_back(proc);
     }
 
@@ -509,18 +582,15 @@ void TAPComm::form_global_par_comm(const std::vector<int>& send_procs,
     // Send origin nodes of each column recvd in local_R_par_comm
     std::vector<int> node_sizes(num_nodes, 0);
     std::vector<int> node_recv_idx(num_nodes);
-    std::vector<int> node_recv_sizes;
-    std::vector<int> node_recv_displs(n_recv_procs + 1, 0);
-    std::vector<int> node_recv_indices;
     std::vector<int> node_recv_idx_orig_procs;
 
     if (n_recv_procs)
     {
-        node_recv_sizes.resize(n_recv_procs, 0);
+        global_par_comm->recv_data->indptr.resize(n_recv_procs + 1);
     }
     if (local_R_par_comm->send_data->size_msgs)
     {
-        node_recv_indices.resize(local_R_par_comm->send_data->size_msgs);
+        global_par_comm->recv_data->indices.resize(local_R_par_comm->send_data->size_msgs);
         node_recv_idx_orig_procs.resize(local_R_par_comm->send_data->size_msgs);
     }
 
@@ -534,13 +604,14 @@ void TAPComm::form_global_par_comm(const std::vector<int>& send_procs,
     }
     // Create TEMPORARY displs from recv node sizes
     // NEED TO REMOVE DUPLICATES
-    node_recv_displs[0] = 0;
     for (int i = 0; i < n_recv_procs; i++)
     {
         proc = recv_procs[i];
         node = get_node(proc);
         node_recv_idx[node] = i;
-        node_recv_displs[i+1] = node_recv_displs[i] + node_sizes[node];
+        global_par_comm->recv_data->indptr[i+1] = global_par_comm->recv_data->indptr[i] 
+            + node_sizes[node];
+        node_sizes[node] = 0;
     }
 
     // Sort global indices by node from which they are recvd
@@ -549,18 +620,20 @@ void TAPComm::form_global_par_comm(const std::vector<int>& send_procs,
         proc = orig_procs[i];
         node = get_node(proc);
         node_idx = node_recv_idx[node];
-        idx = node_recv_displs[node_idx] + node_recv_sizes[node_idx]++;
-        node_recv_indices[idx] = local_R_par_comm->send_data->indices[i];
+        idx = global_par_comm->recv_data->indptr[node_idx] + node_sizes[node]++;
+        global_par_comm->recv_data->indices[idx] = local_R_par_comm->send_data->indices[i];
         node_recv_idx_orig_procs[idx] = proc;
     }
 
     std::vector<int> send_buffer;
 
+    ctr = 0;
+    int ptr_ctr = 1;
     for (int i = 0; i < n_recv_procs; i++)
     {
         proc = recv_procs[i];
-        start = node_recv_displs[i];
-        end = node_recv_displs[i+1];
+        start = global_par_comm->recv_data->indptr[i];
+        end = global_par_comm->recv_data->indptr[i+1];
         size = end - start;
         if (size)
         {
@@ -571,7 +644,8 @@ void TAPComm::form_global_par_comm(const std::vector<int>& send_procs,
             std::sort(p.begin(), p.end(),
                     [&] (int i, int j)
                     {
-                        return node_recv_indices[i+start] < node_recv_indices[j+start];
+                        return global_par_comm->recv_data->indices[i+start] 
+                               < global_par_comm->recv_data->indices[j+start];
                     });
 
             // Sort node_recv_indices and node_recv_idx_orig_procs together
@@ -585,7 +659,8 @@ void TAPComm::form_global_par_comm(const std::vector<int>& send_procs,
                 int j = p[i];
                 while (i != j)
                 {
-                    std::swap(node_recv_indices[prev_j+start], node_recv_indices[j+start]);
+                    std::swap(global_par_comm->recv_data->indices[prev_j+start],
+                            global_par_comm->recv_data->indices[j+start]);
                     std::swap(node_recv_idx_orig_procs[prev_j+start], 
                             node_recv_idx_orig_procs[j+start]);
                     done[j] = true;
@@ -593,32 +668,31 @@ void TAPComm::form_global_par_comm(const std::vector<int>& send_procs,
                     j = p[j];
                 }
             }
+        }
 
-            // Add msg to global_par_comm->recv_data
-            int buffer[size];
-            int orig_proc_buffer[size];
-            ctr = 1;
-            buffer[0] = node_recv_indices[start];
-            orig_proc_buffer[0] = node_recv_idx_orig_procs[start];
-            for (int j = start+1; j < end; j++)
+        // Add msg to global_par_comm->recv_data
+        global_par_comm->recv_data->indices[ctr++] 
+                = global_par_comm->recv_data->indices[start];
+        send_buffer.push_back(global_par_comm->recv_data->indices[start]);
+        send_buffer.push_back(node_recv_idx_orig_procs[start]);
+        for (int j = start+1; j < end; j++)
+        {
+            if (global_par_comm->recv_data->indices[j] 
+                    != global_par_comm->recv_data->indices[j-1])
             {
-                if (node_recv_indices[j] != node_recv_indices[j-1])
-                {
-                    buffer[ctr] = node_recv_indices[j];
-                    orig_proc_buffer[ctr++] = node_recv_idx_orig_procs[j];
-                }
-            }
-            global_par_comm->recv_data->add_msg(proc, ctr, buffer);
-            for (int i = 0; i < ctr; i++)
-            {
-                send_buffer.push_back(buffer[i]);
-            }
-            for (int i = 0; i < ctr; i++)
-            {
-                send_buffer.push_back(orig_proc_buffer[i]);
+                global_par_comm->recv_data->indices[ctr++] 
+                    = global_par_comm->recv_data->indices[j];
+                send_buffer.push_back(global_par_comm->recv_data->indices[j]);
+                send_buffer.push_back(node_recv_idx_orig_procs[j]);
             }
         }
+        global_par_comm->recv_data->num_msgs++;
+        global_par_comm->recv_data->indptr[ptr_ctr++] = ctr;
+        // global_par_comm->recv_data->procs.push_back(proc);
     }
+    global_par_comm->recv_data->indices.resize(ctr);
+    global_par_comm->recv_data->num_msgs = global_par_comm->recv_data->procs.size();
+    global_par_comm->recv_data->size_msgs = global_par_comm->recv_data->indices.size();
     global_par_comm->recv_data->finalize();
 
     // Send recv indices to each recv proc along with the process of
@@ -643,13 +717,23 @@ void TAPComm::form_global_par_comm(const std::vector<int>& send_procs,
         MPI_Get_count(&recv_status, MPI_INT, &count);
         int recvbuf[count];
         MPI_Recv(recvbuf, count, MPI_INT, proc, 5432, MPI_COMM_WORLD, &recv_status);
-        global_par_comm->send_data->add_msg(proc, count/2, recvbuf);
         start = count / 2;
-        for (int i = start; i < count; i++)
+        //global_par_comm->send_data->procs.push_back(proc);
+        for (int j = 0; j < count; j += 2)
         {
-            global_send_orig_procs.push_back(get_local_proc(recvbuf[i]));
+           global_par_comm->send_data->indices.push_back(recvbuf[j]);
+           global_send_orig_procs.push_back(get_local_proc(recvbuf[j+1]));
+        }
+        global_par_comm->send_data->indptr.push_back(
+                global_par_comm->send_data->indices.size()); 
+        //global_par_comm->send_data->add_msg(proc, count/2, recvbuf);
+        for (int j = start; j < count; j++)
+        {
+        //    global_send_orig_procs.push_back(get_local_proc(recvbuf[j]));
         } 
     }
+    global_par_comm->send_data->num_msgs = global_par_comm->send_data->procs.size();
+    global_par_comm->send_data->size_msgs = global_par_comm->send_data->indices.size();
     global_par_comm->send_data->finalize();
 
     if (global_par_comm->recv_data->num_msgs)

@@ -502,7 +502,7 @@ namespace raptor
                     recv_nodes, orig_procs);
 
             // Find global processes with which rank communications
-            find_global_comm_procs(recv_nodes, send_procs, recv_procs);
+            find_global_comm_procs(orig_procs, send_procs, recv_procs);
 
             // Form inter-node communication
             form_global_par_comm(send_procs, recv_procs, orig_procs, 
@@ -635,7 +635,7 @@ namespace raptor
         void form_local_R_par_comm(const std::vector<int>& off_node_column_map,
                 const std::vector<int>& off_node_col_to_node,
                 std::vector<int>& recv_nodes, std::vector<int>& orig_procs);
-        void find_global_comm_procs(const std::vector<int>& recv_nodes,
+        void find_global_comm_procs(std::vector<int>& recv_nodes,
                 std::vector<int>& send_procs, 
                 std::vector<int>& recv_procs);
         void form_global_par_comm(const std::vector<int>& send_procs,
