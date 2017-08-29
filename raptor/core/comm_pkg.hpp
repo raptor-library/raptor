@@ -439,7 +439,6 @@ namespace raptor
             std::vector<int> off_node_to_off_proc;
             std::vector<int> recv_nodes;
             std::vector<int> orig_procs;
-            std::vector<int> global_send_orig_procs;
             std::vector<int> node_to_local_proc;
 
             // Map procs to nodes -- Topology Aware Portion
@@ -497,14 +496,14 @@ namespace raptor
 
             // Gather all nodes with which any local process must communication
             form_local_R_par_comm(off_node_column_map, off_node_col_to_node, 
-                    recv_nodes, orig_procs);
+                    orig_procs);
 
             // Find global processes with which rank communications
-            find_global_comm_procs(orig_procs, global_send_orig_procs);
+            form_global_par_comm(partition, orig_procs);
 
             // Form local_S_par_comm: initial distribution of values among local
             // processes, before inter-node communication
-            form_local_S_par_comm(partition->first_local_col);
+            form_local_S_par_comm(orig_procs);
 
             // Adjust send indices (currently global vector indices) to be index 
             // of global vector value from previous recv
@@ -628,10 +627,10 @@ namespace raptor
                 std::vector<int>& off_node_to_off_proc);
         void form_local_R_par_comm(const std::vector<int>& off_node_column_map,
                 const std::vector<int>& off_node_col_to_node,
-                std::vector<int>& recv_nodes, std::vector<int>& orig_procs);
-        void find_global_comm_procs(std::vector<int>& recv_nodes,
-                std::vector<int>& global_send_orig_procs);
-        void form_local_S_par_comm(const int first_local_col);
+                std::vector<int>& orig_procs);
+        void form_global_par_comm(const Partition* partition,
+                std::vector<int>& orig_procs);
+        void form_local_S_par_comm(std::vector<int>& orig_procs);
         void adjust_send_indices(const int first_local_col);
         void form_local_L_par_comm(const std::vector<int>& on_node_column_map,
                 const std::vector<int>& on_node_col_to_proc,
