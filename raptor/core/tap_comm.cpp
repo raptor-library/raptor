@@ -51,9 +51,10 @@ void TAPComm::split_off_proc_cols(const std::vector<int>& off_proc_column_map,
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-    rank_node = get_node(rank);
+    rank_node = topology->get_node(rank);
 
     // Reserve size in vectors
+
     on_node_column_map.reserve(off_proc_num_cols);
     on_node_col_to_proc.reserve(off_proc_num_cols);
     off_node_column_map.reserve(off_proc_num_cols);
@@ -62,12 +63,12 @@ void TAPComm::split_off_proc_cols(const std::vector<int>& off_proc_column_map,
     for (int i = 0; i < off_proc_num_cols; i++)
     {
         proc = off_proc_col_to_proc[i];
-        node = get_node(proc);
+        node = topology->get_node(proc);
         global_col = off_proc_column_map[i];
         if (node == rank_node)
         {
             on_node_column_map.push_back(global_col);
-            on_node_col_to_proc.push_back(get_local_proc(proc));
+            on_node_col_to_proc.push_back(topology->get_local_proc(proc));
             on_node_to_off_proc.push_back(i);
         }
         else
@@ -98,7 +99,7 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
         std::vector<int>& orig_procs)
 {
     int local_rank;
-    MPI_Comm_rank(local_comm, &local_rank);
+    MPI_Comm_rank(topology->local_comm, &local_rank);
 
     // Declare Variables
     int int_size = sizeof(int);
@@ -113,19 +114,19 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
     int recv_proc, recv_size;
     int count;
     int off_node_num_cols = off_node_column_map.size();
-    int N = num_nodes / int_size;
-    if (num_nodes % int_size)
+    int N = topology->num_nodes / int_size;
+    if (topology->num_nodes % int_size)
     {
         N++;
     }
     std::vector<int> tmp_recv_nodes(N, 0);
     std::vector<int> nodal_recv_nodes(N, 0);
-    std::vector<int> node_sizes(num_nodes, 0);
+    std::vector<int> node_sizes(topology->num_nodes, 0);
     std::vector<int> nodal_off_node_sizes;
     std::vector<int> node_to_local_proc;
-    std::vector<int> local_recv_procs(PPN, 0);
-    std::vector<int> local_recv_sizes(PPN, 0);
-    std::vector<int> local_send_procs(PPN);
+    std::vector<int> local_recv_procs(topology->PPN, 0);
+    std::vector<int> local_recv_sizes(topology->PPN, 0);
+    std::vector<int> local_send_procs(topology->PPN);
     std::vector<int> proc_idx;
     std::vector<int> off_node_col_to_lcl_proc;
     std::vector<int> send_buffer;
@@ -137,7 +138,7 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
     for (std::vector<int>::const_iterator it = off_node_col_to_proc.begin();
             it != off_node_col_to_proc.end(); ++it)
     {
-        node = get_node(*it);
+        node = topology->get_node(*it);
         int idx = node / int_size;
         int pos = node % int_size;
         tmp_recv_nodes[idx] |= 1 << pos;
@@ -147,7 +148,7 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
     // Allreduce among procs local to node to find nodes from which rank_node
     // recvs
     MPI_Allreduce(tmp_recv_nodes.data(), nodal_recv_nodes.data(), N, MPI_INT,
-            MPI_BOR, local_comm);
+            MPI_BOR, topology->local_comm);
 
     // Add nodes from which rank_node must recv to recv_nodes
     for (int i = 0; i < N; i++)
@@ -175,7 +176,7 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
             nodal_off_node_sizes[i] = node_sizes[node];
         }
         MPI_Allreduce(MPI_IN_PLACE, nodal_off_node_sizes.data(), num_recv_nodes, MPI_INT,
-                MPI_SUM, local_comm);
+                MPI_SUM, topology->local_comm);
 
         // Sort nodes, descending by msg size (find permutation)
         std::vector<int> p(num_recv_nodes);
@@ -207,12 +208,12 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
 
         // Map recv nodes to local processes
         local_proc = 0;
-        node_to_local_proc.resize(num_nodes);
+        node_to_local_proc.resize(topology->num_nodes);
         for (std::vector<int>::iterator it = recv_nodes.begin();
                 it != recv_nodes.end(); ++it)
         {
             node_to_local_proc[*it] = local_proc++ ;
-            if (local_proc >= PPN)
+            if (local_proc >= topology->PPN)
             {
                 local_proc = 0;
             }
@@ -232,7 +233,7 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
     for (int i = 0; i < off_node_num_cols; i++)
     {
         proc = off_node_col_to_proc[i];
-        node = get_node(proc);
+        node = topology->get_node(proc);
         local_proc = node_to_local_proc[node];
         local_recv_sizes[local_proc]++;
         off_node_col_to_lcl_proc[i] = local_proc;
@@ -240,8 +241,8 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
 
     // Create displs based on local_recv_sizes
     recv_size = 0;
-    std::vector<int> proc_to_idx(PPN);
-    for (int i = 0; i < PPN; i++)
+    std::vector<int> proc_to_idx(topology->PPN);
+    for (int i = 0; i < topology->PPN; i++)
     {
         if (local_recv_sizes[i])
         {
@@ -268,8 +269,8 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
 
     // On node communication-- scalable to do all reduce to find number of
     // local processes to send to :)
-    MPI_Allreduce(local_recv_procs.data(), local_send_procs.data(), PPN, MPI_INT,
-            MPI_SUM, local_comm);
+    MPI_Allreduce(local_recv_procs.data(), local_send_procs.data(), topology->PPN, MPI_INT,
+            MPI_SUM, topology->local_comm);
     local_num_sends = local_send_procs[local_rank];
 
     // Send recv_indices to each recv_proc along with their origin 
@@ -296,7 +297,7 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
             send_buffer[ctr++] = off_node_col_to_proc[idx];
         }
         MPI_Issend(&(send_buffer[start_ctr]), 2*(recv_end - recv_start),
-                MPI_INT, recv_proc, 6543, local_comm, 
+                MPI_INT, recv_proc, 6543, topology->local_comm, 
                 &(local_R_par_comm->recv_data->requests[i]));
         start_ctr = ctr;
     }
@@ -305,11 +306,11 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
     ctr = 0;
     for (int i = 0; i < local_num_sends; i++)
     {
-        MPI_Probe(MPI_ANY_SOURCE, 6543, local_comm, &recv_status);
+        MPI_Probe(MPI_ANY_SOURCE, 6543, topology->local_comm, &recv_status);
         MPI_Get_count(&recv_status, MPI_INT, &count);
         proc = recv_status.MPI_SOURCE;
         int recvbuf[count];
-        MPI_Recv(recvbuf, count, MPI_INT, proc, 6543, local_comm,
+        MPI_Recv(recvbuf, count, MPI_INT, proc, 6543, topology->local_comm,
                 &recv_status);
         local_R_par_comm->send_data->add_msg(proc, count / 2, recvbuf);
         start_ctr = count / 2;
@@ -346,13 +347,12 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
 ***** recv_procs : std::vector<int>&
 *****    Returns with all off_node process from which rank recvs
 **************************************************************/
-void TAPComm::form_global_par_comm(const Partition* partition,
-        std::vector<int>& orig_procs)
+void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
 {
     int rank;
     int local_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_rank(local_comm, &local_rank);
+    MPI_Comm_rank(topology->local_comm, &local_rank);
 
     int n_sends;
     int proc, node;
@@ -367,15 +367,15 @@ void TAPComm::form_global_par_comm(const Partition* partition,
     MPI_Status recv_status;
     MPI_Request barrier_request;
 
-    std::vector<int> node_list(num_nodes, 0);
+    std::vector<int> node_list(topology->num_nodes, 0);
     std::vector<int> sendbuf;
     std::vector<int> sendbuf_sizes;
     std::vector<int> send_procs;
-    std::vector<int> send_sizes(PPN);
-    std::vector<int> send_displs(PPN+1);
-    std::vector<int> node_sizes(num_nodes, 0);
+    std::vector<int> send_sizes(topology->PPN);
+    std::vector<int> send_displs(topology->PPN+1);
+    std::vector<int> node_sizes(topology->num_nodes, 0);
     std::vector<int> send_proc_sizes;
-    std::vector<int> node_to_idx(num_nodes, 0);
+    std::vector<int> node_to_idx(topology->num_nodes, 0);
     std::vector<int> node_recv_idx_orig_procs;
     std::vector<int> send_buffer;
 
@@ -388,13 +388,13 @@ void TAPComm::form_global_par_comm(const Partition* partition,
     for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
     {
         proc = orig_procs[i];
-        node = get_node(proc);
+        node = topology->get_node(proc);
         node_sizes[node]++;
     }
 
     // Form recv procs and indptr, based on node_sizes
     recv_size = 0;
-    for (int i = 0; i < num_nodes; i++)
+    for (int i = 0; i < topology->num_nodes; i++)
     {
         if (node_sizes[i])
         {
@@ -413,7 +413,7 @@ void TAPComm::form_global_par_comm(const Partition* partition,
     for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
     {
         proc = orig_procs[i];
-        node = get_node(proc);
+        node = topology->get_node(proc);
         node_idx = node_to_idx[node];
         idx = global_par_comm->recv_data->indptr[node_idx] + node_sizes[node]++;
         global_par_comm->recv_data->indices[idx] = local_R_par_comm->send_data->indices[i];
@@ -490,7 +490,7 @@ void TAPComm::form_global_par_comm(const Partition* partition,
     for (int i = 0; i < global_par_comm->recv_data->num_msgs; i++)
     {
         node = global_par_comm->recv_data->procs[i];
-        proc = get_global_proc(node, local_rank);
+        proc = topology->get_global_proc(node, local_rank);
         MPI_Issend(&(node_sizes[node]), 1, MPI_INT, proc, 9876, MPI_COMM_WORLD,
                 &(global_par_comm->recv_data->requests[i]));
     }
@@ -532,19 +532,19 @@ void TAPComm::form_global_par_comm(const Partition* partition,
 
     // Gather all procs that node must send to
     n_sends = sendbuf.size();
-    MPI_Allgather(&n_sends, 1, MPI_INT, send_sizes.data(), 1, MPI_INT, local_comm);
+    MPI_Allgather(&n_sends, 1, MPI_INT, send_sizes.data(), 1, MPI_INT, topology->local_comm);
     send_displs[0] = 0;
-    for (int i = 0; i < PPN; i++)
+    for (int i = 0; i < topology->PPN; i++)
     {
         send_displs[i+1] = send_displs[i] + send_sizes[i];
     } 
-    n_send_procs = send_displs[PPN];
+    n_send_procs = send_displs[topology->PPN];
     send_procs.resize(n_send_procs);
     send_proc_sizes.resize(n_send_procs);
     MPI_Allgatherv(sendbuf.data(), n_sends, MPI_INT, send_procs.data(), 
-            send_sizes.data(), send_displs.data(), MPI_INT, local_comm);
+            send_sizes.data(), send_displs.data(), MPI_INT, topology->local_comm);
     MPI_Allgatherv(sendbuf_sizes.data(), n_sends, MPI_INT, send_proc_sizes.data(), 
-            send_sizes.data(), send_displs.data(), MPI_INT, local_comm);
+            send_sizes.data(), send_displs.data(), MPI_INT, topology->local_comm);
 
     // Permute send_procs based on send_proc_sizes
     std::vector<int> p(n_send_procs);
@@ -574,7 +574,7 @@ void TAPComm::form_global_par_comm(const Partition* partition,
 
     // Distribute send_procs across local procs
     n_sends = 0;
-    for (int i = PPN - local_rank - 1; i < send_procs.size(); i += PPN)
+    for (int i = topology->PPN - local_rank - 1; i < send_procs.size(); i += topology->PPN)
     {
         global_par_comm->send_data->procs.push_back(send_procs[i]);
     }
@@ -593,7 +593,7 @@ void TAPComm::form_global_par_comm(const Partition* partition,
     {
         MPI_Probe(MPI_ANY_SOURCE, 6789, MPI_COMM_WORLD, &recv_status);
         proc = recv_status.MPI_SOURCE;
-        node = get_node(proc);
+        node = topology->get_node(proc);
         MPI_Recv(&recvbuf, 1, MPI_INT, proc, 6789, MPI_COMM_WORLD, &recv_status);
         idx = node_to_idx[node];
         global_par_comm->recv_data->procs[idx] = proc;
@@ -641,7 +641,7 @@ void TAPComm::form_global_par_comm(const Partition* partition,
         for (int j = 0; j < count; j += 2)
         {
            global_par_comm->send_data->indices.push_back(recvbuf[j]);
-           orig_procs.push_back(partition->topology->get_local_proc(recvbuf[j+1]));
+           orig_procs.push_back(topology->get_local_proc(recvbuf[j+1]));
         }
         global_par_comm->send_data->indptr.push_back(
                 global_par_comm->send_data->indices.size()); 
@@ -675,7 +675,7 @@ void TAPComm::form_local_S_par_comm(std::vector<int>& orig_procs)
     int rank;
     int local_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_rank(local_comm, &local_rank);
+    MPI_Comm_rank(topology->local_comm, &local_rank);
 
     // Find local_col_starts for all procs local to node, and sort
     int start, end;
@@ -684,10 +684,10 @@ void TAPComm::form_local_S_par_comm(std::vector<int>& orig_procs)
     int ctr, idx;
     int size;
 
-    std::vector<int> local_procs(PPN);
-    std::vector<int> proc_sizes(PPN, 0);
-    std::vector<int> recv_procs(PPN, 0);
-    std::vector<int> proc_to_idx(PPN);
+    std::vector<int> local_procs(topology->PPN);
+    std::vector<int> proc_sizes(topology->PPN, 0);
+    std::vector<int> recv_procs(topology->PPN, 0);
+    std::vector<int> proc_to_idx(topology->PPN);
 
     if (global_par_comm->send_data->num_msgs)
     {
@@ -703,12 +703,12 @@ void TAPComm::form_local_S_par_comm(std::vector<int>& orig_procs)
     }
 
     // Reduce recv_procs to how many msgs rank will recv
-    MPI_Allreduce(MPI_IN_PLACE, recv_procs.data(), PPN, MPI_INT, MPI_SUM, local_comm);
+    MPI_Allreduce(MPI_IN_PLACE, recv_procs.data(), topology->PPN, MPI_INT, MPI_SUM, topology->local_comm);
     int n_recvs = recv_procs[local_rank];
 
     // Form local_S_par_comm recv_data
     int recv_size = 0;
-    for (int i = 0; i < PPN; i++)
+    for (int i = 0; i < topology->PPN; i++)
     {
         if (proc_sizes[i])
         {
@@ -766,7 +766,7 @@ void TAPComm::form_local_S_par_comm(std::vector<int>& orig_procs)
         start = local_S_par_comm->recv_data->indptr[i];
         end = local_S_par_comm->recv_data->indptr[i+1];
         MPI_Issend(&(local_S_par_comm->recv_data->indices[start]), 
-                end - start, MPI_INT, proc, 4321, local_comm,
+                end - start, MPI_INT, proc, 4321, topology->local_comm,
                 &(local_S_par_comm->recv_data->requests[i]));
     }
 
@@ -775,11 +775,11 @@ void TAPComm::form_local_S_par_comm(std::vector<int>& orig_procs)
     MPI_Status recv_status;
     for (int i = 0; i < n_recvs; i++)
     {
-        MPI_Probe(MPI_ANY_SOURCE, 4321, local_comm, &recv_status);
+        MPI_Probe(MPI_ANY_SOURCE, 4321, topology->local_comm, &recv_status);
         MPI_Get_count(&recv_status, MPI_INT, &count);
         proc = recv_status.MPI_SOURCE;        
         int recvbuf[count];
-        MPI_Recv(recvbuf, count, MPI_INT, proc, 4321, local_comm, &recv_status);
+        MPI_Recv(recvbuf, count, MPI_INT, proc, 4321, topology->local_comm, &recv_status);
         for (int j = 0; j < count; j++)
         {
             local_S_par_comm->send_data->indices.push_back(recvbuf[j]);
@@ -860,7 +860,7 @@ void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
         const std::vector<int>& on_node_col_to_proc, const int first_local_col)
 {
     int local_rank;
-    MPI_Comm_rank(local_comm, &local_rank);
+    MPI_Comm_rank(topology->local_comm, &local_rank);
 
     int on_node_num_cols = on_node_column_map.size();
     int prev_proc, prev_idx;
@@ -868,7 +868,7 @@ void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
     int proc, start, end;
     int count;
     MPI_Status recv_status;
-    std::vector<int> recv_procs(PPN, 0);
+    std::vector<int> recv_procs(topology->PPN, 0);
 
     if (on_node_num_cols)
     {
@@ -890,8 +890,8 @@ void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
         local_L_par_comm->recv_data->finalize();
     }
 
-    MPI_Allreduce(MPI_IN_PLACE, recv_procs.data(), PPN, MPI_INT, MPI_SUM, 
-            local_comm);
+    MPI_Allreduce(MPI_IN_PLACE, recv_procs.data(), topology->PPN, MPI_INT, MPI_SUM, 
+            topology->local_comm);
     num_sends = recv_procs[local_rank];
 
     for (int i = 0; i < local_L_par_comm->recv_data->num_msgs; i++)
@@ -900,16 +900,16 @@ void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
         start = local_L_par_comm->recv_data->indptr[i];
         end = local_L_par_comm->recv_data->indptr[i+1];
         MPI_Issend(&(on_node_column_map[start]), end - start, MPI_INT, proc,
-                7890, local_comm, &(local_L_par_comm->recv_data->requests[i]));
+                7890, topology->local_comm, &(local_L_par_comm->recv_data->requests[i]));
     }
 
     for (int i = 0; i < num_sends; i++)
     {
-        MPI_Probe(MPI_ANY_SOURCE, 7890, local_comm, &recv_status);
+        MPI_Probe(MPI_ANY_SOURCE, 7890, topology->local_comm, &recv_status);
         MPI_Get_count(&recv_status, MPI_INT, &count);
         proc = recv_status.MPI_SOURCE;
         int recvbuf[count];
-        MPI_Recv(recvbuf, count, MPI_INT, proc, 7890, local_comm, &recv_status);
+        MPI_Recv(recvbuf, count, MPI_INT, proc, 7890, topology->local_comm, &recv_status);
         for (int i = 0; i < count; i++)
         {
             recvbuf[i] -= first_local_col;
@@ -926,150 +926,4 @@ void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
     }
 }
 
-/**************************************************************
-*****  Get Node 
-**************************************************************
-***** Find node on which global rank lies
-*****
-***** Returns
-***** -------------
-***** int : node on which proc lies
-*****
-***** Parameters
-***** -------------
-***** proc : int
-*****    Global rank of process 
-**************************************************************/
-int TAPComm::get_node(int proc)
-{
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    if (rank_ordering == 0)
-    {
-        return proc % num_nodes;
-    }
-    else if (rank_ordering == 1)
-    {
-        return proc / PPN;
-    }
-    else if (rank_ordering == 2)
-    {
-        if ((proc / num_nodes) % 2 == 0)
-        {
-            return proc % num_nodes;
-        }
-        else
-        {
-            return num_nodes - (proc % num_nodes) - 1;
-        }
-    }
-    else if (rank_ordering == 3)
-    {
-        return custom_rank_order[proc] / PPN;
-    }
-    else
-    { 
-        if (rank == 0)
-        {
-            printf("This MPI rank ordering is not supported!\n");
-        }
-        return -1;
-    }
-}
-
-/**************************************************************
-*****  Get Local Proc 
-**************************************************************
-***** Find rank local to node from global rank
-*****
-***** Returns
-***** -------------
-***** int : rank local to processes on node
-*****
-***** Parameters
-***** -------------
-***** proc : int
-*****    Global rank of process 
-**************************************************************/
-int TAPComm::get_local_proc(int proc)
-{
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    if (rank_ordering == 0 || rank_ordering == 2)
-    {
-        return proc / num_nodes;
-    }
-    else if (rank_ordering == 1)
-    {
-        return proc % PPN;
-    }
-    else if (rank_ordering == 3)
-    {
-        return custom_rank_order[proc] % PPN;
-    }
-    else
-    { 
-        if (rank == 0)
-        {
-            printf("This MPI rank ordering is not supported!\n");
-        }
-        return -1;
-    }
-}
-
-/**************************************************************
-*****  Get Global Proc 
-**************************************************************
-***** Find global rank from node and local rank
-*****
-***** Returns
-***** -------------
-***** int : Global rank of process
-*****
-***** Parameters
-***** -------------
-***** node : int
-*****    Node on which process lies 
-***** local_proc : int
-*****    Rank of process local to node
-**************************************************************/
-int TAPComm::get_global_proc(int node, int local_proc)
-{
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    if (rank_ordering == 0)
-    {
-        return local_proc * num_nodes + node;
-    }
-    else if (rank_ordering == 1)
-    {
-        return local_proc + (node * PPN);
-    }
-    else if (rank_ordering == 2)
-    {
-        if ((rank / num_nodes) % 2 == 0)
-        {
-            return local_proc * num_nodes + node;
-        }
-        else
-        {
-            return local_proc * num_nodes + num_nodes - node - 1;                
-        }
-    }
-    else if (rank_ordering == 3)
-    {
-        return custom_rank_order[node*PPN + local_proc];
-    }
-    else
-    { 
-        if (rank == 0)
-        {
-            printf("This MPI rank ordering is not supported!\n");
-        }
-        return -1;
-    }
-}
 

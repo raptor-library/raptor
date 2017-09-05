@@ -130,6 +130,7 @@ data_t Vector::norm(index_t p)
 **************************************************************/
 void Vector::print(const char* vec_name)
 {
+    printf("Size = %d\n", num_values);
     for (int i = 0; i < num_values; i++)
     {
         if (fabs(values[i]) > zero_tol)

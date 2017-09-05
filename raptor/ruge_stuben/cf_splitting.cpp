@@ -1639,6 +1639,7 @@ void cljp_main_loop(ParCSRMatrix* S,
         const std::vector<int>& off_col_indices,
         std::vector<double>& weights,
         std::vector<int>& states,
+        std::vector<int>& off_proc_states,
         int remaining)
 {
     /**********************************************
@@ -1658,7 +1659,6 @@ void cljp_main_loop(ParCSRMatrix* S,
     std::vector<double> off_proc_weights;
     std::vector<int> off_proc_col_coarse;
     std::vector<int> off_proc_weight_updates;
-    std::vector<int> off_proc_states;
     std::vector<int> off_proc_col_ptr;
     std::map<int, int> global_to_local;
 
@@ -1796,7 +1796,8 @@ void cljp_main_loop(ParCSRMatrix* S,
  *****    Strength of connection matrix
  **************************************************************/
 void cf_splitting(ParCSRMatrix* S,
-        std::vector<int>& states)
+        std::vector<int>& states, 
+        std::vector<int>& off_proc_states)
 {
     int start, end;
     int idx, idx_k;
@@ -1892,7 +1893,7 @@ void cf_splitting(ParCSRMatrix* S,
      **********************************************/
     cljp_main_loop(S, on_col_ptr, off_col_ptr,
             on_col_indices, off_col_indices, weights,
-            states, remaining);
+            states, off_proc_states, remaining);
 }
 
 

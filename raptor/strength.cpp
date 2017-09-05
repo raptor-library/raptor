@@ -12,8 +12,7 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
     double val, abs_val;
     double row_max;
 
-    ParCSRMatrix* S = new ParCSRMatrix(global_num_rows, global_num_cols,
-            local_num_rows, local_num_cols, first_local_row, first_local_col);
+    ParCSRMatrix* S = new ParCSRMatrix(partition);
     
     if (on_proc->nnz)
     {
@@ -103,6 +102,16 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
             S->off_proc_column_map.push_back(*it);
         }
     }
+    S->on_proc_num_cols = on_proc_num_cols;
+    if (on_proc_num_cols)
+    {
+        S->on_proc_column_map.reserve(on_proc_num_cols);
+        for (std::vector<int>::iterator it = on_proc_column_map.begin();
+                it != on_proc_column_map.end(); ++it)
+        {
+            S->on_proc_column_map.push_back(*it);
+        }
+    }
     S->local_nnz = S->on_proc->nnz + S->off_proc->nnz;
 
     // Can copy A's comm pkg... may not need to communicate everything in comm,
@@ -114,7 +123,7 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
 
     if (tap_comm)
     {
-        S->tap_comm = new TAPComm((TAPComm*) comm);
+        S->tap_comm = new TAPComm((TAPComm*) tap_comm);
     }
 
     return S;

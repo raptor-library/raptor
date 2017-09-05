@@ -5,6 +5,8 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(ruge_stuben_SOURCES 
     ruge_stuben/cf_splitting.hpp
     ruge_stuben/cf_splitting.cpp
+    ruge_stuben/interpolation.hpp
+    ruge_stuben/interpolation.cpp
 PARENT_SCOPE)
 
 

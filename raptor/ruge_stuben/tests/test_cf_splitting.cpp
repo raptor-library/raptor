@@ -27,7 +27,8 @@ int main(int argc, char* argv[])
     ParCSRMatrix* S = A->strength(0.0);
 
     std::vector<int> states;
-    cf_splitting(S, states);
+    std::vector<int> off_proc_states;
+    cf_splitting(S, states, off_proc_states);
     for (int i = 0; i < S->local_num_rows; i++)
     {
         printf("States[%d] = %d\n", i + S->first_local_row, states[i]);

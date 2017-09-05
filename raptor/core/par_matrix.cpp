@@ -26,7 +26,7 @@ void ParMatrix::add_value(
         data_t value)
 {
     if (global_col >= partition->first_local_col 
-            && global_col < partition->last_local_col)
+            && global_col <= partition->last_local_col)
     {
         on_proc->add_value(row, global_col - partition->first_local_col, value);
     }
@@ -93,6 +93,15 @@ void ParMatrix::finalize(bool create_comm)
     if (on_proc->nnz)
     {
         on_proc->sort();
+
+        // Assume nonzeros in each on_proc column
+        on_proc->col_list.resize(local_num_cols);
+        for (int i = 0; i < local_num_cols; i++)
+        {
+            on_proc->col_list[i] = i + partition->first_local_col;
+        }
+        on_proc_column_map = on_proc->get_col_list();
+        on_proc_num_cols = on_proc_column_map.size();
     }
         
     local_nnz = on_proc->nnz + off_proc->nnz;
@@ -100,7 +109,45 @@ void ParMatrix::finalize(bool create_comm)
     if (create_comm)
         comm = new ParComm(partition, off_proc_column_map);
     else
-        comm = new ParComm();
+        comm = new ParComm(partition);
+}
+
+void ParMatrix::copy(ParCOOMatrix* A)
+{
+    partition = A->partition;
+    partition->num_shared++;
+
+    local_nnz = A->local_nnz;
+    local_num_rows = A->local_num_rows;
+    local_num_cols = A->local_num_cols;
+    global_num_rows = A->global_num_rows;
+    global_num_cols = A->global_num_cols;
+    first_local_row = A->first_local_row;
+    first_local_col = A->first_local_col;
+
+    off_proc_column_map = off_proc->get_col_list();
+    on_proc_column_map = on_proc->get_col_list();
+    
+    off_proc_num_cols = off_proc_column_map.size();
+    on_proc_num_cols = on_proc_column_map.size();
+
+    if (A->comm)
+    {
+        comm = new ParComm((ParComm*) A->comm);
+    }
+    else
+    {   
+        comm = NULL;
+    }
+    
+    if (A->tap_comm)
+    {
+        tap_comm = new TAPComm((TAPComm*) A->tap_comm);
+    }
+    else
+    {
+        tap_comm = NULL;
+    }
 }
 
 void ParMatrix::copy(ParCSRMatrix* A)
@@ -111,16 +158,16 @@ void ParMatrix::copy(ParCSRMatrix* A)
     local_nnz = A->local_nnz;
     local_num_rows = A->local_num_rows;
     local_num_cols = A->local_num_cols;
+    global_num_rows = A->global_num_rows;
+    global_num_cols = A->global_num_cols;
+    first_local_row = A->first_local_row;
+    first_local_col = A->first_local_col;
 
-    off_proc_num_cols = A->off_proc_num_cols;
-    if (off_proc_num_cols)
-    {
-        off_proc_column_map.resize(off_proc_num_cols);
-        for (int i = 0; i < off_proc_num_cols; i++)
-        {
-            off_proc_column_map[i] = A->off_proc_column_map[i];
-        }
-    }
+    off_proc_column_map = off_proc->get_col_list();
+    on_proc_column_map = on_proc->get_col_list();
+    
+    off_proc_num_cols = off_proc_column_map.size();
+    on_proc_num_cols = on_proc_column_map.size();
 
     if (A->comm)
     {
@@ -149,54 +196,16 @@ void ParMatrix::copy(ParCSCMatrix* A)
     local_nnz = A->local_nnz;
     local_num_rows = A->local_num_rows;
     local_num_cols = A->local_num_cols;
+    global_num_rows = A->global_num_rows;
+    global_num_cols = A->global_num_cols;
+    first_local_row = A->first_local_row;
+    first_local_col = A->first_local_col;
 
-    off_proc_num_cols = A->off_proc_num_cols;
-    if (off_proc_num_cols)
-    {
-        off_proc_column_map.resize(off_proc_num_cols);
-        for (int i = 0; i < off_proc_num_cols; i++)
-        {
-            off_proc_column_map[i] = A->off_proc_column_map[i];
-        }
-    }
-
-    if (A->comm)
-    {
-        comm = new ParComm((ParComm*) A->comm);
-    }
-    else
-    {   
-        comm = NULL;
-    }
+    off_proc_column_map = off_proc->get_col_list();
+    on_proc_column_map = on_proc->get_col_list();
     
-    if (A->tap_comm)
-    {
-        tap_comm = new TAPComm((TAPComm*) A->tap_comm);
-    }
-    else
-    {
-        tap_comm = NULL;
-    }
-}
-
-void ParMatrix::copy(ParCOOMatrix* A)
-{
-    partition = A->partition;
-    partition->num_shared++;
-
-    local_nnz = A->local_nnz;
-    local_num_rows = A->local_num_rows;
-    local_num_cols = A->local_num_cols;
-
-    off_proc_num_cols = A->off_proc_column_map.size();
-    if (off_proc_num_cols)
-    {
-        off_proc_column_map.resize(off_proc_num_cols);
-        for (int i = 0; i < off_proc_num_cols; i++)
-        {
-            off_proc_column_map[i] = A->off_proc_column_map[i];
-        }
-    }
+    off_proc_num_cols = off_proc_column_map.size();
+    on_proc_num_cols = on_proc_column_map.size();
 
     if (A->comm)
     {
@@ -219,8 +228,6 @@ void ParMatrix::copy(ParCOOMatrix* A)
 
 void ParCOOMatrix::copy(ParCSRMatrix* A)
 {
-    ParMatrix::copy(A);
-
     if (on_proc)
     {   
         delete on_proc;
@@ -232,12 +239,12 @@ void ParCOOMatrix::copy(ParCSRMatrix* A)
 
     on_proc = new COOMatrix((CSRMatrix*) A->on_proc);
     off_proc = new COOMatrix((CSRMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
 }
 
 void ParCOOMatrix::copy(ParCSCMatrix* A)
 {
-    ParMatrix::copy(A);
-
     if (on_proc)
     {   
         delete on_proc;
@@ -249,12 +256,12 @@ void ParCOOMatrix::copy(ParCSCMatrix* A)
 
     on_proc = new COOMatrix((CSCMatrix*) A->on_proc);
     off_proc = new COOMatrix((CSCMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
 }
 
 void ParCOOMatrix::copy(ParCOOMatrix* A)
 {
-    ParMatrix::copy(A);
-
     if (on_proc)
     {   
         delete on_proc;
@@ -266,12 +273,12 @@ void ParCOOMatrix::copy(ParCOOMatrix* A)
 
     on_proc = new COOMatrix((COOMatrix*) A->on_proc);
     off_proc = new COOMatrix((COOMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
 }
 
 void ParCSRMatrix::copy(ParCSRMatrix* A)
 {
-    ParMatrix::copy(A);
-
     if (on_proc)
     {   
         delete on_proc;
@@ -282,12 +289,12 @@ void ParCSRMatrix::copy(ParCSRMatrix* A)
     }
     on_proc = new CSRMatrix((CSRMatrix*) A->on_proc);
     off_proc = new CSRMatrix((CSRMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
 }
 
 void ParCSRMatrix::copy(ParCSCMatrix* A)
 {
-    ParMatrix::copy(A);
-
     if (on_proc)
     {   
         delete on_proc;
@@ -298,12 +305,12 @@ void ParCSRMatrix::copy(ParCSCMatrix* A)
     }
     on_proc = new CSRMatrix((CSCMatrix*) A->on_proc);
     off_proc = new CSRMatrix((CSCMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
 }
 
 void ParCSRMatrix::copy(ParCOOMatrix* A)
 {
-    ParMatrix::copy(A);
-
     if (on_proc)
     {   
         delete on_proc;
@@ -315,12 +322,12 @@ void ParCSRMatrix::copy(ParCOOMatrix* A)
 
     on_proc = new CSRMatrix((COOMatrix*) A->on_proc);
     off_proc = new CSRMatrix((COOMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
 }
 
 void ParCSCMatrix::copy(ParCSRMatrix* A)
 {
-    ParMatrix::copy(A);
- 
     if (on_proc)
     {   
         delete on_proc;
@@ -332,12 +339,12 @@ void ParCSCMatrix::copy(ParCSRMatrix* A)
 
     on_proc = new CSCMatrix((CSRMatrix*) A->on_proc);
     off_proc = new CSCMatrix((CSRMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
 }
 
 void ParCSCMatrix::copy(ParCSCMatrix* A)
 {
-    ParMatrix::copy(A);
-
     if (on_proc)
     {   
         delete on_proc;
@@ -349,12 +356,12 @@ void ParCSCMatrix::copy(ParCSCMatrix* A)
 
     on_proc = new CSCMatrix((CSCMatrix*) A->on_proc);
     off_proc = new CSCMatrix((CSCMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
 }
 
 void ParCSCMatrix::copy(ParCOOMatrix* A)
 {
-    ParMatrix::copy(A);
-
     if (on_proc)
     {   
         delete on_proc;
@@ -366,6 +373,8 @@ void ParCSCMatrix::copy(ParCOOMatrix* A)
 
     on_proc = new CSCMatrix((COOMatrix*) A->on_proc);
     off_proc = new CSCMatrix((COOMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
 }
 
 

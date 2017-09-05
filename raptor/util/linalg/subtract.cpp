@@ -8,8 +8,7 @@ using namespace raptor;
 
 ParCSRMatrix* ParCSRMatrix::subtract(ParCSRMatrix* B)
 {
-    ParCSRMatrix* C = new ParCSRMatrix(global_num_rows, global_num_cols,
-            local_num_rows, local_num_cols, first_local_row, first_local_col);
+    ParCSRMatrix* C = new ParCSRMatrix(partition);
 
     delete C->on_proc;
     delete C->off_proc;
@@ -30,7 +29,7 @@ ParCSRMatrix* ParCSRMatrix::subtract(ParCSRMatrix* B)
 
     // Communication package is just a sum of the communication 
     // packages of original ParCSRMat and B...
-    C->comm = new ParComm();
+    C->comm = new ParComm(partition);
     std::set<int> proc_send_set;
     for (std::vector<int>::iterator it = comm->send_data->procs.begin();
             it != comm->send_data->procs.end(); ++it)

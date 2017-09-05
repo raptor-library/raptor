@@ -90,6 +90,7 @@ namespace raptor
         first_local_col = partition->first_local_col;
         last_local_row = partition->last_local_row;
         last_local_col = partition->last_local_col;
+        on_proc_num_cols = 0;
 
         comm = NULL;
         tap_comm = NULL;
@@ -108,6 +109,7 @@ namespace raptor
         first_local_col = partition->first_local_col;
         last_local_row = partition->last_local_row;
         last_local_col = partition->last_local_col;
+        on_proc_num_cols = 0;
 
         comm = NULL;
         tap_comm = NULL;
@@ -131,6 +133,7 @@ namespace raptor
         first_local_col = partition->first_local_col;
         last_local_row = partition->last_local_row;
         last_local_col = partition->last_local_col;
+        on_proc_num_cols = 0;
 
         comm = NULL;
         tap_comm = NULL;
@@ -147,6 +150,7 @@ namespace raptor
         last_local_row = 0;
         last_local_col = 0;
         off_proc_num_cols = 0;
+        on_proc_num_cols = 0;
 
         comm = NULL;
         tap_comm = NULL;
@@ -232,6 +236,14 @@ namespace raptor
     ParMatrix* mult_T(ParCSCMatrix* B);
     ParMatrix* tap_mult_T(ParCSCMatrix* B);
 
+    ParCSRMatrix* RAP(ParCSRMatrix* P)
+    {
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        if (rank == 0) printf("Not impelemented for this matrix type");
+        return NULL;
+    }
+
     ParCSRMatrix* subtract(ParCSRMatrix* B);
     ParCSRMatrix* subtract(ParCSCMatrix* B);
     ParCSRMatrix* subtract(ParCOOMatrix* B);
@@ -251,6 +263,7 @@ namespace raptor
     int last_local_row;
     int last_local_col;
     int off_proc_num_cols;
+    int on_proc_num_cols;
 
     // Store two matrices: on_proc containing columns 
     // corresponding to vector values stored on_process
@@ -264,6 +277,7 @@ namespace raptor
     // nonzeros, and these must be mapped to 
     // global column indices
     std::vector<index_t> off_proc_column_map;
+    std::vector<index_t> on_proc_column_map;
 
     // Parallel communication package indicating which 
     // processes hold vector values associated with off_proc,
@@ -471,12 +485,16 @@ namespace raptor
     ParCSRMatrix* mult_T(ParCSCMatrix* A);
     ParCSRMatrix* tap_mult_T(ParCSCMatrix* A);
 
+    ParCSRMatrix* RAP(ParCSRMatrix* P);
+
     ParCSRMatrix* subtract(ParCSRMatrix* B);
     ParCSRMatrix* subtract(ParCSCMatrix* B);
     ParCSRMatrix* subtract(ParCOOMatrix* B);
     
+    void mult_helper(ParCSRMatrix* B, CSRMatrix* C_on, CSRMatrix* C_off, CSRMatrix* recv);
     void mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, CSRMatrix* recv);
     CSRMatrix* mult_T_partial(ParCSCMatrix* A);
+    CSRMatrix* mult_T_partial(CSCMatrix* A_off);
     void mult_T_combine(ParCSCMatrix* A, ParCSRMatrix* C, CSRMatrix* recv_on,
             CSRMatrix* recv_off);
   };

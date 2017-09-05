@@ -11,6 +11,10 @@ if (WITH_MPI)
     target_link_libraries(test_par_matrix raptor ${MPI_LIBRARIES})
     add_test(ParMatrixTest ./test_par_matrix)
 
+    add_executable(test_condensed_par_matrix test_condensed_par_matrix.cpp)
+    target_link_libraries(test_condensed_par_matrix raptor ${MPI_LIBRARIES})
+    add_test(ParMatrixCondensedTest ./test_condensed_par_matrix)
+
     add_executable(test_par_vector test_par_vector.cpp)
     target_link_libraries(test_par_vector raptor ${MPI_LIBRARIES})
     add_test(ParVectorTest ./test_par_vector)
