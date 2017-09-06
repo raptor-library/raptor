@@ -14,10 +14,8 @@ void compare(ParCSRMatrix* A0, ParCSRMatrix* A1)
 
     assert(A0->global_num_rows == A1->global_num_rows);
     assert(A0->local_num_rows == A1->local_num_rows);
-    assert(A0->first_local_row == A1->first_local_row);
     assert(A0->global_num_cols == A1->global_num_cols);
-    assert(A0->local_num_cols == A1->local_num_cols);
-    assert(A0->first_local_col == A1->first_local_col);
+    assert(A0->on_proc_num_cols == A1->on_proc_num_cols);
 
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -53,13 +51,13 @@ int main(int argc, char* argv[])
 
     fname = "/Users/abienz/Documents/Parallel/raptor_topo/raptor/util/tests/testAP.mtx";
     ParCSRMatrix* AP_sol_csr = readParMatrix(fname, MPI_COMM_WORLD, 1, 0, 
-            Acsr->local_num_rows, Pcsr->local_num_cols, 
-            Acsr->first_local_row, Pcsr->first_local_col);
+            Acsr->local_num_rows, Pcsr->on_proc_num_cols, 
+            Acsr->partition->first_local_row, Pcsr->partition->first_local_col);
 
     fname = "/Users/abienz/Documents/Parallel/raptor_topo/raptor/util/tests/testAc.mtx";
     ParCSRMatrix* Ac_sol_csr = readParMatrix(fname, MPI_COMM_WORLD, 1, 0,
-            Pcsr->local_num_cols, Pcsr->local_num_cols,
-            Pcsr->first_local_col, Pcsr->first_local_col);
+            Pcsr->on_proc_num_cols, Pcsr->on_proc_num_cols,
+            Pcsr->partition->first_local_col, Pcsr->partition->first_local_col);
 
     AP_sol_csr->on_proc->sort();
     AP_sol_csr->off_proc->sort();

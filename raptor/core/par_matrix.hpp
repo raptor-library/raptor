@@ -31,8 +31,6 @@
  *****    Number of nonzeros stored locally
  ***** local_num_rows : int
  *****    Number of rows stored locally
- ***** local_num_cols : int 
- *****    Number of columns stored locally
  ***** first_local_row : index_t
  *****    Global index of first row local to process
  ***** first_local_col : index_t
@@ -83,13 +81,8 @@ namespace raptor
         partition->num_shared++;
 
         local_num_rows = partition->local_num_rows;
-        local_num_cols = partition->local_num_cols;
         global_num_rows = partition->global_num_rows;
         global_num_cols = partition->global_num_cols;
-        first_local_row = partition->first_local_row;
-        first_local_col = partition->first_local_col;
-        last_local_row = partition->last_local_row;
-        last_local_col = partition->last_local_col;
         on_proc_num_cols = 0;
 
         comm = NULL;
@@ -102,13 +95,8 @@ namespace raptor
         partition = new Partition(glob_rows, glob_cols);
 
         local_num_rows = partition->local_num_rows;
-        local_num_cols = partition->local_num_cols;
         global_num_rows = partition->global_num_rows;
         global_num_cols = partition->global_num_cols;
-        first_local_row = partition->first_local_row;
-        first_local_col = partition->first_local_col;
-        last_local_row = partition->last_local_row;
-        last_local_col = partition->last_local_col;
         on_proc_num_cols = 0;
 
         comm = NULL;
@@ -126,13 +114,8 @@ namespace raptor
                 local_rows, local_cols, first_row, first_col);
 
         local_num_rows = partition->local_num_rows;
-        local_num_cols = partition->local_num_cols;
         global_num_rows = partition->global_num_rows;
         global_num_cols = partition->global_num_cols;
-        first_local_row = partition->first_local_row;
-        first_local_col = partition->first_local_col;
-        last_local_row = partition->last_local_row;
-        last_local_col = partition->last_local_col;
         on_proc_num_cols = 0;
 
         comm = NULL;
@@ -142,13 +125,8 @@ namespace raptor
     ParMatrix()
     {
         local_num_rows = 0;
-        local_num_cols = 0;
         global_num_rows = 0;
         global_num_cols = 0;
-        first_local_row = 0;
-        first_local_col = 0;
-        last_local_row = 0;
-        last_local_col = 0;
         off_proc_num_cols = 0;
         on_proc_num_cols = 0;
 
@@ -227,6 +205,8 @@ namespace raptor
     **************************************************************/
     void finalize(bool create_comm = true);
 
+    void map_partition_to_local();
+
     void residual(ParVector& x, ParVector& b, ParVector& r);
     void tap_residual(ParVector& x, ParVector& b, ParVector& r);
     void mult(ParVector& x, ParVector& b);
@@ -252,16 +232,26 @@ namespace raptor
     virtual void copy(ParCSCMatrix* A) = 0;
     virtual void copy(ParCOOMatrix* A) = 0;
 
+    std::vector<index_t>& get_on_proc_column_map()
+    {
+        return on_proc_column_map;
+    }
+
+    std::vector<index_t>& get_off_proc_column_map()
+    {
+        return off_proc_column_map;
+    }
+
+    std::vector<index_t>& get_local_row_map()
+    {
+        return local_row_map;
+    }
+
     // Store dimensions of parallel matrix
     int local_nnz;
     int local_num_rows;
-    int local_num_cols;
     int global_num_rows;
     int global_num_cols;
-    int first_local_row;
-    int first_local_col;
-    int last_local_row;
-    int last_local_col;
     int off_proc_num_cols;
     int on_proc_num_cols;
 
@@ -276,8 +266,10 @@ namespace raptor
     // It will be condensed to only store columns with 
     // nonzeros, and these must be mapped to 
     // global column indices
-    std::vector<index_t> off_proc_column_map;
-    std::vector<index_t> on_proc_column_map;
+    std::vector<index_t> off_proc_column_map; // Maps off_proc local to global
+    std::vector<index_t> on_proc_column_map; // Maps on_proc local to global
+    std::vector<index_t> local_row_map; // Maps local rows to global
+    std::vector<int> on_proc_partition_to_col; // Maps on_proc partition to local
 
     // Parallel communication package indicating which 
     // processes hold vector values associated with off_proc,
@@ -302,8 +294,10 @@ namespace raptor
             index_t glob_cols,
             int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols)
     {
-        on_proc = new COOMatrix(local_num_rows, local_num_cols, nnz_per_row);
-        off_proc = new COOMatrix(local_num_rows, partition->global_num_cols, nnz_per_row);
+        on_proc = new COOMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new COOMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
     }
 
     ParCOOMatrix(index_t glob_rows, index_t glob_cols, int local_rows, 
@@ -311,15 +305,19 @@ namespace raptor
             int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols,
                 local_rows, local_cols, first_row, first_col)
     {
-        on_proc = new COOMatrix(local_num_rows, local_num_cols, nnz_per_row);
-        off_proc = new COOMatrix(local_num_rows, partition->global_num_cols, nnz_per_row);
+        on_proc = new COOMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new COOMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
     }
     
     ParCOOMatrix(Partition* part, 
             int nnz_per_row = 5) : ParMatrix(part)
     {
-        on_proc = new COOMatrix(local_num_rows, local_num_cols, nnz_per_row);
-        off_proc = new COOMatrix(local_num_rows, partition->global_num_cols, nnz_per_row);
+        on_proc = new COOMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new COOMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
     }
 
     ParCOOMatrix(index_t glob_rows, 
@@ -327,12 +325,14 @@ namespace raptor
             data_t* values) : ParMatrix(glob_rows, glob_cols)
     {
         // Initialize empty diag/offd matrices
-        on_proc = new COOMatrix(local_num_rows, local_num_cols, local_num_rows*5);
-        off_proc = new COOMatrix(local_num_rows, partition->global_num_cols, local_num_rows*5);
+        on_proc = new COOMatrix(partition->local_num_rows, partition->local_num_cols, 
+                partition->local_num_rows*5);
+        off_proc = new COOMatrix(partition->local_num_rows, partition->global_num_cols, 
+                partition->local_num_rows*5);
 
         // Add values to on/off proc matrices
         int val_start = partition->first_local_row * partition->global_num_cols;
-        int val_end = (partition->first_local_row + local_num_rows) 
+        int val_end = (partition->first_local_row + partition->local_num_rows) 
             * partition->global_num_cols;
         for (index_t i = val_start; i < val_end; i++)
         {
@@ -384,8 +384,10 @@ namespace raptor
             index_t glob_cols, 
             int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols)
     {
-        on_proc = new CSRMatrix(local_num_rows, local_num_cols, nnz_per_row);
-        off_proc = new CSRMatrix(local_num_rows, partition->global_num_cols, nnz_per_row);
+        on_proc = new CSRMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new CSRMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
     }
 
     ParCSRMatrix(index_t glob_rows, index_t glob_cols, int local_rows, 
@@ -393,15 +395,19 @@ namespace raptor
             int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols,
                 local_rows, local_cols, first_row, first_col)
     {
-        on_proc = new CSRMatrix(local_num_rows, local_num_cols, nnz_per_row);
-        off_proc = new CSRMatrix(local_num_rows, partition->global_num_cols, nnz_per_row);
+        on_proc = new CSRMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new CSRMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
     }
 
     ParCSRMatrix(Partition* part, 
             int nnz_per_row = 5) : ParMatrix(part)
     {
-        on_proc = new CSRMatrix(local_num_rows, local_num_cols, nnz_per_row);
-        off_proc = new CSRMatrix(local_num_rows, partition->global_num_cols, nnz_per_row);
+        on_proc = new CSRMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new CSRMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
     }
 
     ParCSRMatrix(index_t glob_rows, 
@@ -409,8 +415,10 @@ namespace raptor
             data_t* values) : ParMatrix(glob_rows, glob_cols)
     {
         // Initialize empty diag/offd matrices
-        on_proc = new COOMatrix(local_num_rows, local_num_cols, local_num_rows*5);
-        off_proc = new COOMatrix(local_num_rows, partition->global_num_cols, local_num_rows*5);
+        on_proc = new COOMatrix(partition->local_num_rows, partition->local_num_cols, 
+                partition->local_num_rows*5);
+        off_proc = new COOMatrix(partition->local_num_rows, partition->global_num_cols, 
+                partition->local_num_rows*5);
 
         // Add values to on/off proc matrices
         on_proc->idx1[0] = 0;
@@ -428,7 +436,7 @@ namespace raptor
                     int global_col = idx % partition->global_num_cols;
                     int global_row = idx / partition->global_num_cols;
                     if (global_col >= partition->first_local_col && 
-                        global_col < partition->first_local_col + local_num_cols)
+                        global_col < partition->first_local_col + partition->local_num_cols)
                     {
                         on_proc->idx2.push_back(global_col - partition->first_local_col);
                         on_proc->vals.push_back(values[idx]);
@@ -515,8 +523,10 @@ namespace raptor
         // Initialize diag and offd matrices as COO for adding entries
         // This should later be changed to CSR or CSC
         // A guess of 5 nnz per row is used for reserving matrix space
-        on_proc = new CSCMatrix(local_num_rows, local_num_cols, nnz_per_row);
-        off_proc = new CSCMatrix(local_num_rows, partition->global_num_cols, nnz_per_row);
+        on_proc = new CSCMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new CSCMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
     }
 
     ParCSCMatrix(index_t glob_rows, index_t glob_cols, int local_num_rows, 
@@ -524,15 +534,19 @@ namespace raptor
             int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols,
                 local_num_rows, local_num_cols, first_local_row, first_col)
     {
-        on_proc = new CSCMatrix(local_num_rows, local_num_cols, nnz_per_row);
-        off_proc = new CSCMatrix(local_num_rows, partition->global_num_cols, nnz_per_row);
+        on_proc = new CSCMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new CSCMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
     }
 
     ParCSCMatrix(Partition* part, 
             int nnz_per_row = 5) : ParMatrix(part)
     {
-        on_proc = new CSRMatrix(local_num_rows, local_num_cols, nnz_per_row);
-        off_proc = new CSRMatrix(local_num_rows, partition->global_num_cols, nnz_per_row);
+        on_proc = new CSRMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new CSRMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
     }
 
     ParCSCMatrix(index_t glob_rows, 

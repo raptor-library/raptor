@@ -41,6 +41,13 @@ int main(int argc, char* argv[])
             Ac->off_proc_column_map,
             Ac->on_proc_column_map);
 
+    assert(A->local_num_cols == A->on_proc_num_cols);
+    assert(S->local_num_cols == S->on_proc_num_cols);
+    assert(P->local_num_cols == P->on_proc_num_cols);
+    assert(AP->local_num_cols == AP->on_proc_num_cols);
+    assert(P_csc->local_num_cols == P_csc->on_proc_num_cols);
+    assert(Ac->local_num_cols == Ac->on_proc_num_cols);
+
     delete Ac;
     delete P_csc;
     delete AP;

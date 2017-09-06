@@ -36,7 +36,7 @@ void ParMatrix::mult(ParVector& x, ParVector& b)
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
-    if (local_num_rows && local_num_cols)
+    if (local_num_rows && on_proc_num_cols)
     {
         on_proc->mult(x.local, b.local);
     }
@@ -66,7 +66,7 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b)
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
-    if (local_num_rows && local_num_cols)
+    if (local_num_rows && on_proc_num_cols)
     {
         on_proc->mult(x.local, b.local);
     }
@@ -145,7 +145,7 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r)
 
     // Multiply diagonal portion of matrix,
     // subtracting result from r = b (r = b - A_diag*x_local)
-    if (local_num_rows && local_num_cols)
+    if (local_num_rows && on_proc_num_cols)
     {
         on_proc->mult_append_neg(x.local, r.local);
     }
@@ -178,7 +178,7 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r)
 
     // Multiply diagonal portion of matrix,
     // subtracting result from r = b (r = b - A_diag*x_local)
-    if (local_num_rows && local_num_cols)
+    if (local_num_rows && on_proc_num_cols)
     {
         on_proc->mult_append_neg(x.local, r.local);
     }

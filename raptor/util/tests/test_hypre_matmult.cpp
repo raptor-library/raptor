@@ -24,8 +24,10 @@ int main(int argc, char *argv[])
     int grid[3] = {5, 15, 10};
     double* stencil = laplace_stencil_27pt();
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, dim);
-    ParVector x = ParVector(A->global_num_cols, A->local_num_cols, A->first_local_col);
-    ParVector b = ParVector(A->global_num_rows, A->local_num_rows, A->first_local_row);
+    ParVector x = ParVector(A->global_num_cols, A->local_num_cols, 
+            A->partition->first_local_col);
+    ParVector b = ParVector(A->global_num_rows, A->local_num_rows, 
+            A->partition->first_local_row);
     delete[] stencil;
     
     HYPRE_IJMatrix A_h = convert(A);
@@ -98,9 +100,9 @@ int main(int argc, char *argv[])
 
         // Multiply raptor resulting matrix by vector of ones
         ParVector x = ParVector(P_l->global_num_cols, P_l->local_num_cols, 
-                P_l->first_local_col);
+                P_l->partition->first_local_col);
         ParVector b = ParVector(P_l->global_num_rows, P_l->local_num_rows, 
-                P_l->first_local_row);
+                P_l->partition->first_local_row);
         x.set_const_value(1.0);
         b.set_const_value(0.0);
         C_l->mult(x, b);

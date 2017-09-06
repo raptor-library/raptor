@@ -43,10 +43,10 @@ int main(int argc, char* argv[])
     // Compare A_par to A_dense
     for (int i = 0; i < A_par->local_num_rows; i++)
     {
-        int row = i + A_par->first_local_row;
+        int row = i + A_par->partition->first_local_row;
         for (int j = A_par->on_proc->idx1[i]; j < A_par->on_proc->idx1[i+1]; j++)
         {
-            int col = A_par->on_proc->idx2[j] + A_par->first_local_col;
+            int col = A_par->on_proc_column_map[A_par->on_proc->idx2[j]];
             assert(fabs(A_dense[row*100+col] - A_par->on_proc->vals[j]) < zero_tol);
         }
 
@@ -60,10 +60,10 @@ int main(int argc, char* argv[])
     // Compare A_par_csc to A_dense
     for (int i = 0; i < A_par_csc->local_num_cols; i++)
     {
-        int col = i + A_par_csc->first_local_col;
+        int col = A_par_csc->on_proc_column_map[i];
         for (int j = A_par_csc->on_proc->idx1[i]; j < A_par_csc->on_proc->idx1[i+1]; j++)
         {
-            int row = A_par_csc->on_proc->idx2[j] + A_par_csc->first_local_row;
+            int row = A_par_csc->on_proc->idx2[j] + A_par_csc->partition->first_local_row;
             assert(fabs(A_dense[row*100+col] - A_par_csc->on_proc->vals[j]) < zero_tol);
         }
     }
@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
         int col = A_par_csc->off_proc_column_map[i];
         for (int j = A_par_csc->off_proc->idx1[i]; j < A_par_csc->off_proc->idx1[i+1]; j++)
         {
-            int row = A_par_csc->off_proc->idx2[j] + A_par_csc->first_local_row;
+            int row = A_par_csc->off_proc->idx2[j] + A_par_csc->partition->first_local_row;
             assert(fabs(A_dense[row*100+col] - A_par_csc->off_proc->vals[j]) < zero_tol);
         }
     }

@@ -92,26 +92,45 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
     S->on_proc->nnz = S->on_proc->idx2.size();
     S->off_proc->nnz = S->off_proc->idx2.size();
 
-    S->off_proc_num_cols = off_proc_num_cols;
+    S->off_proc->n_cols = off_proc_num_cols;
     if (off_proc_num_cols)
     {
-        S->off_proc_column_map.reserve(off_proc_num_cols);
+        S->off_proc->col_list.reserve(off_proc_num_cols);
         for (std::vector<int>::iterator it = off_proc_column_map.begin();
                 it != off_proc_column_map.end(); ++it)
         {
-            S->off_proc_column_map.push_back(*it);
+            S->off_proc->col_list.push_back(*it);
         }
     }
-    S->on_proc_num_cols = on_proc_num_cols;
+    S->off_proc_column_map = S->off_proc->get_col_list();
+    S->off_proc_num_cols = S->off_proc_column_map.size();
+
+    S->on_proc->n_cols = on_proc_num_cols;
     if (on_proc_num_cols)
     {
-        S->on_proc_column_map.reserve(on_proc_num_cols);
+        S->on_proc->col_list.reserve(on_proc_num_cols);
         for (std::vector<int>::iterator it = on_proc_column_map.begin();
                 it != on_proc_column_map.end(); ++it)
         {
-            S->on_proc_column_map.push_back(*it);
+            S->on_proc->col_list.push_back(*it);
         }
     }
+    S->on_proc_column_map = S->on_proc->get_col_list();
+    S->on_proc_num_cols = S->on_proc_column_map.size();
+
+    if (local_row_map.size())
+    {
+        S->local_row_map.reserve(local_row_map.size());
+        for (std::vector<int>::iterator it = local_row_map.begin();
+                it != local_row_map.end(); ++it)
+        {
+            S->local_row_map.push_back(*it);
+        }
+    }
+
+
+    S->map_partition_to_local();
+
     S->local_nnz = S->on_proc->nnz + S->off_proc->nnz;
 
     // Can copy A's comm pkg... may not need to communicate everything in comm,

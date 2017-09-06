@@ -17,11 +17,11 @@ void binary_transpose(const ParCSRMatrix* S,
     std::vector<int> off_col_sizes;
 
     // Resize to corresponding dimensions of S
-    on_col_ptr.resize(S->local_num_cols+1);
+    on_col_ptr.resize(S->on_proc_num_cols+1);
     off_col_ptr.resize(S->off_proc_num_cols+1);
-    if (S->local_num_cols)
+    if (S->on_proc_num_cols)
     {
-        on_col_sizes.resize(S->local_num_cols, 0);
+        on_col_sizes.resize(S->on_proc_num_cols, 0);
         on_col_indices.resize(S->on_proc->nnz);
     }
     if (S->off_proc_num_cols)
@@ -51,7 +51,7 @@ void binary_transpose(const ParCSRMatrix* S,
 
     // Create col_ptrs
     on_col_ptr[0] = 0;
-    for (int i = 0; i < S->local_num_cols; i++)
+    for (int i = 0; i < S->on_proc_num_cols; i++)
     {
         on_col_ptr[i+1] = on_col_ptr[i] + on_col_sizes[i];
         on_col_sizes[i] = 0;
@@ -203,10 +203,10 @@ void rs_second_pass(const ParCSRMatrix* S,
     std::vector<int> row_coarse;
     std::vector<int> next;
 
-    if (S->local_num_cols)
+    if (S->on_proc_num_cols)
     {
-        row_coarse.resize(S->local_num_cols, 0);
-        next.resize(S->local_num_cols);
+        row_coarse.resize(S->on_proc_num_cols, 0);
+        next.resize(S->on_proc_num_cols);
     }
 
     // Check if any strongly connected fine points with 
@@ -307,10 +307,10 @@ void initial_cljp_weights(const ParCSRMatrix* S,
     }
 
     // Set each weight initially to random value [0,1)
-    for (int i = 0; i < S->local_num_cols; i++)
+    for (int i = 0; i < S->on_proc_num_cols; i++)
     {
         // Seed random generator with global col
-        srand(i+S->first_local_col);
+        srand(S->on_proc_column_map[i]);
 
         // Random value [0,1)
         weights[i] = rand();
@@ -668,7 +668,7 @@ void update_weights_offproc_dist2(const ParCSRMatrix* S,
 
     std::vector<int> row_coarse;
     std::vector<int> next;
-    n_cols = S->local_num_cols + S->off_proc_num_cols;
+    n_cols = S->on_proc_num_cols + S->off_proc_num_cols;
     if (n_cols)
     {
         row_coarse.resize(n_cols, 0);
@@ -699,7 +699,7 @@ void update_weights_offproc_dist2(const ParCSRMatrix* S,
             idx = S->off_proc->idx2[j];
             if (off_proc_states[idx] == 2)
             {
-                off_col = idx + S->local_num_cols;
+                off_col = idx + S->on_proc_num_cols;
                 row_coarse[off_col] = 1;
                 next[off_col] = head;
                 head = off_col;
@@ -920,7 +920,7 @@ void find_max_off_weights(const ParCSRMatrix* S,
     }
 
     // Find max recvd weights associated with each local idx
-    for (int i = 0; i < S->local_num_cols; i++)
+    for (int i = 0; i < S->on_proc_num_cols; i++)
     {
         max_weights[i] = 0;
     }
@@ -1130,7 +1130,6 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
     int global_col;
     int n_sends = 0;
     int msg_avail;
-    int last_local_col = S->first_local_col + S->local_num_cols;
     MPI_Status recv_status;
 
     std::vector<int> send_ptr;
@@ -1169,7 +1168,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
                     if (states[idx_k] == 2)
                     {
                         // New coarse, so add global idx to buffer
-                        send_buffer.push_back(idx_k + S->first_local_col);
+                        send_buffer.push_back(S->on_proc_column_map[idx_k]);
                     }
                 }
                 idx_start = S->off_proc->idx1[idx];
@@ -1244,9 +1243,11 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
                 for (int k = 0; k < size; k++)
                 {
                     global_col = recv_buffer[ctr++];
-                    if (global_col >= S->first_local_col && global_col < last_local_col)
+                    if (global_col >= S->partition->first_local_col 
+                            && global_col <= S->partition->last_local_col)
                     {
-                        off_proc_col_coarse.push_back(global_col - S->first_local_col);
+                        off_proc_col_coarse.push_back(S->on_proc_partition_to_col[
+                                global_col - S->partition->first_local_col]);
                     }
                     else
                     {
@@ -1254,7 +1255,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
                         global_to_local.find(global_col);
                         if (ptr != global_to_local.end())
                         {
-                            off_proc_col_coarse.push_back(ptr->second + S->local_num_cols);
+                            off_proc_col_coarse.push_back(ptr->second + S->on_proc_num_cols);
                         }   
                     }
                 }
@@ -1407,7 +1408,6 @@ void cljp_final_step(ParCSRMatrix* S,
     int global_col;
     int count;
     int msg_avail;
-    int last_local_col = S->first_local_col + S->local_num_cols;
     MPI_Status recv_status;
     std::vector<int> recv_buffer;
     std::vector<int> recv_indices;
@@ -1529,10 +1529,12 @@ void cljp_final_step(ParCSRMatrix* S,
                     for (int k = 0; k < size; k++)
                     {
                         global_col = recv_buffer[ctr++];
-                        if (global_col >= S->first_local_col && global_col < last_local_col)
+                        if (global_col >= S->partition->first_local_col 
+                                && global_col <= S->partition->last_local_col)
                         {
-                            off_proc_col_coarse.push_back(global_col - S->first_local_col);
-                         }
+                            off_proc_col_coarse.push_back(S->on_proc_partition_to_col[
+                                    global_col - S->partition->first_local_col]);
+                        }
                         else
                         {
                             std::map<int, int>::const_iterator ptr = 
@@ -1540,7 +1542,7 @@ void cljp_final_step(ParCSRMatrix* S,
                             if (ptr != global_to_local.end())
                             {
                                 off_proc_col_coarse.push_back(ptr->second +
-                                        S->local_num_cols);
+                                        S->on_proc_num_cols);
                             }
                         }
                     }

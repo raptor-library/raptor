@@ -18,9 +18,9 @@ ParCSRMatrix* direct_interpolation(const ParCSRMatrix* A,
 
     std::vector<int> on_proc_col_to_new;
     std::vector<int> off_proc_col_to_new;
-    if (A->local_num_cols)
+    if (A->on_proc_num_cols)
     {
-        on_proc_col_to_new.resize(A->local_num_cols, -1);
+        on_proc_col_to_new.resize(A->on_proc_num_cols, -1);
     }
     if (A->off_proc_num_cols)
     {
@@ -29,12 +29,12 @@ ParCSRMatrix* direct_interpolation(const ParCSRMatrix* A,
 
     ParCSRMatrix* P = new ParCSRMatrix(A->partition);
 
-    for (int i = 0; i < A->local_num_cols; i++)
+    for (int i = 0; i < A->on_proc_num_cols; i++)
     {
         if (states[i])
         {
             on_proc_col_to_new[i] = P->on_proc->col_list.size();
-            P->on_proc->col_list.push_back(i);
+            P->on_proc->col_list.push_back(i + A->partition->first_local_col);
         }
     }
     for (int i = 0; i < A->off_proc_num_cols; i++)
@@ -48,6 +48,16 @@ ParCSRMatrix* direct_interpolation(const ParCSRMatrix* A,
         
     P->on_proc_column_map = P->on_proc->get_col_list();
     P->off_proc_column_map = P->off_proc->get_col_list();
+
+    if (A->local_row_map.size())
+    {
+        P->local_row_map.reserve(A->local_row_map.size());
+        for (std::vector<int>::const_iterator it = A->local_row_map.begin();
+                it != A->local_row_map.end(); ++it)
+        {
+            P->local_row_map.push_back(*it);
+        }
+    }
     
     // Make sure diagonal entry is first in each row of A
     if (!A->on_proc->diag_first)
@@ -57,14 +67,12 @@ ParCSRMatrix* direct_interpolation(const ParCSRMatrix* A,
 
     P->local_num_rows = A->local_num_rows;
 
-    P->local_num_cols = 0;
     for (int i = 0; i < A->local_num_rows; i++)
     {
         if (states[i] == 1)
         {
             P->on_proc->idx2.push_back(on_proc_col_to_new[i]);
             P->on_proc->vals.push_back(1);
-            P->local_num_cols++;
         }
         else
         {
@@ -220,7 +228,9 @@ ParCSRMatrix* direct_interpolation(const ParCSRMatrix* A,
     P->off_proc_num_cols = P->off_proc_column_map.size();
     P->on_proc_num_cols = P->on_proc_column_map.size();
 
-    MPI_Allreduce(&(P->local_num_cols), &(P->global_num_cols), 1, MPI_INT,
+    P->map_partition_to_local();
+
+    MPI_Allreduce(&(P->on_proc_num_cols), &(P->global_num_cols), 1, MPI_INT,
             MPI_SUM, MPI_COMM_WORLD);
 
     if (A->comm)

@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
     cf_splitting(S, states, off_proc_states);
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        printf("States[%d] = %d\n", i + S->first_local_row, states[i]);
+        printf("States[%d] = %d\n", i + S->partition->first_local_row, states[i]);
     }
 
     delete S;

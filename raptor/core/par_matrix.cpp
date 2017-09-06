@@ -95,14 +95,18 @@ void ParMatrix::finalize(bool create_comm)
         on_proc->sort();
 
         // Assume nonzeros in each on_proc column
-        on_proc->col_list.resize(local_num_cols);
-        for (int i = 0; i < local_num_cols; i++)
+        on_proc->col_list.resize(on_proc->n_cols);
+        for (int i = 0; i < on_proc->n_cols; i++)
         {
             on_proc->col_list[i] = i + partition->first_local_col;
         }
         on_proc_column_map = on_proc->get_col_list();
         on_proc_num_cols = on_proc_column_map.size();
+
+        local_row_map = get_on_proc_column_map();
     }
+
+    map_partition_to_local();
         
     local_nnz = on_proc->nnz + off_proc->nnz;
 
@@ -112,6 +116,21 @@ void ParMatrix::finalize(bool create_comm)
         comm = new ParComm(partition);
 }
 
+void ParMatrix::map_partition_to_local()
+{
+    if (on_proc->nnz)
+    {
+        if (partition->local_num_cols)
+        {
+            on_proc_partition_to_col.resize(partition->local_num_cols);
+            for (int i = 0; i < on_proc_num_cols; i++)
+            {
+                on_proc_partition_to_col[on_proc_column_map[i] - partition->first_local_col] = i;
+            }
+        }
+    }
+}
+
 void ParMatrix::copy(ParCOOMatrix* A)
 {
     partition = A->partition;
@@ -119,17 +138,26 @@ void ParMatrix::copy(ParCOOMatrix* A)
 
     local_nnz = A->local_nnz;
     local_num_rows = A->local_num_rows;
-    local_num_cols = A->local_num_cols;
     global_num_rows = A->global_num_rows;
     global_num_cols = A->global_num_cols;
-    first_local_row = A->first_local_row;
-    first_local_col = A->first_local_col;
 
     off_proc_column_map = off_proc->get_col_list();
     on_proc_column_map = on_proc->get_col_list();
+
+    if (local_num_rows)
+    {
+        local_row_map.reserve(local_num_rows);
+        for (std::vector<int>::iterator it = A->local_row_map.begin();
+                it != A->local_row_map.end(); ++it)
+        {
+            local_row_map.push_back(*it);
+        }
+    }
     
     off_proc_num_cols = off_proc_column_map.size();
     on_proc_num_cols = on_proc_column_map.size();
+
+    map_partition_to_local();
 
     if (A->comm)
     {
@@ -157,17 +185,26 @@ void ParMatrix::copy(ParCSRMatrix* A)
 
     local_nnz = A->local_nnz;
     local_num_rows = A->local_num_rows;
-    local_num_cols = A->local_num_cols;
     global_num_rows = A->global_num_rows;
     global_num_cols = A->global_num_cols;
-    first_local_row = A->first_local_row;
-    first_local_col = A->first_local_col;
 
     off_proc_column_map = off_proc->get_col_list();
     on_proc_column_map = on_proc->get_col_list();
     
     off_proc_num_cols = off_proc_column_map.size();
     on_proc_num_cols = on_proc_column_map.size();
+
+    if (local_num_rows)
+    {
+        local_row_map.reserve(local_num_rows);
+        for (std::vector<int>::iterator it = A->local_row_map.begin();
+                it != A->local_row_map.end(); ++it)
+        {
+            local_row_map.push_back(*it);
+        }
+    }
+
+    map_partition_to_local();
 
     if (A->comm)
     {
@@ -195,17 +232,26 @@ void ParMatrix::copy(ParCSCMatrix* A)
 
     local_nnz = A->local_nnz;
     local_num_rows = A->local_num_rows;
-    local_num_cols = A->local_num_cols;
     global_num_rows = A->global_num_rows;
     global_num_cols = A->global_num_cols;
-    first_local_row = A->first_local_row;
-    first_local_col = A->first_local_col;
 
     off_proc_column_map = off_proc->get_col_list();
     on_proc_column_map = on_proc->get_col_list();
     
     off_proc_num_cols = off_proc_column_map.size();
     on_proc_num_cols = on_proc_column_map.size();
+
+    if (local_num_rows)
+    {
+        local_row_map.reserve(local_num_rows);
+        for (std::vector<int>::iterator it = A->local_row_map.begin();
+                it != A->local_row_map.end(); ++it)
+        {
+            local_row_map.push_back(*it);
+        }
+    }
+
+    map_partition_to_local();
 
     if (A->comm)
     {

@@ -41,12 +41,22 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, MPI_Comm comm_mat)
     MPI_Comm_rank(comm_mat, &rank);
     MPI_Comm_size(comm_mat, &num_procs);
 
+    std::vector<int> row_sizes(num_procs);
+    std::vector<int> col_sizes(num_procs);
+    MPI_Allgather(&(A_rap->local_num_rows), 1, MPI_INT, row_sizes.data(), 1, MPI_INT,
+            MPI_COMM_WORLD);
+    MPI_Allgather(&(A_rap->on_proc_num_cols), 1, MPI_INT, col_sizes.data(), 1, MPI_INT,
+            MPI_COMM_WORLD);
+    for (int i = 0; i < rank; i++)
+    {
+        local_row_start += row_sizes[i];
+        local_col_start += col_sizes[i];
+    }
+
     n_rows = A_rap->local_num_rows;
     if (n_rows)
     {
-        n_cols = A_rap->local_num_cols;
-        local_row_start = A_rap->first_local_row;
-        local_col_start = A_rap->first_local_col;
+        n_cols = A_rap->on_proc_num_cols;
     }
 
     /**********************************
@@ -64,10 +74,10 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, MPI_Comm comm_mat)
     {
         row_start = A_rap->on_proc->idx1[i];
         row_end = A_rap->on_proc->idx1[i+1];
-        global_row = i + A_rap->first_local_row;
+        global_row = i + A_rap->partition->first_local_row;
         for (int j = row_start; j < row_end; j++)
         {
-            global_col = A_rap->on_proc->idx2[j] + A_rap->first_local_col;
+            global_col = A_rap->on_proc_column_map[A_rap->on_proc->idx2[j]];
             value = A_rap->on_proc->vals[j];
             HYPRE_IJMatrixSetValues(A, 1, &one, &global_row, &global_col, &value);
         }
@@ -76,7 +86,7 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, MPI_Comm comm_mat)
     {
         row_start = A_rap->off_proc->idx1[i];
         row_end = A_rap->off_proc->idx1[i+1];
-        HYPRE_Int global_row = i + A_rap->first_local_row;
+        HYPRE_Int global_row = i + A_rap->partition->first_local_row;
         for (int j = row_start; j < row_end; j++)
         {
             global_col = A_rap->off_proc_column_map[A_rap->off_proc->idx2[j]];
