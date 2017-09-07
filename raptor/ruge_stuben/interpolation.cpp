@@ -49,25 +49,18 @@ ParCSRMatrix* direct_interpolation(const ParCSRMatrix* A,
     P->on_proc_column_map = P->on_proc->get_col_list();
     P->off_proc_column_map = P->off_proc->get_col_list();
 
-    if (A->local_row_map.size())
-    {
-        P->local_row_map.reserve(A->local_row_map.size());
-        for (std::vector<int>::const_iterator it = A->local_row_map.begin();
-                it != A->local_row_map.end(); ++it)
-        {
-            P->local_row_map.push_back(*it);
-        }
-    }
-    
+    std::copy(A->local_row_map.begin(), A->local_row_map.end(),
+            std::back_inserter(P->local_row_map));
+
     // Make sure diagonal entry is first in each row of A
     if (!A->on_proc->diag_first)
     {
         A->on_proc->move_diag();
     }
 
-    P->local_num_rows = A->local_num_rows;
+    P->local_num_rows = A->local_row_map.size();
 
-    for (int i = 0; i < A->local_num_rows; i++)
+    for (int i = 0; i < A->local_row_map.size(); i++)
     {
         if (states[i] == 1)
         {

@@ -80,7 +80,6 @@ namespace raptor
         partition = part;
         partition->num_shared++;
 
-        local_num_rows = partition->local_num_rows;
         global_num_rows = partition->global_num_rows;
         global_num_cols = partition->global_num_cols;
         on_proc_num_cols = 0;
@@ -94,7 +93,6 @@ namespace raptor
     {
         partition = new Partition(glob_rows, glob_cols);
 
-        local_num_rows = partition->local_num_rows;
         global_num_rows = partition->global_num_rows;
         global_num_cols = partition->global_num_cols;
         on_proc_num_cols = 0;
@@ -113,7 +111,6 @@ namespace raptor
         partition = new Partition(glob_rows, glob_cols,
                 local_rows, local_cols, first_row, first_col);
 
-        local_num_rows = partition->local_num_rows;
         global_num_rows = partition->global_num_rows;
         global_num_cols = partition->global_num_cols;
         on_proc_num_cols = 0;
@@ -232,21 +229,6 @@ namespace raptor
     virtual void copy(ParCSCMatrix* A) = 0;
     virtual void copy(ParCOOMatrix* A) = 0;
 
-    std::vector<index_t>& get_on_proc_column_map()
-    {
-        return on_proc_column_map;
-    }
-
-    std::vector<index_t>& get_off_proc_column_map()
-    {
-        return off_proc_column_map;
-    }
-
-    std::vector<index_t>& get_local_row_map()
-    {
-        return local_row_map;
-    }
-
     // Store dimensions of parallel matrix
     int local_nnz;
     int local_num_rows;
@@ -270,6 +252,7 @@ namespace raptor
     std::vector<index_t> on_proc_column_map; // Maps on_proc local to global
     std::vector<index_t> local_row_map; // Maps local rows to global
     std::vector<int> on_proc_partition_to_col; // Maps on_proc partition to local
+    std::vector<int> local_partition_to_row; // Maps on_proc partition to local
 
     // Parallel communication package indicating which 
     // processes hold vector values associated with off_proc,
@@ -425,7 +408,7 @@ namespace raptor
         off_proc->idx1[0] = 0;
 
         int val_start = partition->first_local_row * partition->global_num_cols;
-        for (int i = 0; i < local_num_rows; i++)
+        for (int i = 0; i < partition->local_num_rows; i++)
         {
             for (int j = 0; j < partition->global_num_cols; j++)
             {

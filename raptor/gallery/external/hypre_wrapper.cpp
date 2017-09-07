@@ -74,7 +74,7 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, MPI_Comm comm_mat)
     {
         row_start = A_rap->on_proc->idx1[i];
         row_end = A_rap->on_proc->idx1[i+1];
-        global_row = i + A_rap->partition->first_local_row;
+        global_row = A_rap->local_row_map[i];
         for (int j = row_start; j < row_end; j++)
         {
             global_col = A_rap->on_proc_column_map[A_rap->on_proc->idx2[j]];
@@ -86,7 +86,7 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, MPI_Comm comm_mat)
     {
         row_start = A_rap->off_proc->idx1[i];
         row_end = A_rap->off_proc->idx1[i+1];
-        HYPRE_Int global_row = i + A_rap->partition->first_local_row;
+        global_row = A_rap->local_row_map[i];
         for (int j = row_start; j < row_end; j++)
         {
             global_col = A_rap->off_proc_column_map[A_rap->off_proc->idx2[j]];

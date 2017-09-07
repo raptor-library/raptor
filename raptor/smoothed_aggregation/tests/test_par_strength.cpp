@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
 
     for (int i = 0; i < S_par->local_num_rows; i++)
     {
-        global_row = S_par->first_local_row + i;
+        global_row = S_par->local_row_map[i];
         row_start = S->idx1[global_row];
         row_end = S->idx1[global_row+1];
         int head = -2;

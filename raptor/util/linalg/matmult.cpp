@@ -686,15 +686,8 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C,
     C->on_proc_column_map = C->on_proc->get_col_list();
     C->on_proc_num_cols = C->on_proc_column_map.size();
 
-    if (local_row_map.size())
-    {
-        C->local_row_map.reserve(local_row_map.size());
-        for (std::vector<int>::iterator it = local_row_map.begin();
-                it != local_row_map.end(); ++it)
-        {
-            C->local_row_map.push_back(*it);
-        }
-    }
+    std::copy(local_row_map.begin(), local_row_map.end(),
+            std::back_inserter(C->local_row_map));
 
     C->map_partition_to_local();
 }
@@ -848,16 +841,9 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
     }
     C->on_proc_column_map = C->on_proc->get_col_list();
     C->on_proc_num_cols = C->on_proc_column_map.size();
-
-    if (P->on_proc_num_cols)
-    {
-        C->local_row_map.reserve(P->on_proc_num_cols);
-        for (std::vector<int>::iterator it = P->on_proc_column_map.begin();
-                it != P->on_proc_column_map.end(); ++it)
-        {
-            C->local_row_map.push_back(*it);
-        }
-    }
+    
+    std::copy(P->on_proc_column_map.begin(), P->on_proc_column_map.end(),
+            std::back_inserter(C->local_row_map));
 
     // Update recv_on columns (to match local cols)
     for (std::vector<int>::iterator it = recv_on->idx2.begin();

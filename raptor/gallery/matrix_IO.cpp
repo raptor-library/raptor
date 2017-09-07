@@ -45,7 +45,7 @@ ParCSRMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file,
 
         // read the file knowing our local rows
         ret_code = mm_read_sparse(filename, A->partition->first_local_row,
-            A->partition->first_local_row + A->local_num_rows, &num_rows, &num_cols,
+            A->partition->first_local_row + A->partition->local_num_rows, &num_rows, &num_cols,
             A, symmetric);
 
         if (ret_code != 0)

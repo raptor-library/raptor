@@ -13,6 +13,7 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
     double row_max;
 
     ParCSRMatrix* S = new ParCSRMatrix(partition);
+    S->local_num_rows = local_num_rows;
     
     if (on_proc->nnz)
     {
@@ -118,16 +119,8 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
     S->on_proc_column_map = S->on_proc->get_col_list();
     S->on_proc_num_cols = S->on_proc_column_map.size();
 
-    if (local_row_map.size())
-    {
-        S->local_row_map.reserve(local_row_map.size());
-        for (std::vector<int>::iterator it = local_row_map.begin();
-                it != local_row_map.end(); ++it)
-        {
-            S->local_row_map.push_back(*it);
-        }
-    }
-
+    std::copy(local_row_map.begin(), local_row_map.end(),
+            std::back_inserter(S->local_row_map));
 
     S->map_partition_to_local();
 
