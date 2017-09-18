@@ -58,7 +58,7 @@ int main(int argc, char* argv[])
     }
 
     // Compare A_par_csc to A_dense
-    for (int i = 0; i < A_par_csc->local_num_cols; i++)
+    for (int i = 0; i < A_par_csc->on_proc_num_cols; i++)
     {
         int col = A_par_csc->on_proc_column_map[i];
         for (int j = A_par_csc->on_proc->idx1[i]; j < A_par_csc->on_proc->idx1[i+1]; j++)

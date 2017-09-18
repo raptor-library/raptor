@@ -184,7 +184,7 @@ ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix,
     MPI_Allreduce(&on_proc_num_cols, &(A_coo->global_num_rows), 1, MPI_INT,
             MPI_SUM, MPI_COMM_WORLD);
     A_coo->local_num_rows = on_proc_num_cols;
-    A_coo->local_num_cols = A_coo->local_num_rows;
+    A_coo->on_proc_num_cols = A_coo->local_num_rows;
     A_coo->global_num_cols = A_coo->global_num_rows;
     A_coo->local_nnz = A_coo->on_proc->nnz + A_coo->off_proc->nnz;
 
@@ -367,7 +367,7 @@ ParCSRMatrix* exxon_pressure_reader(char* folder, char* iname, char* fname, char
     MPI_Allreduce(&block_on_proc_num_cols, &(A_coo->global_num_rows), 
             1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     A_coo->local_num_rows = block_on_proc_num_cols;
-    A_coo->local_num_cols = A_coo->local_num_rows;
+    A_coo->on_proc_num_cols = A_coo->local_num_rows;
     A_coo->global_num_cols = A_coo->global_num_rows;
     A_coo->local_nnz = A_coo->on_proc->nnz + A_coo->off_proc->nnz;
 

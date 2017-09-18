@@ -8,6 +8,8 @@
 #include "ruge_stuben/cf_splitting.hpp"
 #include "ruge_stuben/interpolation.hpp"
 
+#include "multilevel/multilevel.hpp"
+
 using namespace raptor;
 
 int main(int argc, char* argv[])
@@ -28,6 +30,18 @@ int main(int argc, char* argv[])
 
     ParCSRMatrix* A = par_stencil_grid(stencil, grid.data(), 3);
     A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
+    ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    x.set_const_value(1.0);
+    A->mult(x, b);
+    x.set_const_value(0.0);
+
+    Multilevel* ml = new Multilevel(A);
+    ml->solve(x, b);
+
+    delete ml;
+
+
     ParCSRMatrix* S = A->strength(0.0);
     std::vector<int> states;
     std::vector<int> off_proc_states;

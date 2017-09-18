@@ -26,12 +26,6 @@
  *****    List of position indices, specific to type of matrix
  ***** vals : std::vector<double>
  *****    List of values in matrix
- ***** row_list : std::vector<int>
- *****    List of rows containing nonzeros.  Only initialized
- *****    for condensed matrices.
- ***** col_list : std::vector<int>
- *****    List of columns containing nonzeros.  Only initialized
- *****    for condensed matrices.
  *****
  ***** Methods
  ***** -------
@@ -52,14 +46,6 @@
  ***** add_value(int row, int col, double val)
  *****     Adds val to position (row, col)
  *****     TODO -- make sure this is working for CSR/CSC
- ***** condense_rows()
- *****     Removes zeros rows from sparse matrix, decreasing the indices
- *****     of remaining rows as needed.  Initializes row_list to contain
- *****     the original rows of the matrix (row_list[i] = orig_row[i])
- ***** condense_cols()
- *****     Removes zeros cols from sparse matrix, decreasing the indices
- *****     of remaining cols as needed.  Initializes col_list to contain
- *****     the original cols of the matrix (col_list[i] = orig_col[i])
  **************************************************************/
 namespace raptor
 {
@@ -120,8 +106,6 @@ namespace raptor
     virtual void move_diag() = 0;
     virtual void remove_duplicates() = 0;
     virtual void add_value(int row, int col, double val) = 0;
-    virtual void condense_rows() = 0;
-    virtual void condense_cols() = 0;
 
     virtual void copy(const COOMatrix* A) = 0;
     virtual void copy(const CSRMatrix* A) = 0;
@@ -218,15 +202,15 @@ namespace raptor
     }
     virtual void mult_append_neg_T(std::vector<double>& x, std::vector<double>& b) = 0;
 
-    void residual(Vector& x, Vector& b, Vector& r)
+    void residual(const Vector& x, const Vector& b, Vector& r)
     {
         residual(x.values, b.values, r.values);
     }
-    void residual(std::vector<double>& x, Vector& b, Vector& r)
+    void residual(const std::vector<double>& x, const Vector& b, Vector& r)
     {
         residual(x, b.values, r.values);
     }
-    virtual void residual(std::vector<double>& x, std::vector<double>& b,
+    virtual void residual(const std::vector<double>& x, const std::vector<double>& b,
             std::vector<double>& r) = 0;
 
     CSRMatrix* mult(const CSRMatrix* B){}
@@ -242,16 +226,6 @@ namespace raptor
     Matrix* subtract(Matrix* B);
 
     void resize(int _n_rows, int _n_cols);
-
-    std::vector<index_t>& get_row_list()
-    {
-        return row_list;
-    }
-
-    std::vector<index_t>& get_col_list()
-    {
-        return col_list;
-    }
 
     std::vector<int>& index1()
     {
@@ -271,11 +245,6 @@ namespace raptor
     std::vector<int> idx1;
     std::vector<int> idx2;
     std::vector<double> vals;
-
-    // Lists of rows with nonzeros
-    // Only initialized when matrix is condensed
-    std::vector<int> row_list;
-    std::vector<int> col_list;
 
     int n_rows;
     int n_cols;
@@ -300,14 +269,6 @@ namespace raptor
  *****    Sorts the matrix by row, and by column within each row.
  ***** add_value(int row, int col, double val)
  *****     Adds val to position (row, col)
- ***** condense_rows()
- *****     Removes zeros rows from sparse matrix, decreasing the indices
- *****     of remaining rows as needed.  Initializes row_list to contain
- *****     the original rows of the matrix (row_list[i] = orig_row[i])
- ***** condense_cols()
- *****     Removes zeros cols from sparse matrix, decreasing the indices
- *****     of remaining cols as needed.  Initializes col_list to contain
- *****     the original cols of the matrix (col_list[i] = orig_col[i])
  ***** rows()
  *****     Returns std::vector<int>& containing the rows corresponding
  *****     to each nonzero
@@ -441,8 +402,6 @@ namespace raptor
     void copy(const CSCMatrix* A);
 
     void add_value(int row, int col, double value);
-    void condense_rows();
-    void condense_cols();
     void sort();
     void move_diag();
     void remove_duplicates();
@@ -471,7 +430,8 @@ namespace raptor
     { 
         Matrix::mult_append_neg_T(x, b);
     }
-    template <typename T, typename U, typename V> void residual(T& x, U& b, V& r)
+    template <typename T, typename U, typename V> 
+    void residual(const T& x, const U& b, V& r)
     { 
         Matrix::residual(x, b, r);
     }
@@ -517,7 +477,8 @@ namespace raptor
             b[idx2[i]] -= vals[i] * x[idx1[i]];
         }
     }
-    void residual(std::vector<double>& x, std::vector<double>& b, std::vector<double>& r)
+    void residual(const std::vector<double>& x, const std::vector<double>& b, 
+            std::vector<double>& r)
     {
         for (int i = 0; i < n_rows; i++)
             r[i] = b[i];
@@ -571,14 +532,6 @@ namespace raptor
  *****    the columns in each row.
  ***** add_value(int row, int col, double val)
  *****     TODO -- add this functionality
- ***** condense_rows()
- *****     Removes zeros rows from sparse matrix, decreasing the indices
- *****     of remaining rows as needed.  Initializes row_list to contain
- *****     the original rows of the matrix (row_list[i] = orig_row[i])
- ***** condense_cols()
- *****     Removes zeros cols from sparse matrix, decreasing the indices
- *****     of remaining cols as needed.  Initializes col_list to contain
- *****     the original cols of the matrix (col_list[i] = orig_col[i])
  ***** indptr()
  *****     Returns std::vector<int>& row pointer.  The ith element points to
  *****     the index of indices() corresponding to the first column to lie on 
@@ -713,8 +666,6 @@ namespace raptor
     void copy(const CSCMatrix* A);
 
     void add_value(int row, int col, double value);
-    void condense_rows();
-    void condense_cols();
     void sort();
     void move_diag();
     void remove_duplicates();
@@ -743,7 +694,8 @@ namespace raptor
     { 
         Matrix::mult_append_neg_T(x, b);
     }
-    template <typename T, typename U, typename V> void residual(T& x, U& b, V& r)
+    template <typename T, typename U, typename V> 
+    void residual(const T& x, const U& b, V& r)
     { 
         Matrix::residual(x, b, r);
     }
@@ -814,7 +766,8 @@ namespace raptor
             }
         }
     }
-    void residual(std::vector<double>& x, std::vector<double>& b, std::vector<double>& r)
+    void residual(const std::vector<double>& x, const std::vector<double>& b, 
+            std::vector<double>& r)
     {
         for (int i = 0; i < n_rows; i++)
             r[i] = b[i];
@@ -881,14 +834,6 @@ namespace raptor
  *****    the rows in each column.
  ***** add_value(int row, int col, double val)
  *****     TODO -- add this functionality
- ***** condense_rows()
- *****     Removes zeros rows from sparse matrix, decreasing the indices
- *****     of remaining rows as needed.  Initializes row_list to contain
- *****     the original rows of the matrix (row_list[i] = orig_row[i])
- ***** condense_cols()
- *****     Removes zeros cols from sparse matrix, decreasing the indices
- *****     of remaining cols as needed.  Initializes col_list to contain
- *****     the original cols of the matrix (col_list[i] = orig_col[i])
  ***** indptr()
  *****     Returns std::vector<int>& column pointer.  The ith element points to
  *****     the index of indices() corresponding to the first row to lie on 
@@ -1008,8 +953,6 @@ namespace raptor
     void move_diag();
     void remove_duplicates();
     void add_value(int row, int col, double value);
-    void condense_rows();
-    void condense_cols();
 
     template <typename T, typename U> void mult(T& x, U& b)
     { 
@@ -1035,7 +978,8 @@ namespace raptor
     { 
         Matrix::mult_append_neg_T(x, b);
     }
-    template <typename T, typename U, typename V> void residual(T& x, U& b, V& r)
+    template <typename T, typename U, typename V> 
+    void residual(const T& x, const U& b, V& r)
     { 
         Matrix::residual(x, b, r);
     }
@@ -1105,7 +1049,8 @@ namespace raptor
             }
         }
     }
-    void residual(std::vector<double>& x, std::vector<double>& b, std::vector<double>& r)
+    void residual(const std::vector<double>& x, const std::vector<double>& b, 
+            std::vector<double>& r)
     {
         for (int i = 0; i < n_rows; i++)
             r[i] = b[i];

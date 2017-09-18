@@ -16,6 +16,7 @@ target_link_libraries(raptor ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRAR
 
 include_directories(".")
 if(ENABLE_UNIT_TESTS)
+    add_subdirectory(tests)
     add_subdirectory(core/tests)
     add_subdirectory(util/tests)
     #add_subdirectory(smoothed_aggregation/tests)

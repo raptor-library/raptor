@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-#include "core/par_matrix.hpp"
+#include "core/matrix.hpp"
 #include "core/types.hpp"
 
 using namespace raptor;
@@ -19,23 +19,13 @@ using namespace raptor;
 typedef char MM_typecode[4];
 
 
-char *mm_typecode_to_str(MM_typecode matcode);
 int mm_read_banner(FILE *f, MM_typecode *matcode);
 int mm_read_mtx_crd_size(FILE *f, index_t *M, index_t *N, index_t *nz);
-int mm_read_mtx_array_size(FILE *f, index_t *M, index_t *N);
 
-int mm_write_banner(FILE *f, MM_typecode matcode);
-int mm_write_mtx_crd_size(FILE *f, index_t M, index_t N, index_t nz);
-int mm_write_mtx_array_size(FILE *f, index_t M, index_t N);
+int mm_read_sparse(const char *fname, 
+        index_t *M_, index_t *N_, Matrix* A, int symmetric);
 
-int mm_read_sparse(const char *fname, index_t start, index_t stop, 
-        index_t *M_, index_t *N_, ParMatrix* A, int symmetric);
-ParCSRMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, 
-        int symmetric = 1, int local_num_rows = -1, int local_num_cols = -1,
-        int first_local_row = -1, int first_local_col = -1);
-int mm_dist_sparse(const char *fname, index_t start, index_t stop);
-int mm_copy_header(const char* fname);
-int mm_write_lcl_size(const char* fname, index_t start, index_t stop);
+CSRMatrix* readMatrix(char* filename, int symmetric = 1);
 
 /********************* MM_typecode query fucntions ***************************/
 
@@ -55,9 +45,6 @@ int mm_write_lcl_size(const char* fname, index_t start, index_t stop);
 #define mm_is_general(typecode)	((typecode)[3]=='G')
 #define mm_is_skew(typecode)	((typecode)[3]=='K')
 #define mm_is_hermitian(typecode)((typecode)[3]=='H')
-
-int mm_is_valid(MM_typecode matcode);		/* too complex for a macro */
-
 
 /********************* MM_typecode modify fucntions ***************************/
 

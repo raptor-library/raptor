@@ -48,8 +48,8 @@ int main(int argc, char *argv[])
     }
 
     A = exxon_reader(folder, iname, fname, suffix, on_proc_column_map);
-    b = ParVector(A->global_num_rows, A->local_num_rows, A->first_local_row);
-    x = ParVector(A->global_num_cols, A->local_num_cols, A->first_local_col);
+    b = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    x = ParVector(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
     A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
 
     for (int i = 0; i < x.local_n; i++)

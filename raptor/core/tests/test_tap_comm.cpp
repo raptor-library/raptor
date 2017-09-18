@@ -1,4 +1,4 @@
-#snclude <assert.h>
+#include <assert.h>
 
 #include "core/types.hpp"
 #include "core/matrix.hpp"

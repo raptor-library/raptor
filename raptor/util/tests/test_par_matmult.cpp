@@ -2,7 +2,7 @@
 #include <math.h>
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
-#include "gallery/matrix_IO.hpp"
+#include "gallery/par_matrix_IO.hpp"
 
 using namespace raptor;
 

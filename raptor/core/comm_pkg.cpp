@@ -102,6 +102,16 @@ void ParComm::communicate_T(const int* values, MPI_Comm comm)
     complete_int_comm_T();
 }
 
+void ParComm::init_comm(const std::vector<data_t>& values, MPI_Comm comm)
+{
+    init_comm(values.data(), comm);
+}
+
+void ParComm::init_comm(const std::vector<int>& values, MPI_Comm comm)
+{
+    init_comm(values.data(), comm);
+}
+
 void ParComm::init_comm(const data_t* values, MPI_Comm comm)
 {
     int start, end;
@@ -180,6 +190,16 @@ std::vector<int>& ParComm::complete_int_comm()
     }
 
     return get_int_recv_buffer();
+}
+
+void ParComm::init_comm_T(const std::vector<data_t>& values, MPI_Comm comm)
+{
+    init_comm_T(values.data(), comm);
+}
+
+void ParComm::init_comm_T(const std::vector<int>& values, MPI_Comm comm)
+{
+    init_comm_T(values.data(), comm);
 }
 
 void ParComm::init_comm_T(const data_t* values, MPI_Comm comm)
@@ -306,6 +326,16 @@ void TAPComm::communicate_T(const int* values, MPI_Comm comm)
     complete_int_comm_T();
 }
 
+void TAPComm::init_comm(const std::vector<data_t>& values, MPI_Comm comm)
+{
+    init_comm(values.data(), comm);
+}
+
+void TAPComm::init_comm(const std::vector<int>& values, MPI_Comm comm)
+{
+    init_comm(values.data(), comm);
+}
+
 void TAPComm::init_comm(const data_t* values, MPI_Comm comm)
 {
     // Messages with origin and final destination on node
@@ -398,6 +428,16 @@ std::vector<int>& TAPComm::complete_int_comm()
     return get_int_recv_buffer();
 }
 
+void TAPComm::init_comm_T(const std::vector<data_t>& values, MPI_Comm comm)
+{
+    init_comm_T(values.data(), comm);
+}
+
+void TAPComm::init_comm_T(const std::vector<int>& values, MPI_Comm comm)
+{
+    init_comm_T(values.data(), comm);
+}
+
 void TAPComm::init_comm_T(const data_t* values, MPI_Comm comm)
 {
     // Messages with origin and final destination on node
@@ -437,8 +477,6 @@ void TAPComm::complete_comm_T()
     // Redistributing recvd inter-node values
     local_S_par_comm->init_comm_T(G_vals, topology->local_comm);
     local_S_par_comm->complete_comm_T();
-    std::vector<double>& S_recv = local_S_par_comm->recv_data->buffer;
-    std::vector<double>& L_recv = local_L_par_comm->recv_data->buffer;
 }
 
 void TAPComm::complete_int_comm_T()
@@ -450,8 +488,6 @@ void TAPComm::complete_int_comm_T()
     // Redistributing recvd inter-node values
     local_S_par_comm->init_comm_T(G_vals, topology->local_comm);
     local_S_par_comm->complete_comm_T();
-    std::vector<int>& S_recv = local_S_par_comm->recv_data->int_buffer;
-    std::vector<int>& L_recv = local_L_par_comm->recv_data->int_buffer;
 }
 
 

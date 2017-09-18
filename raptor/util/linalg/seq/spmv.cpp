@@ -290,7 +290,7 @@ void CSCMatrix::mult_append_neg_T(Vector& x, Vector& b)
 ***** r : V*
 *****    Array in which double solution values are to be placed 
 **************************************************************/
-void COOMatrix::residual(Vector& x, Vector& b, Vector& r)
+void COOMatrix::residual(const Vector& x, const Vector& b, Vector& r)
 {   
     for (int i = 0; i < n_rows; i++)
         r[i] = b[i];
@@ -300,7 +300,7 @@ void COOMatrix::residual(Vector& x, Vector& b, Vector& r)
         r[idx1[i]] -= vals[i] * x[idx2[i]];
     }
 }
-void CSRMatrix::residual(Vector& x, Vector& b, Vector& r)
+void CSRMatrix::residual(const Vector& x, const Vector& b, Vector& r)
 {   
     for (int i = 0; i < n_rows; i++)
         r[i] = b[i];
@@ -316,7 +316,7 @@ void CSRMatrix::residual(Vector& x, Vector& b, Vector& r)
         }
     }
 }
-void CSCMatrix::residual(Vector& x, Vector& b, Vector& r)
+void CSCMatrix::residual(const Vector& x, const Vector& b, Vector& r)
 {
     for (int i = 0; i < n_rows; i++)
         r[i] = b[i];

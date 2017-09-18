@@ -1,7 +1,7 @@
 // Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#ifndef RAPTOR_CORE_MULTILEVEL_H
-#define RAPTOR_CORE_MULTILEVEL_H
+#ifndef RAPTOR_CORE_LEVEL_H
+#define RAPTOR_CORE_LEVEL_H
 
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"

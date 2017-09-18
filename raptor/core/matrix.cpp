@@ -122,24 +122,6 @@ void COOMatrix::copy(const COOMatrix* A)
         idx2.push_back(A->idx2[i]);
         vals.push_back(A->vals[i]);
     }
-    
-    if (A->col_list.size())
-    {
-        col_list.resize(A->col_list.size());
-        for (int i = 0; i < col_list.size(); i++)
-        {
-            col_list[i] = A->col_list[i];
-        }
-    }
-
-    if (A->row_list.size())
-    {
-        row_list.resize(A->row_list.size());
-        for (int i = 0; i < row_list.size(); i++)
-        {
-            row_list[i] = A->row_list[i];
-        }
-    }
 }
 void COOMatrix::copy(const CSRMatrix* A)
 {
@@ -163,24 +145,6 @@ void COOMatrix::copy(const CSRMatrix* A)
             idx1.push_back(i);
             idx2.push_back(A->idx2[j]);
             vals.push_back(A->vals[j]);
-        }
-    }
-    
-    if (A->col_list.size())
-    {
-        col_list.resize(A->col_list.size());
-        for (int i = 0; i < col_list.size(); i++)
-        {
-            col_list[i] = A->col_list[i];
-        }
-    }
-
-    if (A->row_list.size())
-    {
-        row_list.resize(A->row_list.size());
-        for (int i = 0; i < row_list.size(); i++)
-        {
-            row_list[i] = A->row_list[i];
         }
     }
 }
@@ -208,102 +172,8 @@ void COOMatrix::copy(const CSCMatrix* A)
             vals.push_back(A->vals[j]);
         }
     }
-    
-    if (A->col_list.size())
-    {
-        col_list.resize(A->col_list.size());
-        for (int i = 0; i < col_list.size(); i++)
-        {
-            col_list[i] = A->col_list[i];
-        }
-    }
-
-    if (A->row_list.size())
-    {
-        row_list.resize(A->row_list.size());
-        for (int i = 0; i < row_list.size(); i++)
-        {
-            row_list[i] = A->row_list[i];
-        }
-    }
 }
 
-
-/**************************************************************
-*****   COOMatrix Condense Rows
-**************************************************************
-***** Removes zero rows from the matrix, and initializes 
-***** row_list, which points from new row index to original 
-***** row index.
-**************************************************************/
-void COOMatrix::condense_rows()
-{
-    std::set<int> row_set;
-    std::map<int, int> orig_to_new;
-    int ctr = 0;
-
-    // Find all rows that contain nonzeros
-    for (std::vector<int>::iterator it = idx1.begin(); it != idx1.end(); ++it)
-    {
-        row_set.insert(*it);
-    }
-
-    // Condense matrix, removing zero rows, by creating map of original row
-    // index to new (condensed) row index
-    for (std::set<int>::iterator it = row_set.begin(); 
-            it != row_set.end(); ++it)
-    {
-        orig_to_new[*it] = row_list.size();
-        row_list.push_back(*it);
-    }
-
-    // Resize matrix to remove zero rows
-    n_rows = row_set.size();
-
-    // Map original row to new condensed row
-    for (std::vector<int>::iterator it = idx1.begin(); it != idx1.end(); ++it)
-    {
-        *it = orig_to_new[*it];
-    }
-}
-
-/**************************************************************
-*****   COOMatrix Condense Columns
-**************************************************************
-***** Removes zero columns from the matrix, and initializes 
-***** col_list, which points from new column index to original 
-***** column index.
-**************************************************************/
-void COOMatrix::condense_cols()
-{
-    std::set<int> col_set;
-    std::map<int, int> orig_to_new;
-    int ctr = 0;
-
-    // Find all cols that contain nonzeros
-    for (std::vector<int>::iterator it = idx2.begin(); it != idx2.end(); ++it)
-    {
-        col_set.insert(*it);
-    }
-
-    // Condense matrix, removing zero cols, by creating map of original col
-    // index to new (condensed) col index
-    for (std::set<int>::iterator it = col_set.begin(); 
-            it != col_set.end(); ++it)
-    {
-        orig_to_new[*it] = col_list.size();
-        col_list.push_back(*it);
-    }
-
-    // Resize matrix to remove zero cols
-    n_cols = col_set.size();
-
-    // Map original col to new condensed col
-    for (std::vector<int>::iterator it = idx2.begin(); it != idx2.end(); ++it)
-    {
-        *it = orig_to_new[*it];
-    }
-}
 
 /**************************************************************
 *****   COOMatrix Sort
@@ -314,9 +184,13 @@ void COOMatrix::condense_cols()
 **************************************************************/
 void COOMatrix::sort()
 {
-    int k, prev_k;
+    if (sorted || nnz == 0)
+    {
+        sorted = true;
+        return;
+    }
 
-    if (nnz == 0) return;
+    int k, prev_k;
 
     std::vector<int> permutation(nnz);
     std::vector<bool> done(nnz, false);
@@ -417,11 +291,14 @@ void COOMatrix::remove_duplicates()
         {
             vals[ctr-1] += val;
         }
-        else if (ctr != i)
-        {
-            idx1[ctr] = row;
-            idx2[ctr] = col;
-            vals[ctr] = val;
+        else
+        { 
+            if (ctr != i)
+            {
+                idx1[ctr] = row;
+                idx2[ctr] = col;
+                vals[ctr] = val;
+            }
             ctr++;
 
             prev_row = row;
@@ -497,24 +374,6 @@ void CSRMatrix::copy(const COOMatrix* A)
         idx2[index] = col;
         vals[index] = val;
     }
-    
-    if (A->col_list.size())
-    {
-        col_list.resize(A->col_list.size());
-        for (int i = 0; i < col_list.size(); i++)
-        {
-            col_list[i] = A->col_list[i];
-        }
-    }
-
-    if (A->row_list.size())
-    {
-        row_list.resize(A->row_list.size());
-        for (int i = 0; i < row_list.size(); i++)
-        {
-            row_list[i] = A->row_list[i];
-        }
-    }
 }
 void CSRMatrix::copy(const CSRMatrix* A)
 {
@@ -536,24 +395,6 @@ void CSRMatrix::copy(const CSRMatrix* A)
         {
             idx2[j] = A->idx2[j];
             vals[j] = A->vals[j];
-        }
-    }
-    
-    if (A->col_list.size())
-    {
-        col_list.resize(A->col_list.size());
-        for (int i = 0; i < col_list.size(); i++)
-        {
-            col_list[i] = A->col_list[i];
-        }
-    }
-
-    if (A->row_list.size())
-    {
-        row_list.resize(A->row_list.size());
-        for (int i = 0; i < row_list.size(); i++)
-        {
-            row_list[i] = A->row_list[i];
         }
     }
 }
@@ -597,95 +438,6 @@ void CSRMatrix::copy(const CSCMatrix* A)
             vals[idx] = A->vals[j];
         }
     }
-    
-    if (A->col_list.size())
-    {
-        col_list.resize(A->col_list.size());
-        for (int i = 0; i < col_list.size(); i++)
-        {
-            col_list[i] = A->col_list[i];
-        }
-    }
-
-    if (A->row_list.size())
-    {
-        row_list.resize(A->row_list.size());
-        for (int i = 0; i < row_list.size(); i++)
-        {
-            row_list[i] = A->row_list[i];
-        }
-    }
-}
-
-/**************************************************************
-*****   CSRMatrix Condense Rows
-**************************************************************
-***** Removes zero rows from the matrix, and initializes 
-***** row_list, which points from new row index to original 
-***** row index.
-**************************************************************/
-void CSRMatrix::condense_rows()
-{
-    std::vector<int> orig_to_new;
-    orig_to_new.resize(n_rows);
-    row_list.reserve(n_rows);
-    int ctr = 0;
-
-    for (int i = 0; i < n_rows; i++)
-    {
-        int row_size = idx1[i+1] - idx1[i];
-        if (row_size)
-        {
-            orig_to_new[i] = row_list.size();
-            row_list.push_back(i);
-        }
-    }
-
-    for (std::vector<int>::iterator it = row_list.begin(); 
-            it != row_list.end(); ++it)
-    {
-        idx1[ctr+1] = idx1[*it + 1];
-        ctr++;
-    }
-    n_rows = row_list.size();
-}
-
-/**************************************************************
-*****   CSRMatrix Condense Columns
-**************************************************************
-***** Removes zero columns from the matrix, and initializes 
-***** col_list, which points from new column index to original 
-***** column index.
-**************************************************************/
-void CSRMatrix::condense_cols()
-{
-    std::set<int> col_set;
-    std::map<int, int> orig_to_new;
-    int ctr = 0;
-
-    // Find all cols that contain nonzeros
-    for (std::vector<int>::iterator it = idx2.begin(); it != idx2.end(); ++it)
-    {
-        col_set.insert(*it);
-    }
-
-    // Condense matrix, removing zero cols, by creating map of original col
-    // index to new (condensed) col index
-    for (std::set<int>::iterator it = col_set.begin(); 
-            it != col_set.end(); ++it)
-    {
-        orig_to_new[*it] = col_list.size();
-        col_list.push_back(*it);
-    }
-
-    // Resize matrix to remove zero cols
-    n_cols = col_set.size();
-
-    // Map original col to new condensed col
-    for (std::vector<int>::iterator it = idx2.begin(); it != idx2.end(); ++it)
-    {
-        *it = orig_to_new[*it];
-    }
 }
 
 /**************************************************************
@@ -699,6 +451,12 @@ void CSRMatrix::sort()
 {
     int start, end, row_size;
     int k, prev_k;
+
+    if (sorted || nnz == 0)
+    {
+        sorted = true;
+        return;
+    }
 
     std::vector<int> permutation;
     std::vector<bool> done;
@@ -901,24 +659,6 @@ void CSCMatrix::copy(const COOMatrix* A)
         idx2[index] = row;
         vals[index] = val;
     }        
-
-    if (A->col_list.size())
-    {
-        col_list.resize(A->col_list.size());
-        for (int i = 0; i < col_list.size(); i++)
-        {
-            col_list[i] = A->col_list[i];
-        }
-    }
-
-    if (A->row_list.size())
-    {
-        row_list.resize(A->row_list.size());
-        for (int i = 0; i < row_list.size(); i++)
-        {
-            row_list[i] = A->row_list[i];
-        }
-    }    
 }
 void CSCMatrix::copy(const CSRMatrix* A)
 {
@@ -965,24 +705,6 @@ void CSCMatrix::copy(const CSRMatrix* A)
             }
         }
     }
-
-    if (A->col_list.size())
-    {
-        col_list.resize(A->col_list.size());
-        for (int i = 0; i < col_list.size(); i++)
-        {
-            col_list[i] = A->col_list[i];
-        }
-    }
-
-    if (A->row_list.size())
-    {
-        row_list.resize(A->row_list.size());
-        for (int i = 0; i < row_list.size(); i++)
-        {
-            row_list[i] = A->row_list[i];
-        }
-    }
 }
 
 void CSCMatrix::copy(const CSCMatrix* A)
@@ -1007,96 +729,6 @@ void CSCMatrix::copy(const CSCMatrix* A)
             vals[j] = A->vals[j];
         }
     }
-    
-    if (A->col_list.size())
-    {
-        col_list.resize(A->col_list.size());
-        for (int i = 0; i < col_list.size(); i++)
-        {
-            col_list[i] = A->col_list[i];
-        }
-    }
-
-    if (A->row_list.size())
-    {
-        row_list.resize(A->row_list.size());
-        for (int i = 0; i < row_list.size(); i++)
-        {
-            row_list[i] = A->row_list[i];
-        }
-    }
-}
-
-
-/**************************************************************
-*****   CSCMatrix Condense Rows
-**************************************************************
-***** Removes zero rows from the matrix, and initializes 
-***** row_list, which points from new row index to original 
-***** row index.
-**************************************************************/
-void CSCMatrix::condense_rows()
-{
-    std::set<int> row_set;
-    std::map<int, int> orig_to_new;
-    int ctr = 0;
-
-    // Find all rows that contain nonzeros
-    for (std::vector<int>::iterator it = idx2.begin(); it != idx2.end(); ++it)
-    {
-        row_set.insert(*it);
-    }
-
-    // Condense matrix, removing zero rows, by creating map of original row
-    // index to new (condensed) row index
-    for (std::set<int>::iterator it = row_set.begin(); 
-            it != row_set.end(); ++it)
-    {
-        orig_to_new[*it] = row_list.size();
-        row_list.push_back(*it);
-    }
-
-    // Resize matrix to remove zero rows
-    n_rows = row_set.size();
-
-    // Map original row to new condensed row
-    for (std::vector<int>::iterator it = idx2.begin(); it != idx2.end(); ++it)
-    {
-        *it = orig_to_new[*it];
-    }
-}
-
-/**************************************************************
-*****   CSCMatrix Condense Columns
-**************************************************************
-***** Removes zero columns from the matrix, and initializes 
-***** col_list, which points from new column index to original 
-***** column index.
-**************************************************************/
-void CSCMatrix::condense_cols()
-{
-    std::vector<int> orig_to_new;
-    orig_to_new.resize(n_cols);
-    col_list.reserve(n_cols);
-    int ctr = 0;
-
-    for (int i = 0; i < n_cols; i++)
-    {
-        int col_size = idx1[i+1] - idx1[i];
-        if (col_size)
-        {
-            orig_to_new[i] = col_list.size();
-            col_list.push_back(i);
-        }
-    }
-
-    for (std::vector<int>::iterator it = col_list.begin(); 
-            it != col_list.end(); ++it)
-    {
-        idx1[ctr+1] = idx1[*it + 1];
-        ctr++;
-    }
-    n_cols = col_list.size();
 }
 
 /**************************************************************
@@ -1113,6 +745,12 @@ void CSCMatrix::sort()
 
     std::vector<int> permutation;
     std::vector<bool> done;
+
+    if (sorted || nnz == 0)
+    {
+        sorted = true;
+        return;
+    }
 
     // Sort the columns of each row (and data accordingly) and remove
     // duplicates (summing values together)

@@ -3,6 +3,8 @@
 #ifndef RAPTOR_CORE_PARVECTOR_HPP
 #define RAPTOR_CORE_PARVECTOR_HPP
 
+#include "assert.h"
+
 #include <mpi.h>
 #include <math.h>
 
@@ -64,6 +66,11 @@ namespace raptor
             resize(glbl_n, lcl_n, first_lcl);
         }
 
+        ParVector(const ParVector& x)
+        {
+            copy(x);
+        }
+
         /**************************************************************
         *****   ParVector Class Constructor
         **************************************************************
@@ -89,6 +96,18 @@ namespace raptor
             local_n = lcl_n;
             first_local = first_lcl;
             local.resize(local_n);
+        }
+
+        void copy(const ParVector& x)
+        {
+            global_n = x.global_n;
+            local_n = x.local_n;
+            first_local = x.first_local;
+            local.copy(x.local);
+            for (int i = 0; i < local_n; i++)
+            {
+                assert(fabs(local.values[i] - x.local.values[i]) < zero_tol);
+            }
         }
 
         /**************************************************************
@@ -126,18 +145,6 @@ namespace raptor
         void axpy(ParVector* y, data_t alpha);
 
         /**************************************************************
-        *****   Vector Copy
-        **************************************************************
-        ***** Copies values of local vector in y into local 
-        *****
-        ***** Parameters
-        ***** -------------
-        ***** y : ParVector* y
-        *****    ParVector to be copied
-        **************************************************************/
-        void copy(ParVector* y);
-        
-        /**************************************************************
         *****   Vector Scale
         **************************************************************
         ***** Multiplies the local vector by a constant, alpha
@@ -160,6 +167,16 @@ namespace raptor
         *****    Determines which p-norm to calculate
         **************************************************************/
         data_t norm(index_t p);
+
+        const data_t& operator[](const int index) const
+        {
+            return local.values[index];
+        }
+
+        data_t& operator[](const int index)
+        {
+            return local.values[index];
+        }
 
         Vector local;
         int global_n;

@@ -1,8 +1,9 @@
 // Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
-#include "relax.hpp"
-#include "spmv.hpp"
+#include "core/types.hpp"
+#include "util/linalg/relax.hpp"
+#include "core/par_matrix.hpp"
 
 /**************************************************************
  *****   Sequential Gauss-Seidel (Forward Sweep)
@@ -23,32 +24,33 @@
  ***** result: data_t*
  *****    Vector for result to be put into
  **************************************************************/
-void gs_forward(Matrix* A, data_t* x, const data_t* y, data_t* result)
+template <typename T, typename U, typename V>
+void gs_forward(Matrix* A, const T& x, const U& y, V& result)
 {
-    index_t* indptr = A->indptr.data();
-    index_t* indices = A->indices.data();
-    data_t* data = A->data.data();
-
-    int num_rows = A->n_rows;
     int row_start, row_end;
-
     int col;
     data_t value;
     data_t diag;
 
     // Forward Sweep
-    for (index_t row = 0; row < num_rows; row++)
+    for (int row = 0; row < A->n_rows; row++)
     {
-        row_start = indptr[row];
-        row_end = indptr[row+1];
+        row_start = A->idx1[row];
+        row_end = A->idx1[row+1];
 
-        if (row_end > row_start) diag = data[row_start];
-        else diag = 0.0;
-
-        for (index_t j = row_start + 1; j < row_end; j++)
+        if (row_end > row_start) 
         {
-            col = indices[j];
-            value = data[j];
+            diag = A->vals[row_start];
+        }
+        else 
+        {
+            diag = 0.0;
+        }
+
+        for (int j = row_start + 1; j < row_end; j++)
+        {
+            col = A->idx2[j];
+            value = A->vals[j];
             if (col < row)
             {
                 result[row] -= value*result[col];
@@ -84,31 +86,33 @@ void gs_forward(Matrix* A, data_t* x, const data_t* y, data_t* result)
  ***** result: data_t*
  *****    Vector for result to be put into
  **************************************************************/
-void gs_backward(Matrix* A, data_t* x, const data_t* y, data_t* result)
+template <typename T, typename U, typename V>
+void gs_backward(Matrix* A, const T& x, const U& y, V& result)
 {
-    index_t* indptr = A->indptr.data();
-    index_t* indices = A->indices.data();
-    data_t* data = A->data.data();
-
-    int num_rows = A->n_rows;
     int row_start, row_end;
     int col;
     data_t value;
     data_t diag;
 
     // Backward Sweep
-    for (index_t row = num_rows-1; row >= 0; row--)
+    for (int row = A->n_rows - 1; row >= 0; row--)
     {
-        row_start = indptr[row];
-        row_end = indptr[row+1];
+        row_start = A->idx1[row];
+        row_end = A->idx1[row+1];
 
-        if (row_end > row_start) diag = data[row_start];
-        else diag = 0.0;
-
-        for (index_t j = row_start + 1; j < row_end; j++)
+        if (row_end > row_start) 
         {
-            col = indices[j];
-            value = data[j];
+            diag = A->vals[row_start];
+        }
+        else 
+        {
+            diag = 0.0;
+        }
+
+        for (int j = row_start + 1; j < row_end; j++)
+        {
+            col = A->idx2[j];
+            value = A->vals[j];
             if (col > row)
             {
                 result[row] -= value*result[col];
@@ -146,29 +150,24 @@ void gs_backward(Matrix* A, data_t* x, const data_t* y, data_t* result)
  ***** dist_x : data_t*
  *****    Vector of distant x-values recvd from other processes
  **************************************************************/
-void hybrid(ParMatrix* A, data_t* x, const data_t* y, data_t* tmp, data_t* dist_x)
+void hybrid(ParCSRMatrix* A, ParVector& x, const ParVector& y, ParVector& tmp, 
+       std::vector<double>& dist_x)
 {
+    A->sort();
+
     // Forward Sweep
-    for (int i = 0; i < A->local_rows; i++)
+    if (A->off_proc_num_cols)
     {
-        tmp[i] = y[i];
+        A->off_proc->residual(dist_x, y.local, tmp.local);
     }
-    if (A->offd_num_cols)
-    {
-        sequential_spmv(A->offd, dist_x, tmp, -1.0, 1.0); 
-    }
-    gs_forward(A->diag, x, y, tmp);
+    gs_forward(A->on_proc, x, y, tmp);
 
     // Backward Sweep
-    for (int i = 0; i < A->local_rows; i++)
+    if (A->off_proc_num_cols)
     {
-        x[i] = y[i];
+        A->off_proc->residual(dist_x, y.local, x.local);
     }
-    if (A->offd_num_cols)
-    {
-        sequential_spmv(A->offd, dist_x, x, -1.0, 1.0); 
-    }
-    gs_forward(A->diag, tmp, y, x);
+    gs_forward(A->on_proc, tmp, y, x);
 }
 
 /**************************************************************
@@ -183,58 +182,26 @@ void hybrid(ParMatrix* A, data_t* x, const data_t* y, data_t* tmp, data_t* dist_
  ***** num_sweeps : int
  *****    Number of relaxation sweeps to perform
  **************************************************************/
-void relax(const Level* l, int num_sweeps)
+void relax(Level* l, int num_sweeps)
 {
-    if (l->A->local_rows == 0) return;
+    if (l->A->local_num_rows == 0)
+    {
+        return;
+    }
 
-    // Get MPI Information
-    MPI_Comm comm_mat = l->A->comm_mat;
     int rank, num_procs;
-    MPI_Comm_rank(comm_mat, &rank);
-    MPI_Comm_size(comm_mat, &num_procs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    // Declare communication variables
-    ParComm*                                 comm;
-
-    // Initialize communication variables
-    comm          = l->A->comm;
-
-    data_t* x_data = l->x->local->data();
-    data_t* y_data = l->b->local->data();
-    data_t* b_tmp_data = l->b_tmp->local->data();
-    data_t* x_tmp_data = l->x_tmp->local->data();
+    ParComm* comm = l->A->comm;
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
-        // If receive values, post appropriate MPI Receives
-        if (comm->num_recvs)
-        {
-            comm->init_recvs(comm_mat);
-        }
+        // Send / Recv X-Data
+        l->A->comm->communicate(l->x);
 
-        // Send values of x to appropriate processors
-        if (comm->num_sends)
-        {
-            comm->init_sends(x_data, comm_mat);
-        }
-
-        // Once data is available, add contribution of off-diagonals
-        // TODO Deal with new entries as they become available
-        // TODO Add an error check on the status
-        if (comm->num_recvs)
-        {
-            // Wait for all receives to finish
-            comm->complete_recvs();
-        }
-
-        hybrid(l->A, x_data, y_data, x_tmp_data, comm->recv_buffer);
-
-        if (comm->num_sends)
-        {
-            // Wait for all sends to finish
-            // TODO Add an error check on the status
-            comm->complete_sends();
-        }
+        // Run hybrid jacobi / gauss seidel
+        hybrid(l->A, l->x, l->b, l->tmp, comm->recv_data->buffer);
     }
 }
 

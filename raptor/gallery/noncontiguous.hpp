@@ -53,6 +53,7 @@ ParCSRMatrix* noncontiguous(ParCOOMatrix* A_coo, std::vector<int>& on_proc_colum
     std::vector<int> send_buffer;
     std::vector<int> recv_buffer;
     std::vector<MPI_Request> send_requests;
+
     std::vector<MPI_Request> recv_requests;
 
     std::map<int, int> global_to_local;
@@ -64,19 +65,19 @@ ParCSRMatrix* noncontiguous(ParCOOMatrix* A_coo, std::vector<int>& on_proc_colum
     }
 
     // Find how many columns are local to each process
-    MPI_Allgather(&(A_coo->local_num_cols), 1, MPI_INT, proc_num_cols.data(), 1, MPI_INT,
+    MPI_Allgather(&(A_coo->on_proc_num_cols), 1, MPI_INT, proc_num_cols.data(), 1, MPI_INT,
             MPI_COMM_WORLD);
 
     // Determine the new first local row / first local col of rank
-    A_coo->first_local_col = 0;
+    A_coo->partition->first_local_col = 0;
     for (int i = 0; i < rank; i++)
     {
-        A_coo->first_local_col += proc_num_cols[i];
+        A_coo->partition->first_local_col += proc_num_cols[i];
     }
-    A_coo->first_local_row = A_coo->first_local_col;
+    A_coo->partition->first_local_row = A_coo->partition->first_local_col;
 
     // Determine the global number of columns and rows
-    A_coo->global_num_cols = A_coo->first_local_col;
+    A_coo->global_num_cols = A_coo->partition->first_local_col;
     for (int i = rank; i < num_procs; i++)
     {
         A_coo->global_num_cols += proc_num_cols[i];
@@ -103,7 +104,7 @@ ParCSRMatrix* noncontiguous(ParCOOMatrix* A_coo, std::vector<int>& on_proc_colum
     {
         proc_num_cols[i] = 0;
     }
-    for (int i = 0; i < A_coo->local_num_cols; i++)
+    for (int i = 0; i < A_coo->on_proc_num_cols; i++)
     {
         orig_col = on_proc_column_map[i];
         assumed_proc = orig_col / assumed_num_cols;
@@ -129,10 +130,10 @@ ParCSRMatrix* noncontiguous(ParCOOMatrix* A_coo, std::vector<int>& on_proc_colum
         send_ctr.resize(num_sends, 0);
         send_buffer.resize(2*send_size);
         send_requests.resize(num_sends);
-        for (int i = 0; i < A_coo->local_num_cols; i++)
+        for (int i = 0; i < A_coo->on_proc_num_cols; i++)
         {
             orig_col = on_proc_column_map[i];
-            new_col = A_coo->first_local_col + i;
+            new_col = A_coo->partition->first_local_col + i;
             assumed_proc = orig_col / assumed_num_cols;
             proc_idx = proc_num_cols[assumed_proc];
             idx = send_ptr[proc_idx] + send_ctr[proc_idx]++;

@@ -88,11 +88,19 @@ namespace raptor
         virtual void communicate_T(const int* values, 
                 MPI_Comm comm = MPI_COMM_WORLD) = 0;
 
+        virtual void init_comm(const std::vector<data_t>& values, 
+                MPI_Comm comm = MPI_COMM_WORLD) = 0;
+        virtual void init_comm(const std::vector<int>& values,
+                MPI_Comm comm = MPI_COMM_WORLD) = 0;
         virtual void init_comm(const data_t* values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
         virtual void init_comm(const int* values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
         virtual std::vector<double>& complete_comm() = 0;
         virtual std::vector<int>& complete_int_comm() = 0;
 
+        virtual void init_comm_T(const std::vector<data_t>& values, 
+                MPI_Comm comm = MPI_COMM_WORLD) = 0;
+        virtual void init_comm_T(const std::vector<int>& values,
+                MPI_Comm comm = MPI_COMM_WORLD) = 0;
         virtual void init_comm_T(const data_t* values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
         virtual void init_comm_T(const int* values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
         virtual void complete_comm_T() = 0;
@@ -448,11 +456,17 @@ namespace raptor
                 MPI_Comm comm = MPI_COMM_WORLD);
         void communicate_T(const int* values, MPI_Comm comm = MPI_COMM_WORLD);
 
+        void init_comm(const std::vector<data_t>& values,
+                MPI_Comm comm = MPI_COMM_WORLD);
+        void init_comm(const std::vector<int>& values,
+                MPI_Comm comm = MPI_COMM_WORLD);
         void init_comm(const data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
         void init_comm(const int* values, MPI_Comm comm = MPI_COMM_WORLD);
         std::vector<double>& complete_comm();
         std::vector<int>& complete_int_comm();
 
+        void init_comm_T(const std::vector<data_t>& values, MPI_Comm comm = MPI_COMM_WORLD);
+        void init_comm_T(const std::vector<int>& values, MPI_Comm comm = MPI_COMM_WORLD);
         void init_comm_T(const data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
         void init_comm_T(const int* values, MPI_Comm comm = MPI_COMM_WORLD);
         void complete_comm_T();
@@ -1095,11 +1109,15 @@ namespace raptor
                 MPI_Comm comm = MPI_COMM_WORLD);
         void communicate_T(const int* values, MPI_Comm comm = MPI_COMM_WORLD);
 
+        void init_comm(const std::vector<data_t>& values, MPI_Comm comm = MPI_COMM_WORLD);
+        void init_comm(const std::vector<int>& values, MPI_Comm comm = MPI_COMM_WORLD);
         void init_comm(const data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
         void init_comm(const int* values, MPI_Comm comm = MPI_COMM_WORLD);
         std::vector<double>& complete_comm();
         std::vector<int>& complete_int_comm();
 
+        void init_comm_T(const std::vector<data_t>& values, MPI_Comm comm = MPI_COMM_WORLD);
+        void init_comm_T(const std::vector<int>& values, MPI_Comm comm = MPI_COMM_WORLD);
         void init_comm_T(const data_t* values, MPI_Comm comm = MPI_COMM_WORLD);
         void init_comm_T(const int* values, MPI_Comm comm = MPI_COMM_WORLD);
         void complete_comm_T();

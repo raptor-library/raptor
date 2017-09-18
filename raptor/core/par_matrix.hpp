@@ -82,7 +82,8 @@ namespace raptor
 
         global_num_rows = partition->global_num_rows;
         global_num_cols = partition->global_num_cols;
-        on_proc_num_cols = 0;
+        on_proc_num_cols = partition->local_num_cols;
+        local_num_rows = partition->local_num_rows;
 
         comm = NULL;
         tap_comm = NULL;
@@ -95,7 +96,8 @@ namespace raptor
 
         global_num_rows = partition->global_num_rows;
         global_num_cols = partition->global_num_cols;
-        on_proc_num_cols = 0;
+        on_proc_num_cols = partition->local_num_cols;
+        local_num_rows = partition->local_num_rows;
 
         comm = NULL;
         tap_comm = NULL;
@@ -113,7 +115,8 @@ namespace raptor
 
         global_num_rows = partition->global_num_rows;
         global_num_cols = partition->global_num_cols;
-        on_proc_num_cols = 0;
+        on_proc_num_cols = partition->local_num_cols;
+        local_num_rows = partition->local_num_rows;
 
         comm = NULL;
         tap_comm = NULL;
@@ -203,11 +206,14 @@ namespace raptor
     void finalize(bool create_comm = true);
 
     void map_partition_to_local();
+    void condense_off_proc();
 
     void residual(ParVector& x, ParVector& b, ParVector& r);
     void tap_residual(ParVector& x, ParVector& b, ParVector& r);
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
+    void mult_T(ParVector& x, ParVector& b);
+    void tap_mult_T(ParVector& x, ParVector& b);
     ParMatrix* mult(ParCSRMatrix* B);
     ParMatrix* tap_mult(ParCSRMatrix* B);
     ParMatrix* mult_T(ParCSCMatrix* B);
@@ -219,6 +225,12 @@ namespace raptor
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         if (rank == 0) printf("Not impelemented for this matrix type");
         return NULL;
+    }
+
+    void sort()
+    {
+        on_proc->sort();
+        off_proc->sort();
     }
 
     ParCSRMatrix* subtract(ParCSRMatrix* B);
@@ -352,6 +364,8 @@ namespace raptor
     void copy(ParCOOMatrix* A);
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
+    void mult_T(ParVector& x, ParVector& b);
+    void tap_mult_T(ParVector& x, ParVector& b);
   };
 
   class ParCSRMatrix : public ParMatrix
@@ -471,6 +485,8 @@ namespace raptor
 
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
+    void mult_T(ParVector& x, ParVector& b);
+    void tap_mult_T(ParVector& x, ParVector& b);
     ParCSRMatrix* mult(ParCSRMatrix* B);
     ParCSRMatrix* tap_mult(ParCSRMatrix* B);
     ParCSRMatrix* mult_T(ParCSCMatrix* A);
@@ -482,7 +498,6 @@ namespace raptor
     ParCSRMatrix* subtract(ParCSCMatrix* B);
     ParCSRMatrix* subtract(ParCOOMatrix* B);
     
-    void mult_helper(ParCSRMatrix* B, CSRMatrix* C_on, CSRMatrix* C_off, CSRMatrix* recv);
     void mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, CSRMatrix* recv);
     CSRMatrix* mult_T_partial(ParCSCMatrix* A);
     CSRMatrix* mult_T_partial(CSCMatrix* A_off);
@@ -561,6 +576,8 @@ namespace raptor
 
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
+    void mult_T(ParVector& x, ParVector& b);
+    void tap_mult_T(ParVector& x, ParVector& b);
 
   };
 }

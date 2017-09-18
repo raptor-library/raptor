@@ -67,6 +67,11 @@ public:
         num_values = 0;
     }
 
+    Vector(const Vector& v)
+    {
+       copy(v); 
+    }
+
     void resize(int len)
     {
         values.resize(len);
@@ -118,7 +123,7 @@ public:
     ***** y : Vector&
     *****    Vector to be copied
     **************************************************************/
-    void copy(Vector& y);
+    void copy(const Vector& y);
     
     /**************************************************************
     *****   Vector Scale

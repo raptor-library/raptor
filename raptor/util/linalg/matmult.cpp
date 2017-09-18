@@ -6,7 +6,7 @@ ParCSRMatrix* ParCSRMatrix::RAP(ParCSRMatrix* P)
     // Check that communication package has been initialized
     if (comm == NULL)
     {
-        comm = new ParComm(partition, off_proc_column_map);
+        comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
     }
 
     // Initialize C (matrix to be returned)
@@ -26,23 +26,23 @@ ParCSRMatrix* ParCSRMatrix::RAP(ParCSRMatrix* P)
     CSRMatrix* recv_mat = comm->communicate(P);
 
     // Multiply A*P to form CSRMatrices for AP on_proc and off_proc
-    CSRMatrix* AP_on = new CSRMatrix(local_num_rows, P->on_proc_num_cols);
-    CSRMatrix* AP_off = new CSRMatrix(local_num_rows, P->off_proc_num_cols);
-    mult_helper(P, AP_on, AP_off, recv_mat);
-    delete recv_mat;
+    //CSRMatrix* AP_on = new CSRMatrix(local_num_rows, P->on_proc_num_cols);
+    //CSRMatrix* AP_off = new CSRMatrix(local_num_rows, P->off_proc_num_cols);
+    //mult_helper(P, AP_on, AP_off, recv_mat);
+    //delete recv_mat;
 
     // Convert P_on and P_off to CSC
-    CSCMatrix* P_on = new CSCMatrix((CSRMatrix*)P->on_proc);
-    CSCMatrix* P_off = new CSCMatrix((CSRMatrix*)P->off_proc);
+    //CSCMatrix* P_on = new CSCMatrix((CSRMatrix*)P->on_proc);
+    //CSCMatrix* P_off = new CSCMatrix((CSRMatrix*)P->off_proc);
 
     // Multiply P^T (which will be CSR with column-wise partitions)
     // by previous product AP (AP_on and AP_off)
-    CSRMatrix* Ctmp = mult_T_partial(P_off);
+    //CSRMatrix* Ctmp = mult_T_partial(P_off);
 
-    delete P_on;
-    delete P_off;
-    delete AP_on;
-    delete AP_off;
+    //delete P_on;
+    //delete P_off;
+    //delete AP_on;
+    //delete AP_off;
 
     // Return matrix containing product
     return Ac;
@@ -53,7 +53,7 @@ ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B)
     // Check that communication package has been initialized
     if (tap_comm == NULL)
     {
-        tap_comm = new TAPComm(partition, off_proc_column_map);
+        tap_comm = new TAPComm(partition, off_proc_column_map, on_proc_column_map);
     }
 
     // Initialize C (matrix to be returned)
@@ -83,7 +83,7 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B)
     // Check that communication package has been initialized
     if (comm == NULL)
     {
-        comm = new ParComm(partition, off_proc_column_map);
+        comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
     }
 
     // Initialize C (matrix to be returned)
@@ -118,7 +118,7 @@ ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A)
 
     if (A->tap_comm == NULL)
     {
-        A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
+        A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, A->on_proc_column_map);
     }
 
     // Initialize C (matrix to be returned)
@@ -279,7 +279,7 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A)
 
     if (A->comm == NULL)
     {
-        A->comm = new ParComm(A->partition, A->off_proc_column_map);
+        A->comm = new ParComm(A->partition, A->off_proc_column_map, A->on_proc_column_map);
     }
 
     // Initialize C (matrix to be returned)
@@ -405,9 +405,21 @@ ParMatrix* ParMatrix::tap_mult(ParCSRMatrix* B)
     return NULL;
 }
 
-void ParCSRMatrix::mult_helper(ParCSRMatrix* B, CSRMatrix* C_on, CSRMatrix* C_off,
+void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, 
         CSRMatrix* recv_mat)
 {
+    // Set dimensions of C
+    C->global_num_rows = global_num_rows;
+    C->global_num_cols = B->global_num_cols;
+    C->local_num_rows = local_num_rows;
+
+    std::copy(B->on_proc_column_map.begin(), B->on_proc_column_map.end(),
+            std::back_inserter(C->on_proc_column_map));
+    C->on_proc_num_cols = C->on_proc_column_map.size();
+    
+    // Initialize nnz as 0 (will increment this as nonzeros are added)
+    C->local_nnz = 0;
+
     // Declare Variables
     int row_start, row_end;
     int row_start_B, row_end_B;
@@ -417,20 +429,14 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, CSRMatrix* C_on, CSRMatrix* C_of
     double val;
 
     // Resize variables of on_proc
-    C_on->n_rows = local_num_rows;
-    C_on->n_cols = B->on_proc_num_cols;
-    C_on->nnz = 0;
-    C_on->idx1.resize(local_num_rows + 1);
+    C->on_proc->n_rows = local_num_rows;
+    C->on_proc->n_cols = B->on_proc_num_cols;
+    C->on_proc->nnz = 0;
+    C->on_proc->idx1.resize(local_num_rows + 1);
     if (local_nnz)
     {
-        C_on->idx2.reserve(local_nnz);
-        C_on->vals.reserve(local_nnz);
-    }
-    C_on->col_list.reserve(B->on_proc_num_cols);
-    for (std::vector<int>::iterator it = B->on_proc->col_list.begin();
-            it != B->on_proc->col_list.end(); ++it)
-    {
-        C_on->col_list.push_back(*it);
+        C->on_proc->idx2.reserve(local_nnz);
+        C->on_proc->vals.reserve(local_nnz);
     }
             
     // Split recv_mat into on and off proc portions
@@ -472,29 +478,24 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, CSRMatrix* C_on, CSRMatrix* C_of
     std::map<int, int> global_to_C;
     std::vector<int> B_to_C(B->off_proc_num_cols);
 
-    // Create set of global columns in B_off_proc and recv_mat
-    std::set<int> C_col_set;
-    for (std::vector<int>::iterator it = recv_off_cols.begin(); 
-            it != recv_off_cols.end(); ++it)
-    {
-        C_col_set.insert(*it);
-    }
-    for (std::vector<int>::iterator it = B->off_proc_column_map.begin(); 
-            it != B->off_proc_column_map.end(); ++it)
-    {
-        C_col_set.insert(*it);
-    }
+    std::copy(recv_off_cols.begin(), recv_off_cols.end(),
+            std::back_inserter(C->off_proc_column_map));
+    std::sort(C->off_proc_column_map.begin(), C->off_proc_column_map.end());
 
-    // Map global column indices to local enumeration
-    // and initialize C->off_proc_column_map
-    for (std::set<int>::iterator it = C_col_set.begin(); 
-            it != C_col_set.end(); ++it)
+    int prev_col = -1;
+    C->off_proc_num_cols = 0;
+    for (std::vector<int>::iterator it = C->off_proc_column_map.begin();
+            it != C->off_proc_column_map.end(); ++it)
     {
-        global_to_C[*it] = C_off->col_list.size();
-        C_off->col_list.push_back(*it);
+        if (*it != prev_col)
+        {
+            global_to_C[*it] = C->off_proc_num_cols;
+            C->off_proc_column_map[C->off_proc_num_cols++] = *it;
+            prev_col = *it;
+        }
     }
-    //C->off_proc_num_cols = C_off->col_list.size();
-    
+    C->off_proc_column_map.resize(C->off_proc_num_cols);
+
     for (int i = 0; i < B->off_proc_num_cols; i++)
     {
         global_col = B->off_proc_column_map[i];
@@ -506,19 +507,21 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, CSRMatrix* C_on, CSRMatrix* C_of
         *it = global_to_C[*it];
     }
 
+    C->off_proc_num_cols = C->off_proc_column_map.size();
+
     // Resize variables of off_proc
-    C_off->n_rows = local_num_rows;
-    C_off->n_cols = C_off->col_list.size();
-    C_off->nnz = 0;
-    C_off->idx1.resize(local_num_rows + 1);
-    C_off->idx2.reserve(local_nnz);
-    C_off->vals.reserve(local_nnz);
+    C->off_proc->n_rows = local_num_rows;
+    C->off_proc->n_cols = C->off_proc_num_cols;
+    C->off_proc->nnz = 0;
+    C->off_proc->idx1.resize(local_num_rows + 1);
+    C->off_proc->idx2.reserve(local_nnz);
+    C->off_proc->vals.reserve(local_nnz);
 
     // Variables for calculating row sums
-    std::vector<double> sums(C_on->n_cols, 0);
-    std::vector<int> next(C_on->n_cols, -1);
+    std::vector<double> sums(C->on_proc->n_cols, 0);
+    std::vector<int> next(C->on_proc->n_cols, -1);
 
-    C_on->idx1[0] = 0;
+    C->on_proc->idx1[0] = 0;
     for (int i = 0; i < local_num_rows; i++)
     {
         int head = -2;
@@ -532,7 +535,7 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, CSRMatrix* C_on, CSRMatrix* C_of
             col = on_proc->idx2[j];
             val = on_proc->vals[j];
 
-            // C_on_proc <- A_on_proc * B_on_proc
+            // C->on_proc_proc <- A_on_proc * B_on_proc
             row_start_B = B->on_proc->idx1[col];
             row_end_B = B->on_proc->idx1[col+1];
             for (int k = row_start_B; k < row_end_B; k++)
@@ -577,22 +580,22 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, CSRMatrix* C_on, CSRMatrix* C_of
             val = sums[head];
             if (fabs(val) > zero_tol)
             {
-                C_on->idx2.push_back(head);
-                C_on->vals.push_back(val);
+                C->on_proc->idx2.push_back(head);
+                C->on_proc->vals.push_back(val);
             }
             tmp = head;
             head = next[head];
             next[tmp] = -1;
             sums[tmp] = 0;
         }
-        C_on->idx1[i+1] = C_on->idx2.size();
+        C->on_proc->idx1[i+1] = C->on_proc->idx2.size();
     }
-    C_on->nnz = C_on->idx2.size();
+    C->on_proc->nnz = C->on_proc->idx2.size();
 
-    sums.resize(C_off->n_cols, 0);
-    next.resize(C_off->n_cols, -1);
+    sums.resize(C->off_proc->n_cols, 0);
+    next.resize(C->off_proc->n_cols, -1);
 
-    C_off->idx1[0] = 0;
+    C->off_proc->idx1[0] = 0;
     for (int i = 0; i < local_num_rows; i++)
     {
         int head = -2;
@@ -606,7 +609,7 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, CSRMatrix* C_on, CSRMatrix* C_of
             col = on_proc->idx2[j];
             val = on_proc->vals[j];
 
-            // C_off_proc <- A_on_proc * B_off_proc
+            // C->off_proc_proc <- A_on_proc * B_off_proc
             row_start_B = B->off_proc->idx1[col];
             row_end_B = B->off_proc->idx1[col+1];
             for (int k = row_start_B; k < row_end_B; k++)
@@ -652,39 +655,20 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, CSRMatrix* C_on, CSRMatrix* C_of
             val = sums[head];
             if (fabs(val) > zero_tol)
             {
-                C_off->idx2.push_back(head);
-                C_off->vals.push_back(val);
+                C->off_proc->idx2.push_back(head);
+                C->off_proc->vals.push_back(val);
             }
             tmp = head;
             head = next[head];
             next[tmp] = -1;
             sums[tmp] = 0;
         }
-        C_off->idx1[i+1] = C_off->idx2.size();
+        C->off_proc->idx1[i+1] = C->off_proc->idx2.size();
     }
 
-    C_off->nnz = C_off->idx2.size();
-
-}
-
-void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, 
-        CSRMatrix* recv_mat)
-{
-    // Set dimensions of C
-    C->global_num_rows = global_num_rows;
-    C->global_num_cols = B->global_num_cols;
-    C->local_num_rows = local_num_rows;
-    
-    // Initialize nnz as 0 (will increment this as nonzeros are added)
-    C->local_nnz = 0;
-
-    mult_helper(B, (CSRMatrix*) C->on_proc, (CSRMatrix*) C->off_proc, recv_mat);
+    C->off_proc->nnz = C->off_proc->idx2.size();
 
     C->local_nnz = C->on_proc->nnz + C->off_proc->nnz;
-    C->off_proc_column_map = C->off_proc->get_col_list();
-    C->off_proc_num_cols = C->off_proc_column_map.size();
-    C->on_proc_column_map = C->on_proc->get_col_list();
-    C->on_proc_num_cols = C->on_proc_column_map.size();
 
     std::copy(local_row_map.begin(), local_row_map.end(),
             std::back_inserter(C->local_row_map));
@@ -829,19 +813,10 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
         C->on_proc->vals.reserve(local_nnz);
     }
 
-    // Create on_proc col_list / column_map
-    if (C->on_proc->n_cols)
-    {
-        C->on_proc->col_list.reserve(C->on_proc->n_cols);
-        for (std::vector<int>::iterator it = on_proc->col_list.begin();
-                it != on_proc->col_list.end(); ++it)
-        {
-            C->on_proc->col_list.push_back(*it);
-        }
-    }
-    C->on_proc_column_map = C->on_proc->get_col_list();
+    std::copy(on_proc_column_map.begin(), on_proc_column_map.end(),
+            std::back_inserter(C->on_proc_column_map));
     C->on_proc_num_cols = C->on_proc_column_map.size();
-    
+
     std::copy(P->on_proc_column_map.begin(), P->on_proc_column_map.end(),
             std::back_inserter(C->local_row_map));
 

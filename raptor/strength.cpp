@@ -13,7 +13,6 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
     double row_max;
 
     ParCSRMatrix* S = new ParCSRMatrix(partition);
-    S->local_num_rows = local_num_rows;
     
     if (on_proc->nnz)
     {
@@ -94,33 +93,17 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
     S->off_proc->nnz = S->off_proc->idx2.size();
 
     S->off_proc->n_cols = off_proc_num_cols;
-    if (off_proc_num_cols)
-    {
-        S->off_proc->col_list.reserve(off_proc_num_cols);
-        for (std::vector<int>::iterator it = off_proc_column_map.begin();
-                it != off_proc_column_map.end(); ++it)
-        {
-            S->off_proc->col_list.push_back(*it);
-        }
-    }
-    S->off_proc_column_map = S->off_proc->get_col_list();
-    S->off_proc_num_cols = S->off_proc_column_map.size();
 
-    S->on_proc->n_cols = on_proc_num_cols;
-    if (on_proc_num_cols)
-    {
-        S->on_proc->col_list.reserve(on_proc_num_cols);
-        for (std::vector<int>::iterator it = on_proc_column_map.begin();
-                it != on_proc_column_map.end(); ++it)
-        {
-            S->on_proc->col_list.push_back(*it);
-        }
-    }
-    S->on_proc_column_map = S->on_proc->get_col_list();
-    S->on_proc_num_cols = S->on_proc_column_map.size();
-
+    std::copy(off_proc_column_map.begin(), off_proc_column_map.end(),
+            std::back_inserter(S->off_proc_column_map));
+    std::copy(on_proc_column_map.begin(), on_proc_column_map.end(),
+            std::back_inserter(S->on_proc_column_map));
     std::copy(local_row_map.begin(), local_row_map.end(),
             std::back_inserter(S->local_row_map));
+
+    S->off_proc_num_cols = off_proc_column_map.size();
+    S->on_proc_num_cols = S->on_proc_column_map.size();
+    S->local_num_rows = local_num_rows;
 
     S->map_partition_to_local();
 

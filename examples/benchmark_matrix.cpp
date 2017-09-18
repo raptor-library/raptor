@@ -125,29 +125,6 @@ int main(int argc, char* argv[])
     Ccsr->print();
     delete Ccsr;
 
-    printf("\nCOO Matrix with Condensed Cols:\n");
-    A->condense_cols();
-    A->print();
-
-    printf("\nCOO Matrix with Condensed Rows:\n");
-    A->condense_rows();
-    A->print();
-
-    printf("\nCSR Matrix with Condensed Cols:\n");
-    Acsr->condense_cols();
-    Acsr->print();
-
-    printf("\nCSR Matrix with Condensed Rows:\n");
-    Acsr->condense_rows();
-    Acsr->print();
-
-    printf("\nCSC Matrix with Condensed Cols:\n");
-    Acsc->condense_cols();
-    Acsc->print();
-
-    printf("\nCSC Matrix with Condensed Rows:\n");
-    Acsc->condense_rows();
-    Acsc->print();
 }
    
 

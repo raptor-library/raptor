@@ -27,22 +27,6 @@ void ParVector::axpy(ParVector* x, data_t alpha)
 }
 
 /**************************************************************
-*****   Vector Copy
-**************************************************************
-***** Copies values of local vector in y into local 
-*****
-***** Parameters
-***** -------------
-***** y : ParVector* y
-*****    ParVector to be copied
-**************************************************************/
-void ParVector::copy(ParVector* y)
-{
-    if (local_n)
-        local.copy(y->local);
-}
-
-/**************************************************************
 *****   Vector Scale
 **************************************************************
 ***** Multiplies the local vector by a constant, alpha

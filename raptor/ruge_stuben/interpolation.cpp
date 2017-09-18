@@ -1,5 +1,6 @@
 // Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
+#include "assert.h"
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 
@@ -33,22 +34,18 @@ ParCSRMatrix* direct_interpolation(const ParCSRMatrix* A,
     {
         if (states[i])
         {
-            on_proc_col_to_new[i] = P->on_proc->col_list.size();
-            P->on_proc->col_list.push_back(i + A->partition->first_local_col);
+            on_proc_col_to_new[i] = P->on_proc_column_map.size();
+            P->on_proc_column_map.push_back(i + A->partition->first_local_col);
         }
     }
     for (int i = 0; i < A->off_proc_num_cols; i++)
     {
         if (off_proc_states[i])
         {
-            off_proc_col_to_new[i] = P->off_proc->col_list.size();
-            P->off_proc->col_list.push_back(A->off_proc_column_map[i]);
+            off_proc_col_to_new[i] = P->off_proc_column_map.size();
+            P->off_proc_column_map.push_back(A->off_proc_column_map[i]);
         }
     }
-        
-    P->on_proc_column_map = P->on_proc->get_col_list();
-    P->off_proc_column_map = P->off_proc->get_col_list();
-
     std::copy(A->local_row_map.begin(), A->local_row_map.end(),
             std::back_inserter(P->local_row_map));
 
@@ -59,6 +56,8 @@ ParCSRMatrix* direct_interpolation(const ParCSRMatrix* A,
     }
 
     P->local_num_rows = A->local_row_map.size();
+    P->on_proc->n_rows = P->local_num_rows;
+    P->off_proc->n_rows = P->local_num_rows;
 
     for (int i = 0; i < A->local_row_map.size(); i++)
     {
@@ -220,6 +219,8 @@ ParCSRMatrix* direct_interpolation(const ParCSRMatrix* A,
 
     P->off_proc_num_cols = P->off_proc_column_map.size();
     P->on_proc_num_cols = P->on_proc_column_map.size();
+    P->off_proc->n_cols = P->off_proc_num_cols;
+    P->on_proc->n_cols = P->on_proc_num_cols;
 
     P->map_partition_to_local();
 

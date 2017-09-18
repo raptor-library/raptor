@@ -69,12 +69,11 @@ void Vector::axpy(Vector& x, data_t alpha)
 *****    Vector to be copied.  Must have same local rows
 *****    and same first row
 **************************************************************/
-void Vector::copy(Vector& y)
+void Vector::copy(const Vector& y)
 {
-    for (int i = 0; i < num_values; i++)
-    {
-        values[i] = y.values[i];
-    }
+    num_values = y.num_values;
+    values.resize(num_values);
+    std::copy(y.values.begin(), y.values.end(), values.begin());
 }
 
 /**************************************************************

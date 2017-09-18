@@ -6,7 +6,7 @@ if (WITH_MPI)
     set(par_linalg_SOURCES
         util/linalg/spmv.cpp
         util/linalg/matmult.cpp
-        util/linalg/subtract.cpp
+        util/linalg/relax.cpp
         )
 else ()
     set (par_linalg_SOURCES 
@@ -16,7 +16,6 @@ endif()
 
 set(linalg_SOURCES 
     ${par_linalg_SOURCES}
-    util/linalg/seq/subtract.cpp
     util/linalg/seq/matmult.cpp
     util/linalg/seq/relax.cpp
     PARENT_SCOPE
