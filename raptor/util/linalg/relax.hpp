@@ -25,5 +25,6 @@ using namespace raptor;
  *****    Number of relaxation sweeps to perform
  **************************************************************/
 void relax(Level* l, int num_sweeps = 1);
+void relax(ParCSRMatrix* A, ParVector& b, ParVector& x, ParVector& tmp, int num_sweeps = 1);
 
 #endif

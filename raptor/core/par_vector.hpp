@@ -104,10 +104,6 @@ namespace raptor
             local_n = x.local_n;
             first_local = x.first_local;
             local.copy(x.local);
-            for (int i = 0; i < local_n; i++)
-            {
-                assert(fabs(local.values[i] - x.local.values[i]) < zero_tol);
-            }
         }
 
         /**************************************************************

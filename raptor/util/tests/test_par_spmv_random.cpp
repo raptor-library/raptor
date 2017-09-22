@@ -84,4 +84,6 @@ int main(int argc, char* argv[])
 
     delete A;
 
+    MPI_Finalize();
+
 }

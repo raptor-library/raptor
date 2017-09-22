@@ -184,24 +184,35 @@ void hybrid(ParCSRMatrix* A, ParVector& x, const ParVector& y, ParVector& tmp,
  **************************************************************/
 void relax(Level* l, int num_sweeps)
 {
-    if (l->A->local_num_rows == 0)
+    relax(l->A, l->x, l->b, l->tmp, num_sweeps);
+}
+
+void relax(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, int num_sweeps)
+{
+    if (A->local_num_rows == 0)
     {
         return;
     }
-
-    int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
-    ParComm* comm = l->A->comm;
-
-    for (int iter = 0; iter < num_sweeps; iter++)
+    if (!A->on_proc->sorted)
+    {
+        A->on_proc->sort();
+    }
+    if (!A->off_proc->sorted)
+    {
+        A->off_proc->sort();
+    }
+    if (!A->on_proc->diag_first)
+    {
+        A->on_proc->move_diag();
+    }
+  
+    for (int i = 0; i < num_sweeps; i++)
     {
         // Send / Recv X-Data
-        l->A->comm->communicate(l->x);
+        A->comm->communicate(x);
 
         // Run hybrid jacobi / gauss seidel
-        hybrid(l->A, l->x, l->b, l->tmp, comm->recv_data->buffer);
+        hybrid(A, x, b, tmp, A->comm->recv_data->buffer);
     }
 }
 

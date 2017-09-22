@@ -91,4 +91,5 @@ int main(int argc, char* argv[])
     delete A;
     delete[] stencil;
 
+    MPI_Finalize();
 }

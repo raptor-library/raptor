@@ -4,13 +4,12 @@
 #define RAPTOR_DIRECT_INTERPOLATION_HPP
 
 #include "core/types.hpp"
-#include "core/par_matrix.hpp"
+#include "core/matrix.hpp"
 
 using namespace raptor;
 
-ParCSRMatrix* direct_interpolation(const ParCSRMatrix* A, 
-        const ParCSRMatrix* S, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states);
+CSRMatrix* direct_interpolation(CSRMatrix* A, 
+        CSRMatrix* S, const std::vector<int>& states);
 
 #endif
 

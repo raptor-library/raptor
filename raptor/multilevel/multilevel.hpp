@@ -27,7 +27,7 @@ namespace raptor
         public:
 
             Multilevel(ParCSRMatrix* Af, double theta = 0.0, int num_smooth_steps = 1, 
-                    int max_coarse = 50)
+                    int max_coarse = 50, int max_levels = -1)
             {
                 int rank, num_procs;
                 MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -36,6 +36,7 @@ namespace raptor
                 levels.push_back(new Level());
                 levels[0]->A = new ParCSRMatrix(Af);
                 levels[0]->A->sort();
+                levels[0]->A->on_proc->move_diag();
                 levels[0]->x.resize(Af->global_num_rows, Af->local_num_rows,
                         Af->partition->first_local_row);
                 levels[0]->b.resize(Af->global_num_rows, Af->local_num_rows,
@@ -44,13 +45,15 @@ namespace raptor
                         Af->partition->first_local_row);
 
                 int last_level = 0;
-                while (levels[last_level]->A->global_num_rows > max_coarse)
+                // TODO -- issue from condensed matrix... must be a problem with
+                // CF splitting when matrix is condensed
+                while (levels[last_level]->A->global_num_rows > max_coarse && 
+                        (max_levels == -1 || levels.size() < max_levels))
                 {
                     extend_hierarchy(theta, num_smooth_steps);
                     last_level++;
                 }
                 num_levels = levels.size();
-
 
                 ParCSRMatrix* Ac = levels[last_level]->A;
                 std::vector<int> proc_sizes(num_procs);
@@ -234,43 +237,49 @@ namespace raptor
                 {
                     MPI_Comm_free(&coarse_comm);
                 }
-           //     for (std::vector<Level*>::iterator it = levels.begin();
-           //             it != levels.end(); ++it)
-           //     {
-           //         delete *it;
-           //     }
+                for (std::vector<Level*>::iterator it = levels.begin();
+                        it != levels.end(); ++it)
+                {
+                    delete *it;
+                }
             }
 
             void extend_hierarchy(double theta = 0.0, int num_smooth_steps = 1)
             {
                 int level_ctr = levels.size() - 1;
+                ParCSRMatrix* A = levels[level_ctr]->A;
+                ParCSRMatrix* S;
+                ParCSRMatrix* AP;
+                ParCSCMatrix* P_csc;
 
                 std::vector<int> states;
                 std::vector<int> off_proc_states;
 
-                ParCSRMatrix* S;
-
-                ParCSRMatrix* A = levels[level_ctr]->A;
                 S = A->strength(theta);
-                cf_splitting(S, states, off_proc_states);
+                split_falgout(S, states, off_proc_states);
                 levels[level_ctr]->P = direct_interpolation(A, S, states, off_proc_states);
-                
+                ParCSRMatrix* P = levels[level_ctr]->P;
+
                 levels.push_back(new Level());
-                ParCSRMatrix* AP = A->mult(levels[level_ctr]->P);
-                ParCSCMatrix* P_csc = new ParCSCMatrix(levels[level_ctr]->P);
-                A = AP->mult_T(P_csc);
+                AP = A->mult(levels[level_ctr]->P);
+                P_csc = new ParCSCMatrix(levels[level_ctr]->P);
+                
+                level_ctr++;
+                levels[level_ctr]->A = AP->mult_T(P_csc);
+                A = levels[level_ctr]->A;
                 A->comm = new ParComm(A->partition, A->off_proc_column_map,
                         A->on_proc_column_map);
-
-                level_ctr++;
-                A->sort();
-                levels[level_ctr]->A = A;
                 levels[level_ctr]->x.resize(A->global_num_rows, A->local_num_rows,
                         A->partition->first_local_row);
                 levels[level_ctr]->b.resize(A->global_num_rows, A->local_num_rows,
                         A->partition->first_local_row);
                 levels[level_ctr]->tmp.resize(A->global_num_rows, A->local_num_rows,
                         A->partition->first_local_row);
+                levels[level_ctr]->P = NULL;
+
+                delete AP;
+                delete P_csc;
+                delete S;
             }
 
 /*            data_t* extend_hierarchy(data_t* B,
@@ -341,15 +350,10 @@ namespace raptor
                         int info; // result
 
                         std::vector<double> b_data(coarse_n);
-                        MPI_Allgatherv(b.local.data(), b.local_n, MPI_INT, b_data.data(), 
-                                coarse_sizes.data(), coarse_displs.data(), MPI_INT, coarse_comm);
-                        if (active_rank == 0)
-                        {
-                            for (int i = 0; i < coarse_n; i++)
-                            {
-                                printf("B_data[%d] = %e\n", i, b_data[i]);
-                            }
-                        }
+                        MPI_Allgatherv(b.local.data(), b.local_n, MPI_DOUBLE, b_data.data(), 
+                                coarse_sizes.data(), coarse_displs.data(), 
+                                MPI_DOUBLE, coarse_comm);
+
                         dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
                                 LU_permute.data(), b_data.data(), &coarse_n, &info);
                         for (int i = 0; i < b.local_n; i++)
@@ -357,6 +361,8 @@ namespace raptor
                             x.local[i] = b_data[i + coarse_displs[active_rank]];
                         }
                     }
+
+                    //relax(levels[level]);
                 }
                 else
                 {
@@ -376,6 +382,9 @@ namespace raptor
 
             void solve(ParVector& sol, ParVector& rhs, int num_iterations = 100)
             {
+                int rank;
+                MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
                 double b_norm = rhs.norm(2);
                 double r_norm;
                 int iter = 0;
@@ -394,7 +403,7 @@ namespace raptor
                 {
                     r_norm = resid.norm(2);
                 }
-                printf("Rnorm = %e\n", r_norm);
+                if (rank == 0) printf("Rnorm = %e\n", r_norm);
 
                 while (r_norm > 1e-05 && iter < num_iterations)
                 {
@@ -410,7 +419,7 @@ namespace raptor
                     {
                         r_norm = resid.norm(2);
                     }
-                    printf("Rnorm = %e\n", r_norm);
+                    if (rank == 0) printf("Rnorm = %e\n", r_norm);
                 }
             } 
 

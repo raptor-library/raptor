@@ -2,159 +2,124 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "assert.h"
 #include "core/types.hpp"
-#include "core/par_matrix.hpp"
+#include "interpolation.hpp"
 
 using namespace raptor;
 
-ParCSRMatrix* direct_interpolation(const ParCSRMatrix* A,
-        const ParCSRMatrix* S, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states)
+CSRMatrix* direct_interpolation(CSRMatrix* A,
+        CSRMatrix* S, const std::vector<int>& states)
 {
     int start, end, col;
-    int proc, idx, new_idx;
+    int idx, new_idx, ctr;
     double sum_strong_pos, sum_strong_neg;
     double sum_all_pos, sum_all_neg;
     double val, alpha, beta, diag;
     double neg_coeff, pos_coeff;
 
-    std::vector<int> on_proc_col_to_new;
-    std::vector<int> off_proc_col_to_new;
-    if (A->on_proc_num_cols)
+    if (!A->diag_first)
     {
-        on_proc_col_to_new.resize(A->on_proc_num_cols, -1);
+        A->move_diag();
     }
-    if (A->off_proc_num_cols)
+    if (!S->diag_first)
     {
-        off_proc_col_to_new.resize(A->off_proc_num_cols, -1);
+        S->move_diag();
     }
 
-    ParCSRMatrix* P = new ParCSRMatrix(A->partition);
+    // Copy entries of A into sparsity pattern of S
+    CSRMatrix* Sa = new CSRMatrix(S);
+    for (int i = 0; i < A->n_rows; i++)
+    {
+        start = Sa->idx1[i];
+        end = Sa->idx1[i+1];
+        if (Sa->idx2[start] == i) // skip over diag
+        {
+            start++;
+        }
+        ctr = A->idx1[i];
+        for (int j = start; j < end; j++)
+        {
+            col = Sa->idx2[j];
+            while (A->idx2[ctr] != col)
+            {
+                ctr++;
+            }
+            Sa->vals[j] = A->vals[ctr];
+        }
+    }
 
-    for (int i = 0; i < A->on_proc_num_cols; i++)
+    std::vector<int> col_to_new;
+    if (A->n_cols)
+    {
+        col_to_new.resize(A->n_cols, -1);
+    }
+
+    ctr = 0;
+    for (int i = 0; i < A->n_cols; i++)
     {
         if (states[i])
         {
-            on_proc_col_to_new[i] = P->on_proc_column_map.size();
-            P->on_proc_column_map.push_back(i + A->partition->first_local_col);
+            col_to_new[i] = ctr++;
         }
     }
-    for (int i = 0; i < A->off_proc_num_cols; i++)
-    {
-        if (off_proc_states[i])
-        {
-            off_proc_col_to_new[i] = P->off_proc_column_map.size();
-            P->off_proc_column_map.push_back(A->off_proc_column_map[i]);
-        }
-    }
-    std::copy(A->local_row_map.begin(), A->local_row_map.end(),
-            std::back_inserter(P->local_row_map));
 
-    // Make sure diagonal entry is first in each row of A
-    if (!A->on_proc->diag_first)
-    {
-        A->on_proc->move_diag();
-    }
+    CSRMatrix* P = new CSRMatrix(A->n_rows, ctr, A->nnz);
 
-    P->local_num_rows = A->local_row_map.size();
-    P->on_proc->n_rows = P->local_num_rows;
-    P->off_proc->n_rows = P->local_num_rows;
-
-    for (int i = 0; i < A->local_row_map.size(); i++)
+    P->idx1[0] = 0;
+    for (int i = 0; i < A->n_rows; i++)
     {
         if (states[i] == 1)
         {
-            P->on_proc->idx2.push_back(on_proc_col_to_new[i]);
-            P->on_proc->vals.push_back(1);
+            P->idx2.push_back(col_to_new[i]);
+            P->vals.push_back(1);
         }
         else
         {
             sum_strong_pos = 0;
             sum_strong_neg = 0;
-            start = S->on_proc->idx1[i];
-            end = S->on_proc->idx1[i+1];
-            for (int j = start; j < end; j++)
-            {
-                col = S->on_proc->idx2[j]; // Never equals row...
-                if (states[col] == 1)
-                {
-                    val = S->on_proc->vals[j];
-                    if (val < 0)
-                    {
-                        sum_strong_neg += val;
-                    }
-                    else
-                    {
-                        sum_strong_pos += val;
-                    }
-                }
-            }
-            start = S->off_proc->idx1[i];
-            end = S->off_proc->idx1[i+1];
-            for (int j = start; j < end; j++)
-            {
-                col = S->off_proc->idx2[j];
-                if (off_proc_states[col] == 1)
-                {
-                    val = S->off_proc->vals[j];
-                    if (val < 0)
-                    {
-                        sum_strong_neg += val;
-                    }
-                    else
-                    {
-                        sum_strong_pos += val;
-                    }
-                }
-            }
-
             sum_all_pos = 0;
             sum_all_neg = 0;
-            start = A->on_proc->idx1[i];
-            end = A->on_proc->idx1[i+1];
-            diag = A->on_proc->vals[start]; // Diag stored first
-            for (int j = start+1; j < end; j++)
+
+            start = Sa->idx1[i];
+            end = Sa->idx1[i+1];
+            if (Sa->idx2[start] == i)
             {
-                col = A->on_proc->idx2[j]; // Never equals row
-                if (states[col] == 1)
-                {
-                    val = A->on_proc->vals[j];
-                    if (val < 0)
-                    {
-                        sum_all_neg += val;
-                    }
-                    else
-                    {
-                        sum_all_pos += val;
-                    }
-                }
+                start++;
             }
-            start = A->off_proc->idx1[i];
-            end = A->off_proc->idx1[i+1];
             for (int j = start; j < end; j++)
             {
-                col = A->off_proc->idx2[j];
-                if (off_proc_states[col] == 1)
+                col = Sa->idx2[j];
+                if (states[col] == 1)
                 {
-                    val = A->off_proc->vals[j];
+                    val = Sa->vals[j];
                     if (val < 0)
                     {
-                        sum_all_neg += val;
+                        sum_strong_neg += val;
                     }
                     else
                     {
-                        sum_all_pos += val;
+                        sum_strong_pos += val;
                     }
                 }
             }
 
-            if (sum_strong_neg == 0)
+            start = A->idx1[i];
+            end = A->idx1[i+1];
+            diag = A->vals[start];
+            for (int j = start+1; j < end; j++)
             {
-                alpha = 0;
+                col = A->idx2[j];
+                val = A->vals[j];
+                if (val < 0)
+                {
+                    sum_all_neg += val;
+                }
+                else
+                {
+                    sum_all_pos += val;
+                }
             }
-            else
-            {
-                alpha = sum_all_neg / sum_strong_neg;
-            }
+
+            alpha = sum_all_neg / sum_strong_neg;
 
             if (sum_strong_pos == 0)
             {
@@ -169,74 +134,35 @@ ParCSRMatrix* direct_interpolation(const ParCSRMatrix* A,
             neg_coeff = -alpha / diag;
             pos_coeff = -beta / diag;
 
-            start = S->on_proc->idx1[i];
-            end = S->on_proc->idx1[i+1];
+            start = Sa->idx1[i];
+            end = Sa->idx1[i+1];
+            if (Sa->idx2[start] == i)
+            {
+                start++;
+            }
             for (int j = start; j < end; j++)
             {
-                col = S->on_proc->idx2[j];
+                col = Sa->idx2[j];
                 if (states[col] == 1)
                 {
-                    val = S->on_proc->vals[j];
-                    P->on_proc->idx2.push_back(on_proc_col_to_new[col]);
-                    
+                    val = Sa->vals[j];
+                    P->idx2.push_back(col_to_new[col]);
                     if (val < 0)
                     {
-                        P->on_proc->vals.push_back(neg_coeff * val);
+                        P->vals.push_back(neg_coeff * val);
                     }
                     else
                     {
-                        P->on_proc->vals.push_back(pos_coeff * val);
-                    }
-                }
-            }
-            start = S->off_proc->idx1[i];
-            end = S->off_proc->idx1[i+1];
-            for (int j = start; j < end; j++)
-            {
-                col = S->off_proc->idx2[j];
-                if (off_proc_states[col] == 1)
-                {
-                    val = S->off_proc->vals[j];
-                    P->off_proc->idx2.push_back(off_proc_col_to_new[col]);
-
-                    if (val < 0)
-                    {
-                        P->off_proc->vals.push_back(neg_coeff * val);
-                    }
-                    else
-                    {
-                        P->off_proc->vals.push_back(pos_coeff * val);
+                        P->vals.push_back(pos_coeff * val);
                     }
                 }
             }
         }
-        P->on_proc->idx1[i+1] = P->on_proc->idx2.size();
-        P->off_proc->idx1[i+1] = P->off_proc->idx2.size();
+        P->idx1[i+1] = P->idx2.size();
     }
-    P->on_proc->nnz = P->on_proc->idx2.size();
-    P->off_proc->nnz = P->off_proc->idx2.size();
-    P->local_nnz = P->on_proc->nnz + P->off_proc->nnz;
+    P->nnz = P->idx2.size();
 
-    P->off_proc_num_cols = P->off_proc_column_map.size();
-    P->on_proc_num_cols = P->on_proc_column_map.size();
-    P->off_proc->n_cols = P->off_proc_num_cols;
-    P->on_proc->n_cols = P->on_proc_num_cols;
-
-    P->map_partition_to_local();
-
-    MPI_Allreduce(&(P->on_proc_num_cols), &(P->global_num_cols), 1, MPI_INT,
-            MPI_SUM, MPI_COMM_WORLD);
-
-    if (A->comm)
-    {
-        P->comm = new ParComm(A->comm, on_proc_col_to_new, off_proc_col_to_new);
-    }
-
-    if (A->tap_comm)
-    {
-        P->tap_comm = new TAPComm(A->tap_comm, on_proc_col_to_new,
-                off_proc_col_to_new);
-    }
+    delete Sa;
 
     return P;
 

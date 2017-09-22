@@ -226,10 +226,16 @@ void COOMatrix::sort()
     }
 
     sorted = true;
+    diag_first = false;
 }
 
 void COOMatrix::move_diag()
 {
+    if (diag_first || nnz == 0)
+    {
+        return;
+    }
+
     if (!sorted)
     {
         sort();
@@ -272,6 +278,7 @@ void COOMatrix::remove_duplicates()
     if (!sorted)
     {
         sort();
+        diag_first == false;
     }
 
     int prev_row, prev_col, ctr;
@@ -508,6 +515,7 @@ void CSRMatrix::sort()
     }
 
     sorted = true;
+    diag_first = false;
 }
 
 void CSRMatrix::move_diag()
@@ -515,6 +523,11 @@ void CSRMatrix::move_diag()
     int start, end;
     int col;
     double tmp;
+
+    if (diag_first || nnz == 0)
+    {
+        return;
+    }
 
     // Move diagonal values to beginning of each row
     for (int i = 0; i < n_rows; i++)
@@ -549,6 +562,12 @@ void CSRMatrix::remove_duplicates()
     int col, prev_col;
     int ctr, row_size;
     double val;
+
+    if (!sorted)
+    {
+        sort();
+        diag_first = false;
+    }
 
     orig_start = idx1[0];
     for (int row = 0; row < n_rows; row++)
@@ -748,7 +767,6 @@ void CSCMatrix::sort()
 
     if (sorted || nnz == 0)
     {
-        sorted = true;
         return;
     }
 
@@ -798,6 +816,7 @@ void CSCMatrix::sort()
     }
 
     sorted = true;
+    diag_first = false;
 }
 
 void CSCMatrix::remove_duplicates()
@@ -805,6 +824,7 @@ void CSCMatrix::remove_duplicates()
     if (!sorted)
     {
         sort();
+        diag_first = false;
     }
     
     int orig_start, orig_end, new_start;
@@ -857,9 +877,9 @@ void CSCMatrix::remove_duplicates()
 
 void CSCMatrix::move_diag()
 {
-    if (!sorted)
+    if (diag_first || nnz == 0)
     {
-        sort();
+       return;
     }
 
     int start, end, row;

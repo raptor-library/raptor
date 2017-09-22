@@ -1029,6 +1029,56 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
     C->off_proc->nnz = C->off_proc->idx2.size();
 
     C->local_nnz = C->on_proc->nnz + C->off_proc->nnz;
+
+    // Condense columns!  A lot of them are zero columns...
+    // Could instead add global column indices, and then map to local
+    std::vector<int> off_col_sizes;
+    std::vector<int> col_orig_to_new;
+    int start, end, ctr;
+    if (C->off_proc_num_cols)
+    {
+        off_col_sizes.resize(C->off_proc_num_cols, 0);
+        col_orig_to_new.resize(C->off_proc_num_cols);
+    }
+    for (int i = 0; i < C->local_num_rows; i++)
+    {
+        start = C->off_proc->idx1[i];
+        end = C->off_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            off_col_sizes[C->off_proc->idx2[j]]++;
+        }
+    }
+    ctr = 0;
+    for (int i = 0; i < C->off_proc_num_cols; i++)
+    {
+        if (off_col_sizes[i])
+        {
+            col_orig_to_new[i] = ctr;
+            C->off_proc_column_map[ctr++] = C->off_proc_column_map[i];
+        }
+    }
+    C->off_proc_num_cols = ctr;
+    C->off_proc->n_cols = ctr;
+    if (ctr)
+    {
+        C->off_proc_column_map.resize(ctr);
+    }
+    else
+    {
+        C->off_proc_column_map.clear();
+    }
+    for (int i = 0; i < C->local_num_rows; i++)
+    {
+        start = C->off_proc->idx1[i];
+        end = C->off_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = C->off_proc->idx2[j];
+            C->off_proc->idx2[j] = col_orig_to_new[col];
+        }
+    }
+
 }
 
 

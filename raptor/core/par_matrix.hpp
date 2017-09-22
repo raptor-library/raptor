@@ -89,6 +89,21 @@ namespace raptor
         tap_comm = NULL;
     }
 
+    ParMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows, 
+            int on_proc_cols)
+    {
+        partition = part;
+        partition->num_shared++;
+
+        global_num_rows = glob_rows;
+        global_num_cols = glob_cols;
+        on_proc_num_cols = on_proc_cols;
+        local_num_rows = local_rows;
+
+        comm = NULL;
+        tap_comm = NULL;
+    }
+
     ParMatrix(index_t glob_rows,
             index_t glob_cols)
     {
@@ -407,6 +422,15 @@ namespace raptor
                 nnz_per_row);
     }
 
+    ParCSRMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows,
+            int on_proc_cols, int off_proc_cols, int nnz_per_row = 5) : ParMatrix(part, 
+                glob_rows, glob_cols, local_rows, on_proc_cols)
+    {
+        off_proc_num_cols = off_proc_cols;
+        on_proc = new CSRMatrix(local_num_rows, on_proc_cols, nnz_per_row);
+        off_proc = new CSRMatrix(local_num_rows, off_proc_num_cols, nnz_per_row);
+    }
+
     ParCSRMatrix(index_t glob_rows, 
             index_t glob_cols, 
             data_t* values) : ParMatrix(glob_rows, glob_cols)
@@ -476,7 +500,7 @@ namespace raptor
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
 
-    ParCSRMatrix* strength(double theta);
+    ParCSRMatrix* strength(double theta = 0.0);
     ParCSRMatrix* aggregate();
     ParCSRMatrix* fit_candidates(double* B, double* R, int num_candidates, 
             double tol = 1e-10);

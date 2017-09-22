@@ -125,4 +125,6 @@ int main(int argc, char* argv[])
     delete A_io;
     delete A_sten;
     delete[] stencil;
+
+    MPI_Finalize();
 }
