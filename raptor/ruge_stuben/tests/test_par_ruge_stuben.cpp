@@ -9,7 +9,6 @@
 #include "gallery/diffusion.hpp"
 #include "gallery/laplacian27pt.hpp"
 #include "gallery/par_stencil.hpp"
-#include "gallery/external/mfem_wrapper.hpp"
 #include <iostream>
 #include <fstream>
 
