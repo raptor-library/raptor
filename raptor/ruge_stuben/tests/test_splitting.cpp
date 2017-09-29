@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
     }
     fclose(f);
     // Create cf splitting
-    cf_splitting(S, splitting_rap);
+    split_rs(S, splitting_rap);
     //Compare splittings
     assert(splitting_rap.size() == splitting.size());
     for (int i = 0; i < S->n_rows; i++)
@@ -50,7 +50,7 @@ int main(int argc, char* argv[])
     }
     fclose(f);
     // Create cf splitting
-    cf_splitting(S, splitting_rap);
+    split_rs(S, splitting_rap);
     //Compare splittings
     assert(splitting_rap.size() == splitting.size());
     for (int i = 0; i < S->n_rows; i++)
@@ -71,7 +71,7 @@ int main(int argc, char* argv[])
     }
     fclose(f);
     // Create cf splitting
-    cf_splitting(S, splitting_rap);
+    split_rs(S, splitting_rap);
     //Compare splittings
     assert(splitting_rap.size() == splitting.size());
     for (int i = 0; i < S->n_rows; i++)
@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
     }
     fclose(f);
     // Create cf splitting
-    cf_splitting(S, splitting_rap);
+    split_rs(S, splitting_rap);
     //Compare splittings
     assert(splitting_rap.size() == splitting.size());
     for (int i = 0; i < S->n_rows; i++)
@@ -107,7 +107,7 @@ int main(int argc, char* argv[])
     double* stencil = diffusion_stencil_2d(eps, theta);
     CSRMatrix* A = stencil_grid(stencil, grid, 2);
     S = A->strength();
-    cf_splitting(S, splitting_rap);
+    split_rs(S, splitting_rap);
     ofstream outfile;
     outfile.open("aniso_splitting.txt");
     for (int i = 0; i < A->n_rows; i++)

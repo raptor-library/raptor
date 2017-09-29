@@ -362,7 +362,8 @@ namespace raptor
         }
 
         ParComm(ParComm* comm, const std::vector<int>& on_proc_col_to_new,
-                const std::vector<int>& off_proc_col_to_new) : CommPkg(comm->topology)
+                const std::vector<int>& off_proc_col_to_new, bool communicate = false) 
+            : CommPkg(comm->topology)
         {
             bool comm_proc;
             int proc, start, end;
@@ -378,6 +379,54 @@ namespace raptor
             }
             key = comm->key;
 
+            if (communicate)
+            {
+                comm->communicate(on_proc_col_to_new);
+            }
+            else
+            {
+                for (int i = 0; i < comm->recv_data->size_msgs; i++)
+                {
+                    comm->recv_data->int_buffer[i] = 0;
+                }
+            }
+            for (int i = 0; i < comm->recv_data->num_msgs; i++)
+            {
+                comm_proc = false;
+                proc = comm->recv_data->procs[i];
+                start = comm->recv_data->indptr[i];
+                end = comm->recv_data->indptr[i+1];
+                for (int j = start; j < end; j++)
+                {
+                    idx = comm->recv_data->indices[j];
+                    new_idx = off_proc_col_to_new[idx];
+                    if (new_idx != -1 && comm->recv_data->int_buffer[j] != -1)
+                    {
+                        comm_proc = true;
+                        recv_data->indices.push_back(new_idx);
+                    }
+                }
+                if (comm_proc)
+                {
+                    recv_data->procs.push_back(proc);
+                    recv_data->indptr.push_back(recv_data->indices.size());
+                }
+            }
+            recv_data->num_msgs = recv_data->procs.size();
+            recv_data->size_msgs = recv_data->indices.size();
+            recv_data->finalize();
+
+            if (communicate)
+            {
+                comm->communicate_T(off_proc_col_to_new);
+            }
+            else
+            {
+                for (int i = 0; i < comm->send_data->size_msgs; i++)
+                {
+                    comm->send_data->int_buffer[i] = 0;
+                }
+            }
             for (int i = 0; i < comm->send_data->num_msgs; i++)
             {
                 comm_proc = false;
@@ -388,7 +437,7 @@ namespace raptor
                 {
                     idx = comm->send_data->indices[j];
                     new_idx = on_proc_col_to_new[idx];
-                    if (new_idx != -1)
+                    if (new_idx != -1 && comm->send_data->int_buffer[j] != -1)
                     {
                         comm_proc = true;
                         send_data->indices.push_back(new_idx);
@@ -404,31 +453,6 @@ namespace raptor
             send_data->size_msgs = send_data->indices.size();
             send_data->finalize();
 
-            for (int i = 0; i < comm->recv_data->num_msgs; i++)
-            {
-                comm_proc = false;
-                proc = comm->recv_data->procs[i];
-                start = comm->recv_data->indptr[i];
-                end = comm->recv_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    idx = comm->recv_data->indices[j];
-                    new_idx = off_proc_col_to_new[idx];
-                    if (new_idx != -1)
-                    {
-                        comm_proc = true;
-                        recv_data->indices.push_back(new_idx);
-                    }
-                }
-                if (comm_proc)
-                {
-                    recv_data->procs.push_back(proc);
-                    recv_data->indptr.push_back(recv_data->indices.size());
-                }
-            }
-            recv_data->num_msgs = recv_data->procs.size();
-            recv_data->size_msgs = recv_data->indices.size();
-            recv_data->finalize();
         }
 
         /**************************************************************
@@ -670,7 +694,8 @@ namespace raptor
         }
 
         TAPComm(TAPComm* tap_comm, const std::vector<int>& on_proc_col_to_new,
-                const std::vector<int>& off_proc_col_to_new) : CommPkg(tap_comm->topology)
+                const std::vector<int>& off_proc_col_to_new, bool communicate = false) 
+            : CommPkg(tap_comm->topology)
         {
             bool comm_proc;
             int proc, start, end;

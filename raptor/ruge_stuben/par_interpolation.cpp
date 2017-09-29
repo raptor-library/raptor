@@ -10,6 +10,9 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const std::vector<int>& states,
         const std::vector<int>& off_proc_states)
 {
+int rank;
+MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
     int start, end, col;
     int proc, idx, new_idx;
     int ctr;
@@ -49,8 +52,8 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         ctr = A->on_proc->idx1[i];
         for (int j = start; j < end; j++)
         {
-            col = S->on_proc->idx2[j];
-            while (A->on_proc->idx2[ctr] != col)
+            col = S->on_proc_column_map[S->on_proc->idx2[j]];
+            while (A->on_proc_column_map[A->on_proc->idx2[ctr]] != col)
             {
                 ctr++;
             }
@@ -62,8 +65,8 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         ctr = A->off_proc->idx1[i];
         for (int j = start; j < end; j++)
         {
-            col = S->off_proc->idx2[j];
-            while (A->off_proc->idx2[ctr] != col)
+            col = S->off_proc_column_map[S->off_proc->idx2[j]];
+            while (A->off_proc_column_map[A->off_proc->idx2[ctr]] != col)
             {
                 ctr++;
             }
@@ -92,7 +95,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
             on_proc_cols++;
         }
     }
-    for (int i = 0; i < A->off_proc_num_cols; i++)
+    for (int i = 0; i < S->off_proc_num_cols; i++)
     {
         if (off_proc_states[i])
         {
@@ -109,16 +112,13 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         if (states[i])
         {
             on_proc_col_to_new[i] = P->on_proc_column_map.size();
-            P->on_proc_column_map.push_back(i + A->partition->first_local_col);
+            P->on_proc_column_map.push_back(A->on_proc_column_map[i]);
         }
     }
-    for (int i = 0; i < A->off_proc_num_cols; i++)
+    std::vector<bool> col_exists;
+    if (A->off_proc_num_cols)
     {
-        if (off_proc_states[i])
-        {
-            off_proc_col_to_new[i] = P->off_proc_column_map.size();
-            P->off_proc_column_map.push_back(A->off_proc_column_map[i]);
-        }
+        col_exists.resize(A->off_proc_num_cols, false);
     }
     std::copy(A->local_row_map.begin(), A->local_row_map.end(),
             std::back_inserter(P->local_row_map));
@@ -255,7 +255,8 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
                 if (off_proc_states[col] == 1)
                 {
                     val = sa_off[j];
-                    P->off_proc->idx2.push_back(off_proc_col_to_new[col]);
+                    col_exists[col] = true;
+                    P->off_proc->idx2.push_back(col);
 
                     if (val < 0)
                     {
@@ -274,6 +275,21 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
     P->on_proc->nnz = P->on_proc->idx2.size();
     P->off_proc->nnz = P->off_proc->idx2.size();
     P->local_nnz = P->on_proc->nnz + P->off_proc->nnz;
+
+    for (int i = 0; i < A->off_proc_num_cols; i++)
+    {
+        if (col_exists[i])
+        {
+            off_proc_col_to_new[i] = P->off_proc_column_map.size();
+            P->off_proc_column_map.push_back(A->off_proc_column_map[i]);
+        }
+    }
+    for (std::vector<int>::iterator it = P->off_proc->idx2.begin(); 
+            it != P->off_proc->idx2.end(); ++it)
+    {
+        *it = off_proc_col_to_new[*it];
+    }
+
 
     P->off_proc_num_cols = P->off_proc_column_map.size();
     P->on_proc_num_cols = P->on_proc_column_map.size();

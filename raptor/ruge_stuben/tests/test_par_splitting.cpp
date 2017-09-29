@@ -5,9 +5,13 @@
 #include "gallery/par_matrix_IO.hpp"
 #include "ruge_stuben/par_cf_splitting.hpp"
 #include "gallery/diffusion.hpp"
+#include "gallery/laplacian27pt.hpp"
 #include "gallery/par_stencil.hpp"
 #include <iostream>
 #include <fstream>
+
+
+#include "gallery/stencil.hpp"
 
 using namespace raptor;
 
@@ -25,24 +29,56 @@ int main(int argc, char* argv[])
     std::vector<int> splitting_rap;
     std::vector<int> off_proc_states;
 
-    /* TEST 10 x 10 2D rotated aniso... print this one for graphing */
-    int grid[2] = {10, 10};
-    double eps = 0.001;
-    double theta = M_PI/8.0;
-    double* stencil = diffusion_stencil_2d(eps, theta);
-    ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
-    S = A->strength();
-    split_falgout(S, splitting_rap, off_proc_states);
+    int grid[3] = {10, 10, 10};
+    double* stencil = laplace_stencil_27pt();
 
-    char name[128];
-    snprintf(name, sizeof(name), "aniso_splitting_%d_%d.txt", num_procs, rank);    
-    ofstream outfile;
-    outfile.open(name);
+    CSRMatrix* S_seq;
+    CSRMatrix* A_seq = stencil_grid(stencil, grid, 3);
+    S_seq = A_seq->strength(0.25);
+    std::vector<int> splitting_seq;
+    split_cljp(S_seq, splitting_seq);
+    f = fopen("../../tests/cljp_laplace_10.txt", "r");
+    for (int i = 0; i < S_seq->n_rows; i++)
+    {
+        int cf;
+        fscanf(f, "%d\n", &cf);
+        assert(cf == splitting_seq[i]);
+    }
+
+    fclose(f);
+
+    delete S_seq;
+    delete A_seq;
+
+
+    ParCSRMatrix* A = par_stencil_grid(stencil, grid, 3);
+    S = A->strength(0.25);
+    split_cljp(S, splitting, off_proc_states);
+
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+    //    printf("Splitting[%d] = %d\n", i + S->partition->first_local_row, splitting[i]);
+    }
+    f = fopen("../../tests/cljp_laplace_10.txt", "r");
+    for (int i = 0; i < A->partition->first_local_row; i++)
+    {
+        int cf;
+        fscanf(f, "%d\n", &cf);
+    }
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        outfile << splitting_rap[i] << endl;
+        int cf;
+        fscanf(f, "%d\n", &cf);
+        assert(cf == splitting[i]);
+        assert(splitting[i] == splitting_seq[i + A->partition->first_local_row]);
     }
-    outfile.close();
+
+    fclose(f);
+
+    delete S;
+    delete A;
+
+    delete[] stencil;
 
     MPI_Finalize();
 

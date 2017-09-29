@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
     A = readMatrix("../../tests/rss_laplace_A0.mtx", 1);
     P = readMatrix("../../tests/rss_laplace_P0.mtx", 0);
     S = A->strength(0.25);
-    cf_splitting(S, splitting);
+    split_rs(S, splitting);
     P_rap = direct_interpolation(A, S, splitting);
     compare(P, P_rap);
     delete A;
@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
     A = readMatrix("../../tests/rss_laplace_A1.mtx", 0);
     P = readMatrix("../../tests/rss_laplace_P1.mtx", 0);
     S = A->strength(0.25);
-    cf_splitting(S, splitting);
+    split_rs(S, splitting);
     P_rap = direct_interpolation(A, S, splitting);
     compare(P, P_rap);
     delete A;
