@@ -21,14 +21,10 @@ MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     double val, alpha, beta, diag;
     double neg_coeff, pos_coeff;
 
-    if (!A->on_proc->diag_first)
-    {
-        A->on_proc->move_diag();
-    }
-    if (!S->on_proc->diag_first)
-    {
-        S->on_proc->move_diag();
-    }
+    A->sort();
+    S->sort();
+    A->on_proc->move_diag();
+    S->on_proc->move_diag();
 
     // Copy entries of A into sparsity pattern of S
     std::vector<double> sa_on;
@@ -76,19 +72,19 @@ MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     std::vector<int> on_proc_col_to_new;
     std::vector<int> off_proc_col_to_new;
-    if (A->on_proc_num_cols)
+    if (S->on_proc_num_cols)
     {
-        on_proc_col_to_new.resize(A->on_proc_num_cols, -1);
+        on_proc_col_to_new.resize(S->on_proc_num_cols, -1);
     }
-    if (A->off_proc_num_cols)
+    if (S->off_proc_num_cols)
     {
-        off_proc_col_to_new.resize(A->off_proc_num_cols, -1);
+        off_proc_col_to_new.resize(S->off_proc_num_cols, -1);
     }
 
     int off_proc_cols = 0;
     int on_proc_cols = 0;
     int global_num_cols;
-    for (int i = 0; i < A->on_proc_num_cols; i++)
+    for (int i = 0; i < S->on_proc_num_cols; i++)
     {
         if (states[i])
         {
@@ -112,15 +108,15 @@ MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         if (states[i])
         {
             on_proc_col_to_new[i] = P->on_proc_column_map.size();
-            P->on_proc_column_map.push_back(A->on_proc_column_map[i]);
+            P->on_proc_column_map.push_back(S->on_proc_column_map[i]);
         }
     }
     std::vector<bool> col_exists;
-    if (A->off_proc_num_cols)
+    if (S->off_proc_num_cols)
     {
-        col_exists.resize(A->off_proc_num_cols, false);
+        col_exists.resize(S->off_proc_num_cols, false);
     }
-    std::copy(A->local_row_map.begin(), A->local_row_map.end(),
+    std::copy(S->local_row_map.begin(), S->local_row_map.end(),
             std::back_inserter(P->local_row_map));
 
     for (int i = 0; i < A->local_num_rows; i++)
@@ -276,12 +272,12 @@ MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     P->off_proc->nnz = P->off_proc->idx2.size();
     P->local_nnz = P->on_proc->nnz + P->off_proc->nnz;
 
-    for (int i = 0; i < A->off_proc_num_cols; i++)
+    for (int i = 0; i < S->off_proc_num_cols; i++)
     {
         if (col_exists[i])
         {
             off_proc_col_to_new[i] = P->off_proc_column_map.size();
-            P->off_proc_column_map.push_back(A->off_proc_column_map[i]);
+            P->off_proc_column_map.push_back(S->off_proc_column_map[i]);
         }
     }
     for (std::vector<int>::iterator it = P->off_proc->idx2.begin(); 
@@ -301,7 +297,7 @@ MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     if (A->comm)
     {
-        P->comm = new ParComm(A->comm, on_proc_col_to_new, off_proc_col_to_new);
+        P->comm = new ParComm(P->partition, P->off_proc_column_map, P->on_proc_column_map);
     }
 
     if (A->tap_comm)

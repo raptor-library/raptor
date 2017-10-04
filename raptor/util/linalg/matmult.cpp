@@ -1079,6 +1079,9 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
         }
     }
 
+
+    C->map_partition_to_local();
+
 }
 
 

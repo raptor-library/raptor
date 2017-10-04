@@ -8,6 +8,8 @@
 #include "core/par_vector.hpp"
 #include "multilevel/level.hpp"
 #include "util/linalg/relax.hpp"
+#include "ruge_stuben/par_interpolation.hpp"
+#include "ruge_stuben/par_cf_splitting.hpp"
 //#include "aggregation/prolongation.hpp"
 
 // Coarse Matrices (A) are CSC

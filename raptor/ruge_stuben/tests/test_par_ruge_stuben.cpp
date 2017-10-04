@@ -78,7 +78,9 @@ void compare_splitting(int local_rows, std::vector<int>& splitting, char* filena
     for (int i = 0; i < local_rows; i++)
     {
         fscanf(f, "%d\n", &cf);
-        assert(splitting[i] == cf);
+        //assert(splitting[i] == cf);
+        if (splitting[i] != cf)
+            printf("Rank %d Splitting[%d] = %d, cf %d\n", rank, i, splitting[i], cf);
     }
     fclose(f);
 }
@@ -105,6 +107,35 @@ void find_col_dimensions(char* filename, int first_row, int local_rows,
 
     *first_col_ptr = first_col;
     *local_cols_ptr = local_cols;
+}
+
+int condense(Matrix* A, std::vector<int>& A_idx2, std::vector<int>& A_orig_to_new)
+{
+    if (A->nnz == 0) return 0;
+
+    std::vector<int> A_exists(A->n_cols, false);
+    A_orig_to_new.resize(A->n_cols);
+    A_idx2.resize(A->nnz);
+    for (std::vector<int>::iterator it = A->idx2.begin();
+            it != A->idx2.end(); ++it)
+    {
+        A_exists[*it] = true;
+    }
+    int ctr = 0;
+    for (int i = 0; i < A->n_cols; i++)
+    {
+        if (A_exists[i])
+        {
+            A_orig_to_new[i] = ctr++;
+        }
+    }
+    for (std::vector<int>::iterator it = A->idx2.begin();
+            it != A->idx2.end(); ++it)
+    {
+        *it = A_orig_to_new[*it];
+    }
+
+    return ctr;
 }
 
 void compare(ParCSRMatrix* P, ParCSRMatrix* P_rap)
@@ -146,6 +177,53 @@ void compare(ParCSRMatrix* P, ParCSRMatrix* P_rap)
             assert(fabs(P->off_proc->vals[j] - P_rap->off_proc->vals[j]) < 1e-06);
         }
     }
+    
+    assert(P->comm->send_data->num_msgs == P_rap->comm->send_data->num_msgs);
+    assert(P->comm->send_data->size_msgs == P_rap->comm->send_data->size_msgs);
+    assert(P->comm->recv_data->num_msgs == P_rap->comm->recv_data->num_msgs);
+    assert(P->comm->recv_data->size_msgs == P_rap->comm->recv_data->size_msgs);
+
+    // TODO -- can compare send indices (need to sort procs)
+    // Add idx of each proc to vector
+    // Go through P_rap msgs... find idx in vector, and compare to P indices
+    
+    int num_procs;
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    std::vector<int> proc_idx(num_procs);
+    assert(P->comm->send_data->indptr[0] == P_rap->comm->send_data->indptr[0]);
+    for (int i = 0; i < P->comm->send_data->num_msgs; i++)
+    {
+        int proc = P->comm->send_data->procs[i];
+        proc_idx[proc] = i;
+    }
+    for (int i = 0; i < P->comm->send_data->num_msgs; i++)
+    {
+        int proc = P_rap->comm->send_data->procs[i];
+        int idx = proc_idx[proc];
+
+        start = P->comm->send_data->indptr[idx];
+        end = P->comm->send_data->indptr[idx+1];
+        int start_rap = P_rap->comm->send_data->indptr[i];
+        int end_rap = P_rap->comm->send_data->indptr[i+1];
+        assert(end - start == end_rap - start_rap);
+        int size = end - start;
+        for (int j = 0; j < size; j++)
+        {
+            assert(P->comm->send_data->indices[start + j]
+                    == P_rap->comm->send_data->indices[start_rap + j]);
+        }
+    }
+    assert(P->comm->recv_data->indptr[0] == P_rap->comm->recv_data->indptr[0]);
+    for (int i = 0; i < P->comm->recv_data->num_msgs; i++)
+    {
+        assert(P->comm->recv_data->indptr[i+1] == P_rap->comm->recv_data->indptr[i+1]);
+        start = P->comm->recv_data->indptr[i];
+        end = P->comm->recv_data->indptr[i+1];
+        for (int j = start; j < end; j++)
+        {
+            assert(P->comm->recv_data->indices[j] == P_rap->comm->recv_data->indices[j]);
+        }
+    }
 }
 
 int main(int argc, char* argv[])
@@ -183,13 +261,10 @@ int main(int argc, char* argv[])
     compare(S0, S0_py);
     delete S0_py;
 
-    read_splitting(S0->local_num_rows, "../../tests/rss_laplace_cf0.txt", splitting);
-    A0->comm->communicate(splitting);
-    //split_cljp(S0, splitting, off_splitting);
-    //compare_splitting(S0->local_num_rows, splitting, "../../tests/rss_laplace_cf0.txt");
+    split_cljp(S0, splitting, off_splitting);
+    compare_splitting(S0->local_num_rows, splitting, "../../tests/rss_laplace_cf0.txt");
 
-    ParCSRMatrix* P0 = direct_interpolation(A0, S0, splitting, A0->comm->recv_data->int_buffer);
-    //ParCSRMatrix* P0 = direct_interpolation(A0, S0, splitting, off_splitting);
+    ParCSRMatrix* P0 = direct_interpolation(A0, S0, splitting, off_splitting);
     MPI_Allgather(&P0->on_proc_num_cols, 1, MPI_INT, proc_sizes.data(), 1, MPI_INT,
             MPI_COMM_WORLD);
     first_col = 0;
@@ -229,6 +304,11 @@ int main(int argc, char* argv[])
     // Read in splitting, create prologation operator
     split_cljp(S1, splitting, off_splitting);
     compare_splitting(S1->local_num_rows, splitting, "../../tests/rss_laplace_cf1.txt");
+    S1->comm->communicate(splitting);
+    for (int i = 0; i < S1->off_proc_num_cols; i++)
+    {
+        assert(off_splitting[i] == S1->comm->recv_data->int_buffer[i]);
+    }
 
     ParCSRMatrix* P1 = direct_interpolation(A1, S1, splitting, off_splitting);
     MPI_Allgather(&P1->on_proc_num_cols, 1, MPI_INT, proc_sizes.data(), 1, MPI_INT,
@@ -242,34 +322,29 @@ int main(int argc, char* argv[])
             P0->on_proc_num_cols, P1->on_proc_num_cols, first_row, first_col);
     compare(P1, P1_py);
     delete S1;
-
+    
     // P_T*A*P == form coarse grid operator
     ParCSRMatrix* AP1 = A1->mult(P1);
     ParCSCMatrix* P1_csc = new ParCSCMatrix(P1); 
     ParCSRMatrix* A2 = AP1->mult_T(P1_csc);
     A2->comm = new ParComm(A2->partition, A2->off_proc_column_map, A2->on_proc_column_map);
-    delete AP1;
     delete P1_csc;
     ParVector x2(A2->global_num_rows, A2->local_num_rows, A2->partition->first_local_row);
     ParVector tmp2(A2->global_num_rows, A2->local_num_rows, A2->partition->first_local_row);
     ParVector b2(A2->global_num_rows, A2->local_num_rows, A2->partition->first_local_row);
 
-    ParCSRMatrix* AP1_py = A1_py->mult(P1_py);
-    printf("Global Dims AP1 %d x %d, AP1_py %d x %d\n", AP1->global_num_rows, 
-            AP1->global_num_cols, AP1_py->global_num_rows, AP1_py->global_num_cols);
-
-    //compare(AP1, AP1_py);
-    //ParCSRMatrix* A2_py = readParMatrix("../../tests/rss_laplace_A2.mtx", MPI_COMM_WORLD, 1, 0,
-    //        P1->on_proc_num_cols, P1->on_proc_num_cols, first_col, first_col);
-    //compare(A2, A2_py);
+    ParCSRMatrix* A2_py = readParMatrix("../../tests/rss_laplace_A2.mtx", MPI_COMM_WORLD, 1, 0,
+            P1->on_proc_num_cols, P1->on_proc_num_cols, first_col, first_col);
+    compare(A2, A2_py);
+    delete AP1;
     delete A1_py;
     delete P1_py;
-    //delete A2_py;
+    delete A2_py;
 
     A0->residual(x0, b0, tmp0);
     double orig_norm = tmp0.norm(2);
     if (rank == 0) printf("Orig Norm = %e\n", orig_norm);
-/*
+
     for (int i = 0; i < 10; i++)
     {
         // Level 0
@@ -307,10 +382,6 @@ int main(int argc, char* argv[])
         double bnorm = tmp0.norm(2);
         if (rank == 0) printf("Rnorm = %e, RelResid = %e\n", bnorm, bnorm/orig_norm);
     }
-*/
-    //ml = new Multilevel(A, 0.0, 1, 50, 3);
-    //ml->solve(x, b); 
-    //delete ml;
 
     delete A2;
     delete P1;

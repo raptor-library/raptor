@@ -115,37 +115,13 @@ void initial_cljp_weights(const ParCSRMatrix* S,
         recv_weights.resize(S->comm->send_data->size_msgs);
     }
 
-    FILE* f = fopen("../../tests/weights.txt", "r");
     // Set each weight initially to random value [0,1)
-    int first_row = 0;
-    int num_procs, rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-    std::vector<int> proc_sizes(num_procs);
-    MPI_Allgather(&S->on_proc_num_cols, 1, MPI_INT, proc_sizes.data(), 1, MPI_INT,
-            MPI_COMM_WORLD);
-    for (int i = 0; i < rank; i++)
-    {
-        first_row += proc_sizes[i];
-    }
-    for (int i = 0; i < first_row; i++)
-    {
-        double weight;
-        fscanf(f, "%lg\n", &weight);
-    }
+    srand(2448422);
     for (int i = 0; i < S->on_proc_num_cols; i++)
     {
-        // Seed random generator with global col
-        //srand(S->on_proc_column_map[i]);
-
         // Random value [0,1)
-        //weights[i] = rand();
-        //if (weights[i] == RAND_MAX)
-        //    weights[i] -= 1;
-        //weights[i] /= RAND_MAX;
-        fscanf(f, "%lg\n", &weights[i]);
+        weights[i] = rand() / RAND_MAX;
     }
-    fclose(f);
 
     // Go through each row i, for each column j
     // add to weights or off_proc_weights at j
@@ -620,6 +596,11 @@ void update_local_dist2_weights(const ParCSRMatrix* S,
                 }
             }
         }
+    }
+
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+        c_dep_cache[i] = -1;
     }
 
     // Update local weights based on off_proc new coarse values

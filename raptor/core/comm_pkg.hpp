@@ -218,7 +218,7 @@ namespace raptor
             
             if (partition->local_num_cols)
             {
-                part_col_to_new.resize(partition->local_num_cols);
+                part_col_to_new.resize(partition->local_num_cols, -1);
             }
             for (std::vector<int>::const_iterator it = on_proc_column_map.begin();
                     it != on_proc_column_map.end(); ++it)
@@ -230,6 +230,7 @@ namespace raptor
             {
                 idx = send_data->indices[i];
                 send_data->indices[i] = part_col_to_new[idx];
+                assert(part_col_to_new[idx] >= 0);
             }
         }
 

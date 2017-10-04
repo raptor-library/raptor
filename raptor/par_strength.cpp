@@ -15,18 +15,12 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
 
     ParCSRMatrix* S = new ParCSRMatrix(partition, global_num_rows, global_num_cols,
             local_num_rows, on_proc_num_cols, off_proc_num_cols);
-    std::vector<int> col_exists;
+
+    std::vector<bool> col_exists;
     if (off_proc_num_cols)
     {
         col_exists.resize(off_proc_num_cols, false);
     }
-
-    std::copy(on_proc_column_map.begin(), on_proc_column_map.end(),
-            std::back_inserter(S->on_proc_column_map));
-    //std::copy(off_proc_column_map.begin(), off_proc_column_map.end(),
-    //        std::back_inserter(S->off_proc_column_map));
-    std::copy(local_row_map.begin(), local_row_map.end(),
-            std::back_inserter(S->local_row_map));
 
     sort();
     on_proc->move_diag();
@@ -107,9 +101,9 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
                 if (fabs(val) >= threshold)
                 {
                     col = off_proc->idx2[j];
-                    col_exists[col] = true;
                     S->off_proc->idx2.push_back(col);
                     S->off_proc->vals.push_back(fabs(val) / row_max);
+                    col_exists[col] = true;
                 }
             }
 
@@ -122,54 +116,47 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
 
     S->local_nnz = S->on_proc->nnz + S->off_proc->nnz;
 
-    //std::copy(off_proc_column_map.begin(), off_proc_column_map.end(),
-    //        std::back_inserter(S->off_proc_column_map));
+    std::copy(on_proc_column_map.begin(), on_proc_column_map.end(),
+            std::back_inserter(S->on_proc_column_map));
+    std::copy(local_row_map.begin(), local_row_map.end(),
+            std::back_inserter(S->local_row_map));
+    std::copy(on_proc_partition_to_col.begin(), on_proc_partition_to_col.end(),
+            std::back_inserter(S->on_proc_partition_to_col));
 
-    std::vector<int> on_proc_col_to_new;
-    if (on_proc_num_cols)
-    {
-        on_proc_col_to_new.resize(on_proc_num_cols);
-        std::iota(on_proc_col_to_new.begin(), on_proc_col_to_new.end(), 0);
-    }
-    std::vector<int> off_proc_col_to_new;
+    std::vector<int> orig_to_S;
     if (off_proc_num_cols)
     {
-        off_proc_col_to_new.resize(off_proc_num_cols);
-        S->off_proc_column_map.reserve(off_proc_num_cols);
-        for (int i = 0; i < off_proc_num_cols; i++)
-        {
-            if (col_exists[i])
-            {
-                off_proc_col_to_new[i] = S->off_proc_column_map.size();
-                S->off_proc_column_map.push_back(off_proc_column_map[i]);
-            }
-            else
-            {
-                off_proc_col_to_new[i] = -1;
-            }
-        }
-        S->off_proc_num_cols = S->off_proc_column_map.size();
+        orig_to_S.resize(off_proc_num_cols);
     }
+    S->off_proc_column_map.reserve(off_proc_num_cols);
+    for (int i = 0; i < off_proc_num_cols; i++)
+    {
+        if (col_exists[i])
+        {
+            orig_to_S[i] = S->off_proc_column_map.size();
+            S->off_proc_column_map.push_back(off_proc_column_map[i]);
+        }
+    }
+    S->off_proc_num_cols = S->off_proc_column_map.size();
     for (std::vector<int>::iterator it = S->off_proc->idx2.begin();
             it != S->off_proc->idx2.end(); ++it)
     {
-        *it = off_proc_col_to_new[*it];
+        *it = orig_to_S[*it];
     }
-
-    S->map_partition_to_local();
-
 
     // Can copy A's comm pkg... may not need to communicate everything in comm,
     // but this is probably less costly than creating a new communicator
+    // TODO... but is it?
     if (comm)
     {
-        S->comm = new ParComm((ParComm*) comm, on_proc_col_to_new, off_proc_col_to_new, true);
+        //S->comm = new ParComm((ParComm*) comm);
+        S->comm = new ParComm(S->partition, S->off_proc_column_map, S->on_proc_column_map);
+        //S->comm = new ParComm(S->partition, S->off_proc_column_map);
     }
 
     if (tap_comm)
     {
-        S->tap_comm = new TAPComm((TAPComm*) tap_comm, on_proc_col_to_new,
-                off_proc_col_to_new);
+        S->tap_comm = new TAPComm((TAPComm*) tap_comm);
     }
 
     return S;
