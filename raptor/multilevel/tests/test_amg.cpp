@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
         A = par_stencil_grid(stencil, grid.data(), dim);
         delete[] stencil;
     }
-    else if (system == 2)
+/*    else if (system == 2)
     {
         char* mesh_file = "../../../../../mfem/data/beam-tet.mesh";
         int num_elements = 2;
@@ -93,7 +93,7 @@ int main(int argc, char* argv[])
         }
         A = mfem_linear_elasticity(mesh_file, num_elements, order);
     }
-    else if (system == 3)
+*/    else if (system == 3)
     {
         char* file = "../../../../examples/LFAT5.mtx";
         A = readParMatrix(file, MPI_COMM_WORLD, 1, 1);
@@ -110,6 +110,44 @@ int main(int argc, char* argv[])
     x.set_const_value(0.0);
     
     ml = new Multilevel(A, strong_threshold);
+
+    if (rank == 0)
+    {
+        printf("Num Levels = %d\n", ml->num_levels);
+	printf("A\tNRow\tNCol\tNNZ\n");
+    }
+    for (int i = 0; i < ml->num_levels; i++)
+    {
+        ParCSRMatrix* Al = ml->levels[i]->A;
+	long lcl_nnz = Al->local_nnz;
+	long nnz;
+	MPI_Reduce(&lcl_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+	if (rank == 0)
+	{
+            printf("%d\t%d\t%d\t%lu\n", i, Al->global_num_rows, Al->global_num_cols, nnz);
+        }
+    }
+
+    if (rank == 0)
+    {
+	printf("\nP\tNRow\tNCol\tNNZ\n");
+    }
+    for (int i = 0; i < ml->num_levels-1; i++)
+    {
+        ParCSRMatrix* Pl = ml->levels[i]->P;
+	long lcl_nnz = Pl->local_nnz;
+	long nnz;
+	MPI_Reduce(&lcl_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+	if (rank == 0)
+	{
+            printf("%d\t%d\t%d\t%lu\n", i, Pl->global_num_rows, Pl->global_num_cols, nnz);
+	}
+    }
+    
+    if (rank == 0)
+    {
+        printf("\nSolve Phase Relative Residuals:\n");
+    }
     ml->solve(x, b);
 
     delete ml;
