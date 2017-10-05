@@ -6,130 +6,6 @@
 #include "core/par_matrix.hpp"
 
 /**************************************************************
- *****   Sequential Gauss-Seidel (Forward Sweep)
- **************************************************************
- ***** Performs gauss-seidel along the diagonal block of the 
- ***** matrix, assuming that the off-diagonal block has
- ***** already been altered appropriately.
- ***** The result from this sweep is put into 'result'
- *****
- ***** Parameters
- ***** -------------
- ***** A : Matrix*
- *****    Matrix to relax over
- ***** x : data_t*
- *****    Vector to be relaxed
- ***** y : data_t*
- *****    Right hand side vector
- ***** result: data_t*
- *****    Vector for result to be put into
- **************************************************************/
-template <typename T, typename U, typename V>
-void gs_forward(Matrix* A, const T& x, const U& y, V& result)
-{
-    int row_start, row_end;
-    int col;
-    data_t value;
-    data_t diag;
-
-    // Forward Sweep
-    for (int row = 0; row < A->n_rows; row++)
-    {
-        row_start = A->idx1[row];
-        row_end = A->idx1[row+1];
-
-        if (row_end > row_start) 
-        {
-            diag = A->vals[row_start];
-        }
-        else 
-        {
-            diag = 0.0;
-        }
-
-        for (int j = row_start + 1; j < row_end; j++)
-        {
-            col = A->idx2[j];
-            value = A->vals[j];
-            if (col < row)
-            {
-                result[row] -= value*result[col];
-            }
-            else if (col > row)
-            {
-                result[row] -= value*x[col];
-            }
-        }
-        if (fabs(diag) > zero_tol)
-        {
-            result[row] /= diag;
-        }
-    }
-}
-
-/**************************************************************
- *****   Sequential Gauss-Seidel (Backward Sweep)
- **************************************************************
- ***** Performs gauss-seidel along the diagonal block of the 
- ***** matrix, assuming that the off-diagonal block has
- ***** already been altered appropriately.
- ***** The result from this sweep is put into 'result'
- *****
- ***** Parameters
- ***** -------------
- ***** A : Matrix*
- *****    Matrix to relax over
- ***** x : data_t*
- *****    Vector to be relaxed
- ***** y : data_t*
- *****    Right hand side vector
- ***** result: data_t*
- *****    Vector for result to be put into
- **************************************************************/
-template <typename T, typename U, typename V>
-void gs_backward(Matrix* A, const T& x, const U& y, V& result)
-{
-    int row_start, row_end;
-    int col;
-    data_t value;
-    data_t diag;
-
-    // Backward Sweep
-    for (int row = A->n_rows - 1; row >= 0; row--)
-    {
-        row_start = A->idx1[row];
-        row_end = A->idx1[row+1];
-
-        if (row_end > row_start) 
-        {
-            diag = A->vals[row_start];
-        }
-        else 
-        {
-            diag = 0.0;
-        }
-
-        for (int j = row_start + 1; j < row_end; j++)
-        {
-            col = A->idx2[j];
-            value = A->vals[j];
-            if (col > row)
-            {
-                result[row] -= value*result[col];
-            }
-            else if (col < row)
-            {
-                result[row] -= value*x[col];
-            }
-        }
-        if (fabs(diag) > zero_tol)
-        {
-            result[row] /= diag;
-        }
-    }
-}
-
-/**************************************************************
  *****   Hybrid Gauss-Seidel / Jacobi Parallel Relaxation
  **************************************************************
  ***** Performs Jacobi along the off-diagonal block and
@@ -150,24 +26,127 @@ void gs_backward(Matrix* A, const T& x, const U& y, V& result)
  ***** dist_x : data_t*
  *****    Vector of distant x-values recvd from other processes
  **************************************************************/
-void hybrid(ParCSRMatrix* A, ParVector& x, const ParVector& y, ParVector& tmp, 
-       std::vector<double>& dist_x)
+void gs_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
+        const std::vector<double>& dist_x, double omega = 1.0)
 {
-    A->sort();
+    int start, end, col;
+    double diag;
+    double row_sum;
 
-    // Forward Sweep
-    if (A->off_proc_num_cols)
+    for (int i = 0; i < A->local_num_rows; i++)
     {
-        A->off_proc->residual(dist_x, y.local, tmp.local);
-    }
-    gs_forward(A->on_proc, x, y, tmp);
+        row_sum = 0;
+        start = A->on_proc->idx1[i];
+        end = A->on_proc->idx1[i+1];
+        if (A->on_proc->idx2[start] == i)
+        {
+            diag = A->on_proc->vals[start];
+            start++;
+        }        
+        else continue;
+        for (int j = start; j < end; j++)
+        {
+            col = A->on_proc->idx2[j];
+            row_sum += A->on_proc->vals[j] * x[col];
+        }
 
-    // Backward Sweep
-    if (A->off_proc_num_cols)
-    {
-        A->off_proc->residual(dist_x, y.local, x.local);
+        start = A->off_proc->idx1[i];
+        end = A->off_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = A->off_proc->idx2[j];
+            row_sum += A->off_proc->vals[j] * dist_x[col];
+        }
+
+        x[i] = ((1.0 - omega)*x[i]) + (omega*((y[i] - row_sum) / diag));
     }
-    gs_forward(A->on_proc, tmp, y, x);
+}
+
+void gs_backward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
+        const std::vector<double>& dist_x, double omega = 1.0)
+{
+    int start, end, col;
+    double diag;
+    double row_sum;
+
+    for (int i = A->local_num_rows - 1; i >= 0; i--)
+    {
+        row_sum = 0;
+        start = A->on_proc->idx1[i];
+        end = A->on_proc->idx1[i+1];
+        if (A->on_proc->idx2[start] == i)
+        {
+            diag = A->on_proc->vals[start];
+            start++;
+        }        
+        else continue;
+        for (int j = start; j < end; j++)
+        {
+            col = A->on_proc->idx2[j];
+            row_sum += A->on_proc->vals[j] * x[col];
+        }
+
+        start = A->off_proc->idx1[i];
+        end = A->off_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = A->off_proc->idx2[j];
+            row_sum += A->off_proc->vals[j] * dist_x[col];
+        }
+
+        x[i] = ((1.0 - omega)*x[i]) + (omega*((y[i] - row_sum) / diag));
+    }
+}
+
+void hybrid(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
+       std::vector<double>& dist_x, double omega = 1.0)
+{
+    gs_forward(A, x, y, dist_x, omega);
+    gs_backward(A, x, y, dist_x, omega);
+}
+
+void jacobi(ParCSRMatrix* A, ParVector& x, const ParVector& y, ParVector& tmp,
+        std::vector<double>& dist_x, double omega = 2.0 / 3)
+{
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        tmp[i] = x[i];
+    }
+
+    for (int i = 0; i < A->local_num_rows; i++)
+    { 
+        double diag = 0;
+        double row_sum = 0;
+
+        int start = A->on_proc->idx1[i];
+        int end = A->on_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            int col = A->on_proc->idx2[j];
+            if (col == i)
+            {
+                diag = A->on_proc->vals[j];
+            }
+            else
+            {
+                row_sum += A->on_proc->vals[j] * tmp[col];
+            }
+
+        }
+
+        start = A->off_proc->idx1[i];
+        end = A->off_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            int col = A->off_proc->idx2[j];
+            row_sum += A->off_proc->vals[j] * dist_x[col];
+        }
+
+        if (fabs(diag) > zero_tol)
+        {
+            x[i] = ((1.0 - omega)*tmp[i]) + (omega*((y[i] - row_sum) / diag));
+        }
+    }
 }
 
 /**************************************************************
@@ -212,7 +191,9 @@ void relax(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, int num_
         A->comm->communicate(x);
 
         // Run hybrid jacobi / gauss seidel
-        hybrid(A, x, b, tmp, A->comm->recv_data->buffer);
+        //hybrid(A, x, b, tmp, A->comm->recv_data->buffer);
+        //hybrid(A, x, b, A->comm->recv_data->buffer);
+        gs_forward(A, x, b, A->comm->recv_data->buffer, 2.0/3);
     }
 }
 

@@ -116,7 +116,7 @@ void initial_cljp_weights(const ParCSRMatrix* S,
     }
 
     // Set each weight initially to random value [0,1)
-    srand(2448422);
+    srand(2448422 + S->partition->first_global_row);
     for (int i = 0; i < S->on_proc_num_cols; i++)
     {
         // Random value [0,1)
