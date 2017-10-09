@@ -420,8 +420,8 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
     HYPRE_BoomerAMGSetPMaxElmts(amg_data, p_max_elmts);
     HYPRE_BoomerAMGSetAggNumLevels(amg_data, agg_num_levels);
     HYPRE_BoomerAMGSetStrongThreshold(amg_data, strong_threshold);
-    HYPRE_BoomerAMGSetMaxCoarseSize(amg_data, 15);
-    HYPRE_BoomerAMGSetMinCoarseSize(amg_data, 5);
+    HYPRE_BoomerAMGSetMaxCoarseSize(amg_data, 50);
+    HYPRE_BoomerAMGSetRelaxType(amg_data, 3);
 
     HYPRE_BoomerAMGSetPrintLevel(amg_data, 3);
     HYPRE_BoomerAMGSetMaxIter(amg_data, 100);

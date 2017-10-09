@@ -161,7 +161,8 @@ namespace raptor
                 std::vector<int> off_proc_states;
 
                 S = A->strength(theta);
-                split_falgout(S, states, off_proc_states);
+                split_cljp(S, states, off_proc_states);
+                //split_falgout(S, states, off_proc_states);
                 levels[level_ctr]->P = direct_interpolation(A, S, states, off_proc_states);
                 ParCSRMatrix* P = levels[level_ctr]->P;
 
@@ -419,7 +420,7 @@ namespace raptor
                 }
                 if (rank == 0) printf("Rnorm = %e\n", r_norm);
 
-                while (r_norm > 1e-05 && iter < num_iterations)
+                while (r_norm > 1e-07 && iter < num_iterations)
                 {
                     cycle(0);
                     iter++;
