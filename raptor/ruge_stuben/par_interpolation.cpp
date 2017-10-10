@@ -7,7 +7,7 @@
 using namespace raptor;
 
 ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
-        ParCSRMatrix* S, const std::vector<int>& states,
+        ParCSRBoolMatrix* S, const std::vector<int>& states,
         const std::vector<int>& off_proc_states)
 {
 int rank;

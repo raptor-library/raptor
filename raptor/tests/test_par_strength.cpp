@@ -6,7 +6,7 @@
 
 using namespace raptor;
 
-void compare(ParCSRMatrix* S, ParCSRMatrix* S_rap)
+void compare(ParCSRMatrix* S, ParCSRBoolMatrix* S_rap)
 {
     int start, end;
 
@@ -31,7 +31,7 @@ void compare(ParCSRMatrix* S, ParCSRMatrix* S_rap)
         for (int j = start; j < end; j++)
         {
             assert(S->on_proc->idx2[j] == S_rap->on_proc->idx2[j]);
-            assert(fabs(S->on_proc->vals[j] - S_rap->on_proc->vals[j]) < 1e-06);
+            //assert(fabs(S->on_proc->vals[j] - S_rap->on_proc->vals[j]) < 1e-06);
         }
 
         assert(S->off_proc->idx1[i+1] == S_rap->off_proc->idx1[i+1]);
@@ -41,7 +41,7 @@ void compare(ParCSRMatrix* S, ParCSRMatrix* S_rap)
         {
             assert(S->off_proc_column_map[S->off_proc->idx2[j]] == 
                     S_rap->off_proc_column_map[S_rap->off_proc->idx2[j]]);
-            assert(fabs(S->off_proc->vals[j] - S_rap->off_proc->vals[j]) < 1e-06);
+            //assert(fabs(S->off_proc->vals[j] - S_rap->off_proc->vals[j]) < 1e-06);
         }
     }
 }
@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
 
     ParCSRMatrix* A;
     ParCSRMatrix* S;
-    ParCSRMatrix* S_rap;
+    ParCSRBoolMatrix* S_rap;
 
     A = readParMatrix("rss_laplace_A0.mtx", MPI_COMM_WORLD, 1, 1);
     S = readParMatrix("rss_laplace_S0.mtx", MPI_COMM_WORLD, 1, 1);

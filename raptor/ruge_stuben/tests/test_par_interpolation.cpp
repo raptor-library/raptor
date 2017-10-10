@@ -53,7 +53,7 @@ void compare(ParCSRMatrix* P, ParCSRMatrix* P_rap)
     }
 }
 
-ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, char* filename, int* first_row_ptr, int* first_col_ptr)
+ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRBoolMatrix* S, char* filename, int* first_row_ptr, int* first_col_ptr)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -116,7 +116,7 @@ int main(int argc, char* argv[])
     int start, end;
     FILE* f;
     ParCSRMatrix* A;
-    ParCSRMatrix* S;
+    ParCSRBoolMatrix* S;
     ParCSRMatrix* P;
     ParCSRMatrix* P_rap;
 

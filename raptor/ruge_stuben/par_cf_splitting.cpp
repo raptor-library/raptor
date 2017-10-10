@@ -4,7 +4,7 @@
 
 using namespace raptor;
 
-void transpose(const ParCSRMatrix* S,
+void transpose(const ParCSRBoolMatrix* S,
         std::vector<int>& on_col_ptr, 
         std::vector<int>& off_col_ptr, 
         std::vector<int>& on_col_indices,
@@ -92,7 +92,7 @@ void transpose(const ParCSRMatrix* S,
     }
 }
 
-void initial_cljp_weights(const ParCSRMatrix* S,
+void initial_cljp_weights(const ParCSRBoolMatrix* S,
         std::vector<double>& weights)
 {
     int start, end;
@@ -116,11 +116,30 @@ void initial_cljp_weights(const ParCSRMatrix* S,
     }
 
     // Set each weight initially to random value [0,1)
-    srand(2448422 + S->partition->first_global_row);
+/*    srand(2448422 + S->partition->first_local_row);
     for (int i = 0; i < S->on_proc_num_cols; i++)
     {
         // Random value [0,1)
         weights[i] = rand() / RAND_MAX;
+    }
+*/
+
+    // FOR COMPARISON TO HYPRE
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    int seed = 2747 + rank;
+    int a = 16807;
+    int m = 2147483647;
+    int q = 127773;
+    int r = 2836;
+    for (int i = 0; i < S->on_proc_num_cols; i++)
+    {
+        int high = seed / q;
+        int low = seed % q;
+        int test = a * low - r * high;
+        if (test > 0) seed = test;
+        else seed = test + m;
+        weights[i] = ((double)(seed) / m);
     }
 
     // Go through each row i, for each column j
@@ -191,7 +210,7 @@ void initial_cljp_weights(const ParCSRMatrix* S,
     }
 }
 
-void find_off_proc_weights(const ParCSRMatrix* S, 
+void find_off_proc_weights(const ParCSRBoolMatrix* S, 
         const std::vector<int>& states,
         const std::vector<int>& off_proc_states,
         const std::vector<double>& weights,
@@ -276,7 +295,7 @@ void find_off_proc_weights(const ParCSRMatrix* S,
     }
 }
 
-void find_max_off_weights(const ParCSRMatrix* S,
+void find_max_off_weights(const ParCSRBoolMatrix* S,
         const std::vector<int>& off_col_ptr,
         const std::vector<int>& off_col_indices,
         const std::vector<int>& states,
@@ -391,7 +410,7 @@ void find_max_off_weights(const ParCSRMatrix* S,
     }
 }
 
-int select_independent_set(const ParCSRMatrix* S, 
+int select_independent_set(const ParCSRBoolMatrix* S, 
         const int remaining,
         const std::vector<int>& unassigned,
         const std::vector<double>& weights, 
@@ -485,7 +504,7 @@ int select_independent_set(const ParCSRMatrix* S,
     return num_new_coarse;
 }
 
-void update_row_weights(const ParCSRMatrix* S,
+void update_row_weights(const ParCSRBoolMatrix* S,
         const int num_new_coarse,
         const std::vector<int>& new_coarse_list,
         std::vector<int>& on_edgemark, 
@@ -532,7 +551,7 @@ void update_row_weights(const ParCSRMatrix* S,
     }
 }
 
-void update_local_dist2_weights(const ParCSRMatrix* S,
+void update_local_dist2_weights(const ParCSRBoolMatrix* S,
         const int num_new_coarse,
         const std::vector<int>& new_coarse_list,
         const int off_num_new_coarse, 
@@ -647,7 +666,7 @@ void update_local_dist2_weights(const ParCSRMatrix* S,
     }
 }
 
-void update_off_proc_dist2_weights(const ParCSRMatrix* S,
+void update_off_proc_dist2_weights(const ParCSRBoolMatrix* S,
         const int num_new_coarse,
         const int off_num_new_coarse,
         const std::vector<int> new_coarse_list,
@@ -871,7 +890,7 @@ void update_off_proc_dist2_weights(const ParCSRMatrix* S,
     }
 }
 
-int find_off_proc_states(const ParCSRMatrix* S,
+int find_off_proc_states(const ParCSRBoolMatrix* S,
         const std::vector<int>& states,
         std::vector<int>& off_proc_states)
 {
@@ -971,7 +990,7 @@ int find_off_proc_states(const ParCSRMatrix* S,
     return num_new_coarse;
 }
 
-void find_off_proc_new_coarse(const ParCSRMatrix* S,
+void find_off_proc_new_coarse(const ParCSRBoolMatrix* S,
         const std::map<int, int>& global_to_local,
         const std::vector<int>& states,
         const std::vector<int>& off_proc_states,
@@ -1135,7 +1154,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
     }
 }
 
-void combine_weight_updates(const ParCSRMatrix* S,
+void combine_weight_updates(const ParCSRBoolMatrix* S,
         const std::vector<int>&states,
         const std::vector<int>& off_proc_states,
         const std::vector<int>& off_proc_weight_updates,
@@ -1257,7 +1276,7 @@ int update_states(std::vector<double>& weights,
     return ctr;
 }
 
-void cljp_main_loop(ParCSRMatrix* S,
+void cljp_main_loop(ParCSRBoolMatrix* S,
         const std::vector<int>& on_col_ptr,
         const std::vector<int>& off_col_ptr,
         const std::vector<int>& on_col_indices,
@@ -1451,10 +1470,10 @@ void cljp_main_loop(ParCSRMatrix* S,
  *****
  ***** Parameters
  ***** -------------
- ***** S : ParCSRMatrix*
+ ***** S : ParCSRBoolMatrix*
  *****    Strength of connection matrix
  **************************************************************/
-void split_rs(ParCSRMatrix* S,
+void split_rs(ParCSRBoolMatrix* S,
         std::vector<int>& states, 
         std::vector<int>& off_proc_states)
 {
@@ -1494,10 +1513,10 @@ void split_rs(ParCSRMatrix* S,
  *****
  ***** Parameters
  ***** -------------
- ***** S : ParCSRMatrix*
+ ***** S : ParCSRBoolMatrix*
  *****    Strength of connection matrix
  **************************************************************/
-void split_falgout(ParCSRMatrix* S,
+void split_falgout(ParCSRBoolMatrix* S,
         std::vector<int>& states, 
         std::vector<int>& off_proc_states)
 {
@@ -1687,10 +1706,10 @@ void split_falgout(ParCSRMatrix* S,
  *****
  ***** Parameters
  ***** -------------
- ***** S : ParCSRMatrix*
+ ***** S : ParCSRBoolMatrix*
  *****    Strength of connection matrix
  **************************************************************/
-void split_cljp(ParCSRMatrix* S,
+void split_cljp(ParCSRBoolMatrix* S,
         std::vector<int>& states, 
         std::vector<int>& off_proc_states)
 {

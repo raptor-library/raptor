@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     FILE* f;
-    ParCSRMatrix* S;
+    ParCSRBoolMatrix* S;
     std::vector<int> splitting;
     std::vector<int> splitting_rap;
     std::vector<int> off_proc_states;

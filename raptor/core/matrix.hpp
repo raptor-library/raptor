@@ -53,6 +53,7 @@ namespace raptor
   class COOMatrix;
   class CSRMatrix;
   class CSCMatrix;
+  class CSRBoolMatrix;
 
   class Matrix
   {
@@ -1097,6 +1098,256 @@ namespace raptor
     }
 
   };
+
+
+
+/**************************************************************
+ *****   CSRBoolMatrix Class (Inherits from Matrix Base Class)
+ **************************************************************
+ ***** This class constructs a sparse boolean matrix in CSR format.
+ *****
+ ***** Methods
+ ***** -------
+ ***** format() 
+ *****    Returns the format of the sparse matrix (CSR)
+ ***** sort()
+ *****    Sorts the matrix.  Already in row-wise order, but sorts
+ *****    the columns in each row.
+ ***** indptr()
+ *****     Returns std::vector<int>& row pointer.  The ith element points to
+ *****     the index of indices() corresponding to the first column to lie on 
+ *****     row i.
+ ***** indices()
+ *****     Returns std::vector<int>& containing the cols corresponding
+ *****     to each nonzero
+ **************************************************************/
+  class CSRBoolMatrix : public Matrix
+  {
+
+  public:
+
+    /**************************************************************
+    *****   CSRMatrix Class Constructor
+    **************************************************************
+    ***** Initializes an empty CSRMatrix
+    *****
+    ***** Parameters
+    ***** -------------
+    ***** _nrows : int
+    *****    Number of rows in Matrix
+    ***** _ncols : int
+    *****    Number of columns in Matrix
+    ***** nnz_per_row : int
+    *****    Prediction of (approximately) number of nonzeros 
+    *****    per row, used in reserving space
+    **************************************************************/
+    CSRBoolMatrix(int _nrows, int _ncols, int _nnz = 0): Matrix(_nrows, _ncols)
+    {
+        idx1.resize(_nrows + 1);
+        if (_nnz)
+        {
+            idx2.reserve(_nnz);
+        }
+    }
+
+    CSRBoolMatrix(int _nrows, int _ncols, bool* _data) : Matrix(_nrows, _ncols)
+    {
+        n_rows = _nrows;
+        n_cols = _ncols;
+        nnz = 0;
+
+        int nnz_dense = n_rows*n_cols;
+
+        idx1.resize(n_rows + 1);
+        if (nnz_dense)
+        {
+            idx2.reserve(nnz_dense);
+        }
+
+        idx1[0] = 0;
+        for (int i = 0; i < n_rows; i++)
+        {
+            for (int j = 0; j < n_cols; j++)
+            {
+                if (_data[i*n_cols + j])
+                {
+                    idx2.push_back(j);
+                }
+            }
+            idx1[i+1] = idx2.size();
+        }
+        nnz = idx2.size();
+    }
+
+
+    /**************************************************************
+    *****   CSRMatrix Class Constructor
+    **************************************************************
+    ***** Constructs a CSRMatrix from a COOMatrix
+    *****
+    ***** Parameters
+    ***** -------------
+    ***** A : const COOMatrix*
+    *****    COOMatrix A, from which to copy data
+    **************************************************************/
+    explicit CSRBoolMatrix(const COOMatrix* A) 
+    {
+        copy(A);
+    }
+
+    /**************************************************************
+    *****   CSRMatrix Class Constructor
+    **************************************************************
+    ***** Constructs a CSRMatrix from a CSCMatrix
+    *****
+    ***** Parameters
+    ***** -------------
+    ***** A : const CSCMatrix*
+    *****    CSCMatrix A, from which to copy data
+    **************************************************************/
+    explicit CSRBoolMatrix(const CSCMatrix* A)
+    {
+        copy(A);
+    }
+
+    /**************************************************************
+    *****   CSRMatrix Class Constructor
+    **************************************************************
+    ***** Constructs a CSRMatrix from a CSRMatrix
+    *****
+    ***** Parameters
+    ***** -------------
+    ***** A : const CSRMatrix*
+    *****    CSRMatrix A, from which to copy data
+    **************************************************************/
+    explicit CSRBoolMatrix(const CSRMatrix* A) 
+    {
+        copy(A);
+    }
+
+    CSRBoolMatrix()
+    {
+    }
+
+    ~CSRBoolMatrix()
+    {
+
+    }
+
+    void print();
+
+    void copy(const COOMatrix* A);
+    void copy(const CSRMatrix* A);
+    void copy(const CSCMatrix* A);
+
+    void sort();
+    void move_diag();
+    void remove_duplicates();
+    
+    void add_value(int row, int col, double val)
+    {
+        
+    }
+
+    void mult(std::vector<double>& x, std::vector<double>& b)
+    {
+        for (int i = 0; i < n_rows; i++)
+            b[i] = 0.0;
+        mult_append(x, b);
+    }
+    void mult_T(std::vector<double>& x, std::vector<double>& b)
+
+    {
+        for (int i = 0; i < n_cols; i++)
+            b[i] = 0.0;
+
+        mult_append_T(x, b);    
+    }
+    void mult_append(std::vector<double>& x, std::vector<double>& b)
+    { 
+        int start, end;
+        for (int i = 0; i < n_rows; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                b[i] += x[idx2[j]];
+            }
+        }
+    }
+    void mult_append_T(std::vector<double>& x, std::vector<double>& b)
+    {
+        int start, end;
+        for (int i = 0; i < n_rows; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                b[idx2[j]] += x[i];
+            }
+        }
+    }
+    void mult_append_neg(std::vector<double>& x, std::vector<double>& b)
+    {
+        int start, end;
+        for (int i = 0; i < n_rows; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                b[i] -= x[idx2[j]];
+            }
+        }
+    }
+    void mult_append_neg_T(std::vector<double>& x, std::vector<double>& b)
+    {
+        int start, end;
+        for (int i = 0; i < n_rows; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                b[idx2[j]] -= x[i];
+            }
+        }
+    }
+    void residual(const std::vector<double>& x, const std::vector<double>& b, 
+            std::vector<double>& r)
+    {
+        for (int i = 0; i < n_rows; i++)
+            r[i] = b[i];
+     
+        int start, end;
+        for (int i = 0; i < n_rows; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                r[i] -= x[idx2[j]];
+            }
+        }
+    }
+
+    format_t format()
+    {
+        return CSRBool;
+    }
+
+    std::vector<int>& row_ptr()
+    {
+        return idx1;
+    }
+
+    std::vector<int>& cols()
+    {
+        return idx2;
+    }
+};
 
 
 }

@@ -138,7 +138,7 @@ int condense(Matrix* A, std::vector<int>& A_idx2, std::vector<int>& A_orig_to_ne
     return ctr;
 }
 
-void compare(ParCSRMatrix* P, ParCSRMatrix* P_rap)
+void compare(ParMatrix* P, ParCSRMatrix* P_rap)
 {
     int start, end;
 
@@ -165,7 +165,8 @@ void compare(ParCSRMatrix* P, ParCSRMatrix* P_rap)
         for (int j = start; j < end; j++)
         {
             assert(P->on_proc->idx2[j] == P_rap->on_proc->idx2[j]);
-            assert(fabs(P->on_proc->vals[j] - P_rap->on_proc->vals[j]) < 1e-06);
+            if (P_rap->on_proc->format() == CSR)
+                assert(fabs(P->on_proc->vals[j] - P_rap->on_proc->vals[j]) < 1e-06);
         }
 
         assert(P->off_proc->idx1[i+1] == P_rap->off_proc->idx1[i+1]);
@@ -174,7 +175,8 @@ void compare(ParCSRMatrix* P, ParCSRMatrix* P_rap)
         for (int j = start; j < end; j++)
         {
             assert(P->off_proc->idx2[j] == P_rap->off_proc->idx2[j]);
-            assert(fabs(P->off_proc->vals[j] - P_rap->off_proc->vals[j]) < 1e-06);
+            if (P_rap->off_proc->format() == CSR)
+                assert(fabs(P->off_proc->vals[j] - P_rap->off_proc->vals[j]) < 1e-06);
         }
     }
     
@@ -256,7 +258,7 @@ int main(int argc, char* argv[])
     x0.set_const_value(0.0);
     
     // Create strength and compare 
-    ParCSRMatrix* S0 = A0->strength(0.25);
+    ParCSRBoolMatrix* S0 = A0->strength(0.25);
     ParCSRMatrix* S0_py = readParMatrix("../../tests/rss_laplace_S0.mtx", MPI_COMM_WORLD, 1, 1);
     compare(S0, S0_py);
     delete S0_py;
@@ -295,7 +297,7 @@ int main(int argc, char* argv[])
     ParVector b1(A1->global_num_rows, A1->local_num_rows, A1->partition->first_local_row);
 
     // Compare Strength
-    ParCSRMatrix* S1 = A1->strength(0.25);
+    ParCSRBoolMatrix* S1 = A1->strength(0.25);
     ParCSRMatrix* S1_py = readParMatrix("../../tests/rss_laplace_S1.mtx", MPI_COMM_WORLD, 1, 0, 
             P0->on_proc_num_cols, P0->on_proc_num_cols, first_row, first_col);
     compare(S1, S1_py);

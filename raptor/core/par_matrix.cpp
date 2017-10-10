@@ -454,3 +454,54 @@ void ParCSCMatrix::copy(ParCOOMatrix* A)
 }
 
 
+void ParCSRBoolMatrix::copy(ParCSRMatrix* A)
+{
+    if (on_proc)
+    {   
+        delete on_proc;
+    }
+    if (off_proc)
+    {
+        delete off_proc;
+    }
+    on_proc = new CSRMatrix((CSRMatrix*) A->on_proc);
+    off_proc = new CSRMatrix((CSRMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
+}
+
+void ParCSRBoolMatrix::copy(ParCSCMatrix* A)
+{
+    if (on_proc)
+    {   
+        delete on_proc;
+    }
+    if (off_proc)
+    {
+        delete off_proc;
+    }
+    on_proc = new CSRMatrix((CSCMatrix*) A->on_proc);
+    off_proc = new CSRMatrix((CSCMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
+}
+
+void ParCSRBoolMatrix::copy(ParCOOMatrix* A)
+{
+    if (on_proc)
+    {   
+        delete on_proc;
+    }
+    if (off_proc)
+    {
+        delete off_proc;
+    }
+
+    on_proc = new CSRMatrix((COOMatrix*) A->on_proc);
+    off_proc = new CSRMatrix((COOMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
+}
+
+
+
