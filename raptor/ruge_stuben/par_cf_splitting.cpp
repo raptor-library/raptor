@@ -994,6 +994,7 @@ void find_off_proc_new_coarse(const ParCSRBoolMatrix* S,
         const std::map<int, int>& global_to_local,
         const std::vector<int>& states,
         const std::vector<int>& off_proc_states,
+        const int* part_to_col,
         std::vector<int>& off_proc_col_ptr,
         std::vector<int>& off_proc_col_coarse)
 {
@@ -1129,8 +1130,8 @@ void find_off_proc_new_coarse(const ParCSRBoolMatrix* S,
                     if (global_col >= S->partition->first_local_col 
                             && global_col <= S->partition->last_local_col)
                     {
-                        off_proc_col_coarse.push_back(S->on_proc_partition_to_col[
-                                global_col - S->partition->first_local_col]);
+                        off_proc_col_coarse.push_back(part_to_col[global_col -
+                                S->partition->first_local_col]);
                     }
                     else
                     {
@@ -1320,6 +1321,8 @@ void cljp_main_loop(ParCSRBoolMatrix* S,
     MPI_Status recv_status;
     std::vector<int> recv_buffer;
     std::vector<int> recv_indices;
+
+    int* part_to_col = S->map_partition_to_local();
     if (S->comm->recv_data->size_msgs)
     {
         recv_indices.resize(S->comm->recv_data->size_msgs);
@@ -1420,7 +1423,7 @@ void cljp_main_loop(ParCSRBoolMatrix* S,
 
         // Find new coarse influenced by each off_proc col
         find_off_proc_new_coarse(S, global_to_local, states, off_proc_states, 
-                off_proc_col_ptr, off_proc_col_coarse);
+                part_to_col, off_proc_col_ptr, off_proc_col_coarse);
 
         // Update Weights
         for (int i = 0; i < S->off_proc_num_cols; i++)
@@ -1458,6 +1461,8 @@ void cljp_main_loop(ParCSRBoolMatrix* S,
         //remaining -= num_fine;
         //off_remaining -= off_num_fine;
     }
+
+    delete[] part_to_col;
 }
 
 /**************************************************************

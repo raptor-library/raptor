@@ -221,7 +221,7 @@ namespace raptor
     **************************************************************/
     void finalize(bool create_comm = true);
 
-    void map_partition_to_local();
+    int* map_partition_to_local();
     void condense_off_proc();
 
     void residual(ParVector& x, ParVector& b, ParVector& r);
@@ -247,6 +247,21 @@ namespace raptor
     {
         on_proc->sort();
         off_proc->sort();
+    }
+
+    std::vector<index_t>& get_off_proc_column_map()
+    {
+        return off_proc_column_map;
+    }
+
+    std::vector<index_t>& get_on_proc_column_map()
+    {
+        return on_proc_column_map;
+    }
+
+    std::vector<index_t>& get_local_row_map()
+    {
+        return local_row_map;
     }
 
     ParCSRMatrix* subtract(ParCSRMatrix* B);
@@ -279,8 +294,6 @@ namespace raptor
     std::vector<index_t> off_proc_column_map; // Maps off_proc local to global
     std::vector<index_t> on_proc_column_map; // Maps on_proc local to global
     std::vector<index_t> local_row_map; // Maps local rows to global
-    std::vector<int> on_proc_partition_to_col; // Maps on_proc partition to local
-    std::vector<int> local_partition_to_row; // Maps on_proc partition to local
 
     // Parallel communication package indicating which 
     // processes hold vector values associated with off_proc,

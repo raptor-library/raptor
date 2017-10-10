@@ -116,8 +116,7 @@ MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     {
         col_exists.resize(S->off_proc_num_cols, false);
     }
-    std::copy(S->local_row_map.begin(), S->local_row_map.end(),
-            std::back_inserter(P->local_row_map));
+    P->local_row_map = S->get_local_row_map();
 
     for (int i = 0; i < A->local_num_rows; i++)
     {
@@ -292,12 +291,9 @@ MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     P->off_proc->n_cols = P->off_proc_num_cols;
     P->on_proc->n_cols = P->on_proc_num_cols;
 
-    P->map_partition_to_local();
-
-
-    if (A->comm)
+    if (S->comm)
     {
-        P->comm = new ParComm(P->partition, P->off_proc_column_map, P->on_proc_column_map);
+        P->comm = new ParComm(S->comm, on_proc_col_to_new, off_proc_col_to_new);
     }
 
     if (A->tap_comm)
