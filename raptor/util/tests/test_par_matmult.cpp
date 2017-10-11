@@ -2,167 +2,37 @@
 #include <math.h>
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
-#include "gallery/matrix_IO.hpp"
+#include "gallery/par_matrix_IO.hpp"
 
 using namespace raptor;
 
 // Compare A_solution to computed A_par
-void compare(ParCSCMatrix* A_sol, ParCSCMatrix* A_par)
+void compare(ParCSRMatrix* A0, ParCSRMatrix* A1)
 {
-    std::vector<double> col_vals;
-    std::vector<int> next;
-    if (A_sol->local_num_rows)
-    {
-        col_vals.resize(A_sol->local_num_rows, 0);
-        next.resize(A_sol->local_num_rows);
-    }
-
-    int head, length;
-    int col_start, col_end;
-    int row;
-    int col_start_sol, col_end_sol;
-
-    assert(A_sol->global_num_rows == A_par->global_num_rows);
-    assert(A_sol->local_num_rows == A_par->local_num_rows);
-    assert(A_sol->first_local_row == A_par->first_local_row);
-    assert(A_sol->global_num_cols == A_par->global_num_cols);
-    assert(A_sol->local_num_cols == A_par->local_num_cols);
-    assert(A_sol->first_local_col == A_par->first_local_col);
-
-    for (int col = 0; col < A_sol->local_num_cols; col++)
-    {
-        head = -2;
-        length = 0;
-
-        col_start_sol = A_sol->on_proc->idx1[col];
-        col_end_sol = A_sol->on_proc->idx1[col+1];
-        for (int j = col_start_sol; j < col_end_sol; j++)
-        {
-            row = A_sol->on_proc->idx2[j];
-            col_vals[row] = A_sol->on_proc->vals[j];
-            next[row] = head;
-            head = row;
-            length++;
-        }
-
-        col_start = A_par->on_proc->idx1[col];
-        col_end = A_par->on_proc->idx1[col+1];
-        for (int j = col_start; j < col_end; j++)
-        {
-            row = A_par->on_proc->idx2[j];
-            assert(fabs(A_par->on_proc->vals[j] - col_vals[row]) < 1e-8);
-        }
-
-        for (int j = 0; j < length; j++)
-        {
-            col_vals[head] = 0;
-            head = next[head];
-        }
-    }
-
-    for (int col = 0; col < A_sol->off_proc_num_cols; col++)
-    {
-        head = -2;
-        length = 0;
-
-        col_start_sol = A_sol->off_proc->idx1[col];
-        col_end_sol = A_sol->off_proc->idx1[col+1];
-        for (int j = col_start_sol; j < col_end_sol; j++)
-        {
-            row = A_sol->off_proc->idx2[j];
-            col_vals[row] = A_sol->off_proc->vals[j];
-            next[row] = head;
-            head = row;
-            length++;
-        }
-
-        col_start = A_par->off_proc->idx1[col];
-        col_end = A_par->off_proc->idx1[col+1];
-        for (int j = col_start; j < col_end; j++)
-        {
-            row = A_par->off_proc->idx2[j];
-            assert(fabs(A_par->off_proc->vals[j] - col_vals[row]) < 1e-8);
-        }
-
-        for (int j = 0; j < length; j++)
-        {
-            col_vals[head] = 0;
-            head = next[head];
-        }
-    }
-}
-
-// Compare A_solution to computed A_par
-void compare(ParCSRMatrix* A_sol, ParCSRMatrix* A_par)
-{
-    std::vector<double> row_vals;
-    std::vector<int> next;
-
-    int head, length;
-    int row_start, row_end;
+    int start, end;
     int col;
-    int row_start_sol, row_end_sol;
 
-    assert(A_sol->global_num_rows == A_par->global_num_rows);
-    assert(A_sol->local_num_rows == A_par->local_num_rows);
-    assert(A_sol->first_local_row == A_par->first_local_row);
-    assert(A_sol->global_num_cols == A_par->global_num_cols);
-    assert(A_sol->local_num_cols == A_par->local_num_cols);
-    assert(A_sol->first_local_col == A_par->first_local_col);
+    assert(A0->global_num_rows == A1->global_num_rows);
+    assert(A0->local_num_rows == A1->local_num_rows);
+    assert(A0->global_num_cols == A1->global_num_cols);
+    assert(A0->on_proc_num_cols == A1->on_proc_num_cols);
 
-    row_vals.resize(A_sol->global_num_cols, 0);
-    next.resize(A_sol->global_num_cols);
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    for (int row = 0; row < A_sol->local_num_rows; row++)
+    for (int row = 0; row < A0->local_num_rows; row++)
     {
-        head = -2;
-        length = 0;
+        start = A1->on_proc->idx1[row];
+        end = A1->on_proc->idx1[row+1];
+        assert(A0->on_proc->idx1[row] == start);
+        assert(A0->on_proc->idx1[row+1] == end);
 
-        row_start_sol = A_sol->on_proc->idx1[row];
-        row_end_sol = A_sol->on_proc->idx1[row+1];
-        for (int j = row_start_sol; j < row_end_sol; j++)
+        for (int j = start; j < end; j++)
         {
-            col = A_sol->on_proc->idx2[j] + A_sol->first_local_col;
-            row_vals[col] = A_sol->on_proc->vals[j];
-            next[col] = head;
-            head = col;
-            length++;
-        }
-
-        row_start_sol = A_sol->off_proc->idx1[row];
-        row_end_sol = A_sol->off_proc->idx1[row+1];
-        for (int j = row_start_sol; j < row_end_sol; j++)
-        {
-            col = A_sol->off_proc_column_map[A_sol->off_proc->idx2[j]];
-            row_vals[col] = A_sol->off_proc->vals[j];
-            next[col] = head;
-            head = col;
-            length++;
-        }
-
-        row_start = A_par->on_proc->idx1[row];
-        row_end = A_par->on_proc->idx1[row+1]; 
-        for (int j = row_start; j < row_end; j++)
-        {
-            col = A_par->on_proc->idx2[j] + A_par->first_local_col;
-            assert(fabs(A_par->on_proc->vals[j] - row_vals[col]) < 1e-8);
-        }
-
-        row_start = A_par->off_proc->idx1[row];
-        row_end = A_par->off_proc->idx1[row+1];
-        for (int j = row_start; j < row_end; j++)
-        {
-            col = A_par->off_proc_column_map[A_par->off_proc->idx2[j]];
-            assert(fabs(A_par->off_proc->vals[j] - row_vals[col]) < 1e-8);
-        }
-
-        for (int j = 0; j < length; j++)
-        {
-            row_vals[head] = 0;
-            head = next[head];
+            assert(A0->on_proc->idx2[j] == A1->on_proc->idx2[j]);
+            assert(fabs(A0->on_proc->vals[j] - A1->on_proc->vals[j]) < 1e-08);
         }
     }
-
 }
 
 int main(int argc, char* argv[])
@@ -172,73 +42,59 @@ int main(int argc, char* argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    ParCSRMatrix* Acsr = readParMatrix("/Users/abienz/Documents/Parallel/raptor_topo/build/raptor/util/tests/testA.mtx", MPI_COMM_WORLD, 1, 1);
-    ParCSRMatrix* Pcsr = readParMatrix("/Users/abienz/Documents/Parallel/raptor_topo/build/raptor/util/tests/testP.mtx", MPI_COMM_WORLD, 1, 0);
-    ParCSCMatrix* Acsc = new ParCSCMatrix(Acsr);
+    char* fname = "/Users/abienz/Documents/Parallel/raptor_topo/raptor/util/tests/testA.mtx";
+    ParCSRMatrix* Acsr = readParMatrix(fname, MPI_COMM_WORLD, 1, 1);
+
+    fname = "/Users/abienz/Documents/Parallel/raptor_topo/raptor/util/tests/testP.mtx";
+    ParCSRMatrix* Pcsr = readParMatrix(fname, MPI_COMM_WORLD, 1, 0);
     ParCSCMatrix* Pcsc = new ParCSCMatrix(Pcsr);
 
-    ParCSRMatrix* AP_sol_csr = readParMatrix("/Users/abienz/Documents/Parallel/raptor_topo/build/raptor/util/tests/testAP.mtx", MPI_COMM_WORLD, 1, 0, 
-            Acsr->local_num_rows, Pcsr->local_num_cols, 
-            Acsr->first_local_row, Pcsr->first_local_col);
-    ParCSRMatrix* Ac_sol_csr = readParMatrix("/Users/abienz/Documents/Parallel/raptor_topo/build/raptor/util/tests/testAc.mtx", MPI_COMM_WORLD, 1, 0,
-            Pcsr->local_num_cols, Pcsr->local_num_cols,
-            Pcsr->first_local_col, Pcsr->first_local_col);
-    ParCSCMatrix* AP_sol_csc = new ParCSCMatrix(AP_sol_csr);
-    ParCSCMatrix* Ac_sol_csc = new ParCSCMatrix(Ac_sol_csr);
+    fname = "/Users/abienz/Documents/Parallel/raptor_topo/raptor/util/tests/testAP.mtx";
+    ParCSRMatrix* AP_sol_csr = readParMatrix(fname, MPI_COMM_WORLD, 1, 0, 
+            Acsr->local_num_rows, Pcsr->on_proc_num_cols, 
+            Acsr->partition->first_local_row, Pcsr->partition->first_local_col);
+
+    fname = "/Users/abienz/Documents/Parallel/raptor_topo/raptor/util/tests/testAc.mtx";
+    ParCSRMatrix* Ac_sol_csr = readParMatrix(fname, MPI_COMM_WORLD, 1, 0,
+            Pcsr->on_proc_num_cols, Pcsr->on_proc_num_cols,
+            Pcsr->partition->first_local_col, Pcsr->partition->first_local_col);
+
+    AP_sol_csr->on_proc->sort();
+    AP_sol_csr->off_proc->sort();
+    Ac_sol_csr->on_proc->sort();
+    Ac_sol_csr->off_proc->sort();
 
     // Test CSR <- CSR.mult(CSR)
     ParCSRMatrix* APcsr = Acsr->mult(Pcsr);
+    APcsr->on_proc->sort();
+    APcsr->off_proc->sort();
     compare(AP_sol_csr, APcsr);
-    compare(APcsr, AP_sol_csr);
     delete APcsr;
 
     APcsr = Acsr->tap_mult(Pcsr);
+    APcsr->on_proc->sort();
+    APcsr->off_proc->sort();
     compare(AP_sol_csr, APcsr);
-    compare(APcsr, AP_sol_csr);
-    delete APcsr;
-
-    // Test CSR <- CSR.mult(CSC)
-    APcsr = Acsr->mult(Pcsc);
-    compare(AP_sol_csr, APcsr);
-    compare(APcsr, AP_sol_csr);
-    delete APcsr;
-
-    APcsr = Acsr->tap_mult(Pcsc);
-    compare(AP_sol_csr, APcsr);
-    compare(APcsr, AP_sol_csr);
     delete APcsr;
 
     // Test CSR <- CSR.mult_T(CSC)
     ParCSRMatrix* Accsr = AP_sol_csr->mult_T(Pcsc);
+    Accsr->on_proc->sort();
+    Accsr->off_proc->sort();
     compare(Ac_sol_csr, Accsr);
-    compare(Accsr, Ac_sol_csr);
     delete Accsr;
 
     Accsr = AP_sol_csr->tap_mult_T(Pcsc);
+    Accsr->on_proc->sort();
+    Accsr->off_proc->sort();
     compare(Ac_sol_csr, Accsr);
-    compare(Accsr, Ac_sol_csr);
-    delete Accsr;
-
-    // Test CSR <- CSR.mult_T(CSC)
-    Accsr = AP_sol_csc->mult_T(Pcsc);
-    compare(Ac_sol_csr, Accsr);
-    compare(Accsr, Ac_sol_csr);
-    delete Accsr;
-
-    Accsr = AP_sol_csc->tap_mult_T(Pcsc);
-    compare(Ac_sol_csr, Accsr);
-    compare(Accsr, Ac_sol_csr);
     delete Accsr;
 
     delete Acsr;
     delete Pcsr;
-    delete Acsc;
     delete Pcsc;
     delete AP_sol_csr;
     delete Ac_sol_csr;
-    delete AP_sol_csc;
-    delete Ac_sol_csc;
-
 
     MPI_Finalize();
 }

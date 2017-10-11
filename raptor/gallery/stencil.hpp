@@ -13,14 +13,8 @@
 using namespace raptor;
 
 // Stencils are symmetric, so A could be CSR or CSC
-void stencil_grid(Matrix* A, data_t* stencil, int* grid, int dim)
+CSRMatrix* stencil_grid(data_t* stencil, int* grid, int dim)
 {
-    if (A->format() != CSC && A->format() != CSR)
-    {
-        printf("A must be CSC or CSR\n");
-        return;
-    }
-
     std::vector<int> diags;
     std::vector<double> nonzero_stencil;
     std::vector<int> strides(dim);
@@ -53,8 +47,7 @@ void stencil_grid(Matrix* A, data_t* stencil, int* grid, int dim)
     }
 
     // Set dimensions of A
-    A->n_rows = N_v;
-    A->n_cols = N_v;
+    CSRMatrix* A = new CSRMatrix(N_v, N_v);
 
     diags.resize(N_s, 0);
     nonzero_stencil.resize(N_s);
@@ -183,7 +176,6 @@ void stencil_grid(Matrix* A, data_t* stencil, int* grid, int dim)
     }
 
     //Add diagonals to ParMatrix A
-    A->idx1.resize(N_v+1);
     A->idx2.reserve(N_s*N_v);
     A->vals.reserve(N_s*N_v);
 
@@ -205,6 +197,8 @@ void stencil_grid(Matrix* A, data_t* stencil, int* grid, int dim)
         A->idx1[i+1] = A->idx2.size();
     }
     A->nnz = A->idx2.size();
+
+    return A;
 }
 
 #endif

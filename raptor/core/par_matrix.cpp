@@ -5,67 +5,6 @@
 using namespace raptor;
 
 /**************************************************************
-*****   ParMatrix Initialize Partition
-**************************************************************
-***** Initializes information about the local partition of
-***** the parallel matrix.  Determines values for:
-*****     local_num_rows
-*****     local_num_cols
-*****     first_local_row
-*****     first_local_col
-***** NOTE: The values for global_num_rows and global_num_cols
-***** must be set before calling this method.
-**************************************************************/
-void ParMatrix::initialize_partition()
-{
-    // Find MPI Information
-    int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
-    // Determine the number of local rows per process
-    int avg_local_num_rows = global_num_rows / num_procs;
-    int extra_rows = global_num_rows % num_procs;
-
-    // Initialize local matrix rows
-    first_local_row = avg_local_num_rows * rank;
-    local_num_rows = avg_local_num_rows;
-    if (extra_rows > rank)
-    {
-        first_local_row += rank;
-        local_num_rows++;
-    }
-    else
-    {
-        first_local_row += extra_rows;
-    }
-
-    // Determine the number of local columns per process
-    if (global_num_rows < num_procs)
-    {
-        num_procs = global_num_rows;
-    }
-    int avg_local_num_cols = global_num_cols / num_procs;
-    int extra_cols = global_num_cols % num_procs;
-
-    // Initialize local matrix columns
-    if (local_num_rows)
-    {
-        first_local_col = avg_local_num_cols * rank;
-        local_num_cols = avg_local_num_cols;
-        if (extra_cols > rank)
-        {
-            first_local_col += rank;
-            local_num_cols++;
-        }
-        else
-        {
-            first_local_col += extra_cols;
-        }
-    }
-}
-
-/**************************************************************
 *****   ParMatrix Add Value
 **************************************************************
 ***** Adds a value to the local portion of the parallel matrix,
@@ -86,9 +25,10 @@ void ParMatrix::add_value(
         index_t global_col, 
         data_t value)
 {
-    if (global_col >= first_local_col && global_col < first_local_col + local_num_cols)
+    if (global_col >= partition->first_local_col 
+            && global_col <= partition->last_local_col)
     {
-        on_proc->add_value(row, global_col - first_local_col, value);
+        on_proc->add_value(row, global_col - partition->first_local_col, value);
     }
     else 
     {
@@ -117,14 +57,7 @@ void ParMatrix::add_global_value(
         index_t global_col, 
         data_t value)
 {
-    if (global_col >= first_local_col && global_col < first_local_col + local_num_cols)
-    {
-        on_proc->add_value(global_row-first_local_row, global_col - first_local_col, value);
-    }
-    else
-    {
-        off_proc->add_value(global_row-first_local_row, global_col, value);
-    }
+    add_value(global_row - partition->first_local_row, global_col, value);
 }
 
 /**************************************************************
@@ -140,56 +73,163 @@ void ParMatrix::add_global_value(
 *****    Boolean for whether parallel communicator should be 
 *****    created (default is true)
 **************************************************************/
-void ParMatrix::finalize(bool create_comm)
+void ParMatrix::condense_off_proc()
 {
-    // Condense columns in off_proc, storing global
-    // columns as 0-num_cols, and store mapping
-    if (off_proc->nnz)
+    if (off_proc->nnz == 0)
     {
-        off_proc->condense_cols();
-        off_proc->sort();
-        off_proc_column_map = off_proc->get_col_list();
-        off_proc_num_cols = off_proc_column_map.size();   
-        off_proc->resize(local_num_rows, off_proc_num_cols);
-    }
-    else
-    {
-        off_proc_num_cols = 0;
+        return;
     }
 
-    if (on_proc->nnz)
+    int prev_col = -1;
+
+    std::map<int, int> orig_to_new;
+
+    std::copy(off_proc->idx2.begin(), off_proc->idx2.end(),
+            std::back_inserter(off_proc_column_map));
+    std::sort(off_proc_column_map.begin(), off_proc_column_map.end());
+
+    off_proc_num_cols = 0;
+    for (std::vector<int>::iterator it = off_proc_column_map.begin(); 
+            it != off_proc_column_map.end(); ++it)
     {
-        on_proc->sort();
+        if (*it != prev_col)
+        {
+            orig_to_new[*it] = off_proc_num_cols;
+            off_proc_column_map[off_proc_num_cols++] = *it;
+            prev_col = *it;
+        }
     }
-        
+    off_proc_column_map.resize(off_proc_num_cols);
+
+    for (std::vector<int>::iterator it = off_proc->idx2.begin();
+            it != off_proc->idx2.end(); ++it)
+    {
+        *it = orig_to_new[*it];
+    }
+}
+
+
+void ParMatrix::finalize(bool create_comm)
+{
+    on_proc->sort();
+    off_proc->sort();
+
+    // Assume nonzeros in each on_proc column
+    if (on_proc_num_cols)
+    {
+        on_proc_column_map.resize(on_proc_num_cols);
+        for (int i = 0; i < on_proc_num_cols; i++)
+        {
+            on_proc_column_map[i] = i + partition->first_local_col;
+        }
+    }
+
+    if (local_num_rows)
+    {
+        local_row_map.resize(local_num_rows);
+        for (int i = 0; i < local_num_rows; i++)
+        {
+            local_row_map[i] = i + partition->first_local_row;
+        }
+    }
+
+    // Condense columns in off_proc, storing global
+    // columns as 0-num_cols, and store mapping
+    condense_off_proc();
+
+    off_proc->resize(local_num_rows, off_proc_num_cols);
+
     local_nnz = on_proc->nnz + off_proc->nnz;
 
     if (create_comm)
-        comm = new ParComm(off_proc_column_map, first_local_row, first_local_col,
-                global_num_cols, local_num_cols);
+        comm = new ParComm(partition, off_proc_column_map);
     else
-        comm = new ParComm();
+        comm = new ParComm(partition);
+}
+
+int* ParMatrix::map_partition_to_local()
+{
+    int* on_proc_partition_to_col = NULL;
+    if (on_proc->nnz && partition->local_num_cols)
+    {
+        on_proc_partition_to_col = new int[partition->local_num_cols];
+        for (int i = 0; i < on_proc_num_cols; i++)
+        {
+            on_proc_partition_to_col[on_proc_column_map[i] - partition->first_local_col] = i;
+        }
+    }
+
+    return on_proc_partition_to_col;
+}
+
+void ParMatrix::copy(ParCOOMatrix* A)
+{
+    if (A->off_proc_num_cols != A->off_proc_column_map.size())
+    {
+        A->finalize();
+    }
+
+    partition = A->partition;
+    partition->num_shared++;
+
+    local_nnz = A->local_nnz;
+    local_num_rows = A->local_num_rows;
+    global_num_rows = A->global_num_rows;
+    global_num_cols = A->global_num_cols;
+
+    std::copy(A->off_proc_column_map.begin(), A->off_proc_column_map.end(),
+            std::back_inserter(off_proc_column_map));
+    std::copy(A->on_proc_column_map.begin(), A->on_proc_column_map.end(),
+            std::back_inserter(on_proc_column_map));
+    std::copy(A->local_row_map.begin(), A->local_row_map.end(),
+            std::back_inserter(local_row_map));
+
+    off_proc_num_cols = off_proc_column_map.size();
+    on_proc_num_cols = on_proc_column_map.size();
+
+    if (A->comm)
+    {
+        comm = new ParComm((ParComm*) A->comm);
+    }
+    else
+    {   
+        comm = NULL;
+    }
+    
+    if (A->tap_comm)
+    {
+        tap_comm = new TAPComm((TAPComm*) A->tap_comm);
+    }
+    else
+    {
+        tap_comm = NULL;
+    }
 }
 
 void ParMatrix::copy(ParCSRMatrix* A)
 {
-    global_num_rows = A->global_num_rows;
-    global_num_cols = A->global_num_cols;
-    first_local_row = A->first_local_row;
-    first_local_col = A->first_local_col;
+    if (A->off_proc_num_cols != A->off_proc_column_map.size())
+    {
+        A->finalize();
+    }
+
+    partition = A->partition;
+    partition->num_shared++;
+
     local_nnz = A->local_nnz;
     local_num_rows = A->local_num_rows;
-    local_num_cols = A->local_num_cols;
+    global_num_rows = A->global_num_rows;
+    global_num_cols = A->global_num_cols;
 
-    off_proc_num_cols = A->off_proc_num_cols;
-    if (off_proc_num_cols)
-    {
-        off_proc_column_map.resize(off_proc_num_cols);
-        for (int i = 0; i < off_proc_num_cols; i++)
-        {
-            off_proc_column_map[i] = A->off_proc_column_map[i];
-        }
-    }
+    std::copy(A->off_proc_column_map.begin(), A->off_proc_column_map.end(),
+            std::back_inserter(off_proc_column_map));
+    std::copy(A->on_proc_column_map.begin(), A->on_proc_column_map.end(),
+            std::back_inserter(on_proc_column_map));
+    std::copy(A->local_row_map.begin(), A->local_row_map.end(),
+            std::back_inserter(local_row_map));
+
+    off_proc_num_cols = off_proc_column_map.size();
+    on_proc_num_cols = on_proc_column_map.size();
 
     if (A->comm)
     {
@@ -212,63 +252,29 @@ void ParMatrix::copy(ParCSRMatrix* A)
 
 void ParMatrix::copy(ParCSCMatrix* A)
 {
-    global_num_rows = A->global_num_rows;
-    global_num_cols = A->global_num_cols;
-    first_local_row = A->first_local_row;
-    first_local_col = A->first_local_col;
+    if (A->off_proc_num_cols != A->off_proc_column_map.size())
+    {
+        A->finalize();
+    }
+
+    partition = A->partition;
+    partition->num_shared++;
+
     local_nnz = A->local_nnz;
     local_num_rows = A->local_num_rows;
-    local_num_cols = A->local_num_cols;
+    global_num_rows = A->global_num_rows;
+    global_num_cols = A->global_num_cols;
 
-    off_proc_num_cols = A->off_proc_num_cols;
-    if (off_proc_num_cols)
-    {
-        off_proc_column_map.resize(off_proc_num_cols);
-        for (int i = 0; i < off_proc_num_cols; i++)
-        {
-            off_proc_column_map[i] = A->off_proc_column_map[i];
-        }
-    }
+    std::copy(A->off_proc_column_map.begin(), A->off_proc_column_map.end(),
+            std::back_inserter(off_proc_column_map));
+    std::copy(A->on_proc_column_map.begin(), A->on_proc_column_map.end(),
+            std::back_inserter(on_proc_column_map));
+    std::copy(A->local_row_map.begin(), A->local_row_map.end(),
+            std::back_inserter(local_row_map));
 
-    if (A->comm)
-    {
-        comm = new ParComm((ParComm*) A->comm);
-    }
-    else
-    {   
-        comm = NULL;
-    }
+    off_proc_num_cols = off_proc_column_map.size();
+    on_proc_num_cols = on_proc_column_map.size();
     
-    if (A->tap_comm)
-    {
-        tap_comm = new TAPComm((TAPComm*) A->tap_comm);
-    }
-    else
-    {
-        tap_comm = NULL;
-    }
-}
-
-void ParMatrix::copy(ParCOOMatrix* A)
-{
-    global_num_rows = A->global_num_rows;
-    global_num_cols = A->global_num_cols;
-    first_local_row = A->first_local_row;
-    first_local_col = A->first_local_col;
-    local_nnz = A->local_nnz;
-    local_num_rows = A->local_num_rows;
-    local_num_cols = A->local_num_cols;
-
-    off_proc_num_cols = A->off_proc_column_map.size();
-    if (off_proc_num_cols)
-    {
-        off_proc_column_map.resize(off_proc_num_cols);
-        for (int i = 0; i < off_proc_num_cols; i++)
-        {
-            off_proc_column_map[i] = A->off_proc_column_map[i];
-        }
-    }
-
     if (A->comm)
     {
         comm = new ParComm((ParComm*) A->comm);
@@ -290,8 +296,6 @@ void ParMatrix::copy(ParCOOMatrix* A)
 
 void ParCOOMatrix::copy(ParCSRMatrix* A)
 {
-    ParMatrix::copy(A);
-
     if (on_proc)
     {   
         delete on_proc;
@@ -303,12 +307,12 @@ void ParCOOMatrix::copy(ParCSRMatrix* A)
 
     on_proc = new COOMatrix((CSRMatrix*) A->on_proc);
     off_proc = new COOMatrix((CSRMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
 }
 
 void ParCOOMatrix::copy(ParCSCMatrix* A)
 {
-    ParMatrix::copy(A);
-
     if (on_proc)
     {   
         delete on_proc;
@@ -320,12 +324,12 @@ void ParCOOMatrix::copy(ParCSCMatrix* A)
 
     on_proc = new COOMatrix((CSCMatrix*) A->on_proc);
     off_proc = new COOMatrix((CSCMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
 }
 
 void ParCOOMatrix::copy(ParCOOMatrix* A)
 {
-    ParMatrix::copy(A);
-
     if (on_proc)
     {   
         delete on_proc;
@@ -337,18 +341,12 @@ void ParCOOMatrix::copy(ParCOOMatrix* A)
 
     on_proc = new COOMatrix((COOMatrix*) A->on_proc);
     off_proc = new COOMatrix((COOMatrix*) A->off_proc);
-}
 
-COOMatrix* ParCOOMatrix::communicate(CommPkg* comm)
-{
-    printf("Not implemented for COO Matrices.\n");
-    return NULL;
+    ParMatrix::copy(A);
 }
 
 void ParCSRMatrix::copy(ParCSRMatrix* A)
 {
-    ParMatrix::copy(A);
-
     if (on_proc)
     {   
         delete on_proc;
@@ -359,12 +357,12 @@ void ParCSRMatrix::copy(ParCSRMatrix* A)
     }
     on_proc = new CSRMatrix((CSRMatrix*) A->on_proc);
     off_proc = new CSRMatrix((CSRMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
 }
 
 void ParCSRMatrix::copy(ParCSCMatrix* A)
 {
-    ParMatrix::copy(A);
-
     if (on_proc)
     {   
         delete on_proc;
@@ -375,12 +373,12 @@ void ParCSRMatrix::copy(ParCSCMatrix* A)
     }
     on_proc = new CSRMatrix((CSCMatrix*) A->on_proc);
     off_proc = new CSRMatrix((CSCMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
 }
 
 void ParCSRMatrix::copy(ParCOOMatrix* A)
 {
-    ParMatrix::copy(A);
-
     if (on_proc)
     {   
         delete on_proc;
@@ -392,55 +390,12 @@ void ParCSRMatrix::copy(ParCOOMatrix* A)
 
     on_proc = new CSRMatrix((COOMatrix*) A->on_proc);
     off_proc = new CSRMatrix((COOMatrix*) A->off_proc);
-}
 
-CSRMatrix* ParCSRMatrix::communicate(CommPkg* comm)
-{
-    int start, end;
-    int ctr;
-    int global_col;
-
-    int nnz = on_proc->nnz + off_proc->nnz;
-    std::vector<int> rowptr(local_num_rows + 1);
-    std::vector<int> col_indices;
-    std::vector<double> values;
-    if (nnz)
-    {
-        col_indices.resize(nnz);
-        values.resize(nnz);
-    }
-
-    ctr = 0;
-    rowptr[0] = ctr;
-    for (int i = 0; i < local_num_rows; i++)
-    {
-        start = on_proc->idx1[i];
-        end = on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            global_col = on_proc->idx2[j] + first_local_col;
-            col_indices[ctr] = global_col;
-            values[ctr++] = on_proc->vals[j];
-        }
-
-        start = off_proc->idx1[i];
-        end = off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            global_col = off_proc_column_map[off_proc->idx2[j]];
-            col_indices[ctr] = global_col;
-            values[ctr++] = off_proc->vals[j];
-        }
-        rowptr[i+1] = ctr;
-    }
-
-    return comm->communicate(rowptr, col_indices, values, MPI_COMM_WORLD);
+    ParMatrix::copy(A);
 }
 
 void ParCSCMatrix::copy(ParCSRMatrix* A)
 {
-    ParMatrix::copy(A);
- 
     if (on_proc)
     {   
         delete on_proc;
@@ -452,12 +407,12 @@ void ParCSCMatrix::copy(ParCSRMatrix* A)
 
     on_proc = new CSCMatrix((CSRMatrix*) A->on_proc);
     off_proc = new CSCMatrix((CSRMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
 }
 
 void ParCSCMatrix::copy(ParCSCMatrix* A)
 {
-    ParMatrix::copy(A);
-
     if (on_proc)
     {   
         delete on_proc;
@@ -469,12 +424,12 @@ void ParCSCMatrix::copy(ParCSCMatrix* A)
 
     on_proc = new CSCMatrix((CSCMatrix*) A->on_proc);
     off_proc = new CSCMatrix((CSCMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
 }
 
 void ParCSCMatrix::copy(ParCOOMatrix* A)
 {
-    ParMatrix::copy(A);
-
     if (on_proc)
     {   
         delete on_proc;
@@ -486,92 +441,59 @@ void ParCSCMatrix::copy(ParCOOMatrix* A)
 
     on_proc = new CSCMatrix((COOMatrix*) A->on_proc);
     off_proc = new CSCMatrix((COOMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
 }
 
-CSCMatrix* ParCSCMatrix::communicate(CommPkg* comm)
+
+void ParCSRBoolMatrix::copy(ParCSRMatrix* A)
 {
-    int start, end;
-    int ctr, row, idx;
-    int global_col;
+    if (on_proc)
+    {   
+        delete on_proc;
+    }
+    if (off_proc)
+    {
+        delete off_proc;
+    }
+    on_proc = new CSRMatrix((CSRMatrix*) A->on_proc);
+    off_proc = new CSRMatrix((CSRMatrix*) A->off_proc);
 
-    int nnz = on_proc->nnz + off_proc->nnz;
-    std::vector<int> rowptr(local_num_rows + 1);
-    std::vector<int> col_indices;
-    std::vector<double> values;
-    if (nnz)
-    {
-        col_indices.resize(nnz);
-        values.resize(nnz);
-    }
-    std::vector<int> row_ctr;
-    if (local_num_rows)
-    {
-        row_ctr.resize(local_num_rows, 0);
-    }
-
-    // Determine nnz per row
-    for (int i = 0; i < local_num_cols; i++)
-    {
-        start = on_proc->idx1[i];
-        end = on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            row_ctr[on_proc->idx2[j]]++;
-        }
-    }
-    for (int i = 0; i < off_proc_num_cols; i++)
-    {
-        start = off_proc->idx1[i];
-        end = off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            row_ctr[off_proc->idx2[j]]++;
-        }
-    }
-
-    // Set rowptr values
-    rowptr[0] = 0;
-    for (int i = 0; i < local_num_rows; i++)
-    {
-        rowptr[i+1] = rowptr[i] + row_ctr[i];
-        row_ctr[i] = 0;
-    }
-
-    // Set col_indices / values
-    for (int i = 0; i < local_num_cols; i++)
-    {
-        global_col = i + first_local_col;
-        start = on_proc->idx1[i];
-        end = on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            row = on_proc->idx2[j];
-            idx = rowptr[row] + row_ctr[row]++;
-            col_indices[idx] = global_col;
-            values[idx] = on_proc->vals[j];
-        }
-    }
-    for (int i = 0; i < off_proc_num_cols; i++)
-    {
-        global_col = off_proc_column_map[i];
-        start = off_proc->idx1[i];
-        end = off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            row = off_proc->idx2[j];
-            idx = rowptr[row] + row_ctr[row]++;
-            col_indices[idx] = global_col;
-            values[idx] = off_proc->vals[j];
-        }
-    }
-
-    CSRMatrix* recv_mat_csr = comm->communicate(rowptr, 
-            col_indices, values, MPI_COMM_WORLD);
-    recv_mat_csr->condense_cols();
-    CSCMatrix* recv_mat = new CSCMatrix(recv_mat_csr);
-    delete recv_mat_csr;
-
-    return recv_mat;
+    ParMatrix::copy(A);
 }
+
+void ParCSRBoolMatrix::copy(ParCSCMatrix* A)
+{
+    if (on_proc)
+    {   
+        delete on_proc;
+    }
+    if (off_proc)
+    {
+        delete off_proc;
+    }
+    on_proc = new CSRMatrix((CSCMatrix*) A->on_proc);
+    off_proc = new CSRMatrix((CSCMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
+}
+
+void ParCSRBoolMatrix::copy(ParCOOMatrix* A)
+{
+    if (on_proc)
+    {   
+        delete on_proc;
+    }
+    if (off_proc)
+    {
+        delete off_proc;
+    }
+
+    on_proc = new CSRMatrix((COOMatrix*) A->on_proc);
+    off_proc = new CSRMatrix((COOMatrix*) A->off_proc);
+
+    ParMatrix::copy(A);
+}
+
 
 

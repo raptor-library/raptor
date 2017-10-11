@@ -48,11 +48,9 @@ int main(int argc, char *argv[])
     }
 
     A = exxon_reader(folder, iname, fname, suffix, on_proc_column_map);
-    b = ParVector(A->global_num_rows, A->local_num_rows, A->first_local_row);
-    x = ParVector(A->global_num_cols, A->local_num_cols, A->first_local_col);
-    A->tap_comm = new TAPComm(A->off_proc_column_map, A->first_local_row,
-		    A->first_local_col, A->global_num_cols, 
-		    A->local_num_cols);
+    b = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    x = ParVector(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
+    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
 
     for (int i = 0; i < x.local_n; i++)
     {
@@ -71,8 +69,7 @@ int main(int argc, char *argv[])
         A->comm = NULL;
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-	A->comm = new ParComm(A->off_proc_column_map, A->first_local_row, 
-			A->first_local_col, A->global_num_cols, A->local_num_cols);
+	    A->comm = new ParComm(A->partition, A->off_proc_column_map);
         tfinal = (MPI_Wtime() - t0) / n_tests;
         MPI_Reduce(&tfinal, &t_par, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         
@@ -80,9 +77,7 @@ int main(int argc, char *argv[])
         A->tap_comm = NULL;
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        A->tap_comm = new TAPComm(A->off_proc_column_map, A->first_local_row,
-		    A->first_local_col, A->global_num_cols, 
-		    A->local_num_cols);
+        A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
         tfinal = (MPI_Wtime() - t0) / n_tests;
         MPI_Reduce(&tfinal, &t_tap, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 

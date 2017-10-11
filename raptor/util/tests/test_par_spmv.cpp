@@ -36,26 +36,26 @@ int main(int argc, char* argv[])
     double* stencil = diffusion_stencil_2d(eps, theta);
 
     // Create Sequential Matrix A on each process
-    CSRMatrix A;
-    stencil_grid(&A, stencil, grid, 2);
-    Vector x(A.n_cols);
-    Vector b(A.n_rows);
+    CSRMatrix* A = stencil_grid(stencil, grid, 2);
+    Vector x(A->n_cols);
+    Vector b(A->n_rows);
     x.set_const_value(1.0);
 
     // Create Parallel Matrix A_par (and vectors x_par
     // and b_par) and mult b_par <- A_par*x_par
-    ParCSRMatrix A_par;
-    A_par = par_stencil_grid(stencil, grid, 2);
-    ParVector x_par(A_par.global_num_cols, A_par.local_num_cols, A_par.first_local_col);
-    ParVector b_par(A_par.global_num_rows, A_par.local_num_rows, A_par.first_local_row);
+    ParCSRMatrix* A_par = par_stencil_grid(stencil, grid, 2);
+    ParVector x_par(A_par->global_num_cols, A_par->on_proc_num_cols, 
+            A_par->partition->first_local_col);
+    ParVector b_par(A_par->global_num_rows, A_par->local_num_rows, 
+            A_par->partition->first_local_row);
     x_par.set_const_value(1.0);
 
-    A.mult(x, b);
-    A_par.mult(x_par, b_par);
+    A->mult(x, b);
+    A_par->mult(x_par, b_par);
     compare(b, b_par);
 
     // Set x and x_par to same random values
-    for (int i = 0; i < x.size; i++)
+    for (int i = 0; i < x.size(); i++)
     {
         srand(i);
         x[i] = ((double)rand()) / RAND_MAX;
@@ -65,10 +65,12 @@ int main(int argc, char* argv[])
         srand(i+x_par.first_local);
         x_par.local[i] = ((double)rand()) / RAND_MAX;
     }
-    A.mult(x, b);
-    A_par.mult(x_par, b_par);
+    A->mult(x, b);
+    A_par->mult(x_par, b_par);
     compare(b, b_par);
 
+    delete A;
+    delete A_par;
     delete[] stencil;
 
     MPI_Finalize();

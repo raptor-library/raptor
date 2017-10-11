@@ -16,7 +16,7 @@ using namespace raptor;
 **************************************************************/
 void Vector::set_const_value(data_t alpha)
 {
-    for (index_t i = 0; i < size; i++)
+    for (index_t i = 0; i < num_values; i++)
     {
         values[i] = alpha;
     }
@@ -31,7 +31,7 @@ void Vector::set_const_value(data_t alpha)
 void Vector::set_rand_values()
 {
     srand(time(NULL));
-    for (index_t i = 0; i < size; i++)
+    for (index_t i = 0; i < num_values; i++)
     {
         values[i] = ((double)rand()) / RAND_MAX;
     }
@@ -52,7 +52,7 @@ void Vector::set_rand_values()
 **************************************************************/
 void Vector::axpy(Vector& x, data_t alpha)
 {
-    for (index_t i = 0; i < size; i++)
+    for (index_t i = 0; i < num_values; i++)
     {
         values[i] += x.values[i]*alpha;
     }
@@ -69,12 +69,11 @@ void Vector::axpy(Vector& x, data_t alpha)
 *****    Vector to be copied.  Must have same local rows
 *****    and same first row
 **************************************************************/
-void Vector::copy(Vector& y)
+void Vector::copy(const Vector& y)
 {
-    for (int i = 0; i < size; i++)
-    {
-        values[i] = y.values[i];
-    }
+    num_values = y.num_values;
+    values.resize(num_values);
+    std::copy(y.values.begin(), y.values.end(), values.begin());
 }
 
 /**************************************************************
@@ -89,7 +88,7 @@ void Vector::copy(Vector& y)
 **************************************************************/
 void Vector::scale(data_t alpha)
 {
-    for (index_t i = 0; i < size; i++)
+    for (index_t i = 0; i < num_values; i++)
     {
         values[i] *= alpha;
     }
@@ -109,7 +108,7 @@ data_t Vector::norm(index_t p)
 {
     data_t result = 0.0;
     double val;
-    for (index_t i = 0; i < size; i++)
+    for (index_t i = 0; i < num_values; i++)
     {
         val = values[i];
         if (fabs(val) > zero_tol)
@@ -130,7 +129,8 @@ data_t Vector::norm(index_t p)
 **************************************************************/
 void Vector::print(const char* vec_name)
 {
-    for (int i = 0; i < size; i++)
+    printf("Size = %d\n", num_values);
+    for (int i = 0; i < num_values; i++)
     {
         if (fabs(values[i]) > zero_tol)
             printf("%s[%d] = %e\n", vec_name, i, values[i]);
@@ -150,20 +150,4 @@ data_t& Vector::operator[](const int index)
 {
     return values[index];
 }
-
-/**************************************************************
-*****   Vector Data
-**************************************************************
-***** Returns pointer to vector entries
-*****
-***** Returns
-***** -------------
-***** data_t*
-*****    Pointer to values of vector
-**************************************************************/
-data_t* Vector::data()
-{
-    return values.data();
-}
-
 

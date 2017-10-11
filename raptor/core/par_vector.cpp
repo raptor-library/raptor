@@ -27,22 +27,6 @@ void ParVector::axpy(ParVector* x, data_t alpha)
 }
 
 /**************************************************************
-*****   Vector Copy
-**************************************************************
-***** Copies values of local vector in y into local 
-*****
-***** Parameters
-***** -------------
-***** y : ParVector* y
-*****    ParVector to be copied
-**************************************************************/
-void ParVector::copy(ParVector* y)
-{
-    if (local_n)
-        local.copy(y->local);
-}
-
-/**************************************************************
 *****   Vector Scale
 **************************************************************
 ***** Multiplies the local vector by a constant, alpha
@@ -113,20 +97,4 @@ data_t ParVector::norm(index_t p)
     return pow(result, 1./p);
 }
 
-Vector& ParVector::communicate(CommPkg* comm_pkg, MPI_Comm comm)
-{
-    comm_pkg->communicate(local.data(), comm);
-    return comm_pkg->get_recv_buffer();
-}
-
-void ParVector::init_comm(CommPkg* comm_pkg, MPI_Comm comm)
-{
-    comm_pkg->init_comm(local.data(), comm);
-}
-
-Vector& ParVector::complete_comm(CommPkg* comm_pkg)
-{
-    comm_pkg->complete_comm();
-    return comm_pkg->get_recv_buffer();
-}
 

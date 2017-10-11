@@ -6,8 +6,9 @@ HYPRE_IJVector convert(raptor::ParVector* x_rap, MPI_Comm comm_mat)
 
     HYPRE_Int first_local = x_rap->first_local;
     HYPRE_Int local_n = x_rap->local_n;
+    HYPRE_Int last_local = first_local + local_n - 1;
 
-    HYPRE_IJVectorCreate(comm_mat, first_local, first_local + local_n, &x);
+    HYPRE_IJVectorCreate(comm_mat, first_local, last_local, &x);
     HYPRE_IJVectorSetObjectType(x, HYPRE_PARCSR);
     HYPRE_IJVectorInitialize(x);
 
@@ -40,12 +41,22 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, MPI_Comm comm_mat)
     MPI_Comm_rank(comm_mat, &rank);
     MPI_Comm_size(comm_mat, &num_procs);
 
+    std::vector<int> row_sizes(num_procs);
+    std::vector<int> col_sizes(num_procs);
+    MPI_Allgather(&(A_rap->local_num_rows), 1, MPI_INT, row_sizes.data(), 1, MPI_INT,
+            MPI_COMM_WORLD);
+    MPI_Allgather(&(A_rap->on_proc_num_cols), 1, MPI_INT, col_sizes.data(), 1, MPI_INT,
+            MPI_COMM_WORLD);
+    for (int i = 0; i < rank; i++)
+    {
+        local_row_start += row_sizes[i];
+        local_col_start += col_sizes[i];
+    }
+
     n_rows = A_rap->local_num_rows;
     if (n_rows)
     {
-        n_cols = A_rap->local_num_cols;
-        local_row_start = A_rap->first_local_row;
-        local_col_start = A_rap->first_local_col;
+        n_cols = A_rap->on_proc_num_cols;
     }
 
     /**********************************
@@ -63,10 +74,10 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, MPI_Comm comm_mat)
     {
         row_start = A_rap->on_proc->idx1[i];
         row_end = A_rap->on_proc->idx1[i+1];
-        global_row = i + A_rap->first_local_row;
+        global_row = A_rap->local_row_map[i];
         for (int j = row_start; j < row_end; j++)
         {
-            global_col = A_rap->on_proc->idx2[j] + A_rap->first_local_col;
+            global_col = A_rap->on_proc_column_map[A_rap->on_proc->idx2[j]];
             value = A_rap->on_proc->vals[j];
             HYPRE_IJMatrixSetValues(A, 1, &one, &global_row, &global_col, &value);
         }
@@ -75,7 +86,7 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, MPI_Comm comm_mat)
     {
         row_start = A_rap->off_proc->idx1[i];
         row_end = A_rap->off_proc->idx1[i+1];
-        HYPRE_Int global_row = i + A_rap->first_local_row;
+        global_row = A_rap->local_row_map[i];
         for (int j = row_start; j < row_end; j++)
         {
             global_col = A_rap->off_proc_column_map[A_rap->off_proc->idx2[j]];
@@ -404,14 +415,16 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
     HYPRE_BoomerAMGCreate(&amg_data);
       
     // Set Boomer AMG Parameters
-    HYPRE_BoomerAMGSetPrintLevel(amg_data, 1);
     HYPRE_BoomerAMGSetCoarsenType(amg_data, coarsen_type);
     HYPRE_BoomerAMGSetInterpType(amg_data, interp_type);
     HYPRE_BoomerAMGSetPMaxElmts(amg_data, p_max_elmts);
     HYPRE_BoomerAMGSetAggNumLevels(amg_data, agg_num_levels);
     HYPRE_BoomerAMGSetStrongThreshold(amg_data, strong_threshold);
-    HYPRE_BoomerAMGSetMaxCoarseSize(amg_data, 15);
-    HYPRE_BoomerAMGSetMinCoarseSize(amg_data, 5);
+    HYPRE_BoomerAMGSetMaxCoarseSize(amg_data, 50);
+    HYPRE_BoomerAMGSetRelaxType(amg_data, 3);
+
+    HYPRE_BoomerAMGSetPrintLevel(amg_data, 3);
+    HYPRE_BoomerAMGSetMaxIter(amg_data, 100);
 
     // Setup AMG
     HYPRE_BoomerAMGSetup(amg_data, A, b, x);

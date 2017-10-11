@@ -11,6 +11,7 @@
 #include "par_vector.hpp"
 #include "comm_pkg.hpp"
 #include "types.hpp"
+#include "partition.hpp"
 
 // Making Par Matrix an abstract Class
 /**************************************************************
@@ -30,8 +31,6 @@
  *****    Number of nonzeros stored locally
  ***** local_num_rows : int
  *****    Number of rows stored locally
- ***** local_num_cols : int 
- *****    Number of columns stored locally
  ***** first_local_row : index_t
  *****    Global index of first row local to process
  ***** first_local_col : index_t
@@ -67,22 +66,55 @@
  **************************************************************/
 namespace raptor
 {
+  class ParComm;
+  class TAPComm;
   class ParCOOMatrix;
   class ParCSRMatrix;
   class ParCSCMatrix;
+  class ParCSRBoolMatrix;
 
   class ParMatrix
   {
   public:
-    ParMatrix(index_t glob_rows, 
-            index_t glob_cols)
+    ParMatrix(Partition* part)
     {
-        // Initialize matrix dimensions
+        partition = part;
+        partition->num_shared++;
+
+        global_num_rows = partition->global_num_rows;
+        global_num_cols = partition->global_num_cols;
+        on_proc_num_cols = partition->local_num_cols;
+        local_num_rows = partition->local_num_rows;
+
+        comm = NULL;
+        tap_comm = NULL;
+    }
+
+    ParMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows, 
+            int on_proc_cols)
+    {
+        partition = part;
+        partition->num_shared++;
+
         global_num_rows = glob_rows;
         global_num_cols = glob_cols;
+        on_proc_num_cols = on_proc_cols;
+        local_num_rows = local_rows;
 
-        // Initialize matrix partition information
-        initialize_partition();
+        comm = NULL;
+        tap_comm = NULL;
+    }
+
+    ParMatrix(index_t glob_rows,
+            index_t glob_cols)
+    {
+        partition = new Partition(glob_rows, glob_cols);
+
+        global_num_rows = partition->global_num_rows;
+        global_num_cols = partition->global_num_cols;
+        on_proc_num_cols = partition->local_num_cols;
+        local_num_rows = partition->local_num_rows;
+
         comm = NULL;
         tap_comm = NULL;
     }
@@ -92,14 +124,16 @@ namespace raptor
             int local_rows, 
             int local_cols, 
             index_t first_row, 
-            index_t first_col)
+            index_t first_col, 
+            Topology* topology = NULL)
     {
-        global_num_rows = glob_rows;
-        global_num_cols = glob_cols;
-        local_num_rows = local_rows;
-        local_num_cols = local_cols;
-        first_local_row = first_row;
-        first_local_col = first_col;
+        partition = new Partition(glob_rows, glob_cols,
+                local_rows, local_cols, first_row, first_col, topology);
+
+        global_num_rows = partition->global_num_rows;
+        global_num_cols = partition->global_num_cols;
+        on_proc_num_cols = partition->local_num_cols;
+        local_num_rows = partition->local_num_rows;
 
         comm = NULL;
         tap_comm = NULL;
@@ -108,14 +142,18 @@ namespace raptor
     ParMatrix()
     {
         local_num_rows = 0;
-        local_num_cols = 0;
+        global_num_rows = 0;
+        global_num_cols = 0;
         off_proc_num_cols = 0;
+        on_proc_num_cols = 0;
 
         comm = NULL;
         tap_comm = NULL;
 
         on_proc = NULL;
         off_proc = NULL;
+
+        partition = NULL;
     }
 
     virtual ~ParMatrix()
@@ -124,6 +162,18 @@ namespace raptor
         delete on_proc;
         delete comm;
         delete tap_comm;
+
+        if (partition)
+        {
+            if (partition->num_shared)
+            {
+                partition->num_shared--;
+            }
+            else
+            {
+                delete partition;
+            }
+        }
     }
 
 
@@ -172,32 +222,64 @@ namespace raptor
     **************************************************************/
     void finalize(bool create_comm = true);
 
-    void initialize_partition();
+    int* map_partition_to_local();
+    void condense_off_proc();
 
     void residual(ParVector& x, ParVector& b, ParVector& r);
     void tap_residual(ParVector& x, ParVector& b, ParVector& r);
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
+    void mult_T(ParVector& x, ParVector& b);
+    void tap_mult_T(ParVector& x, ParVector& b);
     ParMatrix* mult(ParCSRMatrix* B);
-    ParMatrix* mult(ParCSCMatrix* B);
     ParMatrix* tap_mult(ParCSRMatrix* B);
-    ParMatrix* tap_mult(ParCSCMatrix* B);
     ParMatrix* mult_T(ParCSCMatrix* B);
     ParMatrix* tap_mult_T(ParCSCMatrix* B);
+
+    ParCSRMatrix* RAP(ParCSRMatrix* P)
+    {
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        if (rank == 0) printf("Not impelemented for this matrix type");
+        return NULL;
+    }
+
+    void sort()
+    {
+        on_proc->sort();
+        off_proc->sort();
+    }
+
+    std::vector<index_t>& get_off_proc_column_map()
+    {
+        return off_proc_column_map;
+    }
+
+    std::vector<index_t>& get_on_proc_column_map()
+    {
+        return on_proc_column_map;
+    }
+
+    std::vector<index_t>& get_local_row_map()
+    {
+        return local_row_map;
+    }
+
+    ParCSRMatrix* subtract(ParCSRMatrix* B);
+    ParCSRMatrix* subtract(ParCSCMatrix* B);
+    ParCSRMatrix* subtract(ParCOOMatrix* B);
 
     virtual void copy(ParCSRMatrix* A) = 0;
     virtual void copy(ParCSCMatrix* A) = 0;
     virtual void copy(ParCOOMatrix* A) = 0;
-    virtual Matrix* communicate(CommPkg* comm) = 0;
 
     // Store dimensions of parallel matrix
     int local_nnz;
     int local_num_rows;
-    int local_num_cols;
-    index_t global_num_rows;
-    index_t global_num_cols;
-    index_t first_local_row;
-    index_t first_local_col;
+    int global_num_rows;
+    int global_num_cols;
+    int off_proc_num_cols;
+    int on_proc_num_cols;
 
     // Store two matrices: on_proc containing columns 
     // corresponding to vector values stored on_process
@@ -210,14 +292,17 @@ namespace raptor
     // It will be condensed to only store columns with 
     // nonzeros, and these must be mapped to 
     // global column indices
-    std::vector<index_t> off_proc_column_map;
-    int off_proc_num_cols;
+    std::vector<index_t> off_proc_column_map; // Maps off_proc local to global
+    std::vector<index_t> on_proc_column_map; // Maps on_proc local to global
+    std::vector<index_t> local_row_map; // Maps local rows to global
 
     // Parallel communication package indicating which 
     // processes hold vector values associated with off_proc,
     // and which processes need vector values from this proc
+    Partition* partition;
     ParComm* comm;
     TAPComm* tap_comm;
+
 
   };
 
@@ -231,44 +316,56 @@ namespace raptor
     }
 
     ParCOOMatrix(index_t glob_rows, 
-            index_t glob_cols, 
+            index_t glob_cols,
             int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols)
     {
-        // Initialize diag and offd matrices as COO for adding entries
-        // This should later be changed to CSR or CSC
-        // A guess of 5 nnz per row is used for reserving matrix space
-        on_proc = new COOMatrix(local_num_rows, local_num_cols, nnz_per_row);
-        off_proc = new COOMatrix(local_num_rows, global_num_cols, nnz_per_row);
+        on_proc = new COOMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new COOMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
     }
 
     ParCOOMatrix(index_t glob_rows, index_t glob_cols, int local_rows, 
-            int local_cols, index_t first_row, index_t first_col, 
+            int local_cols, index_t first_row, index_t first_col,
             int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols,
                 local_rows, local_cols, first_row, first_col)
     {
-        on_proc = new COOMatrix(local_num_rows, local_num_cols, nnz_per_row);
-        off_proc = new COOMatrix(local_num_rows, global_num_cols, nnz_per_row);
+        on_proc = new COOMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new COOMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
     }
-
+    
+    ParCOOMatrix(Partition* part, 
+            int nnz_per_row = 5) : ParMatrix(part)
+    {
+        on_proc = new COOMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new COOMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
+    }
 
     ParCOOMatrix(index_t glob_rows, 
             index_t glob_cols, 
             data_t* values) : ParMatrix(glob_rows, glob_cols)
     {
         // Initialize empty diag/offd matrices
-        on_proc = new COOMatrix(local_num_rows, local_num_cols, local_num_rows*5);
-        off_proc = new COOMatrix(local_num_rows, global_num_cols, local_num_rows*5);
+        on_proc = new COOMatrix(partition->local_num_rows, partition->local_num_cols, 
+                partition->local_num_rows*5);
+        off_proc = new COOMatrix(partition->local_num_rows, partition->global_num_cols, 
+                partition->local_num_rows*5);
 
         // Add values to on/off proc matrices
-        int val_start = first_local_row * global_num_cols;
-        int val_end = (first_local_row + local_num_rows) * global_num_cols;
+        int val_start = partition->first_local_row * partition->global_num_cols;
+        int val_end = (partition->first_local_row + partition->local_num_rows) 
+            * partition->global_num_cols;
         for (index_t i = val_start; i < val_end; i++)
         {
             if (fabs(values[i]) > zero_tol)
             {
-                int global_col = i % global_num_cols;
-                int global_row = i / global_num_cols;
-                add_value(global_row - first_local_row, global_col, values[i]);
+                int global_col = i % partition->global_num_cols;
+                int global_row = i / partition->global_num_cols;
+                add_value(global_row - partition->first_local_row, global_col, values[i]);
             }
         }
 
@@ -292,13 +389,13 @@ namespace raptor
         copy(A);
     }
 
-
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
-    COOMatrix* communicate(CommPkg* comm);
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
+    void mult_T(ParVector& x, ParVector& b);
+    void tap_mult_T(ParVector& x, ParVector& b);
   };
 
   class ParCSRMatrix : public ParMatrix
@@ -314,50 +411,70 @@ namespace raptor
             index_t glob_cols, 
             int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols)
     {
-        // Initialize diag and offd matrices as COO for adding entries
-        // This should later be changed to CSR or CSC
-        // A guess of 5 nnz per row is used for reserving matrix space
-        on_proc = new CSRMatrix(local_num_rows, local_num_cols, nnz_per_row);
-        off_proc = new CSRMatrix(local_num_rows, global_num_cols, nnz_per_row);
+        on_proc = new CSRMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new CSRMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
     }
 
     ParCSRMatrix(index_t glob_rows, index_t glob_cols, int local_rows, 
-            int local_cols, index_t first_row, index_t first_col, 
+            int local_cols, index_t first_row, index_t first_col, Topology* topology = NULL,  
             int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols,
-                local_rows, local_cols, first_row, first_col)
+                local_rows, local_cols, first_row, first_col, topology)
     {
-        on_proc = new CSRMatrix(local_num_rows, local_num_cols, nnz_per_row);
-        off_proc = new CSRMatrix(local_num_rows, global_num_cols, nnz_per_row);
+        on_proc = new CSRMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new CSRMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
     }
 
+    ParCSRMatrix(Partition* part, 
+            int nnz_per_row = 5) : ParMatrix(part)
+    {
+        on_proc = new CSRMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new CSRMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
+    }
+
+    ParCSRMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows,
+            int on_proc_cols, int off_proc_cols, int nnz_per_row = 5) : ParMatrix(part, 
+                glob_rows, glob_cols, local_rows, on_proc_cols)
+    {
+        off_proc_num_cols = off_proc_cols;
+        on_proc = new CSRMatrix(local_num_rows, on_proc_cols, nnz_per_row);
+        off_proc = new CSRMatrix(local_num_rows, off_proc_num_cols, nnz_per_row);
+    }
 
     ParCSRMatrix(index_t glob_rows, 
             index_t glob_cols, 
             data_t* values) : ParMatrix(glob_rows, glob_cols)
     {
         // Initialize empty diag/offd matrices
-        on_proc = new COOMatrix(local_num_rows, local_num_cols, local_num_rows*5);
-        off_proc = new COOMatrix(local_num_rows, global_num_cols, local_num_rows*5);
+        on_proc = new COOMatrix(partition->local_num_rows, partition->local_num_cols, 
+                partition->local_num_rows*5);
+        off_proc = new COOMatrix(partition->local_num_rows, partition->global_num_cols, 
+                partition->local_num_rows*5);
 
         // Add values to on/off proc matrices
         on_proc->idx1[0] = 0;
         off_proc->idx1[0] = 0;
 
-        int val_start = first_local_row * global_num_cols;
-        for (int i = 0; i < local_num_rows; i++)
+        int val_start = partition->first_local_row * partition->global_num_cols;
+        for (int i = 0; i < partition->local_num_rows; i++)
         {
-            for (int j = 0; j < global_num_cols; j++)
+            for (int j = 0; j < partition->global_num_cols; j++)
             {
-                int idx = val_start + (i*global_num_cols) + j;
+                int idx = val_start + (i*partition->global_num_cols) + j;
 
                 if (fabs(values[idx]) > zero_tol)
                 {
-                    int global_col = idx % global_num_cols;
-                    int global_row = idx / global_num_cols;
-                    if (global_col >= first_local_col && 
-                        global_col < first_local_col + local_num_cols)
+                    int global_col = idx % partition->global_num_cols;
+                    int global_row = idx / partition->global_num_cols;
+                    if (global_col >= partition->first_local_col && 
+                        global_col < partition->first_local_col + partition->local_num_cols)
                     {
-                        on_proc->idx2.push_back(global_col - first_local_col);
+                        on_proc->idx2.push_back(global_col - partition->first_local_col);
                         on_proc->vals.push_back(values[idx]);
                     }
                     else
@@ -397,24 +514,34 @@ namespace raptor
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
-    CSRMatrix* communicate(CommPkg* comm);
+
+    ParCSRBoolMatrix* strength(double theta = 0.0);
+    ParCSRMatrix* aggregate();
+    ParCSRMatrix* fit_candidates(double* B, double* R, int num_candidates, 
+            double tol = 1e-10);
+    int maximal_independent_set(std::vector<int>& local_states,
+            std::vector<int>& off_proc_states, int max_iters = -1);
 
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
-
+    void mult_T(ParVector& x, ParVector& b);
+    void tap_mult_T(ParVector& x, ParVector& b);
     ParCSRMatrix* mult(ParCSRMatrix* B);
-    ParCSRMatrix* mult(ParCSCMatrix* B);
     ParCSRMatrix* tap_mult(ParCSRMatrix* B);
-    ParCSRMatrix* tap_mult(ParCSCMatrix* B);
     ParCSRMatrix* mult_T(ParCSCMatrix* A);
     ParCSRMatrix* tap_mult_T(ParCSCMatrix* A);
+
+    ParCSRMatrix* RAP(ParCSRMatrix* P);
+
+    ParCSRMatrix* subtract(ParCSRMatrix* B);
+    ParCSRMatrix* subtract(ParCSCMatrix* B);
+    ParCSRMatrix* subtract(ParCOOMatrix* B);
     
+    void mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, CSRMatrix* recv);
     CSRMatrix* mult_T_partial(ParCSCMatrix* A);
+    CSRMatrix* mult_T_partial(CSCMatrix* A_off);
     void mult_T_combine(ParCSCMatrix* A, ParCSRMatrix* C, CSRMatrix* recv_on,
             CSRMatrix* recv_off);
-
-    void mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, CSRMatrix* recv);
-    void mult_helper(ParCSCMatrix* B, ParCSRMatrix* C, CSCMatrix* recv);
   };
 
   class ParCSCMatrix : public ParMatrix
@@ -433,8 +560,10 @@ namespace raptor
         // Initialize diag and offd matrices as COO for adding entries
         // This should later be changed to CSR or CSC
         // A guess of 5 nnz per row is used for reserving matrix space
-        on_proc = new CSCMatrix(local_num_rows, local_num_cols, nnz_per_row);
-        off_proc = new CSCMatrix(local_num_rows, global_num_cols, nnz_per_row);
+        on_proc = new CSCMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new CSCMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
     }
 
     ParCSCMatrix(index_t glob_rows, index_t glob_cols, int local_num_rows, 
@@ -442,10 +571,20 @@ namespace raptor
             int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols,
                 local_num_rows, local_num_cols, first_local_row, first_col)
     {
-        on_proc = new CSCMatrix(local_num_rows, local_num_cols, nnz_per_row);
-        off_proc = new CSCMatrix(local_num_rows, global_num_cols, nnz_per_row);
+        on_proc = new CSCMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new CSCMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
     }
 
+    ParCSCMatrix(Partition* part, 
+            int nnz_per_row = 5) : ParMatrix(part)
+    {
+        on_proc = new CSRMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new CSRMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
+    }
 
     ParCSCMatrix(index_t glob_rows, 
             index_t glob_cols, 
@@ -473,16 +612,91 @@ namespace raptor
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
-    CSCMatrix* communicate(CommPkg* comm);
 
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
+    void mult_T(ParVector& x, ParVector& b);
+    void tap_mult_T(ParVector& x, ParVector& b);
 
-    ParCSRMatrix* mult_T(ParCSCMatrix* A);
-    ParCSRMatrix* tap_mult_T(ParCSCMatrix* A);
-    CSRMatrix* mult_T_partial(ParCSCMatrix* A);
-    void mult_T_combine(ParCSCMatrix* B, ParCSRMatrix* C, CSRMatrix* recv_on,
-            CSRMatrix* recv_off);
   };
+
+
+
+  class ParCSRBoolMatrix : public ParMatrix
+  {
+  public:
+    ParCSRBoolMatrix() : ParMatrix()
+    {
+        on_proc = new CSRBoolMatrix(0, 0, 0);
+        off_proc = new CSRBoolMatrix(0, 0, 0);
+    }
+
+    ParCSRBoolMatrix(index_t glob_rows, 
+            index_t glob_cols, 
+            int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols)
+    {
+        on_proc = new CSRBoolMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new CSRBoolMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
+    }
+
+    ParCSRBoolMatrix(index_t glob_rows, index_t glob_cols, int local_rows, 
+            int local_cols, index_t first_row, index_t first_col, 
+            int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols,
+                local_rows, local_cols, first_row, first_col)
+    {
+        on_proc = new CSRBoolMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new CSRBoolMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
+    }
+
+    ParCSRBoolMatrix(Partition* part, 
+            int nnz_per_row = 5) : ParMatrix(part)
+    {
+        on_proc = new CSRBoolMatrix(partition->local_num_rows, partition->local_num_cols, 
+                nnz_per_row);
+        off_proc = new CSRBoolMatrix(partition->local_num_rows, partition->global_num_cols, 
+                nnz_per_row);
+    }
+
+    ParCSRBoolMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows,
+            int on_proc_cols, int off_proc_cols, int nnz_per_row = 5) : ParMatrix(part, 
+                glob_rows, glob_cols, local_rows, on_proc_cols)
+    {
+        off_proc_num_cols = off_proc_cols;
+        on_proc = new CSRBoolMatrix(local_num_rows, on_proc_cols, nnz_per_row);
+        off_proc = new CSRBoolMatrix(local_num_rows, off_proc_num_cols, nnz_per_row);
+    }
+
+    ParCSRBoolMatrix(ParCSRMatrix* A)
+    {
+        copy(A);
+    }
+
+    ParCSRBoolMatrix(ParCSCMatrix* A)
+    {
+        copy(A);
+    }
+
+    ParCSRBoolMatrix(ParCOOMatrix* A)
+    {
+        copy(A);
+    }
+
+    void copy(ParCSRMatrix* A);
+    void copy(ParCSCMatrix* A);
+    void copy(ParCOOMatrix* A);
+
+    void mult(ParVector& x, ParVector& b);
+    void tap_mult(ParVector& x, ParVector& b);
+    void mult_T(ParVector& x, ParVector& b);
+    void tap_mult_T(ParVector& x, ParVector& b);
+    
+  };
+
+
+
 }
 #endif

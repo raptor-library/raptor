@@ -2,17 +2,17 @@
 
 #include "gallery/external/mfem_wrapper.hpp"
 #include "gallery/external/hypre_wrapper.hpp"
-#include "mfem.hpp"
+//#include "mfem.hpp"
 #include <fstream>
 #include <iostream>
 
 using namespace std;
-using namespace mfem;
+//using namespace mfem;
 
 raptor::ParCSRMatrix* mfem_linear_elasticity(const char* mesh_file, int num_elements, 
         int order, MPI_Comm comm_mat)
 {
-    int myid, num_procs;
+/*    int myid, num_procs;
     MPI_Comm_rank(comm_mat, &myid);
     MPI_Comm_size(comm_mat, &num_procs);
 
@@ -170,4 +170,6 @@ raptor::ParCSRMatrix* mfem_linear_elasticity(const char* mesh_file, int num_elem
    hypre_ParCSRMatrixDestroy(A_hypre);
 
    return A_raptor;
+   */
+	   return NULL;
 }

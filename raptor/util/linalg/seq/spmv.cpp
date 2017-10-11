@@ -19,7 +19,7 @@ using namespace raptor;
 ***** b : U*
 *****    Array in which to place solution
 **************************************************************/
-void Matrix::mult(Vector& x, Vector& b)
+void COOMatrix::mult(Vector& x, Vector& b)
 {    
     for (int i = 0; i < n_rows; i++)
         b[i] = 0.0;
@@ -56,14 +56,13 @@ void CSCMatrix::mult(Vector& x, Vector& b)
 ***** b : U*
 *****    Array in which to place solution
 **************************************************************/
-void Matrix::mult_T(Vector& x, Vector& b)
+void COOMatrix::mult_T(Vector& x, Vector& b)
 {    
     for (int i = 0; i < n_cols; i++)
         b[i] = 0.0;
 
     mult_append_T(x, b);
 }
-
 void CSRMatrix::mult_T(Vector& x, Vector& b)
 {    
     for (int i = 0; i < n_cols; i++)
@@ -71,7 +70,6 @@ void CSRMatrix::mult_T(Vector& x, Vector& b)
 
     mult_append_T(x, b);
 }
-
 void CSCMatrix::mult_T(Vector& x, Vector& b)
 {    
     for (int i = 0; i < n_cols; i++)
@@ -147,6 +145,34 @@ void COOMatrix::mult_append_T(Vector& x, Vector& b)
     for (int i = 0; i < nnz; i++)
     {
         b[idx2[i]] += vals[i] * x[idx1[i]];
+    }
+}
+
+void CSRMatrix::mult_append_T(Vector& x, Vector& b)
+{
+    int start, end;
+    for (int i = 0; i < n_rows; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[idx2[j]] += vals[j] * x[i];
+        }
+    }
+}
+
+void CSCMatrix::mult_append_T(Vector& x, Vector& b)
+{
+    int start, end;
+    for (int i = 0; i < n_cols; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[i] += vals[j] * x[idx2[j]];
+        }
     }
 }
 
@@ -293,12 +319,47 @@ void CSCMatrix::mult_append_neg_T(Vector& x, Vector& b)
 ***** r : V*
 *****    Array in which double solution values are to be placed 
 **************************************************************/
-void Matrix::residual(Vector& x, Vector& b, Vector& r)
+void COOMatrix::residual(const Vector& x, const Vector& b, Vector& r)
+{   
+    for (int i = 0; i < n_rows; i++)
+        r[i] = b[i];
+ 
+    for (int i = 0; i < nnz; i++)
+    {
+        r[idx1[i]] -= vals[i] * x[idx2[i]];
+    }
+}
+void CSRMatrix::residual(const Vector& x, const Vector& b, Vector& r)
+{   
+    for (int i = 0; i < n_rows; i++)
+        r[i] = b[i];
+ 
+    int start, end;
+    for (int i = 0; i < n_rows; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            r[i] -= vals[j] * x[idx2[j]];
+        }
+    }
+}
+void CSCMatrix::residual(const Vector& x, const Vector& b, Vector& r)
 {
     for (int i = 0; i < n_rows; i++)
         r[i] = b[i];
 
-    mult_append_neg(x, r);
+    int start, end;
+    for (int i = 0; i < n_cols; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            r[idx2[j]] -= vals[j] * x[i];
+        }
+    }
 }
 
 

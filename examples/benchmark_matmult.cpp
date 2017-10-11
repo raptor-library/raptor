@@ -30,8 +30,10 @@ int main(int argc, char *argv[])
     grid[2] = n;
     double* stencil = laplace_stencil_27pt();
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, dim);
-    ParVector x = ParVector(A->global_num_cols, A->local_num_cols, A->first_local_col);
-    ParVector b = ParVector(A->global_num_rows, A->local_num_rows, A->first_local_row);
+    ParVector x = ParVector(A->global_num_cols, A->on_proc_num_cols, 
+            A->partition->first_local_col);
+    ParVector b = ParVector(A->global_num_rows, A->local_num_rows, 
+            A->partition->first_local_row);
     delete[] stencil;
     
     HYPRE_IJMatrix A_h = convert(A);
@@ -86,8 +88,7 @@ int main(int argc, char *argv[])
 
             MPI_Barrier(MPI_COMM_WORLD);
             t0 = MPI_Wtime();
-            ParCSRMatrix* C_l = new ParCSRMatrix();
-            A_l->mult(*P_l, C_l);
+            ParCSRMatrix* C_l = A_l->mult(P_l);
             tfinal = MPI_Wtime() - t0;
             MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
             if (rank == 0) printf("Raptor Matmult time = %e\n", t0);

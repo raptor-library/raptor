@@ -15,8 +15,7 @@ int main(int argc, char* argv[])
     double eps = 0.001;
     double theta = M_PI / 8.0;
     double* stencil = diffusion_stencil_2d(eps, theta);
-    CSRMatrix A;
-    stencil_grid(&A, stencil, grid.data(), dim);
+    CSRMatrix* A = stencil_grid(stencil, grid.data(), dim);
     delete[] stencil;
 
     std::vector<double> A_python(16 * 16, 0);
@@ -67,14 +66,14 @@ int main(int argc, char* argv[])
     }
 
 
-    for (int i = 0; i < A.n_rows; i++)
+    for (int i = 0; i < A->n_rows; i++)
     {
-        int row_start = A.idx1[i];
-        int row_end = A.idx1[i+1];
+        int row_start = A->idx1[i];
+        int row_end = A->idx1[i+1];
         for (int j = row_start; j < row_end; j++)
         {
-            int col = A.idx2[j];
-            A_dense[i*16 + col] = A.vals[j];
+            int col = A->idx2[j];
+            A_dense[i*16 + col] = A->vals[j];
         }
     }
 

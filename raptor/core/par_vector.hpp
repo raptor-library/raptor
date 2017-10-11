@@ -3,12 +3,13 @@
 #ifndef RAPTOR_CORE_PARVECTOR_HPP
 #define RAPTOR_CORE_PARVECTOR_HPP
 
+#include "assert.h"
+
 #include <mpi.h>
 #include <math.h>
 
 #include "types.hpp"
 #include "vector.hpp"
-#include "comm_pkg.hpp"
 
 /**************************************************************
  *****   ParVector Class
@@ -42,9 +43,6 @@
  **************************************************************/
 namespace raptor
 {
-    class ParComm;
-    class TAPComm;
-
     class ParVector
     {
     public:
@@ -63,12 +61,14 @@ namespace raptor
         ***** first_lcl : index_t
         *****    Position of local vector inside global vector
         **************************************************************/
-        ParVector(index_t glbl_n, index_t lcl_n, index_t first_lcl)
+        ParVector(index_t glbl_n, int lcl_n, index_t first_lcl)
         {
-            global_n = glbl_n;
-            local_n = lcl_n;
-            first_local = first_lcl;
-            local.set_size(local_n);
+            resize(glbl_n, lcl_n, first_lcl);
+        }
+
+        ParVector(const ParVector& x)
+        {
+            copy(x);
         }
 
         /**************************************************************
@@ -88,6 +88,22 @@ namespace raptor
         **************************************************************/
         ~ParVector()
         {
+        }
+
+        void resize(index_t glbl_n, int lcl_n, index_t first_lcl)
+        {
+            global_n = glbl_n;
+            local_n = lcl_n;
+            first_local = first_lcl;
+            local.resize(local_n);
+        }
+
+        void copy(const ParVector& x)
+        {
+            global_n = x.global_n;
+            local_n = x.local_n;
+            first_local = x.first_local;
+            local.copy(x.local);
         }
 
         /**************************************************************
@@ -125,18 +141,6 @@ namespace raptor
         void axpy(ParVector* y, data_t alpha);
 
         /**************************************************************
-        *****   Vector Copy
-        **************************************************************
-        ***** Copies values of local vector in y into local 
-        *****
-        ***** Parameters
-        ***** -------------
-        ***** y : ParVector* y
-        *****    ParVector to be copied
-        **************************************************************/
-        void copy(ParVector* y);
-        
-        /**************************************************************
         *****   Vector Scale
         **************************************************************
         ***** Multiplies the local vector by a constant, alpha
@@ -160,10 +164,15 @@ namespace raptor
         **************************************************************/
         data_t norm(index_t p);
 
-        Vector& communicate(CommPkg* comm_pkg, MPI_Comm comm = MPI_COMM_WORLD);
-        void init_comm(CommPkg* comm_pkg, MPI_Comm comm = MPI_COMM_WORLD);
-        Vector& complete_comm(CommPkg* comm_pkg);
+        const data_t& operator[](const int index) const
+        {
+            return local.values[index];
+        }
 
+        data_t& operator[](const int index)
+        {
+            return local.values[index];
+        }
 
         Vector local;
         int global_n;
