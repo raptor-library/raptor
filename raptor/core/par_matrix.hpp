@@ -124,10 +124,11 @@ namespace raptor
             int local_rows, 
             int local_cols, 
             index_t first_row, 
-            index_t first_col)
+            index_t first_col, 
+            Topology* topology = NULL)
     {
         partition = new Partition(glob_rows, glob_cols,
-                local_rows, local_cols, first_row, first_col);
+                local_rows, local_cols, first_row, first_col, topology);
 
         global_num_rows = partition->global_num_rows;
         global_num_cols = partition->global_num_cols;
@@ -417,9 +418,9 @@ namespace raptor
     }
 
     ParCSRMatrix(index_t glob_rows, index_t glob_cols, int local_rows, 
-            int local_cols, index_t first_row, index_t first_col, 
+            int local_cols, index_t first_row, index_t first_col, Topology* topology = NULL,  
             int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols,
-                local_rows, local_cols, first_row, first_col)
+                local_rows, local_cols, first_row, first_col, topology)
     {
         on_proc = new CSRMatrix(partition->local_num_rows, partition->local_num_cols, 
                 nnz_per_row);

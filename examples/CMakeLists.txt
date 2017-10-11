@@ -1,11 +1,5 @@
 include_directories(${raptor_INCDIR})
 
-add_executable(benchmark_matrix benchmark_matrix.cpp)
-target_link_libraries(benchmark_matrix raptor ${MPI_LIBRARIES})
-
-add_executable(benchmark_tap_spmv benchmark_tap_spmv.cpp)
-target_link_libraries(benchmark_tap_spmv raptor ${MPI_LIBRARIES})
-
 add_executable(benchmark_rss benchmark_rss.cpp)
 target_link_libraries(benchmark_rss raptor ${MPI_LIBRARIES})
 

@@ -31,4 +31,7 @@ if (WITH_MPI)
     add_test(ParRandomSpMVTest_4 mpirun -n 4 ./test_par_spmv_random)
     add_test(ParRandomSpMVTest_8 mpirun -n 8 ./test_par_spmv_random)
     add_test(ParRandomSpMVTest_16 mpirun -n 16 ./test_par_spmv_random)
+
+    add_executable(test_repartition test_repartition.cpp)
+    target_link_libraries(test_repartition raptor)
 endif()

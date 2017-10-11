@@ -12,7 +12,7 @@
 
 #include "core/par_matrix.hpp"
 #include "core/types.hpp"
-#include "gallery/noncontiguous.hpp"
+#include "util/linalg/external/repartition.hpp"
 
 using namespace raptor;
 
@@ -219,7 +219,8 @@ ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix,
             A_coo->off_proc_column_map[first_local_col + j] = first_global_col + j;
         }
     }
-    ParCSRMatrix* A = noncontiguous(A_coo, on_proc_column_map);
+    ParCSRMatrix* A = new ParCSRMatrix(A_coo);
+    noncontiguous(A, on_proc_column_map);
 
     delete A_coo;
     return A;

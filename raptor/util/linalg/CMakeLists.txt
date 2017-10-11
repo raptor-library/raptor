@@ -27,9 +27,10 @@ else ()
 endif()
 
 set(linalg_SOURCES 
-    ${par_linalg_SOURCES}
     util/linalg/seq/matmult.cpp
     util/linalg/seq/relax.cpp
+    ${par_linalg_SOURCES}
+    ${external_linalg_SOURCES}
     PARENT_SCOPE
     )
 
