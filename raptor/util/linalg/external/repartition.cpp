@@ -21,6 +21,13 @@ int* ptscotch_partition(ParCSRMatrix* A)
     SCOTCH_Num* edgegsttab = NULL;
     SCOTCH_Num* edloloctab = NULL;
 
+    SCOTCH_Num seedlocnbr = vertlocnbr;
+    SCOTCH_Num* seedloctab = new SCOTCH_Num[seedlocnbr + 1];
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        seedloctab[i] = i;
+    }
+    
     int row_start, row_end;
     int idx, gbl_idx, ctr;
     int err;
@@ -57,6 +64,7 @@ int* ptscotch_partition(ParCSRMatrix* A)
    
 
     SCOTCH_Dgraph dgraphdata;
+    SCOTCH_Dgraph dbgraphdata;
     SCOTCH_Strat stratdata;
 
     SCOTCH_dgraphInit(&dgraphdata, MPI_COMM_WORLD);
@@ -64,16 +72,21 @@ int* ptscotch_partition(ParCSRMatrix* A)
             vertloctab, vendloctab, veloloctab, vlblloctab, edgelocnbr, edgelocsiz, 
             edgeloctab, edgegsttab, edloloctab);
     SCOTCH_dgraphCheck(&dgraphdata);
+
+    SCOTCH_dgraphBand(&dgraphdata, vertlocnbr, seedloctab, 100, &dbgraphdata);
+
     SCOTCH_stratInit(&stratdata);
     SCOTCH_stratDgraphMapBuild(&stratdata, SCOTCH_STRATSAFETY, num_procs, num_procs, 0.03);
     SCOTCH_randomReset();
     SCOTCH_dgraphPart(&dgraphdata, num_procs, &stratdata, partition);
 
     SCOTCH_stratExit(&stratdata);
+    SCOTCH_dgraphExit(&dbgraphdata);
     SCOTCH_dgraphExit(&dgraphdata);
 
     delete[] vertloctab;    
     delete[] edgeloctab;
+    delete[] seedloctab;
 
     return partition;
 }
