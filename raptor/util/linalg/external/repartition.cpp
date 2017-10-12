@@ -7,19 +7,21 @@ int* ptscotch_partition(ParCSRMatrix* A)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     // Variables for Graph Partitioning
-    int* edge_starts;
-    int* edge_ends;
-    int* gbl_indices;
-    int* partition = NULL;
-    int baseval = 0; // Always 0 for C style arrays
+    SCOTCH_Num* edge_starts;
+    SCOTCH_Num* edge_ends;
+    SCOTCH_Num* gbl_indices;
+    SCOTCH_Num* partition = NULL;
+    SCOTCH_Num baseval = 0; // Always 0 for C style arrays
+    SCOTCH_Num local_nnz = A->local_nnz;
+    SCOTCH_Num local_rows = A->local_num_rows;
     int row_start, row_end;
     int idx, gbl_idx, ctr;
     int err;
 
     // Allocate Partition Variable (to be returned)
-    partition = new int[A->local_num_rows + 2];
-    edge_starts = new int[A->local_num_rows + 2];
-    gbl_indices = new int[A->local_nnz + 1];
+    partition = new SCOTCH_Num[A->local_num_rows + 2];
+    edge_starts = new SCOTCH_Num[A->local_num_rows + 2];
+    gbl_indices = new SCOTCH_Num[A->local_nnz + 1];
 
     // Find matrix edge indices for PT Scotch
     ctr = 0;
@@ -56,8 +58,8 @@ int* ptscotch_partition(ParCSRMatrix* A)
     SCOTCH_Strat stratdata;
 
     SCOTCH_dgraphInit(&dgraphdata, MPI_COMM_WORLD);
-    SCOTCH_dgraphBuild(&dgraphdata, baseval, A->local_num_rows, A->local_num_rows,
-            edge_starts, NULL, NULL, NULL, A->local_nnz, A->local_nnz, gbl_indices,
+    SCOTCH_dgraphBuild(&dgraphdata, baseval, local_rows, local_rows,
+            edge_starts, NULL, NULL, NULL, local_nnz, local_nnz, gbl_indices,
             NULL, NULL);
     SCOTCH_dgraphCheck(&dgraphdata);
     SCOTCH_stratInit(&stratdata);

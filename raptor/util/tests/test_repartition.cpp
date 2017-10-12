@@ -29,20 +29,22 @@ int main(int argc, char* argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     double t0, tfinal;
+    int* proc_part;
+    double bnorm;
 
-    // Create Sequential Matrix A on each process
     char* filename = "../../../../examples/LFAT5.mtx";
     if (argc > 1) filename = argv[1];
+    int n_tests = 100;
 
+    // Create RowWise Partition 
     ParCSRMatrix* A_orig = readParMatrix(filename, MPI_COMM_WORLD, 
             true, 1);
-    A_orig->tap_comm = new TAPComm(A_orig->partition, A_orig->off_proc_column_map);
     ParVector x_orig(A_orig->global_num_rows, A_orig->local_num_rows, 
             A_orig->partition->first_local_row);
     ParVector b_orig(A_orig->global_num_rows, A_orig->local_num_rows, 
             A_orig->partition->first_local_row);
-
-    int n_tests = 100;
+    A_orig->tap_comm = new TAPComm(A_orig->partition, A_orig->off_proc_column_map);
+    x_orig.set_const_value(1.0);
 
     // TIME Original SpMV
     MPI_Barrier(MPI_COMM_WORLD);
@@ -53,7 +55,8 @@ int main(int argc, char* argv[])
     }
     tfinal = (MPI_Wtime() - t0) / n_tests;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    if (rank == 0) printf("Orig SpMV Time %e\n", t0);
+    bnorm = b_orig.norm(2);
+    if (rank == 0) printf("Orig SpMV Time %e, Bnorm = %e\n", t0, bnorm);
 
     // Time TAPSpMV
     MPI_Barrier(MPI_COMM_WORLD);
@@ -64,15 +67,63 @@ int main(int argc, char* argv[])
     }
     tfinal = (MPI_Wtime() - t0) / n_tests;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    if (rank == 0) printf("Orig TAPSpMV Time %e\n", t0);
+    bnorm = b_orig.norm(2);
+    if (rank == 0) printf("Orig TAPSpMV Time %e, Bnorm = %e\n", t0, bnorm);
+
+
+
+
+
+    // RoundRobin Partitioning
+    proc_part = new int[A_orig->local_num_rows];
+    for (int i = 0; i < A_orig->local_num_rows; i++)
+    {
+        proc_part[i] = i % num_procs;
+    }
+    ParCSRMatrix* A_rr = repartition_matrix(A_orig, proc_part);
+    ParVector x_rr(A_rr->global_num_rows, A_rr->local_num_rows, 
+            A_rr->partition->first_local_row);
+    ParVector b_rr(A_rr->global_num_rows, A_rr->local_num_rows, 
+            A_rr->partition->first_local_row);
+    A_rr->tap_comm = new TAPComm(A_rr->partition, A_rr->off_proc_column_map);
+    x_rr.set_const_value(1.0);
+    delete[] proc_part;
+
+    // TIME RoundRobin Orig SpMV
+    MPI_Barrier(MPI_COMM_WORLD);
+    t0 = MPI_Wtime();
+    for (int i = 0; i < n_tests; i++)
+    {
+        A_rr->mult(x_rr, b_rr);
+    }
+    tfinal = (MPI_Wtime() - t0) / n_tests;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    bnorm = b_rr.norm(2);
+    if (rank == 0) printf("RoundRobin SpMV Time %e, Bnorm = %e\n", t0, bnorm);
+
+    // Time RoundRobin TAPSpMV
+    MPI_Barrier(MPI_COMM_WORLD);
+    t0 = MPI_Wtime();
+    for (int i = 0; i < n_tests; i++)
+    {
+        A_rr->tap_mult(x_rr, b_rr);
+    }
+    tfinal = (MPI_Wtime() - t0) / n_tests;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    bnorm = b_rr.norm(2);
+    if (rank == 0) printf("RoundRobin TAPSpMV Time %e, Bnorm = %e\n", t0, bnorm);
+
+
+
+
+
+
+
+
 
     // Time Graph Partitioning
     t0 = MPI_Wtime();
-    int* proc_part = ptscotch_partition(A_orig);
-    for (int i  = 0; i < A_orig->local_num_rows; i++)
-    {
-        proc_part[i] = i % num_procs;
-    } 
+    proc_part = ptscotch_partition(A_orig);
     ParCSRMatrix* A = repartition_matrix(A_orig, proc_part);
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
@@ -80,6 +131,8 @@ int main(int argc, char* argv[])
 
     ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
+    x.set_const_value(1.0);
 
     // TIME Original SpMV
     MPI_Barrier(MPI_COMM_WORLD);
@@ -90,7 +143,8 @@ int main(int argc, char* argv[])
     }
     tfinal = (MPI_Wtime() - t0) / n_tests;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    if (rank == 0) printf("Partitioned SpMV Time %e\n", t0);
+    bnorm = b.norm(2);
+    if (rank == 0) printf("Partitioned SpMV Time %e, Bnorm = %e\n", t0, bnorm);
 
     // Time TAPSpMV
     MPI_Barrier(MPI_COMM_WORLD);
@@ -101,7 +155,8 @@ int main(int argc, char* argv[])
     }
     tfinal = (MPI_Wtime() - t0) / n_tests;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    if (rank == 0) printf("Partitioned TAPSpMV Time %e\n", t0);
+    bnorm = b.norm(2);
+    if (rank == 0) printf("Partitioned TAPSpMV Time %e, Bnorm = %e\n", t0, bnorm);
 
     delete[] proc_part;
     delete A_orig;
