@@ -163,7 +163,7 @@ int main(int argc, char* argv[])
     if (rank == 0) printf("Partitioned TAPSpMV Time %e, Bnorm = %e\n", t0, bnorm);
 
     delete A_orig;
-    delete A_rr;
+    //delete A_rr;
     delete A;
 
     MPI_Finalize();
