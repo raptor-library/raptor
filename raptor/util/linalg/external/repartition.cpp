@@ -18,7 +18,7 @@ int* ptscotch_partition(ParCSRMatrix* A)
     SCOTCH_Num edgelocnbr = A->local_nnz;
     SCOTCH_Num edgelocsiz = A->local_nnz;
     SCOTCH_Num* edgeloctab = new SCOTCH_Num[edgelocsiz + 1];
-    SCOTCH_Num* edgegsttab = new SCOTCH_Num[edgelocsiz + 1];
+    SCOTCH_Num* edgegsttab = NULL;
     SCOTCH_Num* edloloctab = NULL;
 
     int row_start, row_end;
@@ -74,7 +74,6 @@ int* ptscotch_partition(ParCSRMatrix* A)
 
     delete[] vertloctab;    
     delete[] edgeloctab;
-    delete[] edgegsttab;
 
     return partition;
 }
