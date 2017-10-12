@@ -70,13 +70,6 @@ int* ptscotch_partition(ParCSRMatrix* A)
     SCOTCH_stratExit(&stratdata);
     SCOTCH_dgraphExit(&dgraphdata);
 
-
-    std::vector<int> proc_sizes(num_procs, 0);
-    for (int i = 0; i < A->local_num_rows; i++)
-    {
-        proc_sizes[partition[i]]++;
-    }
-
     delete[] edge_starts;    
     delete[] gbl_indices;
 
