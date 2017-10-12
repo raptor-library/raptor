@@ -46,6 +46,9 @@ int main(int argc, char* argv[])
     A_orig->tap_comm = new TAPComm(A_orig->partition, A_orig->off_proc_column_map);
     x_orig.set_const_value(1.0);
 
+
+
+/*
     // TIME Original SpMV
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
@@ -114,7 +117,7 @@ int main(int argc, char* argv[])
     if (rank == 0) printf("RoundRobin TAPSpMV Time %e, Bnorm = %e\n", t0, bnorm);
 
 
-
+*/
 
 
 
