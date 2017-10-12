@@ -161,8 +161,8 @@ namespace raptor
                 std::vector<int> off_proc_states;
 
                 S = A->strength(theta);
-                split_cljp(S, states, off_proc_states);
-                //split_falgout(S, states, off_proc_states);
+                //split_cljp(S, states, off_proc_states);
+                split_falgout(S, states, off_proc_states);
                 levels[level_ctr]->P = direct_interpolation(A, S, states, off_proc_states);
                 ParCSRMatrix* P = levels[level_ctr]->P;
 
