@@ -36,7 +36,7 @@ int* ptscotch_partition(ParCSRMatrix* A)
         {
             idx = A->on_proc->idx2[j];
             gbl_idx = A->on_proc_column_map[idx];
-            edgelocsiz[ctr] = gbl_idx;
+            edgeloctab[ctr] = gbl_idx;
             ctr++;
         }
 
@@ -48,7 +48,7 @@ int* ptscotch_partition(ParCSRMatrix* A)
             {
                 idx = A->off_proc->idx2[j];
                 gbl_idx = A->off_proc_column_map[idx];
-                edgelocsiz[ctr] = gbl_idx;
+                edgeloctab[ctr] = gbl_idx;
                 ctr++;
             }
         }
