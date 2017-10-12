@@ -65,7 +65,7 @@ int* ptscotch_partition(ParCSRMatrix* A)
             edgeloctab, edgegsttab, edloloctab);
     SCOTCH_dgraphCheck(&dgraphdata);
     SCOTCH_stratInit(&stratdata);
-    SCOTCH_stratDgraphMap(&stratdata, SCOTCH_STRATSAFETY);
+    SCOTCH_stratDgraphMapBuild(&stratdata, SCOTCH_STRATSAFETY, num_procs, num_procs, 0.03);
     SCOTCH_randomReset();
     SCOTCH_dgraphPart(&dgraphdata, num_procs, &stratdata, partition);
 
