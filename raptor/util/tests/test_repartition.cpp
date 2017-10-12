@@ -129,6 +129,7 @@ int main(int argc, char* argv[])
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Partitioning Time %e\n", t0);
 
+    delete[] proc_part;
     ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
@@ -158,8 +159,8 @@ int main(int argc, char* argv[])
     bnorm = b.norm(2);
     if (rank == 0) printf("Partitioned TAPSpMV Time %e, Bnorm = %e\n", t0, bnorm);
 
-    delete[] proc_part;
     delete A_orig;
+    delete A_rr;
     delete A;
 
     MPI_Finalize();
