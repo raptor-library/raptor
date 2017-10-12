@@ -15,8 +15,8 @@ int* ptscotch_partition(ParCSRMatrix* A)
     SCOTCH_Num* vendloctab = &vertloctab[1];
     SCOTCH_Num* veloloctab = NULL;
     SCOTCH_Num* vlblloctab = NULL;
-    SCOTCH_Num* edgelocnbr = A->local_nnz;
-    SCOTCH_Num* edgelocsiz = A->local_nnz;
+    SCOTCH_Num edgelocnbr = A->local_nnz;
+    SCOTCH_Num edgelocsiz = A->local_nnz;
     SCOTCH_Num* edgeloctab = new SCOTCH_Num[edgelocsiz + 1];
     SCOTCH_Num* edgegsttab = new SCOTCH_Num[edgelocsiz + 1];
     SCOTCH_Num* edloloctab = NULL;
