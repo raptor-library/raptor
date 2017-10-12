@@ -22,7 +22,7 @@ add_library(raptor STATIC ${core_SOURCES} ${gallery_SOURCES} ${util_SOURCES}
     ${par_SOURCES} strength.cpp ${ruge_stuben_SOURCES})
 
 target_link_libraries(raptor ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
-	${EXTERNAL_LIBS} )
+    ${PTSCOTCH_LIBRARIES} ${EXTERNAL_LIBS} )
 
 include_directories(".")
 if(ENABLE_UNIT_TESTS)

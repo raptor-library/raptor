@@ -201,14 +201,15 @@ int main(int argc, char *argv[])
         HYPRE_Solver solver_data;
         Multilevel* ml;
 
-        double* x_h_data = hypre_VectorData(hypre_ParVectorLocalVector(x_h));
         x.set_const_value(0.0);
+        double* x_h_data = hypre_VectorData(hypre_ParVectorLocalVector(x_h));
         for (int i = 0; i < A->local_num_rows; i++)
         {
             x_h_data[i] = 0.0;
         }
 
         clear_cache(cache_array);
+
         // Create Hypre Hierarchy
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
@@ -225,6 +226,8 @@ int main(int argc, char *argv[])
         hypre_solve = MPI_Wtime() - t0;
         clear_cache(cache_array);
 
+        // Delete hypre hierarchy
+        hypre_BoomerAMGDestroy(solver_data);     
 
         // Setup Raptor Hierarchy
         MPI_Barrier(MPI_COMM_WORLD);    
@@ -261,8 +264,8 @@ int main(int argc, char *argv[])
         MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank == 0) printf("Raptor Solve Time: %e\n", t0);
 
+        // Delete raptor hierarchy
         delete ml;
-        hypre_BoomerAMGDestroy(solver_data);     
     }
 
     delete A;

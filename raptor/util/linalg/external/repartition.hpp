@@ -3,8 +3,6 @@
 
 #include <mpi.h>
 #include "core/types.hpp"
-#include "util/linalg/spmv.hpp"
-#include "gallery/matrix_IO.hpp"
 #include "ptscotch.h"
 #include <unistd.h>
 #include <set>
@@ -13,8 +11,10 @@
 
 using namespace raptor;
 
-int* ptscotch_partition(ParMatrix* A);
-void repartition_matrix(ParMatrix* A, std::vector<coo_data>& new_mat, int* partition);
+int* ptscotch_partition(ParCSRMatrix* A);
+ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition);
+ParCSRMatrix* repartition_matrix(ParCSRMatrix* A);
+void make_noncontiguous(ParCSRMatrix* A, std::vector<int>& column_map);
 
 #endif
 

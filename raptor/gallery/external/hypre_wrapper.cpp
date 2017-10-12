@@ -415,6 +415,7 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
     HYPRE_BoomerAMGCreate(&amg_data);
       
     // Set Boomer AMG Parameters
+    HYPRE_BoomerAMGSetMaxRowSum(amg_data, 1);
     HYPRE_BoomerAMGSetCoarsenType(amg_data, coarsen_type);
     HYPRE_BoomerAMGSetInterpType(amg_data, interp_type);
     HYPRE_BoomerAMGSetPMaxElmts(amg_data, p_max_elmts);
