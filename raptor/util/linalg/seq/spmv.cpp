@@ -176,6 +176,35 @@ void CSCMatrix::mult_append_T(Vector& x, Vector& b)
     }
 }
 
+void CSRMatrix::mult_append_T(Vector& x, Vector& b)
+{
+    int start, end;
+    for (int i = 0; i < n_rows; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[idx2[j]] += vals[j] * x[i];
+        }
+    }
+}
+
+void CSCMatrix::mult_append_T(Vector& x, Vector& b)
+{
+    int start, end;
+    for (int i = 0; i < n_cols; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[i] += vals[j] * x[idx2[j]];
+        }
+    }
+}
+
+
 
 /**************************************************************
 *****   Matrix-Vector Multiply Append (Negative) (b -= Ax)

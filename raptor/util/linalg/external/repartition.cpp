@@ -68,17 +68,6 @@ int* ptscotch_partition(ParCSRMatrix* A)
     SCOTCH_stratExit(&stratdata);
     SCOTCH_dgraphExit(&dgraphdata);
 
-
-    std::vector<int> proc_sizes(num_procs, 0);
-    for (int i = 0; i < A->local_num_rows; i++)
-    {
-        proc_sizes[partition[i]]++;
-    }
-    for (int i = 0; i < num_procs; i++)
-    {
-        printf("Proc %d size %d\n", i, proc_sizes[i]);
-    }
-
     delete[] edge_starts;    
     delete[] gbl_indices;
 
@@ -465,15 +454,9 @@ void make_contiguous(ParCSRMatrix* A, const std::vector<int>& on_proc_column_map
 
     // Sort rows, removing duplicate entries and moving diagonal 
     // value to first
-    if (A->on_proc->nnz)
-    {
-        A->on_proc->sort();
-    }
-
-    if (A->off_proc->nnz)
-    {
-        A->off_proc->sort();
-    }
+    A->on_proc->sort();
+    A->on_proc->move_diag();
+    A->off_proc->sort();
 }
 
 ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition)
@@ -727,6 +710,8 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition)
        on_proc_to_local[recv_rows[i]] = i;
        A_part->on_proc_column_map.push_back(recv_rows[i]);
     }
+    A_part->local_row_map = A_part->get_on_proc_column_map();
+    A_part->on_proc_num_cols = A_part->on_proc_column_map.size();
 
     ctr = 0;
     A_part->on_proc->idx1[0] = 0;
@@ -734,7 +719,7 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition)
     for (int i = 0; i < num_rows; i++)
     {
         row_size = recv_row_sizes[i];
-        for (int j = 9; j < row_size; j++)
+        for (int j = 0; j < row_size; j++)
         {
             col = recv_buffer[ctr].index;
             val = recv_buffer[ctr++].val;
@@ -753,8 +738,35 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition)
         A_part->on_proc->idx1[i+1] = A_part->on_proc->idx2.size();
         A_part->off_proc->idx1[i+1] = A_part->off_proc->idx2.size();
     }
+    A_part->on_proc->nnz = A_part->on_proc->idx2.size();
+    A_part->off_proc->nnz = A_part->off_proc->idx2.size();
+    A_part->local_nnz = A_part->on_proc->nnz + A_part->off_proc->nnz;
 
-//    make_contiguous(A_part, A_part->on_proc_column_map);
+    std::vector<int> off_proc_cols;
+    std::copy(A_part->off_proc->idx2.begin(), A_part->off_proc->idx2.end(),
+            std::back_inserter(off_proc_cols));
+    std::sort(off_proc_cols.begin(), off_proc_cols.end());
+    int prev_col = -1;
+    std::map<int, int> global_to_local;
+    for (std::vector<int>::iterator it = off_proc_cols.begin(); 
+            it != off_proc_cols.end(); ++it)
+    {
+        if (*it != prev_col)
+        {
+            global_to_local[*it] = A_part->off_proc_column_map.size();
+            A_part->off_proc_column_map.push_back(*it);
+            *it = prev_col;
+        }
+    }
+    A_part->off_proc_num_cols = A_part->off_proc_column_map.size();
+
+    for (std::vector<int>::iterator it = A_part->off_proc->idx2.begin();
+            it != A_part->off_proc->idx2.end(); ++it)
+    {
+        *it = global_to_local[*it];
+    }
+
+    make_contiguous(A_part, A_part->on_proc_column_map);
 
     return A_part;
 }

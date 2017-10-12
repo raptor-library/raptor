@@ -497,6 +497,11 @@ namespace raptor
     CSRMatrix* mult_T(const CSCMatrix* A);
     CSRMatrix* mult_T(const COOMatrix* A);
 
+    void mult_append(Vector& x, Vector& b);
+    void mult_append_neg(Vector& x, Vector& b);
+    void mult_append_T(Vector& x, Vector& b);
+    void mult_append_neg_T(Vector& x, Vector& b);
+
     format_t format()
     {
         return COO;
