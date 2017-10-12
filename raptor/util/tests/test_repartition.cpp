@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
     double t0, tfinal;
 
     // Create Sequential Matrix A on each process
-    char* filename = "../../../../examples/1138_bus.mtx";
+    char* filename = "../../../../examples/LFAT5.mtx";
     if (argc > 1) filename = argv[1];
 
     ParCSRMatrix* A_orig = readParMatrix(filename, MPI_COMM_WORLD, 
