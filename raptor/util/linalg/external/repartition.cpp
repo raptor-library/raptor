@@ -35,6 +35,7 @@ int* ptscotch_partition(ParCSRMatrix* A)
         for (int j = row_start; j < row_end; j++)
         {
             idx = A->on_proc->idx2[j];
+            if (idx == row) continue;
             gbl_idx = A->on_proc_column_map[idx];
             edgeloctab[ctr] = gbl_idx;
             ctr++;
@@ -54,6 +55,8 @@ int* ptscotch_partition(ParCSRMatrix* A)
         }
         vertloctab[row+1] = ctr;
     }
+    edgelocnbr = ctr;
+    edgelocsiz = ctr;
    
 
     SCOTCH_Dgraph dgraphdata;
