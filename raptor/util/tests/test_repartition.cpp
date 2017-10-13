@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
         // TIME Original SpMV
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        for (int i = 0; i < n_tests; i++)
+        for (int j = 0; j < n_tests; j++)
         {
             A_orig->mult(x_orig, b_orig);
         }
@@ -63,7 +63,7 @@ int main(int argc, char* argv[])
         // Time TAPSpMV
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        for (int i = 0; i < n_tests; i++)
+        for (int j = 0; j < n_tests; j++)
         {
             A_orig->tap_mult(x_orig, b_orig);
         }
@@ -95,7 +95,7 @@ int main(int argc, char* argv[])
         // TIME RoundRobin Orig SpMV
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        for (int i = 0; i < n_tests; i++)
+        for (int j = 0; j < n_tests; j++)
         {
             A_rr->mult(x_rr, b_rr);
         }
@@ -107,7 +107,7 @@ int main(int argc, char* argv[])
         // Time RoundRobin TAPSpMV
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        for (int i = 0; i < n_tests; i++)
+        for (int j = 0; j < n_tests; j++)
         {
             A_rr->tap_mult(x_rr, b_rr);
         }
@@ -137,7 +137,7 @@ int main(int argc, char* argv[])
         // TIME Original SpMV
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        for (int i = 0; i < n_tests; i++)
+        for (int j = 0; j < n_tests; j++)
         {
             A->mult(x, b);
         }
@@ -149,7 +149,7 @@ int main(int argc, char* argv[])
         // Time TAPSpMV
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        for (int i = 0; i < n_tests; i++)
+        for (int j = 0; j < n_tests; j++)
         {
             A->tap_mult(x, b);
         }
