@@ -13,7 +13,7 @@
 #include "gallery/laplacian27pt.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/external/hypre_wrapper.hpp"
-#include "gallery/external/mfem_wrapper.hpp"
+//#include "gallery/external/mfem_wrapper.hpp"
 #include "gallery/par_matrix_IO.hpp"
 #include "multilevel/multilevel.hpp"
 
