@@ -1,5 +1,11 @@
-#include <assert.h>
+// EXPECT_EQ and ASSERT_EQ are macros
+// EXPECT_EQ test execution and continues even if there is a failure
+// ASSERT_EQ test execution and aborts if there is a failure
+// The ASSERT_* variants abort the program execution if an assertion fails 
+// while EXPECT_* variants continue with the run.
 
+
+#include "gtest/gtest.h"
 #include "core/types.hpp"
 #include "core/matrix.hpp"
 #include "gallery/diffusion.hpp"
@@ -7,7 +13,13 @@
 
 using namespace raptor;
 
-int main(int argc, char* argv[])
+int main(int argc, char** argv)
+{
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+} // end of main() //
+
+TEST(StencilTest, TestsInGallery)
 {
     // Create A from diffusion stencil
     int dim = 2;
@@ -81,8 +93,9 @@ int main(int argc, char* argv[])
     {
         for (int j = 0; j < 16; j++)
         {
-            assert (fabs(A_python[i*16+j] - A_dense[i*16+j]) < 1e-06);
+            ASSERT_NEAR(A_python[i*16+j], A_dense[i*16+j], 1e-06);
         }
     }
 
-}   
+} // end of TEST(StencilTest, TestsInGallery)//
+

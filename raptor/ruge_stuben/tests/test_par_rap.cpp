@@ -1,15 +1,28 @@
-#include <assert.h>
+// EXPECT_EQ and ASSERT_EQ are macros
+// EXPECT_EQ test execution and continues even if there is a failure
+// ASSERT_EQ test execution and aborts if there is a failure
+// The ASSERT_* variants abort the program execution if an assertion fails 
+// while EXPECT_* variants continue with the run.
 
+
+#include "gtest/gtest.h"
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "gallery/par_matrix_IO.hpp"
 
 using namespace raptor;
 
-int main(int argc, char* argv[])
+int main(int argc, char** argv)
 {
     MPI_Init(&argc, &argv);
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+    MPI_Finalize();
 
+} // end of main() //
+
+TEST(TestParRAP, TestsInRuge_Stuben)
+{ 
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
@@ -53,32 +66,33 @@ int main(int argc, char* argv[])
         Ac->sort();
         Ac_rap->sort();
 
-        assert(Ac->global_num_rows == Ac_rap->global_num_rows);
-        assert(Ac->global_num_cols == Ac_rap->global_num_cols);
-        assert(Ac->local_num_rows == Ac_rap->local_num_rows);
-        assert(Ac->on_proc_num_cols == Ac_rap->on_proc_num_cols);
+        ASSERT_EQ(Ac->global_num_rows, Ac_rap->global_num_rows);
+        ASSERT_EQ(Ac->global_num_cols, Ac_rap->global_num_cols);
+        ASSERT_EQ(Ac->local_num_rows, Ac_rap->local_num_rows);
+        ASSERT_EQ(Ac->on_proc_num_cols, Ac_rap->on_proc_num_cols);
 
-        assert(Ac->on_proc->idx1[0] == Ac_rap->on_proc->idx1[0]);
-        assert(Ac->off_proc->idx1[0] == Ac_rap->off_proc->idx1[0]);
+        ASSERT_EQ(Ac->on_proc->idx1[0], Ac_rap->on_proc->idx1[0]);
+        ASSERT_EQ(Ac->off_proc->idx1[0], Ac_rap->off_proc->idx1[0]);
         for (int i = 0; i < Ac->local_num_rows; i++)
         {
-            assert(Ac->on_proc->idx1[i+1] == Ac_rap->on_proc->idx1[i+1]);
+            ASSERT_EQ(Ac->on_proc->idx1[i+1], Ac_rap->on_proc->idx1[i+1]);
             start = Ac->on_proc->idx1[i];
             end = Ac->on_proc->idx1[i+1];
             for (int j = start; j < end; j++)
             {
-                assert(Ac->on_proc->idx2[j] == Ac_rap->on_proc->idx2[j]);
-                assert(fabs(Ac->on_proc->vals[j] - Ac_rap->on_proc->vals[j]) < 1e-06);
+                ASSERT_EQ(Ac->on_proc->idx2[j], Ac_rap->on_proc->idx2[j]);
+                ASSERT_NEAR(Ac->on_proc->vals[j], Ac_rap->on_proc->vals[j], 1e-06);
             }
 
-            assert(Ac->off_proc->idx1[i+1] == Ac_rap->off_proc->idx1[i+1]);
+            ASSERT_EQ(Ac->off_proc->idx1[i+1], Ac_rap->off_proc->idx1[i+1]);
             start = Ac->off_proc->idx1[i];
             end = Ac->off_proc->idx1[i+1];
             for (int j = start; j < end; j++)
             {
-                assert(Ac->off_proc_column_map[Ac->off_proc->idx2[j]] == 
-                        Ac_rap->off_proc_column_map[Ac_rap->off_proc->idx2[j]]);
-                assert(fabs(Ac->off_proc->vals[j] - Ac_rap->off_proc->vals[j]) < 1e-06);
+                ASSERT_EQ(Ac->off_proc_column_map[Ac->off_proc->idx2[j]], 
+                          Ac_rap->off_proc_column_map[Ac_rap->off_proc->idx2[j]]);
+                        
+                ASSERT_NEAR(Ac->off_proc->vals[j], Ac_rap->off_proc->vals[j], 1e-06);
             }
         }
 
@@ -92,7 +106,6 @@ int main(int argc, char* argv[])
         delete AP_csc;
         delete Ac_rap;
     }
-
 
     snprintf(name, sizeof(name), "../../tests/rss_aniso_P%d.mtx", ctr);
     while (FILE *file = fopen(name, "r")) 
@@ -122,32 +135,32 @@ int main(int argc, char* argv[])
         Ac->sort();
         Ac_rap->sort();
 
-        assert(Ac->global_num_rows == Ac_rap->global_num_rows);
-        assert(Ac->global_num_cols == Ac_rap->global_num_cols);
-        assert(Ac->local_num_rows == Ac_rap->local_num_rows);
-        assert(Ac->on_proc_num_cols == Ac_rap->on_proc_num_cols);
+        ASSERT_EQ(Ac->global_num_rows, Ac_rap->global_num_rows);
+        ASSERT_EQ(Ac->global_num_cols, Ac_rap->global_num_cols);
+        ASSERT_EQ(Ac->local_num_rows, Ac_rap->local_num_rows);
+        ASSERT_EQ(Ac->on_proc_num_cols, Ac_rap->on_proc_num_cols);
 
-        assert(Ac->on_proc->idx1[0] == Ac_rap->on_proc->idx1[0]);
-        assert(Ac->off_proc->idx1[0] == Ac_rap->off_proc->idx1[0]);
+        ASSERT_EQ(Ac->on_proc->idx1[0], Ac_rap->on_proc->idx1[0]);
+        ASSERT_EQ(Ac->off_proc->idx1[0], Ac_rap->off_proc->idx1[0]);
         for (int i = 0; i < Ac->local_num_rows; i++)
         {
-            assert(Ac->on_proc->idx1[i+1] == Ac_rap->on_proc->idx1[i+1]);
+            ASSERT_EQ(Ac->on_proc->idx1[i+1], Ac_rap->on_proc->idx1[i+1]);
             start = Ac->on_proc->idx1[i];
             end = Ac->on_proc->idx1[i+1];
             for (int j = start; j < end; j++)
             {
-                assert(Ac->on_proc->idx2[j] == Ac_rap->on_proc->idx2[j]);
-                assert(fabs(Ac->on_proc->vals[j] - Ac_rap->on_proc->vals[j]) < 1e-06);
+                ASSERT_EQ(Ac->on_proc->idx2[j], Ac_rap->on_proc->idx2[j]);
+                ASSERT_NEAR(Ac->on_proc->vals[j], Ac_rap->on_proc->vals[j], 1e-06);
             }
 
-            assert(Ac->off_proc->idx1[i+1] == Ac_rap->off_proc->idx1[i+1]);
+            ASSERT_EQ(Ac->off_proc->idx1[i+1], Ac_rap->off_proc->idx1[i+1]);
             start = Ac->off_proc->idx1[i];
             end = Ac->off_proc->idx1[i+1];
             for (int j = start; j < end; j++)
             {
-                assert(Ac->off_proc_column_map[Ac->off_proc->idx2[j]] == 
+                ASSERT_EQ(Ac->off_proc_column_map[Ac->off_proc->idx2[j]],
                         Ac_rap->off_proc_column_map[Ac_rap->off_proc->idx2[j]]);
-                assert(fabs(Ac->off_proc->vals[j] - Ac_rap->off_proc->vals[j]) < 1e-06);
+                ASSERT_NEAR(Ac->off_proc->vals[j], Ac_rap->off_proc->vals[j], 1e-06);
             }
         }
 
@@ -161,4 +174,5 @@ int main(int argc, char* argv[])
         delete AP_csc;
         delete Ac_rap;
     }
-}
+
+} // end of TEST(TestParRAP, TestsInRuge_Stuben) //

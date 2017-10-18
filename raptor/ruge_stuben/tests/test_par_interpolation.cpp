@@ -142,7 +142,8 @@ int main(int argc, char* argv[])
     delete S;
     delete A;
 
-/*    A = readParMatrix("../../tests/rss_aniso_A0.mtx", MPI_COMM_WORLD, 1, 1);
+/*    
+    A = readParMatrix("../../tests/rss_aniso_A0.mtx", MPI_COMM_WORLD, 1, 1);
     S = A->strength(0.0);
     P_rap = form_Prap(A, S, "../../tests/rss_aniso_cf0.txt", &first_row, &first_col);
     P = readParMatrix("../../tests/rss_aniso_P0.mtx", MPI_COMM_WORLD, 1, 0, 
@@ -162,7 +163,8 @@ int main(int argc, char* argv[])
     delete P;
     delete P_rap;
     delete S;
-    delete A;*/
+    delete A;
+*/
 
     MPI_Finalize();
 

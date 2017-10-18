@@ -1,5 +1,11 @@
-#include <assert.h>
+// EXPECT_EQ and ASSERT_EQ are macros
+// EXPECT_EQ test execution and continues even if there is a failure
+// ASSERT_EQ test execution and aborts if there is a failure
+// The ASSERT_* variants abort the program execution if an assertion fails 
+// while EXPECT_* variants continue with the run.
 
+
+#include "gtest/gtest.h"
 #include "core/types.hpp"
 #include "core/matrix.hpp"
 #include "core/par_matrix.hpp"
@@ -9,9 +15,17 @@
 
 using namespace raptor;
 
-int main(int argc, char* argv[])
+int main(int argc, char** argv)
 {
     MPI_Init(&argc, &argv);
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+    MPI_Finalize();
+
+} // end of main() //
+
+TEST(ParCommTest, TestsInCore)
+{
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
@@ -33,11 +47,12 @@ int main(int argc, char* argv[])
     }
 
     A->comm->communicate(x);
-
-    assert(A->off_proc_num_cols > 0);
+    ASSERT_GT(A->off_proc_num_cols, 0);
+    
     for (int i = 0; i < A->off_proc_num_cols; i++)
     {
-        assert(fabs(A->comm->recv_data->buffer[i] - A->off_proc_column_map[i]) < zero_tol);
+        //assert(fabs(A->comm->recv_data->buffer[i] - A->off_proc_column_map[i]) < zero_tol);
+        ASSERT_NEAR(A->comm->recv_data->buffer[i], A->off_proc_column_map[i], zero_tol);
     }
 
     double A_dense[10000] = {0};
@@ -49,25 +64,26 @@ int main(int argc, char* argv[])
         }
     }
 
+
     CSRMatrix* recv_mat = A->comm->communicate(A);
     for (int i = 0; i < A->off_proc_num_cols; i++)
     {
         int global_row = A->off_proc_column_map[i];
         int row_start = recv_mat->idx1[i];
         int row_end = recv_mat->idx1[i+1];
+
         for (int j = row_start; j < row_end; j++)
         {
             int global_col = recv_mat->idx2[j];
             double val = recv_mat->vals[j];
-            assert(fabs(A_dense[global_row*100 + global_col] - val) < zero_tol);
+            //assert(fabs(A_dense[global_row*100 + global_col] - val) < zero_tol);
+            ASSERT_NEAR(A_dense[global_row*100 + global_col], val, zero_tol);
         }
+
     }
 
     delete A;
     delete recv_mat;
 
-    MPI_Finalize();
-}
-
-
+} // end of TEST(ParCommTest, TestsInCore) //
 

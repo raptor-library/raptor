@@ -1,10 +1,26 @@
-#include <assert.h>
+// EXPECT_EQ and ASSERT_EQ are macros
+// EXPECT_EQ test execution and continues even if there is a failure
+// ASSERT_EQ test execution and aborts if there is a failure
+// The ASSERT_* variants abort the program execution if an assertion fails 
+// while EXPECT_* variants continue with the run.
 
+
+#include "gtest/gtest.h"
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "gallery/par_matrix_IO.hpp"
 
 using namespace raptor;
+
+int main(int argc, char** argv)
+{
+    MPI_Init(&argc, &argv);
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+    MPI_Finalize();
+
+} // end of main() //
+
 
 void compare(ParCSRMatrix* S, ParCSRBoolMatrix* S_rap)
 {
@@ -15,40 +31,38 @@ void compare(ParCSRMatrix* S, ParCSRBoolMatrix* S_rap)
     S_rap->sort();
     S_rap->on_proc->move_diag();
 
-    assert(S->global_num_rows == S_rap->global_num_rows);
-    assert(S->local_num_rows == S_rap->local_num_rows);
-    assert(S->global_num_cols == S_rap->global_num_cols);
-    assert(S->on_proc_num_cols == S_rap->on_proc_num_cols);
-    assert(S->local_nnz == S_rap->local_nnz);
+    EXPECT_EQ(S->global_num_rows, S_rap->global_num_rows);
+    EXPECT_EQ(S->local_num_rows, S_rap->local_num_rows);
+    EXPECT_EQ(S->global_num_cols, S_rap->global_num_cols);
+    EXPECT_EQ(S->on_proc_num_cols, S_rap->on_proc_num_cols);
+    EXPECT_EQ(S->local_nnz, S_rap->local_nnz);
 
-    assert(S->on_proc->idx1[0] == S_rap->on_proc->idx1[0]);
-    assert(S->off_proc->idx1[0] == S_rap->off_proc->idx1[0]);
+    EXPECT_EQ(S->on_proc->idx1[0], S_rap->on_proc->idx1[0]);
+    EXPECT_EQ(S->off_proc->idx1[0], S_rap->off_proc->idx1[0]);
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        assert(S->on_proc->idx1[i+1] == S_rap->on_proc->idx1[i+1]);
+        ASSERT_EQ(S->on_proc->idx1[i+1], S_rap->on_proc->idx1[i+1]);
         start = S->on_proc->idx1[i];
         end = S->on_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            assert(S->on_proc->idx2[j] == S_rap->on_proc->idx2[j]);
+            ASSERT_EQ(S->on_proc->idx2[j], S_rap->on_proc->idx2[j]);
             //assert(fabs(S->on_proc->vals[j] - S_rap->on_proc->vals[j]) < 1e-06);
         }
 
-        assert(S->off_proc->idx1[i+1] == S_rap->off_proc->idx1[i+1]);
+        ASSERT_EQ(S->off_proc->idx1[i+1], S_rap->off_proc->idx1[i+1]);
         start = S->off_proc->idx1[i];
         end = S->off_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            assert(S->off_proc_column_map[S->off_proc->idx2[j]] == 
+            ASSERT_EQ(S->off_proc_column_map[S->off_proc->idx2[j]], 
                     S_rap->off_proc_column_map[S_rap->off_proc->idx2[j]]);
             //assert(fabs(S->off_proc->vals[j] - S_rap->off_proc->vals[j]) < 1e-06);
         }
     }
 }
-
-int main(int argc, char* argv[])
+TEST(ParStrengthTest, TestsInTests)
 {
-    MPI_Init(&argc, &argv);
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
@@ -89,5 +103,5 @@ int main(int argc, char* argv[])
     delete S;
     delete S_rap;
 
-    MPI_Finalize();
-}
+} // end of  //
+

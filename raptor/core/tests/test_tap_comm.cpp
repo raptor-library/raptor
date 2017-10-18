@@ -1,5 +1,11 @@
-#include <assert.h>
+// EXPECT_EQ and ASSERT_EQ are macros
+// EXPECT_EQ test execution and continues even if there is a failure
+// ASSERT_EQ test execution and aborts if there is a failure
+// The ASSERT_* variants abort the program execution if an assertion fails 
+// while EXPECT_* variants continue with the run.
 
+
+#include "gtest/gtest.h"
 #include "core/types.hpp"
 #include "core/matrix.hpp"
 #include "core/par_matrix.hpp"
@@ -10,10 +16,16 @@
 
 using namespace raptor;
 
-int main(int argc, char* argv[])
+int main(int argc, char** argv)
 {
     MPI_Init(&argc, &argv);
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+    MPI_Finalize();
 
+} // end of main() //
+TEST(TAPCommTest, TestsInCore)
+{
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
@@ -33,23 +45,18 @@ int main(int argc, char* argv[])
     }
 
     TAPComm* tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
-
     std::vector<double>& tap_recv = tap_comm->communicate(x, MPI_COMM_WORLD);
     std::vector<double>& par_recv = A->comm->communicate(x, MPI_COMM_WORLD);
-    assert(tap_recv.size() == par_recv.size());
+    ASSERT_EQ(tap_recv.size(), par_recv.size());
 
     for (int i = 0; i < par_recv.size(); i++)
     {
-        assert(fabs(par_recv[i] - tap_recv[i]) < zero_tol);
+        ASSERT_NEAR(par_recv[i], tap_recv[i], zero_tol);
     }
 
     delete[] stencil;
     delete A;
     delete tap_comm;
 
-    MPI_Finalize();
-}
 
-
-
-
+} // end of TEST(TAPCommTest, TestsInCore) //
