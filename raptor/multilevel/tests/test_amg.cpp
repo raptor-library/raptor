@@ -1,5 +1,11 @@
-#include <assert.h>
+// EXPECT_EQ and ASSERT_EQ are macros
+// EXPECT_EQ test execution and continues even if there is a failure
+// ASSERT_EQ test execution and aborts if there is a failure
+// The ASSERT_* variants abort the program execution if an assertion fails 
+// while EXPECT_* variants continue with the run.
 
+
+#include "gtest/gtest.h"
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "multilevel/multilevel.hpp"
@@ -9,11 +15,25 @@
 #include "gallery/par_stencil.hpp"
 //#include "gallery/external/mfem_wrapper.hpp"
 
-using namespace raptor;
 
-int main(int argc, char* argv[])
+int argc;
+char **argv;
+
+int main(int _argc, char** _argv)
 {
-    MPI_Init(&argc, &argv);
+    MPI_Init(&_argc, &_argv);
+    
+    ::testing::InitGoogleTest(&_argc, _argv);
+    argc = _argc;
+    argv = _argv;
+    return RUN_ALL_TESTS();
+    
+    MPI_Finalize();
+
+} // end of main() //
+
+TEST(ParAMGTest, TestsInMultilevel)
+{
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
@@ -73,7 +93,8 @@ int main(int argc, char* argv[])
         A = par_stencil_grid(stencil, grid.data(), dim);
         delete[] stencil;
     }
-/*    else if (system == 2)
+/*    
+    else if (system == 2)
     {
         char* mesh_file = "../../../../../mfem/data/beam-tet.mesh";
         int num_elements = 2;
@@ -93,7 +114,8 @@ int main(int argc, char* argv[])
         }
         A = mfem_linear_elasticity(mesh_file, num_elements, order);
     }
-*/    else if (system == 3)
+*/
+    else if (system == 3)
     {
         char* file = "../../../../examples/LFAT5.mtx";
         A = readParMatrix(file, MPI_COMM_WORLD, 1, 1);
@@ -152,11 +174,5 @@ int main(int argc, char* argv[])
 
     delete ml;
     delete A;
-
-    MPI_Finalize();
-
-    return 0;
-}
-
-
-
+    
+} // end of TEST(ParAMGTest, TestsInMultilevel) //
