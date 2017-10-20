@@ -129,20 +129,3 @@ TEST(TestSplitting, TestsInRuge_Stuben)
 
 } // end of TEST(TestSplitting, TestsInRuge_Stuben) //
 
-/*
-#include <assert.h>
-
-int main(int argc, char* argv[])
-{
-
-
-
-
-
-
-
-
-    return 0;
-}
-
-*/

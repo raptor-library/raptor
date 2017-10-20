@@ -1,5 +1,11 @@
-#include <assert.h>
+// EXPECT_EQ and ASSERT_EQ are macros
+// EXPECT_EQ test execution and continues even if there is a failure
+// ASSERT_EQ test execution and aborts if there is a failure
+// The ASSERT_* variants abort the program execution if an assertion fails 
+// while EXPECT_* variants continue with the run.
 
+
+#include "gtest/gtest.h"
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "gallery/par_matrix_IO.hpp"
@@ -16,11 +22,11 @@ void compare(ParCSRMatrix* P, ParCSRMatrix* P_rap)
 {
     int start, end;
 
-    assert(P->global_num_rows == P_rap->global_num_rows);
-    assert(P->global_num_cols == P_rap->global_num_cols);
-    assert(P->local_num_rows == P_rap->local_num_rows);
-    assert(P->on_proc_num_cols == P_rap->on_proc_num_cols);
-    assert(P->off_proc_num_cols == P_rap->off_proc_num_cols);
+    ASSERT_EQ(P->global_num_rows, P_rap->global_num_rows);
+    ASSERT_EQ(P->global_num_cols, P_rap->global_num_cols);
+    ASSERT_EQ(P->local_num_rows, P_rap->local_num_rows);
+    ASSERT_EQ(P->on_proc_num_cols, P_rap->on_proc_num_cols);
+    ASSERT_EQ(P->off_proc_num_cols, P_rap->off_proc_num_cols);
 
     P->on_proc->sort();
     P->on_proc->move_diag();
@@ -29,26 +35,26 @@ void compare(ParCSRMatrix* P, ParCSRMatrix* P_rap)
     P_rap->on_proc->move_diag();
     P_rap->off_proc->sort();
 
-    assert(P->on_proc->idx1[0] == P_rap->on_proc->idx1[0]);
-    assert(P->off_proc->idx1[0] == P_rap->off_proc->idx1[0]);
+    ASSERT_EQ(P->on_proc->idx1[0], P_rap->on_proc->idx1[0]);
+    ASSERT_EQ(P->off_proc->idx1[0], P_rap->off_proc->idx1[0]);
     for (int i = 0; i < P->local_num_rows; i++)
     {
-        assert(P->on_proc->idx1[i+1] == P_rap->on_proc->idx1[i+1]);
+        ASSERT_EQ(P->on_proc->idx1[i+1], P_rap->on_proc->idx1[i+1]);
         start = P->on_proc->idx1[i];
         end = P->on_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            assert(P->on_proc->idx2[j] == P_rap->on_proc->idx2[j]);
-            assert(fabs(P->on_proc->vals[j] - P_rap->on_proc->vals[j]) < 1e-06);
+            ASSERT_EQ(P->on_proc->idx2[j], P_rap->on_proc->idx2[j]);
+            ASSERT_NEAR(P->on_proc->vals[j], P_rap->on_proc->vals[j], 1e-06);
         }
 
-        assert(P->off_proc->idx1[i+1] == P_rap->off_proc->idx1[i+1]);
+        ASSERT_EQ(P->off_proc->idx1[i+1], P_rap->off_proc->idx1[i+1]);
         start = P->off_proc->idx1[i];
         end = P->off_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            assert(P->off_proc->idx2[j] == P_rap->off_proc->idx2[j]);
-            assert(fabs(P->off_proc->vals[j] - P_rap->off_proc->vals[j]) < 1e-06);
+            ASSERT_EQ(P->off_proc->idx2[j], P_rap->off_proc->idx2[j]);
+            ASSERT_NEAR(P->off_proc->vals[j], P_rap->off_proc->vals[j], 1e-06);
         }
     }
 }
@@ -104,10 +110,17 @@ ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRBoolMatrix* S, char* filename, in
     return P_rap;
 }
 
-int main(int argc, char* argv[])
+int main(int argc, char** argv)
 {
     MPI_Init(&argc, &argv);
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+    MPI_Finalize();
 
+} // end of main() //
+
+TEST(TestParInterpolation, TestsInRuge_Stuben)
+{ 
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
@@ -166,8 +179,6 @@ int main(int argc, char* argv[])
     delete A;
 */
 
-    MPI_Finalize();
 
-    return 0;
-}
+} // end of TEST(TestParInterpolation, TestsInRuge_Stuben) //
 

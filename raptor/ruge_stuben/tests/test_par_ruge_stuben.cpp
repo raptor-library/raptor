@@ -1,5 +1,11 @@
-#include <assert.h>
+// EXPECT_EQ and ASSERT_EQ are macros
+// EXPECT_EQ test execution and continues even if there is a failure
+// ASSERT_EQ test execution and aborts if there is a failure
+// The ASSERT_* variants abort the program execution if an assertion fails 
+// while EXPECT_* variants continue with the run.
 
+
+#include "gtest/gtest.h"
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "gallery/par_matrix_IO.hpp"
@@ -13,6 +19,15 @@
 #include <fstream>
 
 using namespace raptor;
+
+int main(int argc, char** argv)
+{
+    MPI_Init(&argc, &argv);
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+    MPI_Finalize();
+
+} // end of main() //
 
 void read_splitting(int local_rows, char* filename, std::vector<int>& splitting)
 {
@@ -142,11 +157,11 @@ void compare(ParMatrix* P, ParCSRMatrix* P_rap)
 {
     int start, end;
 
-    assert(P->global_num_rows == P_rap->global_num_rows);
-    assert(P->global_num_cols == P_rap->global_num_cols);
-    assert(P->local_num_rows == P_rap->local_num_rows);
-    assert(P->on_proc_num_cols == P_rap->on_proc_num_cols);
-    assert(P->off_proc_num_cols == P_rap->off_proc_num_cols);
+    ASSERT_EQ(P->global_num_rows, P_rap->global_num_rows);
+    ASSERT_EQ(P->global_num_cols, P_rap->global_num_cols);
+    ASSERT_EQ(P->local_num_rows, P_rap->local_num_rows);
+    ASSERT_EQ(P->on_proc_num_cols, P_rap->on_proc_num_cols);
+    ASSERT_EQ(P->off_proc_num_cols, P_rap->off_proc_num_cols);
 
     P->on_proc->sort();
     P->on_proc->move_diag();
@@ -155,35 +170,35 @@ void compare(ParMatrix* P, ParCSRMatrix* P_rap)
     P_rap->on_proc->move_diag();
     P_rap->off_proc->sort();
 
-    assert(P->on_proc->idx1[0] == P_rap->on_proc->idx1[0]);
-    assert(P->off_proc->idx1[0] == P_rap->off_proc->idx1[0]);
+    ASSERT_EQ(P->on_proc->idx1[0], P_rap->on_proc->idx1[0]);
+    ASSERT_EQ(P->off_proc->idx1[0], P_rap->off_proc->idx1[0]);
     for (int i = 0; i < P->local_num_rows; i++)
     {
-        assert(P->on_proc->idx1[i+1] == P_rap->on_proc->idx1[i+1]);
+        ASSERT_EQ(P->on_proc->idx1[i+1], P_rap->on_proc->idx1[i+1]);
         start = P->on_proc->idx1[i];
         end = P->on_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            assert(P->on_proc->idx2[j] == P_rap->on_proc->idx2[j]);
+            ASSERT_EQ(P->on_proc->idx2[j], P_rap->on_proc->idx2[j]);
             if (P_rap->on_proc->format() == CSR)
-                assert(fabs(P->on_proc->vals[j] - P_rap->on_proc->vals[j]) < 1e-06);
+                ASSERT_NEAR(P->on_proc->vals[j], P_rap->on_proc->vals[j], 1e-06);
         }
 
-        assert(P->off_proc->idx1[i+1] == P_rap->off_proc->idx1[i+1]);
+        ASSERT_EQ(P->off_proc->idx1[i+1], P_rap->off_proc->idx1[i+1]);
         start = P->off_proc->idx1[i];
         end = P->off_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            assert(P->off_proc->idx2[j] == P_rap->off_proc->idx2[j]);
+            ASSERT_EQ(P->off_proc->idx2[j], P_rap->off_proc->idx2[j]);
             if (P_rap->off_proc->format() == CSR)
-                assert(fabs(P->off_proc->vals[j] - P_rap->off_proc->vals[j]) < 1e-06);
+                ASSERT_NEAR(P->off_proc->vals[j], P_rap->off_proc->vals[j], 1e-06);
         }
     }
     
-    assert(P->comm->send_data->num_msgs == P_rap->comm->send_data->num_msgs);
-    assert(P->comm->send_data->size_msgs == P_rap->comm->send_data->size_msgs);
-    assert(P->comm->recv_data->num_msgs == P_rap->comm->recv_data->num_msgs);
-    assert(P->comm->recv_data->size_msgs == P_rap->comm->recv_data->size_msgs);
+    ASSERT_EQ(P->comm->send_data->num_msgs, P_rap->comm->send_data->num_msgs);
+    ASSERT_EQ(P->comm->send_data->size_msgs, P_rap->comm->send_data->size_msgs);
+    ASSERT_EQ(P->comm->recv_data->num_msgs, P_rap->comm->recv_data->num_msgs);
+    ASSERT_EQ(P->comm->recv_data->size_msgs, P_rap->comm->recv_data->size_msgs);
 
     // TODO -- can compare send indices (need to sort procs)
     // Add idx of each proc to vector
@@ -192,7 +207,7 @@ void compare(ParMatrix* P, ParCSRMatrix* P_rap)
     int num_procs;
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     std::vector<int> proc_idx(num_procs);
-    assert(P->comm->send_data->indptr[0] == P_rap->comm->send_data->indptr[0]);
+    ASSERT_EQ(P->comm->send_data->indptr[0], P_rap->comm->send_data->indptr[0]);
     for (int i = 0; i < P->comm->send_data->num_msgs; i++)
     {
         int proc = P->comm->send_data->procs[i];
@@ -207,30 +222,30 @@ void compare(ParMatrix* P, ParCSRMatrix* P_rap)
         end = P->comm->send_data->indptr[idx+1];
         int start_rap = P_rap->comm->send_data->indptr[i];
         int end_rap = P_rap->comm->send_data->indptr[i+1];
-        assert(end - start == end_rap - start_rap);
+        ASSERT_EQ(end - start, (end_rap - start_rap));
         int size = end - start;
         for (int j = 0; j < size; j++)
         {
-            assert(P->comm->send_data->indices[start + j]
-                    == P_rap->comm->send_data->indices[start_rap + j]);
+            ASSERT_EQ(P->comm->send_data->indices[start + j],
+                      P_rap->comm->send_data->indices[start_rap + j]);
         }
     }
-    assert(P->comm->recv_data->indptr[0] == P_rap->comm->recv_data->indptr[0]);
+    ASSERT_EQ(P->comm->recv_data->indptr[0], P_rap->comm->recv_data->indptr[0]);
     for (int i = 0; i < P->comm->recv_data->num_msgs; i++)
     {
-        assert(P->comm->recv_data->indptr[i+1] == P_rap->comm->recv_data->indptr[i+1]);
+        ASSERT_EQ(P->comm->recv_data->indptr[i+1], P_rap->comm->recv_data->indptr[i+1]);
         start = P->comm->recv_data->indptr[i];
         end = P->comm->recv_data->indptr[i+1];
         for (int j = start; j < end; j++)
         {
-            assert(P->comm->recv_data->indices[j] == P_rap->comm->recv_data->indices[j]);
+            ASSERT_EQ(P->comm->recv_data->indices[j], P_rap->comm->recv_data->indices[j]);
         }
     }
 }
 
-int main(int argc, char* argv[])
-{
-    MPI_Init(&argc, &argv);
+
+TEST(TestParRugeStuben, TestsInRuge_Stuben)
+{ 
 
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -309,7 +324,7 @@ int main(int argc, char* argv[])
     S1->comm->communicate(splitting);
     for (int i = 0; i < S1->off_proc_num_cols; i++)
     {
-        assert(off_splitting[i] == S1->comm->recv_data->int_buffer[i]);
+        ASSERT_EQ(off_splitting[i], S1->comm->recv_data->int_buffer[i]);
     }
 
     ParCSRMatrix* P1 = direct_interpolation(A1, S1, splitting, off_splitting);
@@ -391,10 +406,4 @@ int main(int argc, char* argv[])
     delete P0;
     delete A0;
 
-
-    MPI_Finalize();
-
-    return 0;
-}
-
-
+} // end of TEST(TestParRugeStuben, TestsInRuge_Stuben) //

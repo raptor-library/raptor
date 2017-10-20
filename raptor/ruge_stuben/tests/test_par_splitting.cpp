@@ -1,5 +1,11 @@
-#include <assert.h>
+// EXPECT_EQ and ASSERT_EQ are macros
+// EXPECT_EQ test execution and continues even if there is a failure
+// ASSERT_EQ test execution and aborts if there is a failure
+// The ASSERT_* variants abort the program execution if an assertion fails 
+// while EXPECT_* variants continue with the run.
 
+
+#include "gtest/gtest.h"
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "gallery/par_matrix_IO.hpp"
@@ -15,10 +21,17 @@
 
 using namespace raptor;
 
-int main(int argc, char* argv[])
+int main(int argc, char** argv)
 {
     MPI_Init(&argc, &argv);
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+    MPI_Finalize();
 
+} // end of main() //
+
+TEST(TestParSplitting, TestsInRuge_Stuben)
+{ 
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
@@ -42,14 +55,13 @@ int main(int argc, char* argv[])
     {
         int cf;
         fscanf(f, "%d\n", &cf);
-        assert(cf == splitting_seq[i]);
+        ASSERT_EQ(cf, splitting_seq[i]);
     }
 
     fclose(f);
 
     delete S_seq;
     delete A_seq;
-
 
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 3);
     S = A->strength(0.25);
@@ -69,8 +81,8 @@ int main(int argc, char* argv[])
     {
         int cf;
         fscanf(f, "%d\n", &cf);
-        assert(cf == splitting[i]);
-        assert(splitting[i] == splitting_seq[i + A->partition->first_local_row]);
+        ASSERT_EQ(cf, splitting[i]);
+        ASSERT_EQ(splitting[i], splitting_seq[i + A->partition->first_local_row]);
     }
 
     fclose(f);
@@ -80,7 +92,4 @@ int main(int argc, char* argv[])
 
     delete[] stencil;
 
-    MPI_Finalize();
-
-    return 0;
 }
