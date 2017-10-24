@@ -3,7 +3,8 @@
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "gallery/par_matrix_IO.hpp"
-#include "util/linalg/external/repartition.hpp"
+#include "util/linalg/repartition.hpp"
+#include "util/linalg/external/ptscotch.hpp"
 
 using namespace raptor;
 
