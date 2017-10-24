@@ -471,7 +471,7 @@ void make_contiguous(ParCSRMatrix* A, const std::vector<int>& on_proc_column_map
     A->off_proc->sort();
 }
 
-ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition)
+ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, std::vector<int>& new_local_rows)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -778,14 +778,17 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition)
         *it = global_to_local[*it];
     }
 
+    new_local_rows.resize(A_part->on_proc_num_cols);
+    std::copy(A_part->on_proc_column_map.begin(), A_part->on_proc_column_map.end(),
+            new_local_rows.begin());
     make_contiguous(A_part, A_part->on_proc_column_map);
 
     return A_part;
 }
 
-ParCSRMatrix* repartition_matrix(ParCSRMatrix* A)
+ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, std::vector<int>& new_local_rows)
 {
-    return repartition_matrix(A, ptscotch_partition(A));
+    return repartition_matrix(A, ptscotch_partition(A), new_local_rows);
 }
 
 

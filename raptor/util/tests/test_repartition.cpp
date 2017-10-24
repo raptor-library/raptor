@@ -35,6 +35,7 @@ int main(int argc, char* argv[])
     char* filename = "../../../../examples/LFAT5.mtx";
     if (argc > 1) filename = argv[1];
     int n_tests = 100;
+    std::vector<int> new_local_rows;
 
     // Create RowWise Partition 
     ParCSRMatrix* A_orig = readParMatrix(filename, MPI_COMM_WORLD, 
@@ -44,7 +45,10 @@ int main(int argc, char* argv[])
     ParVector b_orig(A_orig->global_num_rows, A_orig->local_num_rows, 
             A_orig->partition->first_local_row);
     A_orig->tap_comm = new TAPComm(A_orig->partition, A_orig->off_proc_column_map);
-    
+    for (int i = 0; i < A_orig->local_num_rows; i++)
+    {
+        x_orig[i] = A_orig->on_proc_column_map[i];
+    }
 
     for (int i = 0; i < 3; i++)
     {
@@ -81,13 +85,16 @@ int main(int argc, char* argv[])
     {
         proc_part[i] = i % num_procs;
     }
-    ParCSRMatrix* A_rr = repartition_matrix(A_orig, proc_part);
+    ParCSRMatrix* A_rr = repartition_matrix(A_orig, proc_part, new_local_rows);
     ParVector x_rr(A_rr->global_num_rows, A_rr->local_num_rows, 
             A_rr->partition->first_local_row);
     ParVector b_rr(A_rr->global_num_rows, A_rr->local_num_rows, 
             A_rr->partition->first_local_row);
     A_rr->tap_comm = new TAPComm(A_rr->partition, A_rr->off_proc_column_map);
-    x_rr.set_const_value(1.0);
+    for (int i = 0; i < A_rr->local_num_rows; i++)
+    {
+        x_rr[i] = new_local_rows[i];
+    }
     delete[] proc_part;
 
     for (int i = 0; i < 3; i++)
@@ -121,7 +128,7 @@ int main(int argc, char* argv[])
     // Time Graph Partitioning
     t0 = MPI_Wtime();
     proc_part = ptscotch_partition(A_orig);
-    ParCSRMatrix* A = repartition_matrix(A_orig, proc_part);
+    ParCSRMatrix* A = repartition_matrix(A_orig, proc_part, new_local_rows);
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Partitioning Time %e\n", t0);
@@ -130,7 +137,10 @@ int main(int argc, char* argv[])
     ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
-    x.set_const_value(1.0);
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        x[i] = new_local_rows[i];
+    }
 
     for (int i = 0; i < 3; i++)
     {
