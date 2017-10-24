@@ -110,13 +110,14 @@ int main(int argc, char *argv[])
 
     //int coarsen_type = 0; // CLJP
     int coarsen_type = 6; // FALGOUT
-    int interp_type = 0; 
+    //int interp_type = 3; 
+    int interp_type = 0;
     double strong_threshold = 0.25;
     int agg_num_levels = 0;
     int p_max_elmts = 0;
 
     int cache_len = 10000;
-    int num_tests = 5;
+    int num_tests = 2;
 
     std::vector<double> cache_array(cache_len);
 
