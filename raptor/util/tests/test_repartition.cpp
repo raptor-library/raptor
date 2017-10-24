@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
     ParVector b_orig(A_orig->global_num_rows, A_orig->local_num_rows, 
             A_orig->partition->first_local_row);
     A_orig->tap_comm = new TAPComm(A_orig->partition, A_orig->off_proc_column_map);
-    x_orig.set_const_value(1.0);
+    
 
     for (int i = 0; i < 3; i++)
     {
