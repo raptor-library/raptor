@@ -278,6 +278,8 @@ namespace raptor
                     }
                     printf("Rnorm = %e\n", r_norm);
                 }
+
+                sol.copy(levels[0]->x);
             } 
 
             std::vector<Level*> levels;
