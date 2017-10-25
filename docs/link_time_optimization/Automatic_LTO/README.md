@@ -6,6 +6,9 @@ Procedure for automatic Link Time Optimization (also known as Interprocedural op
 
     cmake_minimum_required(VERSION 3.9)
 
+    Additionally,the following line also has to be included in this CMakeLists.txt:
+    
+    include(CheckIPOSupported)
 
 2.- Check if iterprocedural optimizations are allowed (building the raptor library) .
 
