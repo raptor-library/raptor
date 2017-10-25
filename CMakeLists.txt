@@ -116,16 +116,16 @@ if (WITH_AMPI)
 	add_definitions(-DUSE_AMPI)
 endif(WITH_AMPI)
 
-#///////////// star information of google test /////////////////////////////////////////////
+#/////////////////////////// star information of google test ///////////////////////////////
 set(GOOGLETEST_ROOT external/googletest/googletest CACHE STRING "Google Test source root")
-MESSAGE( STATUS "GOOGLETEST_ROOT: "    ${GOOGLETEST_ROOT} )
+#MESSAGE( STATUS "GOOGLETEST_ROOT: "    ${GOOGLETEST_ROOT} )
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}
     ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/include
     )
 
-MESSAGE( STATUS "PROJECT_SOURCE_DIR: "    ${PROJECT_SOURCE_DIR} )
+#MESSAGE( STATUS "PROJECT_SOURCE_DIR: "    ${PROJECT_SOURCE_DIR} )
 
 set(GOOGLETEST_SOURCES
     ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/src/gtest-all.cc
@@ -139,8 +139,8 @@ foreach(_source ${GOOGLETEST_SOURCES})
 endforeach()
 
 
-add_library(googletest ${GOOGLETEST_SOURCES})
-#///////////// end information of google test /////////////////////////////////////////////
+add_library(googletest STATIC ${GOOGLETEST_SOURCES})
+#///////////////////////////// end information of google test //////////////////////////////
 
 add_subdirectory(raptor)
 
