@@ -18,3 +18,8 @@ Important: One think that seems to have an effect in all cases is the
 linker (ld) version; LTO seems to work only when the version of the
 linker used 2.21 and older. So check your linker version (ld --version).
 
+Update: 10/25/2017 
+
+A new directory (Automatic_LTO) was added discussing automatic link time optimization.
+
+
