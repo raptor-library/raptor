@@ -38,30 +38,33 @@ int main(int argc, char* argv[])
 {
     CSRMatrix* A;
     CSRMatrix* S;
+    CSRBoolMatrix* S_bool;
     CSRMatrix* P;
     CSRMatrix* P_rap;
     std::vector<int> splitting;
     A = readMatrix("../../tests/rss_laplace_A0.mtx", 1);
     P = readMatrix("../../tests/rss_laplace_P0.mtx", 0);
-    S = A->strength(0.25);
-    split_rs(S, splitting);
-    P_rap = direct_interpolation(A, S, splitting);
+    S = readMatrix("../../tests/rss_laplace_S0.mtx", 1);
+    S_bool = new CSRBoolMatrix(S);
+    split_rs(S_bool, splitting);
+    P_rap = direct_interpolation(A, S_bool, splitting);
     compare(P, P_rap);
     delete A;
     delete P;
     delete S;
+    delete S_bool;
     delete P_rap;
 
     A = readMatrix("../../tests/rss_laplace_A1.mtx", 0);
     P = readMatrix("../../tests/rss_laplace_P1.mtx", 0);
-    S = A->strength(0.25);
-    split_rs(S, splitting);
-    P_rap = direct_interpolation(A, S, splitting);
-    compare(P, P_rap);
+    //S = A->strength(0.25);
+    //split_rs(S, splitting);
+    //P_rap = direct_interpolation(A, S, splitting);
+    //compare(P, P_rap);
     delete A;
     delete P;
-    delete S;
-    delete P_rap;
+    //delete S;
+    //delete P_rap;
 
     return 0;
 }

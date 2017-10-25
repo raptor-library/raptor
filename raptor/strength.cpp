@@ -1,15 +1,16 @@
-#include "core/par_matrix.hpp"
+#include "core/matrix.hpp"
 
 using namespace raptor;
 
 // Assumes ParCSRMatrix is previously sorted
 // TODO -- have ParCSRMatrix bool sorted (and sort if not previously)
-CSRMatrix* CSRMatrix::strength(double theta)
+CSRBoolMatrix* CSRMatrix::strength(double theta)
 {
     int start, end;
-    double val, abs_val;
-    double row_max;
+    double val;
+    double row_scale;
     double threshold;
+    double diag;
 
     if (!sorted)
     {
@@ -20,7 +21,7 @@ CSRMatrix* CSRMatrix::strength(double theta)
         move_diag();
     }
 
-    CSRMatrix* S = new CSRMatrix(n_rows, n_cols, nnz);
+    CSRBoolMatrix* S = new CSRBoolMatrix(n_rows, n_cols, nnz);
 
     S->idx1[0] = 0;
     for (int i = 0; i < n_rows; i++)
@@ -30,41 +31,68 @@ CSRMatrix* CSRMatrix::strength(double theta)
         end = idx1[i+1];
         if (end - start)
         {
-            // Find max off-diagonal
-            row_max = 0.0;
-            for (int j = start + 1; j < end; j++)
+            if (idx2[start] == i)
             {
-                abs_val = fabs(vals[j]);
-                if (abs_val > row_max)
+                diag = vals[start];
+                start++;
+            }
+            else
+            {
+                diag = 0.0;
+            }
+
+            if (diag < 0.0) // find max off-diag value in row
+            {
+                row_scale = -RAND_MAX;
+                for (int j = start; j < end; j++)
                 {
-                    row_max = abs_val;
+                    val = vals[j];
+                    if (val > row_scale)
+                    {
+                        row_scale = val;
+                    }
                 }
             }
-            threshold = row_max*theta;
-
-            // Find largest magnitude in row (including diag)
-            abs_val = fabs(vals[start]);
-            if (abs_val > row_max)
+            else // find min off-diag value in row
             {
-                row_max = abs_val;
+                row_scale = RAND_MAX;
+                for (int j = start; j < end; j++)
+                {
+                    val = vals[j];
+                    if (val < row_scale)
+                    {
+                        row_scale = val;
+                    }
+                }
             }
 
-            // For each value to be added... add absolute value of 
-            // Aij / row_max
-            
+            // Multiply row magnitude by theta
+            threshold = row_scale*theta;
+
             // Always add diagonal
             S->idx2.push_back(i);
-            S->vals.push_back(fabs(vals[start]) / row_max);
-
 
             // Add off-diagonals greater than threshold
-            for (int j = start + 1; j < end; j++)
+            if (diag < 0)
             {
-                val = vals[j];
-                if (fabs(val) >= threshold)
+                for (int j = start; j < end; j++)
                 {
-                    S->idx2.push_back(idx2[j]);
-                    S->vals.push_back(fabs(val) / row_max);
+                    val = vals[j];
+                    if (val > threshold)
+                    {
+                        S->idx2.push_back(idx2[j]);
+                    }
+                }
+            }
+            else
+            {
+                for (int j = start; j < end; j++)
+                {
+                    val = vals[j];
+                    if (val < threshold)
+                    {
+                        S->idx2.push_back(idx2[j]);
+                    }
                 }
             }
         }

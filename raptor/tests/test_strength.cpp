@@ -6,7 +6,7 @@
 
 using namespace raptor;
 
-void compare(CSRMatrix* S, CSRMatrix* S_rap)
+void compare(CSRMatrix* S, CSRBoolMatrix* S_rap)
 {
     int start, end;
 
@@ -28,7 +28,6 @@ void compare(CSRMatrix* S, CSRMatrix* S_rap)
         for (int j = start; j < end; j++)
         {
             assert(S->idx2[j] == S_rap->idx2[j]);
-            assert(fabs(S->vals[j] - S_rap->vals[j]) < 1e-06);
         }
     }
 }
@@ -37,7 +36,7 @@ int main(int argc, char* argv[])
 {
     CSRMatrix* A;
     CSRMatrix* S;
-    CSRMatrix* S_rap;
+    CSRBoolMatrix* S_rap;
 
     A = readMatrix("rss_laplace_A0.mtx", 1);
     S = readMatrix("rss_laplace_S0.mtx", 1);

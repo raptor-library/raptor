@@ -15,7 +15,7 @@
 #include "gallery/external/hypre_wrapper.hpp"
 //#include "gallery/external/mfem_wrapper.hpp"
 #include "gallery/par_matrix_IO.hpp"
-#include "multilevel/multilevel.hpp"
+#include "multilevel/par_multilevel.hpp"
 
 void compare(hypre_ParCSRMatrix* A_h, ParCSRMatrix* A, bool has_data = true, 
         bool hyp_diag = true)
@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
     for (int i = 0; i < num_tests; i++)
     {
         HYPRE_Solver solver_data;
-        Multilevel* ml;
+        ParMultilevel* ml;
 
         x.set_const_value(0.0);
         double* x_h_data = hypre_VectorData(hypre_ParVectorLocalVector(x_h));
@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
         // Setup Raptor Hierarchy
         MPI_Barrier(MPI_COMM_WORLD);    
         t0 = MPI_Wtime();
-        ml = new Multilevel(A, strong_threshold);
+        ml = new ParMultilevel(A, strong_threshold);
         raptor_setup = MPI_Wtime() - t0;
         clear_cache(cache_array);
 

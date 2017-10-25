@@ -18,6 +18,8 @@ if (WITH_MPI)
         util/linalg/spmv.cpp
         util/linalg/matmult.cpp
         util/linalg/relax.cpp
+        util/linalg/repartition.hpp
+        util/linalg/repartition.cpp
         )
 else ()
     set (par_linalg_SOURCES 
@@ -30,8 +32,6 @@ set(linalg_SOURCES
     util/linalg/seq/relax.cpp
     ${par_linalg_SOURCES}
     ${external_linalg_SOURCES}
-    util/linalg/repartition.hpp
-    util/linalg/repartition.cpp
     PARENT_SCOPE
     )
 

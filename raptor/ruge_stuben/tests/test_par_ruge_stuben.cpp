@@ -5,7 +5,7 @@
 #include "gallery/par_matrix_IO.hpp"
 #include "ruge_stuben/par_cf_splitting.hpp"
 #include "ruge_stuben/par_interpolation.hpp"
-#include "multilevel/multilevel.hpp"
+#include "multilevel/par_multilevel.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/laplacian27pt.hpp"
 #include "gallery/par_stencil.hpp"
@@ -240,7 +240,6 @@ int main(int argc, char* argv[])
     ParVector x0;
     ParVector b0;
     ParVector tmp0;
-    Multilevel* ml;
     int first_row, first_col;
     FILE* f;
     int cf;

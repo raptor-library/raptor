@@ -7,7 +7,7 @@
 using namespace raptor;
 
 CSRMatrix* direct_interpolation(CSRMatrix* A,
-        CSRMatrix* S, const std::vector<int>& states)
+        CSRBoolMatrix* S, const std::vector<int>& states)
 {
     int start, end, col;
     int idx, new_idx, ctr;
@@ -26,24 +26,28 @@ CSRMatrix* direct_interpolation(CSRMatrix* A,
     }
 
     // Copy entries of A into sparsity pattern of S
-    CSRMatrix* Sa = new CSRMatrix(S);
+    std::vector<double> sa;
+    if (S->nnz)
+    {
+        sa.resize(S->nnz);
+    }
     for (int i = 0; i < A->n_rows; i++)
     {
-        start = Sa->idx1[i];
-        end = Sa->idx1[i+1];
-        if (Sa->idx2[start] == i) // skip over diag
+        start = S->idx1[i];
+        end = S->idx1[i+1];
+        if (S->idx2[start] == i) // skip over diag
         {
             start++;
         }
         ctr = A->idx1[i];
         for (int j = start; j < end; j++)
         {
-            col = Sa->idx2[j];
+            col = S->idx2[j];
             while (A->idx2[ctr] != col)
             {
                 ctr++;
             }
-            Sa->vals[j] = A->vals[ctr];
+            sa[j] = A->vals[ctr];
         }
     }
 
@@ -79,18 +83,18 @@ CSRMatrix* direct_interpolation(CSRMatrix* A,
             sum_all_pos = 0;
             sum_all_neg = 0;
 
-            start = Sa->idx1[i];
-            end = Sa->idx1[i+1];
-            if (Sa->idx2[start] == i)
+            start = S->idx1[i];
+            end = S->idx1[i+1];
+            if (S->idx2[start] == i)
             {
                 start++;
             }
             for (int j = start; j < end; j++)
             {
-                col = Sa->idx2[j];
+                col = S->idx2[j];
                 if (states[col] == 1)
                 {
-                    val = Sa->vals[j];
+                    val = sa[j];
                     if (val < 0)
                     {
                         sum_strong_neg += val;
@@ -134,18 +138,18 @@ CSRMatrix* direct_interpolation(CSRMatrix* A,
             neg_coeff = -alpha / diag;
             pos_coeff = -beta / diag;
 
-            start = Sa->idx1[i];
-            end = Sa->idx1[i+1];
-            if (Sa->idx2[start] == i)
+            start = S->idx1[i];
+            end = S->idx1[i+1];
+            if (S->idx2[start] == i)
             {
                 start++;
             }
             for (int j = start; j < end; j++)
             {
-                col = Sa->idx2[j];
+                col = S->idx2[j];
                 if (states[col] == 1)
                 {
-                    val = Sa->vals[j];
+                    val = sa[j];
                     P->idx2.push_back(col_to_new[col]);
                     if (val < 0)
                     {
@@ -161,8 +165,6 @@ CSRMatrix* direct_interpolation(CSRMatrix* A,
         P->idx1[i+1] = P->idx2.size();
     }
     P->nnz = P->idx2.size();
-
-    delete Sa;
 
     return P;
 

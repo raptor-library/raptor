@@ -800,7 +800,7 @@ namespace raptor
 
     CSRMatrix* subtract(CSRMatrix* B);
 
-    CSRMatrix* strength(double theta = 0.0);
+    CSRBoolMatrix* strength(double theta = 0.0);
     CSRMatrix* aggregate();
     CSRMatrix* fit_candidates(data_t* B, data_t* R, int num_candidates, 
             double tol = 1e-10);

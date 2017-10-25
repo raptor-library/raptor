@@ -1493,7 +1493,7 @@ void split_rs(ParCSRBoolMatrix* S,
     }
 
     // Call serial ruge-stuben cf_splitting
-    split_rs((CSRMatrix*) S->on_proc, states);
+    split_rs((CSRBoolMatrix*) S->on_proc, states);
 
     if (S->comm == NULL)
     {
@@ -1587,7 +1587,7 @@ void split_falgout(ParCSRBoolMatrix* S,
     /**********************************************
      * Ruge-Stuben on local portion
      **********************************************/
-    split_rs((CSRMatrix*)S->on_proc, states);
+    split_rs((CSRBoolMatrix*)S->on_proc, states);
 
     /**********************************************
      * Reset states of boundary indices
