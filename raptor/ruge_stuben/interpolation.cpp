@@ -16,14 +16,10 @@ CSRMatrix* direct_interpolation(CSRMatrix* A,
     double val, alpha, beta, diag;
     double neg_coeff, pos_coeff;
 
-    if (!A->diag_first)
-    {
-        A->move_diag();
-    }
-    if (!S->diag_first)
-    {
-        S->move_diag();
-    }
+    A->sort();
+    S->sort();
+    A->move_diag();
+    S->move_diag();
 
     // Copy entries of A into sparsity pattern of S
     std::vector<double> sa;
@@ -35,10 +31,6 @@ CSRMatrix* direct_interpolation(CSRMatrix* A,
     {
         start = S->idx1[i];
         end = S->idx1[i+1];
-        if (S->idx2[start] == i) // skip over diag
-        {
-            start++;
-        }
         ctr = A->idx1[i];
         for (int j = start; j < end; j++)
         {
@@ -111,7 +103,6 @@ CSRMatrix* direct_interpolation(CSRMatrix* A,
             diag = A->vals[start];
             for (int j = start+1; j < end; j++)
             {
-                col = A->idx2[j];
                 val = A->vals[j];
                 if (val < 0)
                 {

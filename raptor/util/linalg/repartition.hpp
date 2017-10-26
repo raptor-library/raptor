@@ -11,7 +11,7 @@
 using namespace raptor;
 
 ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, std::vector<int>& new_local_rows);
-void make_noncontiguous(ParCSRMatrix* A, std::vector<int>& column_map);
+void make_contiguous(ParCSRMatrix* A);
 
 #endif
 

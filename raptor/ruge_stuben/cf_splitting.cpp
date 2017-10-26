@@ -419,7 +419,7 @@ int update_states(int remaining, std::vector<int>& unassigned, std::vector<int>&
 }
 
 void cljp_main_loop(CSRBoolMatrix* S, std::vector<int>& col_ptr, std::vector<int>& col_indices,
-        std::vector<int>& states)
+        std::vector<int>& states, double* rand_vals = NULL)
 {
     int num_new_coarse, num_new_fine;
     int remaining;
@@ -446,12 +446,22 @@ void cljp_main_loop(CSRBoolMatrix* S, std::vector<int>& col_ptr, std::vector<int
 
  
     //TODO -- change to random... reading for testing
-    for (int i = 0; i < S->n_rows; i++)
+    if (rand_vals)
     {
-        srand(i);
+        for (int i = 0; i < S->n_rows; i++)
+        {
+            weights[i] = rand_vals[i];
+        }
+    }
+    else
+    {
+        for (int i = 0; i < S->n_rows; i++)
+        {
+            srand(i);
 
-        // Random value [0,1)
-        weights[i] = ((double)(rand())) / RAND_MAX;
+            // Random value [0,1)
+            weights[i] = ((double)(rand())) / RAND_MAX;
+        }
     }
 
     for (int i = 0; i < S->n_rows; i++)
@@ -487,10 +497,16 @@ void cljp_main_loop(CSRBoolMatrix* S, std::vector<int>& col_ptr, std::vector<int
 }
 
 void split_cljp(CSRBoolMatrix* S, 
-        std::vector<int>& states)
+        std::vector<int>& states,
+        double* rand_vals)
 {
     std::vector<int> col_ptr;
     std::vector<int> col_indices;
+
+    if (!S->diag_first)
+    {
+        S->move_diag();
+    }
 
     if (S->n_rows)
     {
@@ -506,7 +522,7 @@ void split_cljp(CSRBoolMatrix* S,
         states[i] = -1;
     }
 
-    cljp_main_loop(S, col_ptr, col_indices, states);
+    cljp_main_loop(S, col_ptr, col_indices, states, rand_vals);
 }
 
 

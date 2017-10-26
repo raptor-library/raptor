@@ -7,33 +7,12 @@
 #include "ruge_stuben/interpolation.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/stencil.hpp"
+#include "tests/compare.hpp"
 
 #include <iostream>
 #include <fstream>
 
 using namespace raptor;
-
-void compare(CSRMatrix* P, CSRMatrix* P_rap)
-{
-    int start, end;
-
-    assert(P->n_rows == P_rap->n_rows);
-    assert(P->n_cols == P_rap->n_cols);
-    assert(P->nnz == P_rap->nnz);
-    assert(P->idx1[0] == P_rap->idx1[0]);
-    for (int i = 0; i < P->n_rows; i++)
-    {
-        assert(P->idx1[i+1] == P_rap->idx1[i+1]);
-        start = P->idx1[i];
-        end = P->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            assert(P->idx2[j] == P_rap->idx2[j]);
-            assert(fabs(P->vals[j] - P_rap->vals[j]) < 1e-06);
-        }
-    }
-}
-
 int main(int argc, char* argv[])
 {
     CSRMatrix* A;
@@ -42,29 +21,54 @@ int main(int argc, char* argv[])
     CSRMatrix* P;
     CSRMatrix* P_rap;
     std::vector<int> splitting;
-    A = readMatrix("../../tests/rss_laplace_A0.mtx", 1);
-    P = readMatrix("../../tests/rss_laplace_P0.mtx", 0);
-    S = readMatrix("../../tests/rss_laplace_S0.mtx", 1);
+    FILE* f;
+
+    // TEST LEVEL 0
+    A = readMatrix("../../../../test_data/rss_A0.mtx", 1);
+    S = readMatrix("../../../../test_data/rss_S0.mtx", 1);
+    P = readMatrix("../../../../test_data/rss_P0.mtx", 0);
     S_bool = new CSRBoolMatrix(S);
-    split_rs(S_bool, splitting);
+    splitting.resize(A->n_rows);
+    f = fopen("../../../../test_data/rss_cf0", "r");
+    for (int i = 0; i < A->n_rows; i++)
+    {
+        fscanf(f, "%d\n", &splitting[i]);
+    }
+    fclose(f);
+
     P_rap = direct_interpolation(A, S_bool, splitting);
     compare(P, P_rap);
-    delete A;
-    delete P;
-    delete S;
-    delete S_bool;
-    delete P_rap;
 
-    A = readMatrix("../../tests/rss_laplace_A1.mtx", 0);
-    P = readMatrix("../../tests/rss_laplace_P1.mtx", 0);
-    //S = A->strength(0.25);
-    //split_rs(S, splitting);
-    //P_rap = direct_interpolation(A, S, splitting);
-    //compare(P, P_rap);
-    delete A;
+    delete P_rap;
+    delete S_bool;
+    delete S;
     delete P;
-    //delete S;
-    //delete P_rap;
+    delete A;
+
+
+    // TEST LEVEL 1
+    A = readMatrix("../../../../test_data/rss_A1.mtx", 0);
+    P = readMatrix("../../../../test_data/rss_P1.mtx", 0);
+    S = readMatrix("../../../../test_data/rss_S1.mtx", 0);
+    S_bool = new CSRBoolMatrix(S);
+    splitting.resize(A->n_rows);
+    f = fopen("../../../../test_data/rss_cf1", "r");
+    for (int i = 0; i < A->n_rows; i++)
+    {
+        fscanf(f, "%d\n", &splitting[i]);
+    }
+    fclose(f);
+
+    P_rap = direct_interpolation(A, S_bool, splitting);
+    compare(P, P_rap);
+
+    delete P_rap;
+    delete S_bool;
+    delete S;
+    delete P;
+    delete A;
+
+
 
     return 0;
 }

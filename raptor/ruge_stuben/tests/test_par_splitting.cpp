@@ -1,17 +1,12 @@
 #include <assert.h>
-
+#include "mpi.h"
+#include "gallery/stencil.hpp"
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "gallery/par_matrix_IO.hpp"
 #include "ruge_stuben/par_cf_splitting.hpp"
-#include "gallery/diffusion.hpp"
-#include "gallery/laplacian27pt.hpp"
-#include "gallery/par_stencil.hpp"
 #include <iostream>
 #include <fstream>
-
-
-#include "gallery/stencil.hpp"
 
 using namespace raptor;
 
@@ -24,58 +19,78 @@ int main(int argc, char* argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     FILE* f;
-    std::vector<int> splitting;
-    std::vector<int> splitting_rap;
+    std::vector<int> states;
     std::vector<int> off_proc_states;
-
-    int grid[3] = {10, 10, 10};
-    double* stencil = laplace_stencil_27pt();
-
-    CSRBoolMatrix* S_seq;
-    CSRMatrix* S_seq_py;
-
-    S_seq_py = readMatrix("../../tests/rss_laplace_S0.mtx", 1);
-    S_seq = new CSRBoolMatrix(S_seq_py);
-    std::vector<int> splitting_seq;
-    split_cljp(S_seq, splitting_seq);
-    f = fopen("../../tests/rss_laplace_cf0.txt", "r");
-    for (int i = 0; i < S_seq->n_rows; i++)
-    {
-        int cf;
-        fscanf(f, "%d\n", &cf);
-        //assert(cf == splitting_seq[i]);
-    }
-
-    fclose(f);
-
-    delete S_seq;
-    delete S_seq_py;
+    int cf;
 
     ParCSRMatrix* S_py;
     ParCSRBoolMatrix* S;
-    S_py = readParMatrix("../../tests/rss_laplace_S0.mtx", MPI_COMM_WORLD, 1, 1);
-    S = new ParCSRBoolMatrix(S_py);
-    split_cljp(S, splitting, off_proc_states);
-    f = fopen("../../tests/rss_laplace_cf0.txt", "r");
-    for (int i = 0; i < S->partition->first_local_row; i++)
-    {
-        int cf;
-        fscanf(f, "%d\n", &cf);
-    }
-    for (int i = 0; i < S->local_num_rows; i++)
-    {
-        int cf;
-        fscanf(f, "%d\n", &cf);
-        assert(cf == splitting[i]);
-        //assert(splitting[i] == splitting_seq[i + A->partition->first_local_row]);
-    }
 
+    // TEST LEVEL 0
+    S_py = readParMatrix("../../../../test_data/rss_S0.mtx", MPI_COMM_WORLD, 1, 1);
+    S = new ParCSRBoolMatrix(S_py);
+
+    f = fopen("../../../../test_data/weights.txt", "r");
+    std::vector<double> weights(S_py->local_num_rows);
+    for (int i = 0; i < S_py->partition->first_local_row; i++)
+    {
+        fscanf(f, "%lf\n", &weights[0]);
+    }
+    for (int i = 0; i < S_py->local_num_rows; i++)
+    {
+        fscanf(f, "%lf\n", &weights[i]);
+    }
+    fclose(f);
+    split_cljp(S, states, off_proc_states, weights.data());
+    
+    f = fopen("../../../../test_data/rss_cf0", "r");
+    for (int i = 0; i < S_py->partition->first_local_row; i++)
+    {
+        fscanf(f, "%d\n", &cf);
+    }
+    for (int i = 0; i < S_py->local_num_rows; i++)
+    {
+        fscanf(f, "%d\n", &cf);
+        assert(cf == states[i]);
+    }
     fclose(f);
 
     delete S;
     delete S_py;
 
-    delete[] stencil;
+    // TEST LEVEL 1
+    S_py = readParMatrix("../../../../test_data/rss_S1.mtx", MPI_COMM_WORLD, 1, 0);
+    S = new ParCSRBoolMatrix(S_py);
+
+    f = fopen("../../../../test_data/weights.txt", "r");
+    weights.resize(S_py->local_num_rows);
+    for (int i = 0; i < S_py->partition->first_local_row; i++)
+    {
+        fscanf(f, "%lf\n", &weights[0]);
+    }
+    for (int i = 0; i < S_py->local_num_rows; i++)
+    {
+        fscanf(f, "%lf\n", &weights[i]);
+    }
+    fclose(f);
+    split_cljp(S, states, off_proc_states, weights.data());
+    
+    f = fopen("../../../../test_data/rss_cf1", "r");
+    for (int i = 0; i < S_py->partition->first_local_row; i++)
+    {
+        fscanf(f, "%d\n", &cf);
+    }
+    for (int i = 0; i < S_py->local_num_rows; i++)
+    {
+        fscanf(f, "%d\n", &cf);
+        assert(cf == states[i]);
+    }
+    fclose(f);
+
+    delete S;
+    delete S_py;
+
+
 
     MPI_Finalize();
 

@@ -1,6 +1,6 @@
 #include "repartition.hpp"
 
-void make_contiguous(ParCSRMatrix* A, const std::vector<int>& on_proc_column_map)
+void make_contiguous(ParCSRMatrix* A)
 {
     int rank;
     int num_procs;
@@ -84,7 +84,7 @@ void make_contiguous(ParCSRMatrix* A, const std::vector<int>& on_proc_column_map
     }
     for (int i = 0; i < A->on_proc_num_cols; i++)
     {
-        orig_col = on_proc_column_map[i];
+        orig_col = A->on_proc_column_map[i];
         assumed_proc = orig_col / assumed_num_cols;
         proc_num_cols[assumed_proc]++;
     }
@@ -110,7 +110,7 @@ void make_contiguous(ParCSRMatrix* A, const std::vector<int>& on_proc_column_map
         send_requests.resize(num_sends);
         for (int i = 0; i < A->on_proc_num_cols; i++)
         {
-            orig_col = on_proc_column_map[i];
+            orig_col = A->on_proc_column_map[i];
             new_col = A->partition->first_local_col + i;
             assumed_proc = orig_col / assumed_num_cols;
             proc_idx = proc_num_cols[assumed_proc];
@@ -695,7 +695,7 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, std::vector<in
     new_local_rows.resize(A_part->on_proc_num_cols);
     std::copy(A_part->on_proc_column_map.begin(), A_part->on_proc_column_map.end(),
             new_local_rows.begin());
-    make_contiguous(A_part, A_part->on_proc_column_map);
+    make_contiguous(A_part);
 
     return A_part;
 }

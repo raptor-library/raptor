@@ -93,7 +93,8 @@ void transpose(const ParCSRBoolMatrix* S,
 }
 
 void initial_cljp_weights(const ParCSRBoolMatrix* S,
-        std::vector<double>& weights)
+        std::vector<double>& weights, 
+        double* rand_vals = NULL)
 {
     int start, end;
     int idx, idx_k;
@@ -116,16 +117,24 @@ void initial_cljp_weights(const ParCSRBoolMatrix* S,
     }
 
     // Set each weight initially to random value [0,1)
-/*    srand(2448422 + S->partition->first_local_row);
-    for (int i = 0; i < S->on_proc_num_cols; i++)
+    if (rand_vals)
     {
-        // Random value [0,1)
-        weights[i] = rand() / RAND_MAX;
+        for (int i = 0; i < S->on_proc_num_cols; i++)
+        {
+            weights[i] = rand_vals[i];
+        }
     }
-*/
+    else
+    {
+        for (int i = 0; i < S->on_proc_num_cols; i++)
+        {
+            srand(S->on_proc_column_map[i]);
+            weights[i] = ((double)(rand())) / RAND_MAX;
+        }
+    }
 
     // FOR COMPARISON TO HYPRE
-    int rank;
+/*    int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     int seed = 2747 + rank;
     int a = 16807;
@@ -141,7 +150,7 @@ void initial_cljp_weights(const ParCSRBoolMatrix* S,
         else seed = test + m;
         weights[i] = ((double)(seed) / m);
     }
-
+*/
     // Go through each row i, for each column j
     // add to weights or off_proc_weights at j
     for (int i = 0; i < S->local_num_rows; i++)
@@ -1716,7 +1725,8 @@ void split_falgout(ParCSRBoolMatrix* S,
  **************************************************************/
 void split_cljp(ParCSRBoolMatrix* S,
         std::vector<int>& states, 
-        std::vector<int>& off_proc_states)
+        std::vector<int>& off_proc_states,
+        double* rand_vals)
 {
     int remaining;
     std::vector<int> on_col_ptr;
@@ -1726,6 +1736,11 @@ void split_cljp(ParCSRBoolMatrix* S,
     std::vector<int> on_edgemark;
     std::vector<int> off_edgemark;
     std::vector<double> weights;
+
+    if (!S->on_proc->diag_first)
+    {
+        S->on_proc->move_diag();
+    }
 
     if (S->local_num_rows)
     {
@@ -1764,7 +1779,7 @@ void split_cljp(ParCSRBoolMatrix* S,
     /**********************************************
      * Set initial CLJP boundary weights
      **********************************************/
-    initial_cljp_weights(S, weights);
+    initial_cljp_weights(S, weights, rand_vals);
 
     /**********************************************
      * CLJP Main Loop

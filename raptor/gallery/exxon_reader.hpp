@@ -12,7 +12,7 @@
 
 #include "core/par_matrix.hpp"
 #include "core/types.hpp"
-#include "util/linalg/external/repartition.hpp"
+#include "util/linalg/repartition.hpp"
 
 using namespace raptor;
 
@@ -190,7 +190,7 @@ ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix,
 
     if (A_coo->on_proc->n_cols)
     {
-        on_proc_column_map.resize(A_coo->on_proc->n_cols);
+        A_coo->on_proc_column_map.resize(A_coo->on_proc->n_cols);
     }
     A_coo->off_proc_num_cols = A_coo->off_proc->n_cols;
     if (A_coo->off_proc_num_cols)
@@ -201,13 +201,16 @@ ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix,
     // Create column maps from all local to global columns
     int first_local_col;
     int first_global_col;
+
+    std::map<int, int> on_proc_global_to_local;
+    std::map<int, int> off_proc_global_to_local;
     for (int i = first_block_row; i <= last_block_row; i++)
     {
         first_local_col = i*block_size;
         first_global_col = global_indices[i] * block_size;
         for (int j = 0; j < block_size; j++)
         {
-            on_proc_column_map[first_local_col + j] = first_global_col + j;
+            A_coo->on_proc_column_map[first_local_col + j] = first_global_col + j;
         }
     }
     for (int i = block_on_proc_num_cols; i <= last_block_col; i++)
@@ -219,8 +222,10 @@ ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix,
             A_coo->off_proc_column_map[first_local_col + j] = first_global_col + j;
         }
     }
+    A_coo->local_row_map = A_coo->get_on_proc_column_map();
+
     ParCSRMatrix* A = new ParCSRMatrix(A_coo);
-    noncontiguous(A, on_proc_column_map);
+    make_contiguous(A);
 
     delete A_coo;
     return A;
@@ -384,7 +389,9 @@ ParCSRMatrix* exxon_pressure_reader(char* folder, char* iname, char* fname, char
         A_coo->off_proc_column_map.push_back(global_indices[i]);
         A_coo->off_proc_num_cols = A_coo->off_proc_column_map.size();
     }
-    ParCSRMatrix* A = noncontiguous(A_coo, on_proc_column_map);
+
+    ParCSRMatrix* A = new ParCSRMatrix(A_coo);
+    make_contiguous(A);
 
     delete A_coo;
     return A;

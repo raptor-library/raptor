@@ -7,51 +7,11 @@
 #include "ruge_stuben/par_interpolation.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/par_stencil.hpp"
+#include "tests/par_compare.hpp"
 #include <iostream>
 #include <fstream>
 
 using namespace raptor;
-
-void compare(ParCSRMatrix* P, ParCSRMatrix* P_rap)
-{
-    int start, end;
-
-    assert(P->global_num_rows == P_rap->global_num_rows);
-    assert(P->global_num_cols == P_rap->global_num_cols);
-    assert(P->local_num_rows == P_rap->local_num_rows);
-    assert(P->on_proc_num_cols == P_rap->on_proc_num_cols);
-    assert(P->off_proc_num_cols == P_rap->off_proc_num_cols);
-
-    P->on_proc->sort();
-    P->on_proc->move_diag();
-    P->off_proc->sort();
-    P_rap->on_proc->sort();
-    P_rap->on_proc->move_diag();
-    P_rap->off_proc->sort();
-
-    assert(P->on_proc->idx1[0] == P_rap->on_proc->idx1[0]);
-    assert(P->off_proc->idx1[0] == P_rap->off_proc->idx1[0]);
-    for (int i = 0; i < P->local_num_rows; i++)
-    {
-        assert(P->on_proc->idx1[i+1] == P_rap->on_proc->idx1[i+1]);
-        start = P->on_proc->idx1[i];
-        end = P->on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            assert(P->on_proc->idx2[j] == P_rap->on_proc->idx2[j]);
-            assert(fabs(P->on_proc->vals[j] - P_rap->on_proc->vals[j]) < 1e-06);
-        }
-
-        assert(P->off_proc->idx1[i+1] == P_rap->off_proc->idx1[i+1]);
-        start = P->off_proc->idx1[i];
-        end = P->off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            assert(P->off_proc->idx2[j] == P_rap->off_proc->idx2[j]);
-            assert(fabs(P->off_proc->vals[j] - P_rap->off_proc->vals[j]) < 1e-06);
-        }
-    }
-}
 
 ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRBoolMatrix* S, char* filename, int* first_row_ptr, int* first_col_ptr)
 {
@@ -88,8 +48,8 @@ ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRBoolMatrix* S, char* filename, in
     fclose(f);
 
     // Get off proc states
-    A->comm->communicate(splitting.data());
-    P_rap = direct_interpolation(A, S, splitting, A->comm->recv_data->int_buffer);
+    S->comm->communicate(splitting.data());
+    P_rap = direct_interpolation(A, S, splitting, S->comm->recv_data->int_buffer);
     MPI_Allgather(&P_rap->on_proc_num_cols, 1, MPI_INT, proc_sizes.data(), 1, 
                 MPI_INT, MPI_COMM_WORLD);
     first_col = 0;
@@ -116,53 +76,44 @@ int main(int argc, char* argv[])
     int start, end;
     FILE* f;
     ParCSRMatrix* A;
-    ParCSRBoolMatrix* S;
+    ParCSRMatrix* S;
+    ParCSRBoolMatrix* S_bool;
     ParCSRMatrix* P;
     ParCSRMatrix* P_rap;
 
-    A = readParMatrix("../../tests/rss_laplace_A0.mtx", MPI_COMM_WORLD, 1, 1);
-    S = A->strength(0.25);
-    P_rap = form_Prap(A, S, "../../tests/rss_laplace_cf0.txt", &first_row, &first_col);
-    P = readParMatrix("../../tests/rss_laplace_P0.mtx", MPI_COMM_WORLD, 1, 0, 
+
+    // TEST LEVEL 0
+    A = readParMatrix("../../../../test_data/rss_A0.mtx", MPI_COMM_WORLD, 1, 1);
+    S = readParMatrix("../../../../test_data/rss_S0.mtx", MPI_COMM_WORLD, 1, 1);
+    S_bool = new ParCSRBoolMatrix(S);
+    P_rap = form_Prap(A, S_bool, "../../../../test_data/rss_cf0", 
+            &first_row, &first_col);
+    P = readParMatrix("../../../../test_data/rss_P0.mtx", MPI_COMM_WORLD, 1, 0, 
         P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
     compare(P, P_rap);
     delete P_rap;
     delete P;
+    delete S_bool;
     delete S;
     delete A;
 
-    A = readParMatrix("../../tests/rss_laplace_A1.mtx", MPI_COMM_WORLD, 1, 0);
-    S = A->strength(0.25);
-    P_rap = form_Prap(A, S, "../../tests/rss_laplace_cf1.txt", &first_row, &first_col);
-    P = readParMatrix("../../tests/rss_laplace_P1.mtx", MPI_COMM_WORLD, 1, 0,
-            P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
-    compare(P, P_rap);
-    delete P;
-    delete P_rap;
-    delete S;
-    delete A;
-
-/*    A = readParMatrix("../../tests/rss_aniso_A0.mtx", MPI_COMM_WORLD, 1, 1);
-    S = A->strength(0.0);
-    P_rap = form_Prap(A, S, "../../tests/rss_aniso_cf0.txt", &first_row, &first_col);
-    P = readParMatrix("../../tests/rss_aniso_P0.mtx", MPI_COMM_WORLD, 1, 0, 
+    // TEST LEVEL 1
+    A = readParMatrix("../../../../test_data/rss_A1.mtx", MPI_COMM_WORLD, 1, 0);
+    S = readParMatrix("../../../../test_data/rss_S1.mtx", MPI_COMM_WORLD, 1, 0);
+    S_bool = new ParCSRBoolMatrix(S);
+    P_rap = form_Prap(A, S_bool, "../../../../test_data/rss_cf1", 
+            &first_row, &first_col);
+    P = readParMatrix("../../../../test_data/rss_P1.mtx", MPI_COMM_WORLD, 1, 0, 
         P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
     compare(P, P_rap);
+
+
     delete P_rap;
     delete P;
+    delete S_bool;
     delete S;
     delete A;
 
-    A = readParMatrix("../../tests/rss_aniso_A1.mtx", MPI_COMM_WORLD, 1, 0);
-    S = A->strength(0.0);
-    P_rap = form_Prap(A, S, "../../tests/rss_aniso_cf1.txt", &first_row, &first_col);
-    P = readParMatrix("../../tests/rss_aniso_P1.mtx", MPI_COMM_WORLD, 1, 0,
-            P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
-    compare(P, P_rap);
-    delete P;
-    delete P_rap;
-    delete S;
-    delete A;*/
 
     MPI_Finalize();
 
