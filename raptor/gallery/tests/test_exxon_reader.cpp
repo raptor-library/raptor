@@ -14,8 +14,7 @@ int main(int argc, char* argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     // Create A from diffusion stencil
-    char* folder = "/Users/abienz/Documents/Parallel/exxon/verification-twomatrices/DA_V5_blk_coord_binary-3x3-blk-np16";
-    //char* folder = "/home/bienz2/verification-twomatrices/DA_V5_blk_coord_binary-3x3-blk-np16";
+    char* folder = "/Users/abienz/Documents/Parallel/exxonmobil/verification-twomatrices/DA_V5_blk_coord_binary-3x3-blk-np16";
     char* fname = "DA_V5_blk_coord_binary-3x3-blk-np16_TS6_TSA0_NI0_R";
     char* iname = "index_R";
     char* suffix = ".bcoord_bin";
@@ -37,7 +36,7 @@ int main(int argc, char* argv[])
 
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        assert(fabs(b.local[i] - b_rap.local[i]) < 1e-08);
+        assert(fabs(b.local[i] - b_rap.local[i]) < 1e-06);
     }
 
 

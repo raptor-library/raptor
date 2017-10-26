@@ -98,7 +98,6 @@ ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix,
     // Close index file
     fclose(infile);
 
-    // Create a new, empty Parallel Matrix Object
     A_coo = new ParCOOMatrix();
 
     // Open matrix file, and read the first/last block row/col 
@@ -187,6 +186,21 @@ ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix,
     A_coo->on_proc_num_cols = A_coo->local_num_rows;
     A_coo->global_num_cols = A_coo->global_num_rows;
     A_coo->local_nnz = A_coo->on_proc->nnz + A_coo->off_proc->nnz;
+
+
+    int first_row;
+    std::vector<int> proc_sizes(num_procs);
+    MPI_Allgather(&A_coo->local_num_rows, 1, MPI_INT, proc_sizes.data(),
+            1, MPI_INT, MPI_COMM_WORLD);
+    first_row = 0;
+    for (int i = 0; i < rank; i++)
+    {
+        first_row += proc_sizes[i];
+    }
+
+    A_coo->partition = new Partition(A_coo->global_num_rows, A_coo->global_num_rows,
+            A_coo->local_num_rows, A_coo->local_num_rows, 
+            first_row, first_row);
 
     if (A_coo->on_proc->n_cols)
     {
