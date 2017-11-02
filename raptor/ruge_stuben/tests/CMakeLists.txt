@@ -21,15 +21,15 @@ if (WITH_MPI)
 
     add_executable(test_par_splitting test_par_splitting.cpp)
     target_link_libraries(test_par_splitting raptor ${MPI_LIBRARIES} googletest pthread )
-    add_test(TestParSplitting ./test_par_splitting)
+    add_test(TestParSplitting mpirun -n 2 ./test_par_splitting)
 
     add_executable(test_par_interpolation test_par_interpolation.cpp)
     target_link_libraries(test_par_interpolation raptor ${MPI_LIBRARIES} googletest pthread )
-    add_test(TestParInterpolation ./test_par_interpolation)
+    add_test(TestParInterpolation mpirun -n 2 ./test_par_interpolation)
 
     add_executable(test_par_ruge_stuben test_par_ruge_stuben.cpp)
     target_link_libraries(test_par_ruge_stuben raptor ${MPI_LIBRARIES} googletest pthread )
-    add_test(TestParRugeStuben ./test_par_ruge_stuben)
+    add_test(TestParRugeStuben mpirun -n 2 ./test_par_ruge_stuben)
 endif()
 
 
