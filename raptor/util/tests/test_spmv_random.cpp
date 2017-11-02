@@ -22,14 +22,14 @@ int main(int argc, char** argv)
 TEST(RandomSpMVTest, TestsInUtil)
 {
     double b_val;
-    CSRMatrix* A = readMatrix("../../tests/random.mtx", 0);
+    CSRMatrix* A = readMatrix("../../../../test_data/random.mtx", 0);
     Vector x(A->n_cols);
     Vector b(A->n_rows);
     
     // Test b <- A*ones
     x.set_const_value(1.0);
     A->mult(x, b);
-    FILE* f = fopen("../../tests/random_ones_b.txt", "r");
+    FILE* f = fopen("../../../../test_data/random_ones_b.txt", "r");
     for (int i = 0; i < A->n_rows; i++)
     {
         fscanf(f, "%lg\n", &b_val);
@@ -40,7 +40,7 @@ TEST(RandomSpMVTest, TestsInUtil)
     // Test b <- A_T*ones
     b.set_const_value(1.0);
     A->mult_T(b, x);
-    f = fopen("../../tests/random_ones_b_T.txt", "r");
+    f = fopen("../../../../test_data/random_ones_b_T.txt", "r");
     for (int i = 0; i < A->n_cols; i++)
     {
         fscanf(f, "%lg\n", &b_val);
@@ -54,7 +54,7 @@ TEST(RandomSpMVTest, TestsInUtil)
         x[i] = i;
     }
     A->mult(x, b);
-    f = fopen("../../tests/random_inc_b.txt", "r");
+    f = fopen("../../../../test_data/random_inc_b.txt", "r");
     for (int i = 0; i < A->n_rows; i++)
     {
         fscanf(f, "%lg\n", &b_val);
@@ -68,7 +68,7 @@ TEST(RandomSpMVTest, TestsInUtil)
         b[i] = i;
     }
     A->mult_T(b, x);
-    f = fopen("../../tests/random_inc_b_T.txt", "r");
+    f = fopen("../../../../test_data/random_inc_b_T.txt", "r");
     for (int i = 0; i < A->n_cols; i++)
     {
         fscanf(f, "%lg\n", &b_val);

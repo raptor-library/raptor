@@ -35,7 +35,7 @@ TEST(AnisoSpMVTest, TestsInUtil)
     // Test b <- A*ones
     x.set_const_value(1.0);
     A_sten->mult(x, b);
-    FILE* f = fopen("../../tests/aniso_ones_b.txt", "r");
+    FILE* f = fopen("../../../../test_data/aniso_ones_b.txt", "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         fscanf(f, "%lg\n", &b_val);
@@ -45,7 +45,7 @@ TEST(AnisoSpMVTest, TestsInUtil)
 
     // Test b <- A_T*ones
     A_sten->mult_T(x, b);
-    f = fopen("../../tests/aniso_ones_b_T.txt", "r");
+    f = fopen("../../../../test_data/aniso_ones_b_T.txt", "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         fscanf(f, "%lg\n", &b_val);
@@ -59,7 +59,7 @@ TEST(AnisoSpMVTest, TestsInUtil)
         x[i] = i;
     }
     A_sten->mult(x, b);
-    f = fopen("../../tests/aniso_inc_b.txt", "r");
+    f = fopen("../../../../test_data/aniso_inc_b.txt", "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         fscanf(f, "%lg\n", &b_val);
@@ -69,7 +69,7 @@ TEST(AnisoSpMVTest, TestsInUtil)
 
     // Tests b <- A_T*incr
     A_sten->mult_T(x, b);
-    f = fopen("../../tests/aniso_inc_b_T.txt", "r");
+    f = fopen("../../../../test_data/aniso_inc_b_T.txt", "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         fscanf(f, "%lg\n", &b_val);

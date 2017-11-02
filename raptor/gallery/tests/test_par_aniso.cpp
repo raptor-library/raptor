@@ -39,10 +39,10 @@ TEST(ParAnisoTest, TestsInGallery)
     double theta = M_PI/8.0;
     double* stencil = diffusion_stencil_2d(eps, theta);
     ParCSRMatrix* A_sten = par_stencil_grid(stencil, grid, 2);
-    ParCSRMatrix* A_io = readParMatrix("../../tests/aniso.mtx");
+    ParCSRMatrix* A_io = readParMatrix("../../../../test_data/aniso.mtx");
 
     // Open laplacian data file
-    FILE *f = fopen("../../tests/aniso_data.txt", "r");
+    FILE *f = fopen("../../../../test_data/aniso_data.txt", "r");
 
     // Read global shape
     fscanf(f, "%d %d\n", &n_rows, &n_cols);
