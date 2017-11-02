@@ -14,6 +14,6 @@ void split_falgout(ParCSRBoolMatrix* S, std::vector<int>& states,
 void split_rs(ParCSRBoolMatrix* S, std::vector<int>& states, 
         std::vector<int>& off_proc_states);
 void split_cljp(ParCSRBoolMatrix* S, std::vector<int>& states, 
-        std::vector<int>& off_proc_states);
+        std::vector<int>& off_proc_states, double* rand_vals = NULL);
 
 #endif

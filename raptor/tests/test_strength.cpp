@@ -8,6 +8,7 @@
 #include "core/types.hpp"
 #include "core/matrix.hpp"
 #include "gallery/matrix_IO.hpp"
+#include "tests/compare.hpp"
 
 using namespace raptor;
 
@@ -18,67 +19,23 @@ int main(int argc, char** argv)
 
 } // end of main() //
 
-
-void compare(CSRMatrix* S, CSRMatrix* S_rap)
-{
-    int start, end;
-
-    S->sort();
-    S->move_diag();
-    S_rap->sort();
-    S_rap->move_diag();
-
-    ASSERT_EQ(S->n_rows, S_rap->n_rows);
-    ASSERT_EQ(S->n_cols, S_rap->n_cols);
-    ASSERT_EQ(S->nnz, S_rap->nnz);
-
-    ASSERT_EQ(S->idx1[0], S_rap->idx1[0]);
-    for (int i = 0; i < S->n_rows; i++)
-    {
-        ASSERT_EQ(S->idx1[i+1], S_rap->idx1[i+1]);
-        start = S->idx1[i];
-        end = S->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            ASSERT_EQ(S->idx2[j], S_rap->idx2[j]);
-            ASSERT_NEAR(S->vals[j],S_rap->vals[j], 1e-06);
-        }
-    }
-}
-
 TEST(StrengthTest, TestsIntests)
 {
     CSRMatrix* A;
     CSRMatrix* S;
-    CSRMatrix* S_rap;
+    CSRBoolMatrix* S_rap;
 
-    A = readMatrix("rss_laplace_A0.mtx", 1);
-    S = readMatrix("rss_laplace_S0.mtx", 1);
+    A = readMatrix("../../../test_data/rss_A0.mtx", 1);
+    S = readMatrix("../../../test_data/rss_S0.mtx", 1);
     S_rap = A->strength(0.25);
     compare(S, S_rap);
     delete A;
     delete S;
     delete S_rap;
 
-    A = readMatrix("rss_laplace_A1.mtx", 0);
-    S = readMatrix("rss_laplace_S1.mtx", 0);
+    A = readMatrix("../../../test_data/rss_A1.mtx", 0);
+    S = readMatrix("../../../test_data/rss_S1.mtx", 0);
     S_rap = A->strength(0.25);
-    compare(S, S_rap);
-    delete A;
-    delete S;
-    delete S_rap;
-
-    A = readMatrix("rss_aniso_A0.mtx", 1);
-    S = readMatrix("rss_aniso_S0.mtx", 1);
-    S_rap = A->strength();
-    compare(S, S_rap);
-    delete A;
-    delete S;
-    delete S_rap;
-
-    A = readMatrix("rss_aniso_A1.mtx", 0);
-    S = readMatrix("rss_aniso_S1.mtx", 0);
-    S_rap = A->strength();
     compare(S, S_rap);
     delete A;
     delete S;

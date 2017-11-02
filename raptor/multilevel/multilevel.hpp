@@ -1,16 +1,15 @@
 // Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#ifndef RAPTOR_CORE_MULTILEVEL_H
-#define RAPTOR_CORE_MULTILEVEL_H
+#ifndef RAPTOR_ML_MULTILEVEL_H
+#define RAPTOR_ML_MULTILEVEL_H
 
 #include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "core/par_vector.hpp"
-#include "multilevel/level.hpp"
-#include "util/linalg/relax.hpp"
-#include "ruge_stuben/par_interpolation.hpp"
-#include "ruge_stuben/par_cf_splitting.hpp"
-//#include "aggregation/prolongation.hpp"
+#include "core/matrix.hpp"
+#include "core/vector.hpp"
+#include "level.hpp"
+#include "ruge_stuben/cf_splitting.hpp"
+#include "ruge_stuben/interpolation.hpp"
+//#include "smoothed_aggregation/seq/prolongation.hpp"
 
 // Coarse Matrices (A) are CSC
 // Prolongation Matrices (P) are CSC
@@ -28,80 +27,65 @@ namespace raptor
     {
         public:
 
-            Multilevel(ParCSRMatrix* Af, double theta = 0.0, int num_smooth_steps = 1, 
+            Multilevel(CSRMatrix* Af, double theta = 0.0, int num_smooth_steps = 1,
                     int max_coarse = 50, int max_levels = -1)
             {
-                int rank, num_procs;
-                MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-                MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
                 int last_level = 0;
 
-                // Add original, fine level to hierarchy
                 levels.push_back(new Level());
-                levels[0]->A = new ParCSRMatrix(Af);
+                levels[0]->A = new CSRMatrix(Af);
                 levels[0]->A->sort();
-                levels[0]->A->on_proc->move_diag();
-                levels[0]->x.resize(Af->global_num_rows, Af->local_num_rows,
-                        Af->partition->first_local_row);
-                levels[0]->b.resize(Af->global_num_rows, Af->local_num_rows,
-                        Af->partition->first_local_row);
-                levels[0]->tmp.resize(Af->global_num_rows, Af->local_num_rows,
-                        Af->partition->first_local_row);
+                levels[0]->x.resize(Af->n_rows);
+                levels[0]->b.resize(Af->n_rows);
+                levels[0]->tmp.resize(Af->n_rows);
 
-                // Add coarse levels to hierarchy 
-                while (levels[last_level]->A->global_num_rows > max_coarse && 
+                while (levels[last_level]->A->n_rows > max_coarse &&
                         (max_levels == -1 || levels.size() < max_levels))
                 {
-                    extend_hierarchy(theta, num_smooth_steps);
+                    extend_hierarchy(theta);
                     last_level++;
                 }
                 num_levels = levels.size();
 
-                // Duplicate coarsest level across all processes that hold any
-                // rows of A_c
-                duplicate_coarse();
+                form_dense_coarse();
             }
 
-            // Creates Smoothed Aggregation Solver -- TODO
-            /*Multilevel(ParCSRMatrix* Af, data_t* B_ptr = NULL, int num_candidates = 1,
+            /*Multilevel(CSRMatrix* Af, data_t* B_ptr = NULL, int num_candidates = 1,
                     double theta = 0.0, double omega = 4.0/3, 
-                    int num_smooth_steps = 1, int max_coarse = 50)
+                    int num_smooth_steps = 1, int max_coarse = 50,
+                    int max_levels = -1)
             {
                 // Always need levels with A, x, b (P and tmp are on all but
                 // coarsest)
                 levels.push_back(new Level());
-                levels[0]->A = new ParCSRMatrix(Af);
+                levels[0]->A = new CSRMatrix(Af);
                 levels[0]->A->sort();
-                levels[0]->x.resize(Af->global_num_rows, Af->local_num_rows,
-                        Af->first_local_row);
-                levels[0]->b.resize(Af->global_num_rows, Af->local_num_rows,
-                        Af->first_local_row);
-                levels[0]->tmp.resize(Af->global_num_rows, Af->local_num_rows,
-                        Af->first_local_row);
+                levels[0]->x.resize(Af->n_rows);
+                levels[0]->b.resize(Af->n_rows);
+                levels[0]->tmp.resize(Af->n_rows);
 
-                double* level_B = new data_t[Af->local_num_rows];
+                double* level_B = new data_t[Af->n_rows];
                 if (B_ptr)
                 {
-                    for (int i = 0; i < Af->local_num_rows; i++)
+                    for (int i = 0; i < Af->n_rows; i++)
                     {
                         level_B[i] = B_ptr[i];
                     }
                 }
                 else
                 {
-                    for (int i = 0; i < Af->local_num_rows; i++)
+                    for (int i = 0; i < Af->n_rows; i++)
                     {
                         level_B[i] = 1.0;
                     }
                 }
 
-
                 int last_level = 0;
-                while (levels[last_level]->A->global_num_rows > max_coarse)
+                while (levels[last_level]->A->n_rows > max_coarse &&
+                        (max_levels == -1 || levels.size() < max_levels))
                 {
                     double* R = extend_hierarchy(level_B, num_candidates,
-                            theta, omega, num_smooth_steps, max_coarse);
+                            theta, omega);
                     last_level++;
                     delete[] level_B;
                     level_B = R;
@@ -111,37 +95,11 @@ namespace raptor
 
                 num_levels = levels.size();
 
-                // TODO -- gather Ac so that each process with any local num
-                // rows has all of Ac stored locally (in a dense matrix)
-                ParCSRMatrix* Ac = levels[last_level]->A;
-                coarse_n = Ac->global_num_rows;
-                A_coarse.resize(coarse_n*coarse_n, 0);
-                for (int i = 0; i < coarse_n; i++)
-                {
-                    int row_start = Ac->idx1[i];
-                    int row_end = Ac->idx1[i+1];
-                    for (int j = row_start; j < row_end; j++)
-                    {
-                        A_coarse[i*coarse_n + Ac->idx2[j]] = Ac->vals[j];
-                    }
-                }
-
-                LU_permute.resize(coarse_n);
-                int info;
-                dgetrf_(&coarse_n, &coarse_n, A_coarse.data(), &coarse_n, 
-                        LU_permute.data(), &info);
-
-                printf("Num Levels = %d\n", num_levels);
+                form_dense_coarse();
             }*/
-
-
 
             ~Multilevel()
             {
-                if (levels[num_levels-1]->A->local_num_rows)
-                {
-                    MPI_Comm_free(&coarse_comm);
-                }
                 for (std::vector<Level*>::iterator it = levels.begin();
                         it != levels.end(); ++it)
                 {
@@ -149,38 +107,31 @@ namespace raptor
                 }
             }
 
-            void extend_hierarchy(double theta = 0.0, int num_smooth_steps = 1)
+            void extend_hierarchy(double theta = 0.0)
             {
                 int level_ctr = levels.size() - 1;
-                ParCSRMatrix* A = levels[level_ctr]->A;
-                ParCSRBoolMatrix* S;
-                ParCSRMatrix* AP;
-                ParCSCMatrix* P_csc;
-
+                CSRMatrix* A = levels[level_ctr]->A;
+                CSRBoolMatrix* S;
+                CSRMatrix* P;
+                CSRMatrix* AP;
+                CSCMatrix* P_csc;
                 std::vector<int> states;
-                std::vector<int> off_proc_states;
 
                 S = A->strength(theta);
-                //split_cljp(S, states, off_proc_states);
-                split_falgout(S, states, off_proc_states);
-                levels[level_ctr]->P = direct_interpolation(A, S, states, off_proc_states);
-                ParCSRMatrix* P = levels[level_ctr]->P;
+                split_rs(S, states);
+                levels[level_ctr]->P = direct_interpolation(A, S, states);
+                P = levels[level_ctr]->P;
 
                 levels.push_back(new Level());
-                AP = A->mult(levels[level_ctr]->P);
-                P_csc = new ParCSCMatrix(levels[level_ctr]->P);
-                
+                AP = A->mult(P);
+                P_csc = new CSCMatrix(P);
+
                 level_ctr++;
                 levels[level_ctr]->A = AP->mult_T(P_csc);
                 A = levels[level_ctr]->A;
-                A->comm = new ParComm(A->partition, A->off_proc_column_map,
-                        A->on_proc_column_map);
-                levels[level_ctr]->x.resize(A->global_num_rows, A->local_num_rows,
-                        A->partition->first_local_row);
-                levels[level_ctr]->b.resize(A->global_num_rows, A->local_num_rows,
-                        A->partition->first_local_row);
-                levels[level_ctr]->tmp.resize(A->global_num_rows, A->local_num_rows,
-                        A->partition->first_local_row);
+                levels[level_ctr]->x.resize(A->n_rows);
+                levels[level_ctr]->b.resize(A->n_rows);
+                levels[level_ctr]->tmp.resize(A->n_rows);
                 levels[level_ctr]->P = NULL;
 
                 delete AP;
@@ -188,20 +139,18 @@ namespace raptor
                 delete S;
             }
 
-/*            data_t* extend_hierarchy(data_t* B,
+            /*data_t* extend_hierarchy(data_t* B,
                     int num_candidates = 1,
                     double theta = 0.0, 
-                    double omega = 4.0/3, 
-                    int num_smooth_steps = 1,
-                    int max_coarse = 50)
+                    double omega = 4.0/3)
             {
                 int level_ctr = levels.size()-1;
 
-                ParCSRMatrix* S;
-                ParCSRMatrix* AggOp;
-                ParCSRMatrix* T;
-                ParCSRMatrix* AP;
-                ParCSCMatrix* P_csc;
+                CSRMatrix* S;
+                CSRMatrix* AggOp;
+                CSRMatrix* T;
+                CSRMatrix* AP;
+                CSCMatrix* P_csc;
 
                 // Create Strength of Connection
                 S = levels[level_ctr]->A->strength(theta);
@@ -235,170 +184,63 @@ namespace raptor
                 return R;
             }*/
 
-
-            void duplicate_coarse()
+            void form_dense_coarse()
             {
-                int rank, num_procs;
-                MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-                MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
-                int last_level = num_levels - 1;
-                ParCSRMatrix* Ac = levels[last_level]->A;
-                std::vector<int> proc_sizes(num_procs);
-                std::vector<int> active_procs;
-                MPI_Allgather(&(Ac->local_num_rows), 1, MPI_INT, proc_sizes.data(),
-                        1, MPI_INT, MPI_COMM_WORLD);
-                for (int i = 0; i < num_procs; i++)
+                CSRMatrix* Ac = levels[num_levels-1]->A;
+                coarse_n = Ac->n_rows;
+                A_coarse.resize(coarse_n*coarse_n, 0);
+                for (int i = 0; i < coarse_n; i++)
                 {
-                    if (proc_sizes[i])
+                    int row_start = Ac->idx1[i];
+                    int row_end = Ac->idx1[i+1];
+                    for (int j = row_start; j < row_end; j++)
                     {
-                        active_procs.push_back(i);
+                        A_coarse[i*coarse_n + Ac->idx2[j]] = Ac->vals[j];
                     }
                 }
-                MPI_Group world_group;
-                MPI_Comm_group(MPI_COMM_WORLD, &world_group);                
-                MPI_Group active_group;
-                MPI_Group_incl(world_group, active_procs.size(), active_procs.data(),
-                        &active_group);
-                MPI_Comm_create_group(MPI_COMM_WORLD, active_group, 0, &coarse_comm);
-                if (Ac->local_num_rows)
-                {
-                    int num_active, active_rank;
-                    MPI_Comm_rank(coarse_comm, &active_rank);
-                    MPI_Comm_size(coarse_comm, &num_active);
 
-                    int proc;
-                    int global_col, local_col;
-                    int start, end;
-
-                    std::vector<double> A_coarse_lcl;
-
-                    // Gather global col indices
-                    coarse_sizes.resize(num_active);
-                    coarse_displs.resize(num_active+1);
-                    coarse_displs[0] = 0;
-                    for (int i = 0; i < num_active; i++)
-                    {
-                        proc = active_procs[i];
-                        coarse_sizes[i] = proc_sizes[proc];
-                        coarse_displs[i+1] = coarse_displs[i] + coarse_sizes[i]; 
-                    }
-
-                    std::vector<int> global_row_indices(coarse_displs[num_active]);
-
-                    MPI_Allgatherv(Ac->local_row_map.data(), Ac->local_num_rows, MPI_INT,
-                            global_row_indices.data(), coarse_sizes.data(), 
-                            coarse_displs.data(), MPI_INT, coarse_comm);
-    
-                    std::map<int, int> global_to_local;
-                    int ctr = 0;
-                    for (std::vector<int>::iterator it = global_row_indices.begin();
-                            it != global_row_indices.end(); ++it)
-                    {
-                        global_to_local[*it] = ctr++;
-                    }
-
-                    coarse_n = Ac->global_num_rows;
-                    A_coarse_lcl.resize(coarse_n*Ac->local_num_rows, 0);
-                    for (int i = 0; i < Ac->local_num_rows; i++)
-                    {
-                        start = Ac->on_proc->idx1[i];
-                        end = Ac->on_proc->idx1[i+1];
-                        for (int j = start; j < end; j++)
-                        {
-                            global_col = Ac->on_proc_column_map[Ac->on_proc->idx2[j]];
-                            local_col = global_to_local[global_col];
-                            A_coarse_lcl[i*coarse_n + local_col] = Ac->on_proc->vals[j];
-                        }
-
-                        start = Ac->off_proc->idx1[i];
-                        end = Ac->off_proc->idx1[i+1];
-                        for (int j = start; j < end; j++)
-                        {
-                            global_col = Ac->off_proc_column_map[Ac->off_proc->idx2[j]];
-                            local_col = global_to_local[global_col];
-                            A_coarse_lcl[i*coarse_n + local_col] = Ac->off_proc->vals[j];
-                        }
-                    }
-
-                    A_coarse.resize(coarse_n*coarse_n);
-                    for (int i = 0; i < num_active; i++)
-                    {
-                        coarse_sizes[i] *= coarse_n;
-                        coarse_displs[i+1] *= coarse_n;
-                    }
-                    
-                    MPI_Allgatherv(A_coarse_lcl.data(), A_coarse_lcl.size(), MPI_DOUBLE,
-                            A_coarse.data(), coarse_sizes.data(), coarse_displs.data(), 
-                            MPI_DOUBLE, coarse_comm);
-
-                    LU_permute.resize(coarse_n);
-                    int info;
-                    dgetrf_(&coarse_n, &coarse_n, A_coarse.data(), &coarse_n, 
-                            LU_permute.data(), &info);
-
-                    for (int i = 0; i < num_active; i++)
-                    {
-                        coarse_sizes[i] /= coarse_n;
-                        coarse_displs[i+1] /= coarse_n;
-                    }
-                }
+                LU_permute.resize(coarse_n);
+                int info;
+                dgetrf_(&coarse_n, &coarse_n, A_coarse.data(), &coarse_n, 
+                        LU_permute.data(), &info);
             }
 
             void cycle(int level)
             {
-                ParCSRMatrix* A = levels[level]->A;
-                ParCSRMatrix* P = levels[level]->P;
-                ParVector& x = levels[level]->x;
-                ParVector& b = levels[level]->b;
-                ParVector& tmp = levels[level]->tmp;
+                CSRMatrix* A = levels[level]->A;
+                CSRMatrix* P = levels[level]->P;
+                Vector& x = levels[level]->x;
+                Vector& b = levels[level]->b;
+                Vector& tmp = levels[level]->tmp;
 
 
                 if (level == num_levels - 1)
                 {
-                    if (A->local_num_rows)
-                    {
-                        int active_rank;
-                        MPI_Comm_rank(coarse_comm, &active_rank);
-
-                        char trans = 'N'; //No transpose
-                        int nhrs = 1; // Number of right hand sides
-                        int info; // result
-
-                        std::vector<double> b_data(coarse_n);
-                        MPI_Allgatherv(b.local.data(), b.local_n, MPI_DOUBLE, b_data.data(), 
-                                coarse_sizes.data(), coarse_displs.data(), 
-                                MPI_DOUBLE, coarse_comm);
-
-                        dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
-                                LU_permute.data(), b_data.data(), &coarse_n, &info);
-                        for (int i = 0; i < b.local_n; i++)
-                        {
-                            x.local[i] = b_data[i + coarse_displs[active_rank]];
-                        }
-                    }
+                    char trans = 'N'; //No transpose
+                    int nhrs = 1; // Number of right hand sides
+                    int info; // result
+                    double b_data[b.size()];
+                    for (int i = 0; i < b.size(); i++)
+                        b_data[i] = b.data()[i];
+                    dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
+                            LU_permute.data(), b_data, &coarse_n, &info);
+                    for (int i = 0; i < b.size(); i++)
+                        x.data()[i] = b_data[i];
                 }
                 else
                 {
                     levels[level+1]->x.set_const_value(0.0);
-                    relax(levels[level]);
+                    A->gauss_seidel(x, b);
                     A->residual(x, b, tmp);
                     P->mult_T(tmp, levels[level+1]->b);
                     cycle(level+1);
-                    P->mult(levels[level+1]->x, tmp);
-                    for (int i = 0; i < A->local_num_rows; i++)
-                    {
-                        x.local[i] += tmp.local[i];
-                    }
-                    relax(levels[level]);
+                    P->mult_append(levels[level+1]->x, x);
+                    A->gauss_seidel(x, b);
                 }
             }
 
-            void solve(ParVector& sol, ParVector& rhs, int num_iterations = 100)
+            void solve(Vector& sol, Vector& rhs, int num_iterations = 100)
             {
-                int rank;
-                MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
                 double b_norm = rhs.norm(2);
                 double r_norm;
                 int iter = 0;
@@ -407,7 +249,7 @@ namespace raptor
                 levels[0]->b.copy(rhs);
 
                 // Iterate until convergence or max iterations
-                ParVector resid(rhs.global_n, rhs.local_n, rhs.first_local);
+                Vector resid(rhs.size());
                 levels[0]->A->residual(levels[0]->x, levels[0]->b, resid);
                 if (fabs(b_norm) > zero_tol)
                 {
@@ -416,11 +258,11 @@ namespace raptor
                 else
                 {
                     r_norm = resid.norm(2);
-                    if (rank == 0) printf("Small Bnorm -> not using relative residual\n");
+                    printf("Small Norm of B -> not using relative residuals\n");
                 }
-                if (rank == 0) printf("Rnorm = %e\n", r_norm);
+                printf("Rnorm = %e\n", r_norm);
 
-                while (r_norm > 1e-07 && iter < num_iterations)
+                while (r_norm > 1e-05 && iter < num_iterations)
                 {
                     cycle(0);
                     iter++;
@@ -434,19 +276,17 @@ namespace raptor
                     {
                         r_norm = resid.norm(2);
                     }
-                    if (rank == 0) printf("Rnorm = %e\n", r_norm);
+                    printf("Rnorm = %e\n", r_norm);
                 }
+
+                sol.copy(levels[0]->x);
             } 
 
             std::vector<Level*> levels;
-            std::vector<int> LU_permute;
-            int num_levels;
-
-            int coarse_n;
             std::vector<double> A_coarse;
-            std::vector<int> coarse_sizes;
-            std::vector<int> coarse_displs;
-            MPI_Comm coarse_comm;
+            std::vector<int> LU_permute;
+            int coarse_n;
+            int num_levels;
     };
 }
 #endif

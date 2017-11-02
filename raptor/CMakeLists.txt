@@ -5,9 +5,7 @@ add_subdirectory(gallery)
 add_subdirectory(util)
 add_subdirectory(smoothed_aggregation)
 add_subdirectory(ruge_stuben)
-
-#add_library(raptor STATIC ${core_SOURCES} ${gallery_SOURCES} ${util_SOURCES}
-#    strength.cpp ${smoothed_aggregation_SOURCES} ${ruge_stuben_SOURCES})
+add_subdirectory(multilevel)
 
 if (WITH_MPI)
     set(par_SOURCES
@@ -19,7 +17,7 @@ else()
 endif()
 
 add_library(raptor STATIC ${core_SOURCES} ${gallery_SOURCES} ${util_SOURCES}
-    ${par_SOURCES} strength.cpp ${ruge_stuben_SOURCES})
+    ${par_SOURCES} strength.cpp ${ruge_stuben_SOURCES} ${multilevel_SOURCES})
 
 target_link_libraries(raptor ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
     ${PTSCOTCH_LIBRARIES} ${EXTERNAL_LIBS} )

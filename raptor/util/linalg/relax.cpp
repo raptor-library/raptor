@@ -161,7 +161,7 @@ void jacobi(ParCSRMatrix* A, ParVector& x, const ParVector& y, ParVector& tmp,
  ***** num_sweeps : int
  *****    Number of relaxation sweeps to perform
  **************************************************************/
-void relax(Level* l, int num_sweeps)
+void relax(ParLevel* l, int num_sweeps)
 {
     relax(l->A, l->x, l->b, l->tmp, num_sweeps);
 }

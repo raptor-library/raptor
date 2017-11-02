@@ -8,7 +8,7 @@
 
 #include "core/par_vector.hpp"
 #include "core/par_matrix.hpp"
-#include "multilevel/level.hpp"
+#include "multilevel/par_level.hpp"
 
 using namespace raptor;
 
@@ -24,7 +24,7 @@ using namespace raptor;
  ***** num_sweeps : int
  *****    Number of relaxation sweeps to perform
  **************************************************************/
-void relax(Level* l, int num_sweeps = 1);
+void relax(ParLevel* l, int num_sweeps = 1);
 void relax(ParCSRMatrix* A, ParVector& b, ParVector& x, ParVector& tmp, int num_sweeps = 1);
 
 #endif

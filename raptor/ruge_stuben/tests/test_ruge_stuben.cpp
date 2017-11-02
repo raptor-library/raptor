@@ -6,9 +6,13 @@
 
 
 #include "gtest/gtest.h"
+
 #include "core/types.hpp"
 #include "core/matrix.hpp"
 #include "gallery/matrix_IO.hpp"
+#include "ruge_stuben/cf_splitting.hpp"
+#include "ruge_stuben/interpolation.hpp"
+#include "tests/compare.hpp"
 
 using namespace raptor;
 
@@ -16,36 +20,64 @@ int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
-
 } // end of main() //
 
 TEST(TestRugeStuben, TestsInRuge_Stuben)
 { 
-    CSRMatrix* A = readMatrix("../../tests/rss_laplace_A0.mtx", 1);
-    CSRMatrix* P = readMatrix("../../tests/rss_laplace_P0.mtx", 0);
-    Vector x(P->n_cols);
-    Vector b(P->n_rows);
+    CSRMatrix *A;
+    CSRBoolMatrix* S;
+    CSRMatrix* P;
+    CSRMatrix* AP;
+    CSCMatrix* P_csc;
+    CSRMatrix* Ac_rap;
+    CSRMatrix* Ac;
+    std::vector<int> splitting;
+
+    // Read in weights (for max num rows)
     FILE* f;
-
-    f = fopen("../../tests/rss_laplace_brand0.txt", "r");
-    for (int i = 0; i < P->n_rows; i++)
+    int max_n = 5000;
+    std::vector<double> weights(max_n);
+    f = fopen("../../../../test_data/weights.txt", "r");
+    for (int i = 0; i < max_n; i++)
     {
-        fscanf(f, "%lg\n", &b[i]);
+        fscanf(f, "%lf\n", &weights[i]);
     }
     fclose(f);
 
-    P->mult_T(b, x);
-    f = fopen("../../tests/rss_laplace_x0.txt", "r");
-    double val;
-    for (int i = 0; i < P->n_cols; i++)
-    {
-        fscanf(f, "%lg\n", &val);
-        assert(fabs(x[i] - val) < 1e-06);
-    }
-    fclose(f);
-
-
-    delete A;
+    // TEST LEVEL 0
+    A = readMatrix("../../../../test_data/rss_A0.mtx", 1);
+    S = A->strength(0.25);
+    split_cljp(S, splitting, weights.data());
+    P = direct_interpolation(A, S, splitting);
+    AP = A->mult(P);
+    P_csc = new CSCMatrix(P);
+    Ac_rap = AP->mult_T(P_csc);
+    Ac = readMatrix("../../../../test_data/rss_A1.mtx", 0);
+    compare(Ac, Ac_rap);
+    delete Ac;
+    delete P_csc;
+    delete AP;
     delete P;
+    delete S;
+    delete A;
 
+    // TEST LEVEL 1
+    A = Ac_rap;
+    Ac_rap = NULL;
+    S = A->strength(0.25);
+    split_cljp(S, splitting, weights.data());
+    P = direct_interpolation(A, S, splitting);
+    AP = A->mult(P);
+    P_csc = new CSCMatrix(P);
+    Ac_rap = AP->mult_T(P_csc);
+    Ac = readMatrix("../../../../test_data/rss_A2.mtx", 0);
+    compare(Ac, Ac_rap);
+    delete Ac;
+    delete Ac_rap;
+    delete P_csc;
+    delete AP;
+    delete P;
+    delete S;
+    delete A;
 } // end of TEST(TestRugeStuben, TestsInRuge_Stuben) //
+

@@ -18,5 +18,8 @@ if (WITH_MPI)
     add_executable(test_par_aniso test_par_aniso.cpp)
     target_link_libraries(test_par_aniso raptor ${MPI_LIBRARIES} googletest pthread )
     add_test(ParAnisoTest ./test_par_aniso)
+
+    add_executable(test_exxon_reader test_exxon_reader.cpp)
+    target_link_libraries(test_exxon_reader raptor ${MPI_LIBRARIES})
 endif()
 

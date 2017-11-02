@@ -1,23 +1,24 @@
 // Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#ifndef RAPTOR_CORE_LEVEL_H
-#define RAPTOR_CORE_LEVEL_H
+#ifndef RAPTOR_ML_LEVEL_H
+#define RAPTOR_ML_LEVEL_H
 
 #include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "core/par_vector.hpp"
+#include "core/matrix.hpp"
+#include "core/vector.hpp"
 
-// Coarse Matrices (A) are CSR
-// Prolongation Matrices (P) are CSR
-// P^T*A*P is then CSR*(CSR*CSR) -- returns CSR Ac
+// Coarse Matrices (A) are CSC
+// Prolongation Matrices (P) are CSC
+// P^T*A*P is then CSR*(CSC*CSC) -- returns CSC Ac
 namespace raptor
 {
     class Level
     {
         public:
+
             Level()
             {
-
+              
             }
 
             ~Level()
@@ -26,11 +27,11 @@ namespace raptor
                 delete P;
             }
 
-            ParCSRMatrix* A;
-            ParCSRMatrix* P;
-            ParVector x;
-            ParVector b;
-            ParVector tmp;
+            CSRMatrix* A;
+            CSRMatrix* P;
+            Vector x;
+            Vector b;
+            Vector tmp;
     };
 }
 #endif

@@ -6,7 +6,7 @@
 
 using namespace raptor;
 
-void transpose(const CSRMatrix* S,
+void transpose(const CSRBoolMatrix* S,
         std::vector<int>& col_ptr,
         std::vector<int>& col_indices)
 {
@@ -66,7 +66,7 @@ void transpose(const CSRMatrix* S,
     }
 }
 
-void rs_first_pass(const CSRMatrix* S,
+void rs_first_pass(const CSRBoolMatrix* S,
         const std::vector<int>& col_ptr,
         const std::vector<int>& col_indices,
         std::vector<int>& weights,
@@ -222,7 +222,7 @@ void rs_first_pass(const CSRMatrix* S,
  ***** S : CSRMatrix*
  *****    Strength of connection matrix
  **************************************************************/
-void split_rs(CSRMatrix* S,
+void split_rs(CSRBoolMatrix* S,
         std::vector<int>& states)
 {
     int start, end;
@@ -263,7 +263,7 @@ void split_rs(CSRMatrix* S,
 
 }
 
-int select_independent_set(CSRMatrix* S, std::vector<int>& col_ptr,
+int select_independent_set(CSRBoolMatrix* S, std::vector<int>& col_ptr,
         std::vector<int>& col_indices, int remaining, std::vector<int>& unassigned,
         std::vector<int>& states, std::vector<double>& weights,
         std::vector<int>& new_coarse_list)
@@ -319,7 +319,7 @@ int select_independent_set(CSRMatrix* S, std::vector<int>& col_ptr,
     return num_new_coarse;
 }
 
-void update_weights(CSRMatrix* S, std::vector<int>& col_ptr, std::vector<int>& col_indices, 
+void update_weights(CSRBoolMatrix* S, std::vector<int>& col_ptr, std::vector<int>& col_indices, 
         std::vector<int>& edgemark, std::vector<int>& c_dep_cache, 
         std::vector<int>& new_coarse_list, int num_new_coarse, 
         std::vector<int>& states, std::vector<double>& weights)
@@ -418,8 +418,8 @@ int update_states(int remaining, std::vector<int>& unassigned, std::vector<int>&
     return ctr;
 }
 
-void cljp_main_loop(CSRMatrix* S, std::vector<int>& col_ptr, std::vector<int>& col_indices,
-        std::vector<int>& states)
+void cljp_main_loop(CSRBoolMatrix* S, std::vector<int>& col_ptr, std::vector<int>& col_indices,
+        std::vector<int>& states, double* rand_vals = NULL)
 {
     int num_new_coarse, num_new_fine;
     int remaining;
@@ -446,12 +446,22 @@ void cljp_main_loop(CSRMatrix* S, std::vector<int>& col_ptr, std::vector<int>& c
 
  
     //TODO -- change to random... reading for testing
-    for (int i = 0; i < S->n_rows; i++)
+    if (rand_vals)
     {
-        srand(i);
+        for (int i = 0; i < S->n_rows; i++)
+        {
+            weights[i] = rand_vals[i];
+        }
+    }
+    else
+    {
+        for (int i = 0; i < S->n_rows; i++)
+        {
+            srand(i);
 
-        // Random value [0,1)
-        weights[i] = ((double)(rand())) / RAND_MAX;
+            // Random value [0,1)
+            weights[i] = ((double)(rand())) / RAND_MAX;
+        }
     }
 
     for (int i = 0; i < S->n_rows; i++)
@@ -486,11 +496,17 @@ void cljp_main_loop(CSRMatrix* S, std::vector<int>& col_ptr, std::vector<int>& c
     }
 }
 
-void split_cljp(CSRMatrix* S, 
-        std::vector<int>& states)
+void split_cljp(CSRBoolMatrix* S, 
+        std::vector<int>& states,
+        double* rand_vals)
 {
     std::vector<int> col_ptr;
     std::vector<int> col_indices;
+
+    if (!S->diag_first)
+    {
+        S->move_diag();
+    }
 
     if (S->n_rows)
     {
@@ -506,7 +522,7 @@ void split_cljp(CSRMatrix* S,
         states[i] = -1;
     }
 
-    cljp_main_loop(S, col_ptr, col_indices, states);
+    cljp_main_loop(S, col_ptr, col_indices, states, rand_vals);
 }
 
 

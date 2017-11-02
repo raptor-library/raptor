@@ -9,7 +9,7 @@
 using namespace raptor;
 
 CSRMatrix* direct_interpolation(CSRMatrix* A, 
-        CSRMatrix* S, const std::vector<int>& states);
+        CSRBoolMatrix* S, const std::vector<int>& states);
 
 #endif
 

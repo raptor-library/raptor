@@ -5,8 +5,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 if (WITH_PTSCOTCH)
     set(external_linalg_SOURCES
-        util/linalg/external/repartition.hpp
-        util/linalg/external/repartition.cpp
+        util/linalg/external/ptscotch.hpp
         )
 else()
     set(external_linalg_SOURCES
@@ -19,6 +18,8 @@ if (WITH_MPI)
         util/linalg/spmv.cpp
         util/linalg/matmult.cpp
         util/linalg/relax.cpp
+        util/linalg/repartition.hpp
+        util/linalg/repartition.cpp
         )
 else ()
     set (par_linalg_SOURCES 

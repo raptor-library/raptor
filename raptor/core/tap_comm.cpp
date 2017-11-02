@@ -361,7 +361,7 @@ void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
     int n_send_procs;
     int recv_size;
     int idx, node_idx;
-    int ctr, ptr_ctr, prev_ctr;
+    int ctr, prev_ctr;
     int start, end, size;
     int count;
     MPI_Status recv_status;
@@ -423,11 +423,10 @@ void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
     // Remove duplicates... Likely send same data to mulitple local procs, but
     // only want to recv this data from a distant node once
     ctr = 0;
-    ptr_ctr = 1;
+    start = global_par_comm->recv_data->indptr[0];
     for (int i = 0; i < global_par_comm->recv_data->num_msgs; i++)
     {
         proc = global_par_comm->recv_data->procs[i];
-        start = global_par_comm->recv_data->indptr[i];
         end = global_par_comm->recv_data->indptr[i+1];
         size = end - start;
         if (size)
@@ -437,30 +436,30 @@ void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
             std::vector<int> p(size);
             std::iota(p.begin(), p.end(), 0);
             std::sort(p.begin(), p.end(),
-                    [&] (int i, int j)
+                    [&] (int j, int k)
                     {
-                        return global_par_comm->recv_data->indices[i+start] 
-                               < global_par_comm->recv_data->indices[j+start];
+                        return global_par_comm->recv_data->indices[j+start] 
+                               < global_par_comm->recv_data->indices[k+start];
                     });
 
             // Sort node_recv_indices and node_recv_idx_orig_procs together
             std::vector<bool> done(size);
-            for (int i = 0; i < size; i++)
+            for (int j = 0; j < size; j++)
             {
-                if (done[i]) continue;
+                if (done[j]) continue;
 
-                done[i] = true;
-                int prev_j = i;
-                int j = p[i];
-                while (i != j)
+                done[j] = true;
+                int prev_k = j;
+                int k = p[j];
+                while (j != k)
                 {
-                    std::swap(global_par_comm->recv_data->indices[prev_j+start],
-                            global_par_comm->recv_data->indices[j+start]);
-                    std::swap(node_recv_idx_orig_procs[prev_j+start], 
-                            node_recv_idx_orig_procs[j+start]);
-                    done[j] = true;
-                    prev_j = j;
-                    j = p[j];
+                    std::swap(global_par_comm->recv_data->indices[prev_k+start],
+                            global_par_comm->recv_data->indices[k+start]);
+                    std::swap(node_recv_idx_orig_procs[prev_k+start], 
+                            node_recv_idx_orig_procs[k+start]);
+                    done[k] = true;
+                    prev_k = k;
+                    k = p[k];
                 }
             }
         }
@@ -479,7 +478,8 @@ void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
                     = global_par_comm->recv_data->indices[j];
             }
         }
-        global_par_comm->recv_data->indptr[ptr_ctr++] = ctr;
+        global_par_comm->recv_data->indptr[i + 1] = ctr;
+        start = end;
     }
     global_par_comm->recv_data->indices.resize(ctr);
     global_par_comm->recv_data->size_msgs = ctr;
@@ -756,7 +756,8 @@ void TAPComm::form_local_S_par_comm(std::vector<int>& orig_procs)
         local_S_par_comm->recv_data->indptr[i+1] = ctr;
         start = end;
     }
-    local_S_par_comm->recv_data->size_msgs = local_S_par_comm->recv_data->indices.size();
+    local_S_par_comm->recv_data->indices.resize(ctr);
+    local_S_par_comm->recv_data->size_msgs = ctr;
     local_S_par_comm->recv_data->finalize();
 
     // Send messages to local procs, informing of what data to send

@@ -1,87 +1,6 @@
 #include "repartition.hpp"
 
-int* ptscotch_partition(ParCSRMatrix* A)
-{
-    int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
-    // Variables for Graph Partitioning
-    int* edge_starts;
-    int* edge_ends;
-    int* gbl_indices;
-    int* partition = NULL;
-    int baseval = 0; // Always 0 for C style arrays
-    int row_start, row_end;
-    int idx, gbl_idx, ctr;
-    int err;
-
-    // Allocate Partition Variable (to be returned)
-    partition = new int[A->local_num_rows + 2];
-    edge_starts = new int[A->local_num_rows + 2];
-    gbl_indices = new int[A->local_nnz + 1];
-
-    // Find matrix edge indices for PT Scotch
-    ctr = 0;
-    for (int row = 0; row < A->local_num_rows; row++)
-    {
-        edge_starts[row] = ctr;
-        row_start = A->on_proc->idx1[row];
-        row_end = A->on_proc->idx1[row+1];
-        for (int j = row_start; j < row_end; j++)
-        {
-            idx = A->on_proc->idx2[j];
-            gbl_idx = A->on_proc_column_map[idx];
-            gbl_indices[ctr] = gbl_idx;
-            ctr++;
-        }
-
-        if (A->off_proc_num_cols)
-        {
-            row_start = A->off_proc->idx1[row];
-            row_end = A->off_proc->idx1[row+1];
-            for (int j = row_start; j < row_end; j++)
-            {
-                idx = A->off_proc->idx2[j];
-                gbl_idx = A->off_proc_column_map[idx];
-                gbl_indices[ctr] = gbl_idx;
-                ctr++;
-            }
-        }
-    }
-    edge_starts[A->local_num_rows] = ctr;
-   
-
-    SCOTCH_Dgraph dgraphdata;
-    SCOTCH_Strat stratdata;
-
-    SCOTCH_dgraphInit(&dgraphdata, MPI_COMM_WORLD);
-    SCOTCH_dgraphBuild(&dgraphdata, baseval, A->local_num_rows, A->local_num_rows,
-            edge_starts, NULL, NULL, NULL, A->local_nnz, A->local_nnz, gbl_indices,
-            NULL, NULL);
-    SCOTCH_dgraphCheck(&dgraphdata);
-    SCOTCH_stratInit(&stratdata);
-    //SCOTCH_stratDgraphMapBuild(&stratdata, SCOTCH_STRATDEFAULT, num_procs, num_procs, 0.03);
-    SCOTCH_randomReset();
-    SCOTCH_dgraphPart(&dgraphdata, num_procs, &stratdata, partition);
-
-    SCOTCH_stratExit(&stratdata);
-    SCOTCH_dgraphExit(&dgraphdata);
-
-
-    std::vector<int> proc_sizes(num_procs, 0);
-    for (int i = 0; i < A->local_num_rows; i++)
-    {
-        proc_sizes[partition[i]]++;
-    }
-
-    delete[] edge_starts;    
-    delete[] gbl_indices;
-
-    return partition;
-}
-
-void make_contiguous(ParCSRMatrix* A, const std::vector<int>& on_proc_column_map)
+void make_contiguous(ParCSRMatrix* A)
 {
     int rank;
     int num_procs;
@@ -165,7 +84,7 @@ void make_contiguous(ParCSRMatrix* A, const std::vector<int>& on_proc_column_map
     }
     for (int i = 0; i < A->on_proc_num_cols; i++)
     {
-        orig_col = on_proc_column_map[i];
+        orig_col = A->on_proc_column_map[i];
         assumed_proc = orig_col / assumed_num_cols;
         proc_num_cols[assumed_proc]++;
     }
@@ -191,7 +110,7 @@ void make_contiguous(ParCSRMatrix* A, const std::vector<int>& on_proc_column_map
         send_requests.resize(num_sends);
         for (int i = 0; i < A->on_proc_num_cols; i++)
         {
-            orig_col = on_proc_column_map[i];
+            orig_col = A->on_proc_column_map[i];
             new_col = A->partition->first_local_col + i;
             assumed_proc = orig_col / assumed_num_cols;
             proc_idx = proc_num_cols[assumed_proc];
@@ -466,7 +385,7 @@ void make_contiguous(ParCSRMatrix* A, const std::vector<int>& on_proc_column_map
     A->off_proc->sort();
 }
 
-ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition)
+ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, std::vector<int>& new_local_rows)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -773,14 +692,12 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition)
         *it = global_to_local[*it];
     }
 
-    make_contiguous(A_part, A_part->on_proc_column_map);
+    new_local_rows.resize(A_part->on_proc_num_cols);
+    std::copy(A_part->on_proc_column_map.begin(), A_part->on_proc_column_map.end(),
+            new_local_rows.begin());
+    make_contiguous(A_part);
 
     return A_part;
-}
-
-ParCSRMatrix* repartition_matrix(ParCSRMatrix* A)
-{
-    return repartition_matrix(A, ptscotch_partition(A));
 }
 
 

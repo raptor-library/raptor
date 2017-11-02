@@ -347,10 +347,6 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
     {
         start = S->on_proc->idx1[i];
         end = S->on_proc->idx1[i+1];
-        if (S->on_proc->idx2[start] == i)
-        {
-            start++;
-        }
         ctr = A->on_proc->idx1[i];
         for (int j = start; j < end; j++)
         {
@@ -406,10 +402,10 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
     }
     MPI_Allreduce(&(on_proc_cols), &(global_num_cols), 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
    
-    ParCSRMatrix* P = new ParCSRMatrix(A->partition, A->global_num_rows, global_num_cols, 
-            A->local_num_rows, on_proc_cols, off_proc_cols);
+    ParCSRMatrix* P = new ParCSRMatrix(S->partition, S->global_num_rows, global_num_cols, 
+            S->local_num_rows, on_proc_cols, off_proc_cols);
 
-    for (int i = 0; i < A->on_proc_num_cols; i++)
+    for (int i = 0; i < S->on_proc_num_cols; i++)
     {
         if (states[i])
         {
@@ -435,11 +431,18 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         {
             sum_strong_pos = 0;
             sum_strong_neg = 0;
+            sum_all_pos = 0;
+            sum_all_neg = 0;
+
             start = S->on_proc->idx1[i];
             end = S->on_proc->idx1[i+1];
+            if (S->on_proc->idx2[start] == i)
+            {
+                start++;
+            }
             for (int j = start; j < end; j++)
             {
-                col = S->on_proc->idx2[j]; // Never equals row...
+                col = S->on_proc->idx2[j]; 
                 if (states[col] == 1)
                 {
                     val = sa_on[j];
@@ -458,6 +461,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
             for (int j = start; j < end; j++)
             {
                 col = S->off_proc->idx2[j];
+
                 if (off_proc_states[col] == 1)
                 {
                     val = sa_off[j];
@@ -472,14 +476,12 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
                 }
             }
 
-            sum_all_pos = 0;
-            sum_all_neg = 0;
             start = A->on_proc->idx1[i];
             end = A->on_proc->idx1[i+1];
             diag = A->on_proc->vals[start]; // Diag stored first
-            for (int j = start+1; j < end; j++)
+            start++;
+            for (int j = start; j < end; j++)
             {
-                col = A->on_proc->idx2[j]; // Never equals row
                 val = A->on_proc->vals[j];
                 if (val < 0)
                 {
@@ -494,7 +496,6 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
             end = A->off_proc->idx1[i+1];
             for (int j = start; j < end; j++)
             {
-                col = A->off_proc->idx2[j];
                 val = A->off_proc->vals[j];
                 if (val < 0)
                 {
@@ -506,14 +507,17 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
                 }
             }
 
-            if (sum_strong_neg == 0)
-            {
-                alpha = 0;
-            }
-            else
-            {
-                alpha = sum_all_neg / sum_strong_neg;
-            }
+            alpha = sum_all_neg / sum_strong_neg;
+           
+
+            //if (sum_strong_neg == 0)
+            //{
+            //    alpha = 0;
+            //}
+            //else
+            //{
+            //    alpha = sum_all_neg / sum_strong_neg;
+            //}
 
             if (sum_strong_pos == 0)
             {
@@ -530,6 +534,10 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
 
             start = S->on_proc->idx1[i];
             end = S->on_proc->idx1[i+1];
+            if (S->on_proc->idx2[start] == i)
+            {
+                start++;
+            }
             for (int j = start; j < end; j++)
             {
                 col = S->on_proc->idx2[j];
@@ -576,7 +584,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
     P->on_proc->nnz = P->on_proc->idx2.size();
     P->off_proc->nnz = P->off_proc->idx2.size();
     P->local_nnz = P->on_proc->nnz + P->off_proc->nnz;
-
+    
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
         if (col_exists[i])
@@ -609,9 +617,6 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
     }
 
     return P;
-
-
-
 }
 
 
