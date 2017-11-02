@@ -58,7 +58,7 @@ ParCSRBoolMatrix* ParCSRMatrix::strength(double theta)
             // Find value with max magnitude in row
             if (diag < 0.0)
             {
-                row_scale = 0.0;
+                row_scale = -RAND_MAX; 
                 for (int j = row_start_on; j < row_end_on; j++)
                 {
                     val = on_proc->vals[j];

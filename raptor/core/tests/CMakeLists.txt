@@ -1,7 +1,7 @@
 if (WITH_MPI)
     add_executable(test_par_comm test_par_comm.cpp)
     target_link_libraries(test_par_comm raptor ${MPI_LIBRARIES} googletest pthread )
-    add_test(ParCommTest ./test_par_comm)
+    add_test(ParCommTest mpirun -n 2 ./test_par_comm)
 
     add_executable(test_tap_comm test_tap_comm.cpp)
     target_link_libraries(test_tap_comm raptor ${MPI_LIBRARIES} googletest pthread )
