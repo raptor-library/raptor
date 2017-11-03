@@ -482,6 +482,11 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C,
 
     std::copy(recv_off_cols.begin(), recv_off_cols.end(),
             std::back_inserter(C->off_proc_column_map));
+    for (std::vector<int>::iterator it = B->off_proc_column_map.begin();
+            it != B->off_proc_column_map.end(); ++it)
+    {
+        C->off_proc_column_map.push_back(*it);
+    }
     std::sort(C->off_proc_column_map.begin(), C->off_proc_column_map.end());
 
     int prev_col = -1;
