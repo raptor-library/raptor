@@ -17,7 +17,7 @@ add_test(TestRugeStuben ./test_ruge_stuben)
 if (WITH_MPI)
     add_executable(test_par_rap test_par_rap.cpp)
     target_link_libraries(test_par_rap raptor ${MPI_LIBRARIES} googletest pthread )
-    add_test(TestParRAP ./test_par_rap)
+    add_test(TestParRAP mpirun -n 2 ./test_par_rap)
 
     add_executable(test_par_splitting test_par_splitting.cpp)
     target_link_libraries(test_par_splitting raptor ${MPI_LIBRARIES} googletest pthread )
