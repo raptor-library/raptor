@@ -26,7 +26,6 @@ int main(int argc, char* argv[])
     // TEST LEVEL 0
     A = readMatrix("../../../../test_data/rss_A0.mtx", 1);
     S = readMatrix("../../../../test_data/rss_S0.mtx", 1);
-    P = readMatrix("../../../../test_data/rss_P0.mtx", 0);
     S_bool = new CSRBoolMatrix(S);
     splitting.resize(A->n_rows);
     f = fopen("../../../../test_data/rss_cf0", "r");
@@ -36,13 +35,19 @@ int main(int argc, char* argv[])
     }
     fclose(f);
 
+    P = readMatrix("../../../../test_data/rss_P0.mtx", 0);
     P_rap = direct_interpolation(A, S_bool, splitting);
     compare(P, P_rap);
-
     delete P_rap;
+    delete P;
+
+    P = readMatrix("../../../../test_data/rss_P0_mc.mtx", 0);
+    P_rap = mod_classical_interpolation(A, S_bool, splitting);
+    compare(P, P_rap);
+    delete P_rap;
+    delete P;
     delete S_bool;
     delete S;
-    delete P;
     delete A;
 
 
@@ -61,14 +66,18 @@ int main(int argc, char* argv[])
 
     P_rap = direct_interpolation(A, S_bool, splitting);
     compare(P, P_rap);
+    delete P_rap;
+    delete P;
+
+    P = readMatrix("../../../../test_data/rss_P1_mc.mtx", 0);
+    P_rap = mod_classical_interpolation(A, S_bool, splitting);
+    compare(P, P_rap);
 
     delete P_rap;
     delete S_bool;
     delete S;
     delete P;
     delete A;
-
-
 
     return 0;
 }
