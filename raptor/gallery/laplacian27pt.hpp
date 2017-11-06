@@ -3,7 +3,7 @@
 #ifndef LAPLACIAN27PT_HPP
 #define LAPLACIAN27PT_HPP
 
-#include <mpi.h>
+//#include <mpi.h>
 #include "core/types.hpp"
 #include <stdlib.h>
 
