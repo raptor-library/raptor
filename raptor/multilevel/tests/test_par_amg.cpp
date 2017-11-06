@@ -27,10 +27,9 @@ int main(int _argc, char** _argv)
     ::testing::InitGoogleTest(&_argc, _argv);
     argc = _argc;
     argv = _argv;
-    return RUN_ALL_TESTS();
-    
+    int temp=RUN_ALL_TESTS();
     MPI_Finalize();
-
+    return temp;
 } // end of main() //
 
 
