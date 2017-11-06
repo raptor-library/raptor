@@ -15,14 +15,12 @@ using namespace raptor;
 int main(int argc, char* argv[])
 {
     FILE* f;
-    CSRMatrix* S_py;
-    CSRBoolMatrix* S;
+    CSRMatrix* S;
     std::vector<int> splitting;
     std::vector<int> splitting_rap;
    
     // TEST LAPLACIAN SPLITTINGS ON LEVEL 0 
-    S_py = readMatrix("../../../../test_data/rss_S0.mtx", 1);
-    S = new CSRBoolMatrix(S_py);
+    S = readMatrix("../../../../test_data/rss_S0.mtx", 1);
     splitting.resize(S->n_rows);;
 
     // Test RugeStuben Splitting
@@ -62,13 +60,11 @@ int main(int argc, char* argv[])
     }
 
     delete S;
-    delete S_py;
 
 
 
     // TEST LAPLACIAN SPLITTINGS ON LEVEL 1 
-    S_py = readMatrix("../../../../test_data/rss_S1.mtx", 0);
-    S = new CSRBoolMatrix(S_py);
+    S = readMatrix("../../../../test_data/rss_S1.mtx", 0);
     splitting.resize(S->n_rows);;
 
     // Test RugeStuben Splitting
@@ -108,7 +104,6 @@ int main(int argc, char* argv[])
     }
 
     delete S;
-    delete S_py;
 
 
     return 0;

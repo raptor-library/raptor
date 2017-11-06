@@ -4,7 +4,7 @@ using namespace raptor;
 
 // Assumes ParCSRMatrix is previously sorted
 // TODO -- have ParCSRMatrix bool sorted (and sort if not previously)
-CSRBoolMatrix* CSRMatrix::strength(double theta)
+CSRMatrix* CSRMatrix::strength(double theta)
 {
     int start, end;
     double val;
@@ -21,7 +21,7 @@ CSRBoolMatrix* CSRMatrix::strength(double theta)
         move_diag();
     }
 
-    CSRBoolMatrix* S = new CSRBoolMatrix(n_rows, n_cols, nnz);
+    CSRMatrix* S = new CSRMatrix(n_rows, n_cols, nnz);
 
     S->idx1[0] = 0;
     for (int i = 0; i < n_rows; i++)
@@ -71,6 +71,7 @@ CSRBoolMatrix* CSRMatrix::strength(double theta)
 
             // Always add diagonal
             S->idx2.push_back(i);
+            S->vals.push_back(diag);
 
             // Add off-diagonals greater than threshold
             if (diag < 0)
@@ -81,6 +82,7 @@ CSRBoolMatrix* CSRMatrix::strength(double theta)
                     if (val > threshold)
                     {
                         S->idx2.push_back(idx2[j]);
+                        S->vals.push_back(vals[j]);
                     }
                 }
             }
@@ -92,6 +94,7 @@ CSRBoolMatrix* CSRMatrix::strength(double theta)
                     if (val < threshold)
                     {
                         S->idx2.push_back(idx2[j]);
+                        S->vals.push_back(vals[j]);
                     }
                 }
             }

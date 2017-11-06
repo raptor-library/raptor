@@ -32,4 +32,11 @@ if (WITH_MPI)
     add_test(TestParRugeStuben ./test_par_ruge_stuben)
 endif()
 
+if (WITH_HYPRE)
+    add_executable(test_hypre test_hypre.cpp)
+    target_link_libraries(test_hypre raptor ${MPI_LIBRARIES})
+    add_test(TestHypre mpirun -n 2 ./test_hypre)
+endif()
+
+
 

@@ -12,7 +12,7 @@ using namespace raptor;
 int main(int argc, char* argv[])
 {
     CSRMatrix *A;
-    CSRBoolMatrix* S;
+    CSRMatrix* S;
     CSRMatrix* P;
     CSRMatrix* AP;
     CSCMatrix* P_csc;

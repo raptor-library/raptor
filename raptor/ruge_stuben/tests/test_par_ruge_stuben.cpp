@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     ParCSRMatrix* A;
-    ParCSRBoolMatrix* S;
+    ParCSRMatrix* S;
     ParCSRMatrix* P;
     ParCSCMatrix* P_csc;
     ParCSRMatrix* AP;

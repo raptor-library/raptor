@@ -13,7 +13,7 @@
 
 using namespace raptor;
 
-ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRBoolMatrix* S, char* filename, int* first_row_ptr, int* first_col_ptr)
+ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, char* filename, int* first_row_ptr, int* first_col_ptr, int interp_option = 0)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -49,7 +49,14 @@ ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRBoolMatrix* S, char* filename, in
 
     // Get off proc states
     S->comm->communicate(splitting.data());
-    P_rap = direct_interpolation(A, S, splitting, S->comm->recv_data->int_buffer);
+    if (interp_option == 0)
+    {
+        P_rap = direct_interpolation(A, S, splitting, S->comm->recv_data->int_buffer);
+    }
+    else if (interp_option == 1)
+    {
+        P_rap = mod_classical_interpolation(A, S, splitting, S->comm->recv_data->int_buffer);
+    }
     MPI_Allgather(&P_rap->on_proc_num_cols, 1, MPI_INT, proc_sizes.data(), 1, 
                 MPI_INT, MPI_COMM_WORLD);
     first_col = 0;
@@ -77,7 +84,6 @@ int main(int argc, char* argv[])
     FILE* f;
     ParCSRMatrix* A;
     ParCSRMatrix* S;
-    ParCSRBoolMatrix* S_bool;
     ParCSRMatrix* P;
     ParCSRMatrix* P_rap;
 
@@ -85,35 +91,49 @@ int main(int argc, char* argv[])
     // TEST LEVEL 0
     A = readParMatrix("../../../../test_data/rss_A0.mtx", MPI_COMM_WORLD, 1, 1);
     S = readParMatrix("../../../../test_data/rss_S0.mtx", MPI_COMM_WORLD, 1, 1);
-    S_bool = new ParCSRBoolMatrix(S);
-    P_rap = form_Prap(A, S_bool, "../../../../test_data/rss_cf0", 
-            &first_row, &first_col);
+    P_rap = form_Prap(A, S, "../../../../test_data/rss_cf0", 
+            &first_row, &first_col, 0);
     P = readParMatrix("../../../../test_data/rss_P0.mtx", MPI_COMM_WORLD, 1, 0, 
         P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
     compare(P, P_rap);
     delete P_rap;
     delete P;
-    delete S_bool;
+
+    P_rap = form_Prap(A, S, "../../../../test_data/rss_cf0", 
+            &first_row, &first_col, 1);
+    P = readParMatrix("../../../../test_data/rss_P0_mc.mtx", MPI_COMM_WORLD, 1, 0,
+            P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
+    compare(P, P_rap);
+    delete P;
+    delete P_rap;
     delete S;
     delete A;
 
     // TEST LEVEL 1
     A = readParMatrix("../../../../test_data/rss_A1.mtx", MPI_COMM_WORLD, 1, 0);
     S = readParMatrix("../../../../test_data/rss_S1.mtx", MPI_COMM_WORLD, 1, 0);
-    S_bool = new ParCSRBoolMatrix(S);
-    P_rap = form_Prap(A, S_bool, "../../../../test_data/rss_cf1", 
-            &first_row, &first_col);
+    P_rap = form_Prap(A, S, "../../../../test_data/rss_cf1", 
+            &first_row, &first_col, 0);
     P = readParMatrix("../../../../test_data/rss_P1.mtx", MPI_COMM_WORLD, 1, 0, 
         P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
     compare(P, P_rap);
-
-
     delete P_rap;
     delete P;
-    delete S_bool;
+
+    P_rap = form_Prap(A, S, "../../../../test_data/rss_cf1", 
+            &first_row, &first_col, 1);
+    P = readParMatrix("../../../../test_data/rss_P1_mc.mtx", MPI_COMM_WORLD, 1, 0,
+            P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
+
+    P->sort();
+    P_rap->sort();
+    P->on_proc->move_diag();
+    P_rap->on_proc->move_diag();
+    compare(P, P_rap);
+    delete P;
+    delete P_rap;
     delete S;
     delete A;
-
 
     MPI_Finalize();
 

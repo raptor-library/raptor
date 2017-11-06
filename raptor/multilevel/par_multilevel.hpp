@@ -153,7 +153,7 @@ namespace raptor
             {
                 int level_ctr = levels.size() - 1;
                 ParCSRMatrix* A = levels[level_ctr]->A;
-                ParCSRBoolMatrix* S;
+                ParCSRMatrix* S;
                 ParCSRMatrix* AP;
                 ParCSCMatrix* P_csc;
 
