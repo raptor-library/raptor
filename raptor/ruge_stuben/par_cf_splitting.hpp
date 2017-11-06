@@ -9,11 +9,11 @@
 
 using namespace raptor;
 
-void split_falgout(ParCSRBoolMatrix* S, std::vector<int>& states, 
+void split_falgout(ParCSRMatrix* S, std::vector<int>& states, 
         std::vector<int>& off_proc_states);
-void split_rs(ParCSRBoolMatrix* S, std::vector<int>& states, 
+void split_rs(ParCSRMatrix* S, std::vector<int>& states, 
         std::vector<int>& off_proc_states);
-void split_cljp(ParCSRBoolMatrix* S, std::vector<int>& states, 
+void split_cljp(ParCSRMatrix* S, std::vector<int>& states, 
         std::vector<int>& off_proc_states, double* rand_vals = NULL);
 
 #endif

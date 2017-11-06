@@ -30,7 +30,7 @@ void compare(CSRMatrix* A, CSRMatrix* A_rap)
     }
 }
 
-void compare(CSRMatrix* A, CSRBoolMatrix* A_rap)
+void compare_pattern(CSRMatrix* A, CSRMatrix* A_rap)
 {
     int start, end;
 

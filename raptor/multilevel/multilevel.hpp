@@ -111,7 +111,7 @@ namespace raptor
             {
                 int level_ctr = levels.size() - 1;
                 CSRMatrix* A = levels[level_ctr]->A;
-                CSRBoolMatrix* S;
+                CSRMatrix* S;
                 CSRMatrix* P;
                 CSRMatrix* AP;
                 CSCMatrix* P_csc;

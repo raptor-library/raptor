@@ -17,7 +17,6 @@ int main(int argc, char* argv[])
 {
     CSRMatrix* A;
     CSRMatrix* S;
-    CSRBoolMatrix* S_bool;
     CSRMatrix* P;
     CSRMatrix* P_rap;
     std::vector<int> splitting;
@@ -26,7 +25,6 @@ int main(int argc, char* argv[])
     // TEST LEVEL 0
     A = readMatrix("../../../../test_data/rss_A0.mtx", 1);
     S = readMatrix("../../../../test_data/rss_S0.mtx", 1);
-    S_bool = new CSRBoolMatrix(S);
     splitting.resize(A->n_rows);
     f = fopen("../../../../test_data/rss_cf0", "r");
     for (int i = 0; i < A->n_rows; i++)
@@ -36,17 +34,16 @@ int main(int argc, char* argv[])
     fclose(f);
 
     P = readMatrix("../../../../test_data/rss_P0.mtx", 0);
-    P_rap = direct_interpolation(A, S_bool, splitting);
+    P_rap = direct_interpolation(A, S, splitting);
     compare(P, P_rap);
     delete P_rap;
     delete P;
 
     P = readMatrix("../../../../test_data/rss_P0_mc.mtx", 0);
-    P_rap = mod_classical_interpolation(A, S_bool, splitting);
+    P_rap = mod_classical_interpolation(A, S, splitting);
     compare(P, P_rap);
     delete P_rap;
     delete P;
-    delete S_bool;
     delete S;
     delete A;
 
@@ -55,7 +52,6 @@ int main(int argc, char* argv[])
     A = readMatrix("../../../../test_data/rss_A1.mtx", 0);
     P = readMatrix("../../../../test_data/rss_P1.mtx", 0);
     S = readMatrix("../../../../test_data/rss_S1.mtx", 0);
-    S_bool = new CSRBoolMatrix(S);
     splitting.resize(A->n_rows);
     f = fopen("../../../../test_data/rss_cf1", "r");
     for (int i = 0; i < A->n_rows; i++)
@@ -64,19 +60,18 @@ int main(int argc, char* argv[])
     }
     fclose(f);
 
-    P_rap = direct_interpolation(A, S_bool, splitting);
+    P_rap = direct_interpolation(A, S, splitting);
     compare(P, P_rap);
     delete P_rap;
     delete P;
 
     P = readMatrix("../../../../test_data/rss_P1_mc.mtx", 0);
-    P_rap = mod_classical_interpolation(A, S_bool, splitting);
+    P_rap = mod_classical_interpolation(A, S, splitting);
     compare(P, P_rap);
 
-    delete P_rap;
-    delete S_bool;
-    delete S;
     delete P;
+    delete P_rap;
+    delete S;
     delete A;
 
     return 0;
