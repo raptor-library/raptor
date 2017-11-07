@@ -16,71 +16,7 @@
 //#include "gallery/external/mfem_wrapper.hpp"
 #include "gallery/par_matrix_IO.hpp"
 #include "multilevel/par_multilevel.hpp"
-
-void compare(hypre_ParCSRMatrix* A_h, ParCSRMatrix* A, bool has_data = true, 
-        bool hyp_diag = true)
-{
-    int start, end, size;
-
-    hypre_CSRMatrix* A_h_diag = hypre_ParCSRMatrixDiag(A_h);
-    hypre_CSRMatrix* A_h_offd = hypre_ParCSRMatrixOffd(A_h);
-    int A_h_nrows = hypre_CSRMatrixNumRows(A_h_diag);
-    int* A_h_diag_i = hypre_CSRMatrixI(A_h_diag);
-    int* A_h_diag_j = hypre_CSRMatrixJ(A_h_diag);
-    double* A_h_diag_data = hypre_CSRMatrixData(A_h_diag);
-    int* A_h_offd_i = hypre_CSRMatrixI(A_h_offd);
-    int* A_h_offd_j = hypre_CSRMatrixJ(A_h_offd);
-    double* A_h_offd_data = hypre_CSRMatrixData(A_h_offd);
-
-    start = A->on_proc->idx1[0];
-    end = A->on_proc->idx1[1];
-    if (A->on_proc->idx2[start] == 0) start++;
-    size = end - start;
-    printf("A->size[0] = %d, A_h %d\n", size, A_h_diag_i[1] - A_h_diag_i[0]);
-    for (int i = start; i < end; i++)
-    {
-        printf("Col[%d] = %d\n", i, A->on_proc->idx2[i]);
-    }
-    for (int i = A_h_diag_i[0]; i < A_h_diag_i[1]; i++)
-    {
-        printf("COL H [%d] = %d\n", i, A_h_diag_j[i]);
-    }
-
-    printf("HypreMax[10, -12] = %d\n", hypre_max(10, -12));
-
-/*    assert(A_h_nrows == A->local_num_rows);
-    for (int i = 0; i < A->local_num_rows; i++)
-    {
-        start = A->on_proc->idx1[i];
-        end = A->on_proc->idx1[i+1];
-        if (!hyp_diag && A->on_proc->idx2[start] == i) start++;
-        size = end - start;
-        assert(A_h_diag_i[i+1] - A_h_diag_i[i] == size);
-
-        hypre_qsort1(A_h_diag_j, A_h_diag_data, start+1, end-1);
-        for (int j = 0; j < size; j++)
-        {
-            assert(A->on_proc->idx2[start + j] == A_h_diag_j[A_h_diag_i[i] + j]);
-            if (has_data) 
-            {
-                assert(fabs(A->on_proc->vals[start + j] - 
-                            A_h_diag_data[A_h_diag_i[i] + j]) < 1e-05);
-            }
-        }
-
-        start = A->off_proc->idx1[i];
-        end = A->off_proc->idx1[i+1];
-        assert(A->off_proc->idx1[i+1] == A_h_offd_i[i+1]);
-        
-        hypre_qsort1(A_h_offd_j, A_h_offd_data, start, end - 1);
-        for (int j = start; j < end; j++)
-        {
-            assert(A->off_proc->idx2[j] == A_h_offd_j[j]);
-            if (has_data) assert(fabs(A->off_proc->vals[j] - A_h_offd_data[j]) < 1e-05);
-        }
-    }
-    */
-}
+#include "tests/hypre_compare.hpp"
 
 //using namespace raptor;
 int main(int argc, char *argv[])
@@ -108,10 +44,10 @@ int main(int argc, char *argv[])
     double hypre_setup, hypre_solve;
     double raptor_setup, raptor_solve;
 
-    //int coarsen_type = 0; // CLJP
-    int coarsen_type = 6; // FALGOUT
-    //int interp_type = 3; 
-    int interp_type = 0;
+    int coarsen_type = 0; // CLJP
+    //int coarsen_type = 6; // FALGOUT
+    //int interp_type = 3; // Direct Interp
+    int interp_type = 0; // Classical Mod Interp
     double strong_threshold = 0.25;
     int agg_num_levels = 0;
     int p_max_elmts = 0;
@@ -177,7 +113,16 @@ int main(int argc, char *argv[])
     else if (system == 3)
     {
         char* file = "/Users/abienz/Documents/Parallel/raptor_topo/examples/LFAT5.mtx";
-        A = readParMatrix(file, MPI_COMM_WORLD, 1, 1);
+        int sym = 1;
+        if (argc > 2)
+        {
+            file = argv[2];
+            if (argc > 3)
+            {
+                sym = atoi(argv[3]);
+            }
+        }
+        A = readParMatrix(file, MPI_COMM_WORLD, 1, sym);
     }
 
     x = ParVector(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);

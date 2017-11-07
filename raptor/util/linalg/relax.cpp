@@ -62,8 +62,44 @@ void gs_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
     }
 }
 
+void gs_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
+        const std::vector<double>& dist_x)
+{
+    int start, end, col;
+    double diag;
+    double row_sum;
+
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        row_sum = 0;
+        start = A->on_proc->idx1[i];
+        end = A->on_proc->idx1[i+1];
+        if (A->on_proc->idx2[start] == i)
+        {
+            diag = A->on_proc->vals[start];
+            start++;
+        }        
+        else continue;
+        for (int j = start; j < end; j++)
+        {
+            col = A->on_proc->idx2[j];
+            row_sum += A->on_proc->vals[j] * x[col];
+        }
+
+        start = A->off_proc->idx1[i];
+        end = A->off_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = A->off_proc->idx2[j];
+            row_sum += A->off_proc->vals[j] * dist_x[col];
+        }
+
+        x[i] = (y[i] - row_sum) / diag;
+    }
+}
+
 void gs_backward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
-        const std::vector<double>& dist_x, double omega = 1.0)
+        const std::vector<double>& dist_x, double omega)
 {
     int start, end, col;
     double diag;
@@ -193,7 +229,7 @@ void relax(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, int num_
         // Run hybrid jacobi / gauss seidel
         //hybrid(A, x, b, tmp, A->comm->recv_data->buffer);
         //hybrid(A, x, b, A->comm->recv_data->buffer);
-        gs_forward(A, x, b, A->comm->recv_data->buffer, 2.0/3);
+        gs_forward(A, x, b, A->comm->recv_data->buffer, 1.0);
     }
 }
 

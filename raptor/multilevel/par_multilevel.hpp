@@ -149,6 +149,31 @@ namespace raptor
                 }
             }
 
+            void form_hypre_weights(std::vector<double>& weights, int n_rows)
+            {
+                int rank;
+                MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+                if (n_rows)
+                {
+                    weights.resize(n_rows);
+                    int seed = 2747 + rank;
+                    int a = 16807;
+                    int m = 2147483647;
+                    int q = 127773;
+                    int r = 2836;
+                    for (int i = 0; i < n_rows; i++)
+                    {
+                        int high = seed / q;
+                        int low = seed % q;
+                        int test = a * low - r * high;
+                        if (test > 0) seed = test;
+                        else seed = test + m;
+                        weights[i] = ((double)(seed) / m);
+                    }
+                }
+            }
+
             void extend_hierarchy(double theta = 0.0, int num_smooth_steps = 1)
             {
                 int level_ctr = levels.size() - 1;
@@ -161,8 +186,10 @@ namespace raptor
                 std::vector<int> off_proc_states;
 
                 S = A->strength(theta);
-                split_cljp(S, states, off_proc_states);
-                levels[level_ctr]->P = direct_interpolation(A, S, states, off_proc_states);
+                std::vector<double> weights;
+                form_hypre_weights(weights, A->local_num_rows);
+                split_cljp(S, states, off_proc_states, weights.data());
+                levels[level_ctr]->P = mod_classical_interpolation(A, S, states, off_proc_states);
                 ParCSRMatrix* P = levels[level_ctr]->P;
 
                 levels.push_back(new ParLevel());
