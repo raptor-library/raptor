@@ -31,14 +31,15 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     double diag, val;
     double weak_sum, coarse_sum, strong_sum;
     double weight;
+    double sign;
 
-    CSRMatrix* recv_mat;
-    CSRMatrix* recv_on;
-    CSRMatrix* recv_off;
-    CSCMatrix* S_on_csc;
-    CSCMatrix* S_off_csc;
-    CSCMatrix* recv_on_csc;
-    CSCMatrix* recv_off_csc;
+    CSRMatrix* recv_mat; // Communicate A
+    CSRMatrix* recv_on; // On Proc Block of Recvd A
+    CSRMatrix* recv_off; // Off Proc Block of Recvd A
+    CSCMatrix* A_on_csc; // On Proc Block of local Acsc
+    CSCMatrix* A_off_csc; // Off Proc Block of local Acsc
+    CSCMatrix* recv_on_csc; // On Proc Block of Recvd Acsc
+    CSCMatrix* recv_off_csc; // Off Proc Block of Recvd Acsc
 
     A->sort();
     S->sort();
@@ -91,27 +92,46 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     }
     P->local_row_map = S->get_local_row_map();
 
+    // Need off_proc_states_A
+    std::vector<int> off_proc_states_A;
+    if (A->off_proc_num_cols) off_proc_states_A.resize(A->off_proc_num_cols);
+    A->comm->communicate(states);
+    for (int i = 0; i < A->comm->recv_data->size_msgs; i++)
+    {
+        off_proc_states_A[i] = A->comm->recv_data->int_buffer[i];
+    } 
 
-    // Communicate parallel matrix A, but only at positions of S
-    // However, store in positions of A (for multiplying when
-    // determining weights of P)
-    recv_mat = S->comm->communicate(S);
+    // Map off proc cols S to A
+    std::vector<int> off_proc_S_to_A;
+    if (S->off_proc_num_cols) off_proc_S_to_A.resize(S->off_proc_num_cols);
+    ctr = 0;
+    for (int i = 0; i < S->off_proc_num_cols; i++)
+    {
+        while (S->off_proc_column_map[i] != A->off_proc_column_map[ctr])
+        {
+            ctr++;
+        }
+        off_proc_S_to_A[i] = ctr;
+    }
+
+    // Communicate parallel matrix A (Costly!)
+    recv_mat = A->comm->communicate(A);
 
     // Add all coarse columns of S to global_to_local (map)
     ctr = 0;
     std::map<int, int> global_to_local;
-    for (std::vector<int>::iterator it = S->off_proc_column_map.begin();
-            it != S->off_proc_column_map.end(); ++it)
+    for (std::vector<int>::iterator it = A->off_proc_column_map.begin();
+            it != A->off_proc_column_map.end(); ++it)
     {
         global_to_local[*it] = ctr++;
     }
     // Break up recv_mat into recv_on and recv_off
-    int* on_proc_partition_to_col = S->map_partition_to_local();
-    recv_on = new CSRMatrix(S->off_proc_num_cols, S->on_proc_num_cols);
-    recv_off = new CSRMatrix(S->off_proc_num_cols, S->off_proc_num_cols);
+    int* on_proc_partition_to_col = A->map_partition_to_local();
+    recv_on = new CSRMatrix(A->off_proc_num_cols, A->on_proc_num_cols);
+    recv_off = new CSRMatrix(A->off_proc_num_cols, A->off_proc_num_cols);
     recv_on->idx1[0] = 0;
     recv_off->idx1[0] = 0;
-    for (int i = 0; i < S->off_proc_num_cols; i++)
+    for (int i = 0; i < A->off_proc_num_cols; i++)
     {
         start = recv_mat->idx1[i];
         end = recv_mat->idx1[i+1];
@@ -119,11 +139,11 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         {
             global_col = recv_mat->idx2[j];
 
-            if (global_col >= S->partition->first_local_row
-                    && global_col <= S->partition->last_local_row)
+            if (global_col >= A->partition->first_local_row
+                    && global_col <= A->partition->last_local_row)
             {
                 recv_on->idx2.push_back(on_proc_partition_to_col[
-                            global_col - S->partition->first_local_row]);
+                            global_col - A->partition->first_local_row]);
                 recv_on->vals.push_back(recv_mat->vals[j]);
             }
             // In off_proc_column_map
@@ -147,8 +167,8 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     // Find column-wise matrices (A->on_proc, A->off_proc,
     // recv_on, and recv_off)
-    S_on_csc = new CSCMatrix((CSRMatrix*)S->on_proc);
-    S_off_csc = new CSCMatrix((CSRMatrix*)S->off_proc);
+    A_on_csc = new CSCMatrix((CSRMatrix*)A->on_proc);
+    A_off_csc = new CSCMatrix((CSRMatrix*)A->off_proc);
     recv_on_csc = new CSCMatrix(recv_on);
     recv_off_csc = new CSCMatrix(recv_off);
 
@@ -160,19 +180,20 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     std::vector<int> off_proc_row_coarse;
     std::vector<double> off_proc_row_coarse_sums;
     std::vector<double> off_proc_row_strong;
-    if (S->on_proc_num_cols)
+    if (A->on_proc_num_cols)
     {
-        row_coarse.resize(S->on_proc_num_cols, 0);
-        row_coarse_sums.resize(S->on_proc_num_cols, 0);
-        row_strong.resize(S->on_proc_num_cols, 0);
+        row_coarse.resize(A->on_proc_num_cols, 0);
+        row_coarse_sums.resize(A->on_proc_num_cols, 0);
+        row_strong.resize(A->on_proc_num_cols, 0);
     }
-    if (S->off_proc_num_cols)
+    if (A->off_proc_num_cols)
     {
-        off_proc_row_coarse.resize(S->off_proc_num_cols, 0);
-        off_proc_row_coarse_sums.resize(S->off_proc_num_cols, 0);
-        off_proc_row_strong.resize(S->off_proc_num_cols, 0);
+        off_proc_row_coarse.resize(A->off_proc_num_cols, 0);
+        off_proc_row_coarse_sums.resize(A->off_proc_num_cols, 0);
+        off_proc_row_strong.resize(A->off_proc_num_cols, 0);
     }
-    for (int i = 0; i < S->local_num_rows; i++)
+
+    for (int i = 0; i < A->local_num_rows; i++)
     {
         // If coarse row, add to P
         if (states[i] == 1)
@@ -196,6 +217,15 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
             diag = 0.0;
         }
 
+        if (diag < 0)
+        {
+            sign = -1.0;
+        }
+        else
+        {
+            sign = 1.0;
+        }
+
         // Determine weak sum for row and store coarse / strong columns
         ctr = S->on_proc->idx1[i];
         if (S->on_proc->idx2[ctr] == i)
@@ -203,7 +233,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
             ctr++;
         }
         end_S = S->on_proc->idx1[i+1];
-        weak_sum = 0;
+        weak_sum = diag;
         for (int j = start; j < end; j++)
         {
             col = A->on_proc->idx2[j];
@@ -237,14 +267,13 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
             // If strong connection
             if (ctr < end_S && S->off_proc_column_map[S->off_proc->idx2[ctr]] == global_col)
             {
-                col_S = S->off_proc->idx2[ctr];
-                if (off_proc_states[col_S] == 1) // Coarse
+                if (off_proc_states_A[col] == 1) // Coarse
                 {
-                    off_proc_row_coarse[col_S] = 1;
+                    off_proc_row_coarse[col] = 1;
                 }
                 else // Not Coarse
                 {
-                    off_proc_row_strong[col_S] = S->off_proc->vals[ctr]; // Store aik
+                    off_proc_row_strong[col] = A->off_proc->vals[j]; // Store aik
                 }
                     
                 ctr++;
@@ -263,42 +292,46 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         }
         for (int j = start; j < end; j++)
         {
-            col = S->on_proc->idx2[j];
-            if (states[col] == 0) // Not coarse
+            col = S->on_proc->idx2[j]; // k
+            if (states[col] == 0) // Not coarse: k in D_i^s
             {
                 // Find sum of all coarse points in row k (with sign NOT equal to diag)
                 coarse_sum = 0;
-                start_k = S->on_proc->idx1[col];
-                end_k = S->on_proc->idx1[col+1];
-                if (S->on_proc->idx2[start_k] == col)
+                start_k = A->on_proc->idx1[col];
+                end_k = A->on_proc->idx1[col+1];
+                if (A->on_proc->idx2[start_k] == col)
                 {
                     start_k++;
                 }
                 for (int k = start_k; k < end_k; k++)
                 {
-                    col_k = S->on_proc->idx2[k];
-                    if (row_coarse[col_k] == 1)
+                    col_k = A->on_proc->idx2[k];  // m
+                    if (row_coarse[col_k] == 1) // m in C_i
                     {
-                        val = S->on_proc->vals[k];
-                        if (val / diag < 0)
+                        val = A->on_proc->vals[k];
+                        if (val * sign < 0)
                         {
                             coarse_sum += val;
                         }
                     }
                 }
-                start_k = S->off_proc->idx1[col];
-                end_k = S->off_proc->idx1[col+1];
+                start_k = A->off_proc->idx1[col];
+                end_k = A->off_proc->idx1[col+1];
                 for (int k = start_k; k < end_k; k++)
                 {
-                    col_k = S->off_proc->idx2[k];
-                    if (off_proc_row_coarse[col_k] == 1)
+                    col_k = A->off_proc->idx2[k]; // m
+                    if (off_proc_row_coarse[col_k] == 1) // m in C_i
                     {
-                        val = S->off_proc->vals[k];
-                        if (val / diag < 0)
+                        val = A->off_proc->vals[k];
+                        if (val * sign < 0)
                         {
                             coarse_sum += val;
                         }
                     }
+                }
+                if (fabs(coarse_sum) < zero_tol)
+                {
+                    weak_sum += S->on_proc->vals[j];
                 }
                 row_coarse_sums[col] = coarse_sum;
             }
@@ -308,8 +341,8 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         end = S->off_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            col = S->off_proc->idx2[j];
-            if (off_proc_states[col] == 0) // Not Coarse
+            col = off_proc_S_to_A[S->off_proc->idx2[j]];
+            if (off_proc_states_A[col] == 0) // Not Coarse
             {
                 // Strong connection... create 
                 coarse_sum = 0;
@@ -321,7 +354,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
                     if (row_coarse[col_k] == 1)
                     {
                         val = recv_on->vals[k];
-                        if (val / diag < 0)
+                        if (val * sign < 0)
                         {
                             coarse_sum += val;
                         }
@@ -335,11 +368,15 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
                     if (off_proc_row_coarse[col_k] == 1)
                     {
                         val = recv_off->vals[k];
-                        if (val / diag < 0)
+                        if (val * sign < 0)
                         {
                             coarse_sum += val;
                         }
                     }
+                }
+                if (fabs(coarse_sum) < zero_tol)
+                {
+                    weak_sum += S->off_proc->vals[j];
                 }
                 off_proc_row_coarse_sums[col] = coarse_sum;
             }
@@ -359,24 +396,21 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
             {
                 // Go through column "col" of A and if sign matches
                 // diag, multiply value by 
-                strong_sum = 0;
+                strong_sum = S->on_proc->vals[j];
                 
-                start_k = S_on_csc->idx1[col]; // TODO-- diagonal?
-                end_k = S_on_csc->idx1[col+1];
-                if (S_on_csc->idx2[start_k] == col)
+                start_k = A_on_csc->idx1[col]; 
+                end_k = A_on_csc->idx1[col+1];
+                if (A_on_csc->idx2[start_k] == col)
                 {
                     start_k++;
                 }
                 for (int k = start_k; k < end_k; k++)
                 {
-                    val = S_on_csc->vals[k];
-                    if (diag / val < 0) // Check that val has opposite sign of diag
+                    val = A_on_csc->vals[k];
+                    if (val * sign < 0) // Check that val has opposite sign of diag
                     {
-                        // Add to strong sum no matter what
-                        // If row not in D_i^s, row_strong[row] and
-                        // row_coarse_sums[row] are 0
-                        row = S_on_csc->idx2[k];
-                        if (row_coarse_sums[row])
+                        row = A_on_csc->idx2[k];
+                        if (fabs(row_coarse_sums[row]) > zero_tol)
                         {         
                             strong_sum += (row_strong[row] * val) / row_coarse_sums[row];
                         }
@@ -388,13 +422,13 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
                 for (int k = start_k; k < end_k; k++)
                 {
                     val = recv_on_csc->vals[k];
-                    if (diag / val < 0)
+                    if (val * sign < 0)
                     {
                         // Add to strong sum no matter what
                         // If row not in D_i^s, off_proc_row_strong[row] and
                         // off_proc_row_coarse_sums[row] are 0
                         row = recv_on_csc->idx2[k];
-                        if (off_proc_row_coarse_sums[row])
+                        if (fabs(off_proc_row_coarse_sums[row]) > zero_tol)
                         {
                             strong_sum += (off_proc_row_strong[row] * val) / 
                                 off_proc_row_coarse_sums[row];
@@ -402,9 +436,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
                     }
                 }
 
-                val = S->on_proc->vals[j];
-                weight = -(val + strong_sum) / (diag + weak_sum);
-
+                weight = -strong_sum / weak_sum;
                 if (fabs(weight) > zero_tol)
                 {
                     P->on_proc->idx2.push_back(on_proc_col_to_new[col]);
@@ -417,20 +449,21 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         end = S->off_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            col = S->off_proc->idx2[j];
-            if (off_proc_states[col] == 1)
+            col_S = S->off_proc->idx2[j];
+            col = off_proc_S_to_A[col_S];
+            if (off_proc_states_A[col] == 1)
             {
-                strong_sum = 0;
+                strong_sum = S->off_proc->vals[j];
 
-                start_k = S_off_csc->idx1[col];
-                end_k = S_off_csc->idx1[col+1];
+                start_k = A_off_csc->idx1[col];
+                end_k = A_off_csc->idx1[col+1];
                 for (int k = start_k; k < end_k; k++)
                 {
-                    val = S_off_csc->vals[k];
-                    if (diag / val < 0)
+                    val = A_off_csc->vals[k];
+                    if (val * sign < 0)
                     {
-                        row = S_off_csc->idx2[k];
-                        if (row_coarse_sums[row])
+                        row = A_off_csc->idx2[k];
+                        if (fabs(row_coarse_sums[row]) > zero_tol)
                         {
                             strong_sum += (row_strong[row] * val) / row_coarse_sums[row];
                         }
@@ -442,10 +475,10 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
                 for (int k = start_k; k < end_k; k++)
                 {
                     val = recv_off_csc->vals[k];
-                    if (diag / val < 0)
+                    if (val * sign < 0)
                     {
                         row = recv_off_csc->idx2[k];
-                        if (off_proc_row_coarse_sums[row])
+                        if (fabs(off_proc_row_coarse_sums[row]) > zero_tol)
                         {
                             strong_sum += (off_proc_row_strong[row] * val) /
                                 off_proc_row_coarse_sums[row];
@@ -453,13 +486,12 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
                     }
                 }
 
-                val = S->off_proc->vals[j];
-                weight = -(val + strong_sum) / (diag + weak_sum);
+                weight = -strong_sum / weak_sum;
 
                 if (fabs(weight) > zero_tol)
                 {
-                    col_exists[col] = true;
-                    P->off_proc->idx2.push_back(col);
+                    col_exists[col_S] = true;
+                    P->off_proc->idx2.push_back(col_S);
                     P->off_proc->vals.push_back(weight);
                 }
             }
@@ -479,7 +511,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         end = S->off_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            col = S->off_proc->idx2[j];
+            col = off_proc_S_to_A[S->off_proc->idx2[j]];
             off_proc_row_coarse_sums[col] = 0;
             off_proc_row_coarse[col] = 0;
             off_proc_row_strong[col] = 0;
@@ -525,8 +557,8 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     delete recv_on;
     delete recv_off;
-    delete S_on_csc;
-    delete S_off_csc;
+    delete A_on_csc;
+    delete A_off_csc;
     delete recv_on_csc;
     delete recv_off_csc;
 

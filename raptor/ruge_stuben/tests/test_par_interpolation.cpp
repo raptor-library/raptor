@@ -104,6 +104,7 @@ int main(int argc, char* argv[])
     P = readParMatrix("../../../../test_data/rss_P0_mc.mtx", MPI_COMM_WORLD, 1, 0,
             P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
     compare(P, P_rap);
+
     delete P;
     delete P_rap;
     delete S;
@@ -127,8 +128,6 @@ int main(int argc, char* argv[])
 
     P->sort();
     P_rap->sort();
-    P->on_proc->move_diag();
-    P_rap->on_proc->move_diag();
     compare(P, P_rap);
     delete P;
     delete P_rap;
