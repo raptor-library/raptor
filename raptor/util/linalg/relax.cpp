@@ -27,7 +27,7 @@
  *****    Vector of distant x-values recvd from other processes
  **************************************************************/
 void gs_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
-        const std::vector<double>& dist_x, double omega = 1.0)
+        const std::vector<double>& dist_x, double omega)
 {
     int start, end, col;
     double diag;
@@ -229,7 +229,7 @@ void relax(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, int num_
         // Run hybrid jacobi / gauss seidel
         //hybrid(A, x, b, tmp, A->comm->recv_data->buffer);
         //hybrid(A, x, b, A->comm->recv_data->buffer);
-        gs_forward(A, x, b, A->comm->recv_data->buffer, 1.0);
+        gs_forward(A, x, b, A->comm->recv_data->buffer);
     }
 }
 
