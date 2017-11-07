@@ -27,7 +27,7 @@
  *****    Vector of distant x-values recvd from other processes
  **************************************************************/
 void gs_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
-        const std::vector<double>& dist_x, double omega = 1.0)
+        const std::vector<double>& dist_x, double omega)
 {
     int start, end, col;
     double diag;
