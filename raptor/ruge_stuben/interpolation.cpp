@@ -20,13 +20,14 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A,
     double diag;
     double val, val_k;
     double sign;
+    double coarse_sum;
+    std::vector<int> position;
     std::vector<int> row_coarse;
-    std::vector<double> row_coarse_sums;
     std::vector<double> row_strong;
     if (A->n_rows)
     {
+        position.resize(A->n_rows, -1);
         row_coarse.resize(A->n_rows, 0);
-        row_coarse_sums.resize(A->n_rows, 0.0);
         row_strong.resize(A->n_rows, 0.0);
     }
 
@@ -36,9 +37,6 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A,
     A->move_diag();
     S->sort();
     S->move_diag();
-    CSCMatrix* AT = new CSCMatrix(A);
-    AT->sort();
-    AT->move_diag();
     
     std::vector<int> col_to_new;
     if (A->n_cols)
@@ -70,27 +68,15 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A,
             continue;
         }
 
-        startA = A->idx1[i];
+        startA = A->idx1[i]+1;
         endA = A->idx1[i+1];
-        startS = S->idx1[i];
+        startS = S->idx1[i]+1;
         endS = S->idx1[i+1];
 
         // Skip over diagonal values
-        if (S->idx2[startS] == i)
-        {
-            startS++;
-        }
-        if (A->idx2[startA] == i)
-        {
-            diag = A->vals[startA];
-            startA++;
-        }
-        else
-        {
-            diag = 0.0;
-        }
+        diag = A->vals[startA] - 1;
         ctr = startS;
-        weak_sum = 0.0;
+        weak_sum = diag;
 
         if (diag > 0)
         {
@@ -101,20 +87,26 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A,
             sign = -1.0;
         }
 
+        for (int j = startS; j < endS; j++)
+        {
+            col = S->idx2[j];
+            if (states[col] == 1)
+            {
+                position[col] = P->idx2.size();
+                P->idx2.push_back(col_to_new[col]);
+                P->vals.push_back(S->vals[j]);
+            }
+        }
+
         // Find weak sum, and save coarse cols / strong col values
         for (int j = startA; j < endA; j++)
         {
             col = A->idx2[j];
             if (ctr < endS && S->idx2[ctr] == col) // Strong
             {
-                if (states[col])
-                {
-                    row_coarse[col] = 1;
-                }
-                else
-                {
-                    row_strong[col] = A->vals[j];
-                }
+                row_coarse[col] = states[col];
+                row_strong[col] = (1 - states[col]) * A->vals[j];
+
                 ctr += 1;
             }
             else // Weak
@@ -129,24 +121,27 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A,
             col = S->idx2[j];
             if (states[col] == 0)
             {
-                start_k = A->idx1[col];
+                start_k = A->idx1[col]+1;
                 end_k = A->idx1[col+1];
-                if (A->idx2[start_k] == col)
-                {
-                    start_k++;
-                }
+                coarse_sum = 0.0;
+
                 for (int k = start_k; k < end_k; k++)
                 {
                     col_k = A->idx2[k];
                     val_k = A->vals[k];
-                    if (row_coarse[col_k] && val_k * sign < 0)
+                    if (val_k * sign < 0)
                     {
-                        row_coarse_sums[col] += val_k;
+                        coarse_sum += (val_k * row_coarse[col_k]);
                     }
                 }
-                if (row_coarse_sums[col] == 0.0)
+                if (coarse_sum == 0.0)
                 {
                     weak_sum += S->vals[j];
+                    row_strong[col] = 0.0;
+                }
+                else
+                {
+                    row_strong[col] /= coarse_sum;
                 }
             }
         }
@@ -156,29 +151,30 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A,
         for (int j = startS; j < endS; j++)
         {
             col = S->idx2[j];
-            if (states[col] == 1)
+            if (states[col] == 0)
             {
-                strong_sum = -S->vals[j];;
-                start_k = AT->idx1[col];
-                end_k = AT->idx1[col+1];
-                if (AT->idx2[start_k] == col)
-                {
-                    start_k++;
-                }
+                start_k = A->idx1[col] + 1;
+                end_k = A->idx1[col+1];
                 for (int k = start_k; k < end_k; k++)
                 {
-                    row = AT->idx2[k];
-                    val = AT->vals[k];
-                    if (row_coarse_sums[row] && val * sign < 0)
+                    col_k = A->idx2[k];
+                    val = A->vals[k];
+                    if (val * sign < 0)
                     {
-                        strong_sum -= ((row_strong[row] * val) 
-                                / row_coarse_sums[row]);
+                        int idx = position[col_k];
+                        if (idx >= 0)
+                        {
+                            P->vals[idx] += (row_strong[row] * val);
+                        }
+                   
                     }
                 }
-                weight = strong_sum / weak_sum;
-                P->idx2.push_back(col_to_new[col]);
-                P->vals.push_back(weight);
             }
+        }
+
+        for (int j = P->idx1[i]; j < P->idx2.size(); j++)
+        {
+            P->vals[j] /= weak_sum;
         }
 
         // Reset row coarse and row strong
@@ -187,14 +183,13 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A,
             col = S->idx2[j];
             row_strong[col] = 0;
             row_coarse[col] = 0.0;
-            row_coarse_sums[col] = 0.0;
+            position[col] = -1;
         }
             
         P->idx1[i+1] = P->idx2.size();
     }
     P->nnz = P->idx2.size();
 
-    delete AT;
     return P;
 }
 
