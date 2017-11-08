@@ -1,5 +1,6 @@
 #ifndef RAPTOR_TEST_HYPRE_COMPARE_HPP
 #define RAPTOR_TEST_HYPRE_COMPARE_HPP
+#include <assert.h>
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "gallery/external/hypre_wrapper.hpp"
@@ -72,8 +73,6 @@ void compare_dimensions(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h,
     assert(first_col == first_local_col);
     assert(A->local_num_rows == diag_rows);
     assert(A->on_proc_num_cols == diag_cols);
-
-
 }
 
 void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h)
@@ -89,7 +88,7 @@ void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h)
     std::vector<int> new_off_proc_map;
     compare_dimensions(A, A_h, new_off_proc_map);
 
-    // Declare Hypre Variables
+    // Declare Hypre Variable/s
     hypre_CSRMatrix* A_h_diag = hypre_ParCSRMatrixDiag(A_h);
     hypre_CSRMatrix* A_h_offd = hypre_ParCSRMatrixOffd(A_h);
     HYPRE_Real* diag_data = hypre_CSRMatrixData(A_h_diag);

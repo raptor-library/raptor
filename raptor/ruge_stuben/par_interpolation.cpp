@@ -6,14 +6,6 @@
 
 using namespace raptor;
 
-// Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
-// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#include "assert.h"
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
-
-using namespace raptor;
-
 ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const std::vector<int>& states,
         const std::vector<int>& off_proc_states)
@@ -61,14 +53,14 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     int global_num_cols;
     for (int i = 0; i < S->on_proc_num_cols; i++)
     {
-        if (states[i])
+        if (states[i] == 1)
         {
             on_proc_cols++;
         }
     }
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
-        if (off_proc_states[i])
+        if (off_proc_states[i] == 1)
         {
             off_proc_cols++;
         }
@@ -80,7 +72,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     for (int i = 0; i < A->on_proc_num_cols; i++)
     {
-        if (states[i])
+        if (states[i] == 1)
         {
             on_proc_col_to_new[i] = P->on_proc_column_map.size();
             P->on_proc_column_map.push_back(S->on_proc_column_map[i]);
@@ -184,6 +176,8 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     for (int i = 0; i < A->local_num_rows; i++)
     {
+        if (states[i] == -3) continue;
+
         // If coarse row, add to P
         if (states[i] == 1)
         {
@@ -217,13 +211,14 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
             val = A->on_proc->vals[j];
             if (ctr < end_S && S->on_proc->idx2[ctr] == col)
             {
-                if (states[col])
+                if (states[col] == 1)
                 {
                     pos[col] = P->on_proc->idx2.size();
                     P->on_proc->idx2.push_back(on_proc_col_to_new[col]);
                     P->on_proc->vals.push_back(val);
                 }
-
+                else if (states[col] == -3) continue;
+                
                 row_coarse[col] = states[col];
                 row_strong[col] = (1 - states[col]) * val;
                 ctr++;
@@ -248,13 +243,16 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
             if (ctr < end_S && S->off_proc_column_map[S->off_proc->idx2[ctr]] == global_col)
             {
                 col_S = S->off_proc->idx2[ctr];
-                if (off_proc_states_A[col])
+                if (off_proc_states_A[col] == 1)
                 {
                     off_proc_pos[col] = P->off_proc->idx2.size();
                     col_exists[col_S] = true;
                     P->off_proc->idx2.push_back(col_S);
                     P->off_proc->vals.push_back(val);
                 }
+                else if (off_proc_states_A[col] == -3)
+                    continue;
+
                 off_proc_row_coarse[col] = off_proc_states_A[col];
                 off_proc_row_strong[col] = (1 - off_proc_states_A[col]) * val;
                 ctr++;
@@ -430,7 +428,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         {
             col = S->on_proc->idx2[j];
             idx = pos[col];
-            if (states[col] == 1 && idx >= 0)
+            if (states[col] == 1)
             {
                 P->on_proc->vals[idx] /= -weak_sum;
             }
@@ -441,7 +439,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         {
             col = off_proc_S_to_A[S->off_proc->idx2[j]];
             idx = off_proc_pos[col];
-            if (off_proc_states_A[col] == 1 && idx >= 0)
+            if (off_proc_states_A[col] == 1)
             {
                 P->off_proc->vals[idx] /= -weak_sum;
             }

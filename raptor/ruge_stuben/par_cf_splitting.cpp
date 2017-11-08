@@ -1241,7 +1241,6 @@ int update_states(std::vector<double>& weights,
         std::vector<int>& states, const int remaining, std::vector<int>& unassigned)
 {
     int num_states = states.size();
-    int num_fine = 0;
 
     int ctr = 0;
     int u;
@@ -1257,7 +1256,6 @@ int update_states(std::vector<double>& weights,
         {
             weights[u] = 0.0;
             states[u] = 0;
-            num_fine++;
         }
         else
         {
@@ -1357,6 +1355,11 @@ void cljp_main_loop(ParCSRMatrix* S,
     find_off_proc_weights(S, states, off_proc_states, 
             weights, off_proc_weights);
     off_remaining = S->off_proc_num_cols;
+    for (int i = 0; i < S->off_proc_num_cols; i++)
+    {
+        if (off_proc_states[i] == -1)
+            off_remaining--;
+    }
 
     remaining = 0;
     off_remaining = 0;
@@ -1755,7 +1758,16 @@ void split_cljp(ParCSRMatrix* S,
     remaining = S->local_num_rows;
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        states[i] = -1;
+        if (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] 
+                || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
+        {
+            states[i] = -1;
+        }
+        else
+        {
+            states[i] = -3;
+            remaining--;
+        }
     }
 
     /**********************************************
