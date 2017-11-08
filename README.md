@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/lukeolson/raptor.svg?branch=googleTest)](https://travis-ci.org/efblack2/myTravisTest)
 # raptor
 
 General, high performance algebraic multigrid solver
