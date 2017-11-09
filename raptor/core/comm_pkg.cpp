@@ -115,7 +115,7 @@ void ParComm::init_comm(const std::vector<int>& values, MPI_Comm comm)
 void ParComm::init_comm(const data_t* values, MPI_Comm comm)
 {
     int start, end;
-    int proc, idx;
+    int proc;
     for (int i = 0; i < send_data->num_msgs; i++)
     {
         proc = send_data->procs[i];
@@ -140,7 +140,7 @@ void ParComm::init_comm(const data_t* values, MPI_Comm comm)
 void ParComm::init_comm(const int* values, MPI_Comm comm)
 {
     int start, end;
-    int proc, idx;
+    int proc;
     for (int i = 0; i < send_data->num_msgs; i++)
     {
         proc = send_data->procs[i];
@@ -750,7 +750,7 @@ std::pair<CSRMatrix*, CSRMatrix*> TAPComm::communicate_T(std::vector<int>& rowpt
         std::vector<int>& col_indices, std::vector<double>& values,
         MPI_Comm comm)
 {   
-    int ctr, idx;
+    
     int start, end;
     int row_R, row_L;
 

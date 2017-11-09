@@ -22,7 +22,7 @@ int main(int argc, char** argv)
 TEST(AnisoTest, TestsInGallery)
 {
     int n_rows, n_cols; 
-    int row, row_nnz, nnz;
+    int row, row_nnz;
     int start, end;
     double row_sum, sum;
     int grid[2] = {25, 25};

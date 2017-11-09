@@ -53,15 +53,15 @@ ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix,
     int pos_size = 2;
     int first_local_row, first_col;
     int local_row, local_col;
-    int global_block_rows;
+    
     int n_data;
     double value;
     double* data;
-    Matrix* tmp_mat;
+    
 
-    int proc_start, proc_end;
-    int ctr;
-    int local, global;
+    
+    
+    
 
     // Declare strings for names of index/matrix files
     std::ostringstream oss;
@@ -70,7 +70,7 @@ ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix,
     char iname_r[1024];
     char fname_r[1024];
     FILE* infile;
-    unsigned char bytes[4];
+    
 
     // Find names of index and matrix files corresponding to my rank
     oss << folder << "/" << iname << rank;
@@ -278,17 +278,17 @@ ParCSRMatrix* exxon_pressure_reader(char* folder, char* iname, char* fname, char
     // Declare info for reading row/column of matrix entry
     int pos[2];
     int pos_size = 2;
-    int first_local_row, first_col;
+    
     int local_row, local_col;
-    int global_block_rows;
+    
     int n_data;
-    double value;
+    
     double* data;
-    Matrix* tmp_mat;
+    
 
-    int proc_start, proc_end;
-    int ctr;
-    int local, global;
+    
+    
+    
 
         // Declare strings for names of index/matrix files
     std::ostringstream oss;
@@ -297,7 +297,7 @@ ParCSRMatrix* exxon_pressure_reader(char* folder, char* iname, char* fname, char
     char iname_r[1024];
     char fname_r[1024];
     FILE* infile;
-    unsigned char bytes[4];
+    
 
     // Find names of index and matrix files corresponding to my rank
     oss << folder << "/" << iname << rank;
@@ -392,8 +392,8 @@ ParCSRMatrix* exxon_pressure_reader(char* folder, char* iname, char* fname, char
     A_coo->local_nnz = A_coo->on_proc->nnz + A_coo->off_proc->nnz;
 
     // Create column maps from all local to global columns
-    int first_local_col;
-    int first_global_col;
+    
+    
     for (int i = first_block_row; i <= last_block_row; i++)
     {
         on_proc_column_map.push_back(global_indices[i]);
@@ -432,7 +432,7 @@ void exxon_vector_reader(char* folder, char* fname, char* suffix,
     std::string fname_string;
     char fname_r[1024];
     FILE* infile;
-    unsigned char bytes[4];
+    
 
     // Find names of index and matrix files corresponding to my rank
     oss << folder << "/" << fname << rank << suffix;
@@ -492,7 +492,7 @@ void exxon_pressure_vector_reader(char* folder, char* fname, char* suffix,
     std::string fname_string;
     char fname_r[1024];
     FILE* infile;
-    unsigned char bytes[4];
+    
 
     // Find names of index and matrix files corresponding to my rank
     oss << folder << "/" << fname << rank << suffix;

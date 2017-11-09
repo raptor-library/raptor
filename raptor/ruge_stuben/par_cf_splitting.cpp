@@ -97,12 +97,12 @@ void initial_cljp_weights(const ParCSRBoolMatrix* S,
         double* rand_vals = NULL)
 {
     int start, end;
-    int idx, idx_k;
-    int idx_start, idx_end;
-    int head, length;
+    int idx;
+    
+    
     int proc;
     int tag = 3029;
-    int tmp;
+    
 
     std::vector<int> recv_weights;
     std::vector<int> off_proc_weights;
@@ -432,7 +432,7 @@ int select_independent_set(const ParCSRBoolMatrix* S,
         std::vector<int>& new_coarse_list)
 {
     int start, end, idx;
-    int col;
+    
     int j, u;
     int num_new_coarse = 0;
     double weight;
@@ -1012,7 +1012,7 @@ void find_off_proc_new_coarse(const ParCSRBoolMatrix* S,
     int size;
     int idx_start, idx_end;
     int proc, count, buf_ptr;
-    int ctr, prev_ctr;
+    int ctr;
     int tag = 2999;
     int global_col;
     int n_sends = 0;
@@ -1258,7 +1258,7 @@ void combine_weight_updates(const ParCSRBoolMatrix* S,
 int update_states(std::vector<double>& weights, 
         std::vector<int>& states, const int remaining, std::vector<int>& unassigned)
 {
-    int num_states = states.size();
+    
     int num_fine = 0;
 
     int ctr = 0;
@@ -1301,15 +1301,15 @@ void cljp_main_loop(ParCSRBoolMatrix* S,
     /**********************************************
      * Declare and Initialize Variables
      **********************************************/
-    int proc, idx, ctr;
-    int start, end;
+    int ctr;
+    
     int num_new_coarse;
     int off_num_new_coarse;
-    int num_fine;
-    int off_num_fine;
-    int unassigned_off_proc;
+    
+    
+    
     int off_remaining;
-    int size, global_col;
+    
 
     std::vector<double> max_weights;
     std::vector<int> weight_updates;
@@ -1323,11 +1323,11 @@ void cljp_main_loop(ParCSRBoolMatrix* S,
     std::vector<int> unassigned;
     std::vector<int> unassigned_off;
 
-    int count;
-    int n_sends, n_recvs;
-    int prev_ctr;
-    int msg_avail;
-    MPI_Status recv_status;
+    
+    
+    
+    
+    
     std::vector<int> recv_buffer;
     std::vector<int> recv_indices;
 
@@ -1537,10 +1537,10 @@ void split_falgout(ParCSRBoolMatrix* S,
     int start, end;
     int idx, idx_k, c;
     int idx_start, idx_end;
-    int head, length, tmp;
+    
     int remaining;
-    int max_idx;
-    double max_weight;
+    
+    
 
     std::vector<int> boundary;
     std::vector<int> on_col_ptr;

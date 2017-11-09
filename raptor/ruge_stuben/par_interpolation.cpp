@@ -320,7 +320,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         const std::vector<int>& off_proc_states)
 {
     int start, end, col;
-    int proc, idx, new_idx;
+    
     int ctr;
     double sum_strong_pos, sum_strong_neg;
     double sum_all_pos, sum_all_neg;

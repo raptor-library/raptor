@@ -6,9 +6,9 @@ CSRMatrix* readMatrix(char* filename, int symmetric)
 {
     index_t num_rows, num_cols, nnz;
     int ret_code;
-    index_t* row_ptr;
-    index_t* col;
-    data_t* data;
+    
+    
+    
     COOMatrix* A;
     
     MM_typecode matcode;
@@ -50,7 +50,7 @@ int mm_read_sparse(const char *fname, index_t *M_, index_t *N_, Matrix* A, int s
     FILE *f;
     MM_typecode matcode;
     index_t M, N, nz;
-    int i, ctr;
+    int i;
      
     if ((f = fopen(fname, "r")) == NULL)
             return -1;
@@ -87,7 +87,7 @@ int mm_read_sparse(const char *fname, index_t *M_, index_t *N_, Matrix* A, int s
 
     if (mm_is_integer(matcode) || mm_is_real(matcode))
     {
-        char buf[sizeof(index_t)*2 + sizeof(double) + sizeof(char)];
+        
 
         for (i=0; i<nz; i++)
         {

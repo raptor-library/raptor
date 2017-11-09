@@ -8,9 +8,9 @@ ParCSRMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file,
 {
     index_t num_rows, num_cols, nnz;
     int comm_size, rank, ret_code;
-    index_t* row_ptr;
-    index_t* col;
-    data_t* data;
+    
+    
+    
     ParCOOMatrix* A;
     
     if (single_file) 
@@ -67,7 +67,7 @@ int mm_read_par_sparse(const char *fname, index_t start, index_t stop,
     FILE *f;
     MM_typecode matcode;
     index_t M, N, nz;
-    int i, ctr;
+    int i;
      
     if ((f = fopen(fname, "r")) == NULL)
             return -1;
@@ -104,7 +104,7 @@ int mm_read_par_sparse(const char *fname, index_t start, index_t stop,
 
     if (mm_is_integer(matcode) || mm_is_real(matcode))
     {
-        char buf[sizeof(index_t)*2 + sizeof(double) + sizeof(char)];
+        
 
         for (i=0; i<nz; i++)
         {

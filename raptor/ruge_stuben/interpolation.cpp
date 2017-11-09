@@ -10,7 +10,7 @@ CSRMatrix* direct_interpolation(CSRMatrix* A,
         CSRBoolMatrix* S, const std::vector<int>& states)
 {
     int start, end, col;
-    int idx, new_idx, ctr;
+    int ctr;
     double sum_strong_pos, sum_strong_neg;
     double sum_all_pos, sum_all_neg;
     double val, alpha, beta, diag;

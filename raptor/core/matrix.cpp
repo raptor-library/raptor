@@ -1040,7 +1040,7 @@ void CSRBoolMatrix::copy(const CSCMatrix* A)
 void CSRBoolMatrix::sort()
 {
     int start, end, row_size;
-    int k, prev_k;
+    
 
     if (sorted || nnz == 0)
     {
@@ -1105,7 +1105,7 @@ void CSRBoolMatrix::move_diag()
 {
     int start, end;
     int col;
-    double tmp;
+    
 
     if (diag_first || nnz == 0)
     {

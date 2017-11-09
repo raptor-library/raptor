@@ -470,7 +470,7 @@ namespace raptor
                 if (fabs(values[idx]) > zero_tol)
                 {
                     int global_col = idx % partition->global_num_cols;
-                    int global_row = idx / partition->global_num_cols;
+                    
                     if (global_col >= partition->first_local_col && 
                         global_col < partition->first_local_col + partition->local_num_cols)
                     {

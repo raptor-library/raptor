@@ -55,9 +55,9 @@ TEST(ParAMGTest, TestsInMultilevel)
 
     double strong_threshold = 0.25;
 
-    int cache_len = 10000;
-    double* cache_array = new double[cache_len];
-    int num_tests = 10;
+    
+    
+    
 
     if (system < 2)
     {

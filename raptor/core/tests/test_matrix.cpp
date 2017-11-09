@@ -26,11 +26,11 @@ TEST(MatrixTest, TestsInCore)
 
     int row_ctr[26] = {0, 3, 4, 4, 4, 4, 5, 5, 6, 6, 6, 6, 6, 8, 8, 8, 8, 8, 9, 
         9, 9, 9, 9, 10, 10, 10};
-    int col_ctr[26] = {0, 3, 4, 4, 4, 4, 5, 5, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-        8, 8, 8, 10, 10, 10, 10};
+    //int col_ctr[26] = {0, 3, 4, 4, 4, 4, 5, 5, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    //    8, 8, 8, 10, 10, 10, 10};
 
-    int row_ctr_condensed[8] = {0, 3, 4, 5, 6, 8, 9, 10};
-    int col_ctr_condensed[7] = {0, 3, 4, 5, 7, 8, 10};
+    //int row_ctr_condensed[8] = {0, 3, 4, 5, 6, 8, 9, 10};
+    //int col_ctr_condensed[7] = {0, 3, 4, 5, 7, 8, 10};
 
     // Create COO Matrix (25x25)
     COOMatrix A_coo(25, 25, 1);
@@ -69,7 +69,7 @@ TEST(MatrixTest, TestsInCore)
     ASSERT_EQ(A_csr.nnz,10);
 
     // Check that rows, columns, and values in A_coo are correct
-    int ctr = 0;
+    
     for (int i = 0; i < 26; i++)
     {
         ASSERT_EQ(A_csr.idx1[i],row_ctr[i]);

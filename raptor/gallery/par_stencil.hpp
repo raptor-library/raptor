@@ -29,7 +29,7 @@ ParCSRMatrix* par_stencil_grid(data_t* stencil, int* grid, int dim)
     int N_v;  // Number of rows (and cols) in matrix
     int N_s;  // Number of nonzero stencil entries
     int n_v;  // Local number of rows (and cols)
-    int extra, first_local, last_local;
+    
     int init_step, idx;
     int len, step, current_step;
     int col;

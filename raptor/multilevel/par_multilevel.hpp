@@ -163,7 +163,7 @@ namespace raptor
                 S = A->strength(theta);
                 split_cljp(S, states, off_proc_states);
                 levels[level_ctr]->P = direct_interpolation(A, S, states, off_proc_states);
-                ParCSRMatrix* P = levels[level_ctr]->P;
+                
 
                 levels.push_back(new ParLevel());
                 AP = A->mult(levels[level_ctr]->P);

@@ -103,7 +103,7 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
 
     // Declare Variables
     int int_size = sizeof(int);
-    int n_procs;
+    
     int node;
     int num_recv_nodes;
     int local_proc;
@@ -680,7 +680,7 @@ void TAPComm::form_local_S_par_comm(std::vector<int>& orig_procs)
     // Find local_col_starts for all procs local to node, and sort
     int start, end;
     int proc, proc_idx;
-    int global_col;
+    
     int ctr, idx;
     int size;
 

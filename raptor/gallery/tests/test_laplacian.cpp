@@ -23,7 +23,7 @@ int main(int argc, char** argv)
 TEST(LaplacianTest, TestsInGallery)
 {
     int n_rows, n_cols; 
-    int row, row_nnz, nnz;
+    int row, row_nnz;
     int start, end;
     double row_sum, sum;
     int grid[3] = {10, 10, 10};

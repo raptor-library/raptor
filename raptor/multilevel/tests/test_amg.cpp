@@ -45,7 +45,7 @@ TEST(AMGTest, TestsInMultilevel)
     Vector b;
 
     double strong_threshold = 0.25;
-    int num_tests = 10;
+    
 
     if (system < 2)
     {

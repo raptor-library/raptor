@@ -9,7 +9,7 @@ ParCSRBoolMatrix* ParCSRMatrix::strength(double theta)
     int row_start_on, row_end_on;
     int row_start_off, row_end_off;
     int col;
-    double val, abs_val;
+    double val;
     double row_scale;
     double threshold;
     double diag;
