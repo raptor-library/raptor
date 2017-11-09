@@ -176,8 +176,6 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        if (states[i] == -3) continue;
-
         // If coarse row, add to P
         if (states[i] == 1)
         {
@@ -217,10 +215,12 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
                     P->on_proc->idx2.push_back(on_proc_col_to_new[col]);
                     P->on_proc->vals.push_back(val);
                 }
-                else if (states[col] == -3) continue;
-                
-                row_coarse[col] = states[col];
-                row_strong[col] = (1 - states[col]) * val;
+
+                if (states[col] != -3)
+                {
+                    row_coarse[col] = states[col];
+                    row_strong[col] = (1 - states[col]) * val;
+                }
                 ctr++;
             }
             else // weak connection
@@ -250,11 +250,11 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
                     P->off_proc->idx2.push_back(col_S);
                     P->off_proc->vals.push_back(val);
                 }
-                else if (off_proc_states_A[col] == -3)
-                    continue;
-
-                off_proc_row_coarse[col] = off_proc_states_A[col];
-                off_proc_row_strong[col] = (1 - off_proc_states_A[col]) * val;
+                if (off_proc_states_A[col] != -3)
+                {
+                    off_proc_row_coarse[col] = off_proc_states_A[col];
+                    off_proc_row_strong[col] = (1 - off_proc_states_A[col]) * val;
+                }
                 ctr++;
             }
             else

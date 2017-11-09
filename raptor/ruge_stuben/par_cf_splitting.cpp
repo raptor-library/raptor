@@ -1322,21 +1322,29 @@ void cljp_main_loop(ParCSRMatrix* S,
     {
         max_weights.resize(S->local_num_rows);
         new_coarse_list.resize(S->local_num_rows);
-        unassigned.resize(S->local_num_rows);
-        std::iota(unassigned.begin(), unassigned.end(), 0);
+        unassigned.reserve(S->local_num_rows);
+        for (int i = 0; i < S->local_num_rows; i++)
+        {
+            if (states[i] == -1)
+                unassigned.push_back(i);
+        }
     }
     if (S->off_proc_num_cols)
     {
         off_proc_weight_updates.resize(S->off_proc_num_cols);
         off_proc_weights.resize(S->off_proc_num_cols, 0);
         off_proc_states.resize(S->off_proc_num_cols);
-        for (int i = 0; i < S->off_proc_num_cols; i++)
-        {
-            off_proc_states[i] = -1;
-        }
         off_new_coarse_list.resize(S->off_proc_num_cols);
-        unassigned_off.resize(S->off_proc_num_cols);
-        std::iota(unassigned_off.begin(), unassigned_off.end(), 0);
+        unassigned_off.reserve(S->off_proc_num_cols);
+    }
+    S->comm->communicate(states);
+    for (int i = 0; i < S->off_proc_num_cols; i++)
+    {
+        off_proc_states[i] = S->comm->recv_data->int_buffer[i];
+        if (off_proc_states[i] == -1)
+        {
+            unassigned_off.push_back(i);
+        }
     }
     if (S->comm->send_data->size_msgs)
     {
@@ -1758,7 +1766,7 @@ void split_cljp(ParCSRMatrix* S,
     remaining = S->local_num_rows;
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        if (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] 
+        if (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] > 1 
                 || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
         {
             states[i] = -1;
