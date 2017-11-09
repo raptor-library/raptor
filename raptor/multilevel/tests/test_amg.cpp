@@ -110,13 +110,13 @@ TEST(AMGTest, TestsInMultilevel)
     for (int i = 0; i < ml->num_levels; i++)
     {
         CSRMatrix* Al = ml->levels[i]->A;
-        printf("%d\t%d\t%d\t%lu\n", i, Al->n_rows, Al->n_cols, Al->nnz);
+        printf("%d\t%d\t%d\t%d\n", i, Al->n_rows, Al->n_cols, Al->nnz);
     }
 	printf("\nP\tNRow\tNCol\tNNZ\n");
     for (int i = 0; i < ml->num_levels-1; i++)
     {
         CSRMatrix* Pl = ml->levels[i]->P;
-        printf("%d\t%d\t%d\t%lu\n", i, Pl->n_rows, Pl->n_cols, Pl->nnz);
+        printf("%d\t%d\t%d\t%d\n", i, Pl->n_rows, Pl->n_cols, Pl->nnz);
     }
     
     printf("\nSolve Phase Relative Residuals:\n");
