@@ -496,20 +496,41 @@ void CSRMatrix::sort()
         {
             done[i] = false;
         }
-        for (int i = 0; i < row_size; i++)
+        if (vals.size())
         {
-            if (done[i]) continue;
-
-            done[i] = true;
-            prev_k = i;
-            k = permutation[i];
-            while (i != k)
+            for (int i = 0; i < row_size; i++)
             {
-                std::swap(idx2[prev_k + start], idx2[k + start]);
-                std::swap(vals[prev_k + start], vals[k + start]);
-                done[k] = true;
-                prev_k = k;
-                k = permutation[k];
+                if (done[i]) continue;
+
+                done[i] = true;
+                prev_k = i;
+                k = permutation[i];
+                while (i != k)
+                {
+                    std::swap(idx2[prev_k + start], idx2[k + start]);
+                    std::swap(vals[prev_k + start], vals[k + start]);
+                    done[k] = true;
+                    prev_k = k;
+                    k = permutation[k];
+                }
+            }
+        }
+        else
+        {
+            for (int i = 0; i < row_size; i++)
+            {
+                if (done[i]) continue;
+
+                done[i] = true;
+                prev_k = i;
+                k = permutation[i];
+                while (i != k)
+                {
+                    std::swap(idx2[prev_k + start], idx2[k + start]);
+                    done[k] = true;
+                    prev_k = k;
+                    k = permutation[k];
+                }
             }
         }
     }
@@ -530,28 +551,51 @@ void CSRMatrix::move_diag()
     }
 
     // Move diagonal values to beginning of each row
-    for (int i = 0; i < n_rows; i++)
+    if (vals.size())
     {
-        start = idx1[i];
-        end = idx1[i+1];
-        for (int j = start; j < end; j++)
+        for (int i = 0; i < n_rows; i++)
         {
-            col = idx2[j];
-            if (col == i)
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
             {
-                tmp = vals[j];
-                for (int k = j; k > start; k--)
+                col = idx2[j];
+                if (col == i)
                 {
-                    idx2[k] = idx2[k-1];
-                    vals[k] = vals[k-1];
+                    tmp = vals[j];
+                    for (int k = j; k > start; k--)
+                    {
+                        idx2[k] = idx2[k-1];
+                        vals[k] = vals[k-1];
+                    }
+                    idx2[start] = i;
+                    vals[start] = tmp;
+                    break;
                 }
-                idx2[start] = i;
-                vals[start] = tmp;
-                break;
             }
         }
     }
-
+    else
+    {
+        for (int i = 0; i < n_rows; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                col = idx2[j];
+                if (col == i)
+                {
+                    for (int k = j; k > start; k--)
+                    {
+                        idx2[k] = idx2[k-1];
+                    }
+                    idx2[start] = i;
+                    break;
+                }
+            }
+        }
+    }
     diag_first = true;
 }
 

@@ -263,89 +263,102 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
             }
         }
 
-        start = S->on_proc->idx1[i] + 1;
-        end = S->on_proc->idx1[i+1];
+        start = A->on_proc->idx1[i] + 1;
+        end = A->on_proc->idx1[i+1];
+        ctr = S->on_proc->idx1[i] + 1;
+        end_S = S->on_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            col = S->on_proc->idx2[j]; // k
-            if (states[col] == 0) // Not coarse: k in D_i^s
+            col = A->on_proc->idx2[j]; // k
+            if (ctr < end_S && S->on_proc->idx2[ctr] == col)
             {
-                // Find sum of all coarse points in row k (with sign NOT equal to diag)
-                coarse_sum = 0;
-                start_k = A->on_proc->idx1[col] + 1;
-                end_k = A->on_proc->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
+                if (states[col] == 0) // Not coarse: k in D_i^s
                 {
-                    col_k = A->on_proc->idx2[k];  // m
-                    val = A->on_proc->vals[k] * row_coarse[col_k];
-                    if (val * sign < 0)
+                    // Find sum of all coarse points in row k (with sign NOT equal to diag)
+                    coarse_sum = 0;
+                    start_k = A->on_proc->idx1[col] + 1;
+                    end_k = A->on_proc->idx1[col+1];
+                    for (int k = start_k; k < end_k; k++)
                     {
-                        coarse_sum += val;
+                        col_k = A->on_proc->idx2[k];  // m
+                        val = A->on_proc->vals[k] * row_coarse[col_k];
+                        if (val * sign < 0)
+                        {
+                            coarse_sum += val;
+                        }
+                    }
+                    start_k = A->off_proc->idx1[col];
+                    end_k = A->off_proc->idx1[col+1];
+                    for (int k = start_k; k < end_k; k++)
+                    {
+                        col_k = A->off_proc->idx2[k]; // m
+                        val = A->off_proc->vals[k] * off_proc_row_coarse[col_k];
+                        if (val * sign < 0)
+                        {
+                            coarse_sum += val;
+                        }
+                    }
+                    if (fabs(coarse_sum) < zero_tol)
+                    {
+                        weak_sum += A->on_proc->vals[j];
+                        row_strong[col] = 0;
+                    }
+                    else
+                    {
+                        row_strong[col] /= coarse_sum;  // holds val for a_ik/sum_C(a_km)
                     }
                 }
-                start_k = A->off_proc->idx1[col];
-                end_k = A->off_proc->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    col_k = A->off_proc->idx2[k]; // m
-                    val = A->off_proc->vals[k] * off_proc_row_coarse[col_k];
-                    if (val * sign < 0)
-                    {
-                        coarse_sum += val;
-                    }
-                }
-                if (fabs(coarse_sum) < zero_tol)
-                {
-                    weak_sum += S->on_proc->vals[j];
-                    row_strong[col] = 0;
-                }
-                else
-                {
-                    row_strong[col] /= coarse_sum;  // holds val for a_ik/sum_C(a_km)
-                }
+                ctr++;
             }
         }
 
-        start = S->off_proc->idx1[i];
-        end = S->off_proc->idx1[i+1];
+        start = A->off_proc->idx1[i];
+        end = A->off_proc->idx1[i+1];
+        ctr = S->off_proc->idx1[i];
+        end_S = S->off_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            col = off_proc_S_to_A[S->off_proc->idx2[j]];
-            if (off_proc_states_A[col] == 0) // Not Coarse
+            col = A->off_proc->idx2[j];
+            if (ctr < end_S && S->off_proc_column_map[S->off_proc->idx2[ctr]] 
+                    == A->off_proc_column_map[col])
             {
-                // Strong connection... create 
-                coarse_sum = 0;
-                start_k = recv_on->idx1[col];
-                end_k = recv_on->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
+                if (off_proc_states_A[col] == 0) // Not Coarse
                 {
-                    col_k = recv_on->idx2[k];
-                    val = recv_on->vals[k] * row_coarse[col_k];
-                    if (val * sign < 0)
+                    // Strong connection... create 
+                    coarse_sum = 0;
+                    start_k = recv_on->idx1[col];
+                    end_k = recv_on->idx1[col+1];
+                    for (int k = start_k; k < end_k; k++)
                     {
-                        coarse_sum += val;
+                        col_k = recv_on->idx2[k];
+                        val = recv_on->vals[k] * row_coarse[col_k];
+                        if (val * sign < 0)
+                        {
+                            coarse_sum += val;
+                        }
+                    }
+                    start_k = recv_off->idx1[col];
+                    end_k = recv_off->idx1[col+1];
+                    for (int k = start_k; k < end_k; k++)
+                    {
+                        col_k = recv_off->idx2[k];
+                        val = recv_off->vals[k] * off_proc_row_coarse[col_k];
+                        if (val * sign < 0)
+                        {
+                            coarse_sum += val;
+                        }
+                    }
+                    if (fabs(coarse_sum) < zero_tol)
+                    {
+                        weak_sum += A->off_proc->vals[j];
+                        off_proc_row_strong[col] = 0;
+                    }
+                    else
+                    {
+                        off_proc_row_strong[col] /= coarse_sum; // holds val for a_ik/sum_C(a_km)
                     }
                 }
-                start_k = recv_off->idx1[col];
-                end_k = recv_off->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    col_k = recv_off->idx2[k];
-                    val = recv_off->vals[k] * off_proc_row_coarse[col_k];
-                    if (val * sign < 0)
-                    {
-                        coarse_sum += val;
-                    }
-                }
-                if (fabs(coarse_sum) < zero_tol)
-                {
-                    weak_sum += S->off_proc->vals[j];
-                    off_proc_row_strong[col] = 0;
-                }
-                else
-                {
-                    off_proc_row_strong[col] /= coarse_sum; // holds val for a_ik/sum_C(a_km)
-                }
+                ctr++;
             }
         }
 
@@ -529,6 +542,46 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
     A->on_proc->move_diag();
     S->on_proc->move_diag();
 
+    // Copy entries of A into sparsity pattern of S
+    std::vector<double> sa_on;
+    std::vector<double> sa_off;
+    if (S->on_proc->nnz)
+    {
+        sa_on.resize(S->on_proc->nnz);
+    }
+    if (S->off_proc->nnz)
+    {
+        sa_off.resize(S->off_proc->nnz);
+    }
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        start = S->on_proc->idx1[i];
+        end = S->on_proc->idx1[i+1];
+        ctr = A->on_proc->idx1[i];
+        for (int j = start; j < end; j++)
+        {
+            col = S->on_proc_column_map[S->on_proc->idx2[j]];
+            while (A->on_proc_column_map[A->on_proc->idx2[ctr]] != col)
+            {
+                ctr++;
+            }
+            sa_on[j] = A->on_proc->vals[ctr];
+        }
+
+        start = S->off_proc->idx1[i];
+        end = S->off_proc->idx1[i+1];
+        ctr = A->off_proc->idx1[i];
+        for (int j = start; j < end; j++)
+        {
+            col = S->off_proc_column_map[S->off_proc->idx2[j]];
+            while (A->off_proc_column_map[A->off_proc->idx2[ctr]] != col)
+            {
+                ctr++;
+            }
+            sa_off[j] = A->off_proc->vals[ctr];
+        }
+    }
+
     std::vector<int> on_proc_col_to_new;
     std::vector<int> off_proc_col_to_new;
     if (S->on_proc_num_cols)
@@ -602,7 +655,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
                 col = S->on_proc->idx2[j]; 
                 if (states[col] == 1)
                 {
-                    val = S->on_proc->vals[j];
+                    val = sa_on[j];
                     if (val < 0)
                     {
                         sum_strong_neg += val;
@@ -621,7 +674,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
 
                 if (off_proc_states[col] == 1)
                 {
-                    val = S->off_proc->vals[j];
+                    val = sa_off[j];
                     if (val < 0)
                     {
                         sum_strong_neg += val;
@@ -700,7 +753,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
                 col = S->on_proc->idx2[j];
                 if (states[col] == 1)
                 {
-                    val = S->on_proc->vals[j];
+                    val = sa_on[j];
                     P->on_proc->idx2.push_back(on_proc_col_to_new[col]);
                     
                     if (val < 0)
@@ -720,7 +773,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
                 col = S->off_proc->idx2[j];
                 if (off_proc_states[col] == 1)
                 {
-                    val = S->off_proc->vals[j];
+                    val = sa_off[j];
                     col_exists[col] = true;
                     P->off_proc->idx2.push_back(col);
 

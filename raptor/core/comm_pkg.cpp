@@ -550,15 +550,17 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
         MPI_Irecv(&(recv_row_buffer[start]), end - start, MPI_INT, proc,
                 key, comm, &(recv_comm->requests[i]));
     }
+    
+    if (send_comm->num_msgs)
+    {
+        MPI_Waitall(send_comm->num_msgs, send_comm->requests.data(), MPI_STATUS_IGNORE);
+    }
+    send_row_buffer.clear();
 
     // Wait for communication to complete
     if (recv_comm->num_msgs)
     {
         MPI_Waitall(recv_comm->num_msgs, recv_comm->requests.data(), MPI_STATUS_IGNORE);
-    }
-    if (send_comm->num_msgs)
-    {
-        MPI_Waitall(send_comm->num_msgs, send_comm->requests.data(), MPI_STATUS_IGNORE);
     }
 
     // Allocate Matrix Space
@@ -568,6 +570,7 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
         recv_mat->idx1[i+1] = recv_mat->idx1[i] + recv_row_buffer[i];
     }
     recv_mat->nnz = recv_mat->idx1[recv_comm->size_msgs];
+    recv_row_buffer.clear();
 
     if (recv_mat->nnz)
     {
