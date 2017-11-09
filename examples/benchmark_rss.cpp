@@ -211,6 +211,9 @@ int main(int argc, char *argv[])
 
         // Delete raptor hierarchy
         delete ml;
+
+        ml = new ParMultilevel(A, strong_threshold, 1, 50, -1, true);
+	delete ml; 
     }
 
     delete A;
