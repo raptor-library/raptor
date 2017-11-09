@@ -11,7 +11,7 @@ ParCSRMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file,
     
     
     
-    ParCOOMatrix* A;
+    ParCOOMatrix* A=nullptr;
     
     if (single_file) 
     {
