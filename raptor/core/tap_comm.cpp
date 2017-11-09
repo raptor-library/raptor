@@ -361,7 +361,7 @@ void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
     int n_send_procs;
     int recv_size;
     int idx, node_idx;
-    int ctr, prev_ctr;
+    int ctr;
     int start, end, size;
     int count;
     MPI_Status recv_status;
@@ -617,7 +617,7 @@ void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
     // Send recv indices to each recv proc along with the process of
     // origin for each recv idx
     ctr = 0;
-    prev_ctr = 0;
+    
     for (int i = 0; i < global_par_comm->recv_data->num_msgs; i++)
     {
         proc = global_par_comm->recv_data->procs[i];
@@ -626,7 +626,7 @@ void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
         MPI_Issend(&(send_buffer[2*start]), 2*(end - start),
                 MPI_INT, proc, 5432, MPI_COMM_WORLD,
                 &(global_par_comm->recv_data->requests[i]));
-        prev_ctr = ctr;
+        
     }
 
     // Recv send data (which indices to send) to global processes

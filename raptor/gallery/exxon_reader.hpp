@@ -480,7 +480,7 @@ void exxon_pressure_vector_reader(char* folder, char* fname, char* suffix,
 
     int first_block_row, last_block_row, block_size;
     int block_row;
-    int first_idx;
+    //int first_idx;
     std::vector<double> block_values;
 
     // Delcare File Reader Info
@@ -520,7 +520,7 @@ void exxon_pressure_vector_reader(char* folder, char* fname, char* suffix,
 
     while (fread(&block_row, isize, 1, infile) == 1)
     {
-        first_idx = block_row * block_size;
+        
         fread(block_values.data(), dsize, block_size, infile);
         x.local.values[block_row] = block_values[block_size-1];
     }
