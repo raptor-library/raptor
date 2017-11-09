@@ -30,7 +30,7 @@ TEST(LaplacianTest, TestsInGallery)
     double* stencil = laplace_stencil_27pt();
     CSRMatrix* A_sten = stencil_grid(stencil, grid, 3);
 
-    CSRMatrix* A_io = readMatrix("../../../../test_data/laplacian27.mtx", 1);
+    CSRMatrix* A_io = readMatrix((char *)"../../../../test_data/laplacian27.mtx", 1);
 
     // Open laplacian data file
     FILE *f = fopen("../../../../test_data/laplacian27_data.txt", "r");

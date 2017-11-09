@@ -41,7 +41,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     ParCSRBoolMatrix* S;
 
     // TEST LEVEL 0
-    S_py = readParMatrix("../../../../test_data/rss_S0.mtx", MPI_COMM_WORLD, 1, 1);
+    S_py = readParMatrix((char *)"../../../../test_data/rss_S0.mtx", MPI_COMM_WORLD, 1, 1);
     S = new ParCSRBoolMatrix(S_py);
 
     f = fopen("../../../../test_data/weights.txt", "r");
@@ -73,7 +73,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     delete S_py;
 
     // TEST LEVEL 1
-    S_py = readParMatrix("../../../../test_data/rss_S1.mtx", MPI_COMM_WORLD, 1, 0);
+    S_py = readParMatrix((char *)"../../../../test_data/rss_S1.mtx", MPI_COMM_WORLD, 1, 0);
     S = new ParCSRBoolMatrix(S_py);
 
     f = fopen("../../../../test_data/weights.txt", "r");

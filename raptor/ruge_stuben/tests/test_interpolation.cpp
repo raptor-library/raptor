@@ -38,9 +38,9 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     FILE* f;
 
     // TEST LEVEL 0
-    A = readMatrix("../../../../test_data/rss_A0.mtx", 1);
-    S = readMatrix("../../../../test_data/rss_S0.mtx", 1);
-    P = readMatrix("../../../../test_data/rss_P0.mtx", 0);
+    A = readMatrix((char *)"../../../../test_data/rss_A0.mtx", 1);
+    S = readMatrix((char *)"../../../../test_data/rss_S0.mtx", 1);
+    P = readMatrix((char *)"../../../../test_data/rss_P0.mtx", 0);
     S_bool = new CSRBoolMatrix(S);
     splitting.resize(A->n_rows);
     f = fopen("../../../../test_data/rss_cf0", "r");
@@ -61,9 +61,9 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
 
 
     // TEST LEVEL 1
-    A = readMatrix("../../../../test_data/rss_A1.mtx", 0);
-    P = readMatrix("../../../../test_data/rss_P1.mtx", 0);
-    S = readMatrix("../../../../test_data/rss_S1.mtx", 0);
+    A = readMatrix((char *)"../../../../test_data/rss_A1.mtx", 0);
+    P = readMatrix((char *)"../../../../test_data/rss_P1.mtx", 0);
+    S = readMatrix((char *)"../../../../test_data/rss_S1.mtx", 0);
     S_bool = new CSRBoolMatrix(S);
     splitting.resize(A->n_rows);
     f = fopen("../../../../test_data/rss_cf1", "r");

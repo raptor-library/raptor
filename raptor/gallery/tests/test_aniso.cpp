@@ -30,7 +30,7 @@ TEST(AnisoTest, TestsInGallery)
     double theta = M_PI/8.0;
     double* stencil = diffusion_stencil_2d(eps, theta);
     CSRMatrix* A_sten = stencil_grid(stencil, grid, 2);
-    CSRMatrix* A_io = readMatrix("../../../../test_data/aniso.mtx", 1);
+    CSRMatrix* A_io = readMatrix((char *)"../../../../test_data/aniso.mtx", 1);
 
     // Open laplacian data file
     FILE *f = fopen("../../../../test_data/aniso_data.txt", "r");

@@ -45,14 +45,14 @@ TEST(TestRugeStuben, TestsInRuge_Stuben)
     fclose(f);
 
     // TEST LEVEL 0
-    A = readMatrix("../../../../test_data/rss_A0.mtx", 1);
+    A = readMatrix((char *)"../../../../test_data/rss_A0.mtx", 1);
     S = A->strength(0.25);
     split_cljp(S, splitting, weights.data());
     P = direct_interpolation(A, S, splitting);
     AP = A->mult(P);
     P_csc = new CSCMatrix(P);
     Ac_rap = AP->mult_T(P_csc);
-    Ac = readMatrix("../../../../test_data/rss_A1.mtx", 0);
+    Ac = readMatrix((char *)"../../../../test_data/rss_A1.mtx", 0);
     compare(Ac, Ac_rap);
     delete Ac;
     delete P_csc;
@@ -70,7 +70,7 @@ TEST(TestRugeStuben, TestsInRuge_Stuben)
     AP = A->mult(P);
     P_csc = new CSCMatrix(P);
     Ac_rap = AP->mult_T(P_csc);
-    Ac = readMatrix("../../../../test_data/rss_A2.mtx", 0);
+    Ac = readMatrix((char *)"../../../../test_data/rss_A2.mtx", 0);
     compare(Ac, Ac_rap);
     delete Ac;
     delete Ac_rap;

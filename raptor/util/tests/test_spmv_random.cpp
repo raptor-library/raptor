@@ -22,7 +22,7 @@ int main(int argc, char** argv)
 TEST(RandomSpMVTest, TestsInUtil)
 {
     double b_val;
-    CSRMatrix* A = readMatrix("../../../../test_data/random.mtx", 0);
+    CSRMatrix* A = readMatrix((char *)"../../../../test_data/random.mtx", 0);
     Vector x(A->n_cols);
     Vector b(A->n_rows);
     

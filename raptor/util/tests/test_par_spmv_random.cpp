@@ -28,7 +28,7 @@ TEST(ParRandomSpMVTest, TestsInUtil)
 
     FILE* f;
     double b_val;
-    ParCSRMatrix* A = readParMatrix("../../../../test_data/random.mtx", MPI_COMM_WORLD, 1, 0);
+    ParCSRMatrix* A = readParMatrix((char *)"../../../../test_data/random.mtx", MPI_COMM_WORLD, 1, 0);
 
     ParVector x(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);

@@ -38,7 +38,7 @@ TEST(ParLaplacianTest, TestsInGallery)
     double* stencil = laplace_stencil_27pt();
     ParCSRMatrix* A_sten = par_stencil_grid(stencil, grid, 3);
 
-    ParCSRMatrix* A_io = readParMatrix("../../../../test_data/laplacian27.mtx");
+    ParCSRMatrix* A_io = readParMatrix((char *)"../../../../test_data/laplacian27.mtx");
 
     // Open laplacian data file
     FILE *f = fopen("../../../../test_data/laplacian27_data.txt", "r");

@@ -14,12 +14,12 @@ int main(int argc, char* argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     // Create A from diffusion stencil
-    char* folder = "/Users/abienz/Documents/Parallel/exxonmobil/verification-twomatrices/DA_V5_blk_coord_binary-3x3-blk-np16";
-    char* fname = "DA_V5_blk_coord_binary-3x3-blk-np16_TS6_TSA0_NI0_R";
-    char* iname = "index_R";
-    char* suffix = ".bcoord_bin";
-    char* suffix_x = ".sol_bin";
-    char* suffix_b = ".rhs_bin";
+    char* folder = (char *)"/Users/abienz/Documents/Parallel/exxonmobil/verification-twomatrices/DA_V5_blk_coord_binary-3x3-blk-np16";
+    char* fname = (char *)"DA_V5_blk_coord_binary-3x3-blk-np16_TS6_TSA0_NI0_R";
+    char* iname = (char *)"index_R";
+    char* suffix = (char *)".bcoord_bin";
+    char* suffix_x = (char *)".sol_bin";
+    char* suffix_b = (char *)".rhs_bin";
 
     std::vector<int> on_proc_column_map;
 

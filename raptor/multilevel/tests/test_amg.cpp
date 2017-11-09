@@ -85,7 +85,7 @@ TEST(AMGTest, TestsInMultilevel)
     else if (system == 2)
     {
         int sym = 1;
-        char* file = "../../../../examples/LFAT5.mtx";
+        char* file = (char *) "../../../../examples/LFAT5.mtx";
         if (argc > 2)
         {
             sym = atoi(argv[2]);

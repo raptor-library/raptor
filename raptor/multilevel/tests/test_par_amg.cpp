@@ -118,7 +118,7 @@ TEST(ParAMGTest, TestsInMultilevel)
 */
     else if (system == 3)
     {
-        char* file = "../../../../examples/LFAT5.mtx";
+        char* file = (char *) "../../../../examples/LFAT5.mtx";
         A = readParMatrix(file, MPI_COMM_WORLD, 1, 1);
         if (argc > 2)
         {

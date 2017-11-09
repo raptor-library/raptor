@@ -36,12 +36,12 @@ TEST(TestParRAP, TestsInRuge_Stuben)
     ParCSRMatrix* Ac_rap;
 
     // TEST LEVEL 0
-    A = readParMatrix("../../../../test_data/rss_A0.mtx", MPI_COMM_WORLD, 1, 1);
-    P = readParMatrix("../../../../test_data/rss_P0.mtx", MPI_COMM_WORLD, 1, 0);
+    A = readParMatrix((char *)"../../../../test_data/rss_A0.mtx", MPI_COMM_WORLD, 1, 1);
+    P = readParMatrix((char *)"../../../../test_data/rss_P0.mtx", MPI_COMM_WORLD, 1, 0);
     AP = A->mult(P);
     P_csc = new ParCSCMatrix(P);
     Ac = AP->mult_T(P_csc);
-    Ac_rap = readParMatrix("../../../../test_data/rss_A1.mtx", MPI_COMM_WORLD, 1, 0);
+    Ac_rap = readParMatrix((char *)"../../../../test_data/rss_A1.mtx", MPI_COMM_WORLD, 1, 0);
     compare(Ac, Ac_rap);
     delete Ac_rap;
     delete Ac;
@@ -51,12 +51,12 @@ TEST(TestParRAP, TestsInRuge_Stuben)
     delete A;
 
     // TEST LEVEL 1
-    A = readParMatrix("../../../../test_data/rss_A1.mtx", MPI_COMM_WORLD, 1, 0);
-    P = readParMatrix("../../../../test_data/rss_P1.mtx", MPI_COMM_WORLD, 1, 0);
+    A = readParMatrix((char *)"../../../../test_data/rss_A1.mtx", MPI_COMM_WORLD, 1, 0);
+    P = readParMatrix((char *)"../../../../test_data/rss_P1.mtx", MPI_COMM_WORLD, 1, 0);
     AP = A->mult(P);
     P_csc = new ParCSCMatrix(P);
     Ac = AP->mult_T(P_csc);
-    Ac_rap = readParMatrix("../../../../test_data/rss_A2.mtx", MPI_COMM_WORLD, 1, 0);
+    Ac_rap = readParMatrix((char *)"../../../../test_data/rss_A2.mtx", MPI_COMM_WORLD, 1, 0);
     compare(Ac, Ac_rap);
     delete Ac_rap;
     delete Ac;

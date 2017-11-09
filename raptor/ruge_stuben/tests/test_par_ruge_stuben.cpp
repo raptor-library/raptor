@@ -60,7 +60,7 @@ TEST(TestParRugeStuben, TestsInRuge_Stuben)
     fclose(f);
 
     // Test Level 0
-    A = readParMatrix("../../../../test_data/rss_A0.mtx", MPI_COMM_WORLD, 1, 1);
+    A = readParMatrix((char *)"../../../../test_data/rss_A0.mtx", MPI_COMM_WORLD, 1, 1);
     S = A->strength(0.25);
     MPI_Allgather(&A->local_num_rows, 1, MPI_INT, proc_sizes.data(),
             1, MPI_INT, MPI_COMM_WORLD);
@@ -86,7 +86,7 @@ TEST(TestParRugeStuben, TestsInRuge_Stuben)
     AP = A->mult(P);
     P_csc = new ParCSCMatrix(P);
     Ac_rap = AP->mult_T(P_csc);
-    Ac = readParMatrix("../../../../test_data/rss_A1.mtx", MPI_COMM_WORLD, 1, 0, Ac_rap->local_num_rows,
+    Ac = readParMatrix((char *)"../../../../test_data/rss_A1.mtx", MPI_COMM_WORLD, 1, 0, Ac_rap->local_num_rows,
             Ac_rap->on_proc_num_cols, first_row, first_row);
     compare(Ac, Ac_rap);
 
@@ -120,7 +120,7 @@ TEST(TestParRugeStuben, TestsInRuge_Stuben)
     AP = A->mult(P);
     P_csc = new ParCSCMatrix(P);
     Ac_rap = AP->mult_T(P_csc);
-    Ac = readParMatrix("../../../../test_data/rss_A2.mtx", MPI_COMM_WORLD, 1, 0, Ac_rap->local_num_rows,
+    Ac = readParMatrix((char *)"../../../../test_data/rss_A2.mtx", MPI_COMM_WORLD, 1, 0, Ac_rap->local_num_rows,
             Ac_rap->on_proc_num_cols, first_row, first_row);
     compare(Ac, Ac_rap);
 

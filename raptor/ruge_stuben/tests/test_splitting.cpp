@@ -34,7 +34,7 @@ TEST(TestSplitting, TestsInRuge_Stuben)
     std::vector<int> splitting_rap;
    
     // TEST LAPLACIAN SPLITTINGS ON LEVEL 0 
-    S_py = readMatrix("../../../../test_data/rss_S0.mtx", 1);
+    S_py = readMatrix((char *)"../../../../test_data/rss_S0.mtx", 1);
     S = new CSRBoolMatrix(S_py);
     splitting.resize(S->n_rows);;
 
@@ -80,7 +80,7 @@ TEST(TestSplitting, TestsInRuge_Stuben)
 
 
     // TEST LAPLACIAN SPLITTINGS ON LEVEL 1 
-    S_py = readMatrix("../../../../test_data/rss_S1.mtx", 0);
+    S_py = readMatrix((char *)"../../../../test_data/rss_S1.mtx", 0);
     S = new CSRBoolMatrix(S_py);
     splitting.resize(S->n_rows);;
 
