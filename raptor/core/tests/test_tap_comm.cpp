@@ -50,7 +50,7 @@ TEST(TAPCommTest, TestsInCore)
     std::vector<double>& par_recv = A->comm->communicate(x, MPI_COMM_WORLD);
     ASSERT_EQ(tap_recv.size(), par_recv.size());
 
-    for (int i = 0; i < par_recv.size(); i++)
+    for (int i = 0; i < (int) par_recv.size(); i++)
     {
         ASSERT_NEAR(par_recv[i], tap_recv[i], zero_tol);
     }

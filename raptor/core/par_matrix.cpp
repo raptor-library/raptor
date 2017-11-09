@@ -164,7 +164,7 @@ int* ParMatrix::map_partition_to_local()
 
 void ParMatrix::copy(ParCOOMatrix* A)
 {
-    if (A->off_proc_num_cols != A->off_proc_column_map.size())
+    if (A->off_proc_num_cols != (int) A->off_proc_column_map.size())
     {
         A->finalize();
     }
@@ -208,7 +208,7 @@ void ParMatrix::copy(ParCOOMatrix* A)
 
 void ParMatrix::copy(ParCSRMatrix* A)
 {
-    if (A->off_proc_num_cols != A->off_proc_column_map.size())
+    if (A->off_proc_num_cols != (int) A->off_proc_column_map.size())
     {
         A->finalize();
     }
@@ -252,7 +252,7 @@ void ParMatrix::copy(ParCSRMatrix* A)
 
 void ParMatrix::copy(ParCSCMatrix* A)
 {
-    if (A->off_proc_num_cols != A->off_proc_column_map.size())
+    if (A->off_proc_num_cols != (int) A->off_proc_column_map.size())
     {
         A->finalize();
     }

@@ -1120,7 +1120,7 @@ void find_off_proc_new_coarse(const ParCSRBoolMatrix* S,
             MPI_Probe(proc, tag, MPI_COMM_WORLD, &recv_status);
             MPI_Get_count(&recv_status, MPI_INT, &count);
 
-            if (recv_buffer.size() < count)
+            if ((int) recv_buffer.size() < count)
             {
                 recv_buffer.resize(count);
             }

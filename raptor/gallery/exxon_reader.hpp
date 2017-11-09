@@ -50,7 +50,7 @@ ParCSRMatrix* exxon_reader(char* folder, char* iname, char* fname, char* suffix,
 
     // Declare info for reading row/column of matrix entry
     int pos[2];
-    int pos_size = 2;
+    size_t pos_size = 2;
     int first_local_row, first_col;
     int local_row, local_col;
     
@@ -277,7 +277,7 @@ ParCSRMatrix* exxon_pressure_reader(char* folder, char* iname, char* fname, char
 
     // Declare info for reading row/column of matrix entry
     int pos[2];
-    int pos_size = 2;
+    size_t pos_size = 2;
     
     int local_row, local_col;
     
