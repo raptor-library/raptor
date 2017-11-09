@@ -110,9 +110,11 @@ namespace raptor
                 std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
         CSRMatrix* communicate(ParCSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD);
+/*
         CSRMatrix* communicate_T(std::vector<int>& rowptr, 
                 std::vector<int>& col_indices,
-                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) {}
+                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) {} 
+*/
         virtual std::vector<double>& get_recv_buffer() = 0;
         virtual std::vector<int>& get_int_recv_buffer() = 0;
 
@@ -563,7 +565,7 @@ namespace raptor
         {
             return CommPkg::communicate(A, comm);
         }
-        std::vector<double>& init_comm(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD)
+        void init_comm(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD)
         {
             CommPkg::init_comm(v, comm);
         }
@@ -1222,7 +1224,7 @@ namespace raptor
         {
             return CommPkg::communicate(A, comm);
         }
-        std::vector<double>& init_comm(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD)
+        void init_comm(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD)
         {
             CommPkg::init_comm(v, comm);
         }

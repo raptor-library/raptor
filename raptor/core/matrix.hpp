@@ -213,14 +213,14 @@ namespace raptor
     }
     virtual void residual(const std::vector<double>& x, const std::vector<double>& b,
             std::vector<double>& r) = 0;
-
+/*
     CSRMatrix* mult(const CSRMatrix* B){}
     CSRMatrix* mult(const CSCMatrix* B){}
     CSRMatrix* mult(const COOMatrix* B){}
     CSRMatrix* mult_T(const CSRMatrix* A){}
     CSRMatrix* mult_T(const CSCMatrix* A){}
     CSRMatrix* mult_T(const COOMatrix* A){}
-
+*/
     void RAP(const CSCMatrix& P, CSCMatrix* Ac);
     void RAP(const CSCMatrix& P, CSRMatrix* Ac);
 
