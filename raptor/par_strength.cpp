@@ -29,12 +29,10 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
     if (on_proc->nnz)
     {
         S->on_proc->idx2.reserve(on_proc->nnz);
-        S->on_proc->vals.reserve(on_proc->nnz);
     }
     if (off_proc->nnz)
     {
         S->off_proc->idx2.reserve(off_proc->nnz);
-        S->off_proc->vals.reserve(off_proc->nnz);
     }
 
     S->on_proc->idx1[0] = 0;
@@ -104,7 +102,6 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
 
             // Always add diagonal
             S->on_proc->idx2.push_back(i);
-            S->on_proc->vals.push_back(diag);
 
             // Add all off-diagonal entries to strength
             // if magnitude greater than equal to 
@@ -117,7 +114,6 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
                     if (val > threshold)
                     {
                         S->on_proc->idx2.push_back(on_proc->idx2[j]);
-                        S->on_proc->vals.push_back(on_proc->vals[j]);
                     }
                 }
                 for (int j = row_start_off; j < row_end_off; j++)
@@ -127,7 +123,6 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
                     {
                         col = off_proc->idx2[j];
                         S->off_proc->idx2.push_back(col);
-                        S->off_proc->vals.push_back(off_proc->vals[j]);
                         col_exists[col] = true;
                     }
                 }
@@ -140,7 +135,6 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
                     if (val < threshold)
                     {
                         S->on_proc->idx2.push_back(on_proc->idx2[j]);
-                        S->on_proc->vals.push_back(on_proc->vals[j]);
                     }
                 }
                 for (int j = row_start_off; j < row_end_off; j++)
@@ -150,7 +144,6 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
                     {
                         col = off_proc->idx2[j];
                         S->off_proc->idx2.push_back(col);
-                        S->off_proc->vals.push_back(off_proc->vals[j]);
                         col_exists[col] = true;
                     }
                 }
