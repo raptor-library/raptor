@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 2.8)
 project(raptor)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
+
+enable_language(CXX)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_BUILD_TYPE Release)
+
+
 include(FeatureSummary)
 
 option(CRAYXE "Running on Cray XE" OFF)
@@ -11,22 +17,27 @@ option(WITH_HYPRE "Add Hypre" OFF)
 option(WITH_MFEM "Add MFEM" OFF)
 option(WITH_AMPI "Using AMPI" OFF)
 option(WITH_MPI "Using MPI" ON)
+
 add_feature_info(hypre WITH_HYPRE "Hypre preconditioner")
 add_feature_info(mfem WITH_MFEM "MFEM matrix gallery")
 add_feature_info(ampi WITH_AMPI "Compile with AMPI")
 add_feature_info(crayxe CRAYXE "Compile on CrayXE")
 add_feature_info(bgq BGQ "Compile on BGQ")
-add_feature_info(mpi WITH_MPI "Compile with MPI")
 add_feature_info(ptscotch WITH_PTSCOTCH "Enable PTScotch Partitioning")
+
 
 include(options)
 include(testing)
-include(cxx11)
 include(source)
-include(cxx_config)
+
+#add_feature_info(mpi WITH_MPI "Compile with MPI")
+#include(cxx11)
+#include(cxx_config)
 
 if (WITH_MPI)
-    include(mpi_config)
+#    include(mpi_config)
+    find_package(MPI REQUIRED)
+    include_directories(${MPI_INCLUDE_PATH})
 endif (WITH_MPI)
 
 include_directories("external")
@@ -61,10 +72,11 @@ elseif (BGQ)
     set(EXTERNAL_LIBS ${LAPACK_LIB} ${BLAS_LIB} ${ESSL_LIB} ${XLF_LIB} 
         ${XLOPT_LIB} ${XLFMATH_LIB} ${XL_LIB} ${XLSMP_LIB})
 else()
-	find_library(LAPACK_LIB NAMES liblapack.so.3 lapack HINTS "usr/lib/x86_64-linux-gnu/")
-	find_library(BLAS_LIB NAMES libblas.so.3 blas HINTS "usr/lib/x86_64-linux-gnu/")
+	find_library(LAPACK_LIB NAMES liblapack.so.3 lapack HINTS "/usr/lib/x86_64-linux-gnu/")
+	find_library(BLAS_LIB NAMES libblas.so.3 blas HINTS "/usr/lib/x86_64-linux-gnu/")
 	set(EXTERNAL_LIBS ${LAPACK_LIB} ${BLAS_LIB})
 endif()
+
 
 if (WITH_PTSCOTCH)
     find_package(Ptscotch)
@@ -116,6 +128,31 @@ if (WITH_AMPI)
 	add_definitions(-DUSE_AMPI)
 endif(WITH_AMPI)
 
+#/////////////////////////// star information of google test ///////////////////////////////
+set(GOOGLETEST_ROOT external/googletest/googletest CACHE STRING "Google Test source root")
+#MESSAGE( STATUS "GOOGLETEST_ROOT: "    ${GOOGLETEST_ROOT} )
+
+include_directories(
+    ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}
+    ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/include
+    )
+
+#MESSAGE( STATUS "PROJECT_SOURCE_DIR: "    ${PROJECT_SOURCE_DIR} )
+
+set(GOOGLETEST_SOURCES
+    ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/src/gtest-all.cc
+    ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/src/gtest_main.cc
+    )
+
+
+foreach(_source ${GOOGLETEST_SOURCES})
+    set_source_files_properties(${_source} PROPERTIES GENERATED 1)
+    #MESSAGE( STATUS "_source: "                 ${_source} )
+endforeach()
+
+
+add_library(googletest STATIC ${GOOGLETEST_SOURCES})
+#///////////////////////////// end information of google test //////////////////////////////
 
 add_subdirectory(raptor)
 

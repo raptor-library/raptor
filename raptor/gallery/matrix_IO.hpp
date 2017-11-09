@@ -1,7 +1,7 @@
 #ifndef MATRIX_IO_H
 #define MATRIX_IO_H
 
-#include <mpi.h>
+//#include <mpi.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

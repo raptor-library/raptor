@@ -1,5 +1,11 @@
-#include <assert.h>
+// EXPECT_EQ and ASSERT_EQ are macros
+// EXPECT_EQ test execution and continues even if there is a failure
+// ASSERT_EQ test execution and aborts if there is a failure
+// The ASSERT_* variants abort the program execution if an assertion fails 
+// while EXPECT_* variants continue with the run.
 
+
+#include "gtest/gtest.h"
 #include "core/types.hpp"
 #include "core/matrix.hpp"
 #include "gallery/laplacian27pt.hpp"
@@ -8,7 +14,13 @@
 
 using namespace raptor;
 
-int main(int argc, char* argv[])
+int main(int argc, char** argv)
+{
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+} // end of main() //
+
+TEST(LaplacianTest, TestsInGallery)
 {
     int n_rows, n_cols; 
     int row, row_nnz, nnz;
@@ -18,19 +30,19 @@ int main(int argc, char* argv[])
     double* stencil = laplace_stencil_27pt();
     CSRMatrix* A_sten = stencil_grid(stencil, grid, 3);
 
-    CSRMatrix* A_io = readMatrix("../../tests/laplacian27.mtx", 1);
-     
+    CSRMatrix* A_io = readMatrix("../../../../test_data/laplacian27.mtx", 1);
+
     // Open laplacian data file
-    FILE *f = fopen("../../tests/laplacian27_data.txt", "r");
+    FILE *f = fopen("../../../../test_data/laplacian27_data.txt", "r");
 
     // Read global shape
     fscanf(f, "%d %d\n", &n_rows, &n_cols);
 
     // Compare shapes
-    assert(n_rows == A_sten->n_rows);
-    assert(n_cols == A_sten->n_cols);
-    assert(n_rows == A_io->n_rows);
-    assert(n_cols == A_io->n_cols);
+    ASSERT_EQ(n_rows, A_sten->n_rows);
+    ASSERT_EQ(n_cols, A_sten->n_cols);
+    ASSERT_EQ(n_rows, A_io->n_rows);
+    ASSERT_EQ(n_cols, A_io->n_cols);
 
     A_sten->sort();
     A_sten->remove_duplicates();
@@ -38,26 +50,27 @@ int main(int argc, char* argv[])
     A_io->sort();
     A_io->remove_duplicates();
 
-    assert(A_sten->idx1[0] == A_io->idx1[0]);
+    ASSERT_EQ(A_sten->idx1[0], A_io->idx1[0]);
+
     for (int i = 0; i < n_rows; i++)
     {
         fscanf(f, "%d %d %lg\n", &row, &row_nnz, &row_sum);
 
         // Check correct row_ptrs
-        assert(A_sten->idx1[i+1] == A_io->idx1[i+1]);
+        ASSERT_EQ(A_sten->idx1[i+1], A_io->idx1[i+1]);
         start = A_sten->idx1[i];
         end = A_sten->idx1[i+1];
-        assert(end - start == row_nnz);
+        ASSERT_EQ( (end - start), row_nnz);
 
         // Check correct col indices / values
         sum = 0;
         for (int j = start; j < end; j++)
         {
             sum += A_sten->vals[j];
-            assert(A_sten->idx2[j] == A_io->idx2[j]);
-            assert(fabs(A_sten->vals[j] - A_io->vals[j]) < zero_tol);
+            ASSERT_EQ(A_sten->idx2[j], A_io->idx2[j]);
+            ASSERT_NEAR(A_sten->vals[j], A_io->vals[j], zero_tol);
         }
-        assert(fabs(row_sum - sum) < zero_tol);
+        ASSERT_NEAR(row_sum, sum, zero_tol);
     }
 
     fclose(f);
@@ -65,4 +78,5 @@ int main(int argc, char* argv[])
     delete[] stencil;
     delete A_sten;
     delete A_io;
-}
+} // end of TEST(LaplacianTest, TestsInGallery) //
+

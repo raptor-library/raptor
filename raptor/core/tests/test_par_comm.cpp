@@ -1,4 +1,11 @@
-#include <assert.h>
+// EXPECT_EQ and ASSERT_EQ are macros
+// EXPECT_EQ test execution and continues even if there is a failure
+// ASSERT_EQ test execution and aborts if there is a failure
+// The ASSERT_* variants abort the program execution if an assertion fails 
+// while EXPECT_* variants continue with the run.
+
+
+#include "gtest/gtest.h"
 
 #include "core/types.hpp"
 #include "core/matrix.hpp"
@@ -9,9 +16,17 @@
 
 using namespace raptor;
 
-int main(int argc, char* argv[])
+int main(int argc, char** argv)
 {
     MPI_Init(&argc, &argv);
+    ::testing::InitGoogleTest(&argc, argv);
+    int temp=RUN_ALL_TESTS();
+    MPI_Finalize();
+    return temp;
+} // end of main() //
+
+TEST(ParCommTest, TestsInCore)
+{
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
@@ -42,10 +57,10 @@ int main(int argc, char* argv[])
 
     A->comm->communicate(sendbuf);
 
-    assert(A->off_proc_num_cols > 0);
+    ASSERT_GT(A->off_proc_num_cols, 0);
     for (int i = 0; i < A->off_proc_num_cols; i++)
     {
-        assert(A->comm->recv_data->int_buffer[i] == A->off_proc_column_map[i]);
+        ASSERT_EQ(A->comm->recv_data->int_buffer[i], A->off_proc_column_map[i]);
     }
 
     seq_row.resize(A_seq->n_cols);
@@ -66,15 +81,11 @@ int main(int argc, char* argv[])
         {
             global_col = recv_mat->idx2[j];
             val = recv_mat->vals[j];
-            assert(fabs(seq_row[global_col] - val) < 1e-06);
+            ASSERT_NEAR(seq_row[global_col], val, 1e-06);
         }
     }
 
     delete A;
     delete recv_mat;
 
-    MPI_Finalize();
-}
-
-
-
+} // end of TEST(ParCommTest, TestsInCore) //

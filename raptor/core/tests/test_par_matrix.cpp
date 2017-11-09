@@ -1,5 +1,11 @@
-#include <assert.h>
+// EXPECT_EQ and ASSERT_EQ are macros
+// EXPECT_EQ test execution and continues even if there is a failure
+// ASSERT_EQ test execution and aborts if there is a failure
+// The ASSERT_* variants abort the program execution if an assertion fails 
+// while EXPECT_* variants continue with the run.
 
+
+#include "gtest/gtest.h"
 #include "core/types.hpp"
 #include "core/matrix.hpp"
 #include "core/par_matrix.hpp"
@@ -9,9 +15,18 @@
 
 using namespace raptor;
 
-int main(int argc, char* argv[])
+int main(int argc, char** argv)
 {
     MPI_Init(&argc, &argv);
+    ::testing::InitGoogleTest(&argc, argv);
+    int temp=RUN_ALL_TESTS();
+    MPI_Finalize();
+    return temp;
+
+} // end of main() //
+
+TEST(ParMatrixTest, TestsInCore)
+{
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
@@ -20,7 +35,6 @@ int main(int argc, char* argv[])
     double theta = M_PI / 8.0;
     int grid[2] = {10, 10};
     double* stencil = diffusion_stencil_2d(eps, theta);
-
     CSRMatrix* A = stencil_grid(stencil, grid, 2);
     ParCSRMatrix* A_par = par_stencil_grid(stencil, grid, 2);
 
@@ -29,7 +43,8 @@ int main(int argc, char* argv[])
     int lcl_nnz = A_par->local_nnz;
     int nnz;
     MPI_Allreduce(&lcl_nnz, &nnz, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-    assert(A->nnz == nnz);
+
+    ASSERT_EQ(A->nnz,nnz);
 
     double A_dense[10000] = {0};
     for (int i = 0; i < A->n_rows; i++)
@@ -47,13 +62,14 @@ int main(int argc, char* argv[])
         for (int j = A_par->on_proc->idx1[i]; j < A_par->on_proc->idx1[i+1]; j++)
         {
             int col = A_par->on_proc_column_map[A_par->on_proc->idx2[j]];
-            assert(fabs(A_dense[row*100+col] - A_par->on_proc->vals[j]) < zero_tol);
+            //ASSERT_LT((fabs(A_dense[row*100+col] - A_par->on_proc->vals[j])), zero_tol);
+            ASSERT_NEAR(A_dense[row*100+col], A_par->on_proc->vals[j], zero_tol);
         }
 
         for (int j = A_par->off_proc->idx1[i]; j < A_par->off_proc->idx1[i+1]; j++)
         {
             int col = A_par->off_proc_column_map[A_par->off_proc->idx2[j]];
-            assert(fabs(A_dense[row*100+col] - A_par->off_proc->vals[j]) < zero_tol);
+            ASSERT_NEAR(A_dense[row*100+col], A_par->off_proc->vals[j], zero_tol);
         }
     }
 
@@ -64,7 +80,7 @@ int main(int argc, char* argv[])
         for (int j = A_par_csc->on_proc->idx1[i]; j < A_par_csc->on_proc->idx1[i+1]; j++)
         {
             int row = A_par_csc->local_row_map[A_par_csc->on_proc->idx2[j]];
-            assert(fabs(A_dense[row*100+col] - A_par_csc->on_proc->vals[j]) < zero_tol);
+            ASSERT_NEAR(A_dense[row*100+col],A_par_csc->on_proc->vals[j], zero_tol);
         }
     }
 
@@ -74,13 +90,10 @@ int main(int argc, char* argv[])
         for (int j = A_par_csc->off_proc->idx1[i]; j < A_par_csc->off_proc->idx1[i+1]; j++)
         {
             int row = A_par_csc->local_row_map[A_par_csc->off_proc->idx2[j]];
-            assert(fabs(A_dense[row*100+col] - A_par_csc->off_proc->vals[j]) < zero_tol);
+            ASSERT_NEAR(A_dense[row*100+col], A_par_csc->off_proc->vals[j], zero_tol);
         }
     }
 
     delete[] stencil;
 
-    MPI_Finalize();
-}
-
-
+} // end of TEST(ParMatrixTest, TestsInCore) //

@@ -1,12 +1,24 @@
-#include <assert.h>
+// EXPECT_EQ and ASSERT_EQ are macros
+// EXPECT_EQ test execution and continues even if there is a failure
+// ASSERT_EQ test execution and aborts if there is a failure
+// The ASSERT_* variants abort the program execution if an assertion fails 
+// while EXPECT_* variants continue with the run.
 
+#include "gtest/gtest.h"
 #include "core/types.hpp"
 #include "core/matrix.hpp"
 #include "core/vector.hpp"
-
 using namespace raptor;
 
-int main(int argc, char* argv[])
+
+int main(int argc, char** argv)
+{
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+
+} // end of main() //
+
+TEST(MatrixTest, TestsInCore)
 {
     int rows[10] = {22, 17, 12, 0, 5, 7, 1, 0, 0, 12};
     int cols[10] = {5, 18, 21, 0, 7, 7, 0, 1, 0, 21};
@@ -36,30 +48,32 @@ int main(int argc, char* argv[])
     A_coo.add_value(12, 21, -1.0);
 
     // Check dimensions of A_coo
-    assert(A_coo.n_rows == 25);
-    assert(A_coo.n_cols == 25);
-    assert(A_coo.nnz == 10);
+    ASSERT_EQ(A_coo.n_rows, 25);
+    ASSERT_EQ(A_coo.n_cols, 25);
+    ASSERT_EQ(A_coo.nnz, 10);
 
-    // Check that rows, columns, and values in A_coo are correct
+   // Check that rows, columns, and values in A_coo are correct
     for (int i = 0; i < 10; i++)
     {
-        assert(A_coo.idx1[i] == rows[i]);
-        assert(A_coo.idx2[i] == cols[i]);
-        assert(A_coo.vals[i] == vals[i]);
+        ASSERT_EQ(A_coo.idx1[i], rows[i]);
+        ASSERT_EQ(A_coo.idx2[i], cols[i]);
+        ASSERT_EQ(A_coo.vals[i], vals[i]);
     }
 
     // Create CSR Matrix from COO
     CSRMatrix A_csr(&A_coo);
 
     // Check dimensions of A_csr
-    assert(A_csr.n_rows == 25);
-    assert(A_csr.n_cols == 25);
-    assert(A_csr.nnz == 10);
+    ASSERT_EQ(A_csr.n_rows,25);
+    ASSERT_EQ(A_csr.n_cols,25);
+    ASSERT_EQ(A_csr.nnz,10);
 
     // Check that rows, columns, and values in A_coo are correct
     int ctr = 0;
     for (int i = 0; i < 26; i++)
     {
-        assert(A_csr.idx1[i] == row_ctr[i]);
+        ASSERT_EQ(A_csr.idx1[i],row_ctr[i]);
     }
-}
+
+} // end of TEST(MatrixTest, TestsInCore) //
+

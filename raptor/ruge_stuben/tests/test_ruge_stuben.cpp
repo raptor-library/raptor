@@ -1,4 +1,11 @@
-#include <assert.h>
+// EXPECT_EQ and ASSERT_EQ are macros
+// EXPECT_EQ test execution and continues even if there is a failure
+// ASSERT_EQ test execution and aborts if there is a failure
+// The ASSERT_* variants abort the program execution if an assertion fails 
+// while EXPECT_* variants continue with the run.
+
+
+#include "gtest/gtest.h"
 
 #include "core/types.hpp"
 #include "core/matrix.hpp"
@@ -9,8 +16,14 @@
 
 using namespace raptor;
 
-int main(int argc, char* argv[])
+int main(int argc, char** argv)
 {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+} // end of main() //
+
+TEST(TestRugeStuben, TestsInRuge_Stuben)
+{ 
     CSRMatrix *A;
     CSRMatrix* S;
     CSRMatrix* P;
@@ -66,6 +79,5 @@ int main(int argc, char* argv[])
     delete P;
     delete S;
     delete A;
+} // end of TEST(TestRugeStuben, TestsInRuge_Stuben) //
 
-    return 0;
-}

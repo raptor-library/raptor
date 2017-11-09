@@ -1,4 +1,11 @@
-#include <assert.h>
+// EXPECT_EQ and ASSERT_EQ are macros
+// EXPECT_EQ test execution and continues even if there is a failure
+// ASSERT_EQ test execution and aborts if there is a failure
+// The ASSERT_* variants abort the program execution if an assertion fails 
+// while EXPECT_* variants continue with the run.
+
+
+#include "gtest/gtest.h"
 
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
@@ -6,11 +13,17 @@
 #include "tests/par_compare.hpp"
 
 using namespace raptor;
-
-int main(int argc, char* argv[])
+int main(int argc, char** argv)
 {
     MPI_Init(&argc, &argv);
+    ::testing::InitGoogleTest(&argc, argv);
+    int temp = RUN_ALL_TESTS();
+    MPI_Finalize();
+    return temp;
+} // end of main() //
 
+TEST(TestParRAP, TestsInRuge_Stuben)
+{ 
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
@@ -51,5 +64,4 @@ int main(int argc, char* argv[])
     delete AP;
     delete P;
     delete A;
-
-}
+} // end of TEST(TestParRAP, TestsInRuge_Stuben) //
