@@ -168,50 +168,15 @@ int main(int argc, char* argv[])
     hypre_ParCSRMatrix** A_array = hypre_ParAMGDataAArray((hypre_ParAMGData*) solver_data);
     hypre_ParCSRMatrix** P_array = hypre_ParAMGDataPArray((hypre_ParAMGData*) solver_data);
 
-    assert(ml->num_levels == num_levels);
-    ParCSRMatrix* A6 = ml->levels[6]->A;
-    hypre_ParCSRMatrix* A6_h = A_array[6];
-    compare(A6, A6_h);
-
-    ParCSRMatrix* S6 = A6->strength(0.25);
-    hypre_ParCSRMatrix* S6_h;
-    hypre_BoomerAMGCreateS(A6_h, 0.25, 1, 1, NULL, &S6_h);
-    compareS(S6, S6_h);
-
-    std::vector<double> weights;
-    form_hypre_weights(weights, A6->local_num_rows);
-    std::vector<int> states;
-    std::vector<int> off_proc_states;
-    int* CF_marker;
-    split_cljp(S6, states, off_proc_states, weights.data());
-    hypre_BoomerAMGCoarsen(S6_h, A6_h, 0, 0, &CF_marker);
-    for (int i = 0; i < A6->local_num_rows; i++)
+    assert(num_levels == ml->num_levels);
+    for (int i = 0; i < num_levels; i++)
     {
-        if (states[i])
-            assert(CF_marker[i] == states[i]);
-        else
-            assert(CF_marker[i] == -1);
-        if (states[i] == -3) printf("States[%d] = %d, CFMarker %d\n", i, states[i], CF_marker[i]);
+        compare(ml->levels[i]->A, A_array[i]);
     }
-
-    // NOT RIGHT YET
-    int* coarse_pnts_global = NULL;
-    hypre_BoomerAMGCoarseParms(MPI_COMM_WORLD, A6->local_num_rows, 1, NULL,
-            CF_marker, NULL, &coarse_pnts_global);
-    hypre_ParCSRMatrix* P6_h;
-    hypre_BoomerAMGBuildInterp(A6_h, CF_marker, S6_h, 
-            coarse_pnts_global, 1, NULL, 0, 0.0, 0, NULL, &P6_h);
-    ParCSRMatrix* P6 = mod_classical_interpolation(A6, S6, states, off_proc_states);
-    compare(P6, P6_h);
-    printf("P6 %d, %d P6_h %d, %d\n", P6->global_num_rows, P6->global_num_cols,
-            hypre_ParCSRMatrixGlobalNumRows(P6_h),
-            hypre_ParCSRMatrixGlobalNumCols(P6_h));
-    free(CF_marker);
-
-    delete S6;
-    delete P6;
-    hypre_ParCSRMatrixDestroy(S6_h);
-    hypre_ParCSRMatrixDestroy(P6_h);
+    for (int i = 0; i < num_levels - 1; i++)
+    {
+        compare(ml->levels[i]->P, P_array[i]);
+    }
 
     hypre_BoomerAMGDestroy(solver_data); 
     delete ml;
