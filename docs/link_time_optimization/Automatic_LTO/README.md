@@ -21,15 +21,15 @@ Procedure for automatic Link Time Optimization (also known as Interprocedural op
     endif()
 
 3.- Check if iterprocedural optimizations are allowed for any executable using the raptor library. 
-    For example, for  test_exxon_reader:
+    For example, for  test_par_interpolation:
     
     In the CMakeLists.txt located in the directory containing the program you want to link with the raptor libtary, 
-    (for this example ~/raptor/raptor/gallery/tests/CMakeLists.txt) add the following lines after the definition 
-    of the target_link_libraries(test_exxon_reader raptor .....):
+    (for this example ~/raptor/raptor/ruge_stuben/tests/CMakeLists.txt) add the following lines after the definition 
+    of the target_link_libraries(test_par_interpolation raptor .....):
     
     check_ipo_supported(RESULT result)
     if(result)
-      set_property(TARGET test_exxon_reader PROPERTY INTERPROCEDURAL_OPTIMIZATION True)
+      set_property(TARGET test_par_interpolation PROPERTY INTERPROCEDURAL_OPTIMIZATION True)
     endif()
     
 Notes:
