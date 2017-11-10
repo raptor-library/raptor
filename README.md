@@ -32,16 +32,16 @@ Note: make VERBOSE=1 if you want to see what flags are being used.
 
 # Options
 
-WITH_HYPRE : 
+WITH_HYPRE :
     Includes hypre_wrapper in the build.  Hypre must be installed before
     building with this option.  If not installed to /usr/local, set the
     HYPRE_DIR option.
-WITH_MFEM : 
-    Includes mfem_wrapper, mfem files, and hypre_wrapper in the build. 
+WITH_MFEM :
+    Includes mfem_wrapper, mfem files, and hypre_wrapper in the build.
     Mfem, Metis, and Hypre must be installed before building with this
-    option.  For any packages not installed to /usr/local, set the 
+    option.  For any packages not installed to /usr/local, set the
     directory option (<package>_DIR).
-HYPRE_DIR : 
+HYPRE_DIR :
     Sets the directory of hypre containing the include and lib folders
 METIS_DIR :
     Sets the directory of metis containing the include and libmetis folders
@@ -54,3 +54,15 @@ The build system is currently setup to use google test with ctest. The build
 system currently looks through the source tree and adds anything it finds in a
 test directory to ctest. For a simple example, look at
 raptor/core/tests/ParVector.cpp.
+
+# Citing
+
+<pre>
+@MISC{BiOl2017,
+      author = {Bienz, Amanda and Olson, Luke N.},
+      title = {{PyAMG}: Algebraic Multigrid Solvers in {Python} v3.0},
+      year = {2017},
+      url = {https://github.com/lukeolson/raptor},
+      note = {Release 0.1}
+      }
+</pre>

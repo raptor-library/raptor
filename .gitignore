@@ -49,7 +49,6 @@ Thumbs.db
 *~
 .*.swp
 
-# waf
-.lock-waf*
-.waf-*
 build
+
+.ipynb_checkpoints
