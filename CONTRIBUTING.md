@@ -1,7 +1,7 @@
 RAPtor is distributed under LICENSE.txt:
 
 Copyright (c) 2015-2017 RAPtor Developers
-License: MIT, http://opensource.org/licenses/MIT
+License: BSD 2-clause
 
 Contributing
 ---
