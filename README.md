@@ -64,7 +64,7 @@ raptor/core/tests/ParVector.cpp.
 <pre>
 @MISC{BiOl2017,
       author = {Bienz, Amanda and Olson, Luke N.},
-      title = {{PyAMG}: Algebraic Multigrid Solvers in {Python} v3.0},
+      title = {{RAPtor}: parallel algebraic multigrid v0.1},
       year = {2017},
       url = {https://github.com/lukeolson/raptor},
       note = {Release 0.1}
