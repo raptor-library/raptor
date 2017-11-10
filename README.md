@@ -1,17 +1,19 @@
 [![Build Status](https://travis-ci.org/lukeolson/raptor.svg?branch=master)](https://travis-ci.org/lukeolson/raptor)
+
 # raptor
 
-General, high performance algebraic multigrid solver
+RAPtor is a general, high performance algebraic multigrid solver.
 
-Requirements
-------------
+![](docs/logo/raptor-logo.png)
+
+# Requirements
 
 - `MPI`
 - `cmake`
 
 
-Build Instructions
-------------------
+# Build Instructions
+
 1. Create a build directory
 ```bash
 mkdir build
@@ -28,8 +30,8 @@ make
 ```
 Note: make VERBOSE=1 if you want to see what flags are being used.
 
-Options
-----------------
+# Options
+
 WITH_HYPRE : 
     Includes hypre_wrapper in the build.  Hypre must be installed before
     building with this option.  If not installed to /usr/local, set the
@@ -46,8 +48,7 @@ METIS_DIR :
 MFEM_DIR :
     Sets the directory of mfem containing mfem.h and libmfem
 
-Unit Testing
-------------
+# Unit Testing
 
 The build system is currently setup to use google test with ctest. The build
 system currently looks through the source tree and adds anything it finds in a
