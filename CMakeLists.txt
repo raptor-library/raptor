@@ -129,7 +129,7 @@ if (WITH_AMPI)
 endif(WITH_AMPI)
 
 #/////////////////////////// star information of google test ///////////////////////////////
-set(GOOGLETEST_ROOT external/googletest/googletest CACHE STRING "Google Test source root")
+set(GOOGLETEST_ROOT external/googletest CACHE STRING "Google Test source root")
 #MESSAGE( STATUS "GOOGLETEST_ROOT: "    ${GOOGLETEST_ROOT} )
 
 include_directories(
