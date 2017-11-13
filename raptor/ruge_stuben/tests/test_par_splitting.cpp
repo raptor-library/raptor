@@ -40,7 +40,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     ParCSRMatrix* S;
 
     // TEST LEVEL 0
-    S = readParMatrix("../../../../test_data/rss_S0.mtx", MPI_COMM_WORLD, 1, 1);
+    S = readParMatrix((char *)"../../../../test_data/rss_S0.mtx", MPI_COMM_WORLD, 1, 1);
 
     f = fopen("../../../../test_data/weights.txt", "r");
     std::vector<double> weights(S->local_num_rows);
@@ -70,7 +70,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     delete S;
 
     // TEST LEVEL 1
-    S = readParMatrix("../../../../test_data/rss_S1.mtx", MPI_COMM_WORLD, 1, 0);
+    S = readParMatrix((char *)"../../../../test_data/rss_S1.mtx", MPI_COMM_WORLD, 1, 0);
 
     f = fopen("../../../../test_data/weights.txt", "r");
     weights.resize(S->local_num_rows);

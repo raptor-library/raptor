@@ -103,19 +103,19 @@ TEST(TestParInterpolation, TestsInRuge_Stuben)
 
 
     // TEST LEVEL 0
-    A = readParMatrix("../../../../test_data/rss_A0.mtx", MPI_COMM_WORLD, 1, 1);
-    S = readParMatrix("../../../../test_data/rss_S0.mtx", MPI_COMM_WORLD, 1, 1);
-    P_rap = form_Prap(A, S, "../../../../test_data/rss_cf0", 
+    A = readParMatrix((char *)"../../../../test_data/rss_A0.mtx", MPI_COMM_WORLD, 1, 1);
+    S = readParMatrix((char *)"../../../../test_data/rss_S0.mtx", MPI_COMM_WORLD, 1, 1);
+    P_rap = form_Prap(A, S, (char *)"../../../../test_data/rss_cf0", 
             &first_row, &first_col, 0);
-    P = readParMatrix("../../../../test_data/rss_P0.mtx", MPI_COMM_WORLD, 1, 0, 
+    P = readParMatrix((char *)"../../../../test_data/rss_P0.mtx", MPI_COMM_WORLD, 1, 0, 
         P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
     compare(P, P_rap);
     delete P_rap;
     delete P;
 
-    P_rap = form_Prap(A, S, "../../../../test_data/rss_cf0", 
+    P_rap = form_Prap(A, S, (char *)"../../../../test_data/rss_cf0", 
             &first_row, &first_col, 1);
-    P = readParMatrix("../../../../test_data/rss_P0_mc.mtx", MPI_COMM_WORLD, 1, 0,
+    P = readParMatrix((char *)"../../../../test_data/rss_P0_mc.mtx", MPI_COMM_WORLD, 1, 0,
             P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
     compare(P, P_rap);
 
@@ -125,19 +125,19 @@ TEST(TestParInterpolation, TestsInRuge_Stuben)
     delete A;
 
     // TEST LEVEL 1
-    A = readParMatrix("../../../../test_data/rss_A1.mtx", MPI_COMM_WORLD, 1, 0);
-    S = readParMatrix("../../../../test_data/rss_S1.mtx", MPI_COMM_WORLD, 1, 0);
-    P_rap = form_Prap(A, S, "../../../../test_data/rss_cf1", 
+    A = readParMatrix((char *)"../../../../test_data/rss_A1.mtx", MPI_COMM_WORLD, 1, 0);
+    S = readParMatrix((char *)"../../../../test_data/rss_S1.mtx", MPI_COMM_WORLD, 1, 0);
+    P_rap = form_Prap(A, S, (char *)"../../../../test_data/rss_cf1", 
             &first_row, &first_col, 0);
-    P = readParMatrix("../../../../test_data/rss_P1.mtx", MPI_COMM_WORLD, 1, 0, 
+    P = readParMatrix((char *)"../../../../test_data/rss_P1.mtx", MPI_COMM_WORLD, 1, 0, 
         P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
     compare(P, P_rap);
     delete P_rap;
     delete P;
 
-    P_rap = form_Prap(A, S, "../../../../test_data/rss_cf1", 
+    P_rap = form_Prap(A, S, (char *)"../../../../test_data/rss_cf1", 
             &first_row, &first_col, 1);
-    P = readParMatrix("../../../../test_data/rss_P1_mc.mtx", MPI_COMM_WORLD, 1, 0,
+    P = readParMatrix((char *)"../../../../test_data/rss_P1_mc.mtx", MPI_COMM_WORLD, 1, 0,
             P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
 
     P->sort();
