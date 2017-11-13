@@ -52,7 +52,7 @@ void compare(ParCSRMatrix* A, ParCSRMatrix* A_rap)
     }
 }
 
-void compare(ParCSRMatrix* A, ParCSRBoolMatrix* A_rap)
+void compare_pattern(ParCSRMatrix* A, ParCSRMatrix* A_rap)
 {
     int start, end;
 

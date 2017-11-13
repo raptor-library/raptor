@@ -37,20 +37,18 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     std::vector<int> off_proc_states;
     int cf;
 
-    ParCSRMatrix* S_py;
-    ParCSRBoolMatrix* S;
+    ParCSRMatrix* S;
 
     // TEST LEVEL 0
-    S_py = readParMatrix((char *)"../../../../test_data/rss_S0.mtx", MPI_COMM_WORLD, 1, 1);
-    S = new ParCSRBoolMatrix(S_py);
+    S = readParMatrix("../../../../test_data/rss_S0.mtx", MPI_COMM_WORLD, 1, 1);
 
     f = fopen("../../../../test_data/weights.txt", "r");
-    std::vector<double> weights(S_py->local_num_rows);
-    for (int i = 0; i < S_py->partition->first_local_row; i++)
+    std::vector<double> weights(S->local_num_rows);
+    for (int i = 0; i < S->partition->first_local_row; i++)
     {
         fscanf(f, "%lf\n", &weights[0]);
     }
-    for (int i = 0; i < S_py->local_num_rows; i++)
+    for (int i = 0; i < S->local_num_rows; i++)
     {
         fscanf(f, "%lf\n", &weights[i]);
     }
@@ -58,11 +56,11 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     split_cljp(S, states, off_proc_states, weights.data());
     
     f = fopen("../../../../test_data/rss_cf0", "r");
-    for (int i = 0; i < S_py->partition->first_local_row; i++)
+    for (int i = 0; i < S->partition->first_local_row; i++)
     {
         fscanf(f, "%d\n", &cf);
     }
-    for (int i = 0; i < S_py->local_num_rows; i++)
+    for (int i = 0; i < S->local_num_rows; i++)
     {
         fscanf(f, "%d\n", &cf);
         assert(cf == states[i]);
@@ -70,19 +68,17 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     fclose(f);
 
     delete S;
-    delete S_py;
 
     // TEST LEVEL 1
-    S_py = readParMatrix((char *)"../../../../test_data/rss_S1.mtx", MPI_COMM_WORLD, 1, 0);
-    S = new ParCSRBoolMatrix(S_py);
+    S = readParMatrix("../../../../test_data/rss_S1.mtx", MPI_COMM_WORLD, 1, 0);
 
     f = fopen("../../../../test_data/weights.txt", "r");
-    weights.resize(S_py->local_num_rows);
-    for (int i = 0; i < S_py->partition->first_local_row; i++)
+    weights.resize(S->local_num_rows);
+    for (int i = 0; i < S->partition->first_local_row; i++)
     {
         fscanf(f, "%lf\n", &weights[0]);
     }
-    for (int i = 0; i < S_py->local_num_rows; i++)
+    for (int i = 0; i < S->local_num_rows; i++)
     {
         fscanf(f, "%lf\n", &weights[i]);
     }
@@ -90,11 +86,11 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     split_cljp(S, states, off_proc_states, weights.data());
     
     f = fopen("../../../../test_data/rss_cf1", "r");
-    for (int i = 0; i < S_py->partition->first_local_row; i++)
+    for (int i = 0; i < S->partition->first_local_row; i++)
     {
         fscanf(f, "%d\n", &cf);
     }
-    for (int i = 0; i < S_py->local_num_rows; i++)
+    for (int i = 0; i < S->local_num_rows; i++)
     {
         fscanf(f, "%d\n", &cf);
         assert(cf == states[i]);
@@ -102,7 +98,6 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     fclose(f);
 
     delete S;
-    delete S_py;
 
 } // end of TEST(TestParSplitting, TestsInRuge_Stuben) //
 

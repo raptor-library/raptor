@@ -32,7 +32,7 @@ namespace raptor
 {
     using data_t = double;
     using index_t = int;
-    enum format_t {CSR, CSC, COO, CSRBool};
+    enum format_t {CSR, CSC, COO};
 
     struct coo_data
     {

@@ -23,12 +23,12 @@ TEST(StrengthTest, TestsIntests)
 {
     CSRMatrix* A;
     CSRMatrix* S;
-    CSRBoolMatrix* S_rap;
+    CSRMatrix* S_rap;
 
     A = readMatrix((char *)"../../../test_data/rss_A0.mtx", 1);
     S = readMatrix((char *)"../../../test_data/rss_S0.mtx", 1);
     S_rap = A->strength(0.25);
-    compare(S, S_rap);
+    compare_pattern(S, S_rap);
     delete A;
     delete S;
     delete S_rap;
@@ -36,7 +36,7 @@ TEST(StrengthTest, TestsIntests)
     A = readMatrix((char *)"../../../test_data/rss_A1.mtx", 0);
     S = readMatrix((char *)"../../../test_data/rss_S1.mtx", 0);
     S_rap = A->strength(0.25);
-    compare(S, S_rap);
+    compare_pattern(S, S_rap);
     delete A;
     delete S;
     delete S_rap;

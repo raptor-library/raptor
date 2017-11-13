@@ -25,7 +25,7 @@ int main(int argc, char** argv)
 TEST(TestRugeStuben, TestsInRuge_Stuben)
 { 
     CSRMatrix *A;
-    CSRBoolMatrix* S;
+    CSRMatrix* S;
     CSRMatrix* P;
     CSRMatrix* AP;
     CSCMatrix* P_csc;

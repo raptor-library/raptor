@@ -71,7 +71,6 @@ namespace raptor
   class ParCOOMatrix;
   class ParCSRMatrix;
   class ParCSCMatrix;
-  class ParCSRBoolMatrix;
 
   class ParMatrix
   {
@@ -515,7 +514,7 @@ namespace raptor
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
 
-    ParCSRBoolMatrix* strength(double theta = 0.0);
+    ParCSRMatrix* strength(double theta = 0.0);
     ParCSRMatrix* aggregate();
     ParCSRMatrix* fit_candidates(double* B, double* R, int num_candidates, 
             double tol = 1e-10);
@@ -619,84 +618,6 @@ namespace raptor
     void tap_mult_T(ParVector& x, ParVector& b);
 
   };
-
-
-
-  class ParCSRBoolMatrix : public ParMatrix
-  {
-  public:
-    ParCSRBoolMatrix() : ParMatrix()
-    {
-        on_proc = new CSRBoolMatrix(0, 0, 0);
-        off_proc = new CSRBoolMatrix(0, 0, 0);
-    }
-
-    ParCSRBoolMatrix(index_t glob_rows, 
-            index_t glob_cols, 
-            int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols)
-    {
-        on_proc = new CSRBoolMatrix(partition->local_num_rows, partition->local_num_cols, 
-                nnz_per_row);
-        off_proc = new CSRBoolMatrix(partition->local_num_rows, partition->global_num_cols, 
-                nnz_per_row);
-    }
-
-    ParCSRBoolMatrix(index_t glob_rows, index_t glob_cols, int local_rows, 
-            int local_cols, index_t first_row, index_t first_col, 
-            int nnz_per_row = 5) : ParMatrix(glob_rows, glob_cols,
-                local_rows, local_cols, first_row, first_col)
-    {
-        on_proc = new CSRBoolMatrix(partition->local_num_rows, partition->local_num_cols, 
-                nnz_per_row);
-        off_proc = new CSRBoolMatrix(partition->local_num_rows, partition->global_num_cols, 
-                nnz_per_row);
-    }
-
-    ParCSRBoolMatrix(Partition* part, 
-            int nnz_per_row = 5) : ParMatrix(part)
-    {
-        on_proc = new CSRBoolMatrix(partition->local_num_rows, partition->local_num_cols, 
-                nnz_per_row);
-        off_proc = new CSRBoolMatrix(partition->local_num_rows, partition->global_num_cols, 
-                nnz_per_row);
-    }
-
-    ParCSRBoolMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows,
-            int on_proc_cols, int off_proc_cols, int nnz_per_row = 5) : ParMatrix(part, 
-                glob_rows, glob_cols, local_rows, on_proc_cols)
-    {
-        off_proc_num_cols = off_proc_cols;
-        on_proc = new CSRBoolMatrix(local_num_rows, on_proc_cols, nnz_per_row);
-        off_proc = new CSRBoolMatrix(local_num_rows, off_proc_num_cols, nnz_per_row);
-    }
-
-    ParCSRBoolMatrix(ParCSRMatrix* A)
-    {
-        copy(A);
-    }
-
-    ParCSRBoolMatrix(ParCSCMatrix* A)
-    {
-        copy(A);
-    }
-
-    ParCSRBoolMatrix(ParCOOMatrix* A)
-    {
-        copy(A);
-    }
-
-    void copy(ParCSRMatrix* A);
-    void copy(ParCSCMatrix* A);
-    void copy(ParCOOMatrix* A);
-
-    void mult(ParVector& x, ParVector& b);
-    void tap_mult(ParVector& x, ParVector& b);
-    void mult_T(ParVector& x, ParVector& b);
-    void tap_mult_T(ParVector& x, ParVector& b);
-    
-  };
-
-
 
 }
 #endif

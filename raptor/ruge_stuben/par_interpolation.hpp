@@ -9,7 +9,11 @@
 using namespace raptor;
 
 ParCSRMatrix* direct_interpolation(ParCSRMatrix* A, 
-        ParCSRBoolMatrix* S, const std::vector<int>& states,
+        ParCSRMatrix* S, const std::vector<int>& states,
+        const std::vector<int>& off_proc_states);
+
+ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
+        ParCSRMatrix* S, const std::vector<int>& states,
         const std::vector<int>& off_proc_states);
 
 #endif

@@ -4,7 +4,7 @@ using namespace raptor;
 
 // Assumes ParCSRMatrix is previously sorted
 // TODO -- have ParCSRMatrix bool sorted (and sort if not previously)
-ParCSRBoolMatrix* ParCSRMatrix::strength(double theta)
+ParCSRMatrix* ParCSRMatrix::strength(double theta)
 {
     int row_start_on, row_end_on;
     int row_start_off, row_end_off;
@@ -14,7 +14,7 @@ ParCSRBoolMatrix* ParCSRMatrix::strength(double theta)
     double threshold;
     double diag;
 
-    ParCSRBoolMatrix* S = new ParCSRBoolMatrix(partition, global_num_rows, global_num_cols,
+    ParCSRMatrix* S = new ParCSRMatrix(partition, global_num_rows, global_num_cols,
             local_num_rows, on_proc_num_cols, off_proc_num_cols);
 
     std::vector<bool> col_exists;
@@ -113,8 +113,7 @@ ParCSRBoolMatrix* ParCSRMatrix::strength(double theta)
                     val = on_proc->vals[j];
                     if (val > threshold)
                     {
-                        col = on_proc->idx2[j];
-                        S->on_proc->idx2.push_back(col);
+                        S->on_proc->idx2.push_back(on_proc->idx2[j]);
                     }
                 }
                 for (int j = row_start_off; j < row_end_off; j++)
@@ -135,8 +134,7 @@ ParCSRBoolMatrix* ParCSRMatrix::strength(double theta)
                     val = on_proc->vals[j];
                     if (val < threshold)
                     {
-                        col = on_proc->idx2[j];
-                        S->on_proc->idx2.push_back(col);
+                        S->on_proc->idx2.push_back(on_proc->idx2[j]);
                     }
                 }
                 for (int j = row_start_off; j < row_end_off; j++)

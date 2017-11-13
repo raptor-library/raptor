@@ -37,7 +37,7 @@ TEST(TestParRugeStuben, TestsInRuge_Stuben)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     ParCSRMatrix* A;
-    ParCSRBoolMatrix* S;
+    ParCSRMatrix* S;
     ParCSRMatrix* P;
     ParCSCMatrix* P_csc;
     ParCSRMatrix* AP;

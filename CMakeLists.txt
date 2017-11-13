@@ -30,9 +30,9 @@ include(options)
 include(testing)
 include(source)
 
-#add_feature_info(mpi WITH_MPI "Compile with MPI")
-#include(cxx11)
-#include(cxx_config)
+add_feature_info(mpi WITH_MPI "Compile with MPI")
+include(cxx11)
+include(cxx_config)
 
 if (WITH_MPI)
 #    include(mpi_config)
@@ -129,7 +129,7 @@ if (WITH_AMPI)
 endif(WITH_AMPI)
 
 #/////////////////////////// star information of google test ///////////////////////////////
-set(GOOGLETEST_ROOT external/googletest/googletest CACHE STRING "Google Test source root")
+set(GOOGLETEST_ROOT external/googletest CACHE STRING "Google Test source root")
 #MESSAGE( STATUS "GOOGLETEST_ROOT: "    ${GOOGLETEST_ROOT} )
 
 include_directories(

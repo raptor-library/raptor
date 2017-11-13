@@ -28,14 +28,12 @@ int main(int argc, char** argv)
 TEST(TestSplitting, TestsInRuge_Stuben)
 { 
     FILE* f;
-    CSRMatrix* S_py;
-    CSRBoolMatrix* S;
+    CSRMatrix* S;
     std::vector<int> splitting;
     std::vector<int> splitting_rap;
    
     // TEST LAPLACIAN SPLITTINGS ON LEVEL 0 
-    S_py = readMatrix((char *)"../../../../test_data/rss_S0.mtx", 1);
-    S = new CSRBoolMatrix(S_py);
+    S = readMatrix("../../../../test_data/rss_S0.mtx", 1);
     splitting.resize(S->n_rows);;
 
     // Test RugeStuben Splitting
@@ -75,13 +73,11 @@ TEST(TestSplitting, TestsInRuge_Stuben)
     }
 
     delete S;
-    delete S_py;
 
 
 
     // TEST LAPLACIAN SPLITTINGS ON LEVEL 1 
-    S_py = readMatrix((char *)"../../../../test_data/rss_S1.mtx", 0);
-    S = new CSRBoolMatrix(S_py);
+    S = readMatrix("../../../../test_data/rss_S1.mtx", 0);
     splitting.resize(S->n_rows);;
 
     // Test RugeStuben Splitting
@@ -121,6 +117,5 @@ TEST(TestSplitting, TestsInRuge_Stuben)
     }
 
     delete S;
-    delete S_py;
 
 } // end of TEST(TestSplitting, TestsInRuge_Stuben) //

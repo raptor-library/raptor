@@ -1,27 +1,45 @@
-#include <mpi.h>
-#include <math.h>
-#include <stdlib.h>
-#include <iostream>
 #include <assert.h>
 
-#include "clear_cache.hpp"
-
-#include "core/par_matrix.hpp"
-#include "core/par_vector.hpp"
 #include "core/types.hpp"
-#include "gallery/par_stencil.hpp"
-#include "gallery/laplacian27pt.hpp"
-#include "gallery/diffusion.hpp"
-#include "gallery/external/hypre_wrapper.hpp"
-//#include "gallery/external/mfem_wrapper.hpp"
+#include "core/par_matrix.hpp"
 #include "gallery/par_matrix_IO.hpp"
-#include "multilevel/par_multilevel.hpp"
+#include "gallery/par_stencil.hpp"
+#include "gallery/diffusion.hpp"
+#include "gallery/laplacian27pt.hpp"
 #include "tests/hypre_compare.hpp"
+#include "gallery/external/hypre_wrapper.hpp"
+#include "multilevel/par_multilevel.hpp"
+#include "multilevel/multilevel.hpp"
 
-//using namespace raptor;
-int main(int argc, char *argv[])
+using namespace raptor;
+
+void form_hypre_weights(std::vector<double>& weights, int n_rows)
 {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    if (n_rows)
+    {
+        weights.resize(n_rows);
+        int seed = 2747 + rank;
+        int a = 16807;
+        int m = 2147483647;
+        int q = 127773;
+        int r = 2836;
+        for (int i = 0; i < n_rows; i++)
+        {
+            int high = seed / q;
+            int low = seed % q;
+            int test = a * low - r * high;
+            if (test > 0) seed = test;
+            else seed = test + m;
+            weights[i] = ((double)(seed) / m);
+        }
+    }
+}
+
+int main(int argc, char* argv[])
+{
     MPI_Init(&argc, &argv);
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -141,80 +159,27 @@ int main(int argc, char *argv[])
     hypre_ParVector* b_h;
     HYPRE_IJVectorGetObject(b_h_ij, (void **) &b_h);
 
-    for (int i = 0; i < num_tests; i++)
-    {
-        HYPRE_Solver solver_data;
-        ParMultilevel* ml;
-
-        x.set_const_value(0.0);
-        double* x_h_data = hypre_VectorData(hypre_ParVectorLocalVector(x_h));
-        for (int i = 0; i < A->local_num_rows; i++)
-        {
-            x_h_data[i] = 0.0;
-        }
-
-        clear_cache(cache_array);
-
-        // Create Hypre Hierarchy
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        solver_data = hypre_create_hierarchy(A_h, x_h, b_h, 
+    HYPRE_Solver solver_data = hypre_create_hierarchy(A_h, x_h, b_h, 
                                 coarsen_type, interp_type, p_max_elmts, agg_num_levels, 
                                 strong_threshold);
-        hypre_setup = MPI_Wtime() - t0;
-        clear_cache(cache_array);
+    ParMultilevel* ml = new ParMultilevel(A, strong_threshold);
 
-        // Solve Hypre Hierarchy
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        HYPRE_BoomerAMGSolve(solver_data, A_h, b_h, x_h);
-        hypre_solve = MPI_Wtime() - t0;
-        clear_cache(cache_array);
+    HYPRE_Int num_levels = hypre_ParAMGDataNumLevels((hypre_ParAMGData*) solver_data);
+    hypre_ParCSRMatrix** A_array = hypre_ParAMGDataAArray((hypre_ParAMGData*) solver_data);
+    hypre_ParCSRMatrix** P_array = hypre_ParAMGDataPArray((hypre_ParAMGData*) solver_data);
 
-        // Delete hypre hierarchy
-        hypre_BoomerAMGDestroy(solver_data);     
-
-        // Setup Raptor Hierarchy
-        MPI_Barrier(MPI_COMM_WORLD);    
-        t0 = MPI_Wtime();
-        ml = new ParMultilevel(A, strong_threshold);
-        raptor_setup = MPI_Wtime() - t0;
-        clear_cache(cache_array);
-
-        long lcl_nnz;
-        long nnz;
-        if (rank == 0) printf("Level\tNumRows\tNNZ\n");
-        for (int i = 0; i < ml->num_levels; i++)
-        {
-            ParCSRMatrix* Al = ml->levels[i]->A;
-            lcl_nnz = Al->local_nnz;
-            MPI_Reduce(&lcl_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("%d\t%d\t%ld\n", i, Al->global_num_rows, nnz);
-        }   
-
-        // Solve Raptor Hierarchy
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        ml->solve(x, b);
-        raptor_solve = MPI_Wtime() - t0;
-        clear_cache(cache_array);
-
-        MPI_Reduce(&hypre_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Hypre Setup Time: %e\n", t0);
-        MPI_Reduce(&hypre_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Hypre Solve Time: %e\n", t0);
-
-        MPI_Reduce(&raptor_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Raptor Setup Time: %e\n", t0);
-        MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Raptor Solve Time: %e\n", t0);
-
-        // Delete raptor hierarchy
-        delete ml;
-
-        ml = new ParMultilevel(A, strong_threshold, 1, 50, -1, true);
-	delete ml; 
+    assert(num_levels == ml->num_levels);
+    for (int i = 0; i < num_levels; i++)
+    {
+        compare(ml->levels[i]->A, A_array[i]);
     }
+    for (int i = 0; i < num_levels - 1; i++)
+    {
+        compare(ml->levels[i]->P, P_array[i]);
+    }
+
+    hypre_BoomerAMGDestroy(solver_data); 
+    delete ml;
 
     delete A;
     HYPRE_IJMatrixDestroy(A_h_ij);
