@@ -27,7 +27,7 @@ ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, char* filename, int* f
 
     int first_row, first_col;
     FILE* f;
-    ParCSRMatrix* P_rap;
+    ParCSRMatrix* P_rap=nullptr;
     std::vector<int> proc_sizes(num_procs);
     std::vector<int> splitting;
     if (A->local_num_rows)
