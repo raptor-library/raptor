@@ -40,8 +40,8 @@ namespace raptor
 
         int rank_node;
 
-        char* proc_layout_c = std::getenv("MPICH_RANK_REORDER_METHOD");
-        char* PPN_c = std::getenv("PPN");
+        char* proc_layout_c = getenv("MPICH_RANK_REORDER_METHOD");
+        char* PPN_c = getenv("PPN");
         if (PPN_c) 
         {
             PPN = atoi(PPN_c);
