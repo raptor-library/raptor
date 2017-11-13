@@ -13,16 +13,16 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     int start, end;
     int start_k, end_k;
     int end_S;
-    int col, row, col_k, col_S;
-    int count, ctr;
+    int col, col_k, col_S;
+    int ctr;
     int global_col;
-    int head, length, tmp;
-    int off_proc_head, off_proc_length;
-    int ctr_S;
+    
+    
+    
 
     double diag, val;
-    double weak_sum, coarse_sum, strong_sum;
-    double weight;
+    double weak_sum, coarse_sum;
+    
     double sign;
 
     CSRMatrix* recv_mat; // Communicate A

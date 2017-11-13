@@ -190,7 +190,7 @@ namespace raptor
                 form_hypre_weights(weights, A->local_num_rows);
                 split_cljp(S, states, off_proc_states, weights.data());
                 levels[level_ctr]->P = mod_classical_interpolation(A, S, states, off_proc_states);
-                ParCSRMatrix* P = levels[level_ctr]->P;
+                
 
                 levels.push_back(new ParLevel());
                 AP = A->mult(levels[level_ctr]->P);

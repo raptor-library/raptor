@@ -18,7 +18,7 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A,
     double weak_sum;
     double strong_sum;
     double diag;
-    double val, val_k;
+    double val_k;
     std::vector<int> row_coarse;
     std::vector<double> row_coarse_sums;
     std::vector<double> row_strong;

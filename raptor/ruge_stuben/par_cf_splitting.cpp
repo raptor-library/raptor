@@ -1240,7 +1240,7 @@ void combine_weight_updates(const ParCSRMatrix* S,
 int update_states(std::vector<double>& weights, 
         std::vector<int>& states, const int remaining, std::vector<int>& unassigned)
 {
-    int num_states = states.size();
+    
 
     int ctr = 0;
     int u;
