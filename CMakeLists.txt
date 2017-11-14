@@ -7,6 +7,16 @@ enable_language(CXX)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_BUILD_TYPE Release)
 
+## adding the following lines while cleaning the code
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" )
+    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-result -Wno-unused-parameter")
+elseif ( CMAKE_CXX_COMPILER_ID STREQUAL "Intel" )
+    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall ")
+elseif ( CMAKE_CXX_COMPILER_ID STREQUAL "PGI" )
+    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Minform=inform ")
+endif ( )
+## end of adding the following lines while cleaning the code
+
 
 include(FeatureSummary)
 
