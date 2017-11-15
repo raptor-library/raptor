@@ -79,7 +79,7 @@ TEST(TestHypre, TestsInRuge_Stuben)
     std::vector<double> cache_array(cache_len);
 
     int dim = 2;
-    int grid[2] = {5, 5};
+    int grid[2] = {100, 100};
     double eps = 0.001;
     double theta = M_PI/8.0;
     double* stencil = diffusion_stencil_2d(eps, theta);

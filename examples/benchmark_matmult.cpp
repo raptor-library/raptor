@@ -4,107 +4,132 @@
 #include <iostream>
 #include <assert.h>
 
+#include "clear_cache.hpp"
+
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
 #include "core/types.hpp"
 #include "gallery/par_stencil.hpp"
 #include "gallery/laplacian27pt.hpp"
-#include "gallery/external/hypre_wrapper.hpp"
+#include "gallery/diffusion.hpp"
+#include "gallery/par_matrix_IO.hpp"
+
+#ifdef USING_MFEM
+#include "gallery/external/mfem_wrapper.hpp"
+#endif
 
 //using namespace raptor;
 int main(int argc, char *argv[])
 {
-
     MPI_Init(&argc, &argv);
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
-    int dim = 3;
+    int dim;
     int n = 5;
+    int system = 0;
+
     if (argc > 1)
-        n = atoi(argv[1]);
-    int grid[3];
-    grid[0] = n;
-    grid[1] = n;
-    grid[2] = n;
-    double* stencil = laplace_stencil_27pt();
-    ParCSRMatrix* A = par_stencil_grid(stencil, grid, dim);
-    ParVector x = ParVector(A->global_num_cols, A->on_proc_num_cols, 
-            A->partition->first_local_col);
-    ParVector b = ParVector(A->global_num_rows, A->local_num_rows, 
-            A->partition->first_local_row);
-    delete[] stencil;
-    
-    HYPRE_IJMatrix A_h = convert(A);
-    HYPRE_IJVector x_h = convert(&x);
-    HYPRE_IJVector b_h = convert(&b);
-    hypre_ParCSRMatrix* parcsr_A;
-    HYPRE_IJMatrixGetObject(A_h, (void**) &parcsr_A);
-    hypre_ParVector* par_x;
-    HYPRE_IJVectorGetObject(x_h, (void **) &par_x);
-    hypre_ParVector* par_b;
-    HYPRE_IJVectorGetObject(b_h, (void **) &par_b);
-
-    int coarsen_type = 10;
-    int interp_type = 6;
-    int Pmx = 0;
-    int agg_num_levels = 1;
-    int p_max_elmts = 0;
-    double strong_threshold = 0.25;
-//    int coarsen_type = 6;
-//    int interp_type = 0;
-//    int agg_num_levels = 0;
-
-    HYPRE_Solver solver_data = hypre_create_hierarchy(parcsr_A, par_x, par_b, 
-                            coarsen_type, interp_type, p_max_elmts, agg_num_levels, 
-                            strong_threshold);
-    hypre_ParAMGData* amg_data = (hypre_ParAMGData*) solver_data;
-
-    HYPRE_Int num_levels = hypre_ParAMGDataNumLevels(amg_data);
-    hypre_ParCSRMatrix** A_array = hypre_ParAMGDataAArray(amg_data);
-    hypre_ParCSRMatrix** P_array = hypre_ParAMGDataPArray(amg_data);
-    hypre_ParVector** f_array = hypre_ParAMGDataFArray(amg_data);
-    double t0, tfinal;
-    for (int i = 0; i < num_levels - 1; i++)
     {
-        hypre_ParCSRMatrix* A_h_l = A_array[i];
-        hypre_ParCSRMatrix* P_h_l = P_array[i];
+        system = atoi(argv[1]);
+    }
 
-        // TODO -- fix this!  Right now, creating two communicators without
-        // barrier between can cause race condition...
-        ParCSRMatrix* A_l = convert(A_h_l);
-        ParCSRMatrix* P_l = convert(P_h_l);
+    ParCSRMatrix* A;
 
-        for (int j = 0; j < 5; j++)
+    double t0, tfinal;
+
+    int cache_len = 10000;
+    int num_tests = 2;
+
+    std::vector<double> cache_array(cache_len);
+
+    if (system < 2)
+    {
+        double* stencil = NULL;
+        std::vector<int> grid;
+        if (argc > 2)
         {
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            hypre_ParCSRMatrix* C_h_l = hypre_ParMatmul(A_h_l, P_h_l);
-            tfinal = MPI_Wtime() - t0;
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("HYPRE Matmult time = %e\n", t0);
-            hypre_ParCSRMatrixDestroy(C_h_l);
-
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            ParCSRMatrix* C_l = A_l->mult(P_l);
-            tfinal = MPI_Wtime() - t0;
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("Raptor Matmult time = %e\n", t0);
-            delete C_l;
+            n = atoi(argv[2]);
         }
 
-        delete A_l;
-        delete P_l;
+        if (system == 0)
+        {
+            dim = 3;
+            grid.resize(dim, n);
+            stencil = laplace_stencil_27pt();
+        }
+        else if (system == 1)
+        {
+            dim = 2;
+            grid.resize(dim, n);
+            double eps = 0.001;
+            double theta = M_PI/8.0;
+            if (argc > 3)
+            {
+                eps = atof(argv[3]);
+                if (argc > 4)
+                {
+                    theta = atof(argv[4]);
+                }
+            }
+            stencil = diffusion_stencil_2d(eps, theta);
+        }
+        A = par_stencil_grid(stencil, grid.data(), dim);
+        delete[] stencil;
     }
-    
+#ifdef USING_MFEM
+    else if (system == 2)
+    {
+        char* mesh_file = argv[2];
+        int num_elements = 2;
+        int order = 3;
+        if (argc > 3)
+        {
+            num_elements = atoi(argv[3]);
+            if (argc > 4)
+            {
+                order = atoi(argv[4]);
+            }
+        }
+        ParVector x;
+        ParVector b;
+        A = mfem_linear_elasticity(x, b, mesh_file, num_elements, order);
+    }
+#endif
+    else if (system == 3)
+    {
+        char* file = "../../examples/LFAT5.mtx";
+        int sym = 1;
+        if (argc > 2)
+        {
+            file = argv[2];
+            if (argc > 3)
+            {
+                sym = atoi(argv[3]);
+            }
+        }
+        A = readParMatrix(file, MPI_COMM_WORLD, 1, sym);
+    }
+
+    for (int i = 0; i < num_tests; i++)
+    {
+        clear_cache(cache_array);
+        MPI_Barrier(MPI_COMM_WORLD);
+        t0 = MPI_Wtime();
+        ParCSRMatrix* A2 = A->mult(A);
+        tfinal = MPI_Wtime() - t0;
+        delete A2;
+
+        MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Test %d Max A^2 Time: %e\n", i, t0);
+    }
+
     delete A;
-    hypre_BoomerAMGDestroy(solver_data);     
-    HYPRE_IJMatrixDestroy(A_h);
-    HYPRE_IJVectorDestroy(x_h);
-    HYPRE_IJVectorDestroy(b_h);
+
     MPI_Finalize();
 
     return 0;
 }
+
+

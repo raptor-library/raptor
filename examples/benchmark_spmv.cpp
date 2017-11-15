@@ -83,19 +83,15 @@ int main(int argc, char *argv[])
 #ifdef USING_MFEM
     else if (system == 2)
     {
-        char* mesh_file = "/u/sciteam/bienz/mfem/data/beam-tet.mesh";
+        char* mesh_file = argv[2];
         int num_elements = 2;
         int order = 3;
-        if (argc > 2)
+        if (argc > 3)
         {
-            num_elements = atoi(argv[2]);
-            if (argc > 3)
+            num_elements = atoi(argv[3]);
+            if (argc > 4)
             {
-                order = atoi(argv[3]);
-                if (argc > 4)
-                {
-                    mesh_file = argv[4];
-                }
+                order = atoi(argv[4]);
             }
         }
         A = mfem_linear_elasticity(x, b, mesh_file, num_elements, order);
@@ -103,7 +99,7 @@ int main(int argc, char *argv[])
 #endif
     else if (system == 3)
     {
-        char* file = "/Users/abienz/Documents/Parallel/raptor_topo/examples/LFAT5.mtx";
+        char* file = "../../examples/LFAT5.mtx";
         int sym = 1;
         if (argc > 2)
         {
