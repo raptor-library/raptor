@@ -95,8 +95,8 @@ ParCSRMatrix* par_stencil_grid(data_t* stencil, int* grid, int dim)
         {
             for (index_t j = 0; j < dim; j++)
             {
-                index_t power = pow(3, j);
-                index_t idiv = i / power;
+                //index_t power = pow(3, j);
+                index_t idiv = i / pow(3, j);
                 indices[ctr][dim-j-1] = (idiv % 3) - (3 / 2);
             }
             nonzero_stencil[ctr] = stencil[i];
