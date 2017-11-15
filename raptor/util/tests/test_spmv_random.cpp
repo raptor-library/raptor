@@ -18,11 +18,11 @@ int main(int argc, char** argv)
 
 TEST(RandomSpMVTest, TestsInUtil)
 {
-    char* rand_fn = "../../../../test_data/random.mtx";
-    char* b_ones = "../../../../test_data/random_ones_b.txt";
-    char* b_T_ones = "../../../../test_data/random_ones_b_T.txt";
-    char* b_inc = "../../../../test_data/random_inc_b.txt";
-    char* b_T_inc = "../../../../test_data/random_inc_b_T.txt";
+    const char* rand_fn = "../../../../test_data/random.mtx";
+    const char* b_ones = "../../../../test_data/random_ones_b.txt";
+    const char* b_T_ones = "../../../../test_data/random_ones_b_T.txt";
+    const char* b_inc = "../../../../test_data/random_inc_b.txt";
+    const char* b_T_inc = "../../../../test_data/random_inc_b_T.txt";
 
     double b_val;
     CSRMatrix* A = readMatrix(rand_fn, 0);

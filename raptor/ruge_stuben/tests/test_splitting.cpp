@@ -27,14 +27,22 @@ TEST(TestSplitting, TestsInRuge_Stuben)
     CSRMatrix* S;
     std::vector<int> splitting;
     std::vector<int> splitting_rap;
+
+    const char* S0_fn = "../../../../test_data/rss_S0.mtx";
+    const char* S1_fn = "../../../../test_data/rss_S1.mtx";
+    const char* cf0_rs = "../../../../test_data/rss_cf0_rs";
+    const char* cf0 = "../../../../test_data/rss_cf0";
+    const char* cf1_rs = "../../../../test_data/rss_cf1_rs";
+    const char* cf1 = "../../../../test_data/rss_cf1";
+    const char* weights_fn = "../../../../test_data/weights.txt";
    
     // TEST LAPLACIAN SPLITTINGS ON LEVEL 0 
-    S = readMatrix("../../../../test_data/rss_S0.mtx", 1);
+    S = readMatrix(S0_fn, 1);
     splitting.resize(S->n_rows);;
 
     // Test RugeStuben Splitting
     split_rs(S, splitting_rap);
-    f = fopen("../../../../test_data/rss_cf0_rs", "r");
+    f = fopen(cf0_rs, "r");
     for (int i = 0; i < S->n_rows; i++)
     {
         fscanf(f, "%d\n", &splitting[i]);
@@ -48,7 +56,7 @@ TEST(TestSplitting, TestsInRuge_Stuben)
 
 
     // Test CLJP Splittings
-    f = fopen("../../../../test_data/weights.txt", "r");
+    f = fopen(weights_fn, "r");
     std::vector<double> weights(S->n_rows);
     for (int i = 0; i < S->n_rows; i++)
     {
@@ -73,12 +81,12 @@ TEST(TestSplitting, TestsInRuge_Stuben)
 
 
     // TEST LAPLACIAN SPLITTINGS ON LEVEL 1 
-    S = readMatrix("../../../../test_data/rss_S1.mtx", 0);
+    S = readMatrix(S1_fn, 0);
     splitting.resize(S->n_rows);;
 
     // Test RugeStuben Splitting
     split_rs(S, splitting_rap);
-    f = fopen("../../../../test_data/rss_cf1_rs", "r");
+    f = fopen(cf1_rs, "r");
     for (int i = 0; i < S->n_rows; i++)
     {
         fscanf(f, "%d\n", &splitting[i]);
@@ -92,7 +100,7 @@ TEST(TestSplitting, TestsInRuge_Stuben)
 
 
     // Test CLJP Splittings
-    f = fopen("../../../../test_data/weights.txt", "r");
+    f = fopen(weights_fn, "r");
     weights.resize(S->n_rows);
     for (int i = 0; i < S->n_rows; i++)
     {
@@ -100,7 +108,7 @@ TEST(TestSplitting, TestsInRuge_Stuben)
     }
     fclose(f);
     split_cljp(S, splitting_rap, weights.data());
-    f = fopen("../../../../test_data/rss_cf1", "r");
+    f = fopen(cf1, "r");
     for (int i = 0; i < S->n_rows; i++)
     {
         fscanf(f, "%d\n", &splitting[i]);

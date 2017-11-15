@@ -25,13 +25,20 @@ TEST(TestRAP, TestsInRuge_Stuben)
     CSCMatrix* P_csc;
     CSRMatrix* Ac_rap;
 
+    const char* A0_fn = "../../../../test_data/rss_A0.mtx";
+    const char* A1_fn = "../../../../test_data/rss_A1.mtx";
+    const char* A2_fn = "../../../../test_data/rss_A2.mtx";
+    const char* P0_fn = "../../../../test_data/rss_P0.mtx";
+    const char* P1_fn = "../../../../test_data/rss_P1.mtx";
+
+
     // TEST LEVEL 0
-    A = readMatrix("../../../../test_data/rss_A0.mtx", 1);
-    P = readMatrix("../../../../test_data/rss_P0.mtx", 0);
+    A = readMatrix(A0_fn, 1);
+    P = readMatrix(P0_fn, 0);
     AP = A->mult(P);
     P_csc = new CSCMatrix(P);
     Ac = AP->mult_T(P_csc);
-    Ac_rap = readMatrix("../../../../test_data/rss_A1.mtx", 0);
+    Ac_rap = readMatrix(A1_fn, 0);
     compare(Ac, Ac_rap);
     delete Ac_rap;
     delete Ac;
@@ -41,12 +48,12 @@ TEST(TestRAP, TestsInRuge_Stuben)
     delete A;
 
     // TEST LEVEL 1
-    A = readMatrix("../../../../test_data/rss_A1.mtx", 0);
-    P = readMatrix("../../../../test_data/rss_P1.mtx", 0);
+    A = readMatrix(A1_fn, 0);
+    P = readMatrix(P1_fn, 0);
     AP = A->mult(P);
     P_csc = new CSCMatrix(P);
     Ac = AP->mult_T(P_csc);
-    Ac_rap = readMatrix("../../../../test_data/rss_A2.mtx", 0);
+    Ac_rap = readMatrix(A2_fn, 0);
     compare(Ac, Ac_rap);
     delete Ac_rap;
     delete Ac;

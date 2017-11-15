@@ -5,7 +5,7 @@
 #include <float.h>
 #include <stdio.h>
 
-CSRMatrix* readMatrix(char* filename, int symmetric)
+CSRMatrix* readMatrix(const char* filename, int symmetric)
 {
     index_t num_rows, num_cols, nnz;
     int ret_code;

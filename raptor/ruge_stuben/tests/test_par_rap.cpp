@@ -31,13 +31,19 @@ TEST(TestParRAP, TestsInRuge_Stuben)
     ParCSCMatrix* P_csc;
     ParCSRMatrix* Ac_rap;
 
+    const char* A0_fn = "../../../../test_data/rss_A0.mtx";
+    const char* A1_fn = "../../../../test_data/rss_A1.mtx";
+    const char* A2_fn = "../../../../test_data/rss_A2.mtx";
+    const char* P0_fn = "../../../../test_data/rss_P0.mtx";
+    const char* P1_fn = "../../../../test_data/rss_P1.mtx";
+
     // TEST LEVEL 0
-    A = readParMatrix("../../../../test_data/rss_A0.mtx", MPI_COMM_WORLD, 1, 1);
-    P = readParMatrix("../../../../test_data/rss_P0.mtx", MPI_COMM_WORLD, 1, 0);
+    A = readParMatrix(A0_fn, MPI_COMM_WORLD, 1, 1);
+    P = readParMatrix(P0_fn, MPI_COMM_WORLD, 1, 0);
     AP = A->mult(P);
     P_csc = new ParCSCMatrix(P);
     Ac = AP->mult_T(P_csc);
-    Ac_rap = readParMatrix("../../../../test_data/rss_A1.mtx", MPI_COMM_WORLD, 1, 0);
+    Ac_rap = readParMatrix(A1_fn, MPI_COMM_WORLD, 1, 0);
     compare(Ac, Ac_rap);
     delete Ac_rap;
     delete Ac;
@@ -47,12 +53,12 @@ TEST(TestParRAP, TestsInRuge_Stuben)
     delete A;
 
     // TEST LEVEL 1
-    A = readParMatrix("../../../../test_data/rss_A1.mtx", MPI_COMM_WORLD, 1, 0);
-    P = readParMatrix("../../../../test_data/rss_P1.mtx", MPI_COMM_WORLD, 1, 0);
+    A = readParMatrix(A1_fn, MPI_COMM_WORLD, 1, 0);
+    P = readParMatrix(P1_fn, MPI_COMM_WORLD, 1, 0);
     AP = A->mult(P);
     P_csc = new ParCSCMatrix(P);
     Ac = AP->mult_T(P_csc);
-    Ac_rap = readParMatrix("../../../../test_data/rss_A2.mtx", MPI_COMM_WORLD, 1, 0);
+    Ac_rap = readParMatrix(A2_fn, MPI_COMM_WORLD, 1, 0);
     compare(Ac, Ac_rap);
     delete Ac_rap;
     delete Ac;

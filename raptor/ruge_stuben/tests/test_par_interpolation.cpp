@@ -15,7 +15,7 @@
 
 using namespace raptor;
 
-ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, char* filename, int* first_row_ptr, int* first_col_ptr, int interp_option = 0)
+ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, int* first_row_ptr, int* first_col_ptr, int interp_option = 0)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -97,21 +97,32 @@ TEST(TestParInterpolation, TestsInRuge_Stuben)
     ParCSRMatrix* P;
     ParCSRMatrix* P_rap;
 
+    const char* A0_fn = "../../../../test_data/rss_A0.mtx";
+    const char* A1_fn = "../../../../test_data/rss_A1.mtx";
+    const char* S0_fn = "../../../../test_data/rss_S0.mtx";
+    const char* S1_fn = "../../../../test_data/rss_S1.mtx";
+    const char* P0_fn = "../../../../test_data/rss_P0.mtx";
+    const char* P1_fn = "../../../../test_data/rss_P1.mtx";
+    const char* cf0_fn = "../../../../test_data/rss_cf0";
+    const char* cf1_fn = "../../../../test_data/rss_cf1";
+    const char* P0_mc_fn = "../../../../test_data/rss_P0_mc.mtx";
+    const char* P1_mc_fn = "../../../../test_data/rss_P1_mc.mtx";
+
 
     // TEST LEVEL 0
-    A = readParMatrix("../../../../test_data/rss_A0.mtx", MPI_COMM_WORLD, 1, 1);
-    S = readParMatrix("../../../../test_data/rss_S0.mtx", MPI_COMM_WORLD, 1, 1);
-    P_rap = form_Prap(A, S, "../../../../test_data/rss_cf0", 
+    A = readParMatrix(A0_fn, MPI_COMM_WORLD, 1, 1);
+    S = readParMatrix(S0_fn, MPI_COMM_WORLD, 1, 1);
+    P_rap = form_Prap(A, S, cf0_fn, 
             &first_row, &first_col, 0);
-    P = readParMatrix("../../../../test_data/rss_P0.mtx", MPI_COMM_WORLD, 1, 0, 
+    P = readParMatrix(P0_fn, MPI_COMM_WORLD, 1, 0, 
         P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
     compare(P, P_rap);
     delete P_rap;
     delete P;
 
-    P_rap = form_Prap(A, S, "../../../../test_data/rss_cf0", 
+    P_rap = form_Prap(A, S, cf0_fn, 
             &first_row, &first_col, 1);
-    P = readParMatrix("../../../../test_data/rss_P0_mc.mtx", MPI_COMM_WORLD, 1, 0,
+    P = readParMatrix(P0_mc_fn, MPI_COMM_WORLD, 1, 0,
             P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
     compare(P, P_rap);
 
@@ -121,19 +132,19 @@ TEST(TestParInterpolation, TestsInRuge_Stuben)
     delete A;
 
     // TEST LEVEL 1
-    A = readParMatrix("../../../../test_data/rss_A1.mtx", MPI_COMM_WORLD, 1, 0);
-    S = readParMatrix("../../../../test_data/rss_S1.mtx", MPI_COMM_WORLD, 1, 0);
-    P_rap = form_Prap(A, S, "../../../../test_data/rss_cf1", 
+    A = readParMatrix(A1_fn, MPI_COMM_WORLD, 1, 0);
+    S = readParMatrix(S1_fn, MPI_COMM_WORLD, 1, 0);
+    P_rap = form_Prap(A, S, cf1_fn, 
             &first_row, &first_col, 0);
-    P = readParMatrix("../../../../test_data/rss_P1.mtx", MPI_COMM_WORLD, 1, 0, 
+    P = readParMatrix(P1_fn, MPI_COMM_WORLD, 1, 0, 
         P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
     compare(P, P_rap);
     delete P_rap;
     delete P;
 
-    P_rap = form_Prap(A, S, "../../../../test_data/rss_cf1", 
+    P_rap = form_Prap(A, S, cf1_fn, 
             &first_row, &first_col, 1);
-    P = readParMatrix("../../../../test_data/rss_P1_mc.mtx", MPI_COMM_WORLD, 1, 0,
+    P = readParMatrix(P1_mc_fn, MPI_COMM_WORLD, 1, 0,
             P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
 
     P->sort();

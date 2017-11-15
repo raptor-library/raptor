@@ -36,10 +36,16 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
 
     ParCSRMatrix* S;
 
-    // TEST LEVEL 0
-    S = readParMatrix("../../../../test_data/rss_S0.mtx", MPI_COMM_WORLD, 1, 1);
+    const char* S0_fn = "../../../../test_data/rss_S0.mtx";
+    const char* S1_fn = "../../../../test_data/rss_S1.mtx";
+    const char* cf0_fn = "../../../../test_data/rss_cf0";
+    const char* cf1_fn = "../../../../test_data/rss_cf1";
+    const char* weights_fn = "../../../../test_data/weights.txt";
 
-    f = fopen("../../../../test_data/weights.txt", "r");
+    // TEST LEVEL 0
+    S = readParMatrix(S0_fn, MPI_COMM_WORLD, 1, 1);
+
+    f = fopen(weights_fn, "r");
     std::vector<double> weights(S->local_num_rows);
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
@@ -52,7 +58,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     fclose(f);
     split_cljp(S, states, off_proc_states, weights.data());
     
-    f = fopen("../../../../test_data/rss_cf0", "r");
+    f = fopen(cf0_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
         fscanf(f, "%d\n", &cf);
@@ -67,9 +73,9 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     delete S;
 
     // TEST LEVEL 1
-    S = readParMatrix("../../../../test_data/rss_S1.mtx", MPI_COMM_WORLD, 1, 0);
+    S = readParMatrix(S1_fn, MPI_COMM_WORLD, 1, 0);
 
-    f = fopen("../../../../test_data/weights.txt", "r");
+    f = fopen(weights_fn, "r");
     weights.resize(S->local_num_rows);
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
@@ -82,7 +88,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     fclose(f);
     split_cljp(S, states, off_proc_states, weights.data());
     
-    f = fopen("../../../../test_data/rss_cf1", "r");
+    f = fopen(cf1_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
         fscanf(f, "%d\n", &cf);

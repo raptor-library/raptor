@@ -18,7 +18,8 @@ using namespace raptor;
 
 int mm_read_par_sparse(const char *fname, index_t start, index_t stop, 
         index_t *M_, index_t *N_, ParMatrix* A, int symmetric);
-ParCSRMatrix* readParMatrix(char* filename, MPI_Comm comm = MPI_COMM_WORLD, bool single_file = true, 
+ParCSRMatrix* readParMatrix(const char* filename, MPI_Comm comm = MPI_COMM_WORLD, 
+        bool single_file = true, 
         int symmetric = 1, int local_num_rows = -1, int local_num_cols = -1,
         int first_local_row = -1, int first_local_col = -1);
 

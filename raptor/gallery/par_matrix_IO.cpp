@@ -5,7 +5,7 @@
 #include <float.h>
 #include <stdio.h>
 
-ParCSRMatrix* readParMatrix(char* filename, MPI_Comm comm, bool single_file, 
+ParCSRMatrix* readParMatrix(const char* filename, MPI_Comm comm, bool single_file, 
         int symmetric, int local_num_rows, int local_num_cols, 
         int first_local_row, int first_local_col)
 {

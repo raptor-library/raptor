@@ -25,10 +25,10 @@ TEST(StrengthTest, TestsIntests)
     CSRMatrix* S;
     CSRMatrix* S_rap;
 
-    char* A0_fn = "../../../test_data/rss_A0.mtx";
-    char* A1_fn = "../../../test_data/rss_A1.mtx";
-    char* S0_fn = "../../../test_data/rss_S0.mtx";
-    char* S1_fn = "../../../test_data/rss_S1.mtx";
+    const char* A0_fn = "../../../test_data/rss_A0.mtx";
+    const char* A1_fn = "../../../test_data/rss_A1.mtx";
+    const char* S0_fn = "../../../test_data/rss_S0.mtx";
+    const char* S1_fn = "../../../test_data/rss_S1.mtx";
 
     A = readMatrix(A0_fn, 1);
     S = readMatrix(S0_fn, 1);

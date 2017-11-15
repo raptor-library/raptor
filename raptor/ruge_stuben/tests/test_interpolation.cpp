@@ -32,16 +32,16 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     std::vector<int> splitting;
     FILE* f;
 
-    char* A0_fn = "../../../../test_data/rss_A0.mtx";
-    char* A1_fn = "../../../../test_data/rss_A1.mtx";
-    char* S0_fn = "../../../../test_data/rss_S0.mtx";
-    char* S1_fn = "../../../../test_data/rss_S1.mtx";
-    char* cf0_fn = "../../../../test_data/rss_cf0";
-    char* cf1_fn = "../../../../test_data/rss_cf1";
-    char* P0_fn = "../../../../test_data/rss_P0.mtx";
-    char* P0_mc_fn = "../../../../test_data/rss_P0_mc.mtx";
-    char* P1_fn = "../../../../test_data/rss_P1.mtx";
-    char* P1_mc_fn = "../../../../test_data/rss_P1_mc.mtx";
+    const char* A0_fn = "../../../../test_data/rss_A0.mtx";
+    const char* A1_fn = "../../../../test_data/rss_A1.mtx";
+    const char* S0_fn = "../../../../test_data/rss_S0.mtx";
+    const char* S1_fn = "../../../../test_data/rss_S1.mtx";
+    const char* cf0_fn = "../../../../test_data/rss_cf0";
+    const char* cf1_fn = "../../../../test_data/rss_cf1";
+    const char* P0_fn = "../../../../test_data/rss_P0.mtx";
+    const char* P0_mc_fn = "../../../../test_data/rss_P0_mc.mtx";
+    const char* P1_fn = "../../../../test_data/rss_P1.mtx";
+    const char* P1_mc_fn = "../../../../test_data/rss_P1_mc.mtx";
 
     // TEST LEVEL 0
     A = readMatrix(A0_fn, 1);
@@ -71,7 +71,6 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
 
     // TEST LEVEL 1
     A = readMatrix(A1_fn, 0);
-    P = readMatrix(P1_fn, 0);
     S = readMatrix(S1_fn, 0);
     splitting.resize(A->n_rows);
     f = fopen(cf1_fn, "r");
@@ -81,12 +80,14 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     }
     fclose(f);
 
+    P = readMatrix(P1_fn, 0);
     P_rap = direct_interpolation(A, S, splitting);
     compare(P, P_rap);
     delete P_rap;
     delete P;
 
-    P = readMatrix(P1_mc_fc, 0);
+    // TODO -- serial mod classical interp not working
+    P = readMatrix(P1_mc_fn, 0);
     P_rap = mod_classical_interpolation(A, S, splitting);
     //compare(P, P_rap);
 

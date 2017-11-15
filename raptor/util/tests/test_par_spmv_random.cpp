@@ -24,11 +24,11 @@ TEST(ParRandomSpMVTest, TestsInUtil)
 
     FILE* f;
     double b_val;
-    char* rand_fn = "../../../../test_data/random.mtx";
-    char* b_ones = "../../../../test_data/random_ones_b.txt";
-    char* b_T_ones = "../../../../test_data/random_ones_b_T.txt";
-    char* b_inc = "../../../../test_data/random_inc_b.txt";
-    char* b_T_inc = "../../../../test_data/random_inc_b_T.txt";
+    const char* rand_fn = "../../../../test_data/random.mtx";
+    const char* b_ones = "../../../../test_data/random_ones_b.txt";
+    const char* b_T_ones = "../../../../test_data/random_ones_b_T.txt";
+    const char* b_inc = "../../../../test_data/random_inc_b.txt";
+    const char* b_T_inc = "../../../../test_data/random_inc_b_T.txt";
     ParCSRMatrix* A = readParMatrix(rand_fn, MPI_COMM_WORLD, 1, 0);
 
     ParVector x(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);

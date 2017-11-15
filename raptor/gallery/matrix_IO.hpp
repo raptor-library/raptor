@@ -28,7 +28,7 @@ int mm_read_mtx_crd_size(FILE *f, index_t *M, index_t *N, index_t *nz);
 int mm_read_sparse(const char *fname, 
         index_t *M_, index_t *N_, Matrix* A, int symmetric);
 
-CSRMatrix* readMatrix(char* filename, int symmetric = 1);
+CSRMatrix* readMatrix(const char* filename, int symmetric = 1);
 
 /********************* MM_typecode query fucntions ***************************/
 
