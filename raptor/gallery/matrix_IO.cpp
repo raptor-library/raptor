@@ -41,7 +41,6 @@ CSRMatrix* readMatrix(const char* filename, int symmetric)
     }
 
     A->sort();
-    A->remove_duplicates();
     CSRMatrix* A_csr = new CSRMatrix(A);
     delete A;
 
