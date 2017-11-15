@@ -24,7 +24,6 @@ int main(int argc, char** argv)
 
 TEST(TestInterpolation, TestsInRuge_Stuben)
 { 
-
     CSRMatrix* A;
     CSRMatrix* S;
     CSRMatrix* P;
@@ -68,7 +67,6 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     delete S;
     delete A;
 
-
     // TEST LEVEL 1
     A = readMatrix(A1_fn, 0);
     S = readMatrix(S1_fn, 0);
@@ -89,7 +87,7 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     // TODO -- serial mod classical interp not working
     P = readMatrix(P1_mc_fn, 0);
     P_rap = mod_classical_interpolation(A, S, splitting);
-    //compare(P, P_rap);
+    compare(P, P_rap);
 
     delete P;
     delete P_rap;
