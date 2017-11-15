@@ -26,7 +26,7 @@ int main(int _argc, char** _argv)
 
 TEST(AMGTest, TestsInMultilevel)
 {
-    int dim;
+    int dim = 3;
     int system = 0;
     int grid[3] = {5, 5, 5};
 
@@ -55,13 +55,13 @@ TEST(AMGTest, TestsInMultilevel)
     for (int i = 0; i < ml->num_levels; i++)
     {
         CSRMatrix* Al = ml->levels[i]->A;
-        printf("%d\t%d\t%d\t%lu\n", i, Al->n_rows, Al->n_cols, Al->nnz);
+        printf("%d\t%d\t%d\t%d\n", i, Al->n_rows, Al->n_cols, Al->nnz);
     }
 	printf("\nP\tNRow\tNCol\tNNZ\n");
     for (int i = 0; i < ml->num_levels-1; i++)
     {
         CSRMatrix* Pl = ml->levels[i]->P;
-        printf("%d\t%d\t%d\t%lu\n", i, Pl->n_rows, Pl->n_cols, Pl->nnz);
+        printf("%d\t%d\t%d\t%d\n", i, Pl->n_rows, Pl->n_cols, Pl->nnz);
     }
     
     printf("\nSolve Phase Relative Residuals:\n");
