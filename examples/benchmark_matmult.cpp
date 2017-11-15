@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 #endif
     else if (system == 3)
     {
-        char* file = "../../examples/LFAT5.mtx";
+        const char* file = "../../examples/LFAT5.mtx";
         int sym = 1;
         if (argc > 2)
         {
