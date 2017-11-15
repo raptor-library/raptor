@@ -8,7 +8,6 @@
 #include "matrix.hpp"
 #include "partition.hpp"
 #include "par_vector.hpp"
-#include "par_matrix.hpp"
 
 #define STANDARD_PPN 4
 #define STANDARD_PROC_LAYOUT 1
@@ -112,7 +111,7 @@ namespace raptor
         CSRMatrix* communicate(ParCSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD);
         CSRMatrix* communicate_T(std::vector<int>& rowptr, 
                 std::vector<int>& col_indices,
-                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) {}
+                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) { return NULL; }
         virtual std::vector<double>& get_recv_buffer() = 0;
         virtual std::vector<int>& get_int_recv_buffer() = 0;
 
@@ -563,7 +562,7 @@ namespace raptor
         {
             return CommPkg::communicate(A, comm);
         }
-        std::vector<double>& init_comm(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD)
+        void init_comm(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD)
         {
             CommPkg::init_comm(v, comm);
         }
@@ -1222,7 +1221,7 @@ namespace raptor
         {
             return CommPkg::communicate(A, comm);
         }
-        std::vector<double>& init_comm(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD)
+        void init_comm(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD)
         {
             CommPkg::init_comm(v, comm);
         }

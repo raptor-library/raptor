@@ -10,12 +10,12 @@ if (WITH_MPI)
         core/partition.hpp
         core/comm_data.hpp
         core/comm_pkg.hpp
+        core/tap_comm.cpp
+        core/comm_pkg.cpp
         core/par_vector.hpp
         core/par_vector.cpp
         core/par_matrix.hpp
         core/par_matrix.cpp
-        core/tap_comm.cpp
-        core/comm_pkg.cpp
         )
 else ()
     set(par_core_comm_SOURCES

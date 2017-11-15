@@ -2,6 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "core/comm_pkg.hpp"
+#include "core/par_matrix.hpp"
 
 using namespace raptor;
 

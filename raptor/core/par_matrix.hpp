@@ -264,10 +264,6 @@ namespace raptor
         return local_row_map;
     }
 
-    ParCSRMatrix* subtract(ParCSRMatrix* B);
-    ParCSRMatrix* subtract(ParCSCMatrix* B);
-    ParCSRMatrix* subtract(ParCOOMatrix* B);
-
     virtual void copy(ParCSRMatrix* A) = 0;
     virtual void copy(ParCSCMatrix* A) = 0;
     virtual void copy(ParCOOMatrix* A) = 0;
@@ -533,8 +529,6 @@ namespace raptor
     ParCSRMatrix* RAP(ParCSRMatrix* P);
 
     ParCSRMatrix* subtract(ParCSRMatrix* B);
-    ParCSRMatrix* subtract(ParCSCMatrix* B);
-    ParCSRMatrix* subtract(ParCOOMatrix* B);
     
     void mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, CSRMatrix* recv);
     CSRMatrix* mult_T_partial(ParCSCMatrix* A);

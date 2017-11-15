@@ -25,16 +25,21 @@ TEST(StrengthTest, TestsIntests)
     CSRMatrix* S;
     CSRMatrix* S_rap;
 
-    A = readMatrix("../../../test_data/rss_A0.mtx", 1);
-    S = readMatrix("../../../test_data/rss_S0.mtx", 1);
+    char* A0_fn = "../../../test_data/rss_A0.mtx";
+    char* A1_fn = "../../../test_data/rss_A1.mtx";
+    char* S0_fn = "../../../test_data/rss_S0.mtx";
+    char* S1_fn = "../../../test_data/rss_S1.mtx";
+
+    A = readMatrix(A0_fn, 1);
+    S = readMatrix(S0_fn, 1);
     S_rap = A->strength(0.25);
     compare_pattern(S, S_rap);
     delete A;
     delete S;
     delete S_rap;
 
-    A = readMatrix("../../../test_data/rss_A1.mtx", 0);
-    S = readMatrix("../../../test_data/rss_S1.mtx", 0);
+    A = readMatrix(A1_fn, 0);
+    S = readMatrix(S1_fn, 0);
     S_rap = A->strength(0.25);
     compare_pattern(S, S_rap);
     delete A;

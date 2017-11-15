@@ -6,6 +6,7 @@
 
 using namespace raptor;
 
+
 ParCSRMatrix* ParCSRMatrix::subtract(ParCSRMatrix* B)
 {
     ParCSRMatrix* C = new ParCSRMatrix(partition);
@@ -146,67 +147,4 @@ ParCSRMatrix* ParCSRMatrix::subtract(ParCSRMatrix* B)
     return C;
 }
 
-ParCSRMatrix* ParCSRMatrix::subtract(ParCSCMatrix* B)
-{
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank == 0)
-    {
-        printf("Converting matrix to ParCSR before subtracting\n");
-    }
 
-    ParCSRMatrix* B_csr = new ParCSRMatrix(B);
-    ParCSRMatrix* C = subtract(B);
-
-    delete B_csr;
-    return C;
-}
-
-ParCSRMatrix* ParCSRMatrix::subtract(ParCOOMatrix* B)
-{
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank == 0)
-    {
-        printf("Converting matrix to ParCSR before subtracting\n");
-    }
-
-    ParCSRMatrix* B_csr = new ParCSRMatrix(B);
-    ParCSRMatrix* C = subtract(B);
-
-    delete B_csr;
-    return C;
-}
-
-ParCSRMatrix* ParMatrix::subtract(ParCSRMatrix* B)
-{
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank == 0)
-    {
-        printf("Subtraction Not Implemented for these matrix types\n");
-    }
-    return NULL;
-}
-
-ParCSRMatrix* ParMatrix::subtract(ParCSCMatrix* B)
-{
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank == 0)
-    {
-        printf("Subtraction Not Implemented for these matrix types\n");
-    }
-    return NULL;
-}
-
-ParCSRMatrix* ParMatrix::subtract(ParCOOMatrix* B)
-{
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank == 0)
-    {
-        printf("Subtraction Not Implemented for these matrix types\n");
-    }
-    return NULL;
-}

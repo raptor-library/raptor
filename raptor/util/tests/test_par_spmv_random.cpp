@@ -1,9 +1,5 @@
-// EXPECT_EQ test execution and continues even if there is a failure
-// ASSERT_EQ test execution and aborts if there is a failure
-// The ASSERT_* variants abort the program execution if an assertion fails 
-// while EXPECT_* variants continue with the run.
-
-
+// Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
+// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "gtest/gtest.h"
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
@@ -28,14 +24,19 @@ TEST(ParRandomSpMVTest, TestsInUtil)
 
     FILE* f;
     double b_val;
-    ParCSRMatrix* A = readParMatrix("../../../../test_data/random.mtx", MPI_COMM_WORLD, 1, 0);
+    char* rand_fn = "../../../../test_data/random.mtx";
+    char* b_ones = "../../../../test_data/random_ones_b.txt";
+    char* b_T_ones = "../../../../test_data/random_ones_b_T.txt";
+    char* b_inc = "../../../../test_data/random_inc_b.txt";
+    char* b_T_inc = "../../../../test_data/random_inc_b_T.txt";
+    ParCSRMatrix* A = readParMatrix(rand_fn, MPI_COMM_WORLD, 1, 0);
 
     ParVector x(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
 
     x.set_const_value(1.0);
     A->mult(x, b);
-    f = fopen("../../../../test_data/random_ones_b.txt", "r");
+    f = fopen(b_ones, "r");
     for (int i = 0; i < A->partition->first_local_row; i++)
     {
         fscanf(f, "%lg\n", &b_val);
@@ -49,7 +50,7 @@ TEST(ParRandomSpMVTest, TestsInUtil)
 
     b.set_const_value(1.0);
     A->mult_T(b, x);
-    f = fopen("../../../../test_data/random_ones_b_T.txt", "r");
+    f = fopen(b_T_ones, "r");
     for (int i = 0; i < A->partition->first_local_col; i++)
     {
         fscanf(f, "%lg\n", &b_val);
@@ -66,7 +67,7 @@ TEST(ParRandomSpMVTest, TestsInUtil)
         x[i] = A->partition->first_local_col + i;
     }
     A->mult(x, b);
-    f = fopen("../../../../test_data/random_inc_b.txt", "r");
+    f = fopen(b_inc, "r");
     for (int i = 0; i < A->partition->first_local_row; i++)
     {
         fscanf(f, "%lg\n", &b_val);
@@ -83,7 +84,7 @@ TEST(ParRandomSpMVTest, TestsInUtil)
         b[i] = A->partition->first_local_row + i;
     }
     A->mult_T(b, x);
-    f = fopen("../../../../test_data/random_inc_b_T.txt", "r");
+    f = fopen(b_T_inc, "r");
     for (int i = 0; i < A->partition->first_local_col; i++)
     {
         fscanf(f, "%lg\n", &b_val);
