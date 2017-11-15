@@ -182,8 +182,9 @@ class PetscBinaryIO(object):
 
     def __init__(self, precision=None, indices=None, complexscalars=None):
         if (precision is None) or (indices is None) or (complexscalars is None):
-            import petsc_conf
-            defaultprecision, defaultindices, defaultcomplexscalars = petsc_conf.get_conf()
+            # import petsc_conf
+            # defaultprecision, defaultindices, defaultcomplexscalars = petsc_conf.get_conf()
+            defaultprecision, defaultindices, defaultcomplexscalars = None, None, None
             if precision is None:
                 if defaultprecision is None:
                     precision = 'double'
