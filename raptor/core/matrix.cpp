@@ -278,7 +278,7 @@ void COOMatrix::remove_duplicates()
     if (!sorted)
     {
         sort();
-        diag_first == false;
+        diag_first = false;
     }
 
     int prev_row, prev_col, ctr;

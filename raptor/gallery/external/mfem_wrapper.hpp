@@ -1,3 +1,6 @@
+// Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
+// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
+
 #ifndef RAPTOR_MFEM_WRAPPER_H
 #define RAPTOR_MFEM_WRAPPER_H
 
@@ -10,12 +13,10 @@
 
 using namespace std;
 
-//void mfem_laplace(raptor::ParMatrix** A_ptr, raptor::ParVector** x_ptr, raptor::ParVector** b_ptr, const char* mesh_file, int num_elements, int order = 3, MPI_Comm comm_mat = MPI_COMM_WORLD);
-
-//raptor::ParCSRMatrix* mfem_linear_elasticity(const char* mesh_file, int num_elements, 
-//        int order = 3, MPI_Comm comm_mat = MPI_COMM_WORLD);
-
-//void mfem_darcy(raptor::ParMatrix** A_ptr, raptor::ParVector** x_ptr, raptor::ParVector** b_ptr, const char* mesh_file, int num_elements, int order = 3, MPI_Comm comm_mat = MPI_COMM_WORLD);
-
+raptor::ParCSRMatrix* mfem_linear_elasticity(raptor::ParVector& x_raptor, 
+        raptor::ParVector& b_raptor,
+        const char* mesh_file, int num_elements, 
+        int order = 3, 
+        MPI_Comm comm_mat = MPI_COMM_WORLD);
 
 #endif

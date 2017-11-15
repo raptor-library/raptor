@@ -2,92 +2,148 @@
 #include <math.h>
 #include <stdlib.h>
 #include <iostream>
+#include <assert.h>
+
+#include "clear_cache.hpp"
 
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
-#include "gallery/matrix_IO.hpp"
-#include "gallery/stencil.hpp"
+#include "core/types.hpp"
+#include "gallery/par_stencil.hpp"
+#include "gallery/laplacian27pt.hpp"
 #include "gallery/diffusion.hpp"
+#include "gallery/par_matrix_IO.hpp"
 
-#include "util/linalg/spmv.hpp"
-#include "util/linalg/matmult.hpp"
-
-#include <assert.h>
+#ifdef USING_MFEM
+#include "gallery/external/mfem_wrapper.hpp"
+#endif
 
 //using namespace raptor;
-void assert_equals(data_t* v0, data_t* v1, int len, int first_v0)
-{
-    for (int i = 0; i < len; i++)
-    {
-        assert(fabs(v0[first_v0 + i] - v1[i]) < zero_tol);
-    }
-}
-
 int main(int argc, char *argv[])
 {
-
     MPI_Init(&argc, &argv);
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
-    ParMatrix* A;
-    ParVector* x;
-    ParVector* b;
+    int dim;
+    int n = 5;
+    int system = 0;
 
-    // create data sets for the matrices
-    data_t a_data[15] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-    A = new ParMatrix(3, 5, a_data);
-    b = new ParVector(A->global_rows, A->local_rows, A->first_row);
-    x = new ParVector(A->global_cols, A->local_cols, A->first_col_diag);
-
-    data_t x_set[5] = {2, 4, 6, 8, 10};
-    data_t* x_data = NULL;
-   
-    if (x->local_n)
-       x_data = x->local->data();
-
-    for (int i = 0; i < x->local_n; i++)
+    if (argc > 1)
     {
-        x_data[i] = x_set[A->first_col_diag + i];
-    }
-    
-    data_t correct_b[3];
-
-    for (int i = 0; i < 3; i++)
-    {
-        correct_b[i] = a_data[i*5] * x_set[0];
-        correct_b[i] += a_data[i*5 + 1] * x_set[1];
-        correct_b[i] += a_data[i*5 + 2] * x_set[2];
-        correct_b[i] += a_data[i*5 + 3] * x_set[3];
-        correct_b[i] += a_data[i*5 + 4] * x_set[4];
+        system = atoi(argv[1]);
     }
 
-    data_t* b_data = NULL;
-    if (b->local_n)
-       b_data = b->local->data();
+    ParCSRMatrix* A;
+    ParVector x;
+    ParVector b;
 
-    data_t correct_x[5];
-    for (int i = 0; i < 5; i++)
+    double t0, tfinal;
+
+    int cache_len = 10000;
+    int num_tests = 2;
+
+    std::vector<double> cache_array(cache_len);
+
+    if (system < 2)
     {
-        correct_x[i] = a_data[i] * correct_b[0];
-        correct_x[i] += a_data[i + 5] * correct_b[1];
-        correct_x[i] += a_data[i + 10] * correct_b[2];
+        double* stencil = NULL;
+        std::vector<int> grid;
+        if (argc > 2)
+        {
+            n = atoi(argv[2]);
+        }
+
+        if (system == 0)
+        {
+            dim = 3;
+            grid.resize(dim, n);
+            stencil = laplace_stencil_27pt();
+        }
+        else if (system == 1)
+        {
+            dim = 2;
+            grid.resize(dim, n);
+            double eps = 0.001;
+            double theta = M_PI/8.0;
+            if (argc > 3)
+            {
+                eps = atof(argv[3]);
+                if (argc > 4)
+                {
+                    theta = atof(argv[4]);
+                }
+            }
+            stencil = diffusion_stencil_2d(eps, theta);
+        }
+        A = par_stencil_grid(stencil, grid.data(), dim);
+        delete[] stencil;
+    }
+#ifdef USING_MFEM
+    else if (system == 2)
+    {
+        char* mesh_file = "/u/sciteam/bienz/mfem/data/beam-tet.mesh";
+        int num_elements = 2;
+        int order = 3;
+        if (argc > 2)
+        {
+            num_elements = atoi(argv[2]);
+            if (argc > 3)
+            {
+                order = atoi(argv[3]);
+                if (argc > 4)
+                {
+                    mesh_file = argv[4];
+                }
+            }
+        }
+        A = mfem_linear_elasticity(x, b, mesh_file, num_elements, order);
+    }
+#endif
+    else if (system == 3)
+    {
+        char* file = "/Users/abienz/Documents/Parallel/raptor_topo/examples/LFAT5.mtx";
+        int sym = 1;
+        if (argc > 2)
+        {
+            file = argv[2];
+            if (argc > 3)
+            {
+                sym = atoi(argv[3]);
+            }
+        }
+        A = readParMatrix(file, MPI_COMM_WORLD, 1, sym);
     }
 
-    parallel_spmv(A, x ,b, 1.0, 0.0, 0);
-    assert_equals(correct_b, b_data, A->local_rows, A->first_row);
+    if (system != 2)
+    {
+        x = ParVector(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
+        b = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+        x.set_const_value(1.0);
+        A->mult(x, b);
+    }
 
-    parallel_spmv(A, x, b, 1.0, 0.0, 1);
-    assert_equals(correct_b, b_data, A->local_rows, A->first_row);
+    int n_spmvs = 100;
+    for (int i = 0; i < num_tests; i++)
+    {
+        clear_cache(cache_array);
+        MPI_Barrier(MPI_COMM_WORLD);
+        t0 = MPI_Wtime();
+        for (int i = 0; i < n_spmvs; i++)
+        {
+            A->mult(x, b);
+        }
+        tfinal = (MPI_Wtime() - t0) / n_spmvs;
 
-    parallel_spmv_T(A, b, x, 1.0, 0.0, 0);
-    assert_equals(correct_x, x_data, A->local_cols, A->first_col_diag);
+        MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Test %d Max SpMV Time: %e\n", i, t0);
+    }
 
-    parallel_spmv_T(A, b, x, 1.0, 0.0, 1);
-    assert_equals(correct_x, x_data, A->local_cols, A->first_col_diag);
+    delete A;
 
     MPI_Finalize();
 
     return 0;
 }
+

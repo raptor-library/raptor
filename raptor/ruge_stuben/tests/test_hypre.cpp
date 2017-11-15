@@ -1,4 +1,8 @@
-#include <assert.h>
+// Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
+// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
+
+
+#include "gtest/gtest.h"
 
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
@@ -41,19 +45,18 @@ void form_hypre_weights(std::vector<double>& weights, int n_rows)
 int main(int argc, char* argv[])
 {
     MPI_Init(&argc, &argv);
+    ::testing::InitGoogleTest(&argc, argv);
+    int temp = RUN_ALL_TESTS();
+    MPI_Finalize();
+    return temp;
+} // end of main() //
+
+TEST(TestHypre, TestsInRuge_Stuben)
+{
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
-    int dim;
-    int n = 5;
-    int system = 0;
-
-    if (argc > 1)
-    {
-        system = atoi(argv[1]);
-    }
-
     ParCSRMatrix* A;
     ParVector x;
     ParVector b;
@@ -75,74 +78,13 @@ int main(int argc, char* argv[])
 
     std::vector<double> cache_array(cache_len);
 
-    if (system < 2)
-    {
-        double* stencil = NULL;
-        std::vector<int> grid;
-        if (argc > 2)
-        {
-            n = atoi(argv[2]);
-        }
-
-        if (system == 0)
-        {
-            dim = 3;
-            grid.resize(dim, n);
-            stencil = laplace_stencil_27pt();
-        }
-        else if (system == 1)
-        {
-            dim = 2;
-            grid.resize(dim, n);
-            double eps = 0.001;
-            double theta = M_PI/8.0;
-            if (argc > 3)
-            {
-                eps = atof(argv[3]);
-                if (argc > 4)
-                {
-                    theta = atof(argv[4]);
-                }
-            }
-            stencil = diffusion_stencil_2d(eps, theta);
-        }
-        A = par_stencil_grid(stencil, grid.data(), dim);
-        delete[] stencil;
-    }
-    else if (system == 2)
-    {
-        /*char* mesh_file = "/u/sciteam/bienz/mfem/data/beam-tet.mesh";
-        int num_elements = 2;
-        int order = 3;
-        if (argc > 2)
-        {
-            num_elements = atoi(argv[2]);
-            if (argc > 3)
-            {
-                order = atoi(argv[3]);
-                if (argc > 4)
-                {
-                    mesh_file = argv[4];
-                }
-            }
-        }
-        A = mfem_linear_elasticity(mesh_file, num_elements, order);*/
-    }
-    else if (system == 3)
-    {
-        char* file = "/Users/abienz/Documents/Parallel/raptor_topo/examples/LFAT5.mtx";
-        int sym = 1;
-        if (argc > 2)
-        {
-            file = argv[2];
-            if (argc > 3)
-            {
-                sym = atoi(argv[3]);
-            }
-        }
-        A = readParMatrix(file, MPI_COMM_WORLD, 1, sym);
-    }
-
+    int dim = 2;
+    int grid[2] = {5, 5};
+    double eps = 0.001;
+    double theta = M_PI/8.0;
+    double* stencil = diffusion_stencil_2d(eps, theta);
+    A = par_stencil_grid(stencil, grid, dim);
+    delete[] stencil;
     x = ParVector(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
     b = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     x.set_const_value(1.0);
@@ -185,8 +127,5 @@ int main(int argc, char* argv[])
     HYPRE_IJMatrixDestroy(A_h_ij);
     HYPRE_IJVectorDestroy(x_h_ij);
     HYPRE_IJVectorDestroy(b_h_ij);
-    MPI_Finalize();
-
-    return 0;
-}
+} // end of TEST(TestHypre, TestsInRuge_Stuben)
 
