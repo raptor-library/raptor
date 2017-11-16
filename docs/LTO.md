@@ -1,12 +1,12 @@
 The information on this page summarizes compiling RAPtor
-with link time optimization (LTO) using the gnu compilers (-flto).
+with link time optimization (LTO) using the gnu compilers (`-flto`).
 Link time optimization has been observed to produce significant speed-up.
 
 The procedure for LTO varies from system to system.  Factors such as compiler version, linker version, mpi implementation all
 effect the results.  The results are summarized for:
-    1.- Blue Waters
-    2.- Campus Cluster (University of Illinois)
-    3.- Workstations
+
+1. Blue Waters
+2. Workstations
 
 Important: The `ld` version has an impact in all cases; new versions link automatically.
 
@@ -16,7 +16,7 @@ Procedure for automatic Link Time Optimization (also known as Interprocedural op
 
 1.  Use of cmake version >= 3.9
 
-    The first line of `CMakeLists.txt` located in the project directory (~/raptor/CMakeLists.txt) must be:
+    The first line of `CMakeLists.txt` located in the project directory (`~/raptor/CMakeLists.txt`) must be:
 
         cmake_minimum_required(VERSION 3.9)`
 
@@ -24,7 +24,7 @@ Procedure for automatic Link Time Optimization (also known as Interprocedural op
 
         include(CheckIPOSupported)
 
-2.  Check if iterprocedural optimizations are allowed (building the raptor library) .
+2.  Check if iterprocedural optimizations are allowed (building the RAPtor library) .
 
     In `CMakeLists.txt` located in the raptor directory (`~/raptor/raptor/CMakeLists.txt`) add the following lines after the definition of the `target_link_libraries` (raptor ....):
 
@@ -44,12 +44,9 @@ Procedure for automatic Link Time Optimization (also known as Interprocedural op
 
 ### Notes:
 
-1.  The procedure described above was tested successfully in dunkel, one of the computers of the MachineShop.
+1.  There is no need to modify `~/raptor/cmake/cxx_config.cmake`
 
-2.  There is no need to modify the ~/raptor/cmake/cxx_config.cmake as stated before.
-
-3.  To verify if the correct flags are being send to the compiler you can look at a file called `flags.make`, e.g.: (`~/raptor/build/raptor/CMakeFiles/raptor.dir/flags.make`) and verify if the `-flto` flag (gnu compiler) or the `-ipo` flag (intel compiler) is there.
-
+3.  To verify if the correct flags are being send to the compiler you can look at a file called `flags.make`, e.g.: (`~/raptor/build/raptor/CMakeFiles/raptor.dir/flags.make`) and verify if the `-flto` flag (gnu compiler) or the `-ipo` flag (Intel compiler) is there.
 
 # BlueWaters
 
