@@ -49,3 +49,40 @@ Procedure for automatic Link Time Optimization (also known as Interprocedural op
 2.  There is no need to modify the ~/raptor/cmake/cxx_config.cmake as stated before.
 
 3.  To verify if the correct flags are being send to the compiler you can look at a file called `flags.make`, e.g.: (`~/raptor/build/raptor/CMakeFiles/raptor.dir/flags.make`) and verify if the `-flto` flag (gnu compiler) or the `-ipo` flag (intel compiler) is there.
+
+
+# BlueWaters
+
+Link time optimization for BlueWaters.
+
+1.  Set the correct environment:
+        module switch PrgEnv-cray PrgEnv-gnu
+        module unload gcc
+        module load gcc/6.3.0 (or other version of your choice)
+
+2.  Check linker version (need 2.21 or newer).
+
+        $:~> ld --version
+        GNU ld (GNU Binutils; SUSE Linux Enterprise 11) 2.23.1
+        Copyright 2012 Free Software Foundation, Inc.
+        This program is free software; you may redistribute it under the terms of
+        the GNU General Public License version 3 or (at your option) a later version.
+        This program has absolutely no warranty.
+
+
+3.  Add the -flto flag:
+    in the raptor/cmake/cxx_config.cmake file look for the line
+    containing the "CMAKE_CXX_FLAGS" macro. Add the -flto flag as in
+
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -flto")
+
+4.  Activate the CMAKE_AR, CMAKE_CXX_ARCHIVE_CREATE and CMAKE_CXX_ARCHIVE_FINISH macros:
+    in the raptor/cmake/cxx_config.cmake file uncomment the lines including those macros as in
+
+        SET(CMAKE_AR  "gcc-ar")
+        SET(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
+        SET(CMAKE_CXX_ARCHIVE_FINISH   true)
+
+5.  Load the Blue Water python suite (as Blue Waters is set today, LTO do not work without this step):
+
+        module load bwpy
