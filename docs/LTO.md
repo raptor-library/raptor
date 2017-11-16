@@ -86,3 +86,45 @@ Link time optimization for BlueWaters.
 5.  Load the Blue Water python suite (as Blue Waters is set today, LTO do not work without this step):
 
         module load bwpy
+
+# Workstations
+
+Compiler and mpi implementation version:
+
+    porter:
+        gcc (Debian/Linaro 5.4.1-12) 5.4.1 20170820
+        mpiexec (OpenRTE) 2.1.1
+
+    dunkel and stout:
+        gcc (Debian 7.2.0-5) 7.2.0
+        mpiexec (OpenRTE) 2.1.1
+
+
+1.  Check linker version (need 2.21 or newer).
+
+        $:~> ld --version
+        GNU ld (GNU Binutils for Debian) 2.29.1
+        Copyright (C) 2017 Free Software Foundation, Inc.
+        This program is free software; you may redistribute it under the terms of
+        the GNU General Public License version 3 or (at your option) a later version.
+        This program has absolutely no warranty.
+
+
+2.  Add the -flto flag:
+    in the raptor/cmake/cxx_config.cmake file look for the line
+    containing the "CMAKE_CXX_FLAGS" macro. Add the -flto flag as in
+
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -flto")
+
+Note: After this step, if raptor is compiled dunkel and stout produce and executable
+      that effectively includes LTO, with speedups of over 2 compared to no LTO.
+
+Note: The following step was only required for porter. Notice that the compiler version
+      in porter is older than the one used in dunkel and stout.
+
+3. Activate the CMAKE_AR, CMAKE_CXX_ARCHIVE_CREATE and CMAKE_CXX_ARCHIVE_FINISH macros:
+    in the raptor/cmake/cxx_config.cmake file uncomment the lines including those macros as in
+
+        SET(CMAKE_AR  "gcc-ar")
+        SET(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
+        SET(CMAKE_CXX_ARCHIVE_FINISH   true)
