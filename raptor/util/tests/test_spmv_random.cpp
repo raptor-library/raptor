@@ -18,14 +18,14 @@ int main(int argc, char** argv)
 
 TEST(RandomSpMVTest, TestsInUtil)
 {
-    const char* rand_fn = "../../../../test_data/random.mtx";
+    const char* rand_fn = "../../../../test_data/random.pm";
     const char* b_ones = "../../../../test_data/random_ones_b.txt";
     const char* b_T_ones = "../../../../test_data/random_ones_b_T.txt";
     const char* b_inc = "../../../../test_data/random_inc_b.txt";
     const char* b_T_inc = "../../../../test_data/random_inc_b_T.txt";
 
     double b_val;
-    CSRMatrix* A = readMatrix(rand_fn, 0);
+    CSRMatrix* A = readMatrix(rand_fn);
     Vector x(A->n_cols);
     Vector b(A->n_rows);
     

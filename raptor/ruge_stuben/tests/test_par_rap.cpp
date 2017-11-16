@@ -31,19 +31,19 @@ TEST(TestParRAP, TestsInRuge_Stuben)
     ParCSCMatrix* P_csc;
     ParCSRMatrix* Ac_rap;
 
-    const char* A0_fn = "../../../../test_data/rss_A0.mtx";
-    const char* A1_fn = "../../../../test_data/rss_A1.mtx";
-    const char* A2_fn = "../../../../test_data/rss_A2.mtx";
-    const char* P0_fn = "../../../../test_data/rss_P0.mtx";
-    const char* P1_fn = "../../../../test_data/rss_P1.mtx";
+    const char* A0_fn = "../../../../test_data/rss_A0.pm";
+    const char* A1_fn = "../../../../test_data/rss_A1.pm";
+    const char* A2_fn = "../../../../test_data/rss_A2.pm";
+    const char* P0_fn = "../../../../test_data/rss_P0.pm";
+    const char* P1_fn = "../../../../test_data/rss_P1.pm";
 
     // TEST LEVEL 0
-    A = readParMatrix(A0_fn, MPI_COMM_WORLD, 1, 1);
-    P = readParMatrix(P0_fn, MPI_COMM_WORLD, 1, 0);
+    A = readParMatrix(A0_fn);
+    P = readParMatrix(P0_fn);
     AP = A->mult(P);
     P_csc = new ParCSCMatrix(P);
     Ac = AP->mult_T(P_csc);
-    Ac_rap = readParMatrix(A1_fn, MPI_COMM_WORLD, 1, 0);
+    Ac_rap = readParMatrix(A1_fn);
     compare(Ac, Ac_rap);
     delete Ac_rap;
     delete Ac;
@@ -53,12 +53,12 @@ TEST(TestParRAP, TestsInRuge_Stuben)
     delete A;
 
     // TEST LEVEL 1
-    A = readParMatrix(A1_fn, MPI_COMM_WORLD, 1, 0);
-    P = readParMatrix(P1_fn, MPI_COMM_WORLD, 1, 0);
+    A = readParMatrix(A1_fn);
+    P = readParMatrix(P1_fn);
     AP = A->mult(P);
     P_csc = new ParCSCMatrix(P);
     Ac = AP->mult_T(P_csc);
-    Ac_rap = readParMatrix(A2_fn, MPI_COMM_WORLD, 1, 0);
+    Ac_rap = readParMatrix(A2_fn);
     compare(Ac, Ac_rap);
     delete Ac_rap;
     delete Ac;

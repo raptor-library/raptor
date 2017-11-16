@@ -36,14 +36,14 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
 
     ParCSRMatrix* S;
 
-    const char* S0_fn = "../../../../test_data/rss_S0.mtx";
-    const char* S1_fn = "../../../../test_data/rss_S1.mtx";
+    const char* S0_fn = "../../../../test_data/rss_S0.pm";
+    const char* S1_fn = "../../../../test_data/rss_S1.pm";
     const char* cf0_fn = "../../../../test_data/rss_cf0";
     const char* cf1_fn = "../../../../test_data/rss_cf1";
     const char* weights_fn = "../../../../test_data/weights.txt";
 
     // TEST LEVEL 0
-    S = readParMatrix(S0_fn, MPI_COMM_WORLD, 1, 1);
+    S = readParMatrix(S0_fn);
 
     f = fopen(weights_fn, "r");
     std::vector<double> weights(S->local_num_rows);
@@ -73,7 +73,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     delete S;
 
     // TEST LEVEL 1
-    S = readParMatrix(S1_fn, MPI_COMM_WORLD, 1, 0);
+    S = readParMatrix(S1_fn);
 
     f = fopen(weights_fn, "r");
     weights.resize(S->local_num_rows);

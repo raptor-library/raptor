@@ -28,8 +28,8 @@ TEST(TestSplitting, TestsInRuge_Stuben)
     std::vector<int> splitting;
     std::vector<int> splitting_rap;
 
-    const char* S0_fn = "../../../../test_data/rss_S0.mtx";
-    const char* S1_fn = "../../../../test_data/rss_S1.mtx";
+    const char* S0_fn = "../../../../test_data/rss_S0.pm";
+    const char* S1_fn = "../../../../test_data/rss_S1.pm";
     const char* cf0_rs = "../../../../test_data/rss_cf0_rs";
     const char* cf0 = "../../../../test_data/rss_cf0";
     const char* cf1_rs = "../../../../test_data/rss_cf1_rs";
@@ -37,7 +37,7 @@ TEST(TestSplitting, TestsInRuge_Stuben)
     const char* weights_fn = "../../../../test_data/weights.txt";
    
     // TEST LAPLACIAN SPLITTINGS ON LEVEL 0 
-    S = readMatrix(S0_fn, 1);
+    S = readMatrix(S0_fn);
     splitting.resize(S->n_rows);;
 
     // Test RugeStuben Splitting
@@ -81,7 +81,7 @@ TEST(TestSplitting, TestsInRuge_Stuben)
 
 
     // TEST LAPLACIAN SPLITTINGS ON LEVEL 1 
-    S = readMatrix(S1_fn, 0);
+    S = readMatrix(S1_fn);
     splitting.resize(S->n_rows);;
 
     // Test RugeStuben Splitting

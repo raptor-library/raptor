@@ -97,33 +97,33 @@ TEST(TestParInterpolation, TestsInRuge_Stuben)
     ParCSRMatrix* P;
     ParCSRMatrix* P_rap;
 
-    const char* A0_fn = "../../../../test_data/rss_A0.mtx";
-    const char* A1_fn = "../../../../test_data/rss_A1.mtx";
-    const char* S0_fn = "../../../../test_data/rss_S0.mtx";
-    const char* S1_fn = "../../../../test_data/rss_S1.mtx";
-    const char* P0_fn = "../../../../test_data/rss_P0.mtx";
-    const char* P1_fn = "../../../../test_data/rss_P1.mtx";
+    const char* A0_fn = "../../../../test_data/rss_A0.pm";
+    const char* A1_fn = "../../../../test_data/rss_A1.pm";
+    const char* S0_fn = "../../../../test_data/rss_S0.pm";
+    const char* S1_fn = "../../../../test_data/rss_S1.pm";
+    const char* P0_fn = "../../../../test_data/rss_P0.pm";
+    const char* P1_fn = "../../../../test_data/rss_P1.pm";
     const char* cf0_fn = "../../../../test_data/rss_cf0";
     const char* cf1_fn = "../../../../test_data/rss_cf1";
-    const char* P0_mc_fn = "../../../../test_data/rss_P0_mc.mtx";
-    const char* P1_mc_fn = "../../../../test_data/rss_P1_mc.mtx";
+    const char* P0_mc_fn = "../../../../test_data/rss_P0_mc.pm";
+    const char* P1_mc_fn = "../../../../test_data/rss_P1_mc.pm";
 
 
     // TEST LEVEL 0
-    A = readParMatrix(A0_fn, MPI_COMM_WORLD, 1, 1);
-    S = readParMatrix(S0_fn, MPI_COMM_WORLD, 1, 1);
+    A = readParMatrix(A0_fn);
+    S = readParMatrix(S0_fn);
     P_rap = form_Prap(A, S, cf0_fn, 
             &first_row, &first_col, 0);
-    P = readParMatrix(P0_fn, MPI_COMM_WORLD, 1, 0, 
-        P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
+    P = readParMatrix(P0_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
+            first_row, first_col);
     compare(P, P_rap);
     delete P_rap;
     delete P;
 
     P_rap = form_Prap(A, S, cf0_fn, 
             &first_row, &first_col, 1);
-    P = readParMatrix(P0_mc_fn, MPI_COMM_WORLD, 1, 0,
-            P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
+    P = readParMatrix(P0_mc_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
+            first_row, first_col);
     compare(P, P_rap);
 
     delete P;
@@ -132,20 +132,20 @@ TEST(TestParInterpolation, TestsInRuge_Stuben)
     delete A;
 
     // TEST LEVEL 1
-    A = readParMatrix(A1_fn, MPI_COMM_WORLD, 1, 0);
-    S = readParMatrix(S1_fn, MPI_COMM_WORLD, 1, 0);
+    A = readParMatrix(A1_fn);
+    S = readParMatrix(S1_fn);
     P_rap = form_Prap(A, S, cf1_fn, 
             &first_row, &first_col, 0);
-    P = readParMatrix(P1_fn, MPI_COMM_WORLD, 1, 0, 
-        P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
+    P = readParMatrix(P1_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
+            first_row, first_col);
     compare(P, P_rap);
     delete P_rap;
     delete P;
 
     P_rap = form_Prap(A, S, cf1_fn, 
             &first_row, &first_col, 1);
-    P = readParMatrix(P1_mc_fn, MPI_COMM_WORLD, 1, 0,
-            P_rap->local_num_rows, P_rap->on_proc_num_cols, first_row, first_col);
+    P = readParMatrix(P1_mc_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
+            first_row, first_col);
 
     P->sort();
     P_rap->sort();

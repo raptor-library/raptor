@@ -30,9 +30,9 @@ TEST(TestRugeStuben, TestsInRuge_Stuben)
     std::vector<int> splitting;
 
     const char* weight_fn = "../../../../test_data/weights.txt";
-    const char* A0_fn = "../../../../test_data/rss_A0.mtx";
-    const char* A1_fn = "../../../../test_data/rss_A1.mtx";
-    const char* A2_fn = "../../../../test_data/rss_A2.mtx";
+    const char* A0_fn = "../../../../test_data/rss_A0.pm";
+    const char* A1_fn = "../../../../test_data/rss_A1.pm";
+    const char* A2_fn = "../../../../test_data/rss_A2.pm";
 
     // Read in weights (for max num rows)
     FILE* f;
@@ -46,14 +46,14 @@ TEST(TestRugeStuben, TestsInRuge_Stuben)
     fclose(f);
 
     // TEST LEVEL 0
-    A = readMatrix(A0_fn, 1);
+    A = readMatrix(A0_fn);
     S = A->strength(0.25);
     split_cljp(S, splitting, weights.data());
     P = direct_interpolation(A, S, splitting);
     AP = A->mult(P);
     P_csc = new CSCMatrix(P);
     Ac_rap = AP->mult_T(P_csc);
-    Ac = readMatrix(A1_fn, 0);
+    Ac = readMatrix(A1_fn);
     compare(Ac, Ac_rap);
     delete Ac;
     delete P_csc;
@@ -71,7 +71,7 @@ TEST(TestRugeStuben, TestsInRuge_Stuben)
     AP = A->mult(P);
     P_csc = new CSCMatrix(P);
     Ac_rap = AP->mult_T(P_csc);
-    Ac = readMatrix(A2_fn, 0);
+    Ac = readMatrix(A2_fn);
     compare(Ac, Ac_rap);
     delete Ac;
     delete Ac_rap;

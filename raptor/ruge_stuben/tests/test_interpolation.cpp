@@ -31,20 +31,20 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     std::vector<int> splitting;
     FILE* f;
 
-    const char* A0_fn = "../../../../test_data/rss_A0.mtx";
-    const char* A1_fn = "../../../../test_data/rss_A1.mtx";
-    const char* S0_fn = "../../../../test_data/rss_S0.mtx";
-    const char* S1_fn = "../../../../test_data/rss_S1.mtx";
+    const char* A0_fn = "../../../../test_data/rss_A0.pm";
+    const char* A1_fn = "../../../../test_data/rss_A1.pm";
+    const char* S0_fn = "../../../../test_data/rss_S0.pm";
+    const char* S1_fn = "../../../../test_data/rss_S1.pm";
     const char* cf0_fn = "../../../../test_data/rss_cf0";
     const char* cf1_fn = "../../../../test_data/rss_cf1";
-    const char* P0_fn = "../../../../test_data/rss_P0.mtx";
-    const char* P0_mc_fn = "../../../../test_data/rss_P0_mc.mtx";
-    const char* P1_fn = "../../../../test_data/rss_P1.mtx";
-    const char* P1_mc_fn = "../../../../test_data/rss_P1_mc.mtx";
+    const char* P0_fn = "../../../../test_data/rss_P0.pm";
+    const char* P0_mc_fn = "../../../../test_data/rss_P0_mc.pm";
+    const char* P1_fn = "../../../../test_data/rss_P1.pm";
+    const char* P1_mc_fn = "../../../../test_data/rss_P1_mc.pm";
 
     // TEST LEVEL 0
-    A = readMatrix(A0_fn, 1);
-    S = readMatrix(S0_fn, 1);
+    A = readMatrix(A0_fn);
+    S = readMatrix(S0_fn);
     splitting.resize(A->n_rows);
     f = fopen(cf0_fn, "r");
     for (int i = 0; i < A->n_rows; i++)
@@ -53,13 +53,13 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     }
     fclose(f);
 
-    P = readMatrix(P0_fn, 0);
+    P = readMatrix(P0_fn);
     P_rap = direct_interpolation(A, S, splitting);
     compare(P, P_rap);
     delete P_rap;
     delete P;
 
-    P = readMatrix(P0_mc_fn, 0);
+    P = readMatrix(P0_mc_fn);
     P_rap = mod_classical_interpolation(A, S, splitting);
     compare(P, P_rap);
     delete P_rap;
@@ -68,8 +68,8 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     delete A;
 
     // TEST LEVEL 1
-    A = readMatrix(A1_fn, 0);
-    S = readMatrix(S1_fn, 0);
+    A = readMatrix(A1_fn);
+    S = readMatrix(S1_fn);
     splitting.resize(A->n_rows);
     f = fopen(cf1_fn, "r");
     for (int i = 0; i < A->n_rows; i++)
@@ -78,14 +78,14 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     }
     fclose(f);
 
-    P = readMatrix(P1_fn, 0);
+    P = readMatrix(P1_fn);
     P_rap = direct_interpolation(A, S, splitting);
     compare(P, P_rap);
     delete P_rap;
     delete P;
 
     // TODO -- serial mod classical interp not working
-    P = readMatrix(P1_mc_fn, 0);
+    P = readMatrix(P1_mc_fn);
     P_rap = mod_classical_interpolation(A, S, splitting);
     compare(P, P_rap);
 

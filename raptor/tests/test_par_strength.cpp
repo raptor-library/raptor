@@ -33,10 +33,10 @@ TEST(ParStrengthTest, TestsInTests)
     ParCSRMatrix* S;
     ParCSRMatrix* S_rap;
 
-    const char* A0_fn = "../../../test_data/rss_A0.mtx";
-    const char* A1_fn = "../../../test_data/rss_A1.mtx";
-    const char* S0_fn = "../../../test_data/rss_S0.mtx";
-    const char* S1_fn = "../../../test_data/rss_S1.mtx";
+    const char* A0_fn = "../../../test_data/rss_A0.pm";
+    const char* A1_fn = "../../../test_data/rss_A1.pm";
+    const char* S0_fn = "../../../test_data/rss_S0.pm";
+    const char* S1_fn = "../../../test_data/rss_S1.pm";
 
     A = readParMatrix(A0_fn, MPI_COMM_WORLD, 1, 1);
     S = readParMatrix(S0_fn, MPI_COMM_WORLD, 1, 1);
