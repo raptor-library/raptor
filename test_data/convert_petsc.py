@@ -1,4 +1,3 @@
-import pyamg
 import scipy.io, PetscBinaryIO
 
 def convert(file_in, file_out):

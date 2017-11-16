@@ -8,6 +8,7 @@
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
+#include "mfem.hpp"
 #include <fstream>
 #include <iostream>
 
@@ -15,8 +16,8 @@ using namespace std;
 
 raptor::ParCSRMatrix* mfem_linear_elasticity(raptor::ParVector& x_raptor, 
         raptor::ParVector& b_raptor,
-        const char* mesh_file, int num_elements, 
-        int order = 3, 
+        const char* mesh_file, 
+        int order = 3, int seq_n_refines = 2, int par_n_refines = 2,
         MPI_Comm comm_mat = MPI_COMM_WORLD);
 
 #endif
