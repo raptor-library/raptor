@@ -18,10 +18,59 @@
 #include "_hypre_parcsr_ls.h"
 #endif
 
+            ParMultilevel(ParCSRMatrix* Af,
+                    double strength_threshold = 0.0, 
+                    coarsen_t coarsen_type = Falgout, 
+                    interp_t interp_type = Direct,
+                    relax_t _relax_type = SOR,
+                    int _num_smooth_sweeps = 1,
+                    double _relax_weight = 1.0,
+                    int max_coarse = 50, 
+                    int max_levels = -1)
+            {
 
-// Coarse Matrices (A) are CSC
-// Prolongation Matrices (P) are CSC
-// P^T*A*P is then CSR*(CSC*CSC) -- returns CSC Ac
+/**************************************************************
+ *****   ParMultilevel Class
+ **************************************************************
+ ***** This class constructs a parallel multigrid hierarchy
+ *****
+ ***** Attributes
+ ***** -------------
+ ***** Af : ParCSRMatrix*
+ *****    Fine-level matrix
+ ***** strength_threshold : double (default 0.0)
+ *****    Threshold for strong connections
+ ***** coarsen_type : coarsen_t (default Falgout)
+ *****    Type of coarsening scheme.  Options are 
+ *****      - RS : ruge stuben splitting
+ *****      - CLJP 
+ *****      - Falgout : RS on_proc, but CLJP on processor boundaries
+ ***** interp_type : interp_t (default Direct)
+ *****    Type of interpolation scheme.  Options are
+ *****      - Direct 
+ *****      - Classical
+ ***** relax_type : relax_t (default SOR)
+ *****    Relaxation scheme used in every cycle of solve phase.
+ *****    Options are:
+ *****      - Jacobi: weighted jacobi for both on and off proc
+ *****      - SOR: weighted jacobi off_proc, SOR on_proc
+ *****      - SSOR : weighted jacobi off_proc, SSOR on_proc
+ ***** num_smooth_sweeps : int (defualt 1)
+ *****    Number of relaxation sweeps (both pre and post smoothing)
+ *****    to be performed during each cycle of the AMG solve.
+ ***** relax_weight : double
+ *****    Weight used in Jacobi, SOR, or SSOR
+ ***** max_coarse : int (default 50)
+ *****    Maximum global num rows allowed in coarsest matrix
+ ***** max_levels : int (default -1)
+ *****    Maximum number of levels in hierarchy, or no maximum if -1
+ ***** 
+ ***** Methods
+ ***** -------
+ ***** solve(x, b, num_iters)
+ *****    Solves system Ax = b, performing at most num_iters iterations
+ *****    of AMG.
+ **************************************************************/
 
 namespace raptor
 {
