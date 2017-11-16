@@ -22,3 +22,13 @@ And several portions of an AMG hierarchy:
 | `_P1`         | refers to interpolation on level 1 |
 | `_S1`         | refers to strength on level 1 |
 | `_cf1`        | refers to strength on level 1 |
+
+And a weight file for matching CLJP with pyamg:
+| `weights.txt` | Weights corresponding to random value generator used in Pyamg |
+
+And several python files:
+| `mod_strength.py`     | Modified pyamg classical strength (matches hypre) |
+| `mod_class_interp.py` | Modified classical interpolation (matched hypre) |
+
+
+
