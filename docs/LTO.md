@@ -1,12 +1,12 @@
 The information on this page summarizes compiling RAPtor
-with link time optimization (LTO) using the gnu compilers (-flto).
+with link time optimization (LTO) using the gnu compilers (`-flto`).
 Link time optimization has been observed to produce significant speed-up.
 
 The procedure for LTO varies from system to system.  Factors such as compiler version, linker version, mpi implementation all
 effect the results.  The results are summarized for:
-    1.- Blue Waters
-    2.- Campus Cluster (University of Illinois)
-    3.- Workstations
+
+1. Blue Waters
+2. Workstations
 
 Important: The `ld` version has an impact in all cases; new versions link automatically.
 
@@ -16,7 +16,7 @@ Procedure for automatic Link Time Optimization (also known as Interprocedural op
 
 1.  Use of cmake version >= 3.9
 
-    The first line of `CMakeLists.txt` located in the project directory (~/RAPtor/CMakeLists.txt) must be:
+    The first line of `CMakeLists.txt` located in the project directory (`~/raptor/CMakeLists.txt`) must be:
 
         cmake_minimum_required(VERSION 3.9)`
 
@@ -44,18 +44,16 @@ Procedure for automatic Link Time Optimization (also known as Interprocedural op
 
 ### Notes:
 
-1.  The procedure described above was tested successfully in dunkel, one of the computers of the MachineShop.
+1.  There is no need to modify `~/raptor/cmake/cxx_config.cmake`
 
-2.  There is no need to modify the ~/RAPtor/cmake/cxx_config.cmake as stated before.
-
-3.  To verify if the correct flags are being send to the compiler you can look at a file called `flags.make`, e.g.: (`~/RAPtor/build/RAPtor/CMakeFiles/RAPtor.dir/flags.make`) and verify if the `-flto` flag (gnu compiler) or the `-ipo` flag (intel compiler) is there.
-
+3.  To verify if the correct flags are being send to the compiler you can look at a file called `flags.make`, e.g.: (`~/raptor/build/raptor/CMakeFiles/raptor.dir/flags.make`) and verify if the `-flto` flag (gnu compiler) or the `-ipo` flag (Intel compiler) is there.
 
 # BlueWaters
 
 Link time optimization for BlueWaters.
 
 1.  Set the correct environment:
+
         module switch PrgEnv-cray PrgEnv-gnu
         module unload gcc
         module load gcc/6.3.0 (or other version of your choice)
@@ -70,35 +68,24 @@ Link time optimization for BlueWaters.
         This program has absolutely no warranty.
 
 
-3.  Add the -flto flag:
-    in the RAPtor/cmake/cxx_config.cmake file look for the line
-    containing the "CMAKE_CXX_FLAGS" macro. Add the -flto flag as in
+3.  Add the `-flto` flag:
+    in `raptor/cmake/cxx_config.cmake` look for the line
+    containing the `CMAKE_CXX_FLAGS` macro. Add the `-flto` flag as in
 
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -flto")
 
-4.  Activate the CMAKE_AR, CMAKE_CXX_ARCHIVE_CREATE and CMAKE_CXX_ARCHIVE_FINISH macros:
-    in the RAPtor/cmake/cxx_config.cmake file uncomment the lines including those macros as in
+4.  Activate the `CMAKE_AR`, `CMAKE_CXX_ARCHIVE_CREATE`, and `CMAKE_CXX_ARCHIVE_FINISH` macros:
+    in the r`aptor/cmake/cxx_config.cmake` file uncomment the lines including those macros as in
 
         SET(CMAKE_AR  "gcc-ar")
         SET(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
         SET(CMAKE_CXX_ARCHIVE_FINISH   true)
 
-5.  Load the Blue Water python suite (as Blue Waters is set today, LTO do not work without this step):
+5.  Load the Blue Water python suite (as Blue Waters is set today, LTO does not work without this step):
 
         module load bwpy
 
 # Workstations
-
-Compiler and mpi implementation version:
-
-    porter:
-        gcc (Debian/Linaro 5.4.1-12) 5.4.1 20170820
-        mpiexec (OpenRTE) 2.1.1
-
-    dunkel and stout:
-        gcc (Debian 7.2.0-5) 7.2.0
-        mpiexec (OpenRTE) 2.1.1
-
 
 1.  Check linker version (need 2.21 or newer).
 
@@ -110,20 +97,20 @@ Compiler and mpi implementation version:
         This program has absolutely no warranty.
 
 
-2.  Add the -flto flag:
-    in the RAPtor/cmake/cxx_config.cmake file look for the line
-    containing the "CMAKE_CXX_FLAGS" macro. Add the -flto flag as in
+2.  Add the `-flto` flag:
+    in `raptor/cmake/cxx_config.cmake` look for the line
+    containing the `CMAKE_CXX_FLAGS` macro. Add the `-flto` flag as in
 
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -flto")
 
-Note: After this step, if RAPtor is compiled dunkel and stout produce and executable
-      that effectively includes LTO, with speedups of over 2 compared to no LTO.
+*Note:* After this step, if raptor is compiled dunkel and stout produce and executable
+      that includes LTO, with speedups of over 2 compared to no LTO.
 
-Note: The following step was only required for porter. Notice that the compiler version
+*Note:* The following step was only required for porter. Notice that the compiler version
       in porter is older than the one used in dunkel and stout.
 
-3. Activate the CMAKE_AR, CMAKE_CXX_ARCHIVE_CREATE and CMAKE_CXX_ARCHIVE_FINISH macros:
-    in the RAPtor/cmake/cxx_config.cmake file uncomment the lines including those macros as in
+3. Activate the `CMAKE_AR`, `CMAKE_CXX_ARCHIVE_CREATE`, and `CMAKE_CXX_ARCHIVE_FINISH` macros:
+    in the `raptor/cmake/cxx_config.cmake` file uncomment the lines including those macros as in
 
         SET(CMAKE_AR  "gcc-ar")
         SET(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
