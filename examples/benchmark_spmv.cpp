@@ -86,17 +86,22 @@ int main(int argc, char *argv[])
     else if (system == 2)
     {
         char* mesh_file = argv[2];
-        int num_elements = 2;
-        int order = 3;
+        int order = 2;
+        int seq_refines = 1;
+        int par_refines = 1;
         if (argc > 3)
         {
-            num_elements = atoi(argv[3]);
+            order = atoi(argv[3]);
             if (argc > 4)
             {
-                order = atoi(argv[4]);
+                seq_refines = atoi(argv[4]);
+                if (argc > 5)
+                {
+                    par_refines = atoi(argv[5]);
+                }
             }
         }
-        A = mfem_linear_elasticity(x, b, mesh_file, num_elements, order);
+        A = mfem_linear_elasticity(x, b, mesh_file, order);
     }
 #endif
     else if (system == 3)
