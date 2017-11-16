@@ -1,9 +1,5 @@
-// EXPECT_EQ and ASSERT_EQ are macros
-// EXPECT_EQ test execution and continues even if there is a failure
-// ASSERT_EQ test execution and aborts if there is a failure
-// The ASSERT_* variants abort the program execution if an assertion fails 
-// while EXPECT_* variants continue with the run.
-
+// Copyright (c) 2015-2017, RAPtor Developer Team, University of Illinois at Urbana-Champaign
+// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
 
@@ -33,11 +29,16 @@ TEST(TestRugeStuben, TestsInRuge_Stuben)
     CSRMatrix* Ac;
     std::vector<int> splitting;
 
+    const char* weight_fn = "../../../../test_data/weights.txt";
+    const char* A0_fn = "../../../../test_data/rss_A0.pm";
+    const char* A1_fn = "../../../../test_data/rss_A1.pm";
+    const char* A2_fn = "../../../../test_data/rss_A2.pm";
+
     // Read in weights (for max num rows)
     FILE* f;
     int max_n = 5000;
     std::vector<double> weights(max_n);
-    f = fopen("../../../../test_data/weights.txt", "r");
+    f = fopen(weight_fn, "r");
     for (int i = 0; i < max_n; i++)
     {
         fscanf(f, "%lf\n", &weights[i]);
@@ -45,14 +46,14 @@ TEST(TestRugeStuben, TestsInRuge_Stuben)
     fclose(f);
 
     // TEST LEVEL 0
-    A = readMatrix((char *)"../../../../test_data/rss_A0.mtx", 1);
+    A = readMatrix(A0_fn);
     S = A->strength(0.25);
     split_cljp(S, splitting, weights.data());
     P = direct_interpolation(A, S, splitting);
     AP = A->mult(P);
     P_csc = new CSCMatrix(P);
     Ac_rap = AP->mult_T(P_csc);
-    Ac = readMatrix((char *)"../../../../test_data/rss_A1.mtx", 0);
+    Ac = readMatrix(A1_fn);
     compare(Ac, Ac_rap);
     delete Ac;
     delete P_csc;
@@ -70,7 +71,7 @@ TEST(TestRugeStuben, TestsInRuge_Stuben)
     AP = A->mult(P);
     P_csc = new CSCMatrix(P);
     Ac_rap = AP->mult_T(P_csc);
-    Ac = readMatrix((char *)"../../../../test_data/rss_A2.mtx", 0);
+    Ac = readMatrix(A2_fn);
     compare(Ac, Ac_rap);
     delete Ac;
     delete Ac_rap;

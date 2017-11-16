@@ -1,8 +1,5 @@
-// EXPECT_EQ and ASSERT_EQ are macros
-// EXPECT_EQ test execution and continues even if there is a failure
-// ASSERT_EQ test execution and aborts if there is a failure
-// The ASSERT_* variants abort the program execution if an assertion fails 
-// while EXPECT_* variants continue with the run.
+// Copyright (c) 2015-2017, RAPtor Developer Team, University of Illinois at Urbana-Champaign
+// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
 
@@ -52,15 +49,20 @@ TEST(TestParRugeStuben, TestsInRuge_Stuben)
     // Read in weights
     int max_n = 5000;
     std::vector<double> weights(max_n);
-    FILE* f = fopen("../../../../test_data/weights.txt", "r");
+    const char* weights_fn = "../../../../test_data/weights.txt";
+    FILE* f = fopen(weights_fn, "r");
     for (int i = 0; i < max_n; i++)
     {
         fscanf(f, "%lf\n", &weights[i]);
     }
     fclose(f);
 
+    const char* A0_fn = "../../../../test_data/rss_A0.pm";
+    const char* A1_fn = "../../../../test_data/rss_A1.pm";
+    const char* A2_fn = "../../../../test_data/rss_A2.pm";
+
     // Test Level 0
-    A = readParMatrix((char *)"../../../../test_data/rss_A0.mtx", MPI_COMM_WORLD, 1, 1);
+    A = readParMatrix(A0_fn);
     S = A->strength(0.25);
     MPI_Allgather(&A->local_num_rows, 1, MPI_INT, proc_sizes.data(),
             1, MPI_INT, MPI_COMM_WORLD);
@@ -86,7 +88,7 @@ TEST(TestParRugeStuben, TestsInRuge_Stuben)
     AP = A->mult(P);
     P_csc = new ParCSCMatrix(P);
     Ac_rap = AP->mult_T(P_csc);
-    Ac = readParMatrix((char *)"../../../../test_data/rss_A1.mtx", MPI_COMM_WORLD, 1, 0, Ac_rap->local_num_rows,
+    Ac = readParMatrix(A1_fn, Ac_rap->local_num_rows,
             Ac_rap->on_proc_num_cols, first_row, first_row);
     compare(Ac, Ac_rap);
 
@@ -120,7 +122,7 @@ TEST(TestParRugeStuben, TestsInRuge_Stuben)
     AP = A->mult(P);
     P_csc = new ParCSCMatrix(P);
     Ac_rap = AP->mult_T(P_csc);
-    Ac = readParMatrix((char *)"../../../../test_data/rss_A2.mtx", MPI_COMM_WORLD, 1, 0, Ac_rap->local_num_rows,
+    Ac = readParMatrix(A2_fn, Ac_rap->local_num_rows,
             Ac_rap->on_proc_num_cols, first_row, first_row);
     compare(Ac, Ac_rap);
 

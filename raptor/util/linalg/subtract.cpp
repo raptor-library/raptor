@@ -1,10 +1,11 @@
-// Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
+// Copyright (c) 2015-2017, RAPtor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 
 using namespace raptor;
+
 
 ParCSRMatrix* ParCSRMatrix::subtract(ParCSRMatrix* B)
 {
@@ -146,67 +147,4 @@ ParCSRMatrix* ParCSRMatrix::subtract(ParCSRMatrix* B)
     return C;
 }
 
-ParCSRMatrix* ParCSRMatrix::subtract(ParCSCMatrix* B)
-{
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank == 0)
-    {
-        printf("Converting matrix to ParCSR before subtracting\n");
-    }
 
-    ParCSRMatrix* B_csr = new ParCSRMatrix(B);
-    ParCSRMatrix* C = subtract(B);
-
-    delete B_csr;
-    return C;
-}
-
-ParCSRMatrix* ParCSRMatrix::subtract(ParCOOMatrix* B)
-{
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank == 0)
-    {
-        printf("Converting matrix to ParCSR before subtracting\n");
-    }
-
-    ParCSRMatrix* B_csr = new ParCSRMatrix(B);
-    ParCSRMatrix* C = subtract(B);
-
-    delete B_csr;
-    return C;
-}
-
-ParCSRMatrix* ParMatrix::subtract(ParCSRMatrix* B)
-{
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank == 0)
-    {
-        printf("Subtraction Not Implemented for these matrix types\n");
-    }
-    return NULL;
-}
-
-ParCSRMatrix* ParMatrix::subtract(ParCSCMatrix* B)
-{
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank == 0)
-    {
-        printf("Subtraction Not Implemented for these matrix types\n");
-    }
-    return NULL;
-}
-
-ParCSRMatrix* ParMatrix::subtract(ParCOOMatrix* B)
-{
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank == 0)
-    {
-        printf("Subtraction Not Implemented for these matrix types\n");
-    }
-    return NULL;
-}

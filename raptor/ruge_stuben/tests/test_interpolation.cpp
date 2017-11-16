@@ -1,9 +1,5 @@
-// EXPECT_EQ and ASSERT_EQ are macros
-// EXPECT_EQ test execution and continues even if there is a failure
-// ASSERT_EQ test execution and aborts if there is a failure
-// The ASSERT_* variants abort the program execution if an assertion fails 
-// while EXPECT_* variants continue with the run.
-
+// Copyright (c) 2015-2017, RAPtor Developer Team, University of Illinois at Urbana-Champaign
+// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
 #include "core/types.hpp"
@@ -28,7 +24,6 @@ int main(int argc, char** argv)
 
 TEST(TestInterpolation, TestsInRuge_Stuben)
 { 
-
     CSRMatrix* A;
     CSRMatrix* S;
     CSRMatrix* P;
@@ -36,24 +31,35 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     std::vector<int> splitting;
     FILE* f;
 
+    const char* A0_fn = "../../../../test_data/rss_A0.pm";
+    const char* A1_fn = "../../../../test_data/rss_A1.pm";
+    const char* S0_fn = "../../../../test_data/rss_S0.pm";
+    const char* S1_fn = "../../../../test_data/rss_S1.pm";
+    const char* cf0_fn = "../../../../test_data/rss_cf0";
+    const char* cf1_fn = "../../../../test_data/rss_cf1";
+    const char* P0_fn = "../../../../test_data/rss_P0.pm";
+    const char* P0_mc_fn = "../../../../test_data/rss_P0_mc.pm";
+    const char* P1_fn = "../../../../test_data/rss_P1.pm";
+    const char* P1_mc_fn = "../../../../test_data/rss_P1_mc.pm";
+
     // TEST LEVEL 0
-    A = readMatrix((char *)"../../../../test_data/rss_A0.mtx", 1);
-    S = readMatrix((char *)"../../../../test_data/rss_S0.mtx", 1);
+    A = readMatrix(A0_fn);
+    S = readMatrix(S0_fn);
     splitting.resize(A->n_rows);
-    f = fopen("../../../../test_data/rss_cf0", "r");
+    f = fopen(cf0_fn, "r");
     for (int i = 0; i < A->n_rows; i++)
     {
         fscanf(f, "%d\n", &splitting[i]);
     }
     fclose(f);
 
-    P = readMatrix((char *)"../../../../test_data/rss_P0.mtx", 0);
+    P = readMatrix(P0_fn);
     P_rap = direct_interpolation(A, S, splitting);
     compare(P, P_rap);
     delete P_rap;
     delete P;
 
-    P = readMatrix((char *)"../../../../test_data/rss_P0_mc.mtx", 0);
+    P = readMatrix(P0_mc_fn);
     P_rap = mod_classical_interpolation(A, S, splitting);
     compare(P, P_rap);
     delete P_rap;
@@ -61,27 +67,27 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     delete S;
     delete A;
 
-
     // TEST LEVEL 1
-    A = readMatrix((char *)"../../../../test_data/rss_A1.mtx", 0);
-    P = readMatrix((char *)"../../../../test_data/rss_P1.mtx", 0);
-    S = readMatrix((char *)"../../../../test_data/rss_S1.mtx", 0);
+    A = readMatrix(A1_fn);
+    S = readMatrix(S1_fn);
     splitting.resize(A->n_rows);
-    f = fopen("../../../../test_data/rss_cf1", "r");
+    f = fopen(cf1_fn, "r");
     for (int i = 0; i < A->n_rows; i++)
     {
         fscanf(f, "%d\n", &splitting[i]);
     }
     fclose(f);
 
+    P = readMatrix(P1_fn);
     P_rap = direct_interpolation(A, S, splitting);
     compare(P, P_rap);
     delete P_rap;
     delete P;
 
-    P = readMatrix((char *)"../../../../test_data/rss_P1_mc.mtx", 0);
+    // TODO -- serial mod classical interp not working
+    P = readMatrix(P1_mc_fn);
     P_rap = mod_classical_interpolation(A, S, splitting);
-    //compare(P, P_rap);
+    compare(P, P_rap);
 
     delete P;
     delete P_rap;

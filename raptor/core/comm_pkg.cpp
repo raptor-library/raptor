@@ -1,8 +1,8 @@
-// Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
+// Copyright (c) 2015-2017, RAPtor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
-#include "par_matrix.hpp"
 #include "core/comm_pkg.hpp"
+#include "core/par_matrix.hpp"
 
 using namespace raptor;
 
@@ -383,13 +383,13 @@ std::vector<double>& TAPComm::complete_comm()
     // Add values from L_recv and R_recv to appropriate positions in 
     // Vector recv
     int idx;
-    for (int i = 0; i < (int) R_recv.size(); i++)
+    for (int i = 0; i < R_recv.size(); i++)
     {
         idx = R_to_orig[i];
         recv_buffer[idx] = R_recv[i];
     }
 
-    for (int i = 0; i < (int) L_recv.size(); i++)
+    for (int i = 0; i < L_recv.size(); i++)
     {
         idx = L_to_orig[i];
         recv_buffer[idx] = L_recv[i];
@@ -414,13 +414,13 @@ std::vector<int>& TAPComm::complete_int_comm()
     // Add values from L_recv and R_recv to appropriate positions in 
     // Vector recv
     int idx;
-    for (int i = 0; i < (int) R_recv.size(); i++)
+    for (int i = 0; i < R_recv.size(); i++)
     {
         idx = R_to_orig[i];
         int_recv_buffer[idx] = R_recv[i];
     }
 
-    for (int i = 0; i < (int) L_recv.size(); i++)
+    for (int i = 0; i < L_recv.size(); i++)
     {
         idx = L_to_orig[i];
         int_recv_buffer[idx] = L_recv[i];
@@ -490,9 +490,6 @@ void TAPComm::complete_int_comm_T()
     local_S_par_comm->init_comm_T(G_vals, topology->local_comm);
     local_S_par_comm->complete_comm_T();
 }
-
-
-
 
 CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr, 
         std::vector<int>& col_indices, std::vector<double>& values,
@@ -665,73 +662,6 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
     return recv_mat;
 }
 
-
-CSRMatrix* TAPComm::communicate(std::vector<int>& rowptr, 
-        std::vector<int>& col_indices, std::vector<double>& values,
-        MPI_Comm comm)
-{   
-    int ctr, idx;
-    int start, end;
-
-    CSRMatrix* S_mat = local_S_par_comm->communicate(rowptr, col_indices, values,
-            topology->local_comm);
-    CSRMatrix* G_mat = global_par_comm->communicate(S_mat->idx1, S_mat->idx2,
-            S_mat->vals, comm);
-    delete S_mat;
-
-    CSRMatrix* R_mat = local_R_par_comm->communicate(G_mat->idx1, G_mat->idx2,
-            G_mat->vals, topology->local_comm);
-    delete G_mat;
-
-    CSRMatrix* L_mat = local_L_par_comm->communicate(rowptr, col_indices, values,
-            topology->local_comm);
-
-    // Create recv_mat (combo of L_mat and R_mat)
-    CSRMatrix* recv_mat = new CSRMatrix(L_mat->n_rows + R_mat->n_rows, -1);
-    int nnz = L_mat->nnz + R_mat->nnz;
-    if (nnz)
-    {
-        recv_mat->idx2.resize(nnz);
-        recv_mat->vals.resize(nnz);
-    }
-
-    ctr = 0;
-    recv_mat->idx1[0] = ctr;
-    for (int i = 0; i < recv_mat->n_rows; i++)
-    {
-        if (orig_to_R[i] >= 0)
-        {
-            idx = orig_to_R[i];
-            start = R_mat->idx1[idx];
-            end = R_mat->idx1[idx+1];
-            for (int j = start; j < end; j++)
-            {
-                recv_mat->idx2[ctr] = R_mat->idx2[j];
-                recv_mat->vals[ctr++] = R_mat->vals[j];
-            }
-        }
-        else
-        {
-            idx = orig_to_L[i];
-            start = L_mat->idx1[idx];
-            end = L_mat->idx1[idx+1];
-            for (int j = start; j < end; j++)
-            {
-                recv_mat->idx2[ctr] = L_mat->idx2[j];
-                recv_mat->vals[ctr++] = L_mat->vals[j];
-            }
-        }
-        recv_mat->idx1[i+1] = ctr;
-    }
-    recv_mat->nnz = ctr;
-    
-    delete R_mat;
-    delete L_mat;
-
-    return recv_mat;
-}
-
-
 CSRMatrix* ParComm::communicate(std::vector<int>& rowptr, 
         std::vector<int>& col_indices, std::vector<double>& values,
         MPI_Comm comm)
@@ -748,74 +678,27 @@ CSRMatrix* ParComm::communicate_T(std::vector<int>& rowptr,
             recv_data, send_data);
 }
     
+CSRMatrix* TAPComm::communicate(std::vector<int>& rowptr, 
+        std::vector<int>& col_indices, std::vector<double>& values,
+        MPI_Comm comm)
+{   
+    int rank;
+    MPI_Comm_rank(comm, &rank);
+    if (rank == 0) printf("Not yet implemented...\n");
+    return NULL;
+}
 
-// TODO -- this needs fixed (how to do transpose TAP comm)??
 std::pair<CSRMatrix*, CSRMatrix*> TAPComm::communicate_T(std::vector<int>& rowptr, 
         std::vector<int>& col_indices, std::vector<double>& values,
         MPI_Comm comm)
 {   
-    
-    int start, end;
-    int row_R, row_L;
+    int rank;
+    MPI_Comm_rank(comm, &rank);
+    if (rank == 0) printf("Not yet implemented...\n");
 
-    // Split rowptr, col_indices, and values into R and L portions
-    // (local_R_par_comm->recv_data->indices represent index in
-    //  off_node columns, not off_proc columns)
-    std::vector<int> R_rowptr;
-    std::vector<int> L_rowptr;
-    std::vector<int> R_col_indices;
-    std::vector<int> L_col_indices;
-    std::vector<double> R_values;
-    std::vector<double> L_values;
-
-    int n_rows = rowptr.size() - 1;
-
-    R_rowptr.push_back(0);
-    L_rowptr.push_back(0);
-    for (int i = 0; i < n_rows; i++)
-    {
-        start = rowptr[i];
-        end = rowptr[i+1];
-        row_R = orig_to_R[i];
-        if (row_R >= 0)
-        {
-            for (int j = start; j < end; j++)
-            {
-                R_col_indices.push_back(col_indices[j]);
-                R_values.push_back(values[j]);
-            }
-            R_rowptr.push_back(R_col_indices.size());
-        }
-
-        row_L = orig_to_L[i];
-        if (row_L >= 0)
-        {
-            for (int j = start; j < end; j++)
-            {
-                L_col_indices.push_back(col_indices[j]);
-                L_values.push_back(values[j]);
-            }
-            L_rowptr.push_back(L_col_indices.size());
-        }
-    }
-    
-
-
-    CSRMatrix* R_mat = local_R_par_comm->communicate_T(R_rowptr, R_col_indices, R_values,
-            topology->local_comm);
-
-    CSRMatrix* G_mat = global_par_comm->communicate_T(R_mat->idx1, R_mat->idx2,
-            R_mat->vals, comm);
-    delete R_mat;
-
-    CSRMatrix* S_mat = local_S_par_comm->communicate_T(G_mat->idx1, G_mat->idx2,
-            G_mat->vals, topology->local_comm);
-    delete G_mat;
-
-    CSRMatrix* L_mat = local_L_par_comm->communicate_T(L_rowptr, L_col_indices, L_values,
-            topology->local_comm);
-
-    return std::make_pair(L_mat, S_mat);
+    CSRMatrix* recv_L = NULL;
+    CSRMatrix* recv_S = NULL;
+    return std::make_pair(recv_L, recv_S);
 }
 
 

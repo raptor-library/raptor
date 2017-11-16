@@ -1,8 +1,5 @@
-// EXPECT_EQ and ASSERT_EQ are macros
-// EXPECT_EQ test execution and continues even if there is a failure
-// ASSERT_EQ test execution and aborts if there is a failure
-// The ASSERT_* variants abort the program execution if an assertion fails 
-// while EXPECT_* variants continue with the run.
+// Copyright (c) 2015-2017, RAPtor Developer Team, University of Illinois at Urbana-Champaign
+// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
 
@@ -28,13 +25,20 @@ TEST(TestRAP, TestsInRuge_Stuben)
     CSCMatrix* P_csc;
     CSRMatrix* Ac_rap;
 
+    const char* A0_fn = "../../../../test_data/rss_A0.pm";
+    const char* A1_fn = "../../../../test_data/rss_A1.pm";
+    const char* A2_fn = "../../../../test_data/rss_A2.pm";
+    const char* P0_fn = "../../../../test_data/rss_P0.pm";
+    const char* P1_fn = "../../../../test_data/rss_P1.pm";
+
+
     // TEST LEVEL 0
-    A = readMatrix((char *)"../../../../test_data/rss_A0.mtx", 1);
-    P = readMatrix((char *)"../../../../test_data/rss_P0.mtx", 0);
+    A = readMatrix(A0_fn);
+    P = readMatrix(P0_fn);
     AP = A->mult(P);
     P_csc = new CSCMatrix(P);
     Ac = AP->mult_T(P_csc);
-    Ac_rap = readMatrix((char *)"../../../../test_data/rss_A1.mtx", 0);
+    Ac_rap = readMatrix(A1_fn);
     compare(Ac, Ac_rap);
     delete Ac_rap;
     delete Ac;
@@ -44,12 +48,12 @@ TEST(TestRAP, TestsInRuge_Stuben)
     delete A;
 
     // TEST LEVEL 1
-    A = readMatrix((char *)"../../../../test_data/rss_A1.mtx", 0);
-    P = readMatrix((char *)"../../../../test_data/rss_P1.mtx", 0);
+    A = readMatrix(A1_fn);
+    P = readMatrix(P1_fn);
     AP = A->mult(P);
     P_csc = new CSCMatrix(P);
     Ac = AP->mult_T(P_csc);
-    Ac_rap = readMatrix((char *)"../../../../test_data/rss_A2.mtx", 0);
+    Ac_rap = readMatrix(A2_fn);
     compare(Ac, Ac_rap);
     delete Ac_rap;
     delete Ac;

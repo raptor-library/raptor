@@ -1,9 +1,5 @@
-// EXPECT_EQ and ASSERT_EQ are macros
-// EXPECT_EQ test execution and continues even if there is a failure
-// ASSERT_EQ test execution and aborts if there is a failure
-// The ASSERT_* variants abort the program execution if an assertion fails 
-// while EXPECT_* variants continue with the run.
-
+// Copyright (c) 2015-2017, RAPtor Developer Team, University of Illinois at Urbana-Champaign
+// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
 #include "core/types.hpp"
@@ -22,58 +18,38 @@ int main(int argc, char** argv)
 
 TEST(LaplacianTest, TestsInGallery)
 {
-    int n_rows, n_cols; 
-    int row, row_nnz;
+    int n_rows; 
+
     int start, end;
-    double row_sum, sum;
+
     int grid[3] = {10, 10, 10};
     double* stencil = laplace_stencil_27pt();
     CSRMatrix* A_sten = stencil_grid(stencil, grid, 3);
 
-    CSRMatrix* A_io = readMatrix((char *)"../../../../test_data/laplacian27.mtx", 1);
-
-    // Open laplacian data file
-    FILE *f = fopen("../../../../test_data/laplacian27_data.txt", "r");
-
-    // Read global shape
-    fscanf(f, "%d %d\n", &n_rows, &n_cols);
+    const char* mat_fn = "../../../../test_data/laplacian27.pm";
+    CSRMatrix* A_io = readMatrix(mat_fn);
 
     // Compare shapes
-    ASSERT_EQ(n_rows, A_sten->n_rows);
-    ASSERT_EQ(n_cols, A_sten->n_cols);
-    ASSERT_EQ(n_rows, A_io->n_rows);
-    ASSERT_EQ(n_cols, A_io->n_cols);
+    ASSERT_EQ(A_io->n_rows, A_sten->n_rows);
+    ASSERT_EQ(A_io->n_cols, A_sten->n_cols);
 
     A_sten->sort();
-    A_sten->remove_duplicates();
-
     A_io->sort();
-    A_io->remove_duplicates();
 
     ASSERT_EQ(A_sten->idx1[0], A_io->idx1[0]);
 
     for (int i = 0; i < n_rows; i++)
     {
-        fscanf(f, "%d %d %lg\n", &row, &row_nnz, &row_sum);
-
         // Check correct row_ptrs
         ASSERT_EQ(A_sten->idx1[i+1], A_io->idx1[i+1]);
-        start = A_sten->idx1[i];
-        end = A_sten->idx1[i+1];
-        ASSERT_EQ( (end - start), row_nnz);
 
         // Check correct col indices / values
-        sum = 0;
         for (int j = start; j < end; j++)
         {
-            sum += A_sten->vals[j];
             ASSERT_EQ(A_sten->idx2[j], A_io->idx2[j]);
             ASSERT_NEAR(A_sten->vals[j], A_io->vals[j], zero_tol);
         }
-        ASSERT_NEAR(row_sum, sum, zero_tol);
     }
-
-    fclose(f);
 
     delete[] stencil;
     delete A_sten;

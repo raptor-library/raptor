@@ -1,4 +1,4 @@
-// Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
+// Copyright (c) 2015-2017, RAPtor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #ifndef RAPTOR_CORE_PARCOMM_HPP
 #define RAPTOR_CORE_PARCOMM_HPP
@@ -8,7 +8,6 @@
 #include "matrix.hpp"
 #include "partition.hpp"
 #include "par_vector.hpp"
-//#include "par_matrix.hpp"
 
 #define STANDARD_PPN 4
 #define STANDARD_PROC_LAYOUT 1
@@ -110,11 +109,9 @@ namespace raptor
                 std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
         CSRMatrix* communicate(ParCSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD);
-/*
         CSRMatrix* communicate_T(std::vector<int>& rowptr, 
                 std::vector<int>& col_indices,
-                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) {} 
-*/
+                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) { return NULL; }
         virtual std::vector<double>& get_recv_buffer() = 0;
         virtual std::vector<int>& get_int_recv_buffer() = 0;
 
@@ -730,11 +727,11 @@ namespace raptor
                 {
                     R_to_orig.resize(tap_comm->R_to_orig.size());
                 }
-                for (int i = 0; i < (int) L_to_orig.size(); i++)
+                for (int i = 0; i < L_to_orig.size(); i++)
                 {
                     L_to_orig[i] = tap_comm->L_to_orig[i];
                 }
-                for (int i = 0; i < (int) R_to_orig.size(); i++)
+                for (int i = 0; i < R_to_orig.size(); i++)
                 {
                     R_to_orig[i] = tap_comm->R_to_orig[i];
                 }
@@ -1222,13 +1219,15 @@ namespace raptor
         }
         CSRMatrix* communicate(ParCSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
         {
-            return CommPkg::communicate(A, comm);
+            int rank;
+            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            if (rank == 0) printf("Not yet implemented\n");
+            return NULL;
         }
         void init_comm(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD)
         {
             CommPkg::init_comm(v, comm);
         }
-
 
 
         // Class Attributes

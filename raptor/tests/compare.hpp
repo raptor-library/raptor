@@ -18,8 +18,12 @@ void compare(CSRMatrix* A, CSRMatrix* A_rap)
 
     A->sort();
     A_rap->sort();
-    A->move_diag();
-    A_rap->move_diag();
+
+    if (A->n_rows == A->n_cols)
+    {
+        A->move_diag();
+        A_rap->move_diag();
+    }
 
     ASSERT_EQ(A->n_rows, A_rap->n_rows);
     ASSERT_EQ(A->n_cols, A_rap->n_cols);

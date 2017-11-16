@@ -1,9 +1,5 @@
-// EXPECT_EQ and ASSERT_EQ are macros
-// EXPECT_EQ test execution and continues even if there is a failure
-// ASSERT_EQ test execution and aborts if there is a failure
-// The ASSERT_* variants abort the program execution if an assertion fails 
-// while EXPECT_* variants continue with the run.
-
+// Copyright (c) 2015-2017, RAPtor Developer Team, University of Illinois at Urbana-Champaign
+// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
 #include "core/types.hpp"
@@ -30,14 +26,9 @@ int main(int _argc, char** _argv)
 
 TEST(AMGTest, TestsInMultilevel)
 {
-    int dim;
-    int n = 5;
-    int system = 0;
-
-    if (argc > 1)
-    {
-        system = atoi(argv[1]);
-    }
+    int dim = 3;
+    
+    int grid[3] = {5, 5, 5};
 
     Multilevel* ml;
     CSRMatrix* A;
@@ -47,55 +38,9 @@ TEST(AMGTest, TestsInMultilevel)
     double strong_threshold = 0.25;
     
 
-    if (system < 2)
-    {
-        double* stencil = NULL;
-        std::vector<int> grid;
-        if (argc > 2)
-        {
-            n = atoi(argv[2]);
-        }
-
-        if (system == 0)
-        {
-            dim = 3;
-            grid.resize(dim, n);
-            stencil = laplace_stencil_27pt();
-        }
-        else if (system == 1)
-        {
-            dim = 2;
-            grid.resize(dim, n);
-            double eps = 0.001;
-            double theta = M_PI/8.0;
-            strong_threshold = 0.0;
-            if (argc > 3)
-            {
-                eps = atof(argv[3]);
-                if (argc > 4)
-                {
-                    theta = atof(argv[4]);
-                }
-            }
-            stencil = diffusion_stencil_2d(eps, theta);
-        }
-        A = stencil_grid(stencil, grid.data(), dim);
-        delete[] stencil;
-    }
-    else if (system == 2)
-    {
-        int sym = 1;
-        char* file = (char *) "../../../../examples/LFAT5.mtx";
-        if (argc > 2)
-        {
-            sym = atoi(argv[2]);
-            if (argc > 3)
-            {
-                strong_threshold = atof(argv[3]);
-            }
-        }
-        A = readMatrix(file, sym);
-    }
+    double* stencil = laplace_stencil_27pt();
+    A = stencil_grid(stencil, grid, dim);
+    delete[] stencil;
 
     x.resize(A->n_rows);
     b.resize(A->n_rows);

@@ -1,3 +1,5 @@
+// Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
+// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include <mpi.h>
 #include <math.h>
 #include <stdlib.h>
@@ -12,11 +14,14 @@
 #include "gallery/par_stencil.hpp"
 #include "gallery/laplacian27pt.hpp"
 #include "gallery/diffusion.hpp"
-#include "gallery/external/hypre_wrapper.hpp"
-//#include "gallery/external/mfem_wrapper.hpp"
 #include "gallery/par_matrix_IO.hpp"
 #include "multilevel/par_multilevel.hpp"
 #include "tests/hypre_compare.hpp"
+#include "gallery/external/hypre_wrapper.hpp"
+
+#ifdef USING_MFEM
+#include "gallery/external/mfem_wrapper.hpp"
+#endif
 
 //using namespace raptor;
 int main(int argc, char *argv[])
@@ -91,28 +96,26 @@ int main(int argc, char *argv[])
         A = par_stencil_grid(stencil, grid.data(), dim);
         delete[] stencil;
     }
+#ifdef USING_MFEM
     else if (system == 2)
     {
-        /*char* mesh_file = "/u/sciteam/bienz/mfem/data/beam-tet.mesh";
+        char* mesh_file = argv[2];
         int num_elements = 2;
         int order = 3;
-        if (argc > 2)
+        if (argc > 3)
         {
-            num_elements = atoi(argv[2]);
-            if (argc > 3)
+            num_elements = atoi(argv[3]);
+            if (argc > 4)
             {
-                order = atoi(argv[3]);
-                if (argc > 4)
-                {
-                    mesh_file = argv[4];
-                }
+                order = atoi(argv[4]);
             }
         }
-        A = mfem_linear_elasticity(mesh_file, num_elements, order);*/
+        A = mfem_linear_elasticity(x, b, mesh_file, num_elements, order);
     }
+#endif
     else if (system == 3)
     {
-        char* file = "/Users/abienz/Documents/Parallel/raptor_topo/examples/LFAT5.mtx";
+        char* file = "../../examples/LFAT5.mtx";
         int sym = 1;
         if (argc > 2)
         {
@@ -125,10 +128,13 @@ int main(int argc, char *argv[])
         A = readParMatrix(file, MPI_COMM_WORLD, 1, sym);
     }
 
-    x = ParVector(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
-    b = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    x.set_const_value(1.0);
-    A->mult(x, b);
+    if (system != 2)
+    {
+        x = ParVector(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
+        b = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+        x.set_const_value(1.0);
+        A->mult(x, b);
+    }
 
     // Convert system to Hypre format 
     HYPRE_IJMatrix A_h_ij = convert(A);
@@ -211,9 +217,6 @@ int main(int argc, char *argv[])
 
         // Delete raptor hierarchy
         delete ml;
-
-        ml = new ParMultilevel(A, strong_threshold, 1, 50, -1, true);
-	delete ml; 
     }
 
     delete A;

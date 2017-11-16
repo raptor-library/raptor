@@ -1,8 +1,5 @@
-// EXPECT_EQ and ASSERT_EQ are macros
-// EXPECT_EQ test execution and continues even if there is a failure
-// ASSERT_EQ test execution and aborts if there is a failure
-// The ASSERT_* variants abort the program execution if an assertion fails 
-// while EXPECT_* variants continue with the run.
+// Copyright (c) 2015-2017, RAPtor Developer Team, University of Illinois at Urbana-Champaign
+// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 
 #include "gtest/gtest.h"
@@ -31,11 +28,16 @@ TEST(AnisoSpMVTest, TestsInUtil)
 
     Vector x(A_sten->n_rows);
     Vector b(A_sten->n_rows);
+
+    const char* b_ones = "../../../../test_data/aniso_ones_b.txt";
+    const char* b_T_ones = "../../../../test_data/aniso_ones_b_T.txt";
+    const char* b_inc = "../../../../test_data/aniso_inc_b.txt";
+    const char* b_T_inc = "../../../../test_data/aniso_inc_b_T.txt";
     
     // Test b <- A*ones
     x.set_const_value(1.0);
     A_sten->mult(x, b);
-    FILE* f = fopen("../../../../test_data/aniso_ones_b.txt", "r");
+    FILE* f = fopen(b_ones, "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         fscanf(f, "%lg\n", &b_val);
@@ -45,7 +47,7 @@ TEST(AnisoSpMVTest, TestsInUtil)
 
     // Test b <- A_T*ones
     A_sten->mult_T(x, b);
-    f = fopen("../../../../test_data/aniso_ones_b_T.txt", "r");
+    f = fopen(b_T_ones, "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         fscanf(f, "%lg\n", &b_val);
@@ -59,7 +61,7 @@ TEST(AnisoSpMVTest, TestsInUtil)
         x[i] = i;
     }
     A_sten->mult(x, b);
-    f = fopen("../../../../test_data/aniso_inc_b.txt", "r");
+    f = fopen(b_inc, "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         fscanf(f, "%lg\n", &b_val);
@@ -69,7 +71,7 @@ TEST(AnisoSpMVTest, TestsInUtil)
 
     // Tests b <- A_T*incr
     A_sten->mult_T(x, b);
-    f = fopen("../../../../test_data/aniso_inc_b_T.txt", "r");
+    f = fopen(b_T_inc, "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         fscanf(f, "%lg\n", &b_val);

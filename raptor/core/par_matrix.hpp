@@ -1,4 +1,4 @@
-// Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
+// Copyright (c) 2015-2017, RAPtor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #ifndef PARMATRIX_HPP
 #define PARMATRIX_HPP
@@ -263,10 +263,6 @@ namespace raptor
     {
         return local_row_map;
     }
-
-    ParCSRMatrix* subtract(ParCSRMatrix* B);
-    ParCSRMatrix* subtract(ParCSCMatrix* B);
-    ParCSRMatrix* subtract(ParCOOMatrix* B);
 
     virtual void copy(ParCSRMatrix* A) = 0;
     virtual void copy(ParCSCMatrix* A) = 0;
@@ -533,8 +529,6 @@ namespace raptor
     ParCSRMatrix* RAP(ParCSRMatrix* P);
 
     ParCSRMatrix* subtract(ParCSRMatrix* B);
-    ParCSRMatrix* subtract(ParCSCMatrix* B);
-    ParCSRMatrix* subtract(ParCOOMatrix* B);
     
     void mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, CSRMatrix* recv);
     CSRMatrix* mult_T_partial(ParCSCMatrix* A);

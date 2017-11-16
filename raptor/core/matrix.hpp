@@ -1,4 +1,4 @@
-// Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
+// Copyright (c) 2015-2017, RAPtor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #ifndef RAPTOR_CORE_MATRIX_HPP
 #define RAPTOR_CORE_MATRIX_HPP
@@ -212,14 +212,14 @@ namespace raptor
     }
     virtual void residual(const std::vector<double>& x, const std::vector<double>& b,
             std::vector<double>& r) = 0;
-/*
-    CSRMatrix* mult(const CSRMatrix* B){}
-    CSRMatrix* mult(const CSCMatrix* B){}
-    CSRMatrix* mult(const COOMatrix* B){}
-    CSRMatrix* mult_T(const CSRMatrix* A){}
-    CSRMatrix* mult_T(const CSCMatrix* A){}
-    CSRMatrix* mult_T(const COOMatrix* A){}
-*/
+
+    CSRMatrix* mult(const CSRMatrix* B){ return NULL; }
+    CSRMatrix* mult(const CSCMatrix* B){ return NULL; }
+    CSRMatrix* mult(const COOMatrix* B){ return NULL; }
+    CSRMatrix* mult_T(const CSRMatrix* A){ return NULL; }
+    CSRMatrix* mult_T(const CSCMatrix* A){ return NULL; }
+    CSRMatrix* mult_T(const COOMatrix* A){ return NULL; }
+
     void RAP(const CSCMatrix& P, CSCMatrix* Ac);
     void RAP(const CSCMatrix& P, CSRMatrix* Ac);
 

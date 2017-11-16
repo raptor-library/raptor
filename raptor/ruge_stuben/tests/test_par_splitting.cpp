@@ -1,8 +1,5 @@
-// EXPECT_EQ and ASSERT_EQ are macros
-// EXPECT_EQ test execution and continues even if there is a failure
-// ASSERT_EQ test execution and aborts if there is a failure
-// The ASSERT_* variants abort the program execution if an assertion fails 
-// while EXPECT_* variants continue with the run.
+// Copyright (c) 2015-2017, RAPtor Developer Team, University of Illinois at Urbana-Champaign
+// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 
 #include "gtest/gtest.h"
@@ -39,10 +36,16 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
 
     ParCSRMatrix* S;
 
-    // TEST LEVEL 0
-    S = readParMatrix((char *)"../../../../test_data/rss_S0.mtx", MPI_COMM_WORLD, 1, 1);
+    const char* S0_fn = "../../../../test_data/rss_S0.pm";
+    const char* S1_fn = "../../../../test_data/rss_S1.pm";
+    const char* cf0_fn = "../../../../test_data/rss_cf0";
+    const char* cf1_fn = "../../../../test_data/rss_cf1";
+    const char* weights_fn = "../../../../test_data/weights.txt";
 
-    f = fopen("../../../../test_data/weights.txt", "r");
+    // TEST LEVEL 0
+    S = readParMatrix(S0_fn);
+
+    f = fopen(weights_fn, "r");
     std::vector<double> weights(S->local_num_rows);
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
@@ -55,7 +58,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     fclose(f);
     split_cljp(S, states, off_proc_states, weights.data());
     
-    f = fopen("../../../../test_data/rss_cf0", "r");
+    f = fopen(cf0_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
         fscanf(f, "%d\n", &cf);
@@ -70,9 +73,9 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     delete S;
 
     // TEST LEVEL 1
-    S = readParMatrix((char *)"../../../../test_data/rss_S1.mtx", MPI_COMM_WORLD, 1, 0);
+    S = readParMatrix(S1_fn);
 
-    f = fopen("../../../../test_data/weights.txt", "r");
+    f = fopen(weights_fn, "r");
     weights.resize(S->local_num_rows);
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
@@ -85,7 +88,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     fclose(f);
     split_cljp(S, states, off_proc_states, weights.data());
     
-    f = fopen("../../../../test_data/rss_cf1", "r");
+    f = fopen(cf1_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
         fscanf(f, "%d\n", &cf);

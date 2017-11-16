@@ -1,4 +1,4 @@
-// Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
+// Copyright (c) 2015-2017, RAPtor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "assert.h"
 #include "core/types.hpp"
@@ -9,29 +9,26 @@ using namespace raptor;
 CSRMatrix* mod_classical_interpolation(CSRMatrix* A,
         CSRMatrix* S, const std::vector<int>& states)
 {
-    int start, end, col;
+    int startA, endA;
+    int startS, endS;
     int start_k, end_k, col_k;
-    int ctr, row;
-    int S_end;
+    int col, ctr;
 
-    double weight;
+    
     double weak_sum;
-    double strong_sum;
+    
     double diag;
-    double val_k;
+    double val;
+    double sign;
+    double coarse_sum;
+    std::vector<int> pos;
     std::vector<int> row_coarse;
-    std::vector<double> row_coarse_sums;
     std::vector<double> row_strong;
-    std::vector<double> sa;
     if (A->n_rows)
     {
+        pos.resize(A->n_rows, -1);
         row_coarse.resize(A->n_rows, 0);
-        row_coarse_sums.resize(A->n_rows, 0.0);
-        row_strong.resize(A->n_rows, 0.0);
-    }
-    if (S->nnz)
-    {
-        sa.resize(S->nnz);
+        row_strong.resize(A->n_rows, 0);
     }
 
     // Copy values of A into S
@@ -40,30 +37,7 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A,
     A->move_diag();
     S->sort();
     S->move_diag();
-
-    CSCMatrix* AT = new CSCMatrix(A);
     
-    // Copy entries of A into sparsity pattern of S
-    if (S->nnz)
-    {
-        sa.resize(S->nnz);
-    }
-    for (int i = 0; i < A->n_rows; i++)
-    {
-        start = S->idx1[i];
-        end = S->idx1[i+1];
-        ctr = A->idx1[i];
-        for (int j = start; j < end; j++)
-        {
-            col = S->idx2[j];
-            while (A->idx2[ctr] != col)
-            {
-                ctr++;
-            }
-            sa[j] = A->vals[ctr];
-        }
-    }
-
     std::vector<int> col_to_new;
     if (A->n_cols)
     {
@@ -86,112 +60,138 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A,
     P->idx1[0] = 0;
     for (int i = 0; i < A->n_rows; i++)
     {
-        if (states[i])
+        if (states[i] == 1)
         {
             P->idx2.push_back(col_to_new[i]);
             P->vals.push_back(1.0);
             P->idx1[i+1] = P->idx2.size();
             continue;
         }
-        
-        ctr = S->idx1[i];
-        S_end = S->idx1[i+1];
-        start = A->idx1[i];
-        end = A->idx1[i+1];
+
+        startA = A->idx1[i]+1;
+        endA = A->idx1[i+1];
+        startS = S->idx1[i]+1;
+        endS = S->idx1[i+1];
 
         // Skip over diagonal values
-        if (S->idx2[ctr] == i)
+        diag = A->vals[startA-1];
+        weak_sum = diag;
+
+        if (diag < 0)
         {
-            ctr++;
-        }
-        if (A->idx2[start] == i)
-        {
-            diag = A->vals[start];
-            start++;
+            sign = -1.0;
         }
         else
         {
-            diag = 0.0;
+            sign = 1.0;
         }
-        weak_sum = 0.0;
 
         // Find weak sum, and save coarse cols / strong col values
-        for (int j = start; j < end; j++)
+        ctr = startS;
+        for (int j = startA; j < endA; j++)
         {
             col = A->idx2[j];
-            if (ctr < S_end && S->idx2[ctr] == col) // Strong
+            val = A->vals[j];
+            if (ctr < endS && S->idx2[ctr] == col) // Strong
             {
-                if (states[col])
+                if (states[col] == 1)
                 {
-                    row_coarse[col] = 1;
+                    pos[col] = P->idx2.size();
+                    P->idx2.push_back(col_to_new[col]);
+                    P->vals.push_back(val);
                 }
-                else
+                
+                if (states[col] != -3)
                 {
-                    row_strong[col] = A->vals[j];
+                    row_coarse[col] = states[col];
+                    row_strong[col] = (1 - states[col]) * val;
                 }
-                ctr += 1;
+                ctr++;
             }
             else // Weak
             {
-                weak_sum += A->vals[j];
+                weak_sum += val;
             }
         }
 
         // Find row coarse sums 
-        start = S->idx1[i];
-        end = S->idx1[i+1];
-        if (S->idx2[start] == i)
+        ctr = startS;
+        for (int j = startA; j < endA; j++)
         {
-            start++;
+            col = A->idx2[j];
+            if (ctr < endS && S->idx2[ctr] == col)
+            {
+                if (states[col] == 0)
+                {
+                    coarse_sum = 0;
+                    start_k = A->idx1[col] + 1;
+                    end_k = A->idx1[col+1];
+                    for (int k = start_k; k < end_k; k++)
+                    {
+                        col_k = A->idx2[k];
+                        val = A->vals[k] * row_coarse[col_k];
+                        if (val * sign < 0)
+                        {
+                            coarse_sum += val;
+                        }
+                    }
+                    if (fabs(coarse_sum) < zero_tol)
+                    {
+                        weak_sum += A->vals[j];
+                        row_strong[col] = 0;
+                    }
+                    else
+                    {
+                        row_strong[col] /= coarse_sum;
+                    }
+                }
+                ctr++;
+            }
         }
-        for (int j = start; j < end; j++)
+
+        int idx;
+        for (int j = startS; j < endS; j++)
         {
             col = S->idx2[j];
             if (states[col] == 0)
             {
-                start_k = A->idx1[col];
+                start_k = A->idx1[col]+1;
                 end_k = A->idx1[col+1];
                 for (int k = start_k; k < end_k; k++)
                 {
                     col_k = A->idx2[k];
-                    val_k = A->vals[k];
-                    if (row_coarse[col_k] && val_k / diag < 0)
+                    val = A->vals[k];
+                    idx = pos[col_k];
+                    if (val * sign < 0 && idx >= 0)
                     {
-                        row_coarse_sums[col] += val_k;
+                        P->vals[idx] += (row_strong[col] * val);
                     }
                 }
             }
         }
 
-        // Find weight for all coarse cols
-        for (int j = start; j < end; j++)
+        for (int j = startS; j < endS; j++)
         {
             col = S->idx2[j];
+            idx = pos[col];
             if (states[col] == 1)
             {
-                strong_sum = 0;
-                start_k = AT->idx1[col];
-                end_k = AT->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    row = AT->idx2[k];
-                    if (row_coarse_sums[row])
-                    {
-                        strong_sum += ((row_strong[row] * AT->vals[k]) 
-                                / row_coarse_sums[row]);
-                    }
-                }
-
-                weight = -(sa[j] + strong_sum) / (diag + weak_sum);
-                P->idx2.push_back(col_to_new[col]);
-                P->vals.push_back(weight);
+                P->vals[idx] /= -weak_sum;
             }
         }
+
+        for (int j = startS; j < endS; j++)
+        {
+            col = S->idx2[j];
+            pos[col] = -1;
+            row_coarse[col] = 0;
+            row_strong[col] = 0;
+        }
+
         P->idx1[i+1] = P->idx2.size();
     }
     P->nnz = P->idx2.size();
 
-    delete AT;
     return P;
 }
 
