@@ -53,7 +53,6 @@ TEST(ParCommTest, TestsInCore)
 
     A->comm->communicate(sendbuf);
 
-    ASSERT_GT(A->off_proc_num_cols, 0);
     for (int i = 0; i < A->off_proc_num_cols; i++)
     {
         ASSERT_EQ(A->comm->recv_data->int_buffer[i], A->off_proc_column_map[i]);

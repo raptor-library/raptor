@@ -26,7 +26,7 @@
  ***** dist_x : data_t*
  *****    Vector of distant x-values recvd from other processes
  **************************************************************/
-void gs_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
+void SOR_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
         const std::vector<double>& dist_x, double omega)
 {
     int start, end, col;
@@ -62,43 +62,7 @@ void gs_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
     }
 }
 
-void gs_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
-        const std::vector<double>& dist_x)
-{
-    int start, end, col;
-    double diag;
-    double row_sum;
-
-    for (int i = 0; i < A->local_num_rows; i++)
-    {
-        row_sum = 0;
-        start = A->on_proc->idx1[i];
-        end = A->on_proc->idx1[i+1];
-        if (A->on_proc->idx2[start] == i)
-        {
-            diag = A->on_proc->vals[start];
-            start++;
-        }        
-        else continue;
-        for (int j = start; j < end; j++)
-        {
-            col = A->on_proc->idx2[j];
-            row_sum += A->on_proc->vals[j] * x[col];
-        }
-
-        start = A->off_proc->idx1[i];
-        end = A->off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col = A->off_proc->idx2[j];
-            row_sum += A->off_proc->vals[j] * dist_x[col];
-        }
-
-        x[i] = (y[i] - row_sum) / diag;
-    }
-}
-
-void gs_backward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
+void SOR_backward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
         const std::vector<double>& dist_x, double omega)
 {
     int start, end, col;
@@ -134,57 +98,6 @@ void gs_backward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
     }
 }
 
-void hybrid(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
-       std::vector<double>& dist_x, double omega = 1.0)
-{
-    gs_forward(A, x, y, dist_x, omega);
-    gs_backward(A, x, y, dist_x, omega);
-}
-
-void jacobi(ParCSRMatrix* A, ParVector& x, const ParVector& y, ParVector& tmp,
-        std::vector<double>& dist_x, double omega = 2.0 / 3)
-{
-    for (int i = 0; i < A->local_num_rows; i++)
-    {
-        tmp[i] = x[i];
-    }
-
-    for (int i = 0; i < A->local_num_rows; i++)
-    { 
-        double diag = 0;
-        double row_sum = 0;
-
-        int start = A->on_proc->idx1[i];
-        int end = A->on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            int col = A->on_proc->idx2[j];
-            if (col == i)
-            {
-                diag = A->on_proc->vals[j];
-            }
-            else
-            {
-                row_sum += A->on_proc->vals[j] * tmp[col];
-            }
-
-        }
-
-        start = A->off_proc->idx1[i];
-        end = A->off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            int col = A->off_proc->idx2[j];
-            row_sum += A->off_proc->vals[j] * dist_x[col];
-        }
-
-        if (fabs(diag) > zero_tol)
-        {
-            x[i] = ((1.0 - omega)*tmp[i]) + (omega*((y[i] - row_sum) / diag));
-        }
-    }
-}
-
 /**************************************************************
  *****  Relaxation Method 
  **************************************************************
@@ -197,39 +110,100 @@ void jacobi(ParCSRMatrix* A, ParVector& x, const ParVector& y, ParVector& tmp,
  ***** num_sweeps : int
  *****    Number of relaxation sweeps to perform
  **************************************************************/
-void relax(ParLevel* l, int num_sweeps)
+void jacobi(ParLevel* l, int num_sweeps, double omega)
 {
-    relax(l->A, l->x, l->b, l->tmp, num_sweeps);
+    jacobi(l->A, l->x, l->b, l->tmp, num_sweeps, omega);
+}
+void sor(ParLevel* l, int num_sweeps, double omega)
+{
+    sor(l->A, l->x, l->b, l->tmp, num_sweeps, omega);
+}
+void ssor(ParLevel* l, int num_sweeps, double omega)
+{
+    ssor(l->A, l->x, l->b, l->tmp, num_sweeps, omega);
 }
 
-void relax(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, int num_sweeps)
+void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
+        int num_sweeps, double omega)
 {
-    if (A->local_num_rows == 0)
-    {
-        return;
-    }
-    if (!A->on_proc->sorted)
-    {
-        A->on_proc->sort();
-    }
-    if (!A->off_proc->sorted)
-    {
-        A->off_proc->sort();
-    }
-    if (!A->on_proc->diag_first)
-    {
-        A->on_proc->move_diag();
-    }
+    A->on_proc->sort();
+    A->off_proc->sort();
+    A->on_proc->move_diag();
   
-    for (int i = 0; i < num_sweeps; i++)
-    {
-        // Send / Recv X-Data
-        A->comm->communicate(x);
+    int start, end, col;
+    double diag, row_sum;
 
-        // Run hybrid jacobi / gauss seidel
-        //hybrid(A, x, b, tmp, A->comm->recv_data->buffer);
-        //hybrid(A, x, b, A->comm->recv_data->buffer);
-        gs_forward(A, x, b, A->comm->recv_data->buffer);
+    for (int iter = 0; iter < num_sweeps; iter++)
+    {
+        A->comm->communicate(x);
+        std::vector<double>& dist_x = A->comm->get_recv_buffer();
+        for (int i = 0; i < A->local_num_rows; i++)
+        {
+            tmp[i] = x[i];
+        }
+
+        for (int i = 0; i < A->local_num_rows; i++)
+        {    
+            diag = 0;
+            row_sum = 0;
+
+            start = A->on_proc->idx1[i]+1;
+            end = A->on_proc->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                col = A->on_proc->idx2[j];
+                row_sum += A->on_proc->vals[j] * tmp[col];
+            }
+
+            start = A->off_proc->idx1[i];
+            end = A->off_proc->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                col = A->off_proc->idx2[j];
+                row_sum += A->off_proc->vals[j] * dist_x[col];
+            }
+
+            if (fabs(diag) > zero_tol)
+            {
+                x[i] = ((1.0 - omega)*tmp[i]) + (omega*((b[i] - row_sum) / diag));
+            }
+        }
+    }
+}
+
+void sor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
+        int num_sweeps, double omega)
+{
+    A->on_proc->sort();
+    A->off_proc->sort();
+    A->on_proc->move_diag();
+  
+    int start, end, col;
+    double diag, row_sum;
+
+    for (int iter = 0; iter < num_sweeps; iter++)
+    {
+        A->comm->communicate(x);
+        SOR_forward(A, x, b, A->comm->get_recv_buffer(), omega);
+    }
+}
+
+
+void ssor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
+        int num_sweeps, double omega)
+{
+    A->on_proc->sort();
+    A->off_proc->sort();
+    A->on_proc->move_diag();
+  
+    int start, end, col;
+    double diag, row_sum;
+
+    for (int iter = 0; iter < num_sweeps; iter++)
+    {
+        A->comm->communicate(x);
+        SOR_forward(A, x, b, A->comm->get_recv_buffer(), omega);
+        SOR_backward(A, x, b, A->comm->get_recv_buffer(), omega);
     }
 }
 
