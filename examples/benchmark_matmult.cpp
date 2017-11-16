@@ -102,14 +102,14 @@ int main(int argc, char *argv[])
     else if (system == 3)
     {
         const char* file = "../../test_data/rss_A0.pm";        
-        int sym = 1;
+
         if (argc > 2)
         {
             file = argv[2];
-            if (argc > 3)
-            {
-                sym = atoi(argv[3]);
-            }
+
+
+
+
         }
         A = readParMatrix(file);
     }

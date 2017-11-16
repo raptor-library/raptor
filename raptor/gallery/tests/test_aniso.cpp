@@ -20,7 +20,7 @@ TEST(AnisoTest, TestsInGallery)
     int n_rows; 
 
     int start, end;
-    double sum;
+
     int grid[2] = {25, 25};
     double eps = 0.001;
     double theta = M_PI/8.0;
@@ -47,7 +47,7 @@ TEST(AnisoTest, TestsInGallery)
         end = A_sten->idx1[i+1];
 
         // Check correct col indices / values
-        sum = 0;
+
         for (int j = start; j < end; j++)
         {
             ASSERT_EQ(A_sten->idx2[j], A_io->idx2[j]);
