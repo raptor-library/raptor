@@ -82,7 +82,7 @@ make test
 This example is maintained in `raptor/examples/example.cpp`
 
 ```cpp
-// Copyright (c) 2015-2017, Raptor Developer Team, University of Illinois at Urbana-Champaign
+// Copyright (c) 2015-2017, Raptor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include <mpi.h>
 #include <math.h>
