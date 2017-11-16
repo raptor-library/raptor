@@ -25,8 +25,8 @@ TEST(ParLaplacianTest, TestsInGallery)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    int n_rows, n_cols; 
-    int row;
+
+
     int start, end;
     int grid[3] = {10, 10, 10};
     double* stencil = laplace_stencil_27pt();
