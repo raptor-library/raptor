@@ -38,16 +38,16 @@ TEST(ParStrengthTest, TestsInTests)
     const char* S0_fn = "../../../test_data/rss_S0.pm";
     const char* S1_fn = "../../../test_data/rss_S1.pm";
 
-    A = readParMatrix(A0_fn, MPI_COMM_WORLD, 1, 1);
-    S = readParMatrix(S0_fn, MPI_COMM_WORLD, 1, 1);
+    A = readParMatrix(A0_fn);
+    S = readParMatrix(S0_fn);
     S_rap = A->strength(0.25);
     compare_pattern(S, S_rap);
     delete A;
     delete S;
     delete S_rap;
 
-    A = readParMatrix(A1_fn, MPI_COMM_WORLD, 1, 0);
-    S = readParMatrix(S1_fn, MPI_COMM_WORLD, 1, 0);
+    A = readParMatrix(A1_fn);
+    S = readParMatrix(S1_fn);
     S_rap = A->strength(0.25);
     compare_pattern(S, S_rap);
     delete A;
