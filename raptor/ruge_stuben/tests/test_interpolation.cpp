@@ -35,8 +35,8 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     const char* A1_fn = "../../../../test_data/rss_A1.pm";
     const char* S0_fn = "../../../../test_data/rss_S0.pm";
     const char* S1_fn = "../../../../test_data/rss_S1.pm";
-    const char* cf0_fn = "../../../../test_data/rss_cf0";
-    const char* cf1_fn = "../../../../test_data/rss_cf1";
+    const char* cf0_fn = "../../../../test_data/rss_cf0.txt";
+    const char* cf1_fn = "../../../../test_data/rss_cf1.txt";
     const char* P0_fn = "../../../../test_data/rss_P0.pm";
     const char* P0_mc_fn = "../../../../test_data/rss_P0_mc.pm";
     const char* P1_fn = "../../../../test_data/rss_P1.pm";

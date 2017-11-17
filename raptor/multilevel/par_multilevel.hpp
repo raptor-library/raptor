@@ -10,11 +10,67 @@
 #include "util/linalg/relax.hpp"
 #include "ruge_stuben/par_interpolation.hpp"
 #include "ruge_stuben/par_cf_splitting.hpp"
-//#include "aggregation/prolongation.hpp"
 
-// Coarse Matrices (A) are CSC
-// Prolongation Matrices (P) are CSC
-// P^T*A*P is then CSR*(CSC*CSC) -- returns CSC Ac
+#ifdef USING_HYPRE
+#include "_hypre_utilities.h"
+#include "HYPRE.h"
+#include "_hypre_parcsr_mv.h"
+#include "_hypre_parcsr_ls.h"
+#endif
+
+            ParMultilevel(ParCSRMatrix* Af,
+                    double strength_threshold = 0.0, 
+                    coarsen_t coarsen_type = Falgout, 
+                    interp_t interp_type = Direct,
+                    relax_t _relax_type = SOR,
+                    int _num_smooth_sweeps = 1,
+                    double _relax_weight = 1.0,
+                    int max_coarse = 50, 
+                    int max_levels = -1)
+            {
+
+/**************************************************************
+ *****   ParMultilevel Class
+ **************************************************************
+ ***** This class constructs a parallel multigrid hierarchy
+ *****
+ ***** Attributes
+ ***** -------------
+ ***** Af : ParCSRMatrix*
+ *****    Fine-level matrix
+ ***** strength_threshold : double (default 0.0)
+ *****    Threshold for strong connections
+ ***** coarsen_type : coarsen_t (default Falgout)
+ *****    Type of coarsening scheme.  Options are 
+ *****      - RS : ruge stuben splitting
+ *****      - CLJP 
+ *****      - Falgout : RS on_proc, but CLJP on processor boundaries
+ ***** interp_type : interp_t (default Direct)
+ *****    Type of interpolation scheme.  Options are
+ *****      - Direct 
+ *****      - Classical
+ ***** relax_type : relax_t (default SOR)
+ *****    Relaxation scheme used in every cycle of solve phase.
+ *****    Options are:
+ *****      - Jacobi: weighted jacobi for both on and off proc
+ *****      - SOR: weighted jacobi off_proc, SOR on_proc
+ *****      - SSOR : weighted jacobi off_proc, SSOR on_proc
+ ***** num_smooth_sweeps : int (defualt 1)
+ *****    Number of relaxation sweeps (both pre and post smoothing)
+ *****    to be performed during each cycle of the AMG solve.
+ ***** relax_weight : double
+ *****    Weight used in Jacobi, SOR, or SSOR
+ ***** max_coarse : int (default 50)
+ *****    Maximum global num rows allowed in coarsest matrix
+ ***** max_levels : int (default -1)
+ *****    Maximum number of levels in hierarchy, or no maximum if -1
+ ***** 
+ ***** Methods
+ ***** -------
+ ***** solve(x, b, num_iters)
+ *****    Solves system Ax = b, performing at most num_iters iterations
+ *****    of AMG.
+ **************************************************************/
 
 namespace raptor
 {
@@ -28,8 +84,15 @@ namespace raptor
     {
         public:
 
-            ParMultilevel(ParCSRMatrix* Af, double theta = 0.0, int num_smooth_steps = 1, 
-                    int max_coarse = 50, int max_levels = -1)
+            ParMultilevel(ParCSRMatrix* Af,
+                    double strength_threshold = 0.0, 
+                    coarsen_t coarsen_type = Falgout, 
+                    interp_t interp_type = Direct,
+                    relax_t _relax_type = SOR,
+                    int _num_smooth_sweeps = 1,
+                    double _relax_weight = 1.0,
+                    int max_coarse = 50, 
+                    int max_levels = -1)
             {
                 int rank, num_procs;
                 MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -53,7 +116,8 @@ namespace raptor
                 while (levels[last_level]->A->global_num_rows > max_coarse && 
                         (max_levels == -1 || levels.size() < max_levels))
                 {
-                    extend_hierarchy(theta, num_smooth_steps);
+                    extend_hierarchy(strength_threshold, coarsen_type,
+                            interp_type);
                     last_level++;
                 }
                 num_levels = levels.size();
@@ -61,80 +125,11 @@ namespace raptor
                 // Duplicate coarsest level across all processes that hold any
                 // rows of A_c
                 duplicate_coarse();
+
+                relax_type = _relax_type;
+                relax_weight = _relax_weight;
+                num_smooth_sweeps = _num_smooth_sweeps;
             }
-
-            // Creates Smoothed Aggregation Solver -- TODO
-            /*ParMultilevel(ParCSRMatrix* Af, data_t* B_ptr = NULL, int num_candidates = 1,
-                    double theta = 0.0, double omega = 4.0/3, 
-                    int num_smooth_steps = 1, int max_coarse = 50)
-            {
-                // Always need levels with A, x, b (P and tmp are on all but
-                // coarsest)
-                levels.push_back(new ParLevel());
-                levels[0]->A = new ParCSRMatrix(Af);
-                levels[0]->A->sort();
-                levels[0]->x.resize(Af->global_num_rows, Af->local_num_rows,
-                        Af->first_local_row);
-                levels[0]->b.resize(Af->global_num_rows, Af->local_num_rows,
-                        Af->first_local_row);
-                levels[0]->tmp.resize(Af->global_num_rows, Af->local_num_rows,
-                        Af->first_local_row);
-
-                double* level_B = new data_t[Af->local_num_rows];
-                if (B_ptr)
-                {
-                    for (int i = 0; i < Af->local_num_rows; i++)
-                    {
-                        level_B[i] = B_ptr[i];
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < Af->local_num_rows; i++)
-                    {
-                        level_B[i] = 1.0;
-                    }
-                }
-
-
-                int last_level = 0;
-                while (levels[last_level]->A->global_num_rows > max_coarse)
-                {
-                    double* R = extend_hierarchy(level_B, num_candidates,
-                            theta, omega, num_smooth_steps, max_coarse);
-                    last_level++;
-                    delete[] level_B;
-                    level_B = R;
-                }
-
-                delete[] level_B;
-
-                num_levels = levels.size();
-
-                // TODO -- gather Ac so that each process with any local num
-                // rows has all of Ac stored locally (in a dense matrix)
-                ParCSRMatrix* Ac = levels[last_level]->A;
-                coarse_n = Ac->global_num_rows;
-                A_coarse.resize(coarse_n*coarse_n, 0);
-                for (int i = 0; i < coarse_n; i++)
-                {
-                    int row_start = Ac->idx1[i];
-                    int row_end = Ac->idx1[i+1];
-                    for (int j = row_start; j < row_end; j++)
-                    {
-                        A_coarse[i*coarse_n + Ac->idx2[j]] = Ac->vals[j];
-                    }
-                }
-
-                LU_permute.resize(coarse_n);
-                int info;
-                dgetrf_(&coarse_n, &coarse_n, A_coarse.data(), &coarse_n, 
-                        LU_permute.data(), &info);
-
-                printf("Num Levels = %d\n", num_levels);
-            }*/
-
-
 
             ~ParMultilevel()
             {
@@ -149,56 +144,79 @@ namespace raptor
                 }
             }
 
+#ifdef USING_HYPRE
             void form_hypre_weights(std::vector<double>& weights, int n_rows)
             {
                 int rank;
                 MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
+                hypre_SeedRand(2747 + rank);
                 if (n_rows)
                 {
                     weights.resize(n_rows);
-                    int seed = 2747 + rank;
-                    int a = 16807;
-                    int m = 2147483647;
-                    int q = 127773;
-                    int r = 2836;
                     for (int i = 0; i < n_rows; i++)
                     {
-                        int high = seed / q;
-                        int low = seed % q;
-                        int test = a * low - r * high;
-                        if (test > 0) seed = test;
-                        else seed = test + m;
-                        weights[i] = ((double)(seed) / m);
+                        weights[i] = hypre_Rand();
                     }
                 }
             }
+#endif
 
-            void extend_hierarchy(double theta = 0.0, int num_smooth_steps = 1)
+            void extend_hierarchy(double strong_threshold, 
+                    coarsen_t coarsen_type, interp_t interp_type)
             {
                 int level_ctr = levels.size() - 1;
                 ParCSRMatrix* A = levels[level_ctr]->A;
                 ParCSRMatrix* S;
+                ParCSRMatrix* P;
                 ParCSRMatrix* AP;
                 ParCSCMatrix* P_csc;
 
                 std::vector<int> states;
                 std::vector<int> off_proc_states;
 
-                S = A->strength(theta);
+                // Form strength of connection
                 std::vector<double> weights;
-                form_hypre_weights(weights, A->local_num_rows);
-                split_cljp(S, states, off_proc_states, weights.data());
-                levels[level_ctr]->P = mod_classical_interpolation(A, S, states, off_proc_states);
-                ParCSRMatrix* P = levels[level_ctr]->P;
+                S = A->strength(strong_threshold);
 
+                // Form CF Splitting
+                switch (coarsen_type)
+                {
+                    case RS:
+                        split_rs(S, states, off_proc_states);
+                        break;
+                    case CLJP:
+#ifdef USING_HYPRE
+                        form_hypre_weights(weights, A->local_num_rows);
+                        split_cljp(S, states, off_proc_states, weights.data());
+#else
+                        split_cljp(S, states, off_proc_states);
+#endif
+                        break;
+                    case Falgout:
+                        split_falgout(S, states, off_proc_states);
+                        break;
+                }
+
+                // Form modified classical interpolation
+                switch (interp_type)
+                {
+                    case Direct:
+                        P = direct_interpolation(A, S, states, off_proc_states);
+                        break;
+                    case Classical:
+                        P = mod_classical_interpolation(A, S, states, off_proc_states);
+                        break;
+                }
+                levels[level_ctr]->P = P;
+
+                // Form coarse grid operator
                 levels.push_back(new ParLevel());
                 AP = A->mult(levels[level_ctr]->P);
                 P_csc = new ParCSCMatrix(levels[level_ctr]->P);
-                
+                A = AP->mult_T(P_csc);
+
                 level_ctr++;
-                levels[level_ctr]->A = AP->mult_T(P_csc);
-                A = levels[level_ctr]->A;
+                levels[level_ctr]->A = A;
                 A->comm = new ParComm(A->partition, A->off_proc_column_map,
                         A->on_proc_column_map);
                 levels[level_ctr]->x.resize(A->global_num_rows, A->local_num_rows,
@@ -213,54 +231,6 @@ namespace raptor
                 delete P_csc;
                 delete S;
             }
-
-/*            data_t* extend_hierarchy(data_t* B,
-                    int num_candidates = 1,
-                    double theta = 0.0, 
-                    double omega = 4.0/3, 
-                    int num_smooth_steps = 1,
-                    int max_coarse = 50)
-            {
-                int level_ctr = levels.size()-1;
-
-                ParCSRMatrix* S;
-                ParCSRMatrix* AggOp;
-                ParCSRMatrix* T;
-                ParCSRMatrix* AP;
-                ParCSCMatrix* P_csc;
-
-                // Create Strength of Connection
-                S = levels[level_ctr]->A->strength(theta);
-
-                // Use standard aggregation
-                AggOp = S->aggregate();
-
-                // Create tentative interpolation
-                data_t* R = new data_t[AggOp->n_cols];
-                T = AggOp->fit_candidates(B, R, num_candidates);
-
-                // Smooth T to form prolongation
-                levels[level_ctr]->P = jacobi_prolongation(levels[level_ctr]->A, T, 
-                        omega, num_smooth_steps);
-
-                // Create coarse A
-                levels.push_back(new ParLevel());
-                AP = (levels[level_ctr]->A)->mult(levels[level_ctr]->P);
-                P_csc = new CSCMatrix(levels[level_ctr]->P);
-                levels[level_ctr+1]->A = AP->mult_T(P_csc);
-                level_ctr++;
-
-        	    // Sort coarse A
-		        levels[level_ctr]->A->sort();
-
-                // Resize vectors to equal shape of A
-                levels[level_ctr]->x.resize(levels[level_ctr]->A->n_rows);
-                levels[level_ctr]->b.resize(levels[level_ctr]->A->n_rows);
-                levels[level_ctr]->tmp.resize(levels[level_ctr]->A->n_rows);
-                
-                return R;
-            }*/
-
 
             void duplicate_coarse()
             {
@@ -407,7 +377,21 @@ namespace raptor
                 else
                 {
                     levels[level+1]->x.set_const_value(0.0);
-                    relax(levels[level]);
+                    
+                    // Relax
+                    switch (relax_type)
+                    {
+                        case Jacobi:
+                            jacobi(levels[level], num_smooth_sweeps, relax_weight);
+                            break;
+                        case SOR:
+                            sor(levels[level], num_smooth_sweeps, relax_weight);
+                            break;
+                        case SSOR:
+                            ssor(levels[level], num_smooth_sweeps, relax_weight);
+                            break;
+                    }
+
                     A->residual(x, b, tmp);
                     P->mult_T(tmp, levels[level+1]->b);
                     cycle(level+1);
@@ -416,7 +400,19 @@ namespace raptor
                     {
                         x.local[i] += tmp.local[i];
                     }
-                    relax(levels[level]);
+
+                    switch (relax_type)
+                    {
+                        case Jacobi:
+                            jacobi(levels[level], num_smooth_sweeps, relax_weight);
+                            break;
+                        case SOR:
+                            sor(levels[level], num_smooth_sweeps, relax_weight);
+                            break;
+                        case SSOR:
+                            ssor(levels[level], num_smooth_sweeps, relax_weight);
+                            break;
+                    }
                 }
             }
 
@@ -463,6 +459,10 @@ namespace raptor
                     if (rank == 0) printf("Rnorm = %e\n", r_norm);
                 }
             } 
+
+            relax_t relax_type;
+            int num_smooth_sweeps;
+            double relax_weight;
 
             std::vector<ParLevel*> levels;
             std::vector<int> LU_permute;

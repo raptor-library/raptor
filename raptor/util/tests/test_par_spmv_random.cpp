@@ -29,7 +29,7 @@ TEST(ParRandomSpMVTest, TestsInUtil)
     const char* b_T_ones = "../../../../test_data/random_ones_b_T.txt";
     const char* b_inc = "../../../../test_data/random_inc_b.txt";
     const char* b_T_inc = "../../../../test_data/random_inc_b_T.txt";
-    ParCSRMatrix* A = readParMatrix(rand_fn, MPI_COMM_WORLD, 1, 0);
+    ParCSRMatrix* A = readParMatrix(rand_fn);
 
     ParVector x(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);

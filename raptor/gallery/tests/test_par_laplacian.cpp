@@ -26,10 +26,8 @@ TEST(ParLaplacianTest, TestsInGallery)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     int n_rows, n_cols; 
-    int global_n_rows, global_n_cols;
-    int row, row_nnz, nnz;
+    int row;
     int start, end;
-    double row_sum, sum;
     int grid[3] = {10, 10, 10};
     double* stencil = laplace_stencil_27pt();
     ParCSRMatrix* A_sten = par_stencil_grid(stencil, grid, 3);
@@ -46,14 +44,6 @@ TEST(ParLaplacianTest, TestsInGallery)
     ASSERT_EQ(A_sten->partition->last_local_row, A_io->partition->last_local_row);
     ASSERT_EQ(A_sten->partition->first_local_col, A_io->partition->first_local_col);
     ASSERT_EQ(A_sten->partition->last_local_col, A_io->partition->last_local_col);
-
-    MPI_Allreduce(&A_sten->local_num_rows, &global_n_rows, 1, MPI_INT,
-            MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(&A_sten->on_proc_num_cols, &global_n_cols, 1, MPI_INT,
-            MPI_SUM, MPI_COMM_WORLD);
-            
-    ASSERT_EQ(global_n_rows, n_rows);
-    ASSERT_EQ(global_n_cols, n_cols);
 
     std::vector<int> global_col_starts(num_procs+1);
     std::vector<int> global_row_starts(num_procs+1);

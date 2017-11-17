@@ -38,8 +38,8 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
 
     const char* S0_fn = "../../../../test_data/rss_S0.pm";
     const char* S1_fn = "../../../../test_data/rss_S1.pm";
-    const char* cf0_fn = "../../../../test_data/rss_cf0";
-    const char* cf1_fn = "../../../../test_data/rss_cf1";
+    const char* cf0_fn = "../../../../test_data/rss_cf0.txt";
+    const char* cf1_fn = "../../../../test_data/rss_cf1.txt";
     const char* weights_fn = "../../../../test_data/weights.txt";
 
     // TEST LEVEL 0

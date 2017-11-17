@@ -27,11 +27,8 @@ TEST(ParAnisoTest, TestsInGallery)
 
     const char* A0_fn = "../../../../test_data/aniso.pm";
 
-    int n_rows, n_cols; 
-    int global_n_rows, global_n_cols;
-    int row, row_nnz, nnz;
+    int row;
     int start, end;
-    double row_sum, sum;
     int grid[2] = {25, 25};
     double eps = 0.001;
     double theta = M_PI/8.0;
@@ -49,13 +46,6 @@ TEST(ParAnisoTest, TestsInGallery)
     ASSERT_EQ(A_sten->partition->last_local_row, A_io->partition->last_local_row);
     ASSERT_EQ(A_sten->partition->first_local_col, A_io->partition->first_local_col);
     ASSERT_EQ(A_sten->partition->last_local_col, A_io->partition->last_local_col);
-
-    MPI_Allreduce(&A_sten->local_num_rows, &global_n_rows, 1, MPI_INT,
-            MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(&A_sten->on_proc_num_cols, &global_n_cols, 1, MPI_INT,
-            MPI_SUM, MPI_COMM_WORLD);
-    ASSERT_EQ(global_n_rows, n_rows);
-    ASSERT_EQ(global_n_cols, n_cols);
 
     std::vector<int> global_col_starts(num_procs+1);
     std::vector<int> global_row_starts(num_procs+1);

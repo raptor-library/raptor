@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
                 sym = atoi(argv[3]);
             }
         }
-        A = readParMatrix(file, MPI_COMM_WORLD, 1, sym);
+        A = readParMatrix(file);
     }
 
     for (int i = 0; i < num_tests; i++)
