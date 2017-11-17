@@ -1,4 +1,4 @@
-// Copyright (c) 2015-2017, RAPtor Developer Team, University of Illinois at Urbana-Champaign
+// Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
@@ -60,7 +60,7 @@ TEST(ParAMGTest, TestsInMultilevel)
     A->mult(x, b);
     x.set_const_value(0.0);
     
-    ml = new ParMultilevel(A, strong_threshold);
+    ml = new ParMultilevel(A, strong_threshold, CLJP, Classical, SOR, 1, 1.0, 50, -1);
 
     if (rank == 0)
     {
@@ -70,11 +70,11 @@ TEST(ParAMGTest, TestsInMultilevel)
     for (int i = 0; i < ml->num_levels; i++)
     {
         ParCSRMatrix* Al = ml->levels[i]->A;
-	long lcl_nnz = Al->local_nnz;
-	long nnz;
-	MPI_Reduce(&lcl_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-	if (rank == 0)
-	{
+	    long lcl_nnz = Al->local_nnz;
+	    long nnz;
+	    MPI_Reduce(&lcl_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+	    if (rank == 0)
+	    {
             printf("%d\t%d\t%d\t%lu\n", i, Al->global_num_rows, Al->global_num_cols, nnz);
         }
     }
@@ -86,13 +86,13 @@ TEST(ParAMGTest, TestsInMultilevel)
     for (int i = 0; i < ml->num_levels-1; i++)
     {
         ParCSRMatrix* Pl = ml->levels[i]->P;
-	long lcl_nnz = Pl->local_nnz;
-	long nnz;
-	MPI_Reduce(&lcl_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-	if (rank == 0)
-	{
+	    long lcl_nnz = Pl->local_nnz;
+	    long nnz;
+	    MPI_Reduce(&lcl_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+	    if (rank == 0)
+	    {
             printf("%d\t%d\t%d\t%lu\n", i, Pl->global_num_rows, Pl->global_num_cols, nnz);
-	}
+	    }
     }
     
     if (rank == 0)

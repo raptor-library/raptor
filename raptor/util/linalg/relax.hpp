@@ -1,7 +1,7 @@
-// Copyright (c) 2015-2017, RAPtor Developer Team, University of Illinois at Urbana-Champaign
+// Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#ifndef RAPTOR_UTILS_LINALG_JACOBI_H
-#define RAPTOR_UTILS_LINALG_JACOBI_H
+#ifndef RAPTOR_UTILS_LINALG_RELAX_H
+#define RAPTOR_UTILS_LINALG_RELAX_H
 
 #include <mpi.h>
 #include <float.h>
@@ -12,19 +12,14 @@
 
 using namespace raptor;
 
-/**************************************************************
- *****  Relaxation Method 
- **************************************************************
- ***** Performs jacobi along the diagonal block of the matrix
- *****
- ***** Parameters
- ***** -------------
- ***** l: Level*
- *****    Level in hierarchy to be relaxed
- ***** num_sweeps : int
- *****    Number of relaxation sweeps to perform
- **************************************************************/
-void relax(ParLevel* l, int num_sweeps = 1);
-void relax(ParCSRMatrix* A, ParVector& b, ParVector& x, ParVector& tmp, int num_sweeps = 1);
+void jacobi(ParLevel* l, int num_sweeps = 1, double omega = 1.0);
+void jacobi(ParCSRMatrix* A, ParVector& b, ParVector& x, ParVector& tmp, 
+        int num_sweeps = 1, double omega = 1.0);
+void sor(ParLevel* l, int num_sweeps = 1, double omega = 1.0);
+void sor(ParCSRMatrix* A, ParVector& b, ParVector& x, ParVector& tmp, 
+        int num_sweeps = 1, double omega = 1.0);
+void ssor(ParLevel* l, int num_sweeps = 1, double omega = 1.0);
+void ssor(ParCSRMatrix* A, ParVector& b, ParVector& x, ParVector& tmp, 
+        int num_sweeps = 1, double omega = 1.0);
 
 #endif

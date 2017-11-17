@@ -1,4 +1,4 @@
-// Copyright (c) 2015-2017, RAPtor Developer Team, University of Illinois at Urbana-Champaign
+// Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "par_matrix.hpp"
 
@@ -135,10 +135,15 @@ void ParMatrix::finalize(bool create_comm)
 
     // Condense columns in off_proc, storing global
     // columns as 0-num_cols, and store mapping
-    condense_off_proc();
-
+    if (off_proc->nnz)
+    {
+        condense_off_proc();
+    }
+    else
+    {
+        off_proc_num_cols = 0;
+    }
     off_proc->resize(local_num_rows, off_proc_num_cols);
-
     local_nnz = on_proc->nnz + off_proc->nnz;
 
     if (create_comm)

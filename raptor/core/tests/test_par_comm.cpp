@@ -1,4 +1,4 @@
-// Copyright (c) 2015-2017, RAPtor Developer Team, University of Illinois at Urbana-Champaign
+// Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
@@ -53,7 +53,6 @@ TEST(ParCommTest, TestsInCore)
 
     A->comm->communicate(sendbuf);
 
-    ASSERT_GT(A->off_proc_num_cols, 0);
     for (int i = 0; i < A->off_proc_num_cols; i++)
     {
         ASSERT_EQ(A->comm->recv_data->int_buffer[i], A->off_proc_column_map[i]);

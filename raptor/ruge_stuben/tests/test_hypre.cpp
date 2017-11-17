@@ -1,4 +1,4 @@
-// Copyright (c) 2015-2017, RAPtor Developer Team, University of Illinois at Urbana-Champaign
+// Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 
@@ -104,7 +104,9 @@ TEST(TestHypre, TestsInRuge_Stuben)
     HYPRE_Solver solver_data = hypre_create_hierarchy(A_h, x_h, b_h, 
                                 coarsen_type, interp_type, p_max_elmts, agg_num_levels, 
                                 strong_threshold);
-    ParMultilevel* ml = new ParMultilevel(A, strong_threshold);
+
+
+    ParMultilevel* ml = new ParMultilevel(A, strong_threshold, CLJP, Classical, SOR);
 
     HYPRE_Int num_levels = hypre_ParAMGDataNumLevels((hypre_ParAMGData*) solver_data);
     hypre_ParCSRMatrix** A_array = hypre_ParAMGDataAArray((hypre_ParAMGData*) solver_data);

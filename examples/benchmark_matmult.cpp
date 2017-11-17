@@ -1,10 +1,10 @@
-// Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
+// Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include <mpi.h>
 #include <math.h>
 #include <stdlib.h>
-#include <iostream>
 #include <assert.h>
+#include <iostream>
 
 #include "clear_cache.hpp"
 
@@ -20,14 +20,14 @@
 #include "gallery/external/mfem_wrapper.hpp"
 #endif
 
-//using namespace raptor;
+// using namespace raptor;
 int main(int argc, char *argv[])
 {
     MPI_Init(&argc, &argv);
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-    
+
     int dim=0;
     int n = 5;
     int system = 0;
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 #endif
     else if (system == 3)
     {
-        const char* file = "../../test_data/rss_A0.pm";        
+        const char* file = "../../test_data/rss_A0.pm";
 
         if (argc > 2)
         {
