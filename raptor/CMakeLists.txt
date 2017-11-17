@@ -21,6 +21,9 @@ add_library(raptor STATIC ${core_SOURCES} ${gallery_SOURCES} ${util_SOURCES}
 target_link_libraries(raptor ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
     ${PTSCOTCH_LIBRARIES} ${EXTERNAL_LIBS} )
 
+set_target_properties(raptor PROPERTIES PUBLIC_HEADER "raptor.hpp")
+INSTALL(TARGETS raptor DESTINATION "lib")
+
 include_directories(".")
 if(ENABLE_UNIT_TESTS)
     add_subdirectory(tests)

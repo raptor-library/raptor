@@ -36,6 +36,7 @@ include(cxx_config)
 
 if (WITH_MPI)
 #    include(mpi_config)
+add_definitions ( -DUSING_MPI )
     find_package(MPI REQUIRED)
     include_directories(${MPI_INCLUDE_PATH})
 endif (WITH_MPI)
@@ -79,6 +80,7 @@ endif()
 
 
 if (WITH_PTSCOTCH)
+    add_definitions ( -DUSING_PTSCOTCH )
     find_package(Ptscotch)
     if (PTSCOTCH_FOUND)
         include_directories(${PTSCOTCH_INCLUDE_DIRS})
