@@ -18,17 +18,6 @@
 #include "_hypre_parcsr_ls.h"
 #endif
 
-            ParMultilevel(ParCSRMatrix* Af,
-                    double strength_threshold = 0.0, 
-                    coarsen_t coarsen_type = Falgout, 
-                    interp_t interp_type = Direct,
-                    relax_t _relax_type = SOR,
-                    int _num_smooth_sweeps = 1,
-                    double _relax_weight = 1.0,
-                    int max_coarse = 50, 
-                    int max_levels = -1)
-            {
-
 /**************************************************************
  *****   ParMultilevel Class
  **************************************************************
