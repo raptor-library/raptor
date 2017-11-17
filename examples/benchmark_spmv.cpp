@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    int dim;
+    int dim=0;
     int n = 5;
     int system = 0;
 
@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
         system = atoi(argv[1]);
     }
 
-    ParCSRMatrix* A;
+    ParCSRMatrix* A=nullptr;
     ParVector x;
     ParVector b;
 

@@ -18,7 +18,7 @@ int main(int argc, char** argv)
 
 TEST(LaplacianTest, TestsInGallery)
 {
-    int n_rows; 
+
 
     int start, end;
 
@@ -38,10 +38,12 @@ TEST(LaplacianTest, TestsInGallery)
 
     ASSERT_EQ(A_sten->idx1[0], A_io->idx1[0]);
 
-    for (int i = 0; i < n_rows; i++)
+    for (int i = 0; i < A_io->n_rows; i++)
     {
         // Check correct row_ptrs
         ASSERT_EQ(A_sten->idx1[i+1], A_io->idx1[i+1]);
+        start = A_sten->idx1[i];
+        end   = A_sten->idx1[i+1];
 
         // Check correct col indices / values
         for (int j = start; j < end; j++)
