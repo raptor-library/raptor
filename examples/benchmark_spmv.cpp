@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
         clear_cache(cache_array);
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        for (int i = 0; i < n_spmvs; i++)
+        for (int j = 0; j < n_spmvs; j++)
         {
             A->mult(x, b);
         }
