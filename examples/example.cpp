@@ -6,24 +6,12 @@
 #include <assert.h>
 #include <iostream>
 
-// Types such as int and double sizes
-#include "core/types.hpp"
-
-// Matrix and Vector classes
-#include "core/par_matrix.hpp"
-#include "core/par_vector.hpp"
-
-// Stencil and diffusion classes
-#include "gallery/par_stencil.hpp"
-#include "gallery/diffusion.hpp"
-
-// AMG multilevel class
-#include "multilevel/par_multilevel.hpp"
+// Include raptor
+#include "raptor.hpp"
 
 // This is a basic use case.
 int main(int argc, char *argv[])
 {
-
     // set rank and number of processors
     int rank, num_procs;
     MPI_Init(&argc, &argv);
@@ -61,11 +49,7 @@ int main(int argc, char *argv[])
     x.set_const_value(0.0);
 
     // AMG parameters
-    int coarsen_type = 0; // CLJP
-    int interp_type = 0; // Classical Mod Interp
     double strong_threshold = 0.25;
-    int agg_num_levels = 0;
-    int p_max_elmts = 0;
 
     // Create a multilevel object
     ParMultilevel* ml;
@@ -73,7 +57,7 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);
     time_base = MPI_Wtime();
-    ml = new ParMultilevel(A, strong_threshold);
+    ml = new ParMultilevel(A, strong_threshold, Falgout, Direct, SOR);
     time_setup = MPI_Wtime() - time_base;
 
     // Print out information on the AMG hierarchy
