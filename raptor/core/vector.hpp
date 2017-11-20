@@ -1,41 +1,40 @@
 // Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#ifndef RAPTOR_CORE_VECTOR_HPP
-#define RAPTOR_CORE_VECTOR_HPP
+#ifndef RAPTOR_CORE_VECTOR_HPP_
+#define RAPTOR_CORE_VECTOR_HPP_
 
 #include "core/types.hpp"
 
-/**************************************************************
- *****   Vector Class
- **************************************************************
- ***** This class constructs a vector, supporting simple linear
- ***** algebra operations.
- *****
- ***** Attributes
- ***** -------------
- ***** values : std::vector<data_t>
- *****    std::vector of vector values
- ***** size : index_t
- *****    Dimension of vector
- ***** 
- ***** Methods
- ***** -------
- ***** set_const_value(data_t alpha)
- *****    Sets the vector to a constant value
- ***** set_rand_values()
- *****    Sets each element of the vector to a random value
- ***** axpy(Vector& y, data_t alpha)
- *****    Multiplies each element by a constant, alpha, and then
- *****    adds corresponding values from y
- ***** scale(data_t alpha)
- *****    Multiplies entries of vector by a constant
- ***** norm(index_t p)
- *****    Calculates the p-norm of the vector
- ***** print()
- *****    Prints the nonzero values and positions
- ***** data()
- *****    Returns the data values as a data_t*
- **************************************************************/
+// Vector Class
+//
+// This class constructs a vector, supporting simple linear
+// algebra operations.
+//
+// Attributes
+// -------------
+// values : std::vector<data_t>
+//    std::vector of vector values
+// size : index_t
+//    Dimension of vector
+//
+// Methods
+// -------
+// set_const_value(data_t alpha)
+//    Sets the vector to a constant value
+// set_rand_values()
+//    Sets each element of the vector to a random value
+// axpy(Vector& y, data_t alpha)
+//    Multiplies each element by a constant, alpha, and then
+//    adds corresponding values from y
+// scale(data_t alpha)
+//    Multiplies entries of vector by a constant
+// norm(index_t p)
+//    Calculates the p-norm of the vector
+// print()
+//    Prints the nonzero values and positions
+// data()
+//    Returns the data values as a data_t*
+//
 namespace raptor
 {
 class Vector
@@ -69,7 +68,7 @@ public:
 
     Vector(const Vector& v)
     {
-       copy(v); 
+       copy(v);
     }
 
     void resize(int len)
@@ -89,7 +88,7 @@ public:
     *****    Constant value to set each element of vector to
     **************************************************************/
     void set_const_value(data_t alpha);
-    
+
     /**************************************************************
     *****   Vector Set Random Values
     **************************************************************
@@ -97,7 +96,7 @@ public:
     ***** value
     **************************************************************/
     void set_rand_values();
-    
+
     /**************************************************************
     *****   Vector AXPY
     **************************************************************
@@ -124,7 +123,7 @@ public:
     *****    Vector to be copied
     **************************************************************/
     void copy(const Vector& y);
-    
+
     /**************************************************************
     *****   Vector Scale
     **************************************************************
@@ -136,7 +135,7 @@ public:
     *****    Constant value to set multiply element of vector by
     **************************************************************/
     void scale(data_t alpha);
-    
+
     /**************************************************************
     *****   Vector Norm
     **************************************************************
