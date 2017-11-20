@@ -6,24 +6,12 @@
 #include <assert.h>
 #include <iostream>
 
-// Types such as int and double sizes
-#include "core/types.hpp"
-
-// Matrix and Vector classes
-#include "core/par_matrix.hpp"
-#include "core/par_vector.hpp"
-
-// Stencil and diffusion classes
-#include "gallery/par_stencil.hpp"
-#include "gallery/diffusion.hpp"
-
-// AMG multilevel class
-#include "multilevel/par_multilevel.hpp"
+// Include raptor
+#include "raptor.hpp"
 
 // This is a basic use case.
 int main(int argc, char *argv[])
 {
-
     // set rank and number of processors
     int rank, num_procs;
     MPI_Init(&argc, &argv);
