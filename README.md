@@ -207,4 +207,3 @@ example.cpp.o -o example
 This code is distributed under BSD: http://opensource.org/licenses/BSD-2-Clause
 
 Please see `LICENSE.txt` and `COPYRIGHT.txt` for more information.
-
