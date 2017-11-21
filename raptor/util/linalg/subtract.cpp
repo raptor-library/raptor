@@ -1,150 +1,263 @@
-// Copyright (c) 2015-2017, RAPtor Developer Team
-// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
+#include "core/matrix.hpp"
 
 using namespace raptor;
 
-
-ParCSRMatrix* ParCSRMatrix::subtract(ParCSRMatrix* B)
+/**************************************************************
+*****   Matrix-Matrix Subtraction (C = A-B)
+**************************************************************
+***** Multiplies the matrix times a matrix B, and writes the
+***** result in matrix C.
+*****
+***** Parameters
+***** -------------
+***** B : CSRMatrix*
+*****    Matrix by which to multiply the matrix 
+***** C : Matrix*
+*****    CSRMatrix in which to place solution
+**************************************************************/
+CSRMatrix* CSRMatrix::subtract(CSRMatrix* B)
 {
-    ParCSRMatrix* C = new ParCSRMatrix(partition);
-
-    delete C->on_proc;
-    delete C->off_proc;
-
-    int start, end;
     int idx, idx_B;
+    int row_end, row_end_B;
+    int col, col_B;
 
-    // This one will work fine because columns are not condensed
-    C->on_proc = on_proc->subtract(B->on_proc);
+    int* col_ptr;
+    int* col_B_ptr;
 
-    // For C->off_proc... need to edit CSRMatrix::subtract to take into 
-    // account condensed cols
-    C->off_proc = off_proc->subtract(B->off_proc);
+    std::vector<int> cols;
+    std::vector<int> cols_B;
 
-    C->local_nnz = C->on_proc->nnz + C->off_proc->nnz;
-    C->off_proc_column_map = C->off_proc->get_col_list();
-    C->off_proc_num_cols = C->off_proc_column_map.size();
+    CSRMatrix* C = new CSRMatrix(n_rows, n_cols);
 
-    // Communication package is just a sum of the communication 
-    // packages of original ParCSRMat and B...
-    C->comm = new ParComm(partition);
-    std::set<int> proc_send_set;
-    for (std::vector<int>::iterator it = comm->send_data->procs.begin();
-            it != comm->send_data->procs.end(); ++it)
+    sort();
+    B->sort();
+
+    if (col_list.size() || B->col_list.size())
     {
-        proc_send_set.insert(*it);
-    }
-    for (std::vector<int>::iterator it = B->comm->send_data->procs.begin();
-            it != B->comm->send_data->procs.end(); ++it)
-    {
-        proc_send_set.insert(*it);
-    }
-    idx = 0;
-    idx_B = 0;
-    C->comm->send_data->indptr.push_back(0);
-    for (std::set<int>::iterator it = proc_send_set.begin(); 
-            it != proc_send_set.end(); ++it)
-    {
-        std::set<int> send_idx_set;
-        if (idx < comm->send_data->num_msgs)
+        // Create C col_list to be union of col_list and B->col_list
+        std::set<int> global_col_set;
+        for (std::vector<int>::iterator it = col_list.begin(); 
+                it != col_list.end(); ++it)
         {
-            if (comm->send_data->procs[idx] == *it)
+            global_col_set.insert(*it);
+        }
+        for (std::vector<int>::iterator it = B->col_list.begin();
+                it != B->col_list.end(); ++it)
+        {
+            global_col_set.insert(*it);
+        }
+        std::map<int, int> global_to_local_C;
+        for (std::set<int>::iterator it = global_col_set.begin();
+                it != global_col_set.end(); ++it)
+        {
+            global_to_local_C[*it] = C->col_list.size();
+            C->col_list.push_back(*it);
+        }
+
+        // Map col_list values to C_col_list values
+        if (col_list.size())
+        {
+            std::vector<int> map_to_C;
+            map_to_C.reserve(col_list.size());
+            if (idx2.size())
             {
-                start = comm->send_data->indptr[idx];
-                end = comm->send_data->indptr[idx+1];
-                for (int j = start; j < end; j++)
-                {
-                    send_idx_set.insert(comm->send_data->indices[j]);
-                }
+                cols.reserve(idx2.size());
+            }
+            for (std::vector<int>::iterator it = col_list.begin(); 
+                    it != col_list.end(); ++it)
+            {
+                map_to_C.push_back(global_to_local_C[*it]);
+            }
+
+            for (std::vector<int>::iterator it = idx2.begin(); it != idx2.end(); ++it)
+            {
+                cols.push_back(map_to_C[*it]);
+            }
+        }
+
+        // Map B_col_list values to C_col_list values
+        if (B->col_list.size())
+        {
+            std::vector<int> B_to_C;
+            B_to_C.reserve(B->col_list.size());
+            for (std::vector<int>::iterator it = B->col_list.begin();
+                    it != B->col_list.end(); ++it)
+            {
+                B_to_C.push_back(global_to_local_C[*it]);
+            }
+            if (B->idx2.size())
+            {
+                cols_B.reserve(B->idx2.size());
+            }
+            for (std::vector<int>::iterator it = B->idx2.begin(); 
+                    it != B->idx2.end(); ++it)
+            {
+                cols_B.push_back(B_to_C[*it]);
+            }
+        }
+
+        C->resize(n_rows, global_col_set.size());
+
+    }
+    if (col_list.size())
+    {
+        col_ptr = cols.data();
+    }
+    else
+    {
+        col_ptr = idx2.data();
+    }
+
+    if (B->col_list.size())
+    {
+        col_B_ptr = cols_B.data();
+    }
+    else
+    {
+        col_B_ptr = B->idx2.data();
+    }
+
+    C->idx2.reserve(1.1*nnz);
+    C->vals.reserve(1.1*nnz);
+
+    // Note -- diagonal values are first, and then others
+    C->idx1[0] = 0;
+    for (int i = 0; i < n_rows; i++)
+    {
+        idx = idx1[i];
+        row_end = idx1[i+1];
+        idx_B = B->idx1[i];
+        row_end_B = B->idx1[i+1];
+
+        double val = 0.0;
+        // Get inital column
+        if (idx < row_end)
+        {
+            col = col_ptr[idx];
+            if (col == i)
+            {
+                val = vals[idx];
                 idx++;
+                if (idx < row_end)
+                    col = col_ptr[idx];
+                else
+                    col = C->n_cols;
             }
         }
-        if (idx_B < B->comm->send_data->num_msgs)
+        else
+            col = C->n_cols;
+
+        // Get initial column of B
+        if (idx_B < row_end_B)
         {
-            if (B->comm->send_data->procs[idx_B] == *it)
+            col_B = col_B_ptr[idx_B];
+            if (col_B == i)
             {
-                start = B->comm->send_data->indptr[idx_B];
-                end = B->comm->send_data->indptr[idx_B+1];
-                for (int j = start; j < end; j++)
-                {
-                    send_idx_set.insert(B->comm->send_data->indices[j]);
-                }
+                val -= B->vals[idx_B];
+                idx_B++;
+                if (idx_B < row_end_B)
+                    col_B = col_B_ptr[idx_B];
+                else
+                    col_B = C->n_cols;
             }
         }
-        
-        C->comm->send_data->procs.push_back(*it);
-        C->comm->send_data->indptr.push_back(send_idx_set.size());
-        for (std::set<int>::iterator it = send_idx_set.begin();
-                it != send_idx_set.end(); ++it)
+        else
+            col_B = C->n_cols;
+
+        // If either col or col_b equals row, add val - val_b to C
+        if (fabs(val) > zero_tol)
         {
-            C->comm->send_data->indices.push_back(*it);
+            C->idx2.push_back(i);
+            C->vals.push_back(val);
         }
-    }
-    C->comm->send_data->num_msgs = C->comm->send_data->procs.size();
-    C->comm->send_data->size_msgs = C->comm->send_data->indices.size();
-    C->comm->send_data->finalize();
 
-
-    std::set<int> proc_recv_set;
-    for (std::vector<int>::iterator it = comm->recv_data->procs.begin();
-            it != comm->recv_data->procs.end(); ++it)
-    {
-        proc_recv_set.insert(*it);
-    }
-    for (std::vector<int>::iterator it = B->comm->recv_data->procs.begin();
-            it != B->comm->recv_data->procs.end(); ++it)
-    {
-        proc_recv_set.insert(*it);
-    }
-    idx = 0;
-    idx_B = 0;
-    C->comm->recv_data->indptr.push_back(0);
-    for (std::set<int>::iterator it = proc_recv_set.begin(); 
-            it != proc_recv_set.end(); ++it)
-    {
-        std::set<int> recv_idx_set;
-        if (idx < comm->recv_data->num_msgs)
+        while (idx < row_end || idx_B < row_end_B)
         {
-            if (comm->recv_data->procs[idx] == *it)
+            // If columns are equal, add val-B.val
+            if (col == col_B)
             {
-                start = comm->recv_data->indptr[idx];
-                end = comm->recv_data->indptr[idx+1];
-                for (int j = start; j < end; j++)
+                val = vals[idx] - B->vals[idx_B];
+                if (fabs(val) > zero_tol)
                 {
-                    recv_idx_set.insert(comm->recv_data->indices[j]);
+                    C->idx2.push_back(col);
+                    C->vals.push_back(vals[idx] - B->vals[idx_B]);
                 }
+                // Increase index and find column of new index
                 idx++;
+                if (idx < row_end)
+                    col = col_ptr[idx];
+                else
+                    col = C->n_cols;
+
+                // Increase index of B and find column
+                idx_B++;
+                if (idx_B < row_end_B)
+                    col_B = col_B_ptr[idx_B];
+                else
+                    col_B = C->n_cols;
             }
-        }
-        if (idx_B < B->comm->recv_data->num_msgs)
-        {
-            if (B->comm->recv_data->procs[idx_B] == *it)
+
+            // If column comes first, add val
+            else if (col < col_B)
             {
-                start = B->comm->recv_data->indptr[idx_B];
-                end = B->comm->recv_data->indptr[idx_B+1];
-                for (int j = start; j < end; j++)
-                {
-                    recv_idx_set.insert(B->comm->recv_data->indices[j]);
-                }
+                C->idx2.push_back(col);
+                C->vals.push_back(vals[idx]);
+
+                // Increase index and find column
+                idx++;
+                if (idx < row_end)
+                    col = col_ptr[idx];
+                else
+                    col = C->n_cols;
+
             }
+
+            // If B.column comes first, add -B.val
+            else
+            {
+                C->idx2.push_back(col_B);
+                C->vals.push_back(-(B->vals[idx_B]));
+                
+                // Increase index of B and find column
+                idx_B++;
+                if (idx_B < row_end_B)
+                    col_B = col_B_ptr[idx_B];
+                else
+                    col_B = C->n_cols;
+            }
+
         }
-        
-        C->comm->recv_data->procs.push_back(*it);
-        C->comm->recv_data->indptr.push_back(recv_idx_set.size());
-        for (std::set<int>::iterator it = recv_idx_set.begin();
-                it != recv_idx_set.end(); ++it)
-        {
-            C->comm->recv_data->indices.push_back(*it);
-        }
+        C->idx1[i+1] = C->idx2.size();
     }
-    C->comm->recv_data->num_msgs = C->comm->recv_data->procs.size();
-    C->comm->recv_data->size_msgs = C->comm->recv_data->indices.size();
-    C->comm->recv_data->finalize();
+    C->nnz = C->idx2.size();
 
     return C;
+}
+
+
+/**************************************************************
+*****   Matrix-Matrix Subtraction (C = A-B)
+**************************************************************
+***** Multiplies the matrix times a matrix B, and writes the
+***** result in matrix C.
+*****
+***** Parameters
+***** -------------
+***** B : CSRMatrix*
+*****    Matrix by which to multiply the matrix 
+***** C : Matrix*
+*****    CSRMatrix in which to place solution
+**************************************************************/
+Matrix* Matrix::subtract(Matrix* B)
+{
+    if (format() == CSR && B->format() == CSR)
+    {
+        CSRMatrix* C = ((CSRMatrix*)this)->subtract((CSRMatrix*) B);
+        return C;
+    }
+
+    printf("Subtraction not implemented for these matrix types...\n");
+    return NULL;
 }
 
 

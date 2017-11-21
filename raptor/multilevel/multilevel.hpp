@@ -9,7 +9,7 @@
 #include "level.hpp"
 #include "ruge_stuben/cf_splitting.hpp"
 #include "ruge_stuben/interpolation.hpp"
-#include "util/linalg/seq/relax.hpp"
+#include "util/linalg/relax.hpp"
 
 // Coarse Matrices (A) are CSC
 // Prolongation Matrices (P) are CSC
