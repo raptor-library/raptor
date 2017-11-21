@@ -1,292 +1,365 @@
 // Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-
 #include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "core/par_vector.hpp"
-
-#include "assert.h"
+#include "core/matrix.hpp"
+#include "core/vector.hpp"
 
 using namespace raptor;
 
 /**************************************************************
- *****   Parallel Matrix-Vector Multiplication
- **************************************************************
- ***** Performs parallel matrix-vector multiplication
- ***** b = A*x
- *****
- ***** Parameters
- ***** -------------
- ***** x : ParVector*
- *****    Parallel vector to be multiplied
- ***** b : ParVector*
- *****    Parallel vector result is returned in
- **************************************************************/
-void ParMatrix::mult(ParVector& x, ParVector& b)
-{
-    // Check that communication package has been initialized
-    if (comm == NULL)
-    {
-        comm = new ParComm(partition, off_proc_column_map);
-    }
+*****   Matrix-Vector Multiply (b = Ax)
+**************************************************************
+***** Multiplies the matrix times a vector x, and returns the
+***** result in vector b.
+*****
+***** Parameters
+***** -------------
+***** x : T*
+*****    Array containing vector data by which to multiply the matrix 
+***** b : U*
+*****    Array in which to place solution
+**************************************************************/
+void COOMatrix::mult(Vector& x, Vector& b)
+{    
+    for (int i = 0; i < n_rows; i++)
+        b[i] = 0.0;
 
-    // Initialize Isends and Irecvs to communicate
-    // values of x
-    comm->init_comm(x);
-
-    // Multiply the diagonal portion of the matrix,
-    // setting b = A_diag*x_local
-    if (local_num_rows)
-    {
-        on_proc->mult(x.local, b.local);
-    }
-
-    // Wait for Isends and Irecvs to complete
-    std::vector<double>& x_tmp = comm->complete_comm();
-
-    // Multiply remaining columns, appending to previous
-    // solution in b (b += A_offd * x_distant)
-    if (off_proc_num_cols)
-    {
-        off_proc->mult_append(x_tmp, b.local);
-    }
+    mult_append(x, b);
 }
 
-void ParMatrix::tap_mult(ParVector& x, ParVector& b)
-{
-    // Check that communication package has been initialized
-    if (tap_comm == NULL)
-    {
-        tap_comm = new TAPComm(partition, off_proc_column_map);
-    }
+void CSRMatrix::mult(Vector& x, Vector& b)
+{    
+    for (int i = 0; i < n_rows; i++)
+        b[i] = 0.0;
 
-    // Initialize Isends and Irecvs to communicate
-    // values of x
-    tap_comm->init_comm(x);
-
-    // Multiply the diagonal portion of the matrix,
-    // setting b = A_diag*x_local
-    if (local_num_rows)
-    {
-        on_proc->mult(x.local, b.local);
-    }
-
-    // Wait for Isends and Irecvs to complete
-    std::vector<double>& x_tmp = tap_comm->complete_comm();
-
-    // Multiply remaining columns, appending to previous
-    // solution in b (b += A_offd * x_distant)
-    if (off_proc_num_cols)
-    {
-        off_proc->mult_append(x_tmp, b.local);
-    }
+    mult_append(x, b);
 }
 
-void ParMatrix::mult_T(ParVector& x, ParVector& b)
-{
-    // Check that communication package has been initialized
-    if (comm == NULL)
+void CSCMatrix::mult(Vector& x, Vector& b)
+{    
+    for (int i = 0; i < n_rows; i++)
+        b[i] = 0.0;
+
+    mult_append(x, b);
+}
+
+/**************************************************************
+*****   Matrix-Vector Transpose Multiply (b = Ax)
+**************************************************************
+***** Multiplies the matrix times a vector x, and returns the
+***** result in vector b.
+*****
+***** Parameters
+***** -------------
+***** x : T*
+*****    Array containing vector data by which to multiply the matrix 
+***** b : U*
+*****    Array in which to place solution
+**************************************************************/
+void COOMatrix::mult_T(Vector& x, Vector& b)
+{    
+    for (int i = 0; i < n_cols; i++)
+        b[i] = 0.0;
+
+    mult_append_T(x, b);
+}
+void CSRMatrix::mult_T(Vector& x, Vector& b)
+{    
+    for (int i = 0; i < n_cols; i++)
+        b[i] = 0.0;
+
+    mult_append_T(x, b);
+}
+void CSCMatrix::mult_T(Vector& x, Vector& b)
+{    
+    for (int i = 0; i < n_cols; i++)
+        b[i] = 0.0;
+
+    mult_append_T(x, b);
+}
+
+/**************************************************************
+*****   Matrix-Vector Multiply Append (b += Ax)
+**************************************************************
+***** Multiplies the matrix times a vector x, and appends the
+***** result in vector b.
+*****
+***** Parameters
+***** -------------
+***** x : T*
+*****    Array containing vector data by which to multiply the matrix 
+***** b : U*
+*****    Array in which to place solution
+**************************************************************/
+void COOMatrix::mult_append(Vector& x, Vector& b)
+{    
+    for (int i = 0; i < nnz; i++)
     {
-        comm = new ParComm(partition, off_proc_column_map);
-    }
-
-    std::vector<double>& x_tmp = comm->recv_data->buffer;
-
-    off_proc->mult_T(x.local, x_tmp);
-
-    comm->init_comm_T(x_tmp);
-
-    if (local_num_rows)
-    {
-        on_proc->mult_T(x.local, b.local);
-    }
-
-    comm->complete_comm_T();
-
-    // Append b.local (add recvd values)
-    std::vector<double>& b_tmp = comm->send_data->buffer;
-    for (int i = 0; i < comm->send_data->size_msgs; i++)
-    {
-        b.local[comm->send_data->indices[i]] += b_tmp[i];
+        b[idx1[i]] += vals[i] * x[idx2[i]];
     }
 }
 
-void ParMatrix::tap_mult_T(ParVector& x, ParVector& b)
+void CSRMatrix::mult_append(Vector& x, Vector& b)
 {
-    // Check that communication package has been initialized
-    if (tap_comm == NULL)
+    int start, end;
+    for (int i = 0; i < n_rows; i++)
     {
-        tap_comm = new TAPComm(partition, off_proc_column_map);
-    }
-
-    std::vector<double>& x_tmp = tap_comm->recv_buffer;
-
-    off_proc->mult_T(x.local, x_tmp);
-
-    tap_comm->init_comm_T(x_tmp);
-
-    if (local_num_rows)
-    {
-        on_proc->mult_T(x.local, b.local);
-    }
-
-    tap_comm->complete_comm_T();
-
-    // Append b.local (add recvd values)
-    std::vector<double>& L_tmp = tap_comm->local_L_par_comm->send_data->buffer;
-    std::vector<double>& S_tmp = tap_comm->local_S_par_comm->send_data->buffer;
-    for (int i = 0; i < tap_comm->local_L_par_comm->send_data->size_msgs; i++)
-    {
-        b.local[tap_comm->local_L_par_comm->send_data->indices[i]] += L_tmp[i];
-    }
-    for (int i = 0; i < tap_comm->local_S_par_comm->send_data->size_msgs; i++)
-    {
-        b.local[tap_comm->local_S_par_comm->send_data->indices[i]] += S_tmp[i];
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[i] += vals[j] * x[idx2[j]];
+        }
     }
 }
 
-
-void ParCOOMatrix::mult(ParVector& x, ParVector& b)
+void CSCMatrix::mult_append(Vector& x, Vector& b)
 {
-    ParMatrix::mult(x, b);
+    int start, end;
+    for (int i = 0; i < n_cols; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[idx2[j]] += vals[j] * x[i];
+        }
+    }
 }
 
-void ParCSRMatrix::mult(ParVector& x, ParVector& b)
-{
-    ParMatrix::mult(x, b);
+/**************************************************************
+*****   Matrix-Vector Transpose Multiply Append (b += Ax)
+**************************************************************
+***** Multiplies the matrix times a vector x, and appends the
+***** result in vector b.
+*****
+***** Parameters
+***** -------------
+***** x : T*
+*****    Array containing vector data by which to multiply the matrix 
+***** b : U*
+*****    Array in which to place solution
+**************************************************************/
+void COOMatrix::mult_append_T(Vector& x, Vector& b)
+{    
+    for (int i = 0; i < nnz; i++)
+    {
+        b[idx2[i]] += vals[i] * x[idx1[i]];
+    }
 }
 
-void ParCSCMatrix::mult(ParVector& x, ParVector& b)
+void CSRMatrix::mult_append_T(Vector& x, Vector& b)
 {
-    ParMatrix::mult(x, b);
+    int start, end;
+    for (int i = 0; i < n_rows; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[idx2[j]] += vals[j] * x[i];
+        }
+    }
 }
 
-void ParCOOMatrix::tap_mult(ParVector& x, ParVector& b)
+void CSCMatrix::mult_append_T(Vector& x, Vector& b)
 {
-    ParMatrix::tap_mult(x, b);
+    int start, end;
+    for (int i = 0; i < n_cols; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[i] += vals[j] * x[idx2[j]];
+        }
+    }
 }
 
-void ParCSRMatrix::tap_mult(ParVector& x, ParVector& b)
+void CSRMatrix::mult_append_T(Vector& x, Vector& b)
 {
-    ParMatrix::tap_mult(x, b);
+    int start, end;
+    for (int i = 0; i < n_rows; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[idx2[j]] += vals[j] * x[i];
+        }
+    }
 }
 
-void ParCSCMatrix::tap_mult(ParVector& x, ParVector& b)
+void CSCMatrix::mult_append_T(Vector& x, Vector& b)
 {
-    ParMatrix::tap_mult(x, b);
+    int start, end;
+    for (int i = 0; i < n_cols; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[i] += vals[j] * x[idx2[j]];
+        }
+    }
 }
 
-void ParCOOMatrix::mult_T(ParVector& x, ParVector& b)
-{
-    ParMatrix::mult_T(x, b);
-}
-
-void ParCSRMatrix::mult_T(ParVector& x, ParVector& b)
-{
-    ParMatrix::mult_T(x, b);
-}
-
-void ParCSCMatrix::mult_T(ParVector& x, ParVector& b)
-{
-    ParMatrix::mult_T(x, b);
-}
-
-void ParCOOMatrix::tap_mult_T(ParVector& x, ParVector& b)
-{
-    ParMatrix::tap_mult_T(x, b);
-}
-
-void ParCSRMatrix::tap_mult_T(ParVector& x, ParVector& b)
-{
-    ParMatrix::tap_mult_T(x, b);
-}
-
-void ParCSCMatrix::tap_mult_T(ParVector& x, ParVector& b)
-{
-    ParMatrix::tap_mult_T(x, b);
-}
 
 
 /**************************************************************
- *****   Parallel Matrix-Vector Residual Calculation
- **************************************************************
- ***** Calculates the residual of a parallel system
- ***** r = b - Ax
- *****
- ***** Parameters
- ***** -------------
- ***** x : ParVector*
- *****    Parallel right hand side vector
- ***** b : ParVector*
- *****    Parallel solution vector
- ***** b : ParVector* 
- *****    Parallel vector residual is to be returned in
- **************************************************************/
-void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r)
-{
-    // Check that communication package has been initialized
-    if (comm == NULL)
+*****   Matrix-Vector Multiply Append (Negative) (b -= Ax)
+**************************************************************
+***** Multiplies the matrix times a vector x, and appends the
+***** negated result in vector b.
+*****
+***** Parameters
+***** -------------
+***** x : T*
+*****    Array containing vector data by which to multiply the matrix 
+***** b : U*
+*****    Array in which to place solution
+**************************************************************/
+void COOMatrix::mult_append_neg(Vector& x, Vector& b)
+{    
+    for (int i = 0; i < nnz; i++)
     {
-        comm = new ParComm(partition, off_proc_column_map);
-    }
-
-    // Initialize Isends and Irecvs to communicate
-    // values of x
-    comm->init_comm(x);
-
-    // Set the values in r equal to the values in b
-    r.copy(b);
-
-    // Multiply diagonal portion of matrix,
-    // subtracting result from r = b (r = b - A_diag*x_local)
-    if (local_num_rows && on_proc_num_cols)
-    {
-        on_proc->mult_append_neg(x.local, r.local);
-    }
-
-    // Wait for Isends and Irecvs to complete
-    std::vector<double>& x_tmp = comm->complete_comm();
-
-    // Multiply remaining columns, appending the negative
-    // result to previous solution in b (b -= ...)
-    if (off_proc_num_cols)
-    {
-        off_proc->mult_append_neg(x_tmp, r.local);
+        b[idx1[i]] -= vals[i] * x[idx2[i]];
     }
 }
 
-void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r)
+void CSRMatrix::mult_append_neg(Vector& x, Vector& b)
 {
-    // Check that communication package has been initialized
-    if (tap_comm == NULL)
+    int start, end;
+    for (int i = 0; i < n_rows; i++)
     {
-        tap_comm = new TAPComm(partition, off_proc_column_map);
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[i] -= vals[j] * x[idx2[j]];
+        }
     }
+}
 
-    // Initialize Isends and Irecvs to communicate
-    // values of x
-    tap_comm->init_comm(x);
-
-    // Set the values in r equal to the values in b
-    r.copy(b);
-
-    // Multiply diagonal portion of matrix,
-    // subtracting result from r = b (r = b - A_diag*x_local)
-    if (local_num_rows && on_proc_num_cols)
+void CSCMatrix::mult_append_neg(Vector& x, Vector& b)
+{
+    int start, end;
+    for (int i = 0; i < n_cols; i++)
     {
-        on_proc->mult_append_neg(x.local, r.local);
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[idx2[j]] -= vals[j] * x[i];
+        }
     }
+}
 
-    // Wait for Isends and Irecvs to complete
-    std::vector<double>& x_tmp = tap_comm->complete_comm();
-
-    // Multiply remaining columns, appending the negative
-    // result to previous solution in b (b -= ...)
-    if (off_proc_num_cols)
+/**************************************************************
+*****   Matrix-Vector Transpose Multiply Append (Negative) (b -= Ax)
+**************************************************************
+***** Multiplies the matrix times a vector x, and appends the
+***** negated result in vector b.
+*****
+***** Parameters
+***** -------------
+***** x : T*
+*****    Array containing vector data by which to multiply the matrix 
+***** b : U*
+*****    Array in which to place solution
+**************************************************************/
+void COOMatrix::mult_append_neg_T(Vector& x, Vector& b)
+{    
+    for (int i = 0; i < nnz; i++)
     {
-        off_proc->mult_append_neg(x_tmp, r.local);
+        b[idx2[i]] -= vals[i] * x[idx1[i]];
     }
+}
 
+void CSRMatrix::mult_append_neg_T(Vector& x, Vector& b)
+{
+    int start, end;
+    for (int i = 0; i < n_rows; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[idx2[j]] -= vals[j] * x[i];
+        }
+    }
+}
+
+void CSCMatrix::mult_append_neg_T(Vector& x, Vector& b)
+{
+    int start, end;
+    for (int i = 0; i < n_cols; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            b[i] -= vals[j] * x[idx2[j]];
+        }
+    }
+}
+
+/**************************************************************
+*****   Matrix-Vector Residual Calculation (r = b - Ax)
+**************************************************************
+***** Finds the residual (b - Ax) and places the result
+***** into r
+*****
+***** Parameters
+***** -------------
+***** x : T*
+*****    Array containing vector data by which to multiply the matrix 
+***** b : U*
+*****    Array containing vector data from which to subtract Ax
+***** r : V*
+*****    Array in which double solution values are to be placed 
+**************************************************************/
+void COOMatrix::residual(const Vector& x, const Vector& b, Vector& r)
+{   
+    for (int i = 0; i < n_rows; i++)
+        r[i] = b[i];
+ 
+    for (int i = 0; i < nnz; i++)
+    {
+        r[idx1[i]] -= vals[i] * x[idx2[i]];
+    }
+}
+void CSRMatrix::residual(const Vector& x, const Vector& b, Vector& r)
+{   
+    for (int i = 0; i < n_rows; i++)
+        r[i] = b[i];
+ 
+    int start, end;
+    for (int i = 0; i < n_rows; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            r[i] -= vals[j] * x[idx2[j]];
+        }
+    }
+}
+void CSCMatrix::residual(const Vector& x, const Vector& b, Vector& r)
+{
+    for (int i = 0; i < n_rows; i++)
+        r[i] = b[i];
+
+    int start, end;
+    for (int i = 0; i < n_cols; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            r[idx2[j]] -= vals[j] * x[i];
+        }
+    }
 }
 
 

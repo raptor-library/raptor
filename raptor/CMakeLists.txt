@@ -15,14 +15,23 @@ else()
         )
 endif()
 
-add_library(raptor STATIC ${core_SOURCES} ${gallery_SOURCES} ${util_SOURCES}
-    ${par_SOURCES} strength.cpp ${ruge_stuben_SOURCES} ${multilevel_SOURCES})
+add_library(raptor STATIC ${core_SOURCES} ${core_HEADERS} ${gallery_SOURCES}
+    ${gallery_HEADERS} ${ext_gallery_HEADERS} ${util_SOURCES} ${util_HEADERS}
+    ${par_SOURCES} strength.cpp ${ruge_stuben_SOURCES} ${ruge_stuben_HEADERS}
+    ${multilevel_SOURCES} ${multilevel_HEADERS})
 
 target_link_libraries(raptor ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
     ${PTSCOTCH_LIBRARIES} ${EXTERNAL_LIBS} )
 
-set_target_properties(raptor PROPERTIES PUBLIC_HEADER "raptor.hpp")
-INSTALL(TARGETS raptor DESTINATION "lib")
+install(TARGETS raptor DESTINATION "lib")
+install(FILES raptor.hpp DESTINATION "include/raptor")
+install(FILES ${core_HEADERS} DESTINATION "include/raptor/core")
+install(FILES ${gallery_HEADERS}  DESTINATION "include/raptor/gallery")
+install(FILES ${ext_gallery_HEADERS} DESTINATION "include/raptor/gallery/external")
+install(FILES ${util_HEADERS} DESTINATION "include/raptor/util/linalg")
+install(FILES ${ruge_stuben_HEADERS} DESTINATION "include/raptor/ruge_stuben")
+install(FILES ${multilevel_HEADERS} DESTINATION "include/raptor/multilevel")
+
 
 include_directories(".")
 if(ENABLE_UNIT_TESTS)

@@ -7,7 +7,7 @@
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
 #include "multilevel/par_level.hpp"
-#include "util/linalg/relax.hpp"
+#include "util/linalg/par_relax.hpp"
 #include "ruge_stuben/par_interpolation.hpp"
 #include "ruge_stuben/par_cf_splitting.hpp"
 
