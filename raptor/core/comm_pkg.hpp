@@ -727,11 +727,11 @@ namespace raptor
                 {
                     R_to_orig.resize(tap_comm->R_to_orig.size());
                 }
-                for (int i = 0; i < (int) L_to_orig.size(); i++)
+                for (size_t i = 0; i < L_to_orig.size(); i++)
                 {
                     L_to_orig[i] = tap_comm->L_to_orig[i];
                 }
-                for (int i = 0; i < (int) R_to_orig.size(); i++)
+                for (size_t i = 0; i < R_to_orig.size(); i++)
                 {
                     R_to_orig[i] = tap_comm->R_to_orig[i];
                 }

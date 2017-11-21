@@ -11,7 +11,7 @@
 void clear_cache(std::vector<double>& cache_list)
 {
     srand(time(NULL));
-    for (int i = 0; i < (int) cache_list.size(); i++)
+    for (size_t i = 0; i < cache_list.size(); i++)
     {
         cache_list[i] = rand()%10;
     }

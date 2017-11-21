@@ -383,13 +383,13 @@ std::vector<double>& TAPComm::complete_comm()
     // Add values from L_recv and R_recv to appropriate positions in 
     // Vector recv
     int idx;
-    for (int i = 0; i < (int) R_recv.size(); i++)
+    for (size_t i = 0; i < R_recv.size(); i++)
     {
         idx = R_to_orig[i];
         recv_buffer[idx] = R_recv[i];
     }
 
-    for (int i = 0; i < (int) L_recv.size(); i++)
+    for (size_t i = 0; i < L_recv.size(); i++)
     {
         idx = L_to_orig[i];
         recv_buffer[idx] = L_recv[i];
@@ -414,13 +414,13 @@ std::vector<int>& TAPComm::complete_int_comm()
     // Add values from L_recv and R_recv to appropriate positions in 
     // Vector recv
     int idx;
-    for (int i = 0; i < (int) R_recv.size(); i++)
+    for (size_t i = 0; i < R_recv.size(); i++)
     {
         idx = R_to_orig[i];
         int_recv_buffer[idx] = R_recv[i];
     }
 
-    for (int i = 0; i < (int) L_recv.size(); i++)
+    for (size_t i = 0; i < L_recv.size(); i++)
     {
         idx = L_to_orig[i];
         int_recv_buffer[idx] = L_recv[i];

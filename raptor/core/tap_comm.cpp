@@ -574,7 +574,7 @@ void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
 
     // Distribute send_procs across local procs
     n_sends = 0;
-    for (int i = topology->PPN - local_rank - 1; i < (int) send_procs.size(); i += topology->PPN)
+    for (size_t i = topology->PPN - local_rank - 1; i < send_procs.size(); i += topology->PPN)
     {
         global_par_comm->send_data->procs.push_back(send_procs[i]);
     }
