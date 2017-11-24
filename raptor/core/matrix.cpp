@@ -348,7 +348,8 @@ void CSRMatrix::copy(const COOMatrix* A)
     n_cols = A->n_cols;
     nnz = A->nnz;
 
-    idx1.resize(n_rows + 1, 0);
+    idx1.resize(n_rows + 1);
+    std::fill(idx1.begin(), idx1.end(), 0);
     if (nnz)
     {
         idx2.resize(nnz);
@@ -686,7 +687,8 @@ void CSCMatrix::copy(const COOMatrix* A)
     n_cols = A->n_cols;
     nnz = A->nnz;
 
-    idx1.resize(n_cols + 1);
+    idx1.resize(n_rows + 1);
+    std::fill(idx1.begin(), idx1.end(), 0);
     if (nnz)
     {
         idx2.resize(nnz);
