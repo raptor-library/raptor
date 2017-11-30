@@ -12,6 +12,7 @@ if (WITH_MPI)
         core/par_matrix.hpp
         )
     set(par_core_SOURCES
+        core/comm_data.cpp
         core/tap_comm.cpp
         core/comm_pkg.cpp
         core/par_vector.cpp

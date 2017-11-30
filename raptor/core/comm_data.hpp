@@ -135,6 +135,9 @@ public:
         }
     }
 
+    template<typename T>
+    std::vector<T>& get_buffer();
+
     int num_msgs;
     int size_msgs;
     std::vector<int> procs;

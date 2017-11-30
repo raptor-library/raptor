@@ -31,21 +31,30 @@ TEST(TAPCommTest, TestsInCore)
     double theta = M_PI / 8.0;
     int grid[2] = {25, 25};
     double* stencil = diffusion_stencil_2d(eps, theta);
+    std::vector<double> tap_recv;
+    std::vector<double> par_recv;
 
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
+    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
 
     ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    Vector& x_lcl = x.local;
+
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        x_lcl[i] = A->local_row_map[i];
+        x[i] = A->local_row_map[i];
+    }
+    tap_recv = A->tap_comm->communicate(x, MPI_COMM_WORLD);
+    par_recv = A->comm->communicate(x, MPI_COMM_WORLD);
+    ASSERT_EQ(tap_recv.size(), par_recv.size());
+    for (int i = 0; i < par_recv.size(); i++)
+    {
+        ASSERT_NEAR(par_recv[i], tap_recv[i], zero_tol);
     }
 
-    TAPComm* tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
-    std::vector<double>& tap_recv = tap_comm->communicate(x, MPI_COMM_WORLD);
-    std::vector<double>& par_recv = A->comm->communicate(x, MPI_COMM_WORLD);
+    x.set_rand_values();
+    tap_recv = A->tap_comm->communicate(x, MPI_COMM_WORLD);
+    par_recv = A->comm->communicate(x, MPI_COMM_WORLD);
     ASSERT_EQ(tap_recv.size(), par_recv.size());
-
     for (int i = 0; i < par_recv.size(); i++)
     {
         ASSERT_NEAR(par_recv[i], tap_recv[i], zero_tol);
@@ -53,7 +62,6 @@ TEST(TAPCommTest, TestsInCore)
 
     delete[] stencil;
     delete A;
-    delete tap_comm;
 
 
 } // end of TEST(TAPCommTest, TestsInCore) //

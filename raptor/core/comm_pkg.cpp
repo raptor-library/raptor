@@ -6,15 +6,123 @@
 
 using namespace raptor;
 
+template<>
+std::vector<double>& CommPkg::get_recv_buffer<double>()
+{
+    return get_double_recv_buffer();
+}
+template<>
+std::vector<int>& CommPkg::get_recv_buffer<int>()
+{
+    return get_int_recv_buffer();
+}
+
+template<>
+std::vector<double>& CommPkg::communicate<double>(const double* values,
+        MPI_Comm comm)
+{
+    init_double_comm(values, comm);
+    return complete_double_comm();
+}
+template<>
+std::vector<int>& CommPkg::communicate<int>(const int* values,
+        MPI_Comm comm)
+{
+    init_int_comm(values, comm);
+    return complete_int_comm();
+}
+
+template<>
+void CommPkg::init_comm<double, MPI_DOUBLE>(const double* values, MPI_Comm comm)
+{
+    init_double_comm(values, comm);
+}
+template<>
+void CommPkg::init_comm<int, MPI_INT>(const int* values, MPI_Comm comm)
+{
+    init_int_comm(values, comm);
+}
+
+template<>
+std::vector<double>& CommPkg::complete_comm<double>()
+{
+    return complete_double_comm();
+}
+template<>
+std::vector<int>& CommPkg::complete_comm<int>()
+{
+    return complete_int_comm();
+}
+
+template<>
+void CommPkg::communicate_T<double>(const double* values,
+        std::vector<double>& result, MPI_Comm comm)
+{
+    init_double_comm_T(values, comm);
+    complete_double_comm_T(result);
+}
+template<>
+void CommPkg::communicate_T<int>(const int* values,
+        std::vector<int>& result, MPI_Comm comm)
+{
+    init_int_comm_T(values, comm);
+    complete_int_comm_T(result);
+}
+template<>
+void CommPkg::communicate_T<double>(const double* values,
+        MPI_Comm comm)
+{
+    init_double_comm_T(values, comm);
+    complete_double_comm_T();
+}
+template<>
+void CommPkg::communicate_T<int>(const int* values, MPI_Comm comm)
+{
+    init_int_comm_T(values, comm);
+    complete_int_comm_T();
+}
+
+template<>
+void CommPkg::init_comm_T<double, MPI_DOUBLE>(const double* values, MPI_Comm comm)
+{
+    init_double_comm_T(values, comm);
+}
+template<>
+void CommPkg::init_comm_T<int, MPI_INT>(const int* values, MPI_Comm comm)
+{
+    init_int_comm_T(values, comm);
+}
+
+template<>
+void CommPkg::complete_comm_T<double>(std::vector<double>& result)
+{
+    complete_double_comm_T(result);
+}
+template<>
+void CommPkg::complete_comm_T<int>(std::vector<int>& result)
+{
+    complete_int_comm_T(result);
+}
+template<>
+void CommPkg::complete_comm_T<double>()
+{
+    complete_double_comm_T();
+}
+template<>
+void CommPkg::complete_comm_T<int>()
+{
+    complete_int_comm_T();
+}
+
 std::vector<double>& CommPkg::communicate(ParVector& v, MPI_Comm comm)
 {
-    init_comm(v.local.data(), comm);
-    return complete_comm();
+    init_double_comm(v.local.data(), comm);
+    return complete_double_comm();
 }
 
 void CommPkg::init_comm(ParVector& v, MPI_Comm comm)
 {
-    init_comm(v.local.data(), comm);
+    init_double_comm(v.local.data(), comm);
 }
 
 CSRMatrix* CommPkg::communicate(ParCSRMatrix* A, MPI_Comm comm)
@@ -57,438 +165,6 @@ CSRMatrix* CommPkg::communicate(ParCSRMatrix* A, MPI_Comm comm)
         rowptr[i+1] = ctr;
     }
     return communicate(rowptr, col_indices, values, comm);
-}
-
-std::vector<double>& ParComm::communicate(const std::vector<double>& values, MPI_Comm comm)
-{
-    init_comm(values.data(), comm);
-    return complete_comm();
-}
-std::vector<double>& ParComm::communicate(const data_t* values, MPI_Comm comm)
-{
-    init_comm(values, comm);
-    return complete_comm();
-}
-
-std::vector<int>& ParComm::communicate(const std::vector<int>& values, MPI_Comm comm)
-{
-    init_comm(values.data(), comm);
-    return complete_int_comm();
-}
-std::vector<int>& ParComm::communicate(const int* values, MPI_Comm comm)
-{
-    init_comm(values, comm);
-    return complete_int_comm();
-}
-
-void ParComm::communicate_T(const std::vector<double>& values, MPI_Comm comm)
-{
-    init_comm_T(values.data(), comm);
-    complete_comm_T();
-}
-void ParComm::communicate_T(const data_t* values, MPI_Comm comm)
-{
-    init_comm_T(values, comm);
-    complete_comm_T();
-}
-
-void ParComm::communicate_T(const std::vector<int>& values, MPI_Comm comm)
-{
-    init_comm_T(values.data(), comm);
-    complete_int_comm_T();
-}
-void ParComm::communicate_T(const int* values, MPI_Comm comm)
-{
-    init_comm_T(values, comm);
-    complete_int_comm_T();
-}
-
-void ParComm::init_comm(const std::vector<data_t>& values, MPI_Comm comm)
-{
-    init_comm(values.data(), comm);
-}
-
-void ParComm::init_comm(const std::vector<int>& values, MPI_Comm comm)
-{
-    init_comm(values.data(), comm);
-}
-
-void ParComm::init_comm(const data_t* values, MPI_Comm comm)
-{
-    int start, end;
-    int proc, idx;
-    for (int i = 0; i < send_data->num_msgs; i++)
-    {
-        proc = send_data->procs[i];
-        start = send_data->indptr[i];
-        end = send_data->indptr[i+1];
-        for (int j = start; j < end; j++)
-        {
-            send_data->buffer[j] = values[send_data->indices[j]];
-        }
-        MPI_Isend(&(send_data->buffer[start]), end - start, MPI_DATA_T,
-                proc, key, comm, &(send_data->requests[i]));
-    }
-    for (int i = 0; i < recv_data->num_msgs; i++)
-    {
-        proc = recv_data->procs[i];
-        start = recv_data->indptr[i];
-        end = recv_data->indptr[i+1];
-        MPI_Irecv(&(recv_data->buffer[start]), end - start, MPI_DATA_T,
-                proc, key, comm, &(recv_data->requests[i]));
-    }
-}
-void ParComm::init_comm(const int* values, MPI_Comm comm)
-{
-    int start, end;
-    int proc, idx;
-    for (int i = 0; i < send_data->num_msgs; i++)
-    {
-        proc = send_data->procs[i];
-        start = send_data->indptr[i];
-        end = send_data->indptr[i+1];
-        for (int j = start; j < end; j++)
-        {
-            send_data->int_buffer[j] = values[send_data->indices[j]];
-        }
-        MPI_Isend(&(send_data->int_buffer[start]), end - start, MPI_INT,
-                proc, key, comm, &(send_data->requests[i]));
-    }
-    for (int i = 0; i < recv_data->num_msgs; i++)
-    {
-        proc = recv_data->procs[i];
-        start = recv_data->indptr[i];
-        end = recv_data->indptr[i+1];
-        MPI_Irecv(&(recv_data->int_buffer[start]), end - start, MPI_INT,
-                proc, key, comm, &(recv_data->requests[i]));
-    }
-}
-
-std::vector<double>& ParComm::complete_comm()
-{
-    if (send_data->num_msgs)
-    {
-        MPI_Waitall(send_data->num_msgs, send_data->requests.data(), MPI_STATUS_IGNORE);
-    }
-
-    if (recv_data->num_msgs)
-    {
-        MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUS_IGNORE);
-    }
-
-    return get_recv_buffer();
-}
-std::vector<int>& ParComm::complete_int_comm()
-{
-    if (send_data->num_msgs)
-    {
-        MPI_Waitall(send_data->num_msgs, send_data->requests.data(), MPI_STATUS_IGNORE);
-    }
-
-    if (recv_data->num_msgs)
-    {
-        MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUS_IGNORE);
-    }
-
-    return get_int_recv_buffer();
-}
-
-void ParComm::init_comm_T(const std::vector<data_t>& values, MPI_Comm comm)
-{
-    init_comm_T(values.data(), comm);
-}
-
-void ParComm::init_comm_T(const std::vector<int>& values, MPI_Comm comm)
-{
-    init_comm_T(values.data(), comm);
-}
-
-void ParComm::init_comm_T(const data_t* values, MPI_Comm comm)
-{
-    int start, end;
-    int proc, idx;
-    for (int i = 0; i < recv_data->num_msgs; i++)
-    {
-        proc = recv_data->procs[i];
-        start = recv_data->indptr[i];
-        end = recv_data->indptr[i+1];
-        for (int j = start; j < end; j++)
-        {
-            idx = recv_data->indices[j];
-            recv_data->buffer[j] = values[idx];
-        }
-        MPI_Isend(&(recv_data->buffer[start]), end - start, MPI_DATA_T,
-                proc, key, comm, &(recv_data->requests[i]));
-    }
-    for (int i = 0; i < send_data->num_msgs; i++)
-    {
-        proc = send_data->procs[i];
-        start = send_data->indptr[i];
-        end = send_data->indptr[i+1];
-        MPI_Irecv(&(send_data->buffer[start]), end - start, MPI_DATA_T,
-                proc, key, comm, &(send_data->requests[i]));
-    }
-}
-void ParComm::init_comm_T(const int* values, MPI_Comm comm)
-{
-    int start, end;
-    int proc, idx;
-    for (int i = 0; i < recv_data->num_msgs; i++)
-    {
-        proc = recv_data->procs[i];
-        start = recv_data->indptr[i];
-        end = recv_data->indptr[i+1];
-        for (int j = start; j < end; j++)
-        {
-            idx = recv_data->indices[j];
-            recv_data->int_buffer[j] = values[idx];
-        }
-        MPI_Isend(&(recv_data->int_buffer[start]), end - start, MPI_INT,
-                proc, key, comm, &(recv_data->requests[i]));
-    }
-    for (int i = 0; i < send_data->num_msgs; i++)
-    {
-        proc = send_data->procs[i];
-        start = send_data->indptr[i];
-        end = send_data->indptr[i+1];
-        MPI_Irecv(&(send_data->int_buffer[start]), end - start, MPI_INT,
-                proc, key, comm, &(send_data->requests[i]));
-    }
-}
-
-void ParComm::complete_comm_T()
-{
-    if (send_data->num_msgs)
-    {
-        MPI_Waitall(send_data->num_msgs, send_data->requests.data(), MPI_STATUSES_IGNORE);
-    }
-
-    if (recv_data->num_msgs)
-    {
-        MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUSES_IGNORE);
-    }
-}
-void ParComm::complete_int_comm_T()
-{
-    if (send_data->num_msgs)
-    {
-        MPI_Waitall(send_data->num_msgs, send_data->requests.data(), MPI_STATUSES_IGNORE);
-    }
-
-    if (recv_data->num_msgs)
-    {
-        MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUSES_IGNORE);
-    }
-}
-
-
-
-std::vector<double>& TAPComm::communicate(const std::vector<double>& values, MPI_Comm comm)
-{
-    init_comm(values.data(), comm);
-    return complete_comm();
-}
-std::vector<double>& TAPComm::communicate(const data_t* values, MPI_Comm comm)
-{
-    init_comm(values, comm);
-    return complete_comm();
-}
-
-std::vector<int>& TAPComm::communicate(const std::vector<int>& values, MPI_Comm comm)
-{
-    init_comm(values.data(), comm);
-    return complete_int_comm();
-}
-std::vector<int>& TAPComm::communicate(const int* values, MPI_Comm comm)
-{
-    init_comm(values, comm);
-    return complete_int_comm();
-}
-
-void TAPComm::communicate_T(const std::vector<double>& values, MPI_Comm comm)
-{
-    init_comm_T(values.data(), comm);
-    complete_comm_T();
-}
-void TAPComm::communicate_T(const data_t* values, MPI_Comm comm)
-{
-    init_comm_T(values, comm);
-    complete_comm_T();
-}
-
-void TAPComm::communicate_T(const std::vector<int>& values, MPI_Comm comm)
-{
-    init_comm_T(values.data(), comm);
-    complete_int_comm_T();
-}
-void TAPComm::communicate_T(const int* values, MPI_Comm comm)
-{
-    init_comm_T(values, comm);
-    complete_int_comm_T();
-}
-
-void TAPComm::init_comm(const std::vector<data_t>& values, MPI_Comm comm)
-{
-    init_comm(values.data(), comm);
-}
-
-void TAPComm::init_comm(const std::vector<int>& values, MPI_Comm comm)
-{
-    init_comm(values.data(), comm);
-}
-
-void TAPComm::init_comm(const data_t* values, MPI_Comm comm)
-{
-    // Messages with origin and final destination on node
-    local_L_par_comm->init_comm(values, topology->local_comm);
-    local_L_par_comm->complete_comm();
-
-    // Initial redistribution among node
-    local_S_par_comm->init_comm(values, topology->local_comm);
-    local_S_par_comm->complete_comm();
-    data_t* S_vals = local_S_par_comm->recv_data->buffer.data();
-
-    // Begin inter-node communication 
-    global_par_comm->init_comm(S_vals, comm);
-}
-
-void TAPComm::init_comm(const int* values, MPI_Comm comm)
-{
-    // Messages with origin and final destination on node
-    local_L_par_comm->init_comm(values, topology->local_comm);
-    local_L_par_comm->complete_int_comm();
-
-    // Initial redistribution among node
-    local_S_par_comm->init_comm(values, topology->local_comm);
-    local_S_par_comm->complete_int_comm();
-    int* S_vals = local_S_par_comm->recv_data->int_buffer.data();
-
-    // Begin inter-node communication 
-    global_par_comm->init_comm(S_vals, comm);
-}
-
-std::vector<double>& TAPComm::complete_comm()
-{
-    // Complete inter-node communication
-    global_par_comm->complete_comm();
-    data_t* G_vals = global_par_comm->recv_data->buffer.data();
-
-    // Redistributing recvd inter-node values
-    local_R_par_comm->init_comm(G_vals, topology->local_comm);
-    local_R_par_comm->complete_comm();
-    std::vector<double>& R_recv = local_R_par_comm->recv_data->buffer;
-
-    std::vector<double>& L_recv = local_L_par_comm->recv_data->buffer;
-
-    // Add values from L_recv and R_recv to appropriate positions in 
-    // Vector recv
-    int idx;
-    for (int i = 0; i < R_recv.size(); i++)
-    {
-        idx = R_to_orig[i];
-        recv_buffer[idx] = R_recv[i];
-    }
-
-    for (int i = 0; i < L_recv.size(); i++)
-    {
-        idx = L_to_orig[i];
-        recv_buffer[idx] = L_recv[i];
-    }
-
-    return get_recv_buffer();
-}
-
-std::vector<int>& TAPComm::complete_int_comm()
-{
-    // Complete inter-node communication
-    global_par_comm->complete_int_comm();
-    int* G_vals = global_par_comm->recv_data->int_buffer.data();
-
-    // Redistributing recvd inter-node values
-    local_R_par_comm->init_comm(G_vals, topology->local_comm);
-    local_R_par_comm->complete_int_comm();
-    std::vector<int>& R_recv = local_R_par_comm->recv_data->int_buffer;
-
-    std::vector<int>& L_recv = local_L_par_comm->recv_data->int_buffer;
-
-    // Add values from L_recv and R_recv to appropriate positions in 
-    // Vector recv
-    int idx;
-    for (int i = 0; i < R_recv.size(); i++)
-    {
-        idx = R_to_orig[i];
-        int_recv_buffer[idx] = R_recv[i];
-    }
-
-    for (int i = 0; i < L_recv.size(); i++)
-    {
-        idx = L_to_orig[i];
-        int_recv_buffer[idx] = L_recv[i];
-    }
-
-    return get_int_recv_buffer();
-}
-
-void TAPComm::init_comm_T(const std::vector<data_t>& values, MPI_Comm comm)
-{
-    init_comm_T(values.data(), comm);
-}
-
-void TAPComm::init_comm_T(const std::vector<int>& values, MPI_Comm comm)
-{
-    init_comm_T(values.data(), comm);
-}
-
-void TAPComm::init_comm_T(const data_t* values, MPI_Comm comm)
-{
-    // Messages with origin and final destination on node
-    local_L_par_comm->init_comm_T(values, topology->local_comm);
-    local_L_par_comm->complete_comm_T();
-
-    // Initial redistribution among node
-    local_R_par_comm->init_comm_T(values, topology->local_comm);
-    local_R_par_comm->complete_comm_T();
-    data_t* R_vals = local_R_par_comm->send_data->buffer.data();
-
-    // Begin inter-node communication 
-    global_par_comm->init_comm_T(R_vals, comm);
-}
-
-void TAPComm::init_comm_T(const int* values, MPI_Comm comm)
-{
-    // Messages with origin and final destination on node
-    local_L_par_comm->init_comm_T(values, topology->local_comm);
-    local_L_par_comm->complete_comm_T();
-
-    // Initial redistribution among node
-    local_R_par_comm->init_comm_T(values, topology->local_comm);
-    local_R_par_comm->complete_comm_T();
-    int* R_vals = local_R_par_comm->send_data->int_buffer.data();
-
-    // Begin inter-node communication 
-    global_par_comm->init_comm_T(R_vals, comm);
-}
-
-void TAPComm::complete_comm_T()
-{
-    // Complete inter-node communication
-    global_par_comm->complete_comm_T();
-    data_t* G_vals = global_par_comm->send_data->buffer.data();
-
-    // Redistributing recvd inter-node values
-    local_S_par_comm->init_comm_T(G_vals, topology->local_comm);
-    local_S_par_comm->complete_comm_T();
-}
-
-void TAPComm::complete_int_comm_T()
-{
-    // Complete inter-node communication
-    global_par_comm->complete_comm_T();
-    int* G_vals = global_par_comm->send_data->int_buffer.data();
-
-    // Redistributing recvd inter-node values
-    local_S_par_comm->init_comm_T(G_vals, topology->local_comm);
-    local_S_par_comm->complete_comm_T();
 }
 
 CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr, 

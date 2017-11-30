@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
 #ifdef USING_MFEM
     else if (system == 2)
     {
-        char* mesh_file = argv[2];
+        const char* mesh_file = argv[2];
         int num_elements = 2;
         int order = 3;
         if (argc > 3)
@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
 #endif
     else if (system == 3)
     {
-        char* file = "../../examples/LFAT5.mtx";
+        const char* file = "../../examples/LFAT5.mtx";
         int sym = 1;
         if (argc > 2)
         {
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
         // Setup Raptor Hierarchy
         MPI_Barrier(MPI_COMM_WORLD);    
         t0 = MPI_Wtime();
-        ml = new ParMultilevel(A, strong_threshold);
+        ml = new ParMultilevel(A, strong_threshold, CLJP, Classical, SOR);
         raptor_setup = MPI_Wtime() - t0;
         clear_cache(cache_array);
 
