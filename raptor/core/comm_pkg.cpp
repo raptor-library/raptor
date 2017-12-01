@@ -4,115 +4,119 @@
 #include "core/comm_pkg.hpp"
 #include "core/par_matrix.hpp"
 
+namespace raptor
+{
+    template<>
+    std::vector<double>& CommPkg::get_recv_buffer<double>()
+    {
+        return get_double_recv_buffer();
+    }
+    template<>
+    std::vector<int>& CommPkg::get_recv_buffer<int>()
+    {
+        return get_int_recv_buffer();
+    }
+
+    template<>
+    std::vector<double>& CommPkg::communicate<double>(const double* values,
+            MPI_Comm comm)
+    {
+        init_double_comm(values, comm);
+        return complete_double_comm();
+    }
+    template<>
+    std::vector<int>& CommPkg::communicate<int>(const int* values,
+            MPI_Comm comm)
+    {
+        init_int_comm(values, comm);
+        return complete_int_comm();
+    }
+
+    template<>
+    void CommPkg::init_comm<double, MPI_DOUBLE>(const double* values, MPI_Comm comm)
+    {
+        init_double_comm(values, comm);
+    }
+    template<>
+    void CommPkg::init_comm<int, MPI_INT>(const int* values, MPI_Comm comm)
+    {
+        init_int_comm(values, comm);
+    }
+
+    template<>
+    std::vector<double>& CommPkg::complete_comm<double>()
+    {
+        return complete_double_comm();
+    }
+    template<>
+    std::vector<int>& CommPkg::complete_comm<int>()
+    {
+        return complete_int_comm();
+    }
+
+    template<>
+    void CommPkg::communicate_T<double>(const double* values,
+            std::vector<double>& result, MPI_Comm comm)
+    {
+        init_double_comm_T(values, comm);
+        complete_double_comm_T(result);
+    }
+    template<>
+    void CommPkg::communicate_T<int>(const int* values,
+            std::vector<int>& result, MPI_Comm comm)
+    {
+        init_int_comm_T(values, comm);
+        complete_int_comm_T(result);
+    }
+    template<>
+    void CommPkg::communicate_T<double>(const double* values,
+            MPI_Comm comm)
+    {
+        init_double_comm_T(values, comm);
+        complete_double_comm_T();
+    }
+    template<>
+    void CommPkg::communicate_T<int>(const int* values, MPI_Comm comm)
+    {
+        init_int_comm_T(values, comm);
+        complete_int_comm_T();
+    }
+
+    template<>
+    void CommPkg::init_comm_T<double, MPI_DOUBLE>(const double* values, MPI_Comm comm)
+    {
+        init_double_comm_T(values, comm);
+    }
+    template<>
+    void CommPkg::init_comm_T<int, MPI_INT>(const int* values, MPI_Comm comm)
+    {
+        init_int_comm_T(values, comm);
+    }
+
+    template<>
+    void CommPkg::complete_comm_T<double>(std::vector<double>& result)
+    {
+        complete_double_comm_T(result);
+    }
+    template<>
+    void CommPkg::complete_comm_T<int>(std::vector<int>& result)
+    {
+        complete_int_comm_T(result);
+    }
+    template<>
+    void CommPkg::complete_comm_T<double>()
+    {
+        complete_double_comm_T();
+    }
+    template<>
+    void CommPkg::complete_comm_T<int>()
+    {
+        complete_int_comm_T();
+    }
+}
+
+
 using namespace raptor;
-
-template<>
-std::vector<double>& CommPkg::get_recv_buffer<double>()
-{
-    return get_double_recv_buffer();
-}
-template<>
-std::vector<int>& CommPkg::get_recv_buffer<int>()
-{
-    return get_int_recv_buffer();
-}
-
-template<>
-std::vector<double>& CommPkg::communicate<double>(const double* values,
-        MPI_Comm comm)
-{
-    init_double_comm(values, comm);
-    return complete_double_comm();
-}
-template<>
-std::vector<int>& CommPkg::communicate<int>(const int* values,
-        MPI_Comm comm)
-{
-    init_int_comm(values, comm);
-    return complete_int_comm();
-}
-
-template<>
-void CommPkg::init_comm<double, MPI_DOUBLE>(const double* values, MPI_Comm comm)
-{
-    init_double_comm(values, comm);
-}
-template<>
-void CommPkg::init_comm<int, MPI_INT>(const int* values, MPI_Comm comm)
-{
-    init_int_comm(values, comm);
-}
-
-template<>
-std::vector<double>& CommPkg::complete_comm<double>()
-{
-    return complete_double_comm();
-}
-template<>
-std::vector<int>& CommPkg::complete_comm<int>()
-{
-    return complete_int_comm();
-}
-
-template<>
-void CommPkg::communicate_T<double>(const double* values,
-        std::vector<double>& result, MPI_Comm comm)
-{
-    init_double_comm_T(values, comm);
-    complete_double_comm_T(result);
-}
-template<>
-void CommPkg::communicate_T<int>(const int* values,
-        std::vector<int>& result, MPI_Comm comm)
-{
-    init_int_comm_T(values, comm);
-    complete_int_comm_T(result);
-}
-template<>
-void CommPkg::communicate_T<double>(const double* values,
-        MPI_Comm comm)
-{
-    init_double_comm_T(values, comm);
-    complete_double_comm_T();
-}
-template<>
-void CommPkg::communicate_T<int>(const int* values, MPI_Comm comm)
-{
-    init_int_comm_T(values, comm);
-    complete_int_comm_T();
-}
-
-template<>
-void CommPkg::init_comm_T<double, MPI_DOUBLE>(const double* values, MPI_Comm comm)
-{
-    init_double_comm_T(values, comm);
-}
-template<>
-void CommPkg::init_comm_T<int, MPI_INT>(const int* values, MPI_Comm comm)
-{
-    init_int_comm_T(values, comm);
-}
-
-template<>
-void CommPkg::complete_comm_T<double>(std::vector<double>& result)
-{
-    complete_double_comm_T(result);
-}
-template<>
-void CommPkg::complete_comm_T<int>(std::vector<int>& result)
-{
-    complete_int_comm_T(result);
-}
-template<>
-void CommPkg::complete_comm_T<double>()
-{
-    complete_double_comm_T();
-}
-template<>
-void CommPkg::complete_comm_T<int>()
-{
-    complete_int_comm_T();
-}
 
 std::vector<double>& CommPkg::communicate(ParVector& v, MPI_Comm comm)
 {
