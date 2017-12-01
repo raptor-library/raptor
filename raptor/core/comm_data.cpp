@@ -3,8 +3,8 @@
 
 #include "core/comm_data.hpp"
 
-using namespace raptor;
-
+namespace raptor 
+{
 
 template<>
 std::vector<double>& CommData::get_buffer<double>()
@@ -16,5 +16,7 @@ template<>
 std::vector<int>& CommData::get_buffer<int>()
 {
     return int_buffer;
+}
+
 }
 
