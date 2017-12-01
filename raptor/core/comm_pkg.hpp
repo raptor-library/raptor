@@ -136,77 +136,107 @@ namespace raptor
                 const std::vector<int>& send_compares, 
                 const std::vector<int>& recv_compares, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {})
+                std::function<bool(int)> compare_func = {})
         {  
-            return conditional_comm(values.data(), send_compares.data(), recv_compares.data(), comm, f);
+            return conditional_comm(values.data(), send_compares.data(), recv_compares.data(), 
+                    comm, compare_func);
         }
         template<typename T> std::vector<T>& conditional_comm(const std::vector<T>& values, 
                 const int* send_compares, 
                 const int* recv_compares, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {})
+                std::function<bool(int)> compare_func = {})
         {  
-            return conditional_comm(values.data(), send_compares, recv_compares, comm, f);
+            return conditional_comm(values.data(), send_compares, recv_compares, 
+                    comm, compare_func);
         }
         template<typename T> std::vector<T>& conditional_comm(const T* values, 
                 const std::vector<int>& send_compares, 
                 const std::vector<int>& recv_compares, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {})
+                std::function<bool(int)> compare_func = {})
         {  
-            return conditional_comm(values, send_compares.data(), recv_compares.data(), comm, f);
+            return conditional_comm(values, send_compares.data(), recv_compares.data(), 
+                    comm, compare_func);
         }
         template<typename T> std::vector<T>& conditional_comm(const T* values, 
                     const int* send_compares, 
                     const int* recv_compares,
                     MPI_Comm comm = MPI_COMM_WORLD,
-                    std::function<bool(int)> f = {});
+                    std::function<bool(int)> compare_func = {});
 
+        template<typename T, typename U> void conditional_comm_T(const std::vector<T>& values,
+                std::vector<U>& result, 
+                const std::vector<int>& send_compares, 
+                const std::vector<int>& recv_compares, 
+                MPI_Comm comm = MPI_COMM_WORLD,
+                std::function<bool(int)> compare_func = {},
+                std::function<U(U, T)> result_func = {})
+        {  
+            return conditional_comm_T(values.data(), result, send_compares.data(), 
+                    recv_compares.data(), comm, compare_func, result_func);
+        }
         template<typename T, typename U> void conditional_comm_T(const std::vector<T>& values,
                 std::vector<U>& result, 
                 const int* send_compares, 
                 const int* recv_compares, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {})
+                std::function<bool(int)> compare_func = {},
+                std::function<U(U, T)> result_func = {})
         {  
-            return conditional_comm_T(values.data(), result, send_compares, recv_compares, comm, f);
+            return conditional_comm_T(values.data(), result, send_compares, recv_compares, comm, 
+                    compare_func, result_func);
+        }
+        template<typename T, typename U> void conditional_comm_T(const T* values,
+                std::vector<U>& result, 
+                const std::vector<int>& send_compares, 
+                const std::vector<int>& recv_compares, 
+                MPI_Comm comm = MPI_COMM_WORLD,
+                std::function<bool(int)> compare_func = {},
+                std::function<U(U, T)> result_func = {})
+        {  
+            return conditional_comm_T(values, result, send_compares.data(), 
+                    recv_compares.data(), comm, compare_func, result_func);
         }
         template<typename T, typename U> void conditional_comm_T(const T* values,
                     std::vector<U>& result, 
                     const int* send_compares, 
                     const int* recv_compares,
                     MPI_Comm comm = MPI_COMM_WORLD,
-                    std::function<bool(int)> f = {});
-
+                    std::function<bool(int)> compare_func = {},
+                    std::function<U(U, T)> result_func = {});
 
         virtual std::vector<double>& conditional_double_comm(const double* values,
                 const int* send_compares,
                 const int* recv_compares, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {}) = 0;
+                std::function<bool(int)> compare_func = {}) = 0;
         virtual std::vector<int>& conditional_int_comm(const int* values, 
                 const int* send_compares,
                 const int* recv_compares, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {}) = 0;
+                std::function<bool(int)> compare_func = {}) = 0;
         virtual void conditional_double_comm_T(const double* values, 
                 std::vector<double>& result, 
                 const int* send_compares,
                 const int* recv_compares, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {}) = 0;
+                std::function<bool(int)> compare_func = {},
+                std::function<double(double, double)> result_func = {}) = 0;
         virtual void conditional_int_comm_T(const int* values, 
                 std::vector<int>& result,
                 const int* send_compares,
                 const int* recv_compares, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {}) = 0;
+                std::function<bool(int)> compare_func = {},
+                std::function<int(int, int)> result_func = {}) = 0;
         virtual void conditional_int_comm_T(const int* values, 
                 std::vector<double>& result,
                 const int* send_compares,
                 const int* recv_compares, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {}) = 0;
+                std::function<bool(int)> compare_func = {},
+                std::function<double(double, int)> result_func = {}) = 0;
 
         // Helper methods
         template <typename T> std::vector<T>& get_recv_buffer();
@@ -837,18 +867,20 @@ namespace raptor
                 const int* send_compares,
                 const int* recv_compares, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {})
+                std::function<bool(int)> compare_func = {})
         {
-            return conditional_communication<double, MPI_DOUBLE>(values, send_compares, recv_compares, comm, f);
+            return conditional_communication<double, MPI_DOUBLE>(values, send_compares, 
+                    recv_compares, comm, compare_func);
         
         }
         std::vector<int>& conditional_int_comm(const int* values,
                 const int* send_compares,
                 const int* recv_compares, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {})
+                std::function<bool(int)> compare_func = {})
         {
-            return conditional_communication<int, MPI_INT>(values, send_compares, recv_compares, comm, f);
+            return conditional_communication<int, MPI_INT>(values, send_compares, 
+                    recv_compares, comm, compare_func);
         }
 
         void conditional_double_comm_T(const double* values, 
@@ -856,9 +888,11 @@ namespace raptor
                 const int* send_compares,
                 const int* recv_compares, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {})
+                std::function<bool(int)> compare_func = {},
+                std::function<double(double, double)> result_func = {})
         {
-            conditional_communication_T<double, double, MPI_DOUBLE>(values, result, send_compares, recv_compares, comm, f);
+            conditional_communication_T<double, double, MPI_DOUBLE>(values, result, 
+                    send_compares, recv_compares, comm, compare_func, result_func);
         }
 
         void conditional_int_comm_T(const int* values, 
@@ -866,9 +900,11 @@ namespace raptor
                 const int* send_compares,
                 const int* recv_compares, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {})
+                std::function<bool(int)> compare_func = {},
+                std::function<int(int, int)> result_func = {})
         {
-            conditional_communication_T<int, int, MPI_INT>(values, result, send_compares, recv_compares, comm, f);
+            conditional_communication_T<int, int, MPI_INT>(values, result, send_compares, 
+                    recv_compares, comm, compare_func, result_func);
         }
 
         void conditional_int_comm_T(const int* values, 
@@ -876,9 +912,11 @@ namespace raptor
                 const int* send_compares,
                 const int* recv_compares, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {})
+                std::function<bool(int)> compare_func = {},
+                std::function<double(double, int)> result_func = {})
         {
-            conditional_communication_T<int, double, MPI_INT>(values, result, send_compares, recv_compares, comm, f);
+            conditional_communication_T<int, double, MPI_INT>(values, result, 
+                    send_compares, recv_compares, comm, compare_func, result_func);
         }
 
         template<typename T, MPI_Datatype MPI_T>
@@ -886,9 +924,9 @@ namespace raptor
                 const int* send_compares,
                 const int* recv_compares,
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {})
+                std::function<bool(int)> compare_func = {})
         {
-            if (!f) return communicate(values, comm);
+            if (!compare_func) return communicate(values, comm);
 
             int proc, start, end;
             int idx, size;
@@ -908,7 +946,8 @@ namespace raptor
                 end = send_data->indptr[i+1];
                 for (int j = start; j < end; j++)
                 {
-                    if (f(send_compares[idx]))
+                    idx = send_data->indices[j];
+                    if (compare_func(send_compares[idx]))
                     {
                         sendbuf[ctr++] = values[idx];
                     }
@@ -934,7 +973,7 @@ namespace raptor
                 for (int j = start; j < end; j++)
                 {
                     idx = recv_data->indices[j];
-                    if (f(recv_compares[idx]))
+                    if (compare_func(recv_compares[idx]))
                     {
                         ctr++;
                     }
@@ -961,7 +1000,7 @@ namespace raptor
             for (int i = recv_data->size_msgs - 1; i >= 0; i--)
             {
                 idx = recv_data->indices[i];
-                if (f(recv_compares[idx]))
+                if (compare_func(recv_compares[idx]))
                 {
                     recvbuf[idx] = recvbuf[ctr--];
                 }
@@ -979,9 +1018,10 @@ namespace raptor
                 const int* send_compares,
                 const int* recv_compares,
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {})
+                std::function<bool(int)> compare_func = {},
+                std::function<U(U, T)> result_func = {})
         {
-            if (!f)
+            if (!compare_func)
             {
                 communicate_T(values, result, comm);
                 return;
@@ -1006,7 +1046,7 @@ namespace raptor
                 for (int j = start; j < end; j++)
                 {
                     idx = recv_data->indices[j];
-                    if (f(recv_compares[idx]))
+                    if (compare_func(recv_compares[idx]))
                     {
                         recvbuf[ctr++] = values[idx];
                     }
@@ -1031,7 +1071,7 @@ namespace raptor
                 for (int j = start; j < end; j++)
                 {
                     idx = send_data->indices[j];
-                    if (f(send_compares[idx]))
+                    if (compare_func(send_compares[idx]))
                     {
                         ctr++;
                     }
@@ -1054,13 +1094,16 @@ namespace raptor
                 MPI_Waitall(n_recvs, send_data->requests.data(), MPI_STATUSES_IGNORE);
             }
 
-            ctr = 0;
-            for (int i = 0; i < send_data->size_msgs; i++)
+            if (result_func)
             {
-                idx = send_data->indices[i];
-                if (f(send_compares[idx]))
+                ctr = 0;
+                for (int i = 0; i < send_data->size_msgs; i++)
                 {
-                    result[idx] += sendbuf[ctr++];
+                    idx = send_data->indices[i];
+                    if (compare_func(send_compares[idx]))
+                    {
+                        result[idx] = result_func(result[idx], sendbuf[ctr++]);
+                    }
                 }
             }
         }
@@ -1889,18 +1932,20 @@ namespace raptor
                 const int* send_compares,
                 const int* recv_compares, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {})
+                std::function<bool(int)> compare_func = {})
         {
-            return conditional_communication<double, MPI_DOUBLE>(values, send_compares, recv_compares, comm, f);
+            return conditional_communication<double, MPI_DOUBLE>(values, send_compares, 
+                    recv_compares, comm, compare_func);
         
         }
         std::vector<int>& conditional_int_comm(const int* values,
                 const int* send_compares,
                 const int* recv_compares, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {})
+                std::function<bool(int)> compare_func = {})
         {
-            return conditional_communication<int, MPI_INT>(values, send_compares, recv_compares, comm, f);
+            return conditional_communication<int, MPI_INT>(values, send_compares, 
+                    recv_compares, comm, compare_func);
         }
 
         void conditional_double_comm_T(const double* values, 
@@ -1908,29 +1953,33 @@ namespace raptor
                 const int* send_compares,
                 const int* recv_compares, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {})
+                std::function<bool(int)> compare_func = {},
+                std::function<double(double, double)> result_func = {})
         {
-            conditional_communication_T<double, double, MPI_DOUBLE>(values, result, send_compares, recv_compares, comm, f);
+            conditional_communication_T<double, double, MPI_DOUBLE>(values, result, 
+                    send_compares, recv_compares, comm, compare_func, result_func);
         }
-
         void conditional_int_comm_T(const int* values, 
                 std::vector<int>& result,
                 const int* send_compares,
                 const int* recv_compares, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {})
+                std::function<bool(int)> compare_func = {},
+                std::function<int(int, int)> result_func = {})                
         {
-            conditional_communication_T<int, int, MPI_INT>(values, result, send_compares, recv_compares, comm, f);
+            conditional_communication_T<int, int, MPI_INT>(values, result, 
+                    send_compares, recv_compares, comm, compare_func, result_func);
         }
-
         void conditional_int_comm_T(const int* values, 
                 std::vector<double>& result,
                 const int* send_compares,
                 const int* recv_compares, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {})
+                std::function<bool(int)> compare_func = {},
+                std::function<double(double, int)> result_func = {})                
         {
-            conditional_communication_T<int, double, MPI_INT>(values, result, send_compares, recv_compares, comm, f);
+            conditional_communication_T<int, double, MPI_INT>(values, result, 
+                    send_compares, recv_compares, comm, compare_func, result_func);
         }
 
         template<typename T, MPI_Datatype MPI_T>
@@ -1938,9 +1987,91 @@ namespace raptor
                 const int* send_compares,
                 const int* recv_compares,
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {})
+                std::function<bool(int)> compare_func = {})
         {
-  
+            int start, end;
+            int idx, proc, size;
+            int n_sends, n_recvs;
+            int ctr;
+            bool send_msg;
+
+            std::vector<int> global_send_compares;
+            std::vector<int> global_recv_compares;
+            std::vector<T> L_recvbuf;
+            std::vector<T> S_recvbuf;
+            std::vector<T> R_recvbuf;
+            std::vector<T> G_recvbuf;
+
+            std::vector<int> R_recv_compares;
+            if (local_R_par_comm->recv_data->size_msgs)
+            {
+                R_recv_compares.resize(local_R_par_comm->recv_data->size_msgs);
+                for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
+                {
+                    idx = R_to_orig[i];
+                    R_recv_compares[i] = recv_compares[idx];
+                }
+            }
+            
+            // Local communication... send states and off proc states
+            local_S_par_comm->communicate(send_compares, topology->local_comm);
+            std::copy(local_S_par_comm->recv_data->int_buffer.begin(),
+                    local_S_par_comm->recv_data->int_buffer.end(),
+                    std::back_inserter(global_send_compares));
+            local_R_par_comm->communicate_T(R_recv_compares, topology->local_comm);
+            if (global_par_comm->recv_data->size_msgs)
+            {
+                global_recv_compares.resize(global_par_comm->recv_data->size_msgs);
+            }
+            for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
+            {
+                idx = local_R_par_comm->send_data->indices[i];
+                global_recv_compares[idx] = local_R_par_comm->send_data->int_buffer[i];
+            }
+
+            // Local communication... can send / recv everything
+            S_recvbuf = local_S_par_comm->communicate(values, topology->local_comm);
+
+            // Global communication... only send if compare yields true
+            G_recvbuf = global_par_comm->conditional_comm(S_recvbuf,
+                    global_send_compares,  
+                    global_recv_compares, 
+                    comm, compare_func);
+            //G_recvbuf = global_par_comm->communicate(S_recvbuf, comm);
+
+            // local communication ... send as normal
+            R_recvbuf = local_R_par_comm->communicate(G_recvbuf, topology->local_comm);
+            L_recvbuf = local_L_par_comm->communicate(values, topology->local_comm);
+
+            // Add values to recv_buffer
+            std::vector<T>& recvbuf = get_recv_buffer<T>();
+
+            for (int i = 0; i < L_recvbuf.size(); i++)
+            {
+                idx = L_to_orig[i];
+                if (compare_func(recv_compares[idx]))
+                {
+                    recvbuf[idx] = L_recvbuf[i];
+                }
+                else
+                {
+                    recvbuf[idx] = 0.0;
+                }
+            }
+            for (int i = 0; i < R_recvbuf.size(); i++)
+            {
+                idx = R_to_orig[i];
+                if (compare_func(recv_compares[idx]))
+                {
+                    recvbuf[idx] = R_recvbuf[i];
+                }
+                else
+                {
+                    recvbuf[idx] = 0.0;
+                }
+            }
+
+            return recvbuf; 
         }
 
         template<typename T, typename U, MPI_Datatype MPI_T>
@@ -1949,11 +2080,103 @@ namespace raptor
                 const int* send_compares,
                 const int* recv_compares,
                 MPI_Comm comm = MPI_COMM_WORLD,
-                std::function<bool(int)> f = {})
+                std::function<bool(int)> compare_func = {},
+                std::function<U(U, T)> result_func = {})
         {
- 
-        }
+            int idx;
+            std::vector<T> L_values;
+            std::vector<T> R_values;
 
+            std::vector<T> L_sendbuf;
+            std::vector<T> R_sendbuf;
+            std::vector<T> G_sendbuf;
+            std::vector<T> S_sendbuf;
+
+            std::vector<T> G_recvbuf;
+            std::vector<T> S_recvbuf;
+
+            std::vector<int> R_recv_compares;
+            std::vector<int> global_send_compares;
+            std::vector<int> global_recv_compares;
+
+            if (local_L_par_comm->recv_data->size_msgs)
+            {
+                L_values.resize(local_L_par_comm->recv_data->size_msgs);
+                for (int i = 0; i < local_L_par_comm->recv_data->size_msgs; i++)
+                {
+                    idx = L_to_orig[i];
+                    L_values[i] = values[idx];
+                }
+            }
+            if (local_R_par_comm->recv_data->size_msgs)
+            {
+                R_values.resize(local_R_par_comm->recv_data->size_msgs);
+                R_recv_compares.resize(local_R_par_comm->recv_data->size_msgs);
+                for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
+                {
+                    idx = R_to_orig[i];
+                    R_values[i] = values[idx];
+                    R_recv_compares[i] = recv_compares[idx];
+                }
+            }
+
+            // Local communication... send states and off proc states
+            local_S_par_comm->communicate(send_compares, topology->local_comm);
+            std::copy(local_S_par_comm->recv_data->int_buffer.begin(),
+                    local_S_par_comm->recv_data->int_buffer.end(),
+                    std::back_inserter(global_send_compares));
+            local_R_par_comm->communicate_T(R_recv_compares, topology->local_comm);
+            if (global_par_comm->recv_data->size_msgs)
+            {
+                global_recv_compares.resize(global_par_comm->recv_data->size_msgs);
+            }
+            for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
+            {
+                idx = local_R_par_comm->send_data->indices[i];
+                global_recv_compares[idx] = local_R_par_comm->send_data->int_buffer[i];
+            }
+
+            // Initial redistribution among node
+            local_R_par_comm->communicate_T(R_values, topology->local_comm);
+            R_sendbuf = local_R_par_comm->send_data->get_buffer<T>();
+
+            // Begin inter-node communication 
+            G_recvbuf = global_par_comm->recv_data->get_buffer<T>();
+            std::fill(G_recvbuf.begin(), G_recvbuf.end(), 0);
+            for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
+            {
+                idx = local_R_par_comm->send_data->indices[i];
+                G_recvbuf[idx] = result_func(G_recvbuf[idx], R_sendbuf[i]);
+            }
+            
+            // Global communication... only send if compare yields true
+            S_recvbuf = local_S_par_comm->recv_data->get_buffer<T>();
+            std::fill(S_recvbuf.begin(), S_recvbuf.end(), 0);
+            global_par_comm->conditional_comm_T<T, T>(G_recvbuf, 
+                    S_recvbuf,
+                    global_send_compares,  
+                    global_recv_compares, 
+                    comm, 
+                    compare_func, 
+                    result_func);
+
+            local_S_par_comm->communicate_T(S_recvbuf, topology->local_comm);
+            S_sendbuf = local_S_par_comm->send_data->get_buffer<T>();
+
+            local_L_par_comm->communicate_T(L_values, topology->local_comm);
+            L_sendbuf = local_L_par_comm->send_data->get_buffer<T>();
+
+            for (int i = 0; i < local_S_par_comm->send_data->size_msgs; i++)
+            {
+                idx = local_S_par_comm->send_data->indices[i];
+                result[idx] = result_func(result[idx], S_sendbuf[i]);
+            }
+            for (int i = 0; i < local_L_par_comm->send_data->size_msgs; i++)
+            {
+                idx = local_L_par_comm->send_data->indices[i];
+                result[idx] = result_func(result[idx], L_sendbuf[i]);
+            }
+        }
 
 
         // Helper Methods

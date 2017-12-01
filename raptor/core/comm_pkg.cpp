@@ -145,20 +145,20 @@ std::vector<double>& CommPkg::conditional_comm<double>(const double* values,
             const int* send_compares, 
             const int* recv_compares,
             MPI_Comm comm,
-            std::function<bool(int)> f)
+            std::function<bool(int)> compare_func)
 {
     return conditional_double_comm(values, send_compares, recv_compares,
-            comm, f);
+            comm, compare_func);
 }
 template<> 
 std::vector<int>& CommPkg::conditional_comm<int>(const int* values, 
             const int* send_compares, 
             const int* recv_compares,
             MPI_Comm comm,
-            std::function<bool(int)> f)
+            std::function<bool(int)> compare_func)
 {
     return conditional_int_comm(values, send_compares, recv_compares,
-            comm, f);
+            comm, compare_func);
 }
 template<> 
 void CommPkg::conditional_comm_T<double, double>(const double* values, 
@@ -166,10 +166,11 @@ void CommPkg::conditional_comm_T<double, double>(const double* values,
             const int* send_compares, 
             const int* recv_compares,
             MPI_Comm comm,
-            std::function<bool(int)> f)
+            std::function<bool(int)> compare_func,
+            std::function<double(double, double)> result_func)
 {
     conditional_double_comm_T(values, result, send_compares, recv_compares,
-            comm, f);
+            comm, compare_func, result_func);
 }
 template<> 
 void CommPkg::conditional_comm_T<int, double>(const int* values, 
@@ -177,10 +178,11 @@ void CommPkg::conditional_comm_T<int, double>(const int* values,
             const int* send_compares, 
             const int* recv_compares,
             MPI_Comm comm,
-            std::function<bool(int)> f)
+            std::function<bool(int)> compare_func, 
+            std::function<double(double, int)> result_func)
 {
     conditional_int_comm_T(values, result, send_compares, recv_compares,
-            comm, f);
+            comm, compare_func, result_func);
 }
 template<> 
 void CommPkg::conditional_comm_T<int, int>(const int* values, 
@@ -188,10 +190,11 @@ void CommPkg::conditional_comm_T<int, int>(const int* values,
             const int* send_compares, 
             const int* recv_compares,
             MPI_Comm comm,
-            std::function<bool(int)> f)
+            std::function<bool(int)> compare_func,
+            std::function<int(int, int)> result_func)
 {
     conditional_int_comm_T(values, result, send_compares, recv_compares,
-            comm, f);
+            comm, compare_func, result_func);
 }
 
 

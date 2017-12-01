@@ -157,103 +157,27 @@ void initial_cljp_weights(const ParCSRMatrix* S,
     comm->communicate_T(off_proc_weights, weights);
 }
 
-void find_off_proc_weights(const ParCSRMatrix* S, 
+void find_off_proc_weights(CommPkg* comm, 
         const std::vector<int>& states,
         const std::vector<int>& off_proc_states,
         const std::vector<double>& weights,
         std::vector<double>& off_proc_weights)
 {
-    int start, end;
-    int idx, proc, size;
-    int ctr = 0;
-    int prev_ctr = 0;
-    int n_sends = 0;
-    int n_recvs = 0;
-    int tag = 1992;
+    int off_proc_num_cols = off_proc_states.size();
 
     std::vector<double> recvbuf = 
-        S->comm->conditional_comm(weights, states, off_proc_states, MPI_COMM_WORLD, 
+        comm->conditional_comm(weights, states, off_proc_states, MPI_COMM_WORLD, 
             [&](const int a)
             {
                 return a == -1;
             });
-    for (int i = 0; i < S->off_proc_num_cols; i++)
+    for (int i = 0; i < off_proc_num_cols; i++)
     {
         off_proc_weights[i] = recvbuf[i];
     }
-    /*
-    std::vector<int> recv_indices;
-    if (S->comm->recv_data->size_msgs)
-    {
-        recv_indices.resize(S->comm->recv_data->size_msgs);
-    }
-
-    for (int i = 0; i < S->comm->send_data->num_msgs; i++)
-    {
-        proc = S->comm->send_data->procs[i];
-        start = S->comm->send_data->indptr[i];
-        end = S->comm->send_data->indptr[i+1];
-        for (int j = start; j < end; j++)
-        {
-            idx = S->comm->send_data->indices[j];
-            if (states[idx] == -1)
-            {
-                S->comm->send_data->buffer[ctr++] = weights[idx];
-            }
-        }
-        size = ctr - prev_ctr;
-        if (size)
-        {
-            MPI_Issend(&(S->comm->send_data->buffer[prev_ctr]), size, MPI_DOUBLE, 
-                    proc, tag, MPI_COMM_WORLD, &(S->comm->send_data->requests[n_sends++]));
-            prev_ctr = ctr;
-        }
-    }
-
-    ctr = 0;
-    prev_ctr = 0;
-    for (int i = 0; i < S->comm->recv_data->num_msgs; i++)
-    {
-        proc = S->comm->recv_data->procs[i];
-        start = S->comm->recv_data->indptr[i];
-        end = S->comm->recv_data->indptr[i+1];
-        for (int j = start; j < end; j++)
-        {
-            if (off_proc_states[j] == -1)
-            {
-                recv_indices[ctr++] = j;
-            }
-            else
-            {
-                off_proc_weights[j] = 0;
-            }
-        }
-        size = ctr - prev_ctr;
-        if (size)
-        {
-            MPI_Irecv(&(S->comm->recv_data->buffer[prev_ctr]), size, MPI_DOUBLE,
-                    proc, tag, MPI_COMM_WORLD, &(S->comm->recv_data->requests[n_recvs++]));
-            prev_ctr = ctr;
-        }
-    }
-
-    if (n_sends)
-    {
-        MPI_Waitall(n_sends, S->comm->send_data->requests.data(), MPI_STATUSES_IGNORE);
-    }
-    if (n_recvs)
-    {
-        MPI_Waitall(n_recvs, S->comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
-    }
-
-    for (int i = 0; i < ctr; i++)
-    {
-        idx = recv_indices[i];
-        off_proc_weights[idx] = S->comm->recv_data->buffer[i];
-    }*/
 }
 
-void find_max_off_weights(const ParCSRMatrix* S,
+void find_max_off_weights(CommPkg* comm,
         const std::vector<int>& off_col_ptr,
         const std::vector<int>& off_col_indices,
         const std::vector<int>& states,
@@ -261,111 +185,47 @@ void find_max_off_weights(const ParCSRMatrix* S,
         const std::vector<double>& weights,
         std::vector<double>& max_weights)
 {
-    int start, end;
-    int idx_start, idx_end;
-    int idx;
-    int proc;
+    int start, end, idx;
     double max_weight;
-    int tag = 3266;
-    int ctr, prev_ctr, size;
-    int n_sends = 0;
-    int n_recvs = 0;
 
-    std::vector<int> recv_indices;
-    if (S->comm->send_data->size_msgs)
+    int off_proc_num_cols = off_proc_states.size();
+
+    std::vector<double> send_weights;
+    if (off_proc_num_cols)
     {
-        recv_indices.resize(S->comm->send_data->size_msgs);
+        send_weights.resize(off_proc_num_cols);
     }
-
-    // Send max off_proc col weights to appropriate proc
-    // Only find / send max weight in col if 
-    // off_proc_states[col] == -1
-    ctr = 0;
-    prev_ctr = 0;
-    for (int i = 0; i < S->comm->recv_data->num_msgs; i++)
+    for (int i = 0; i < off_proc_num_cols; i++)
     {
-        proc = S->comm->recv_data->procs[i];
-        start = S->comm->recv_data->indptr[i];
-        end = S->comm->recv_data->indptr[i+1];
-        for (int j = start; j < end; j++)
+        if (off_proc_states[i] == -1)
         {
-            if (off_proc_states[j] == -1)
+            max_weight = 0;
+            start = off_col_ptr[i];
+            end = off_col_ptr[i+1];
+            for (int j = start; j < end; j++)
             {
-                max_weight = 0;
-                idx_start = off_col_ptr[j];
-                idx_end = off_col_ptr[j+1];
-                for (int k = idx_start; k < idx_end; k++)
+                idx = off_col_indices[j];
+                if (weights[idx] > max_weight)
                 {
-                    idx = off_col_indices[k];
-                    if (weights[idx] > max_weight)
-                    {
-                        max_weight = weights[idx];
-                    }
+                    max_weight = weights[idx];
                 }
-                S->comm->recv_data->buffer[ctr++] = max_weight;
             }
-        }
-        size = ctr - prev_ctr;
-        if (size)
-        {
-            MPI_Issend(&(S->comm->recv_data->buffer[prev_ctr]), size, MPI_DOUBLE, proc, 
-                tag, MPI_COMM_WORLD, &(S->comm->recv_data->requests[n_sends++]));
-            prev_ctr = ctr;
+            send_weights[i] = max_weight;
         }
     }
 
-    // Recv max col weights associated with local indices
-    // Store max recvd in max_weights
-    // Only recv max weight if states[idx] == -1
-    ctr = 0;
-    prev_ctr = 0;
-    for (int i = 0; i < S->comm->send_data->num_msgs; i++)
+    std::function<bool(int)> compare_func = [](const int a)
     {
-        proc = S->comm->send_data->procs[i];
-        start = S->comm->send_data->indptr[i];
-        end = S->comm->send_data->indptr[i+1];
-        for (int j = start; j < end; j++)
-        {
-            idx = S->comm->send_data->indices[j];
-            if (states[idx] == -1)
-            {
-                recv_indices[ctr++] = idx;
-            }
-        }
-        size = ctr - prev_ctr;
-        if (size)
-        {
-            MPI_Irecv(&(S->comm->send_data->buffer[prev_ctr]), size, MPI_DOUBLE, proc,
-                    tag, MPI_COMM_WORLD, &(S->comm->send_data->requests[n_recvs++]));
-            prev_ctr = ctr;
-        }
-    }
-
-    // Wait for recvs to complete
-    if (n_recvs)
+        return a == -1;
+    };
+    std::fill(max_weights.begin(), max_weights.end(), 0);
+    std::function<double(double, double)> result_max = [](double c, double d)
     {
-        MPI_Waitall(n_recvs, S->comm->send_data->requests.data(), MPI_STATUSES_IGNORE);
-    }
-
-    // Find max recvd weights associated with each local idx
-    for (int i = 0; i < S->on_proc_num_cols; i++)
-    {
-        max_weights[i] = 0;
-    }
-    for (int i = 0; i < ctr; i++)
-    {
-        idx = recv_indices[i];
-        if (S->comm->send_data->buffer[i] > max_weights[idx])
-        {
-            max_weights[idx] = S->comm->send_data->buffer[i];
-        }
-    }
-
-    // Wait for sends to complete
-    if (n_sends)
-    {
-        MPI_Waitall(n_sends, S->comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
-    }
+        if (c > d) return c;
+        else return d;
+    };
+    comm->conditional_comm_T(send_weights, max_weights, states, off_proc_states,
+            MPI_COMM_WORLD, compare_func, result_max);
 }
 
 int select_independent_set(const ParCSRMatrix* S, 
@@ -848,101 +708,32 @@ void update_off_proc_dist2_weights(const ParCSRMatrix* S,
     }
 }
 
-int find_off_proc_states(const ParCSRMatrix* S,
+int find_off_proc_states(CommPkg* comm,
         const std::vector<int>& states,
         std::vector<int>& off_proc_states)
 {
-    int proc;
-    int start, end;
-    int ctr, prev_ctr, idx;
-    int size, state;
-    int n_sends = 0;
-    int n_recvs = 0;
+    int new_state;
     int num_new_coarse = 0;
-    std::vector<int> send_buffer;
-    std::vector<int> recv_buffer;
-    std::vector<int> recv_indices;
-    int tag = 4422;
+    int off_proc_num_cols = off_proc_states.size();
 
-    if (S->comm->send_data->size_msgs)
-    {
-        send_buffer.resize(S->comm->send_data->size_msgs);
-    }
-    if (S->comm->recv_data->size_msgs)
-    {
-        recv_buffer.resize(S->comm->recv_data->size_msgs);
-        recv_indices.resize(S->comm->recv_data->size_msgs);
-    }
-
-    // Send states to procs in send_data
-    ctr = 0;
-    prev_ctr = 0;
-    for (int i = 0; i < S->comm->send_data->num_msgs; i++)
-    {
-        proc = S->comm->send_data->procs[i];
-        start = S->comm->send_data->indptr[i];
-        end = S->comm->send_data->indptr[i+1];
-        for (int j = start; j < end; j++)
-        {
-            idx = S->comm->send_data->indices[j];
-            state = states[idx];
-            if (state == -1 || state == 2)
+    std::vector<int>& recvbuf = comm->conditional_comm(states, 
+            states, off_proc_states, MPI_COMM_WORLD,
+            [&](const int a)
             {
-                send_buffer[ctr++] = state;
-            }
-        }
-        size = ctr - prev_ctr;
-        if (size)
-        {
-            MPI_Issend(&(send_buffer[prev_ctr]), size, MPI_INT, proc, tag,
-                    MPI_COMM_WORLD, &(S->comm->send_data->requests[n_sends++]));
-            prev_ctr = ctr;
-        }
-    }
+                return a == -1 || a == 2;
+            });
 
-    // Recv states of off_proc columns
-    ctr = 0;
-    prev_ctr = 0;
-    for (int i = 0; i < S->comm->recv_data->num_msgs; i++)
+    for (int i = 0; i < off_proc_num_cols; i++)
     {
-        proc = S->comm->recv_data->procs[i];
-        start = S->comm->recv_data->indptr[i];
-        end = S->comm->recv_data->indptr[i+1];
-        for (int j = start; j < end; j++)
+        if (off_proc_states[i] == -1)
         {
-            if (off_proc_states[j] == -1)
+            new_state = recvbuf[i];
+            if (new_state == 2)
             {
-                recv_indices[ctr++] = j;
+                num_new_coarse++;
             }
+            off_proc_states[i] = new_state;
         }
-        size = ctr - prev_ctr;
-        if (size)
-        {
-            MPI_Irecv(&(recv_buffer[prev_ctr]), size, MPI_INT, proc, tag, 
-                    MPI_COMM_WORLD, &(S->comm->recv_data->requests[n_recvs++]));
-            prev_ctr = ctr;
-        }
-    }
-
-    // Wait for communication to complete
-    if (n_recvs)
-    {
-        MPI_Waitall(n_recvs, S->comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
-    }
-    
-    for (int i = 0; i < ctr; i++)
-    {
-        idx = recv_indices[i];
-        off_proc_states[idx] = recv_buffer[i];
-        if (off_proc_states[idx] == 2)
-        {
-            num_new_coarse++;
-        }
-    }
-
-    if (n_sends)
-    {
-        MPI_Waitall(n_sends, S->comm->send_data->requests.data(), MPI_STATUSES_IGNORE);
     }
 
     return num_new_coarse;
@@ -1113,95 +904,25 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
     }
 }
 
-void combine_weight_updates(const ParCSRMatrix* S,
+void combine_weight_updates(CommPkg* comm,
         const std::vector<int>&states,
         const std::vector<int>& off_proc_states,
         const std::vector<int>& off_proc_weight_updates,
         std::vector<double>& weights)
 {
-    int proc;
-    int start, end;
-    int ctr, prev_ctr;
-    int idx, size;
-    int n_sends = 0;
-    int n_recvs = 0;
-    int tag = 9233;
-
-    std::vector<int> send_buffer;
-    std::vector<int> recv_buffer;
-    std::vector<int> recv_indices;
-    if (S->comm->recv_data->size_msgs)
+    std::function<bool(int)> compare_func = [](const int a)
     {
-        send_buffer.resize(S->comm->recv_data->size_msgs);
-    }
-    if (S->comm->send_data->size_msgs)
-    {
-        recv_buffer.resize(S->comm->send_data->size_msgs);
-        recv_indices.resize(S->comm->send_data->size_msgs);
-    }
-
-    ctr = 0;
-    prev_ctr = 0;
-    for (int i = 0; i < S->comm->recv_data->num_msgs; i++)
-    {
-        proc = S->comm->recv_data->procs[i];
-        start = S->comm->recv_data->indptr[i];
-        end = S->comm->recv_data->indptr[i+1];
-        for (int j = start; j < end; j++)
+        return a == -1;
+    };
+    std::function<double(double, int)> result_func = 
+        [](const double a, const int b)
         {
-            if (off_proc_states[j] == -1)
-            {
-                send_buffer[ctr++] = off_proc_weight_updates[j];
-            }
-        }
-        size = ctr - prev_ctr;
-        if (size)
-        {
-            MPI_Issend(&(send_buffer[prev_ctr]), size, MPI_INT, proc, tag, 
-                    MPI_COMM_WORLD, &(S->comm->recv_data->requests[n_sends++]));
-            prev_ctr = ctr;
-        }
-    }
-
-    ctr = 0;
-    prev_ctr = 0;
-    for (int i = 0; i < S->comm->send_data->num_msgs; i++)
-    {
-        proc = S->comm->send_data->procs[i];
-        start = S->comm->send_data->indptr[i];
-        end = S->comm->send_data->indptr[i+1];
-        for (int j = start; j < end; j++)
-        {
-            idx = S->comm->send_data->indices[j];
-            if (states[idx] == -1)
-            {
-                recv_indices[ctr++] = idx;
-            }
-        }
-        size = ctr - prev_ctr;
-        if (size)
-        {
-            MPI_Irecv(&(recv_buffer[prev_ctr]), size, MPI_INT, proc, tag,
-                    MPI_COMM_WORLD, &(S->comm->send_data->requests[n_recvs++]));
-            prev_ctr = ctr;
-        }
-    }
-
-    if (n_recvs)
-    {
-        MPI_Waitall(n_recvs, S->comm->send_data->requests.data(), MPI_STATUSES_IGNORE);
-    }
-
-    for (int i = 0; i < ctr; i++)
-    {
-        idx = recv_indices[i];
-        weights[idx] += recv_buffer[i];
-    }
-
-    if (n_sends)
-    {
-        MPI_Waitall(n_sends, S->comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
-    }
+            return a + b;
+        };
+    
+    comm->conditional_comm_T(off_proc_weight_updates,
+            weights, states, off_proc_states, MPI_COMM_WORLD,
+            compare_func, result_func);
 }
 
 int update_states(std::vector<double>& weights, 
@@ -1275,15 +996,8 @@ void cljp_main_loop(ParCSRMatrix* S,
     int prev_ctr;
     int msg_avail;
     MPI_Status recv_status;
-    std::vector<int> recv_buffer;
-    std::vector<int> recv_indices;
 
     int* part_to_col = S->map_partition_to_local();
-    if (S->comm->recv_data->size_msgs)
-    {
-        recv_indices.resize(S->comm->recv_data->size_msgs);
-        recv_buffer.resize(S->comm->recv_data->size_msgs);
-    }
 
     if (S->local_num_rows)
     {
@@ -1327,7 +1041,7 @@ void cljp_main_loop(ParCSRMatrix* S,
     /**********************************************
      * Find weights of unassigned neighbors (off proc cols)
      **********************************************/
-    find_off_proc_weights(S, states, off_proc_states, 
+    find_off_proc_weights(S->comm, states, off_proc_states, 
             weights, off_proc_weights);
     off_remaining = S->off_proc_num_cols;
     for (int i = 0; i < S->off_proc_num_cols; i++)
@@ -1364,7 +1078,7 @@ void cljp_main_loop(ParCSRMatrix* S,
         * For each local row i, find max weight in 
         * column i on all other processors (max_weights)
         **********************************************/
-        find_max_off_weights(S, off_col_ptr, off_col_indices, 
+        find_max_off_weights(S->comm, off_col_ptr, off_col_indices, 
                 states, off_proc_states, weights, max_weights);
 
         /**********************************************
@@ -1378,7 +1092,7 @@ void cljp_main_loop(ParCSRMatrix* S,
 
         // Communicate updated states to neighbors
         // Only communicating previously unassigned states
-        off_num_new_coarse = find_off_proc_states(S, states, off_proc_states);
+        off_num_new_coarse = find_off_proc_states(S->comm, states, off_proc_states);
         //off_remaining -= off_num_new_coarse;
 
         ctr = 0;
@@ -1413,11 +1127,11 @@ void cljp_main_loop(ParCSRMatrix* S,
 
         // Communicate off proc weight updates and
         // add recv'd updates to local weights
-        combine_weight_updates(S, states, off_proc_states,
+        combine_weight_updates(S->comm, states, off_proc_states,
                 off_proc_weight_updates, weights);
 
         // Find weights of unassigned neighbors (off proc cols)
-        find_off_proc_weights(S, states, off_proc_states, 
+        find_off_proc_weights(S->comm, states, off_proc_states, 
                 weights, off_proc_weights);
 
         // Update states, changing any new coarse states
@@ -1429,6 +1143,205 @@ void cljp_main_loop(ParCSRMatrix* S,
                 off_proc_states, off_remaining, unassigned_off);
         //remaining -= num_fine;
         //off_remaining -= off_num_fine;
+    }
+
+    delete[] part_to_col;
+}
+
+void tap_cljp_main_loop(ParCSRMatrix* S,
+        const std::vector<int>& on_col_ptr,
+        const std::vector<int>& off_col_ptr,
+        const std::vector<int>& on_col_indices,
+        const std::vector<int>& off_col_indices,
+        std::vector<double>& weights,
+        std::vector<int>& states,
+        std::vector<int>& off_proc_states,
+        int remaining,
+        std::vector<int>& on_edgemark,
+        std::vector<int>& off_edgemark)
+{
+    /**********************************************
+     * Declare and Initialize Variables
+     **********************************************/
+    int proc, idx, ctr;
+    int start, end;
+    int num_new_coarse;
+    int off_num_new_coarse;
+    int num_fine;
+    int off_num_fine;
+    int unassigned_off_proc;
+    int off_remaining;
+    int size, global_col;
+
+    std::vector<double> max_weights;
+    std::vector<int> weight_updates;
+    std::vector<double> off_proc_weights;
+    std::vector<int> off_proc_col_coarse;
+    std::vector<int> off_proc_weight_updates;
+    std::vector<int> off_proc_col_ptr;
+    std::map<int, int> global_to_local;
+    std::vector<int> new_coarse_list;
+    std::vector<int> off_new_coarse_list;
+    std::vector<int> unassigned;
+    std::vector<int> unassigned_off;
+
+    int count;
+    int n_sends, n_recvs;
+    int prev_ctr;
+    int msg_avail;
+    int sum_remaining, node_remaining;
+    MPI_Status recv_status;
+
+    int* part_to_col = S->map_partition_to_local();
+
+    if (S->local_num_rows)
+    {
+        max_weights.resize(S->local_num_rows);
+        new_coarse_list.resize(S->local_num_rows);
+        unassigned.reserve(S->local_num_rows);
+        for (int i = 0; i < S->local_num_rows; i++)
+        {
+            if (states[i] == -1)
+                unassigned.push_back(i);
+        }
+    }
+    if (S->off_proc_num_cols)
+    {
+        off_proc_weight_updates.resize(S->off_proc_num_cols);
+        off_proc_weights.resize(S->off_proc_num_cols, 0);
+        off_proc_states.resize(S->off_proc_num_cols);
+        off_new_coarse_list.resize(S->off_proc_num_cols);
+        unassigned_off.reserve(S->off_proc_num_cols);
+    }
+    S->comm->communicate(states);
+    for (int i = 0; i < S->off_proc_num_cols; i++)
+    {
+        off_proc_states[i] = S->comm->recv_data->int_buffer[i];
+        if (off_proc_states[i] == -1)
+        {
+            unassigned_off.push_back(i);
+        }
+    }
+    if (S->comm->send_data->size_msgs)
+    {
+        weight_updates.resize(S->comm->send_data->size_msgs);
+    }
+    off_proc_col_ptr.resize(S->off_proc_num_cols + 1);
+
+    for (int i = 0; i < S->off_proc_num_cols; i++)
+    {
+        global_to_local[S->off_proc_column_map[i]] = i;
+    }
+
+    /**********************************************
+     * Find weights of unassigned neighbors (off proc cols)
+     **********************************************/
+    find_off_proc_weights(S->tap_comm, states, off_proc_states, 
+            weights, off_proc_weights);
+
+    off_remaining = S->off_proc_num_cols;
+    for (int i = 0; i < S->off_proc_num_cols; i++)
+    {
+        if (off_proc_states[i] == -1)
+            off_remaining--;
+    }
+
+    remaining = 0;
+    off_remaining = 0;
+    for (int i = 0; i < S->on_proc_num_cols; i++)
+    {
+        if (states[i] == -1)
+        {
+            unassigned[remaining++] = i;
+        }
+    }
+    for (int i = 0; i < S->off_proc_num_cols; i++)
+    {
+        if (off_proc_states[i] == -1)
+        {
+            unassigned_off[off_remaining++] = i;
+        }
+    }
+    sum_remaining = remaining + off_remaining;
+    MPI_Allreduce(&sum_remaining, &node_remaining, 1, MPI_INT,
+            MPI_MAX, S->partition->topology->local_comm);
+
+    /**********************************************
+     * While any local vertices still need assigned,
+     * select independent set and update weights
+     * accordingly (select new C/F points)
+     **********************************************/
+    while (node_remaining)
+    {
+        /**********************************************
+        * For each local row i, find max weight in 
+        * column i on all other processors (max_weights)
+        **********************************************/
+        find_max_off_weights(S->tap_comm, off_col_ptr, off_col_indices, 
+                states, off_proc_states, weights, max_weights);
+
+        /**********************************************
+        * Select independent set: all indices with
+        * maximum weight among unassigned neighbors
+        **********************************************/
+        num_new_coarse = select_independent_set(S, remaining, unassigned,
+                weights, off_proc_weights, max_weights, on_col_ptr, 
+                on_col_indices, states, off_proc_states, new_coarse_list);
+
+        // Communicate updated states to neighbors
+        // Only communicating previously unassigned states
+        off_num_new_coarse = find_off_proc_states(S->tap_comm, states, off_proc_states);
+
+        ctr = 0;
+        for (int i = 0; i < S->off_proc_num_cols; i++)
+        {
+            if (off_proc_states[i] == 2)
+            {
+                off_new_coarse_list[ctr++] = i;
+            }
+        }
+
+        // Find new coarse influenced by each off_proc col
+        find_off_proc_new_coarse(S, global_to_local, states, off_proc_states, 
+                part_to_col, off_proc_col_ptr, off_proc_col_coarse);
+
+        // Update Weights
+        for (int i = 0; i < S->off_proc_num_cols; i++)
+        {
+            off_proc_weight_updates[i] = 0;
+        }
+        update_row_weights(S, num_new_coarse, new_coarse_list, on_edgemark,
+                off_edgemark, states, off_proc_states, weights, 
+                off_proc_weight_updates);
+        update_local_dist2_weights(S, num_new_coarse, new_coarse_list, 
+                off_num_new_coarse, off_new_coarse_list, on_col_ptr, on_col_indices,
+                off_col_ptr, off_col_indices, on_edgemark, states, weights);
+        update_off_proc_dist2_weights(S, num_new_coarse, off_num_new_coarse, 
+                new_coarse_list, off_new_coarse_list, off_proc_col_ptr, 
+                off_proc_col_coarse, on_col_ptr, on_col_indices, off_col_ptr,
+                off_col_indices, off_edgemark, off_proc_states, 
+                off_proc_weight_updates);
+
+        // Communicate off proc weight updates and
+        // add recv'd updates to local weights
+        combine_weight_updates(S->tap_comm, states, off_proc_states,
+                off_proc_weight_updates, weights);
+
+        // Find weights of unassigned neighbors (off proc cols)
+        find_off_proc_weights(S->tap_comm, states, off_proc_states, 
+                weights, off_proc_weights);
+
+        // Update states, changing any new coarse states
+        // from 2 to 1 (and changes weight to 0) and
+        // set state of any unassigned indices with weight
+        // less than 1 to fine (also update off_proc_states)
+        remaining = update_states(weights, states, remaining, unassigned);
+        off_remaining = update_states(off_proc_weights,
+                off_proc_states, off_remaining, unassigned_off);
+
+        sum_remaining = remaining + off_remaining;
+        MPI_Allreduce(&sum_remaining, &node_remaining, 1, MPI_INT,
+                MPI_MAX, S->partition->topology->local_comm);
     }
 
     delete[] part_to_col;
@@ -1798,13 +1711,14 @@ void tap_split_rs(ParCSRMatrix* S,
     // Call serial ruge-stuben cf_splitting
     split_rs((CSRMatrix*) S->on_proc, states);
 
-    if (S->comm == NULL)
+    if (S->tap_comm == NULL)
     {
-        S->comm = new ParComm(S->partition, S->off_proc_column_map, S->on_proc_column_map);
+        S->tap_comm = new TAPComm(S->partition, S->off_proc_column_map, 
+                S->on_proc_column_map);
     }
 
     // Find states of off_proc_cols
-    S->comm->communicate(states);
+    S->tap_comm->communicate(states);
     std::copy(S->comm->recv_data->int_buffer.begin(), 
             S->comm->recv_data->int_buffer.end(), off_proc_states.begin());
 }
@@ -1845,6 +1759,11 @@ void tap_split_falgout(ParCSRMatrix* S,
     std::vector<int> off_edgemark;
     std::vector<double> weights;
 
+    if (!S->tap_comm)
+    {
+        S->tap_comm = new TAPComm(S->partition, S->off_proc_column_map, 
+                S->on_proc_column_map);
+    }
     if (S->local_num_rows)
     {
         boundary.resize(S->local_num_rows, 0);
@@ -1998,7 +1917,7 @@ void tap_split_falgout(ParCSRMatrix* S,
     /**********************************************
      * CLJP Main Loop
      **********************************************/
-    cljp_main_loop(S, on_col_ptr, off_col_ptr,
+    tap_cljp_main_loop(S, on_col_ptr, off_col_ptr,
             on_col_indices, off_col_indices, weights,
             states, off_proc_states, remaining, on_edgemark,
             off_edgemark);
@@ -2031,6 +1950,11 @@ void tap_split_cljp(ParCSRMatrix* S,
     std::vector<int> off_edgemark;
     std::vector<double> weights;
 
+    if (!S->tap_comm)
+    {
+        S->tap_comm = new TAPComm(S->partition, S->off_proc_column_map, 
+                S->on_proc_column_map);
+    }
     if (!S->on_proc->diag_first)
     {
         S->on_proc->move_diag();
@@ -2087,7 +2011,7 @@ void tap_split_cljp(ParCSRMatrix* S,
     /**********************************************
      * CLJP Main Loop
      **********************************************/
-    cljp_main_loop(S, on_col_ptr, off_col_ptr,
+    tap_cljp_main_loop(S, on_col_ptr, off_col_ptr,
             on_col_indices, off_col_indices, weights,
             states, off_proc_states, remaining, on_edgemark,
             off_edgemark);
