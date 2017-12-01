@@ -62,12 +62,27 @@ void CommPkg::communicate_T<double>(const double* values,
     complete_double_comm_T(result);
 }
 template<>
+void CommPkg::communicate_T<double>(const double* values,
+        std::vector<int>& result, MPI_Comm comm)
+{
+    init_double_comm_T(values, comm);
+    complete_double_comm_T(result);
+}
+template<>
+void CommPkg::communicate_T<int>(const int* values,
+        std::vector<double>& result, MPI_Comm comm)
+{
+    init_int_comm_T(values, comm);
+    complete_int_comm_T(result);
+}
+template<>
 void CommPkg::communicate_T<int>(const int* values,
         std::vector<int>& result, MPI_Comm comm)
 {
     init_int_comm_T(values, comm);
     complete_int_comm_T(result);
 }
+
 template<>
 void CommPkg::communicate_T<double>(const double* values,
         MPI_Comm comm)
@@ -99,10 +114,21 @@ void CommPkg::complete_comm_T<double>(std::vector<double>& result)
     complete_double_comm_T(result);
 }
 template<>
+void CommPkg::complete_comm_T<int>(std::vector<double>& result)
+{
+    complete_int_comm_T(result);
+}
+template<>
+void CommPkg::complete_comm_T<double>(std::vector<int>& result)
+{
+    complete_double_comm_T(result);
+}
+template<>
 void CommPkg::complete_comm_T<int>(std::vector<int>& result)
 {
     complete_int_comm_T(result);
 }
+
 template<>
 void CommPkg::complete_comm_T<double>()
 {
@@ -113,6 +139,61 @@ void CommPkg::complete_comm_T<int>()
 {
     complete_int_comm_T();
 }
+
+template<> 
+std::vector<double>& CommPkg::conditional_comm<double>(const double* values, 
+            const int* send_compares, 
+            const int* recv_compares,
+            MPI_Comm comm,
+            std::function<bool(int)> f)
+{
+    return conditional_double_comm(values, send_compares, recv_compares,
+            comm, f);
+}
+template<> 
+std::vector<int>& CommPkg::conditional_comm<int>(const int* values, 
+            const int* send_compares, 
+            const int* recv_compares,
+            MPI_Comm comm,
+            std::function<bool(int)> f)
+{
+    return conditional_int_comm(values, send_compares, recv_compares,
+            comm, f);
+}
+template<> 
+void CommPkg::conditional_comm_T<double, double>(const double* values, 
+            std::vector<double>& result,
+            const int* send_compares, 
+            const int* recv_compares,
+            MPI_Comm comm,
+            std::function<bool(int)> f)
+{
+    conditional_double_comm_T(values, result, send_compares, recv_compares,
+            comm, f);
+}
+template<> 
+void CommPkg::conditional_comm_T<int, double>(const int* values, 
+            std::vector<double>& result,
+            const int* send_compares, 
+            const int* recv_compares,
+            MPI_Comm comm,
+            std::function<bool(int)> f)
+{
+    conditional_int_comm_T(values, result, send_compares, recv_compares,
+            comm, f);
+}
+template<> 
+void CommPkg::conditional_comm_T<int, int>(const int* values, 
+            std::vector<int>& result,
+            const int* send_compares, 
+            const int* recv_compares,
+            MPI_Comm comm,
+            std::function<bool(int)> f)
+{
+    conditional_int_comm_T(values, result, send_compares, recv_compares,
+            comm, f);
+}
+
 
 std::vector<double>& CommPkg::communicate(ParVector& v, MPI_Comm comm)
 {

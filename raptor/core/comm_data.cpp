@@ -5,6 +5,8 @@
 
 using namespace raptor;
 
+namespace raptor
+{
 
 template<>
 std::vector<double>& CommData::get_buffer<double>()
@@ -18,3 +20,4 @@ std::vector<int>& CommData::get_buffer<int>()
     return int_buffer;
 }
 
+}

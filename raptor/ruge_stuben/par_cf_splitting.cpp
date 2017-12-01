@@ -93,6 +93,7 @@ void transpose(const ParCSRMatrix* S,
 }
 
 void initial_cljp_weights(const ParCSRMatrix* S,
+        CommPkg* comm, 
         std::vector<double>& weights, 
         double* rand_vals = NULL)
 {
@@ -104,16 +105,11 @@ void initial_cljp_weights(const ParCSRMatrix* S,
     int tag = 3029;
     int tmp;
 
-    std::vector<int> recv_weights;
     std::vector<int> off_proc_weights;
 
     if (S->off_proc_num_cols)
     {
         off_proc_weights.resize(S->off_proc_num_cols, 0);
-    }
-    if (S->comm->send_data->size_msgs)
-    {
-        recv_weights.resize(S->comm->send_data->size_msgs);
     }
 
     // Set each weight initially to random value [0,1)
@@ -157,48 +153,8 @@ void initial_cljp_weights(const ParCSRMatrix* S,
             off_proc_weights[idx] += 1;
         }
     }
-    // Send off_proc_weights to neighbors
-    for (int i = 0; i < S->comm->recv_data->num_msgs; i++)
-    {
-        proc = S->comm->recv_data->procs[i];
-        start = S->comm->recv_data->indptr[i];
-        end = S->comm->recv_data->indptr[i+1];
-        MPI_Issend(&(off_proc_weights[start]), end - start, MPI_INT, proc,
-                tag, MPI_COMM_WORLD, &(S->comm->recv_data->requests[i]));
-    }
 
-    // Recv weights from neighbors and add to local weights
-    for (int i = 0; i < S->comm->send_data->num_msgs; i++)
-    {
-        proc = S->comm->send_data->procs[i];
-        start = S->comm->send_data->indptr[i];
-        end = S->comm->send_data->indptr[i+1];
-        MPI_Irecv(&(recv_weights[start]), end - start, MPI_INT, proc, tag, 
-                MPI_COMM_WORLD, &(S->comm->send_data->requests[i]));
-    }
-
-    // Wait for recvs to complete
-    if (S->comm->send_data->num_msgs)
-    {
-        MPI_Waitall(S->comm->send_data->num_msgs, 
-                S->comm->send_data->requests.data(),
-                MPI_STATUSES_IGNORE);
-    }
-
-    // Update weights based on recv_weights
-    for (int i = 0; i < S->comm->send_data->size_msgs; i++)
-    {
-        idx = S->comm->send_data->indices[i];
-        weights[idx] += recv_weights[i];
-    }
-    
-    // Wait for sends to complete
-    if (S->comm->recv_data->num_msgs)
-    {
-        MPI_Waitall(S->comm->recv_data->num_msgs, 
-                S->comm->recv_data->requests.data(),
-                MPI_STATUSES_IGNORE);
-    }
+    comm->communicate_T(off_proc_weights, weights);
 }
 
 void find_off_proc_weights(const ParCSRMatrix* S, 
@@ -215,6 +171,17 @@ void find_off_proc_weights(const ParCSRMatrix* S,
     int n_recvs = 0;
     int tag = 1992;
 
+    std::vector<double> recvbuf = 
+        S->comm->conditional_comm(weights, states, off_proc_states, MPI_COMM_WORLD, 
+            [&](const int a)
+            {
+                return a == -1;
+            });
+    for (int i = 0; i < S->off_proc_num_cols; i++)
+    {
+        off_proc_weights[i] = recvbuf[i];
+    }
+    /*
     std::vector<int> recv_indices;
     if (S->comm->recv_data->size_msgs)
     {
@@ -283,7 +250,7 @@ void find_off_proc_weights(const ParCSRMatrix* S,
     {
         idx = recv_indices[i];
         off_proc_weights[idx] = S->comm->recv_data->buffer[i];
-    }
+    }*/
 }
 
 void find_max_off_weights(const ParCSRMatrix* S,
@@ -1614,7 +1581,7 @@ void split_falgout(ParCSRMatrix* S,
     /**********************************************
      * Set initial CLJP boundary weights
      **********************************************/
-    initial_cljp_weights(S, weights);
+    initial_cljp_weights(S, S->comm, weights);
 
     for (int i = 0; i < S->local_num_rows; i++)
     {
@@ -1781,7 +1748,7 @@ void split_cljp(ParCSRMatrix* S,
     /**********************************************
      * Set initial CLJP boundary weights
      **********************************************/
-    initial_cljp_weights(S, weights, rand_vals);
+    initial_cljp_weights(S, S->comm, weights, rand_vals);
 
     /**********************************************
      * CLJP Main Loop
@@ -1795,4 +1762,335 @@ void split_cljp(ParCSRMatrix* S,
 
 
 
+
+
+
+
+
+
+/**************************************************************
+ *****   C/F Splitting
+ **************************************************************
+ *****  Assigns C (coarse) and F (fine) points to each local
+ *****  index using Falgout coarsening:
+ *****  Ruge-Stuben on interior nodes followed by CLJP on
+ *****  all boundary nodes
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** S : ParCSRMatrix*
+ *****    Strength of connection matrix
+ **************************************************************/
+void tap_split_rs(ParCSRMatrix* S,
+        std::vector<int>& states, 
+        std::vector<int>& off_proc_states)
+{
+    // Allocate space
+    if (S->on_proc_num_cols)
+    {
+        states.resize(S->on_proc_num_cols);
+    }
+    if (S->off_proc_num_cols)
+    {
+        off_proc_states.resize(S->off_proc_num_cols);
+    }
+
+    // Call serial ruge-stuben cf_splitting
+    split_rs((CSRMatrix*) S->on_proc, states);
+
+    if (S->comm == NULL)
+    {
+        S->comm = new ParComm(S->partition, S->off_proc_column_map, S->on_proc_column_map);
+    }
+
+    // Find states of off_proc_cols
+    S->comm->communicate(states);
+    std::copy(S->comm->recv_data->int_buffer.begin(), 
+            S->comm->recv_data->int_buffer.end(), off_proc_states.begin());
+}
+
+
+
+/**************************************************************
+ *****   C/F Splitting
+ **************************************************************
+ *****  Assigns C (coarse) and F (fine) points to each local
+ *****  index using Falgout coarsening:
+ *****  Ruge-Stuben on interior nodes followed by CLJP on
+ *****  all boundary nodes
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** S : ParCSRMatrix*
+ *****    Strength of connection matrix
+ **************************************************************/
+void tap_split_falgout(ParCSRMatrix* S,
+        std::vector<int>& states, 
+        std::vector<int>& off_proc_states)
+{
+    int start, end;
+    int idx, idx_k, c;
+    int idx_start, idx_end;
+    int head, length, tmp;
+    int remaining;
+    int max_idx;
+    double max_weight;
+
+    std::vector<int> boundary;
+    std::vector<int> on_col_ptr;
+    std::vector<int> on_col_indices;
+    std::vector<int> off_col_ptr;
+    std::vector<int> off_col_indices;
+    std::vector<int> on_edgemark;
+    std::vector<int> off_edgemark;
+    std::vector<double> weights;
+
+    if (S->local_num_rows)
+    {
+        boundary.resize(S->local_num_rows, 0);
+        weights.resize(S->local_num_rows, 0);
+    }
+    if (S->on_proc->nnz)
+    {
+        on_edgemark.resize(S->on_proc->nnz, 1);
+    }
+    if (S->off_proc->nnz)
+    {
+        off_edgemark.resize(S->off_proc->nnz, 1);
+    }
+        
+    /**********************************************
+     * Find which local rows are on boundary 
+     * 1 - boundary
+     * 0 - interior
+     **********************************************/
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+        // If cols in off_proc, i is boundary
+        if (S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
+        {
+            boundary[i] = 1;
+        }
+    }
+    for (int i = 0; i < S->comm->send_data->size_msgs; i++)
+    {
+        // idx in send_data, so idx is boundary
+        idx = S->comm->send_data->indices[i];
+        boundary[idx] = 1;
+    }
+
+    /**********************************************
+     * Form S^T ptr and indices for on_proc and off_proc
+     * Needed for column-wise searches (which indices
+     * influence each on_proc/off_proc index)
+     **********************************************/
+    transpose(S, on_col_ptr, off_col_ptr,
+            on_col_indices, off_col_indices);
+
+    /**********************************************
+     * Ruge-Stuben on local portion
+     **********************************************/
+    split_rs((CSRMatrix*)S->on_proc, states);
+
+    /**********************************************
+     * Reset states of boundary indices
+     **********************************************/
+    remaining = 0;
+    int num_new_coarse = 0;
+    std::vector<int> new_coarse_list;
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+        if (boundary[i])
+        {
+            states[i] = -1;
+            remaining++;
+        } 
+        else if (states[i] == 1)
+        {
+            new_coarse_list.push_back(i);
+        }
+    }
+    num_new_coarse = new_coarse_list.size();
+
+    /**********************************************
+     * Set initial CLJP boundary weights
+     **********************************************/
+    initial_cljp_weights(S, S->tap_comm, weights);
+
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+        if (states[i] != -1)
+        {
+            weights[i] = 0.0;
+        }
+    }
+
+    for (int i = 0; i < num_new_coarse; i++)
+    {
+        c = new_coarse_list[i];
+
+        start = S->on_proc->idx1[c];
+        end = S->on_proc->idx1[c+1];
+        if (S->on_proc->idx2[start] == c)
+        {
+            start++;
+        }
+        for (int j = start; j < end; j++)
+        {
+            idx = S->on_proc->idx2[j];
+            if (states[idx] == -1 && on_edgemark[j])
+            {
+                on_edgemark[j] = 0;
+                weights[idx]--;
+            }
+        }
+    }
+
+    std::vector<int> c_dep_cache;
+    if (S->on_proc_num_cols)
+    {
+        c_dep_cache.resize(S->on_proc_num_cols, -1);
+    }
+
+    // Update local weights based on new_coarse values
+    for (int i = 0; i < num_new_coarse; i++)
+    {
+        c = new_coarse_list[i];
+
+        // Find rows strongly connected to c and add to c_dep_cache
+        start = on_col_ptr[c];
+        end = on_col_ptr[c+1];
+        for (int j = start; j < end; j++)
+        {
+            idx = on_col_indices[j];
+            if (states[idx] == -1)
+            {
+                c_dep_cache[idx] = c;
+            }
+        }
+
+        // Go through each row i strongly connected to c, and see if any column
+        // in Si is also in c_dep_cache (and edge not already removed), reduce
+        // weight and remove edge
+        for (int j = start; j < end; j++)
+        {
+            idx = on_col_indices[j];
+
+            idx_start = S->on_proc->idx1[idx];
+            idx_end = S->on_proc->idx1[idx+1];
+            if (S->on_proc->idx2[idx_start] == idx)
+            {
+                idx_start++;
+            }
+            for (int k = idx_start; k < idx_end; k++)
+            {
+                idx_k = S->on_proc->idx2[k];
+                if (states[idx_k] == -1 && on_edgemark[k] && c_dep_cache[idx_k] == c)
+                {
+                    on_edgemark[k] = 0;
+                    weights[idx_k]--;
+                }
+            }
+        }
+    }
+
+
+    /**********************************************
+     * CLJP Main Loop
+     **********************************************/
+    cljp_main_loop(S, on_col_ptr, off_col_ptr,
+            on_col_indices, off_col_indices, weights,
+            states, off_proc_states, remaining, on_edgemark,
+            off_edgemark);
+}
+
+/**************************************************************
+ *****   C/F Splitting
+ **************************************************************
+ *****  Assigns C (coarse) and F (fine) points to each local
+ *****  index using Falgout coarsening:
+ *****  Ruge-Stuben on interior nodes followed by CLJP on
+ *****  all boundary nodes
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** S : ParCSRMatrix*
+ *****    Strength of connection matrix
+ **************************************************************/
+void tap_split_cljp(ParCSRMatrix* S,
+        std::vector<int>& states, 
+        std::vector<int>& off_proc_states,
+        double* rand_vals)
+{
+    int remaining;
+    std::vector<int> on_col_ptr;
+    std::vector<int> on_col_indices;
+    std::vector<int> off_col_ptr;
+    std::vector<int> off_col_indices;
+    std::vector<int> on_edgemark;
+    std::vector<int> off_edgemark;
+    std::vector<double> weights;
+
+    if (!S->on_proc->diag_first)
+    {
+        S->on_proc->move_diag();
+    }
+
+    if (S->local_num_rows)
+    {
+        weights.resize(S->local_num_rows, 0);
+    }
+    if (S->on_proc->nnz)
+    {
+        on_edgemark.resize(S->on_proc->nnz, 1);
+    }
+    if (S->off_proc->nnz)
+    {
+        off_edgemark.resize(S->off_proc->nnz, 1);
+    }
+        
+    /**********************************************
+     * Form S^T ptr and indices for on_proc and off_proc
+     * Needed for column-wise searches (which indices
+     * influence each on_proc/off_proc index)
+     **********************************************/
+    transpose(S, on_col_ptr, off_col_ptr,
+            on_col_indices, off_col_indices);
+
+    /**********************************************
+     * Reset states of boundary indices
+     **********************************************/
+    if (S->local_num_rows)
+    {
+        states.resize(S->local_num_rows);
+    }
+    remaining = S->local_num_rows;
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+        if (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] > 1 
+                || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
+        {
+            states[i] = -1;
+        }
+        else
+        {
+            states[i] = -3;
+            remaining--;
+        }
+    }
+
+    /**********************************************
+     * Set initial CLJP boundary weights
+     **********************************************/
+    initial_cljp_weights(S, S->tap_comm, weights, rand_vals);
+
+    /**********************************************
+     * CLJP Main Loop
+     **********************************************/
+    cljp_main_loop(S, on_col_ptr, off_col_ptr,
+            on_col_indices, off_col_indices, weights,
+            states, off_proc_states, remaining, on_edgemark,
+            off_edgemark);
+
+}
 

@@ -66,7 +66,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     for (int i = 0; i < S->local_num_rows; i++)
     {
         fscanf(f, "%d\n", &cf);
-        assert(cf == states[i]);
+        ASSERT_EQ(cf, states[i]);
     }
     fclose(f);
 
@@ -96,7 +96,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     for (int i = 0; i < S->local_num_rows; i++)
     {
         fscanf(f, "%d\n", &cf);
-        assert(cf == states[i]);
+        ASSERT_EQ(cf, states[i]);
     }
     fclose(f);
 
