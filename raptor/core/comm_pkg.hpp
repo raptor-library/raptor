@@ -65,6 +65,16 @@ namespace raptor
         }
 
 
+        static MPI_Datatype get_type(std::vector<int> buffer)
+        {
+            return MPI_INT;
+        }
+        static MPI_Datatype get_type(std::vector<double> buffer)
+        {
+            return MPI_DOUBLE;
+        }
+
+
         // Matrix Communication
         virtual CSRMatrix* communicate(std::vector<int>& rowptr, 
                 std::vector<int>& col_indices,
@@ -86,12 +96,12 @@ namespace raptor
         {  
             return communicate(values.data(), comm);
         }
-        template<typename T, MPI_Datatype MPI_T>
+        template<typename T>
         void init_comm(const std::vector<T>& values, MPI_Comm comm = MPI_COMM_WORLD)
         {
-            init_comm<T, MPI_T>(values.data(), comm);
+            init_comm(values.data(), comm);
         }
-        template<typename T, MPI_Datatype MPI_T> void init_comm(const T* values, MPI_Comm comm = MPI_COMM_WORLD);
+        template<typename T> void init_comm(const T* values, MPI_Comm comm = MPI_COMM_WORLD);
         template<typename T> std::vector<T>& complete_comm();
         template<typename T> std::vector<T>& communicate(const T* values, MPI_Comm comm = MPI_COMM_WORLD);
         virtual void init_double_comm(const double* values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
@@ -111,12 +121,12 @@ namespace raptor
         {  
             communicate_T(values.data(), comm);
         }
-        template<typename T, MPI_Datatype MPI_T>
+        template<typename T>
         void init_comm_T(const std::vector<T>& values, MPI_Comm comm = MPI_COMM_WORLD)
         {
-            init_comm_T<T, MPI_T>(values.data(), comm);
+            init_comm_T(values.data(), comm);
         }
-        template<typename T, MPI_Datatype MPI_T> void init_comm_T(const T* values, MPI_Comm comm = MPI_COMM_WORLD);
+        template<typename T> void init_comm_T(const T* values, MPI_Comm comm = MPI_COMM_WORLD);
         template<typename T> void complete_comm_T(std::vector<T>& result);
         template<typename T> void complete_comm_T();
         template<typename T> void communicate_T(const T* values, std::vector<T>& result, 
@@ -539,11 +549,11 @@ namespace raptor
         // Standard Communication
         void init_double_comm(const double* values, MPI_Comm comm = MPI_COMM_WORLD)
         {
-            initialize<double, MPI_DOUBLE>(values, comm);
+            initialize(values, comm);
         }
         void init_int_comm(const int* values, MPI_Comm comm = MPI_COMM_WORLD)
         {
-            initialize<int, MPI_INT>(values, comm);
+            initialize(values, comm);
         }
         std::vector<double>& complete_double_comm()
         {
@@ -556,15 +566,15 @@ namespace raptor
         template<typename T>
         std::vector<T>& communicate(const std::vector<T>& values, MPI_Comm comm = MPI_COMM_WORLD)
         {
-            return CommPkg::communicate<T>(values.data(), comm);
+            return CommPkg::communicate(values.data(), comm);
         }
         template<typename T>
         std::vector<T>& communicate(const T* values, MPI_Comm comm = MPI_COMM_WORLD)
         {
-            return CommPkg::communicate<T>(values, comm);
+            return CommPkg::communicate(values, comm);
         }
 
-        template<typename T, MPI_Datatype MPI_T>
+        template<typename T>
         void initialize(const T* values, MPI_Comm comm)
         {
             int start, end;
@@ -572,6 +582,7 @@ namespace raptor
 
             std::vector<T>& sendbuf = send_data->get_buffer<T>();
             std::vector<T>& recvbuf = recv_data->get_buffer<T>();
+            MPI_Datatype type = get_type(sendbuf);
 
             for (int i = 0; i < send_data->num_msgs; i++)
             {
@@ -582,7 +593,7 @@ namespace raptor
                 {
                     sendbuf[j] = values[send_data->indices[j]];
                 }
-                MPI_Isend(&(sendbuf[start]), end - start, MPI_T,
+                MPI_Isend(&(sendbuf[start]), end - start, type,
                         proc, key, comm, &(send_data->requests[i]));
             }
             for (int i = 0; i < recv_data->num_msgs; i++)
@@ -590,7 +601,7 @@ namespace raptor
                 proc = recv_data->procs[i];
                 start = recv_data->indptr[i];
                 end = recv_data->indptr[i+1];
-                MPI_Irecv(&(recvbuf[start]), end - start, MPI_T,
+                MPI_Irecv(&(recvbuf[start]), end - start, type,
                         proc, key, comm, &(recv_data->requests[i]));
             }
 
@@ -615,11 +626,11 @@ namespace raptor
         // Transpose Communication
         void init_double_comm_T(const double* values, MPI_Comm comm = MPI_COMM_WORLD)
         {
-            initialize_T<double, MPI_DOUBLE>(values, comm);
+            initialize_T(values, comm);
         }
         void init_int_comm_T(const int* values, MPI_Comm comm = MPI_COMM_WORLD)
         {
-            initialize_T<int, MPI_INT>(values, comm);
+            initialize_T(values, comm);
         }
         void complete_double_comm_T(std::vector<double>& result)
         {
@@ -660,13 +671,14 @@ namespace raptor
             CommPkg::communicate_T<T>(values, comm);
         }
 
-        template<typename T, MPI_Datatype MPI_T>
+        template<typename T>
         void initialize_T(const T* values, MPI_Comm comm)
         {
             int start, end;
             int proc, idx;
             std::vector<T>& sendbuf = send_data->get_buffer<T>();
             std::vector<T>& recvbuf = recv_data->get_buffer<T>();
+            MPI_Datatype type = get_type(sendbuf);
 
             for (int i = 0; i < recv_data->num_msgs; i++)
             {
@@ -678,7 +690,7 @@ namespace raptor
                     idx = recv_data->indices[j];
                     recvbuf[j] = values[idx];
                 }
-                MPI_Isend(&(recvbuf[start]), end - start, MPI_T,
+                MPI_Isend(&(recvbuf[start]), end - start, type,
                         proc, key, comm, &(recv_data->requests[i]));
             }
             for (int i = 0; i < send_data->num_msgs; i++)
@@ -686,7 +698,7 @@ namespace raptor
                 proc = send_data->procs[i];
                 start = send_data->indptr[i];
                 end = send_data->indptr[i+1];
-                MPI_Irecv(&(sendbuf[start]), end - start, MPI_T,
+                MPI_Irecv(&(sendbuf[start]), end - start, type,
                         proc, key, comm, &(send_data->requests[i]));
             }
         }
@@ -1320,11 +1332,11 @@ namespace raptor
         // Class Methods
         void init_double_comm(const double* values, MPI_Comm comm = MPI_COMM_WORLD)
         {
-            initialize<double, MPI_DOUBLE>(values, comm);
+            initialize(values, comm);
         }
         void init_int_comm(const int* values, MPI_Comm comm = MPI_COMM_WORLD)
         {
-            initialize<int, MPI_INT>(values, comm);
+            initialize(values, comm);
         }
         std::vector<double>& complete_double_comm()
         {
@@ -1346,7 +1358,7 @@ namespace raptor
             return CommPkg::communicate<T>(values, comm);
         }
 
-        template<typename T, MPI_Datatype MPI_T>
+        template<typename T>
         void initialize(const T* values, MPI_Comm comm)
         {
             // Messages with origin and final destination on node
@@ -1357,7 +1369,7 @@ namespace raptor
                 local_S_par_comm->communicate<T>(values, topology->local_comm);
 
             // Begin inter-node communication 
-            global_par_comm->initialize<T, MPI_T>(S_vals.data(), comm);
+            global_par_comm->initialize(S_vals.data(), comm);
         }
 
         template<typename T>
@@ -1397,11 +1409,11 @@ namespace raptor
         // Transpose Communication
         void init_double_comm_T(const double* values, MPI_Comm comm = MPI_COMM_WORLD)
         {
-            initialize_T<double, MPI_DOUBLE>(values, comm);
+            initialize_T(values, comm);
         }
         void init_int_comm_T(const int* values, MPI_Comm comm = MPI_COMM_WORLD)
         {
-            initialize_T<int, MPI_INT>(values, comm);
+            initialize_T(values, comm);
         }
         void complete_double_comm_T(std::vector<double>& result)
         {
@@ -1442,7 +1454,7 @@ namespace raptor
             CommPkg::communicate_T<T>(values, comm);
         }
 
-        template<typename T, MPI_Datatype MPI_T>
+        template<typename T>
         void initialize_T(const T* values, MPI_Comm comm)
         {
             int idx;
@@ -1482,7 +1494,7 @@ namespace raptor
                 idx = local_R_par_comm->send_data->indices[i];
                 G_recvbuf[idx] += R_sendbuf[i];
             }
-            global_par_comm->init_comm_T<T, MPI_T>(G_recvbuf, comm);
+            global_par_comm->init_comm_T(G_recvbuf, comm);
 
         }
 

@@ -33,12 +33,12 @@ namespace raptor
     }
 
     template<>
-    void CommPkg::init_comm<double, MPI_DOUBLE>(const double* values, MPI_Comm comm)
+    void CommPkg::init_comm<double>(const double* values, MPI_Comm comm)
     {
         init_double_comm(values, comm);
     }
     template<>
-    void CommPkg::init_comm<int, MPI_INT>(const int* values, MPI_Comm comm)
+    void CommPkg::init_comm<int>(const int* values, MPI_Comm comm)
     {
         init_int_comm(values, comm);
     }
@@ -83,12 +83,12 @@ namespace raptor
     }
 
     template<>
-    void CommPkg::init_comm_T<double, MPI_DOUBLE>(const double* values, MPI_Comm comm)
+    void CommPkg::init_comm_T<double>(const double* values, MPI_Comm comm)
     {
         init_double_comm_T(values, comm);
     }
     template<>
-    void CommPkg::init_comm_T<int, MPI_INT>(const int* values, MPI_Comm comm)
+    void CommPkg::init_comm_T<int>(const int* values, MPI_Comm comm)
     {
         init_int_comm_T(values, comm);
     }
