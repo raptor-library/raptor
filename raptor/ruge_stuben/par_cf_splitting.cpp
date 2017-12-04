@@ -904,6 +904,225 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
     }
 }
 
+void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
+        const std::map<int, int>& global_to_local,
+        const std::vector<int>& states,
+        const std::vector<int>& off_proc_states,
+        const int* part_to_col,
+        std::vector<int>& off_proc_col_ptr,
+        std::vector<int>& off_proc_col_coarse)
+{
+    int n_sends, n_recvs;
+    int start, end, proc;
+    int idx, idx_k;
+    int idx_start, idx_end;
+    int recv_size;
+
+
+    ParComm* local_L_par_comm = S->tap_comm->local_L_par_comm;
+    ParComm* local_S_par_comm = S->tap_comm->local_S_par_comm;
+    ParComm* local_R_par_comm = S->tap_comm->local_R_par_comm;
+    ParComm* global_par_comm = S->tap_comm->global_par_comm;
+
+    std::vector<int> R_off_proc_states;
+    std::vector<int> send_ptr;
+    std::vector<int> send_buffer;
+    std::vector<int> recv_ptr;
+    std::vector<int> recv_buffer;
+
+    /**********************************************************
+     *****
+     *****  Step 1: local_S_par_comm sends row sizes, followed
+     *****  by column indices, to all procs it normally sends to.
+     *****
+     *********************************************************/
+    send_ptr.resize(local_S_par_comm->send_data->num_msgs + 1);
+    recv_ptr.resize(local_S_par_comm->recv_data->num_msgs + 1);
+    send_ptr[0] = send_buffer.size();
+
+    // Find row sizes and col indices associated with each send
+    for (int i = 0; i < local_S_par_comm->send_data->num_msgs; i++)
+    {
+        start = local_S_par_comm->send_data->indptr[i];
+        end = local_S_par_comm->send_data->indptr[i+1];
+        for (int j = start; j < end; j++)
+        {
+            idx = local_S_par_comm->send_data->indices[j];
+            if (states[idx] == -1)
+            {
+                local_S_par_comm->send_data->int_buffer[j] = -send_buffer.size();
+                idx_start = S->on_proc->idx1[idx];
+                idx_end = S->on_proc->idx1[idx+1];
+                if (S->on_proc->idx2[idx_start] == idx)
+                {
+                    idx_start++;
+                }
+                for (int k = idx_start; k < idx_end; k++)
+                {
+                    idx_k = S->on_proc->idx2[k];
+                    if (states[idx_k] == 2)
+                    {
+                        send_buffer.push_back(S->on_proc_column_map[idx_k]);
+                    }
+                }
+                idx_start = S->off_proc->idx1[idx];
+                idx_end = S->off_proc->idx1[idx+1];
+                for (int k = idx_start; k < idx_end; k++)
+                {
+                    idx_k = S->off_proc->idx2[k];
+                    if (off_proc_states[idx_k] == 2)
+                    {
+                        send_buffer.push_back(S->off_proc_column_map[idx_k]);
+                    }
+                }
+                local_S_par_comm->send_data->int_buffer[j] += send_buffer.size();
+            }
+            else local_S_par_comm->send_data->int_buffer[j] = 0;
+            send_ptr[i+1] = send_buffer.size();
+        }
+    }
+
+    // Send row sizes
+    for (int i = 0; i < local_S_par_comm->send_data->num_msgs; i++)
+    {
+        proc = local_S_par_comm->send_data->procs[i];
+        start = local_S_par_comm->send_data->indptr[i];
+        end = local_S_par_comm->send_data->indptr[i+1];
+        MPI_Isend(&(local_S_par_comm->send_data->int_buffer[start]), end - start,
+                MPI_INT, proc, local_S_par_comm->key, S->tap_comm->topology->local_comm,
+                &(local_S_par_comm->send_data->requests[i]));
+    } 
+    // Recv row sizes   
+    for (int i = 0; i < local_S_par_comm->recv_data->num_msgs; i++)
+    {
+        proc = local_S_par_comm->recv_data->procs[i];
+        start = local_S_par_comm->recv_data->indptr[i];
+        end = local_S_par_comm->recv_data->indptr[i+1];
+        MPI_Irecv(&(local_S_par_comm->recv_data->int_buffer[start]), end - start,
+                MPI_INT, proc, local_S_par_comm->key, S->tap_comm->topology->local_comm,
+                &(local_S_par_comm->recv_data->requests[i]));
+    }
+    // Wait for communication to compleete
+    if (local_S_par_comm->send_data->num_msgs)
+    {
+        MPI_Waitall(local_S_par_comm->send_data->num_msgs,
+                local_S_par_comm->send_data->requests.data(),
+                MPI_STATUSES_IGNORE);
+    }
+    if (local_S_par_comm->recv_data->num_msgs)
+    {
+        MPI_Waitall(local_S_par_comm->recv_data->num_msgs,
+                local_S_par_comm->recv_data->requests.data(),
+                MPI_STATUSES_IGNORE);
+    }
+
+    // Find row sizes to be recvd
+    std::vector<int>& recv_sizes = local_S_par_comm->recv_data->int_buffer;
+    recv_size = 0;
+    recv_ptr[0] = recv_size;
+    for (int i = 0; i < local_S_par_comm->recv_data->num_msgs; i++)
+    {   
+        start = local_S_par_comm->recv_data->indptr[i];
+        end = local_S_par_comm->recv_data->indptr[i+1];
+        for (int j = start; j < end; j++)
+        {
+            recv_size += recv_sizes[j];
+        }
+        recv_ptr[i+1] = recv_size;
+    }
+    // Send column indices
+    recv_buffer.resize(recv_size);
+    n_sends = 0;
+    for (int i = 0; i < local_S_par_comm->send_data->num_msgs; i++)
+    {
+        proc = local_S_par_comm->send_data->procs[i];
+        start = send_ptr[i];
+        end = send_ptr[i+1];
+        if (end - start)
+        {
+            MPI_Issend(&(send_buffer[start]), end - start, MPI_INT, proc, local_S_par_comm->key,
+                    local_S_par_comm->topology->local_comm, &(local_S_par_comm->send_data->requests[n_sends++]));
+        }
+    }
+    // Recv column indices
+    n_recvs = 0;
+    for (int i = 0; i < local_S_par_comm->recv_data->num_msgs; i++)
+    {
+        proc = local_S_par_comm->recv_data->procs[i];
+        start = recv_ptr[i];
+        end = recv_ptr[i+1];
+        if (end - start)
+        {
+            MPI_Irecv(&(recv_buffer[start]), end - start, MPI_INT, proc, local_S_par_comm->key,
+                    local_S_par_comm->topology->local_comm, &(local_S_par_comm->recv_data->requests[n_recvs++]));
+        }
+    }
+    // Wait for communication to complete
+    if (n_sends)
+    {
+        MPI_Waitall(n_sends, local_S_par_comm->send_data->requests.data(), MPI_STATUSES_IGNORE);
+    }
+    if (n_recvs)
+    {
+        MPI_Waitall(n_recvs, local_S_par_comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
+    }
+
+    /**********************************************************
+     *****
+     *****  Step 2: Communicate off_proc_states (so that global
+     *****  par comm will know what to recv)
+     *****
+     *********************************************************/
+    std::vector<int> global_off_proc_states;
+    // Fill in off proc states for cols recvd through R
+    if (local_R_par_comm->recv_data->size_msgs)
+    {
+        R_off_proc_states.resize(local_R_par_comm->recv_data->size_msgs);
+        for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
+        {
+            idx = S->tap_comm->R_to_orig[i];
+            R_off_proc_states[i] = off_proc_states[idx];
+        }
+    }
+    // Send states and off_proc states through R and S
+    local_R_par_comm->communicate_T(R_off_proc_states, S->tap_comm->topology->local_comm);
+    if (global_par_comm->recv_data->size_msgs)
+    {
+        global_off_proc_states.resize(global_par_comm->recv_data->size_msgs);
+    }
+    for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
+    {
+        idx = local_R_par_comm->send_data->indices[i];
+        global_off_proc_states[idx] = local_R_par_comm->send_data->int_buffer[i];
+    }
+
+    /**********************************************************
+     *****
+     *****  Step 3: Global communication... only send/recv
+     *****  row sizes and col indices when necessary.  Send
+     *****  everything as one message.  Global recvs... know 
+     *****  procs from which to recv, but not recv sizes (probe)
+     *****
+     *********************************************************/
+    std::vector<int> global_send_displs(global_par_comm->send_data->size_msgs + 1);
+    int recv_size = 0;
+    global_send_displs[0] = recv_size;
+    for (int i = 0; i < global_par_comm->send_data->num_msgs; i++)
+    {
+        start = global_par_comm->send_data->indptr[i];
+        end = global_par_comm->send_data->indptr[i+1];
+        for (int j = start; j < end; j++)
+        {
+            idx = global_par_comm->send_data->indices[j];
+            recv_size += recv_sizes[idx];
+        }
+        global_send_displs[i+1] = recv_size;
+    }
+    
+
+
+}
+
 void combine_weight_updates(CommPkg* comm,
         const std::vector<int>&states,
         const std::vector<int>& off_proc_states,
@@ -1302,6 +1521,8 @@ void tap_cljp_main_loop(ParCSRMatrix* S,
         }
 
         // Find new coarse influenced by each off_proc col
+        tap_find_off_proc_new_coarse(S, global_to_local, states, off_proc_states, 
+                part_to_col, off_proc_col_ptr, off_proc_col_coarse);
         find_off_proc_new_coarse(S, global_to_local, states, off_proc_states, 
                 part_to_col, off_proc_col_ptr, off_proc_col_coarse);
 
