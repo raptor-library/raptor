@@ -77,13 +77,20 @@ namespace raptor
 
         // Matrix Communication
         virtual CSRMatrix* communicate(std::vector<int>& rowptr, 
-                std::vector<int>& col_indices,
-                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
+                std::vector<int>& col_indices, std::vector<double>& values,
+                MPI_Comm comm = MPI_COMM_WORLD) = 0;
+        virtual CSRMatrix* communicate_T(std::vector<int>& rowptr,
+                std::vector<int>& col_indices, std::vector<double>& values, 
+                int n_result_rows, MPI_Comm comm = MPI_COMM_WORLD) = 0;
         CSRMatrix* communicate(ParCSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD);
-        CSRMatrix* communicate_T(std::vector<int>& rowptr, 
-                std::vector<int>& col_indices,
-                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD) { return NULL; }
-
+        CSRMatrix* communicate(CSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
+        {
+            return communicate(A->idx1, A->idx2, A->vals, comm);
+        }
+        CSRMatrix* communicate_T(CSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
+        {
+            return communicate_T(A->idx1, A->idx2, A->vals, comm);
+        }
 
         // Vector Communication
         std::vector<double>& communicate(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD);
@@ -853,13 +860,21 @@ namespace raptor
         CSRMatrix* communicate(std::vector<int>& rowptr, std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
         CSRMatrix* communicate_T(std::vector<int>& rowptr, std::vector<int>& col_indices,
-                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
+                std::vector<double>& values, int n_result_rows, MPI_Comm comm = MPI_COMM_WORLD);
         CSRMatrix* communication_helper(std::vector<int>& rowptr, 
                 std::vector<int>& col_indices, std::vector<double>& values,
                 MPI_Comm comm, CommData* send_comm, CommData* recv_comm);
         CSRMatrix* communicate(ParCSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
         {
             return CommPkg::communicate(A, comm);
+        }
+        CSRMatrix* communicate(CSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
+        {
+            return CommPkg::communicate(A, comm);
+        }
+        CSRMatrix* communicate_T(CSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
+        {
+            return CommPkg::communicate_T(A, comm);
         }
 
 
@@ -1916,12 +1931,19 @@ namespace raptor
         // Matrix Communication
         CSRMatrix* communicate(std::vector<int>& rowptr, std::vector<int>& col_indices,
                 std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
-        std::pair<CSRMatrix*, CSRMatrix*> communicate_T(std::vector<int>& rowptr, 
-                std::vector<int>& col_indices, std::vector<double>& values, 
-                MPI_Comm comm = MPI_COMM_WORLD);
+        CSRMatrix* communicate_T(std::vector<int>& rowptr, std::vector<int>& col_indices, 
+                std::vector<double>& values, int n_result_rows, MPI_Comm comm = MPI_COMM_WORLD);
         CSRMatrix* communicate(ParCSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
         {
             return CommPkg::communicate(A, comm);
+        }
+        CSRMatrix* communicate(CSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
+        {
+            return CommPkg::communicate(A, comm);
+        }
+        CSRMatrix* communicate_T(CSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
+        {
+            return CommPkg::communicate_T(A, comm);
         }
 
         // Vector Communication        

@@ -20,6 +20,8 @@ int main(int argc, char** argv)
 
 TEST(TestTAPRAP, TestsInRuge_Stuben)
 { 
+    setenv("PPN", "4", 1);
+
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
@@ -43,7 +45,7 @@ TEST(TestTAPRAP, TestsInRuge_Stuben)
     P = readParMatrix(P0_fn);
     AP = A->tap_mult(P);
     P_csc = new ParCSCMatrix(P);
-    Ac = AP->mult_T(P_csc);
+    Ac = AP->tap_mult_T(P_csc);
     Ac_rap = readParMatrix(A1_fn);
     compare(Ac, Ac_rap);
     delete Ac_rap;
@@ -59,7 +61,7 @@ TEST(TestTAPRAP, TestsInRuge_Stuben)
     P = readParMatrix(P1_fn);
     AP = A->tap_mult(P);
     P_csc = new ParCSCMatrix(P);
-    Ac = AP->mult_T(P_csc);
+    Ac = AP->tap_mult_T(P_csc);
     Ac_rap = readParMatrix(A2_fn);
     compare(Ac, Ac_rap);
     delete Ac_rap;
@@ -68,5 +70,7 @@ TEST(TestTAPRAP, TestsInRuge_Stuben)
     delete AP;
     delete P;
     delete A;
+
+    setenv("PPN", "16", 1);
 } // end of TEST(TestParRAP, TestsInRuge_Stuben) //
 
