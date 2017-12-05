@@ -352,10 +352,57 @@ CSRMatrix* ParComm::communicate(std::vector<int>& rowptr,
 
 CSRMatrix* ParComm::communicate_T(std::vector<int>& rowptr, 
         std::vector<int>& col_indices, std::vector<double>& values,
-        MPI_Comm comm)
+        int n_result_rows, MPI_Comm comm)
 {
-    return communication_helper(rowptr, col_indices, values, comm,
+    int idx, ptr;
+    int start, end;
+
+    std::vector<int> row_sizes;
+    if (n_result_rows) row_sizes.resize(n_result_rows, 0);
+
+    CSRMatrix* recv_mat_T = communication_helper(rowptr, col_indices, values, comm,
             recv_data, send_data);
+
+
+    CSRMatrix* recv_mat = new CSRMatrix(n_result_rows, -1);
+
+    for (int i = 0; i < send_data->size_msgs; i++)
+    {
+        idx = send_data->indices[i];
+        start = recv_mat_T->idx1[i];
+        end = recv_mat_T->idx1[i+1];
+        row_sizes[idx] += (end - start);
+    }
+    recv_mat->idx1[0] = 0;
+    for (int i = 0; i < n_result_rows; i++)
+    {
+        recv_mat->idx1[i+1] = recv_mat->idx1[i] + row_sizes[i];
+        row_sizes[i] = 0;
+    }
+    recv_mat->nnz = recv_mat->idx1[n_result_rows];
+    if (recv_mat->nnz)
+    {
+        recv_mat->idx2.resize(recv_mat->nnz);
+        recv_mat->vals.resize(recv_mat->nnz);
+    }
+
+    for (int i = 0; i < send_data->size_msgs; i++)
+    {
+        idx = send_data->indices[i];
+        start = recv_mat_T->idx1[i];
+        end = recv_mat_T->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            ptr = recv_mat->idx1[idx] + row_sizes[idx]++;
+            recv_mat->idx2[ptr] = recv_mat_T->idx2[j];
+            recv_mat->vals[ptr] = recv_mat_T->vals[j];
+        }
+    }
+
+
+    delete recv_mat_T;
+
+    return recv_mat;
 }
     
 CSRMatrix* TAPComm::communicate(std::vector<int>& rowptr, 
@@ -442,18 +489,92 @@ CSRMatrix* TAPComm::communicate(std::vector<int>& rowptr,
     return recv_mat;
 }
 
-std::pair<CSRMatrix*, CSRMatrix*> TAPComm::communicate_T(std::vector<int>& rowptr, 
+CSRMatrix* TAPComm::communicate_T(std::vector<int>& rowptr, 
         std::vector<int>& col_indices, std::vector<double>& values,
-        MPI_Comm comm)
+        int n_result_rows, MPI_Comm comm)
 {   
-    int rank;
-    MPI_Comm_rank(comm, &rank);
-    if (rank == 0) printf("Not yet implemented...\n");
+    int n_rows = rowptr.size() - 1;
+    int idx, ptr;
+    int start, end;
 
-    CSRMatrix* recv_L = NULL;
-    CSRMatrix* recv_S = NULL;
-    return std::make_pair(recv_L, recv_S);
+    std::vector<int> new_rowptr;
+    std::vector<int> new_col_indices;
+    std::vector<double> new_values;
+    
+    new_rowptr.resize(local_L_par_comm->recv_data->size_msgs + 1);
+    new_col_indices.clear();
+    new_values.clear();
+    new_rowptr[0] = 0;
+    for (int i = 0; i < local_L_par_comm->recv_data->size_msgs; i++)
+    {
+        idx = L_to_orig[i];
+        start = rowptr[idx];
+        end = rowptr[idx+1];
+        for (int j = start; j < end; j++)
+        {
+            new_col_indices.push_back(col_indices[j]);
+            new_values.push_back(values[j]);
+        }
+        new_rowptr[i+1] = new_col_indices.size();
+    }
+    CSRMatrix* L_mat = local_L_par_comm->communicate_T(new_rowptr, new_col_indices,
+            new_values, n_result_rows, topology->local_comm);
+
+    new_rowptr.resize(local_R_par_comm->recv_data->size_msgs + 1);
+    new_col_indices.clear();
+    new_values.clear();
+    new_rowptr[0] = 0;
+    for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
+    {
+        idx = R_to_orig[i];
+        start = rowptr[idx];
+        end = rowptr[idx+1];
+        for (int j = start; j < end; j++)
+        {
+            new_col_indices.push_back(col_indices[j]);
+            new_values.push_back(values[j]);
+        }
+        new_rowptr[i+1] = new_col_indices.size();
+    }
+    CSRMatrix* R_mat = local_R_par_comm->communicate_T(new_rowptr, new_col_indices,
+            new_values, global_par_comm->recv_data->size_msgs, topology->local_comm);
+
+    CSRMatrix* G_mat = global_par_comm->communicate_T(R_mat->idx1, R_mat->idx2,
+            R_mat->vals, local_S_par_comm->recv_data->size_msgs, comm);
+
+    CSRMatrix* S_mat = local_S_par_comm->communicate_T(G_mat->idx1, G_mat->idx2,
+            G_mat->vals, n_result_rows, topology->local_comm);
+
+    CSRMatrix* recv_mat = new CSRMatrix(n_result_rows, -1);
+    int nnz = L_mat->nnz + S_mat->nnz;
+    if (nnz)
+    {
+        recv_mat->idx2.reserve(nnz);
+        recv_mat->vals.reserve(nnz);
+    }
+    recv_mat->idx1[0] = 0;
+    for (int i = 0; i < n_result_rows; i++)
+    {
+        start = L_mat->idx1[i];
+        end = L_mat->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            recv_mat->idx2.push_back(L_mat->idx2[j]);
+            recv_mat->vals.push_back(L_mat->vals[j]);
+        }
+        start = S_mat->idx1[i];
+        end = S_mat->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            recv_mat->idx2.push_back(S_mat->idx2[j]);
+            recv_mat->vals.push_back(S_mat->vals[j]);
+        }
+        recv_mat->idx1[i+1] = recv_mat->idx2.size();
+    }
+    recv_mat->nnz = recv_mat->idx2.size();
+
+
+    return recv_mat;
+    
 }
-
-
 

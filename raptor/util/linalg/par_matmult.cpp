@@ -69,7 +69,7 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A)
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    int row_start, row_end;
+    int start, end;
     int row, col, idx;
 
     if (A->comm == NULL)
@@ -92,83 +92,108 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A)
 
     CSRMatrix* Ctmp = mult_T_partial(A);
     CSRMatrix* recv_mat = A->comm->communicate_T(Ctmp->idx1, Ctmp->idx2, 
-            Ctmp->vals, MPI_COMM_WORLD);
+            Ctmp->vals, A->on_proc_num_cols, MPI_COMM_WORLD);
 
 
     // Split recv_mat into on and off proc portions
     CSRMatrix* recv_on = new CSRMatrix(A->on_proc_num_cols, -1);
     CSRMatrix* recv_off = new CSRMatrix(A->on_proc_num_cols, -1);
-    std::vector<int> recv_on_ctr;
-    std::vector<int> recv_off_ctr;
-    if (A->on_proc_num_cols)
-    {
-        recv_on_ctr.resize(A->on_proc_num_cols, 0);
-        recv_off_ctr.resize(A->on_proc_num_cols ,0);
-    }
-    for (int i = 0; i < A->comm->send_data->size_msgs; i++)
-    {
-        row = A->comm->send_data->indices[i];
-        row_start = recv_mat->idx1[i];
-        row_end = recv_mat->idx1[i+1];
-        for (int j = row_start; j < row_end; j++)
-        {
-            col = recv_mat->idx2[j];
-            if (col < partition->first_local_col 
-                    || col > partition->last_local_col)
-            {
-                recv_off_ctr[row]++;
-            }
-            else
-            {
-                recv_on_ctr[row]++;
-            }
-        }
-    }
-    recv_on->idx1[0] = 0;
-    recv_off->idx1[0] = 0;
     for (int i = 0; i < A->on_proc_num_cols; i++)
     {
-        recv_on->idx1[i+1] = recv_on->idx1[i] + recv_on_ctr[i];
-        recv_on_ctr[i] = 0;
-        recv_off->idx1[i+1] = recv_off->idx1[i] + recv_off_ctr[i];
-        recv_off_ctr[i] = 0;
-    }
-    int recv_on_nnz = recv_on->idx1[A->on_proc_num_cols];
-    int recv_off_nnz = recv_off->idx1[A->on_proc_num_cols];
-    if (recv_on_nnz)
-    {
-        recv_on->idx2.resize(recv_on_nnz);
-        recv_on->vals.resize(recv_on_nnz);
-    }
-    if (recv_off_nnz)
-    {
-        recv_off->idx2.resize(recv_off_nnz);
-        recv_off->vals.resize(recv_off_nnz);
-    }
-
-    for (int i = 0; i < A->comm->send_data->size_msgs; i++)
-    {
-        row = A->comm->send_data->indices[i];
-        row_start = recv_mat->idx1[i];
-        row_end = recv_mat->idx1[i+1];
-        for (int j = row_start; j < row_end; j++)
+        start = recv_mat->idx1[i];
+        end = recv_mat->idx1[i+1];
+        for (int j = start; j < end; j++)
         {
             col = recv_mat->idx2[j];
-            if (col < partition->first_local_col 
+            if (col < partition->first_local_col
                     || col > partition->last_local_col)
             {
-                idx = recv_off->idx1[row] + recv_off_ctr[row]++;
-                recv_off->idx2[idx] = col;
-                recv_off->vals[idx] = recv_mat->vals[j];
+                recv_off->idx2.push_back(col);
+                recv_off->vals.push_back(recv_mat->vals[j]);
             }
             else
             {
-                idx = recv_on->idx1[row] + recv_on_ctr[row]++;
-                recv_on->idx2[idx] = col;
-                recv_on->vals[idx] = recv_mat->vals[j];
+                recv_on->idx2.push_back(col);
+                recv_on->vals.push_back(recv_mat->vals[j]);
             }
         }
+        recv_on->idx1[i+1] = recv_on->idx2.size();
+        recv_off->idx1[i+1] = recv_off->idx2.size();
     }
+    recv_on->nnz = recv_on->idx2.size();
+    recv_off->nnz = recv_off->idx2.size();
+
+    mult_T_combine(A, C, recv_on, recv_off);
+
+    // Clean up
+    delete Ctmp;
+    delete recv_mat;
+    delete recv_on;
+    delete recv_off;
+
+    // Return matrix containing product
+    return C;
+}
+
+ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A)
+{
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    int start, end;
+    int row, col, idx;
+
+    if (A->tap_comm == NULL)
+    {
+        A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, 
+                A->on_proc_column_map);
+    }
+
+    // Initialize C (matrix to be returned)
+    ParCSRMatrix* C;
+    if (partition == A->partition)
+    {
+        C = new ParCSRMatrix(partition);
+    }
+    else
+    {
+        Partition* part = new Partition(partition, A->partition);
+        C = new ParCSRMatrix(part);
+        part->num_shared = 0;
+    }
+
+    CSRMatrix* Ctmp = mult_T_partial(A);
+    CSRMatrix* recv_mat = A->tap_comm->communicate_T(Ctmp->idx1, Ctmp->idx2, 
+            Ctmp->vals, A->on_proc_num_cols, MPI_COMM_WORLD);
+
+
+    // Split recv_mat into on and off proc portions
+    CSRMatrix* recv_on = new CSRMatrix(A->on_proc_num_cols, -1);
+    CSRMatrix* recv_off = new CSRMatrix(A->on_proc_num_cols, -1);
+    for (int i = 0; i < A->on_proc_num_cols; i++)
+    {
+        start = recv_mat->idx1[i];
+        end = recv_mat->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = recv_mat->idx2[j];
+            if (col < partition->first_local_col
+                    || col > partition->last_local_col)
+            {
+                recv_off->idx2.push_back(col);
+                recv_off->vals.push_back(recv_mat->vals[j]);
+            }
+            else
+            {
+                recv_on->idx2.push_back(col);
+                recv_on->vals.push_back(recv_mat->vals[j]);
+            }
+        }
+        recv_on->idx1[i+1] = recv_on->idx2.size();
+        recv_off->idx1[i+1] = recv_off->idx2.size();
+    }
+    recv_on->nnz = recv_on->idx2.size();
+    recv_off->nnz = recv_off->idx2.size();
 
     mult_T_combine(A, C, recv_on, recv_off);
 
