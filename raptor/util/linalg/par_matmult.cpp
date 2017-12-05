@@ -34,6 +34,36 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B)
     return C;
 }
 
+ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B)
+{
+    // Check that communication package has been initialized
+    if (tap_comm == NULL)
+    {
+        tap_comm = new TAPComm(partition, off_proc_column_map, on_proc_column_map);
+    }
+
+    // Initialize C (matrix to be returned)
+    ParCSRMatrix* C;
+    if (partition == B->partition)
+    {
+        C = new ParCSRMatrix(partition);
+    }
+    else
+    {
+        Partition* part = new Partition(partition, B->partition);
+        C = new ParCSRMatrix(part);
+        part->num_shared = 0;
+    }
+
+    // Communicate data and multiply
+    CSRMatrix* recv_mat = tap_comm->communicate(B);
+    mult_helper(B, C, recv_mat);
+    delete recv_mat;
+
+    // Return matrix containing product
+    return C;
+}
+
 ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A)
 {
     int rank;

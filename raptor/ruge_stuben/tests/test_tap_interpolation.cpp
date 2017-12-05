@@ -23,7 +23,7 @@ ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, 
 
     int first_row, first_col;
     FILE* f;
-    ParCSRMatrix* P_rap=nullptr;
+    ParCSRMatrix* P_rap;
     std::vector<int> proc_sizes(num_procs);
     std::vector<int> splitting;
     if (A->local_num_rows)
@@ -57,7 +57,7 @@ ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, 
     }
     else if (interp_option == 1)
     {
-        P_rap = mod_classical_interpolation(A, S, splitting, S->comm->recv_data->int_buffer, A->comm);
+        P_rap = mod_classical_interpolation(A, S, splitting, S->comm->recv_data->int_buffer, A->tap_comm);
     }
     MPI_Allgather(&P_rap->on_proc_num_cols, 1, MPI_INT, proc_sizes.data(), 1, 
                 MPI_INT, MPI_COMM_WORLD);
@@ -83,15 +83,17 @@ int main(int argc, char** argv)
 } // end of main() //
 
 
-TEST(TestParInterpolation, TestsInRuge_Stuben)
+TEST(TestTAPInterpolation, TestsInRuge_Stuben)
 { 
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    int first_row, first_col;
+    setenv("PPN", "4", 1);
 
-
+    int first_row, first_col, col;
+    int start, end;
+    FILE* f;
     ParCSRMatrix* A;
     ParCSRMatrix* S;
     ParCSRMatrix* P;
@@ -111,6 +113,7 @@ TEST(TestParInterpolation, TestsInRuge_Stuben)
 
     // TEST LEVEL 0
     A = readParMatrix(A0_fn);
+    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
     S = readParMatrix(S0_fn);
     P_rap = form_Prap(A, S, cf0_fn, 
             &first_row, &first_col, 0);
@@ -133,6 +136,8 @@ TEST(TestParInterpolation, TestsInRuge_Stuben)
 
     // TEST LEVEL 1
     A = readParMatrix(A1_fn);
+    A->tap_comm = new TAPComm(A->partition, 
+            A->off_proc_column_map, A->on_proc_column_map);
     S = readParMatrix(S1_fn);
     P_rap = form_Prap(A, S, cf1_fn, 
             &first_row, &first_col, 0);
@@ -155,5 +160,8 @@ TEST(TestParInterpolation, TestsInRuge_Stuben)
     delete S;
     delete A;
 
+    setenv("PPN", "16", 1);
+
 } // end of TEST(TestParInterpolation, TestsInRuge_Stuben) //
+
 

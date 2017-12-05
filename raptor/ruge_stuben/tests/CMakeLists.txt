@@ -20,6 +20,10 @@ if (WITH_MPI)
     add_test(TestParRAP_1 mpirun -n 1 ./test_par_rap)
     add_test(TestParRAP_2 mpirun -n 2 ./test_par_rap)
 
+    add_executable(test_tap_rap test_tap_rap.cpp)
+    target_link_libraries(test_tap_rap raptor ${MPI_LIBRARIES} googletest pthread )
+    add_test(TestTAPRAP mpirun -n 16 ./test_tap_rap)
+
     add_executable(test_par_splitting test_par_splitting.cpp)
     target_link_libraries(test_par_splitting raptor ${MPI_LIBRARIES} googletest pthread )
     add_test(TestParSplitting_1 mpirun -n 1 ./test_par_splitting)
@@ -29,6 +33,10 @@ if (WITH_MPI)
     target_link_libraries(test_par_interpolation raptor ${MPI_LIBRARIES} googletest pthread )
     add_test(TestParInterpolation_1 mpirun -n 1 ./test_par_interpolation)
     add_test(TestParInterpolation_2 mpirun -n 2 ./test_par_interpolation)
+
+    add_executable(test_tap_interpolation test_tap_interpolation.cpp)
+    target_link_libraries(test_tap_interpolation raptor ${MPI_LIBRARIES} googletest pthread )
+    add_test(TestTAPInterpolation mpirun -n 16 ./test_tap_interpolation)
 
     add_executable(test_par_ruge_stuben test_par_ruge_stuben.cpp)
     target_link_libraries(test_par_ruge_stuben raptor ${MPI_LIBRARIES} googletest pthread )

@@ -193,7 +193,7 @@ namespace raptor
                         P = direct_interpolation(A, S, states, off_proc_states);
                         break;
                     case Classical:
-                        P = mod_classical_interpolation(A, S, states, off_proc_states);
+                        P = mod_classical_interpolation(A, S, states, off_proc_states, A->comm);
                         break;
                 }
                 levels[level_ctr]->P = P;
