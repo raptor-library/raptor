@@ -3,9 +3,7 @@
 
 #include "core/comm_data.hpp"
 
-using namespace raptor;
-
-namespace raptor
+namespace raptor 
 {
 
 template<>

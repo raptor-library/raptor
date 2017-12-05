@@ -94,7 +94,7 @@ void ParMatrix::mult_T(ParVector& x, ParVector& b)
 
     off_proc->mult_T(x.local, x_tmp);
 
-    comm->init_comm_T<double, MPI_DOUBLE>(x_tmp);
+    comm->init_comm_T(x_tmp);
 
     if (local_num_rows)
     {
@@ -123,7 +123,7 @@ void ParMatrix::tap_mult_T(ParVector& x, ParVector& b)
 
     off_proc->mult_T(x.local, x_tmp);
 
-    tap_comm->init_comm_T<double, MPI_DOUBLE>(x_tmp);
+    tap_comm->init_comm_T(x_tmp);
 
     if (local_num_rows)
     {

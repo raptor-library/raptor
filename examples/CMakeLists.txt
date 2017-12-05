@@ -13,9 +13,6 @@ if (WITH_MPI)
 
     add_executable(benchmark_matmult benchmark_matmult.cpp)
     target_link_libraries(benchmark_matmult raptor ${MPI_LIBRARIES})
-
-    add_executable(test_tap test_tap.cpp)
-    target_link_libraries(test_tap raptor ${MPI_LIBRARIES})
 endif()
 
 

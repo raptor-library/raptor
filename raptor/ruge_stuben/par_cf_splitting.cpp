@@ -1105,7 +1105,7 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
      *****
      *********************************************************/
     std::vector<int> global_send_displs(global_par_comm->send_data->size_msgs + 1);
-    int recv_size = 0;
+    recv_size = 0;
     global_send_displs[0] = recv_size;
     for (int i = 0; i < global_par_comm->send_data->num_msgs; i++)
     {
@@ -1521,7 +1521,7 @@ void tap_cljp_main_loop(ParCSRMatrix* S,
         }
 
         // Find new coarse influenced by each off_proc col
-        tap_find_off_proc_new_coarse(S, global_to_local, states, off_proc_states, 
+        find_off_proc_new_coarse(S, global_to_local, states, off_proc_states, 
                 part_to_col, off_proc_col_ptr, off_proc_col_coarse);
         find_off_proc_new_coarse(S, global_to_local, states, off_proc_states, 
                 part_to_col, off_proc_col_ptr, off_proc_col_coarse);
