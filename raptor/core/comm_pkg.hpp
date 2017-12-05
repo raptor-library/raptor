@@ -1921,10 +1921,7 @@ namespace raptor
                 MPI_Comm comm = MPI_COMM_WORLD);
         CSRMatrix* communicate(ParCSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
         {
-            int rank;
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            if (rank == 0) printf("Not yet implemented\n");
-            return NULL;
+            return CommPkg::communicate(A, comm);
         }
 
         // Vector Communication        

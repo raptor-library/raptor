@@ -8,7 +8,7 @@ using namespace raptor;
 
 ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states)
+        const std::vector<int>& off_proc_states, CommPkg* comm)
 {
     int start, end;
     int start_k, end_k;
@@ -83,10 +83,10 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     // Need off_proc_states_A
     std::vector<int> off_proc_states_A;
     if (A->off_proc_num_cols) off_proc_states_A.resize(A->off_proc_num_cols);
-    A->comm->communicate(states);
-    for (int i = 0; i < A->comm->recv_data->size_msgs; i++)
+    std::vector<int>& recvbuf = comm->communicate(states);
+    for (int i = 0; i < A->off_proc_num_cols; i++)
     {
-        off_proc_states_A[i] = A->comm->recv_data->int_buffer[i];
+        off_proc_states_A[i] = recvbuf[i];
     } 
 
     // Map off proc cols S to A
@@ -103,7 +103,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     }
 
     // Communicate parallel matrix A (Costly!)
-    recv_mat = A->comm->communicate(A);
+    recv_mat = comm->communicate(A);
 
     // Add all coarse columns of S to global_to_local (map)
     ctr = 0;
@@ -512,9 +512,9 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         P->comm = new ParComm(S->comm, on_proc_col_to_new, off_proc_col_to_new);
     }
 
-    if (A->tap_comm)
+    if (S->tap_comm)
     {
-        P->tap_comm = new TAPComm(A->tap_comm, on_proc_col_to_new,
+        P->tap_comm = new TAPComm(S->tap_comm, on_proc_col_to_new,
                 off_proc_col_to_new);
     }
 
@@ -820,9 +820,9 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         P->comm = new ParComm(S->comm, on_proc_col_to_new, off_proc_col_to_new);
     }
 
-    if (A->tap_comm)
+    if (S->tap_comm)
     {
-        P->tap_comm = new TAPComm(A->tap_comm, on_proc_col_to_new,
+        S->tap_comm = new TAPComm(S->tap_comm, on_proc_col_to_new,
                 off_proc_col_to_new);
     }
 
