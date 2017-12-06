@@ -929,6 +929,7 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
     std::vector<int> send_buffer;
     std::vector<int> recv_ptr;
     std::vector<int> recv_buffer;
+    std::vector<int> send_sizes;
 
     /**********************************************************
      *****
@@ -936,6 +937,11 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
      *****  by column indices, to all procs it normally sends to.
      *****
      *********************************************************/
+    if (S->on_proc_num_cols)
+    {
+        send_sizes.resize(S->on_proc_num_cols, 0);
+    }
+
     send_ptr.resize(local_S_par_comm->send_data->num_msgs + 1);
     recv_ptr.resize(local_S_par_comm->recv_data->num_msgs + 1);
     send_ptr[0] = send_buffer.size();
@@ -948,9 +954,9 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
         for (int j = start; j < end; j++)
         {
             idx = local_S_par_comm->send_data->indices[j];
+            int start_size = send_buffer.size();
             if (states[idx] == -1)
             {
-                local_S_par_comm->send_data->int_buffer[j] = -send_buffer.size();
                 idx_start = S->on_proc->idx1[idx];
                 idx_end = S->on_proc->idx1[idx+1];
                 if (S->on_proc->idx2[idx_start] == idx)
@@ -975,46 +981,13 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
                         send_buffer.push_back(S->off_proc_column_map[idx_k]);
                     }
                 }
-                local_S_par_comm->send_data->int_buffer[j] += send_buffer.size();
             }
-            else local_S_par_comm->send_data->int_buffer[j] = 0;
+            send_sizes[i] = send_buffer.size() - start_size;
             send_ptr[i+1] = send_buffer.size();
         }
     }
 
-    // Send row sizes
-    for (int i = 0; i < local_S_par_comm->send_data->num_msgs; i++)
-    {
-        proc = local_S_par_comm->send_data->procs[i];
-        start = local_S_par_comm->send_data->indptr[i];
-        end = local_S_par_comm->send_data->indptr[i+1];
-        MPI_Isend(&(local_S_par_comm->send_data->int_buffer[start]), end - start,
-                MPI_INT, proc, local_S_par_comm->key, S->tap_comm->topology->local_comm,
-                &(local_S_par_comm->send_data->requests[i]));
-    } 
-    // Recv row sizes   
-    for (int i = 0; i < local_S_par_comm->recv_data->num_msgs; i++)
-    {
-        proc = local_S_par_comm->recv_data->procs[i];
-        start = local_S_par_comm->recv_data->indptr[i];
-        end = local_S_par_comm->recv_data->indptr[i+1];
-        MPI_Irecv(&(local_S_par_comm->recv_data->int_buffer[start]), end - start,
-                MPI_INT, proc, local_S_par_comm->key, S->tap_comm->topology->local_comm,
-                &(local_S_par_comm->recv_data->requests[i]));
-    }
-    // Wait for communication to compleete
-    if (local_S_par_comm->send_data->num_msgs)
-    {
-        MPI_Waitall(local_S_par_comm->send_data->num_msgs,
-                local_S_par_comm->send_data->requests.data(),
-                MPI_STATUSES_IGNORE);
-    }
-    if (local_S_par_comm->recv_data->num_msgs)
-    {
-        MPI_Waitall(local_S_par_comm->recv_data->num_msgs,
-                local_S_par_comm->recv_data->requests.data(),
-                MPI_STATUSES_IGNORE);
-    }
+    std::vector<int>& recv_sizes = local_S_par_comm->communicate(send_sizes);
 
     // Find row sizes to be recvd
     std::vector<int>& recv_sizes = local_S_par_comm->recv_data->int_buffer;
@@ -1107,6 +1080,16 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
     std::vector<int> global_send_displs(global_par_comm->send_data->size_msgs + 1);
     recv_size = 0;
     global_send_displs[0] = recv_size;
+    for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
+    {
+        idx = global_par_comm->send_data->indices[i];
+        recv_size += recv_sizes[idx];
+        global_send_displs[i+1] = recv_size;
+    }
+
+    send_buffer.clear();
+    send_ptr.resize(global_par_comm->send_data->num_msgs+1);
+    global_ptr[0] = 0;
     for (int i = 0; i < global_par_comm->send_data->num_msgs; i++)
     {
         start = global_par_comm->send_data->indptr[i];
@@ -1114,11 +1097,87 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
         for (int j = start; j < end; j++)
         {
             idx = global_par_comm->send_data->indices[j];
-            recv_size += recv_sizes[idx];
+            idx_start = global_send_displs[idx];
+            idx_end = global_send_displs[idx+1];
+            if (idx_end - idx_start)
+            {
+                send_buffer.push_back(idx_end - idx_start);
+                for (int k = idx_start; k < idx_end; k++)
+                {
+                    send_buffer.push_back(recv_buffer[k]);
+                }
+            }
         }
-        global_send_displs[i+1] = recv_size;
+        global_ptr[i+1] = send_buffer.size();
     }
-    
+
+    n_sends = 0;
+    for (int i = 0; i < global_par_comm->send_data->num_msgs; i++)
+    {
+        proc = global_par_comm->send_data->procs[i];
+        start = global_ptr[i];
+        end = global_ptr[i+1];
+        if (end - start)
+        {
+            MPI_Issend(&(send_buffer[start]), end - start, MPI_INT, proc, global_par_comm->key,
+                    MPI_COMM_WORLD, &(global_par_comm->send_data->requests[n_sends++]));
+        }
+    }
+
+    int recv_size = 0;
+    bool send_msg;
+    std::vector<int> global_recv_sizes;
+    std::vector<int> global_recv_buffer;
+
+    if (global_par_comm->recv_data->size_msgs)
+        global_recv_sizes.resize(global_par_comm->recv_data->size_msgs);
+    for (int i = 0; i < global_par_comm->recv_data->num_msgs; i++)
+    {
+        send_msg = false;
+        start = global_par_comm->recv_data->indptr[i];
+        end = global_par_comm->recv_data->indptr[i+1];
+        for (int j = start; j < end; j++)
+        {
+            if (global_off_proc_states[j] == -1)
+            {
+                send_msg = true;
+            }
+            else
+            {
+                global_recv_sizes[j] = 0;
+            }
+        }
+
+        if (send_msg)
+        {
+            proc = global_par_comm->recv_data->procs[i];
+            MPI_Probe(proc, global_par_comm->key, MPI_COMM_WORLD, &recv_status);
+            MPI_Get_count(&recv_status, MPI_INT, &count);
+            if (recv_buffer.size() < count)
+            {
+                recv_buffer.resize(count);
+            }
+            MPI_Irecv(&(recv_buffer[0]), count, MPI_INT, proc, 
+                    global_par_comm->key, MPI_COMM_WORLD, &recv_status);
+            ctr = 0;
+            for (int j = start; j < end; j++)
+            {
+                if (global_off_proc_states[j] == -1)
+                {
+                    recv_size = recv_buffer[ctr++];
+                    for (int k = 0; k < recv_size; k++)
+                    {
+                        global_recv_buffer.push_back(recv_buffer[ctr++]);
+                    }
+                    global_recv_sizes[j] = recv_size;
+                }
+            }
+        }
+    }
+
+    local_R_par_comm->communicate(global_recv_sizes, topology->local_comm);
+
+
 
 
 }

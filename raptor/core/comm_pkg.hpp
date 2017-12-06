@@ -1278,11 +1278,6 @@ namespace raptor
         *****    Existing standard communication package from which
         *****    to form topology-aware communicator
         **************************************************************/
-        TAPComm(ParComm* orig_comm) : CommPkg(orig_comm->topology)
-        {
-            //TODO -- Write this constructor
-        }
-
         TAPComm(TAPComm* tap_comm) : CommPkg(tap_comm->topology)
         {
             global_par_comm = new ParComm(tap_comm->global_par_comm);

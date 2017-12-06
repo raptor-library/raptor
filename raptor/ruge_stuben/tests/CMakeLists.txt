@@ -42,6 +42,10 @@ if (WITH_MPI)
     add_executable(test_par_ruge_stuben test_par_ruge_stuben.cpp)
     target_link_libraries(test_par_ruge_stuben raptor ${MPI_LIBRARIES} googletest pthread )
     add_test(TestParRugeStuben mpirun -n 16 ./test_par_ruge_stuben)
+
+    add_executable(test_tap_ruge_stuben test_tap_ruge_stuben.cpp)
+    target_link_libraries(test_tap_ruge_stuben raptor ${MPI_LIBRARIES} googletest pthread )
+    add_test(TestTAPRugeStuben mpirun -n 16 ./test_tap_ruge_stuben)
 endif()
 
 if (WITH_HYPRE)
