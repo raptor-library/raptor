@@ -447,6 +447,8 @@ namespace raptor
                     }
                     if (rank == 0) printf("Rnorm = %e\n", r_norm);
                 }
+
+                sol.copy(levels[0]->x);
             } 
 
             relax_t relax_type;
