@@ -61,6 +61,7 @@ int main(int argc, char *argv[])
     int num_tests = 2;
 
     std::vector<double> cache_array(cache_len);
+    std::vector<double> residuals;
 
     if (system < 2)
     {
@@ -201,9 +202,16 @@ int main(int argc, char *argv[])
         // Solve Raptor Hierarchy
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        ml->solve(x, b);
+        int iter = ml->solve(x, b, residuals);
         raptor_solve = MPI_Wtime() - t0;
-        clear_cache(cache_array);
+        clear_cache(cache_array);        
+        if (rank == 0)
+        {
+            for (int i = 0; i <= iter; i++)
+            {
+                printf("Res[%d] = %e\n", i, residuals[i]);
+            }
+        }
 
         MPI_Reduce(&hypre_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank == 0) printf("Hypre Setup Time: %e\n", t0);

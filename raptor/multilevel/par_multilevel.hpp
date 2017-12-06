@@ -405,7 +405,19 @@ namespace raptor
                 }
             }
 
-            void solve(ParVector& sol, ParVector& rhs, int num_iterations = 100)
+            int solve(ParVector& sol, ParVector& rhs, std::vector<double>& res,
+                    int num_iterations = 100)
+            {
+                res.resize(num_iterations);
+                int iter = solve(sol, rhs, res.data(), num_iterations);
+                res.resize(iter+1);
+                
+                return iter;
+            } 
+
+            // Assume res is allocated to size of max num_iterations
+            int solve(ParVector& sol, ParVector& rhs, double* res = NULL,
+                    int num_iterations = 100)
             {
                 int rank;
                 MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -429,7 +441,10 @@ namespace raptor
                     r_norm = resid.norm(2);
                     if (rank == 0) printf("Small Bnorm -> not using relative residual\n");
                 }
-                if (rank == 0) printf("Rnorm = %e\n", r_norm);
+                if (res)
+                {
+                    res[iter] = r_norm;
+                }
 
                 while (r_norm > 1e-07 && iter < num_iterations)
                 {
@@ -445,10 +460,16 @@ namespace raptor
                     {
                         r_norm = resid.norm(2);
                     }
-                    if (rank == 0) printf("Rnorm = %e\n", r_norm);
+
+                    if (res)
+                    {
+                        res[iter] = r_norm;
+                    }
                 }
 
                 sol.copy(levels[0]->x);
+
+                return iter;
             } 
 
             relax_t relax_type;
