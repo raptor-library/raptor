@@ -136,7 +136,7 @@ void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     for (int iter = 0; iter < num_sweeps; iter++)
     {
         A->comm->communicate(x);
-        std::vector<double>& dist_x = A->comm->get_recv_buffer();
+        std::vector<double>& dist_x = A->comm->get_recv_buffer<double>();
         for (int i = 0; i < A->local_num_rows; i++)
         {
             tmp[i] = x[i];
@@ -184,7 +184,7 @@ void sor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     for (int iter = 0; iter < num_sweeps; iter++)
     {
         A->comm->communicate(x);
-        SOR_forward(A, x, b, A->comm->get_recv_buffer(), omega);
+        SOR_forward(A, x, b, A->comm->get_recv_buffer<double>(), omega);
     }
 }
 
@@ -202,8 +202,8 @@ void ssor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     for (int iter = 0; iter < num_sweeps; iter++)
     {
         A->comm->communicate(x);
-        SOR_forward(A, x, b, A->comm->get_recv_buffer(), omega);
-        SOR_backward(A, x, b, A->comm->get_recv_buffer(), omega);
+        SOR_forward(A, x, b, A->comm->get_recv_buffer<double>(), omega);
+        SOR_backward(A, x, b, A->comm->get_recv_buffer<double>(), omega);
     }
 }
 

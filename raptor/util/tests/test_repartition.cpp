@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
     int* proc_part;
     double bnorm;
 
-    char* filename = "../../../../examples/LFAT5.mtx";
+    const char* filename = "../../../../examples/LFAT5.mtx";
     if (argc > 1) filename = argv[1];
     int n_tests = 100;
     std::vector<int> new_local_rows;

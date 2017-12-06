@@ -61,6 +61,7 @@ int main(int argc, char *argv[])
     int num_tests = 2;
 
     std::vector<double> cache_array(cache_len);
+    std::vector<double> residuals;
 
     if (system < 2)
     {
@@ -99,7 +100,7 @@ int main(int argc, char *argv[])
 #ifdef USING_MFEM
     else if (system == 2)
     {
-        char* mesh_file = argv[2];
+        const char* mesh_file = argv[2];
         int num_elements = 2;
         int order = 3;
         if (argc > 3)
@@ -115,7 +116,7 @@ int main(int argc, char *argv[])
 #endif
     else if (system == 3)
     {
-        char* file = "../../examples/LFAT5.mtx";
+        const char* file = "../../examples/LFAT5.mtx";
         int sym = 1;
         if (argc > 2)
         {
@@ -183,7 +184,7 @@ int main(int argc, char *argv[])
         // Setup Raptor Hierarchy
         MPI_Barrier(MPI_COMM_WORLD);    
         t0 = MPI_Wtime();
-        ml = new ParMultilevel(A, strong_threshold);
+        ml = new ParMultilevel(A, strong_threshold, CLJP, Classical, SOR);
         raptor_setup = MPI_Wtime() - t0;
         clear_cache(cache_array);
 
@@ -201,9 +202,16 @@ int main(int argc, char *argv[])
         // Solve Raptor Hierarchy
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        ml->solve(x, b);
+        int iter = ml->solve(x, b, residuals);
         raptor_solve = MPI_Wtime() - t0;
-        clear_cache(cache_array);
+        clear_cache(cache_array);        
+        if (rank == 0)
+        {
+            for (int i = 0; i <= iter; i++)
+            {
+                printf("Res[%d] = %e\n", i, residuals[i]);
+            }
+        }
 
         MPI_Reduce(&hypre_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank == 0) printf("Hypre Setup Time: %e\n", t0);

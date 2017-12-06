@@ -27,7 +27,7 @@ void ParMatrix::mult(ParVector& x, ParVector& b)
     // Check that communication package has been initialized
     if (comm == NULL)
     {
-        comm = new ParComm(partition, off_proc_column_map);
+        comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
     }
 
     // Initialize Isends and Irecvs to communicate
@@ -42,7 +42,7 @@ void ParMatrix::mult(ParVector& x, ParVector& b)
     }
 
     // Wait for Isends and Irecvs to complete
-    std::vector<double>& x_tmp = comm->complete_comm();
+    std::vector<double>& x_tmp = comm->complete_comm<double>();
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -57,7 +57,7 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b)
     // Check that communication package has been initialized
     if (tap_comm == NULL)
     {
-        tap_comm = new TAPComm(partition, off_proc_column_map);
+        tap_comm = new TAPComm(partition, off_proc_column_map, on_proc_column_map);
     }
 
     // Initialize Isends and Irecvs to communicate
@@ -72,7 +72,7 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b)
     }
 
     // Wait for Isends and Irecvs to complete
-    std::vector<double>& x_tmp = tap_comm->complete_comm();
+    std::vector<double>& x_tmp = tap_comm->complete_comm<double>();
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -87,7 +87,7 @@ void ParMatrix::mult_T(ParVector& x, ParVector& b)
     // Check that communication package has been initialized
     if (comm == NULL)
     {
-        comm = new ParComm(partition, off_proc_column_map);
+        comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
     }
 
     std::vector<double>& x_tmp = comm->recv_data->buffer;
@@ -101,7 +101,7 @@ void ParMatrix::mult_T(ParVector& x, ParVector& b)
         on_proc->mult_T(x.local, b.local);
     }
 
-    comm->complete_comm_T();
+    comm->complete_comm_T<double>();
 
     // Append b.local (add recvd values)
     std::vector<double>& b_tmp = comm->send_data->buffer;
@@ -116,7 +116,7 @@ void ParMatrix::tap_mult_T(ParVector& x, ParVector& b)
     // Check that communication package has been initialized
     if (tap_comm == NULL)
     {
-        tap_comm = new TAPComm(partition, off_proc_column_map);
+        tap_comm = new TAPComm(partition, off_proc_column_map, on_proc_column_map);
     }
 
     std::vector<double>& x_tmp = tap_comm->recv_buffer;
@@ -130,7 +130,7 @@ void ParMatrix::tap_mult_T(ParVector& x, ParVector& b)
         on_proc->mult_T(x.local, b.local);
     }
 
-    tap_comm->complete_comm_T();
+    tap_comm->complete_comm_T<double>();
 
     // Append b.local (add recvd values)
     std::vector<double>& L_tmp = tap_comm->local_L_par_comm->send_data->buffer;
@@ -245,7 +245,7 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r)
     }
 
     // Wait for Isends and Irecvs to complete
-    std::vector<double>& x_tmp = comm->complete_comm();
+    std::vector<double>& x_tmp = comm->complete_comm<double>();
 
     // Multiply remaining columns, appending the negative
     // result to previous solution in b (b -= ...)
@@ -278,7 +278,7 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r)
     }
 
     // Wait for Isends and Irecvs to complete
-    std::vector<double>& x_tmp = tap_comm->complete_comm();
+    std::vector<double>& x_tmp = tap_comm->complete_comm<double>();
 
     // Multiply remaining columns, appending the negative
     // result to previous solution in b (b -= ...)

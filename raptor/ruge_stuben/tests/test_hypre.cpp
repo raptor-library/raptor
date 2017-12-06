@@ -87,8 +87,6 @@ TEST(TestHypre, TestsInRuge_Stuben)
     delete[] stencil;
     x = ParVector(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
     b = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    x.set_const_value(1.0);
-    A->mult(x, b);
 
     // Convert system to Hypre format 
     HYPRE_IJMatrix A_h_ij = convert(A);
@@ -101,18 +99,38 @@ TEST(TestHypre, TestsInRuge_Stuben)
     hypre_ParVector* b_h;
     HYPRE_IJVectorGetObject(b_h_ij, (void **) &b_h);
 
+    // Initialize values in x and b
+    x.set_const_value(1.0);
+    A->mult(x, b);
+    x.set_const_value(0.0);
+    data_t* x_data = hypre_VectorData(hypre_ParVectorLocalVector(x_h));
+    data_t* b_data = hypre_VectorData(hypre_ParVectorLocalVector(b_h));
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        x_data[i] = x[i];
+        b_data[i] = b[i];
+    }
+
+    // Setup Hypre Hierarchy
     HYPRE_Solver solver_data = hypre_create_hierarchy(A_h, x_h, b_h, 
                                 coarsen_type, interp_type, p_max_elmts, agg_num_levels, 
                                 strong_threshold);
+    HYPRE_BoomerAMGSetPrintLevel(solver_data, 0);
 
+    // Solve Hypre Hierarchy
+    HYPRE_BoomerAMGSolve(solver_data, A_h, b_h, x_h);
 
+    // Setup Raptor Hierarchy
     ParMultilevel* ml = new ParMultilevel(A, strong_threshold, CLJP, Classical, SOR);
 
+    // Solve Raptor Hierarchy
+    ml->solve(x, b);
+
+    // Compare each coarse A, P
     HYPRE_Int num_levels = hypre_ParAMGDataNumLevels((hypre_ParAMGData*) solver_data);
     hypre_ParCSRMatrix** A_array = hypre_ParAMGDataAArray((hypre_ParAMGData*) solver_data);
     hypre_ParCSRMatrix** P_array = hypre_ParAMGDataPArray((hypre_ParAMGData*) solver_data);
-
-    assert(num_levels == ml->num_levels);
+    ASSERT_EQ(num_levels, ml->num_levels);
     for (int i = 0; i < num_levels; i++)
     {
         compare(ml->levels[i]->A, A_array[i]);
@@ -122,6 +140,12 @@ TEST(TestHypre, TestsInRuge_Stuben)
         compare(ml->levels[i]->P, P_array[i]);
     }
 
+    // Compare solution vectors
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        ASSERT_NEAR(x[i], x_data[i], 1e-06);
+    }
+ 
     hypre_BoomerAMGDestroy(solver_data); 
     delete ml;
 
