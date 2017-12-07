@@ -227,18 +227,17 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r)
     // Check that communication package has been initialized
     if (comm == NULL)
     {
-        comm = new ParComm(partition, off_proc_column_map);
+        comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
     }
 
     // Initialize Isends and Irecvs to communicate
     // values of x
     comm->init_comm(x);
 
-    // Set the values in r equal to the values in b
     r.copy(b);
 
-    // Multiply diagonal portion of matrix,
-    // subtracting result from r = b (r = b - A_diag*x_local)
+    // Multiply the diagonal portion of the matrix,
+    // setting b = A_diag*x_local
     if (local_num_rows && on_proc_num_cols)
     {
         on_proc->mult_append_neg(x.local, r.local);
@@ -247,8 +246,8 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r)
     // Wait for Isends and Irecvs to complete
     std::vector<double>& x_tmp = comm->complete_comm<double>();
 
-    // Multiply remaining columns, appending the negative
-    // result to previous solution in b (b -= ...)
+    // Multiply remaining columns, appending to previous
+    // solution in b (b += A_offd * x_distant)
     if (off_proc_num_cols)
     {
         off_proc->mult_append_neg(x_tmp, r.local);
@@ -260,18 +259,17 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r)
     // Check that communication package has been initialized
     if (tap_comm == NULL)
     {
-        tap_comm = new TAPComm(partition, off_proc_column_map);
+        tap_comm = new TAPComm(partition, off_proc_column_map, on_proc_column_map);
     }
 
     // Initialize Isends and Irecvs to communicate
     // values of x
     tap_comm->init_comm(x);
 
-    // Set the values in r equal to the values in b
     r.copy(b);
 
-    // Multiply diagonal portion of matrix,
-    // subtracting result from r = b (r = b - A_diag*x_local)
+    // Multiply the diagonal portion of the matrix,
+    // setting b = A_diag*x_local
     if (local_num_rows && on_proc_num_cols)
     {
         on_proc->mult_append_neg(x.local, r.local);
@@ -280,13 +278,12 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r)
     // Wait for Isends and Irecvs to complete
     std::vector<double>& x_tmp = tap_comm->complete_comm<double>();
 
-    // Multiply remaining columns, appending the negative
-    // result to previous solution in b (b -= ...)
+    // Multiply remaining columns, appending to previous
+    // solution in b (b += A_offd * x_distant)
     if (off_proc_num_cols)
     {
         off_proc->mult_append_neg(x_tmp, r.local);
     }
-
 }
 
 

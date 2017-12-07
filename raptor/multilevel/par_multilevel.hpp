@@ -330,6 +330,82 @@ namespace raptor
                 }
             }
 
+            void tap_cycle(int level)
+            {
+                ParCSRMatrix* A = levels[level]->A;
+                ParCSRMatrix* P = levels[level]->P;
+                ParVector& x = levels[level]->x;
+                ParVector& b = levels[level]->b;
+                ParVector& tmp = levels[level]->tmp;
+
+                if (level == num_levels - 1)
+                {
+                    if (A->local_num_rows)
+                    {
+                        int active_rank;
+                        MPI_Comm_rank(coarse_comm, &active_rank);
+
+                        char trans = 'N'; //No transpose
+                        int nhrs = 1; // Number of right hand sides
+                        int info; // result
+
+                        std::vector<double> b_data(coarse_n);
+                        MPI_Allgatherv(b.local.data(), b.local_n, MPI_DOUBLE, b_data.data(), 
+                                coarse_sizes.data(), coarse_displs.data(), 
+                                MPI_DOUBLE, coarse_comm);
+
+                        dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
+                                LU_permute.data(), b_data.data(), &coarse_n, &info);
+                        for (int i = 0; i < b.local_n; i++)
+                        {
+                            x.local[i] = b_data[i + coarse_displs[active_rank]];
+                        }
+                    }
+                }
+                else
+                {
+                    levels[level+1]->x.set_const_value(0.0);
+                    
+                    // Relax
+                    switch (relax_type)
+                    {
+                        case Jacobi:
+                            jacobi(levels[level], num_smooth_sweeps, relax_weight);
+                            break;
+                        case SOR:
+                            sor(levels[level], num_smooth_sweeps, relax_weight);
+                            break;
+                        case SSOR:
+                            ssor(levels[level], num_smooth_sweeps, relax_weight);
+                            break;
+                    }
+
+
+                    A->tap_residual(x, b, tmp);
+                    P->tap_mult_T(tmp, levels[level+1]->b);
+                    tap_cycle(level+1);
+                    P->tap_mult(levels[level+1]->x, tmp);
+                    for (int i = 0; i < A->local_num_rows; i++)
+                    {
+                        x.local[i] += tmp.local[i];
+                    }
+
+                    switch (relax_type)
+                    {
+                        case Jacobi:
+                            jacobi(levels[level], num_smooth_sweeps, relax_weight);
+                            break;
+                        case SOR:
+                            sor(levels[level], num_smooth_sweeps, relax_weight);
+                            break;
+                        case SSOR:
+                            ssor(levels[level], num_smooth_sweeps, relax_weight);
+                            break;
+                    }
+                }
+            }
+
+
             void cycle(int level)
             {
                 ParCSRMatrix* A = levels[level]->A;
@@ -405,11 +481,18 @@ namespace raptor
                 }
             }
 
-            void solve(ParVector& sol, ParVector& rhs, int num_iterations = 100)
+            int tap_solve(ParVector& sol, ParVector& rhs, std::vector<double>& res,
+                    int num_iterations = 100)
             {
-                int rank;
-                MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+                res.resize(num_iterations);
+                int iter = tap_solve(sol, rhs, res.data(), num_iterations);
+                res.resize(iter+1);
+                return iter;
+            }
 
+            int tap_solve(ParVector& sol, ParVector& rhs, double* res = NULL,
+                    int num_iterations = 100)
+            {
                 double b_norm = rhs.norm(2);
                 double r_norm;
                 int iter = 0;
@@ -427,9 +510,69 @@ namespace raptor
                 else
                 {
                     r_norm = resid.norm(2);
-                    if (rank == 0) printf("Small Bnorm -> not using relative residual\n");
                 }
-                if (rank == 0) printf("Rnorm = %e\n", r_norm);
+                if (res)
+                {
+                    res[iter] = r_norm;
+                }
+
+                while (r_norm > 1e-07 && iter < num_iterations)
+                {
+                    tap_cycle(0);
+                    iter++;
+
+                    levels[0]->A->residual(levels[0]->x, levels[0]->b, resid);
+                    if (fabs(b_norm) > zero_tol)
+                    {
+                        r_norm = resid.norm(2) / b_norm;
+                    }
+                    else
+                    {
+                        r_norm = resid.norm(2);
+                    }
+                    if (res)
+                    {
+                        res[iter] = r_norm;
+                    }
+                }
+
+                return iter;
+            } 
+
+            int solve(ParVector& sol, ParVector& rhs, std::vector<double>& res,
+                    int num_iterations = 100)
+            {
+                res.resize(num_iterations);
+                int iter = solve(sol, rhs, res.data(), num_iterations);
+                res.resize(iter+1);
+                return iter;
+            }
+
+            int solve(ParVector& sol, ParVector& rhs, double* res = NULL,
+                    int num_iterations = 100)
+            {
+                double b_norm = rhs.norm(2);
+                double r_norm;
+                int iter = 0;
+
+                levels[0]->x.copy(sol);
+                levels[0]->b.copy(rhs);
+
+                // Iterate until convergence or max iterations
+                ParVector resid(rhs.global_n, rhs.local_n, rhs.first_local);
+                levels[0]->A->residual(levels[0]->x, levels[0]->b, resid);
+                if (fabs(b_norm) > zero_tol)
+                {
+                    r_norm = resid.norm(2) / b_norm;
+                }
+                else
+                {
+                    r_norm = resid.norm(2);
+                }
+                if (res)
+                {
+                    res[iter] = r_norm;
+                }
 
                 while (r_norm > 1e-07 && iter < num_iterations)
                 {
@@ -445,8 +588,12 @@ namespace raptor
                     {
                         r_norm = resid.norm(2);
                     }
-                    if (rank == 0) printf("Rnorm = %e\n", r_norm);
+                    if (res)
+                    {
+                        res[iter] = r_norm;
+                    }
                 }
+                return iter;
             } 
 
             relax_t relax_type;

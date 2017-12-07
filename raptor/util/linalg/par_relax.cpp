@@ -112,20 +112,38 @@ void SOR_backward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
  **************************************************************/
 void jacobi(ParLevel* l, int num_sweeps, double omega)
 {
-    jacobi(l->A, l->x, l->b, l->tmp, num_sweeps, omega);
+    jacobi(l->A, l->x, l->b, l->tmp, num_sweeps, omega, l->A->comm);
 }
 void sor(ParLevel* l, int num_sweeps, double omega)
 {
-    sor(l->A, l->x, l->b, l->tmp, num_sweeps, omega);
+    sor(l->A, l->x, l->b, l->tmp, num_sweeps, omega, l->A->comm);
 }
 void ssor(ParLevel* l, int num_sweeps, double omega)
 {
-    ssor(l->A, l->x, l->b, l->tmp, num_sweeps, omega);
+    ssor(l->A, l->x, l->b, l->tmp, num_sweeps, omega, l->A->comm);
+}
+void tap_jacobi(ParLevel* l, int num_sweeps, double omega)
+{
+    jacobi(l->A, l->x, l->b, l->tmp, num_sweeps, omega, l->A->tap_comm);
+}
+void tap_sor(ParLevel* l, int num_sweeps, double omega)
+{
+    sor(l->A, l->x, l->b, l->tmp, num_sweeps, omega, l->A->tap_comm);
+}
+void tap_ssor(ParLevel* l, int num_sweeps, double omega)
+{
+    ssor(l->A, l->x, l->b, l->tmp, num_sweeps, omega, l->A->tap_comm);
 }
 
+
 void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega)
+        int num_sweeps, double omega, CommPkg* comm)
 {
+    if (!comm)
+    {
+        comm = A->comm;
+    }
+
     A->on_proc->sort();
     A->off_proc->sort();
     A->on_proc->move_diag();
@@ -135,8 +153,8 @@ void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
-        A->comm->communicate(x);
-        std::vector<double>& dist_x = A->comm->get_recv_buffer<double>();
+        comm->communicate(x);
+        std::vector<double>& dist_x = comm->get_recv_buffer<double>();
         for (int i = 0; i < A->local_num_rows; i++)
         {
             tmp[i] = x[i];
@@ -172,8 +190,13 @@ void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 }
 
 void sor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega)
+        int num_sweeps, double omega, CommPkg* comm)
 {
+    if (!comm)
+    {
+        comm = A->comm;
+    }
+
     A->on_proc->sort();
     A->off_proc->sort();
     A->on_proc->move_diag();
@@ -183,15 +206,20 @@ void sor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
-        A->comm->communicate(x);
-        SOR_forward(A, x, b, A->comm->get_recv_buffer<double>(), omega);
+        comm->communicate(x);
+        SOR_forward(A, x, b, comm->get_recv_buffer<double>(), omega);
     }
 }
 
 
 void ssor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega)
+        int num_sweeps, double omega, CommPkg* comm)
 {
+    if (!comm)
+    {
+        comm = A->comm;
+    }
+
     A->on_proc->sort();
     A->off_proc->sort();
     A->on_proc->move_diag();
@@ -201,9 +229,9 @@ void ssor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
-        A->comm->communicate(x);
-        SOR_forward(A, x, b, A->comm->get_recv_buffer<double>(), omega);
-        SOR_backward(A, x, b, A->comm->get_recv_buffer<double>(), omega);
+        comm->communicate(x);
+        SOR_forward(A, x, b, comm->get_recv_buffer<double>(), omega);
+        SOR_backward(A, x, b, comm->get_recv_buffer<double>(), omega);
     }
 }
 
