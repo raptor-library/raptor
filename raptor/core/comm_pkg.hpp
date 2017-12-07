@@ -578,7 +578,7 @@ namespace raptor
         void initialize(const T* values, MPI_Comm comm)
         {
             int start, end;
-            int proc, idx;
+            int proc;
 
             std::vector<T>& sendbuf = send_data->get_buffer<T>();
             std::vector<T>& recvbuf = recv_data->get_buffer<T>();
@@ -930,7 +930,7 @@ namespace raptor
             bool comm_proc;
             int proc, start, end;
             int idx, new_idx;
-            int ctr;
+            
             int new_idx_L;
             int new_idx_R;
 
