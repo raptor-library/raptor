@@ -164,7 +164,7 @@ CSRMatrix* CSRMatrix::mult_T(const COOMatrix* A)
 CSRMatrix* COOMatrix::mult(const CSRMatrix* B)
 {
     printf("Converting Matrix to CSR before multiplication...\n");
-    CSRMatrix* csr_mat;
+    CSRMatrix* csr_mat=nullptr;
     if (format() == COO)
     {
        csr_mat = new CSRMatrix((COOMatrix*) this);
@@ -182,7 +182,7 @@ CSRMatrix* COOMatrix::mult(const CSRMatrix* B)
 CSRMatrix* CSCMatrix::mult(const CSRMatrix* B)
 {
     printf("Converting Matrix to CSR before multiplication...\n");
-    CSRMatrix* csr_mat;
+    CSRMatrix* csr_mat=nullptr;
     if (format() == COO)
     {
        csr_mat = new CSRMatrix((COOMatrix*) this);
