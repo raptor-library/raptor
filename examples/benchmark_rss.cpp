@@ -61,6 +61,7 @@ int main(int argc, char *argv[])
     int cache_len = 10000;
 
     std::vector<double> cache_array(cache_len);
+    std::vector<double> residuals;
 
     if (system < 2)
     {
@@ -150,9 +151,9 @@ int main(int argc, char *argv[])
     }
 
     // Convert system to Hypre format 
-/*    HYPRE_IJMatrix A_h_ij = convert(A);
-    HYPRE_IJVector x_h_ij = convert(&x);
-    HYPRE_IJVector b_h_ij = convert(&b);
+    HYPRE_IJMatrix A_h_ij = convert(A);
+    HYPRE_IJVector x_h_ij = convert(x);
+    HYPRE_IJVector b_h_ij = convert(b);
     hypre_ParCSRMatrix* A_h;
     HYPRE_IJMatrixGetObject(A_h_ij, (void**) &A_h);
     hypre_ParVector* x_h;
@@ -218,6 +219,26 @@ int main(int argc, char *argv[])
     clear_cache(cache_array);
 
     // TAP Solve Raptor
+    for (int i = 0; i < ml->num_levels; i++)
+    {
+        if (!ml->levels[i]->A->tap_comm)
+        {
+            ml->levels[i]->A->tap_comm = new TAPComm(
+                    ml->levels[i]->A->partition,
+                    ml->levels[i]->A->off_proc_column_map, 
+                    ml->levels[i]->A->on_proc_column_map);
+        }
+    }
+    for (int i = 0; i < ml->num_levels-1; i++)
+    {
+        if (!ml->levels[i]->P->tap_comm)
+        {
+            ml->levels[i]->P->tap_comm = new TAPComm(
+                    ml->levels[i]->P->partition,
+                    ml->levels[i]->P->off_proc_column_map, 
+                    ml->levels[i]->P->on_proc_column_map);
+        }
+    }
     x.set_const_value(0.0);
     std::vector<double> tap_res;
     MPI_Barrier(MPI_COMM_WORLD);
@@ -251,7 +272,7 @@ int main(int argc, char *argv[])
 
     HYPRE_IJMatrixDestroy(A_h_ij);
     HYPRE_IJVectorDestroy(x_h_ij);
-    HYPRE_IJVectorDestroy(b_h_ij);*/
+    HYPRE_IJVectorDestroy(b_h_ij);
     delete A;
     MPI_Finalize();
 

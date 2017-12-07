@@ -1678,7 +1678,7 @@ namespace raptor
                     {
                         idx = local_L_par_comm->recv_data->indices[i];
                         int orig_i = on_node_to_off_proc[idx];
-                        L_to_orig[i] = orig_i;
+                        L_to_orig[idx] = orig_i;
                     }
                 }
             }
@@ -1762,8 +1762,8 @@ namespace raptor
             // Add values from L_recv and R_recv to appropriate positions in 
             // Vector recv
             int idx;
-            int R_recv_size = R_recvbuf.size();
-            int L_recv_size = L_recvbuf.size();
+            int R_recv_size = local_R_par_comm->recv_data->size_msgs;
+            int L_recv_size = local_L_par_comm->recv_data->size_msgs;
             for (int i = 0; i < R_recv_size; i++)
             {
                 idx = R_to_orig[i];

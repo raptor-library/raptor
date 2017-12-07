@@ -370,13 +370,13 @@ namespace raptor
                     switch (relax_type)
                     {
                         case Jacobi:
-                            jacobi(levels[level], num_smooth_sweeps, relax_weight);
+                            tap_jacobi(levels[level], num_smooth_sweeps, relax_weight);
                             break;
                         case SOR:
-                            sor(levels[level], num_smooth_sweeps, relax_weight);
+                            tap_sor(levels[level], num_smooth_sweeps, relax_weight);
                             break;
                         case SSOR:
-                            ssor(levels[level], num_smooth_sweeps, relax_weight);
+                            tap_ssor(levels[level], num_smooth_sweeps, relax_weight);
                             break;
                     }
 
@@ -393,13 +393,13 @@ namespace raptor
                     switch (relax_type)
                     {
                         case Jacobi:
-                            jacobi(levels[level], num_smooth_sweeps, relax_weight);
+                            tap_jacobi(levels[level], num_smooth_sweeps, relax_weight);
                             break;
                         case SOR:
-                            sor(levels[level], num_smooth_sweeps, relax_weight);
+                            tap_sor(levels[level], num_smooth_sweeps, relax_weight);
                             break;
                         case SSOR:
-                            ssor(levels[level], num_smooth_sweeps, relax_weight);
+                            tap_ssor(levels[level], num_smooth_sweeps, relax_weight);
                             break;
                     }
                 }
@@ -536,6 +536,8 @@ namespace raptor
                     }
                 }
 
+                sol.copy(levels[0]->x);
+
                 return iter;
             } 
 
@@ -593,6 +595,9 @@ namespace raptor
                         res[iter] = r_norm;
                     }
                 }
+
+                sol.copy(levels[0]->x);
+
                 return iter;
             } 
 

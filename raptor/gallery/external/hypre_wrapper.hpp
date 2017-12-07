@@ -14,7 +14,7 @@
 
 using namespace raptor;
 
-HYPRE_IJVector convert(raptor::ParVector* x_rap,
+HYPRE_IJVector convert(raptor::ParVector& x_rap,
                        MPI_Comm comm_mat = MPI_COMM_WORLD);
 HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap,
                        MPI_Comm comm_mat = MPI_COMM_WORLD);
