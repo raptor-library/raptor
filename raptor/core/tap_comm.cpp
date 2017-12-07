@@ -839,10 +839,6 @@ void TAPComm::adjust_send_indices(const int first_local_col)
         idx = local_R_par_comm->send_data->indices[i];
         local_R_par_comm->send_data->indices[i] = global_to_local[idx];
     }
-    for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
-    {
-        local_R_par_comm->recv_data->indices[i] = i;
-    }
 }
 
 /**************************************************************
