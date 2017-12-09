@@ -81,7 +81,8 @@ namespace raptor
                     int _num_smooth_sweeps = 1,
                     double _relax_weight = 1.0,
                     int max_coarse = 50, 
-                    int max_levels = -1)
+                    int max_levels = -1,
+                    int tap_amg = -1) // which level to start tap_amg (-1 == no TAP)
             {
                 int rank, num_procs;
                 MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -100,14 +101,27 @@ namespace raptor
                         Af->partition->first_local_row);
                 levels[0]->tmp.resize(Af->global_num_rows, Af->local_num_rows,
                         Af->partition->first_local_row);
+                if (tap_amg == 0 && !Af->tap_comm)
+                {
+                    levels[0]->A->tap_comm = new TAPComm(Af->partition,
+                            Af->off_proc_column_map, Af->on_proc_column_map);
+                }
+                        
 
                 // Add coarse levels to hierarchy 
                 while (levels[last_level]->A->global_num_rows > max_coarse && 
                         (max_levels == -1 || levels.size() < max_levels))
                 {
                     extend_hierarchy(strength_threshold, coarsen_type,
-                            interp_type);
+                            interp_type, tap_amg);
                     last_level++;
+                    if (tap_amg >= 0 && tap_amg <= last_level)
+                    {
+                        levels[last_level]->A->tap_comm = new TAPComm(
+                                levels[last_level]->A->partition,
+                                levels[last_level]->A->off_proc_column_map,
+                                levels[last_level]->A->on_proc_column_map);
+                    }
                 }
                 num_levels = levels.size();
 
@@ -151,7 +165,8 @@ namespace raptor
 #endif
 
             void extend_hierarchy(double strong_threshold, 
-                    coarsen_t coarsen_type, interp_t interp_type)
+                    coarsen_t coarsen_type, interp_t interp_type,
+                    int tap_amg)
             {
                 int level_ctr = levels.size() - 1;
                 ParCSRMatrix* A = levels[level_ctr]->A;
@@ -406,7 +421,7 @@ namespace raptor
             }
 
 
-            void cycle(int level)
+            void cycle(int level, int tap_level = -1)
             {
                 ParCSRMatrix* A = levels[level]->A;
                 ParCSRMatrix* P = levels[level]->P;
@@ -459,7 +474,14 @@ namespace raptor
 
                     A->residual(x, b, tmp);
                     P->mult_T(tmp, levels[level+1]->b);
-                    cycle(level+1);
+                    if (tap_level == level+1)
+                    {
+                        tap_cycle(level+1);
+                    }
+                    else
+                    {
+                        cycle(level+1);
+                    }
                     P->mult(levels[level+1]->x, tmp);
                     for (int i = 0; i < A->local_num_rows; i++)
                     {
@@ -482,16 +504,16 @@ namespace raptor
             }
 
             int tap_solve(ParVector& sol, ParVector& rhs, std::vector<double>& res,
-                    int num_iterations = 100)
+                    int tap_level = 0, int num_iterations = 100)
             {
                 res.resize(num_iterations);
-                int iter = tap_solve(sol, rhs, res.data(), num_iterations);
+                int iter = tap_solve(sol, rhs, res.data(), tap_level, num_iterations);
                 res.resize(iter+1);
                 return iter;
             }
 
             int tap_solve(ParVector& sol, ParVector& rhs, double* res = NULL,
-                    int num_iterations = 100)
+                    int tap_level = 0, int num_iterations = 100)
             {
                 double b_norm = rhs.norm(2);
                 double r_norm;
@@ -518,7 +540,14 @@ namespace raptor
 
                 while (r_norm > 1e-07 && iter < num_iterations)
                 {
-                    tap_cycle(0);
+                    if (tap_level > 0)
+                    {
+                        cycle(0, tap_level);
+                    }
+                    else
+                    {
+                        tap_cycle(0);
+                    }
                     iter++;
 
                     levels[0]->A->residual(levels[0]->x, levels[0]->b, resid);

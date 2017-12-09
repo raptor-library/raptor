@@ -90,8 +90,8 @@ TEST(TestHypre, TestsInRuge_Stuben)
 
     // Convert system to Hypre format 
     HYPRE_IJMatrix A_h_ij = convert(A);
-    HYPRE_IJVector x_h_ij = convert(&x);
-    HYPRE_IJVector b_h_ij = convert(&b);
+    HYPRE_IJVector x_h_ij = convert(x);
+    HYPRE_IJVector b_h_ij = convert(b);
     hypre_ParCSRMatrix* A_h;
     HYPRE_IJMatrixGetObject(A_h_ij, (void**) &A_h);
     hypre_ParVector* x_h;

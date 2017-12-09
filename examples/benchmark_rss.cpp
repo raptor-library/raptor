@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
     double t0;
     double hypre_setup, hypre_solve;
     double raptor_setup, raptor_solve;
-    double raptor_tap_setup, raptor_tap_solve;
+    double raptor_tap_solve;
 
     int coarsen_type = 0; // CLJP
     //int coarsen_type = 6; // FALGOUT
@@ -194,7 +194,8 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(A, strong_threshold, CLJP, Classical, SOR);
+    ml = new ParMultilevel(A, strong_threshold, CLJP, Classical, SOR,
+            1, 1.0, 50, -1, 3);
     raptor_setup = MPI_Wtime() - t0;
     clear_cache(cache_array);
 
@@ -219,31 +220,11 @@ int main(int argc, char *argv[])
     clear_cache(cache_array);
 
     // TAP Solve Raptor
-    for (int i = 0; i < ml->num_levels; i++)
-    {
-        if (!ml->levels[i]->A->tap_comm)
-        {
-            ml->levels[i]->A->tap_comm = new TAPComm(
-                    ml->levels[i]->A->partition,
-                    ml->levels[i]->A->off_proc_column_map, 
-                    ml->levels[i]->A->on_proc_column_map);
-        }
-    }
-    for (int i = 0; i < ml->num_levels-1; i++)
-    {
-        if (!ml->levels[i]->P->tap_comm)
-        {
-            ml->levels[i]->P->tap_comm = new TAPComm(
-                    ml->levels[i]->P->partition,
-                    ml->levels[i]->P->off_proc_column_map, 
-                    ml->levels[i]->P->on_proc_column_map);
-        }
-    }
     x.set_const_value(0.0);
     std::vector<double> tap_res;
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
-    ml->tap_solve(x, b, tap_res);
+    ml->tap_solve(x, b, tap_res, 3);
     raptor_tap_solve = MPI_Wtime() - t0;
     clear_cache(cache_array);
 
