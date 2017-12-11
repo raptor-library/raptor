@@ -644,6 +644,8 @@ CSRMatrix* TAPComm::communicate_T(std::vector<int>& rowptr,
     }
     CSRMatrix* R_mat = local_R_par_comm->communicate_T(new_rowptr, new_col_indices,
             new_values, global_par_comm->recv_data->size_msgs, topology->local_comm);
+    R_mat->sort();
+    R_mat->remove_duplicates();
 
     CSRMatrix* G_mat = global_par_comm->communicate_T(R_mat->idx1, R_mat->idx2,
             R_mat->vals, local_S_par_comm->recv_data->size_msgs, comm);
