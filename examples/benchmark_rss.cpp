@@ -337,7 +337,7 @@ int main(int argc, char *argv[])
         Ptmp = mod_classical_interpolation(Al, Sl, states, off_proc_states, Al->tap_comm);
         raptor_setup = (MPI_Wtime() - t0);
         MPI_Reduce(&raptor_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("TAP CLJP Time: %e\n", t0);
+        if (rank == 0) printf("TAP Interpolation Time: %e\n", t0);
         delete Ptmp;
 
         // TIME A*P on Level i

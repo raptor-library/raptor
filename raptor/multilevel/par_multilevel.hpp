@@ -267,13 +267,13 @@ namespace raptor
                     case CLJP:
 #ifdef USING_HYPRE
                         form_hypre_weights(weights, A->local_num_rows);
-                        tap_split_cljp(S, states, off_proc_states, weights.data());
+                        split_cljp(S, states, off_proc_states, weights.data());
 #else
-                        tap_split_cljp(S, states, off_proc_states);
+                        split_cljp(S, states, off_proc_states);
 #endif
                         break;
                     case Falgout:
-                        tap_split_falgout(S, states, off_proc_states);
+                        split_falgout(S, states, off_proc_states);
                         break;
                 }
 

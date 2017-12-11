@@ -514,10 +514,8 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     if (S->tap_comm)
     {
-//        P->tap_comm = new TAPComm(S->tap_comm, on_proc_col_to_new,
-//                off_proc_col_to_new);
-        P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map,
-                P->on_proc_column_map);
+        P->tap_comm = new TAPComm(S->tap_comm, on_proc_col_to_new,
+                off_proc_col_to_new);
     }
 
     delete recv_on;
