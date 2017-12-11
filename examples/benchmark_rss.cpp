@@ -281,6 +281,8 @@ int main(int argc, char *argv[])
         ParVector& xl = ml->levels[i]->x;
         ParVector& bl = ml->levels[i]->b;
         ParVector& tmpl = ml->levels[i]->tmp;
+        ParVector& bl1 = ml->levels[i+1]->b;
+        ParVector& xl1 = ml->levels[i+1]->x;
 
         int n_times = 100;
         if (rank == 0) printf("Level %d\n", i);
@@ -328,12 +330,12 @@ int main(int argc, char *argv[])
         if (rank == 0) printf("TAP Residual Time: %e\n", t0);
 
         // Time Restriction (P->mult_T(tmp, levels[i+1]->b))
-/*        clear_cache(cache_array);
+        clear_cache(cache_array);
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
         for (int i = 0; i < n_times; i++)
         {
-            Pl->mult_T(tmpl, ml->levels[i+1]->b);
+            Pl->mult_T(tmpl, bl1);
         }
         raptor_solve = (MPI_Wtime() - t0) / n_times;
         MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
@@ -345,7 +347,7 @@ int main(int argc, char *argv[])
         t0 = MPI_Wtime();
         for (int i = 0; i < n_times; i++)
         {
-            Pl->tap_mult_T(tmpl, ml->levels[i+1]->b);
+            Pl->tap_mult_T(tmpl, bl1);
         }
         raptor_solve = (MPI_Wtime() - t0) / n_times;
         MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
@@ -357,7 +359,7 @@ int main(int argc, char *argv[])
         t0 = MPI_Wtime();
         for (int i = 0; i < n_times; i++)
         {
-            Pl->mult(ml->levels[i+1]->x, tmpl);
+            Pl->mult(xl1, tmpl);
         }
         raptor_solve = (MPI_Wtime() - t0) / n_times;
         MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
@@ -369,12 +371,12 @@ int main(int argc, char *argv[])
         t0 = MPI_Wtime();
         for (int i = 0; i < n_times; i++)
         {
-            Pl->tap_mult(ml->levels[i+1]->x, tmpl);
+            Pl->tap_mult(xl1, tmpl);
         }
         raptor_solve = (MPI_Wtime() - t0) / n_times;
         MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank == 0) printf("TAP Interpolation Time: %e\n", t0);
-*/
+
     }
 
     // Delete raptor hierarchy
