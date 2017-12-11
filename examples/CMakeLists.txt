@@ -7,9 +7,6 @@ if (WITH_HYPRE)
     add_executable(benchmark_rss benchmark_rss.cpp)
     target_link_libraries(benchmark_rss raptor ${MPI_LIBRARIES})
 
-    add_executable(benchmark_setup_rss benchmark_setup_rss.cpp)
-    target_link_libraries(benchmark_setup_rss raptor ${MPI_LIBRARIES})
-
     add_executable(benchmark_nek5000 benchmark_nek5000.cpp)
     target_link_libraries(benchmark_nek5000 raptor ${MPI_LIBRARIES})
 endif()
