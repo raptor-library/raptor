@@ -67,8 +67,8 @@ CSRMatrix* stencil_grid(data_t* stencil, int* grid, int dim)
         {
             for (int j = 0; j < dim; j++)
             {
-                int power = pow(3, j);
-                int idiv = i / power;
+                //int power = pow(3, j);
+                int idiv = i / pow(3, j);
                 indices[ctr][dim-j-1] = (idiv % 3) - (3 / 2);
             }
             nonzero_stencil[ctr] = stencil[i];

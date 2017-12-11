@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    int dim;
+    int dim=0;
     int n = 5;
     int system = 0;
 
@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
         system = atoi(argv[1]);
     }
 
-    ParCSRMatrix* A;
+    ParCSRMatrix* A=nullptr;
 
     double t0, tfinal;
 
@@ -102,14 +102,14 @@ int main(int argc, char *argv[])
     else if (system == 3)
     {
         const char* file = "../../test_data/rss_A0.pm";
-        int sym = 1;
+
         if (argc > 2)
         {
             file = argv[2];
-            if (argc > 3)
-            {
-                sym = atoi(argv[3]);
-            }
+
+
+
+
         }
         A = readParMatrix(file);
     }

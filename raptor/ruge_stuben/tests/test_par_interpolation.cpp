@@ -23,7 +23,7 @@ ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, 
 
     int first_row, first_col;
     FILE* f;
-    ParCSRMatrix* P_rap;
+    ParCSRMatrix* P_rap=nullptr;
     std::vector<int> proc_sizes(num_procs);
     std::vector<int> splitting;
     if (A->local_num_rows)
@@ -89,9 +89,9 @@ TEST(TestParInterpolation, TestsInRuge_Stuben)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    int first_row, first_col, col;
-    int start, end;
-    FILE* f;
+    int first_row, first_col;
+
+
     ParCSRMatrix* A;
     ParCSRMatrix* S;
     ParCSRMatrix* P;

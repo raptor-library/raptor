@@ -36,7 +36,7 @@ TEST(ParAMGTest, TestsInMultilevel)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
     int dim = 3;
-    int system = 0;
+
     int grid[3] = {5, 5, 5};
 
     ParMultilevel* ml;
@@ -46,9 +46,9 @@ TEST(ParAMGTest, TestsInMultilevel)
 
     double strong_threshold = 0.25;
 
-    int cache_len = 10000;
-    double* cache_array = new double[cache_len];
-    int num_tests = 10;
+
+
+
 
     double* stencil = laplace_stencil_27pt();
     A = par_stencil_grid(stencil, grid, dim);

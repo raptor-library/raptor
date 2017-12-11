@@ -103,7 +103,7 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
 
     // Declare Variables
     int int_size = sizeof(int);
-    int n_procs;
+    
     int node;
     int num_recv_nodes;
     int local_proc;
@@ -361,7 +361,7 @@ void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
     int n_send_procs;
     int recv_size;
     int idx, node_idx;
-    int ctr, prev_ctr;
+    int ctr;
     int start, end, size;
     int count;
     MPI_Status recv_status;
@@ -574,7 +574,7 @@ void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
 
     // Distribute send_procs across local procs
     n_sends = 0;
-    for (int i = topology->PPN - local_rank - 1; i < send_procs.size(); i += topology->PPN)
+    for (size_t i = topology->PPN - local_rank - 1; i < send_procs.size(); i += topology->PPN)
     {
         global_par_comm->send_data->procs.push_back(send_procs[i]);
     }
@@ -617,7 +617,7 @@ void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
     // Send recv indices to each recv proc along with the process of
     // origin for each recv idx
     ctr = 0;
-    prev_ctr = 0;
+    
     for (int i = 0; i < global_par_comm->recv_data->num_msgs; i++)
     {
         proc = global_par_comm->recv_data->procs[i];
@@ -626,7 +626,7 @@ void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
         MPI_Issend(&(send_buffer[2*start]), 2*(end - start),
                 MPI_INT, proc, 5432, MPI_COMM_WORLD,
                 &(global_par_comm->recv_data->requests[i]));
-        prev_ctr = ctr;
+        
     }
 
     // Recv send data (which indices to send) to global processes
@@ -680,7 +680,7 @@ void TAPComm::form_local_S_par_comm(std::vector<int>& orig_procs)
     // Find local_col_starts for all procs local to node, and sort
     int start, end;
     int proc, proc_idx;
-    int global_col;
+    
     int ctr, idx;
     int size;
 

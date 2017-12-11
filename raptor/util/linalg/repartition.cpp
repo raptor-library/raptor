@@ -9,7 +9,7 @@ void make_contiguous(ParCSRMatrix* A)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    int local_nnz = A->local_nnz;
+    
     int assumed_num_cols, assumed_first_col, assumed_last_col;
     int local_assumed_num_cols;
     int assumed_proc, orig_col, new_col;
@@ -17,12 +17,12 @@ void make_contiguous(ParCSRMatrix* A)
     int num_sends, n_sent, send_size;
     int size_recvs;
     int send_key, recv_key;
-    int row, col, cur_row;
+    
     int start, end;
     int assumed_col, local_col;
     int msg_avail, finished, count;
     MPI_Request barrier_request;
-    double val;
+    
 
     std::vector<int> assumed_col_to_new;
 
@@ -498,7 +498,7 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, std::vector<in
             {
                 proc = recv_status.MPI_SOURCE;
                 MPI_Get_count(&recv_status, MPI_INT, &count);
-                if (count > recv_row_buffer.size())
+                if (count > (int) recv_row_buffer.size())
                 {
                     recv_row_buffer.resize(count);
                 }
@@ -525,7 +525,7 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, std::vector<in
         {
             proc = recv_status.MPI_SOURCE;
             MPI_Get_count(&recv_status, MPI_INT, &count);
-            if (count > recv_row_buffer.size())
+            if (count > (int) recv_row_buffer.size())
             {
                 recv_row_buffer.resize(count);
             }

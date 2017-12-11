@@ -694,7 +694,7 @@ namespace raptor
         void initialize(const T* values, MPI_Comm comm)
         {
             int start, end;
-            int proc, idx;
+            int proc;
 
             std::vector<T>& sendbuf = send_data->get_buffer<T>();
             std::vector<T>& recvbuf = recv_data->get_buffer<T>();
@@ -1304,7 +1304,7 @@ namespace raptor
             bool comm_proc;
             int proc, start, end;
             int idx, new_idx;
-            int ctr;
+            
             int new_idx_L;
             int new_idx_R;
 
@@ -1460,7 +1460,7 @@ namespace raptor
                 end = tap_comm->local_R_par_comm->recv_data->indptr[i+1];
                 for (int j = start; j < end; j++)
                 {
-                    idx = tap_comm->R_to_orig[j];
+                    idx = tap_comm->R_to_orig[tap_comm->local_R_par_comm->recv_data->indices[j]];
                     new_idx = off_proc_col_to_new[idx];
                     if (new_idx != -1)
                     {
@@ -1665,7 +1665,7 @@ namespace raptor
                     {
                         idx = local_R_par_comm->recv_data->indices[i];
                         int orig_i = off_node_to_off_proc[idx];
-                        R_to_orig[i] = orig_i;
+                        R_to_orig[idx] = orig_i;
                     }
                 }
 
@@ -1761,13 +1761,14 @@ namespace raptor
 
             // Add values from L_recv and R_recv to appropriate positions in 
             // Vector recv
-            int idx;
+            int idx, new_idx;
             int R_recv_size = local_R_par_comm->recv_data->size_msgs;
             int L_recv_size = local_L_par_comm->recv_data->size_msgs;
             for (int i = 0; i < R_recv_size; i++)
             {
-                idx = R_to_orig[i];
-                recvbuf[idx] = R_recvbuf[i];
+                idx = local_R_par_comm->recv_data->indices[i];
+                new_idx = R_to_orig[idx];
+                recvbuf[new_idx] = R_recvbuf[i];
             }
 
             for (int i = 0; i < L_recv_size; i++)
@@ -1841,7 +1842,7 @@ namespace raptor
         template<typename T>
         void initialize_T(const T* values, MPI_Comm comm)
         {
-            int idx;
+            int idx, new_idx;
             std::vector<T> L_values;
             std::vector<T> R_values;
             if (local_L_par_comm->recv_data->size_msgs)
@@ -1858,8 +1859,9 @@ namespace raptor
                 R_values.resize(local_R_par_comm->recv_data->size_msgs);
                 for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
                 {
-                    idx = R_to_orig[i];
-                    R_values[i] = values[idx];
+                    idx = local_R_par_comm->recv_data->indices[i];
+                    new_idx = R_to_orig[idx];
+                    R_values[idx] = values[new_idx];
                 }
             }
 
@@ -2016,7 +2018,8 @@ namespace raptor
                 std::function<bool(int)> compare_func = {})
         {
             int start, end;
-            int idx, proc, size;
+            int idx, new_idx;
+            int proc, size;
             int n_sends, n_recvs;
             int ctr;
             bool send_msg;
@@ -2034,8 +2037,9 @@ namespace raptor
                 R_recv_compares.resize(local_R_par_comm->recv_data->size_msgs);
                 for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
                 {
-                    idx = R_to_orig[i];
-                    R_recv_compares[i] = recv_compares[idx];
+                    idx = local_R_par_comm->recv_data->indices[i];
+                    new_idx = R_to_orig[idx];
+                    R_recv_compares[idx] = recv_compares[new_idx];
                 }
             }
             

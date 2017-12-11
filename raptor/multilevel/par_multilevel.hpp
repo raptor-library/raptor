@@ -110,7 +110,7 @@ namespace raptor
 
                 // Add coarse levels to hierarchy 
                 while (levels[last_level]->A->global_num_rows > max_coarse && 
-                        (max_levels == -1 || levels.size() < max_levels))
+                        (max_levels == -1 || (int) levels.size() < max_levels))
                 {
                     extend_hierarchy(strength_threshold, coarsen_type,
                             interp_type, tap_amg);

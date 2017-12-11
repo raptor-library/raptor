@@ -30,9 +30,9 @@ include(options)
 include(testing)
 include(source)
 
-add_feature_info(mpi WITH_MPI "Compile with MPI")
-include(cxx11)
-include(cxx_config)
+#add_feature_info(mpi WITH_MPI "Compile with MPI")
+#include(cxx11)
+#include(cxx_config)
 
 if (WITH_MPI)
 #    include(mpi_config)

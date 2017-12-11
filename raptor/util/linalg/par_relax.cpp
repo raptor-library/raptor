@@ -201,8 +201,8 @@ void sor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     A->off_proc->sort();
     A->on_proc->move_diag();
   
-    int start, end, col;
-    double diag, row_sum;
+    
+    
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
@@ -224,8 +224,8 @@ void ssor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     A->off_proc->sort();
     A->on_proc->move_diag();
   
-    int start, end, col;
-    double diag, row_sum;
+    
+    
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {

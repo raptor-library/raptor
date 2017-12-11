@@ -48,7 +48,7 @@ namespace raptor
                 levels[0]->P = NULL;
 
                 while (levels[last_level]->A->n_rows > max_coarse &&
-                        (max_levels == -1 || levels.size() < max_levels))
+                        (max_levels == -1 || (int) levels.size() < max_levels))
                 {
                     extend_hierarchy(strength_threshold, coarsen_type,
                             interp_type);

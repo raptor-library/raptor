@@ -226,7 +226,7 @@ void split_rs(CSRMatrix* S,
         std::vector<int>& states)
 {
     int start, end;
-    int idx;
+    
 
     if (!S->diag_first)
     {
@@ -327,7 +327,7 @@ void update_weights(CSRMatrix* S, std::vector<int>& col_ptr, std::vector<int>& c
     int start, end;
     int idx, idx_k, c;
     int idx_start, idx_end;
-    int num_new_fine = 0;
+    
 
     for (int i = 0; i < num_new_coarse; i++)
     {
@@ -393,8 +393,8 @@ int update_states(int remaining, std::vector<int>& unassigned, std::vector<int>&
 {
     int ctr = 0;
     int u;
-    int n = states.size();
-    int num_new_fine = 0;
+    
+    
 
     for (int i = 0; i < remaining; i++)
     {
@@ -421,11 +421,11 @@ int update_states(int remaining, std::vector<int>& unassigned, std::vector<int>&
 void cljp_main_loop(CSRMatrix* S, std::vector<int>& col_ptr, std::vector<int>& col_indices,
         std::vector<int>& states, double* rand_vals = NULL)
 {
-    int num_new_coarse, num_new_fine;
+    int num_new_coarse;
     int remaining;
     int start, end;
-    int idx_start, idx_end;
-    int idx, idx_k, c;
+    
+    int idx;
     std::vector<int> edgemark;
     std::vector<double> weights;
     std::vector<int> new_coarse_list;

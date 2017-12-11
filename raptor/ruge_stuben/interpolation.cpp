@@ -12,13 +12,13 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A,
     int startA, endA;
     int startS, endS;
     int start_k, end_k, col_k;
-    int col, ctr, row;
+    int col, ctr;
 
-    double weight;
+    
     double weak_sum;
-    double strong_sum;
+    
     double diag;
-    double val, val_k;
+    double val;
     double sign;
     double coarse_sum;
     std::vector<int> pos;
@@ -199,7 +199,7 @@ CSRMatrix* direct_interpolation(CSRMatrix* A,
         CSRMatrix* S, const std::vector<int>& states)
 {
     int start, end, col;
-    int idx, new_idx, ctr;
+    int ctr;
     double sum_strong_pos, sum_strong_neg;
     double sum_all_pos, sum_all_neg;
     double val, alpha, beta, diag;

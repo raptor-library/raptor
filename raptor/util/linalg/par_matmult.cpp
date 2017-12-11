@@ -493,7 +493,7 @@ CSRMatrix* ParCSRMatrix::mult_T_partial(CSCMatrix* A_off)
 {
     int row_start_AT, row_end_AT;
     int row_start, row_end;
-    int global_col, col, col_AT, col_C;
+    int col, col_AT;
     int tmp, head, length;
     double val_AT, val;
 
@@ -591,14 +591,14 @@ CSRMatrix* ParCSRMatrix::mult_T_partial(ParCSCMatrix* A)
 void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* recv_on, 
         CSRMatrix* recv_off)
 {
-    int row, idx;
+    
     int head, length, tmp;
     int row_start_PT, row_end_PT;
     int row_start, row_end;
-    int recv_mat_start, recv_mat_end;
+    
     int col_PT, col, col_C;
-    int global_col;
-    int recv_row;
+    
+    
     double val_PT, val;
 
     std::vector<double> sums;

@@ -98,12 +98,12 @@ void initial_cljp_weights(const ParCSRMatrix* S,
         double* rand_vals = NULL)
 {
     int start, end;
-    int idx, idx_k;
-    int idx_start, idx_end;
-    int head, length;
+    int idx;
+    
+    
     int proc;
     int tag = 3029;
-    int tmp;
+    
 
     std::vector<int> off_proc_weights;
 
@@ -241,7 +241,7 @@ int select_independent_set(const ParCSRMatrix* S,
         std::vector<int>& new_coarse_list)
 {
     int start, end, idx;
-    int col;
+    
     int j, u;
     int num_new_coarse = 0;
     double weight;
@@ -752,7 +752,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
     int size;
     int idx_start, idx_end;
     int proc, count, buf_ptr;
-    int ctr, prev_ctr;
+    int ctr;
     int tag = 2999;
     int global_col;
     int n_sends = 0;
@@ -860,7 +860,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
             MPI_Probe(proc, tag, MPI_COMM_WORLD, &recv_status);
             MPI_Get_count(&recv_status, MPI_INT, &count);
 
-            if (recv_buffer.size() < count)
+            if ((int) recv_buffer.size() < count)
             {
                 recv_buffer.resize(count);
             }
@@ -2204,10 +2204,10 @@ void tap_split_falgout(ParCSRMatrix* S,
     int start, end;
     int idx, idx_k, c;
     int idx_start, idx_end;
-    int head, length, tmp;
+    
     int remaining;
-    int max_idx;
-    double max_weight;
+    
+    
 
     std::vector<int> boundary;
     std::vector<int> on_col_ptr;

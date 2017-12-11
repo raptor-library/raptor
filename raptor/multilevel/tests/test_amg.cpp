@@ -27,7 +27,7 @@ int main(int _argc, char** _argv)
 TEST(AMGTest, TestsInMultilevel)
 {
     int dim = 3;
-    int system = 0;
+    
     int grid[3] = {5, 5, 5};
 
     Multilevel* ml;
@@ -36,7 +36,7 @@ TEST(AMGTest, TestsInMultilevel)
     Vector b;
 
     double strong_threshold = 0.25;
-    int num_tests = 10;
+    
 
     double* stencil = laplace_stencil_27pt();
     A = stencil_grid(stencil, grid, dim);

@@ -27,7 +27,7 @@ TEST(ParAnisoTest, TestsInGallery)
 
     const char* A0_fn = "../../../../test_data/aniso.pm";
 
-    int row;
+
     int start, end;
     int grid[2] = {25, 25};
     double eps = 0.001;

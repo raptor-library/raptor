@@ -13,16 +13,16 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     int start, end;
     int start_k, end_k;
     int end_S;
-    int col, row, col_k, col_S;
-    int count, ctr;
+    int col, col_k, col_S;
+    int ctr;
     int global_col;
-    int head, length, tmp;
-    int off_proc_head, off_proc_length;
-    int ctr_S;
+    
+    
+    
 
     double diag, val;
-    double weak_sum, coarse_sum, strong_sum;
-    double weight;
+    double weak_sum, coarse_sum;
+    
     double sign;
 
     CSRMatrix* recv_mat; // Communicate A
@@ -514,8 +514,10 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     if (S->tap_comm)
     {
-        P->tap_comm = new TAPComm(S->tap_comm, on_proc_col_to_new,
-                off_proc_col_to_new);
+//        P->tap_comm = new TAPComm(S->tap_comm, on_proc_col_to_new,
+//                off_proc_col_to_new);
+        P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map,
+                P->on_proc_column_map);
     }
 
     delete recv_on;
@@ -530,7 +532,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         const std::vector<int>& off_proc_states)
 {
     int start, end, col;
-    int proc, idx, new_idx;
+    
     int ctr;
     double sum_strong_pos, sum_strong_neg;
     double sum_all_pos, sum_all_neg;

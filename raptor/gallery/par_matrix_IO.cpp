@@ -181,8 +181,8 @@ ParCSRMatrix* readParMatrix(const char* filename,
         {
             idx = col_indices[ctr];
             val = vals[ctr++];
-            if (idx >= A->partition->first_local_col &&
-                    idx <= A->partition->last_local_col)
+            if ((int) idx >= A->partition->first_local_col &&
+                    (int) idx <= A->partition->last_local_col)
             {
                 A->on_proc->idx2.push_back(idx - A->partition->first_local_col);
                 A->on_proc->vals.push_back(val);
