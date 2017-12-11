@@ -2088,16 +2088,17 @@ namespace raptor
                     recvbuf[idx] = 0.0;
                 }
             }
-            for (int i = 0; i < R_recvbuf.size(); i++)
+            for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
             {
-                idx = R_to_orig[i];
-                if (compare_func(recv_compares[idx]))
+                idx = local_R_par_comm->recv_data->indices[i];
+                new_idx = R_to_orig[idx];
+                if (compare_func(recv_compares[new_idx]))
                 {
-                    recvbuf[idx] = R_recvbuf[i];
+                    recvbuf[new_idx] = R_recvbuf[i];
                 }
                 else
                 {
-                    recvbuf[idx] = 0.0;
+                    recvbuf[new_idx] = 0.0;
                 }
             }
 
@@ -2113,7 +2114,7 @@ namespace raptor
                 std::function<bool(int)> compare_func = {},
                 std::function<U(U, T)> result_func = {})
         {
-            int idx;
+            int idx, new_idx;
             std::vector<T> L_values;
             std::vector<T> R_values;
 
@@ -2144,9 +2145,10 @@ namespace raptor
                 R_recv_compares.resize(local_R_par_comm->recv_data->size_msgs);
                 for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
                 {
-                    idx = R_to_orig[i];
-                    R_values[i] = values[idx];
-                    R_recv_compares[i] = recv_compares[idx];
+                    idx = local_R_par_comm->recv_data->indices[i];
+                    new_idx = R_to_orig[idx];
+                    R_values[idx] = values[new_idx];
+                    R_recv_compares[idx] = recv_compares[new_idx];
                 }
             }
 

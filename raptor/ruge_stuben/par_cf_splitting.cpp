@@ -935,9 +935,9 @@ std::vector<int>& tap_find_local_helper(const ParCSRMatrix* S,
         for (int j = start; j < end; j++)
         {
             idx = comm->send_data->indices[j];
-            size = send_buffer.size();
             if (states[idx] == -1)
             {
+                size = send_buffer.size();
                 idx_start = S->on_proc->idx1[idx];
                 idx_end = S->on_proc->idx1[idx+1];
                 if (S->on_proc->idx2[idx_start] == idx)
@@ -1036,7 +1036,8 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
         std::vector<int>& off_proc_col_ptr,
         std::vector<int>& off_proc_col_coarse)
 {
-    int idx, send_size, recv_size;
+    int idx, new_idx;
+    int send_size, recv_size;
     int start, end, proc;
     int idx_start, idx_end;
     int n_sends, n_recvs;
@@ -1064,15 +1065,21 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
      *****  Create global_recv_bool (whether to recv idx j)
      *****
      *********************************************************/
-    std::vector<int>& R_off_proc_states = local_R_par_comm->get_recv_buffer<int>();
+    std::vector<int> R_off_proc_states;
+    if (local_R_par_comm->recv_data->size_msgs)
+    {
+        R_off_proc_states.resize(local_R_par_comm->recv_data->size_msgs);
+    }
     std::vector<int>& global_recv_bool = global_par_comm->get_recv_buffer<int>();
     for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
     {
-        idx = S->tap_comm->R_to_orig[i];
-        R_off_proc_states[i] = off_proc_states[idx];
+        idx = local_R_par_comm->recv_data->indices[i];
+        new_idx = S->tap_comm->R_to_orig[idx];
+        R_off_proc_states[idx] = off_proc_states[new_idx];
     }
-    local_R_par_comm->communicate_T(R_off_proc_states, 
+    local_R_par_comm->communicate_T(R_off_proc_states.data(), 
             local_R_par_comm->topology->local_comm);
+    std::fill(global_recv_bool.begin(), global_recv_bool.end(), -1);
     for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
     {
         idx = local_R_par_comm->send_data->indices[i];
@@ -1085,7 +1092,6 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
             global_recv_bool[idx] = 0;
         }
     }
-
     /**********************************************************
      *****
      *****  Step 1: local_S_par_comm sends row sizes, followed
@@ -1106,7 +1112,8 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
      *****
      *********************************************************/
     send_ptr.resize(global_par_comm->send_data->num_msgs + 1);
-    send_ptr[0] = 0;
+    send_buffer.clear();
+    send_ptr[0] = send_buffer.size();
     for (int i = 0; i < global_par_comm->send_data->num_msgs; i++)
     {
         start = global_par_comm->send_data->indptr[i];
@@ -1146,7 +1153,7 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
     recv_buffer.clear();
     recv_sizes = global_par_comm->recv_data->int_buffer;
     recv_ptr.resize(global_par_comm->recv_data->size_msgs + 1);
-    std::fill(recv_ptr.begin(), recv_ptr.end(), 0);
+    std::fill(recv_sizes.begin(), recv_sizes.end(), 0);
     recv_ptr[0] = 0;
     for (int i = 0; i < global_par_comm->recv_data->num_msgs; i++)
     {
@@ -1179,13 +1186,17 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
             {
                 recv_size = recvbuf[ctr++];
                 for (int k = 0; k < recv_size; k++)
-                {   
+                {  
                     recv_buffer.push_back(recvbuf[ctr++]);
                 }
             }
             recv_sizes[j] = recv_size;
-            recv_ptr[j + 1] = recv_ptr[j] + recv_size;
         } 
+    }
+    recv_ptr[0] = 0;
+    for (int i = 0; i < global_par_comm->recv_data->size_msgs; i++)
+    {
+        recv_ptr[i+1] = recv_ptr[i] + recv_sizes[i];
     }
     
     if (n_sends)
@@ -1215,16 +1226,16 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
         send_ptr[i+1] = send_buffer.size();
     }
 
-    recv_sizes = local_R_par_comm->communicate(recv_sizes, 
+    std::vector<int> local_R_recv_sizes = local_R_par_comm->communicate(recv_sizes, 
             local_R_par_comm->topology->local_comm);
     recv_ptr.resize(local_R_par_comm->recv_data->size_msgs + 1);
     recv_size = 0;
     recv_ptr[0] = recv_size;
     for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
     {
-        if (recv_sizes[i] > 0)
+        if (local_R_recv_sizes[i] > 0)
         {
-            recv_size += recv_sizes[i];
+            recv_size += local_R_recv_sizes[i];
         }
         recv_ptr[i+1] = recv_size;
     }
@@ -1284,10 +1295,11 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
     }
     for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
     {
-        idx = S->tap_comm->R_to_orig[i];
-        if (recv_sizes[i] > 0)
+        idx = local_R_par_comm->recv_data->indices[i];
+        new_idx = S->tap_comm->R_to_orig[idx];
+        if (local_R_recv_sizes[i] > 0)
         {
-            send_sizes[idx] += recv_sizes[i];
+            send_sizes[new_idx] += local_R_recv_sizes[i];
         }
     }
     for (int i = 0; i < local_L_par_comm->recv_data->size_msgs; i++)
@@ -1311,7 +1323,8 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
     // Form off_proc_col_to_coarse
     for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
     {
-        idx = S->tap_comm->R_to_orig[i];
+        idx = local_R_par_comm->recv_data->indices[i];
+        new_idx = S->tap_comm->R_to_orig[idx];
         start = recv_ptr[i];
         end = recv_ptr[i+1];
         for (int j = start; j < end; j++)
@@ -1332,7 +1345,7 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
                 }   
                 else continue;
             }
-            ctr = off_proc_col_ptr[idx] + send_sizes[idx]++;
+            ctr = off_proc_col_ptr[new_idx] + send_sizes[new_idx]++;
             off_proc_col_coarse[ctr] = col;
         }
     }
@@ -1363,6 +1376,23 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
             off_proc_col_coarse[ctr] = col;
         }
     }
+
+    ctr = 0;
+    for (int i = 0; i < S->off_proc_num_cols; i++)
+    {
+        size = send_sizes[i];
+        start = off_proc_col_ptr[i];
+        for (int j = 0; j < size; j++)
+        {
+            off_proc_col_coarse[ctr++] = off_proc_col_coarse[start + j];
+        }
+    }
+
+    for (int i = 0; i < S->off_proc_num_cols; i++)
+    {
+        off_proc_col_ptr[i+1] = off_proc_col_ptr[i] + send_sizes[i];
+    }
+    off_proc_col_coarse.resize(off_proc_col_ptr[S->off_proc_num_cols]);
 }
 
 void combine_weight_updates(CommPkg* comm,
@@ -1760,8 +1790,6 @@ void tap_cljp_main_loop(ParCSRMatrix* S,
 
         // Find new coarse influenced by each off_proc col
         tap_find_off_proc_new_coarse(S, global_to_local, states, off_proc_states, 
-                part_to_col, off_proc_col_ptr, off_proc_col_coarse);
-        find_off_proc_new_coarse(S, global_to_local, states, off_proc_states, 
                 part_to_col, off_proc_col_ptr, off_proc_col_coarse);
 
         // Update Weights

@@ -490,7 +490,7 @@ CSRMatrix* TAPComm::communicate(std::vector<int>& rowptr,
         std::vector<int>& col_indices, std::vector<double>& values,
         MPI_Comm comm)
 {   
-    int ctr, idx;
+    int ctr, idx, row;
     int start, end;
 
     CSRMatrix* L_mat = local_L_par_comm->communicate(rowptr, col_indices,
@@ -523,7 +523,8 @@ CSRMatrix* TAPComm::communicate(std::vector<int>& rowptr,
     {
         start = R_mat->idx1[i];
         end = R_mat->idx1[i+1];
-        idx = R_to_orig[i];
+        row = local_R_par_comm->recv_data->indices[i];
+        idx = R_to_orig[row];
         row_sizes[idx] = end - start;
     }
     for (int i = 0; i < L_mat->n_rows; i++)
@@ -543,7 +544,8 @@ CSRMatrix* TAPComm::communicate(std::vector<int>& rowptr,
     {
         start = R_mat->idx1[i];
         end = R_mat->idx1[i+1];
-        idx = R_to_orig[i];
+        row = local_R_par_comm->recv_data->indices[i];
+        idx = R_to_orig[row];
         for (int j = start; j < end; j++)
         {
             ptr = recv_mat->idx1[idx] + row_sizes[idx]++;
@@ -576,7 +578,8 @@ CSRMatrix* TAPComm::communicate_T(std::vector<int>& rowptr,
 {   
     int n_rows = rowptr.size() - 1;
     int idx, ptr;
-    int start, end;
+    int start, end, row;
+    int ctr, size;
 
     std::vector<int> new_rowptr;
     std::vector<int> new_col_indices;
@@ -604,27 +607,51 @@ CSRMatrix* TAPComm::communicate_T(std::vector<int>& rowptr,
     new_rowptr.resize(local_R_par_comm->recv_data->size_msgs + 1);
     new_col_indices.clear();
     new_values.clear();
+    std::vector<int>& row_sizes = local_R_par_comm->recv_data->int_buffer;
+    for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
+    {
+        row = local_R_par_comm->recv_data->indices[i];
+        idx = R_to_orig[row];
+        start = rowptr[idx];
+        end = rowptr[idx+1];
+        row_sizes[row] = end - start;
+    }
     new_rowptr[0] = 0;
     for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
     {
-        idx = R_to_orig[i];
+        new_rowptr[i+1] = new_rowptr[i] + row_sizes[i];
+        row_sizes[i] = 0;
+    }
+
+    size = new_rowptr[local_R_par_comm->recv_data->size_msgs];
+    if (size)
+    {
+        new_col_indices.resize(size);
+        new_values.resize(size);
+    }
+    for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
+    {
+        row = local_R_par_comm->recv_data->indices[i];
+        idx = R_to_orig[row];
         start = rowptr[idx];
         end = rowptr[idx+1];
         for (int j = start; j < end; j++)
         {
-            new_col_indices.push_back(col_indices[j]);
-            new_values.push_back(values[j]);
+            ctr = new_rowptr[row] + row_sizes[row]++;
+            new_col_indices[ctr] = col_indices[j];
+            new_values[ctr] = values[j];
         }
-        new_rowptr[i+1] = new_col_indices.size();
     }
     CSRMatrix* R_mat = local_R_par_comm->communicate_T(new_rowptr, new_col_indices,
             new_values, global_par_comm->recv_data->size_msgs, topology->local_comm);
 
     CSRMatrix* G_mat = global_par_comm->communicate_T(R_mat->idx1, R_mat->idx2,
             R_mat->vals, local_S_par_comm->recv_data->size_msgs, comm);
+    delete R_mat;
 
     CSRMatrix* S_mat = local_S_par_comm->communicate_T(G_mat->idx1, G_mat->idx2,
             G_mat->vals, n_result_rows, topology->local_comm);
+    delete G_mat;
 
     CSRMatrix* recv_mat = new CSRMatrix(n_result_rows, -1);
     int nnz = L_mat->nnz + S_mat->nnz;
@@ -653,6 +680,9 @@ CSRMatrix* TAPComm::communicate_T(std::vector<int>& rowptr,
         recv_mat->idx1[i+1] = recv_mat->idx2.size();
     }
     recv_mat->nnz = recv_mat->idx2.size();
+
+    delete L_mat;
+    delete S_mat;
 
 
     return recv_mat;

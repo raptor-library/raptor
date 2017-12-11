@@ -112,15 +112,21 @@ namespace raptor
                 while (levels[last_level]->A->global_num_rows > max_coarse && 
                         (max_levels == -1 || (int) levels.size() < max_levels))
                 {
-                    extend_hierarchy(strength_threshold, coarsen_type,
-                            interp_type, tap_amg);
-                    last_level++;
                     if (tap_amg >= 0 && tap_amg <= last_level)
                     {
+                        tap_extend_hierarchy(strength_threshold, coarsen_type,
+                                interp_type);
+                        last_level++;
                         levels[last_level]->A->tap_comm = new TAPComm(
                                 levels[last_level]->A->partition,
                                 levels[last_level]->A->off_proc_column_map,
                                 levels[last_level]->A->on_proc_column_map);
+                    }
+                    else
+                    {
+                        extend_hierarchy(strength_threshold, coarsen_type,
+                                interp_type);
+                        last_level++;
                     }
                 }
                 num_levels = levels.size();
@@ -165,8 +171,7 @@ namespace raptor
 #endif
 
             void extend_hierarchy(double strong_threshold, 
-                    coarsen_t coarsen_type, interp_t interp_type,
-                    int tap_amg)
+                    coarsen_t coarsen_type, interp_t interp_type)
             {
                 int level_ctr = levels.size() - 1;
                 ParCSRMatrix* A = levels[level_ctr]->A;
@@ -218,6 +223,77 @@ namespace raptor
                 AP = A->mult(levels[level_ctr]->P);
                 P_csc = new ParCSCMatrix(levels[level_ctr]->P);
                 A = AP->mult_T(P_csc);
+
+                level_ctr++;
+                levels[level_ctr]->A = A;
+                A->comm = new ParComm(A->partition, A->off_proc_column_map,
+                        A->on_proc_column_map);
+                levels[level_ctr]->x.resize(A->global_num_rows, A->local_num_rows,
+                        A->partition->first_local_row);
+                levels[level_ctr]->b.resize(A->global_num_rows, A->local_num_rows,
+                        A->partition->first_local_row);
+                levels[level_ctr]->tmp.resize(A->global_num_rows, A->local_num_rows,
+                        A->partition->first_local_row);
+                levels[level_ctr]->P = NULL;
+
+                delete AP;
+                delete P_csc;
+                delete S;
+            }
+
+            void tap_extend_hierarchy(double strong_threshold, 
+                    coarsen_t coarsen_type, interp_t interp_type)
+            {
+                int level_ctr = levels.size() - 1;
+                ParCSRMatrix* A = levels[level_ctr]->A;
+                ParCSRMatrix* S;
+                ParCSRMatrix* P;
+                ParCSRMatrix* AP;
+                ParCSCMatrix* P_csc;
+
+                std::vector<int> states;
+                std::vector<int> off_proc_states;
+
+                // Form strength of connection
+                std::vector<double> weights;
+                S = A->strength(strong_threshold);
+
+                // Form CF Splitting
+                switch (coarsen_type)
+                {
+                    case RS:
+                        tap_split_rs(S, states, off_proc_states);
+                        break;
+                    case CLJP:
+#ifdef USING_HYPRE
+                        form_hypre_weights(weights, A->local_num_rows);
+                        tap_split_cljp(S, states, off_proc_states, weights.data());
+#else
+                        tap_split_cljp(S, states, off_proc_states);
+#endif
+                        break;
+                    case Falgout:
+                        tap_split_falgout(S, states, off_proc_states);
+                        break;
+                }
+
+                // Form modified classical interpolation
+                switch (interp_type)
+                {
+                    case Direct:
+                        P = direct_interpolation(A, S, states, off_proc_states);
+                        break;
+                    case Classical:
+                        P = mod_classical_interpolation(A, S, states, off_proc_states, A->tap_comm);
+                        break;
+                }
+                levels[level_ctr]->P = P;
+
+                // Form coarse grid operator
+                levels.push_back(new ParLevel());
+                AP = A->tap_mult(levels[level_ctr]->P);
+                P_csc = new ParCSCMatrix(levels[level_ctr]->P);
+                A = AP->tap_mult_T(P_csc);
 
                 level_ctr++;
                 levels[level_ctr]->A = A;
