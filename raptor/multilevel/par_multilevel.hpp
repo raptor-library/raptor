@@ -497,17 +497,19 @@ namespace raptor
             }
 
 
-            void cycle(int level, int tap_level = -1)
+            void cycle(int level, int tap_level = -1, double* level_times = NULL)
             {
                 ParCSRMatrix* A = levels[level]->A;
                 ParCSRMatrix* P = levels[level]->P;
                 ParVector& x = levels[level]->x;
                 ParVector& b = levels[level]->b;
                 ParVector& tmp = levels[level]->tmp;
+                double t0;
 
 
                 if (level == num_levels - 1)
                 {
+                    if (level_times) t0 = MPI_Wtime();
                     if (A->local_num_rows)
                     {
                         int active_rank;
@@ -529,9 +531,12 @@ namespace raptor
                             x.local[i] = b_data[i + coarse_displs[active_rank]];
                         }
                     }
+                    if (level_times) level_times[level] += (MPI_Wtime() - t0);
                 }
                 else
                 {
+                    if (level_times) t0 = MPI_Wtime();
+
                     levels[level+1]->x.set_const_value(0.0);
                     
                     // Relax
@@ -550,14 +555,18 @@ namespace raptor
 
                     A->residual(x, b, tmp);
                     P->mult_T(tmp, levels[level+1]->b);
+                    if (level_times) level_times[level] += (MPI_Wtime() - t0);
+
                     if (tap_level == level+1)
                     {
                         tap_cycle(level+1);
                     }
                     else
                     {
-                        cycle(level+1);
+                        cycle(level+1, tap_level, level_times);
                     }
+
+                    if (level_times) t0 = MPI_Wtime();
                     P->mult(levels[level+1]->x, tmp);
                     for (int i = 0; i < A->local_num_rows; i++)
                     {
@@ -576,6 +585,7 @@ namespace raptor
                             ssor(levels[level], num_smooth_sweeps, relax_weight);
                             break;
                     }
+                    if (level_times) level_times[level] += (MPI_Wtime() - t0);
                 }
             }
 
@@ -647,19 +657,20 @@ namespace raptor
             } 
 
             int solve(ParVector& sol, ParVector& rhs, std::vector<double>& res,
-                    int num_iterations = 100)
+                    double* level_times = NULL, int num_iterations = 100)
             {
                 res.resize(num_iterations);
-                int iter = solve(sol, rhs, res.data(), num_iterations);
+                int iter = solve(sol, rhs, res.data(), level_times, num_iterations);
                 res.resize(iter+1);
                 return iter;
             }
 
             int solve(ParVector& sol, ParVector& rhs, double* res = NULL,
-                    int num_iterations = 100)
+                    double* level_times = NULL, int num_iterations = 100)
             {
                 double b_norm = rhs.norm(2);
                 double r_norm;
+                double t0;
                 int iter = 0;
 
                 levels[0]->x.copy(sol);
@@ -683,7 +694,11 @@ namespace raptor
 
                 while (r_norm > 1e-07 && iter < num_iterations)
                 {
-                    cycle(0);
+                    cycle(0, -1, level_times);
+                    if (level_times)
+                    {
+                        t0 = MPI_Wtime();
+                    }
                     iter++;
 
                     levels[0]->A->residual(levels[0]->x, levels[0]->b, resid);
@@ -698,6 +713,10 @@ namespace raptor
                     if (res)
                     {
                         res[iter] = r_norm;
+                    }
+                    if (level_times)
+                    {
+                        level_times[0] += (MPI_Wtime() - t0);
                     }
                 }
 
