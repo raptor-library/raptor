@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
 
         if (has_comm == 0) level_times[i] = 0.0;
         MPI_Reduce(&level_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Level Time: %e\n", level_times[i]);
+        if (rank == 0) printf("Level Time: %e\n", t0);
 
         int reduced;
         MPI_Reduce(&has_comm, &reduced, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
