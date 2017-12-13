@@ -156,9 +156,6 @@ int main(int argc, char *argv[])
         ParCSRMatrix* Al = ml->levels[i]->A;
 
         if (rank == 0) printf("Level %d\n", i);
-        
-        MPI_Reduce(&level_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Level Time: %e\n", level_times[i]);
 
         int num_msgs = Al->comm->send_data->num_msgs;
         if (Al->comm->recv_data->num_msgs > num_msgs)
@@ -168,6 +165,10 @@ int main(int argc, char *argv[])
             size_msgs = Al->comm->recv_data->size_msgs;
         int has_comm = 0;
         if (num_msgs) has_comm = 1;
+
+        if (has_comm == 0) level_times[i] = 0.0;
+        MPI_Reduce(&level_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Level Time: %e\n", level_times[i]);
 
         int reduced;
         MPI_Reduce(&has_comm, &reduced, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);

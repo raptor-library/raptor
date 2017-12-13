@@ -555,6 +555,7 @@ namespace raptor
 
                     A->residual(x, b, tmp);
                     P->mult_T(tmp, levels[level+1]->b);
+
                     if (level_times) level_times[level] += (MPI_Wtime() - t0);
 
                     if (tap_level == level+1)
@@ -668,6 +669,10 @@ namespace raptor
             int solve(ParVector& sol, ParVector& rhs, double* res = NULL,
                     double* level_times = NULL, int num_iterations = 100)
             {
+                if (level_times)
+                    for (int i = 0; i < num_levels; i++)
+                        level_times[i] = 0.0;
+
                 double b_norm = rhs.norm(2);
                 double r_norm;
                 double t0;
@@ -677,6 +682,10 @@ namespace raptor
                 levels[0]->b.copy(rhs);
 
                 // Iterate until convergence or max iterations
+                if (level_times)
+                {
+                    t0 = MPI_Wtime();
+                }
                 ParVector resid(rhs.global_n, rhs.local_n, rhs.first_local);
                 levels[0]->A->residual(levels[0]->x, levels[0]->b, resid);
                 if (fabs(b_norm) > zero_tol)
@@ -690,6 +699,10 @@ namespace raptor
                 if (res)
                 {
                     res[iter] = r_norm;
+                }
+                if (level_times)
+                {
+                    level_times[0] = MPI_Wtime() - t0;
                 }
 
                 while (r_norm > 1e-07 && iter < num_iterations)
