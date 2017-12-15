@@ -122,10 +122,9 @@ int main(int argc, char *argv[])
     // Solve Raptor Hierarchy
     x.set_const_value(0.0);
     std::vector<double> res;
-    std::vector<double> level_times(ml->num_levels);
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
-    ml->solve(x, b, res, level_times.data());
+    ml->solve(x, b, res);
     raptor_solve = MPI_Wtime() - t0;
     clear_cache(cache_array);
 
@@ -231,9 +230,15 @@ int main(int argc, char *argv[])
         }
         comm_time = (MPI_Wtime() - t0) / 100;
         
-        if (has_comm == 0) level_times[i] = 0.0;
-        MPI_Reduce(&level_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        
+
+        MPI_Reduce(&ml->level_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank == 0) printf("Level Time: %e\n", t0);
+        MPI_Reduce(&ml->spmv_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("SpMV Time: %e\n", t0);
+        MPI_Reduce(&ml->spmv_comm_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("SpMV Comm Time: %e\n", t0);
+
         MPI_Reduce(&model, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank == 0) printf("Model Time: %e\n", t0);
         MPI_Reduce(&comm_time, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);

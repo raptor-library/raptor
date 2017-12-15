@@ -35,6 +35,7 @@ namespace raptor
     enum coarsen_t {RS, CLJP, Falgout};
     enum interp_t {Direct, Classical};
     enum relax_t {Jacobi, SOR, SSOR};
+
 }
 
 #endif

@@ -423,6 +423,7 @@ namespace raptor
 
             void tap_cycle(int level)
             {
+                double t0;
                 ParCSRMatrix* A = levels[level]->A;
                 ParCSRMatrix* P = levels[level]->P;
                 ParVector& x = levels[level]->x;
@@ -431,6 +432,7 @@ namespace raptor
 
                 if (level == num_levels - 1)
                 {
+                    t0 = MPI_Wtime();
                     if (A->local_num_rows)
                     {
                         int active_rank;
@@ -452,30 +454,39 @@ namespace raptor
                             x.local[i] = b_data[i + coarse_displs[active_rank]];
                         }
                     }
+                    level_times[level] += (MPI_Wtime() - t0);
                 }
                 else
                 {
+                    t0 = MPI_Wtime();
                     levels[level+1]->x.set_const_value(0.0);
                     
                     // Relax
                     switch (relax_type)
                     {
                         case Jacobi:
-                            tap_jacobi(levels[level], num_smooth_sweeps, relax_weight);
+                            tap_jacobi(levels[level], num_smooth_sweeps, relax_weight,
+                                    &spmv_times[level], &spmv_comm_times[level]);
                             break;
                         case SOR:
-                            tap_sor(levels[level], num_smooth_sweeps, relax_weight);
+                            tap_sor(levels[level], num_smooth_sweeps, relax_weight,
+                                    &spmv_times[level], &spmv_comm_times[level]);
                             break;
                         case SSOR:
-                            tap_ssor(levels[level], num_smooth_sweeps, relax_weight);
+                            tap_ssor(levels[level], num_smooth_sweeps, relax_weight,
+                                    &spmv_times[level], &spmv_comm_times[level]);
                             break;
                     }
 
 
-                    A->tap_residual(x, b, tmp);
-                    P->tap_mult_T(tmp, levels[level+1]->b);
+                    A->tap_residual(x, b, tmp, &spmv_times[level], &spmv_comm_times[level]);
+                    P->tap_mult_T(tmp, levels[level+1]->b, &spmv_times[level], &spmv_comm_times[level]);
+                    level_times[level] += (MPI_Wtime() - t0);
+
                     tap_cycle(level+1);
-                    P->tap_mult(levels[level+1]->x, tmp);
+
+                    t0 = MPI_Wtime();
+                    P->tap_mult(levels[level+1]->x, tmp, &spmv_times[level], &spmv_comm_times[level]);
                     for (int i = 0; i < A->local_num_rows; i++)
                     {
                         x.local[i] += tmp.local[i];
@@ -484,20 +495,24 @@ namespace raptor
                     switch (relax_type)
                     {
                         case Jacobi:
-                            tap_jacobi(levels[level], num_smooth_sweeps, relax_weight);
+                            tap_jacobi(levels[level], num_smooth_sweeps, relax_weight,
+                                    &spmv_times[level], &spmv_comm_times[level]);
                             break;
                         case SOR:
-                            tap_sor(levels[level], num_smooth_sweeps, relax_weight);
+                            tap_sor(levels[level], num_smooth_sweeps, relax_weight,
+                                    &spmv_times[level], &spmv_comm_times[level]);
                             break;
                         case SSOR:
-                            tap_ssor(levels[level], num_smooth_sweeps, relax_weight);
+                            tap_ssor(levels[level], num_smooth_sweeps, relax_weight,
+                                    &spmv_times[level], &spmv_comm_times[level]);
                             break;
                     }
+                    level_times[level] += (MPI_Wtime() - t0);
                 }
             }
 
 
-            void cycle(int level, int tap_level = -1, double* level_times = NULL)
+            void cycle(int level, int tap_level = -1)
             {
                 ParCSRMatrix* A = levels[level]->A;
                 ParCSRMatrix* P = levels[level]->P;
@@ -509,7 +524,7 @@ namespace raptor
 
                 if (level == num_levels - 1)
                 {
-                    if (level_times) t0 = MPI_Wtime();
+                    t0 = MPI_Wtime();
                     if (A->local_num_rows)
                     {
                         int active_rank;
@@ -531,11 +546,11 @@ namespace raptor
                             x.local[i] = b_data[i + coarse_displs[active_rank]];
                         }
                     }
-                    if (level_times) level_times[level] += (MPI_Wtime() - t0);
+                    level_times[level] += (MPI_Wtime() - t0);
                 }
                 else
                 {
-                    if (level_times) t0 = MPI_Wtime();
+                    t0 = MPI_Wtime();
 
                     levels[level+1]->x.set_const_value(0.0);
                     
@@ -543,20 +558,23 @@ namespace raptor
                     switch (relax_type)
                     {
                         case Jacobi:
-                            jacobi(levels[level], num_smooth_sweeps, relax_weight);
+                            jacobi(levels[level], num_smooth_sweeps, relax_weight,
+                                    &spmv_times[level], &spmv_comm_times[level]);
                             break;
                         case SOR:
-                            sor(levels[level], num_smooth_sweeps, relax_weight);
+                            sor(levels[level], num_smooth_sweeps, relax_weight,
+                                    &spmv_times[level], &spmv_comm_times[level]);
                             break;
                         case SSOR:
-                            ssor(levels[level], num_smooth_sweeps, relax_weight);
+                            ssor(levels[level], num_smooth_sweeps, relax_weight,
+                                    &spmv_times[level], &spmv_comm_times[level]);
                             break;
                     }
 
-                    A->residual(x, b, tmp);
-                    P->mult_T(tmp, levels[level+1]->b);
+                    A->residual(x, b, tmp, &spmv_times[level], &spmv_comm_times[level]);
+                    P->mult_T(tmp, levels[level+1]->b, &spmv_times[level], &spmv_comm_times[level]);
 
-                    if (level_times) level_times[level] += (MPI_Wtime() - t0);
+                    level_times[level] += (MPI_Wtime() - t0);
 
                     if (tap_level == level+1)
                     {
@@ -564,11 +582,11 @@ namespace raptor
                     }
                     else
                     {
-                        cycle(level+1, tap_level, level_times);
+                        cycle(level+1, tap_level);
                     }
 
-                    if (level_times) t0 = MPI_Wtime();
-                    P->mult(levels[level+1]->x, tmp);
+                    t0 = MPI_Wtime();
+                    P->mult(levels[level+1]->x, tmp, &spmv_times[level], &spmv_comm_times[level]);
                     for (int i = 0; i < A->local_num_rows; i++)
                     {
                         x.local[i] += tmp.local[i];
@@ -577,16 +595,19 @@ namespace raptor
                     switch (relax_type)
                     {
                         case Jacobi:
-                            jacobi(levels[level], num_smooth_sweeps, relax_weight);
+                            jacobi(levels[level], num_smooth_sweeps, relax_weight,
+                                    &spmv_times[level], &spmv_comm_times[level]);
                             break;
                         case SOR:
-                            sor(levels[level], num_smooth_sweeps, relax_weight);
+                            sor(levels[level], num_smooth_sweeps, relax_weight,
+                                    &spmv_times[level], &spmv_comm_times[level]);
                             break;
                         case SSOR:
-                            ssor(levels[level], num_smooth_sweeps, relax_weight);
+                            ssor(levels[level], num_smooth_sweeps, relax_weight,
+                                    &spmv_times[level], &spmv_comm_times[level]);
                             break;
                     }
-                    if (level_times) level_times[level] += (MPI_Wtime() - t0);
+                    level_times[level] += (MPI_Wtime() - t0);
                 }
             }
 
@@ -602,6 +623,7 @@ namespace raptor
             int tap_solve(ParVector& sol, ParVector& rhs, double* res = NULL,
                     int tap_level = 0, int num_iterations = 100)
             {
+                double t0;
                 double b_norm = rhs.norm(2);
                 double r_norm;
                 int iter = 0;
@@ -609,7 +631,15 @@ namespace raptor
                 levels[0]->x.copy(sol);
                 levels[0]->b.copy(rhs);
 
+                level_times.resize(num_levels);
+                spmv_times.resize(num_levels);
+                spmv_comm_times.resize(num_levels);
+                std::fill(level_times.begin(), level_times.end(), 0);
+                std::fill(spmv_times.begin(), spmv_times.end(), 0);
+                std::fill(spmv_comm_times.begin(), spmv_comm_times.end(), 0);
+
                 // Iterate until convergence or max iterations
+                t0 = MPI_Wtime();
                 ParVector resid(rhs.global_n, rhs.local_n, rhs.first_local);
                 levels[0]->A->residual(levels[0]->x, levels[0]->b, resid);
                 if (fabs(b_norm) > zero_tol)
@@ -624,6 +654,7 @@ namespace raptor
                 {
                     res[iter] = r_norm;
                 }
+                level_times[0] = (MPI_Wtime() - t0);
 
                 while (r_norm > 1e-07 && iter < num_iterations)
                 {
@@ -635,6 +666,8 @@ namespace raptor
                     {
                         tap_cycle(0);
                     }
+
+                    t0 = MPI_Wtime();
                     iter++;
 
                     levels[0]->A->residual(levels[0]->x, levels[0]->b, resid);
@@ -650,6 +683,7 @@ namespace raptor
                     {
                         res[iter] = r_norm;
                     }
+                    level_times[0] += (MPI_Wtime() - t0);
                 }
 
                 sol.copy(levels[0]->x);
@@ -658,21 +692,17 @@ namespace raptor
             } 
 
             int solve(ParVector& sol, ParVector& rhs, std::vector<double>& res,
-                    double* level_times = NULL, int num_iterations = 100)
+                    int num_iterations = 100)
             {
                 res.resize(num_iterations);
-                int iter = solve(sol, rhs, res.data(), level_times, num_iterations);
+                int iter = solve(sol, rhs, res.data(), num_iterations);
                 res.resize(iter+1);
                 return iter;
             }
 
             int solve(ParVector& sol, ParVector& rhs, double* res = NULL,
-                    double* level_times = NULL, int num_iterations = 100)
+                    int num_iterations = 100)
             {
-                if (level_times)
-                    for (int i = 0; i < num_levels; i++)
-                        level_times[i] = 0.0;
-
                 double b_norm = rhs.norm(2);
                 double r_norm;
                 double t0;
@@ -681,13 +711,18 @@ namespace raptor
                 levels[0]->x.copy(sol);
                 levels[0]->b.copy(rhs);
 
+                level_times.resize(num_levels);
+                spmv_times.resize(num_levels);
+                spmv_comm_times.resize(num_levels);
+                std::fill(level_times.begin(), level_times.end(), 0);
+                std::fill(spmv_times.begin(), spmv_times.end(), 0);
+                std::fill(spmv_comm_times.begin(), spmv_comm_times.end(), 0);
+
                 // Iterate until convergence or max iterations
-                if (level_times)
-                {
-                    t0 = MPI_Wtime();
-                }
+                t0 = MPI_Wtime();
                 ParVector resid(rhs.global_n, rhs.local_n, rhs.first_local);
-                levels[0]->A->residual(levels[0]->x, levels[0]->b, resid);
+                levels[0]->A->residual(levels[0]->x, levels[0]->b, resid, &spmv_times[0],
+                        &spmv_comm_times[0]);
                 if (fabs(b_norm) > zero_tol)
                 {
                     r_norm = resid.norm(2) / b_norm;
@@ -700,21 +735,16 @@ namespace raptor
                 {
                     res[iter] = r_norm;
                 }
-                if (level_times)
-                {
-                    level_times[0] = MPI_Wtime() - t0;
-                }
+                level_times[0] = MPI_Wtime() - t0;
 
                 while (r_norm > 1e-07 && iter < num_iterations)
                 {
-                    cycle(0, -1, level_times);
-                    if (level_times)
-                    {
-                        t0 = MPI_Wtime();
-                    }
-                    iter++;
+                    cycle(0, -1);
 
-                    levels[0]->A->residual(levels[0]->x, levels[0]->b, resid);
+                    t0 = MPI_Wtime();
+                    iter++;
+                    levels[0]->A->residual(levels[0]->x, levels[0]->b, resid, &spmv_times[0],
+                            &spmv_comm_times[0]);
                     if (fabs(b_norm) > zero_tol)
                     {
                         r_norm = resid.norm(2) / b_norm;
@@ -727,10 +757,7 @@ namespace raptor
                     {
                         res[iter] = r_norm;
                     }
-                    if (level_times)
-                    {
-                        level_times[0] += (MPI_Wtime() - t0);
-                    }
+                    level_times[0] += (MPI_Wtime() - t0);
                 }
 
                 sol.copy(levels[0]->x);
@@ -745,6 +772,10 @@ namespace raptor
             std::vector<ParLevel*> levels;
             std::vector<int> LU_permute;
             int num_levels;
+
+            std::vector<double> level_times;
+            std::vector<double> spmv_times;
+            std::vector<double> spmv_comm_times;
 
             int coarse_n;
             std::vector<double> A_coarse;

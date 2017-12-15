@@ -110,35 +110,36 @@ void SOR_backward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
  ***** num_sweeps : int
  *****    Number of relaxation sweeps to perform
  **************************************************************/
-void jacobi(ParLevel* l, int num_sweeps, double omega)
+void jacobi(ParLevel* l, int num_sweeps, double omega, double* t, double* tcomm)
 {
-    jacobi(l->A, l->x, l->b, l->tmp, num_sweeps, omega, l->A->comm);
+    jacobi(l->A, l->x, l->b, l->tmp, num_sweeps, omega, l->A->comm, t, tcomm);
 }
-void sor(ParLevel* l, int num_sweeps, double omega)
+void sor(ParLevel* l, int num_sweeps, double omega, double* t, double* tcomm)
 {
-    sor(l->A, l->x, l->b, l->tmp, num_sweeps, omega, l->A->comm);
+    sor(l->A, l->x, l->b, l->tmp, num_sweeps, omega, l->A->comm, t, tcomm);
 }
-void ssor(ParLevel* l, int num_sweeps, double omega)
+void ssor(ParLevel* l, int num_sweeps, double omega, double* t, double* tcomm)
 {
-    ssor(l->A, l->x, l->b, l->tmp, num_sweeps, omega, l->A->comm);
+    ssor(l->A, l->x, l->b, l->tmp, num_sweeps, omega, l->A->comm, t, tcomm);
 }
-void tap_jacobi(ParLevel* l, int num_sweeps, double omega)
+void tap_jacobi(ParLevel* l, int num_sweeps, double omega, double* t, double* tcomm)
 {
-    jacobi(l->A, l->x, l->b, l->tmp, num_sweeps, omega, l->A->tap_comm);
+    jacobi(l->A, l->x, l->b, l->tmp, num_sweeps, omega, l->A->tap_comm, t, tcomm);
 }
-void tap_sor(ParLevel* l, int num_sweeps, double omega)
+void tap_sor(ParLevel* l, int num_sweeps, double omega, double* t, double* tcomm)
 {
-    sor(l->A, l->x, l->b, l->tmp, num_sweeps, omega, l->A->tap_comm);
+    sor(l->A, l->x, l->b, l->tmp, num_sweeps, omega, l->A->tap_comm, t, tcomm);
 }
-void tap_ssor(ParLevel* l, int num_sweeps, double omega)
+void tap_ssor(ParLevel* l, int num_sweeps, double omega, double* t, double* tcomm)
 {
-    ssor(l->A, l->x, l->b, l->tmp, num_sweeps, omega, l->A->tap_comm);
+    ssor(l->A, l->x, l->b, l->tmp, num_sweeps, omega, l->A->tap_comm, t, tcomm);
 }
 
 
 void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, CommPkg* comm)
+        int num_sweeps, double omega, CommPkg* comm, double* t, double* tcomm)
 {
+    if (t) *t -= MPI_Wtime();
     if (!comm)
     {
         comm = A->comm;
@@ -153,7 +154,9 @@ void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
+        if (tcomm) *tcomm -= MPI_Wtime();
         comm->communicate(x);
+        if (tcomm) *tcomm += MPI_Wtime();
         std::vector<double>& dist_x = comm->get_recv_buffer<double>();
         for (int i = 0; i < A->local_num_rows; i++)
         {
@@ -187,11 +190,13 @@ void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
             }
         }
     }
+    if (t) *t += MPI_Wtime();
 }
 
 void sor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, CommPkg* comm)
+        int num_sweeps, double omega, CommPkg* comm, double* t, double* tcomm)
 {
+    if (t) *t -= MPI_Wtime();
     if (!comm)
     {
         comm = A->comm;
@@ -200,21 +205,22 @@ void sor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     A->on_proc->sort();
     A->off_proc->sort();
     A->on_proc->move_diag();
-  
-    
-    
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
+        if (tcomm) *tcomm -= MPI_Wtime();
         comm->communicate(x);
+        if (tcomm) *tcomm += MPI_Wtime();
         SOR_forward(A, x, b, comm->get_recv_buffer<double>(), omega);
     }
+    if (t) *t += MPI_Wtime();
 }
 
 
 void ssor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, CommPkg* comm)
+        int num_sweeps, double omega, CommPkg* comm, double* t, double* tcomm)
 {
+    if (t) *t -= MPI_Wtime();
     if (!comm)
     {
         comm = A->comm;
@@ -229,10 +235,13 @@ void ssor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
+        if (tcomm) *tcomm -= MPI_Wtime();
         comm->communicate(x);
+        if (tcomm) *tcomm += MPI_Wtime();
         SOR_forward(A, x, b, comm->get_recv_buffer<double>(), omega);
         SOR_backward(A, x, b, comm->get_recv_buffer<double>(), omega);
     }
+    if (t) *t += MPI_Wtime();
 }
 
 
