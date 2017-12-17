@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(A, strong_threshold, CLJP, Classical, SOR,
+    ml = new ParMultilevel(A, strong_threshold, RS, Direct, SOR,
             1, 1.0, 50, -1);
     raptor_setup = MPI_Wtime() - t0;
     clear_cache(cache_array);

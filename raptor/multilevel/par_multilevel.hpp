@@ -191,7 +191,8 @@ namespace raptor
                 switch (coarsen_type)
                 {
                     case RS:
-                        split_rs(S, states, off_proc_states);
+                        if (level_ctr < 3) split_rs(S, states, off_proc_states);
+                        else split_falgout(S, states, off_proc_states);
                         break;
                     case CLJP:
 #ifdef USING_HYPRE
@@ -262,7 +263,8 @@ namespace raptor
                 switch (coarsen_type)
                 {
                     case RS:
-                        tap_split_rs(S, states, off_proc_states);
+                        if (level_ctr < 2) tap_split_rs(S, states, off_proc_states);
+                        else tap_split_cljp(S, states, off_proc_states);
                         break;
                     case CLJP:
 #ifdef USING_HYPRE
