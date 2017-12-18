@@ -232,18 +232,10 @@ namespace raptor
     void tap_mult(ParVector& x, ParVector& b, double* t = NULL, double* tcomm = NULL);
     void mult_T(ParVector& x, ParVector& b, double* t = NULL, double* tcomm = NULL);
     void tap_mult_T(ParVector& x, ParVector& b, double* t = NULL, double* tcomm = NULL);
-    ParMatrix* mult(ParCSRMatrix* B);
-    ParMatrix* tap_mult(ParCSRMatrix* B);
-    ParMatrix* mult_T(ParCSCMatrix* B);
-    ParMatrix* tap_mult_T(ParCSCMatrix* B);
-
-    ParCSRMatrix* RAP(ParCSRMatrix* P)
-    {
-        int rank;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        if (rank == 0) printf("Not impelemented for this matrix type");
-        return NULL;
-    }
+    ParMatrix* mult(ParCSRMatrix* B, double* t = NULL, double* tcomm = NULL);
+    ParMatrix* tap_mult(ParCSRMatrix* B, double* t = NULL, double* tcomm = NULL);
+    ParMatrix* mult_T(ParCSCMatrix* B, double* t = NULL, double* tcomm = NULL);
+    ParMatrix* tap_mult_T(ParCSCMatrix* B, double* t = NULL, double* tcomm = NULL);
 
     void sort()
     {
@@ -523,12 +515,10 @@ namespace raptor
     void tap_mult(ParVector& x, ParVector& b, double* t = NULL, double* tcomm = NULL);
     void mult_T(ParVector& x, ParVector& b, double* t = NULL, double* tcomm = NULL);
     void tap_mult_T(ParVector& x, ParVector& b, double* t = NULL, double* tcomm = NULL);
-    ParCSRMatrix* mult(ParCSRMatrix* B);
-    ParCSRMatrix* tap_mult(ParCSRMatrix* B);
-    ParCSRMatrix* mult_T(ParCSCMatrix* A);
-    ParCSRMatrix* tap_mult_T(ParCSCMatrix* A);
-
-    ParCSRMatrix* RAP(ParCSRMatrix* P);
+    ParCSRMatrix* mult(ParCSRMatrix* B, double* t = NULL, double* tcomm = NULL);
+    ParCSRMatrix* tap_mult(ParCSRMatrix* B, double* t = NULL, double* tcomm = NULL);
+    ParCSRMatrix* mult_T(ParCSCMatrix* A, double* t = NULL, double* tcomm = NULL);
+    ParCSRMatrix* tap_mult_T(ParCSCMatrix* A, double* t = NULL, double* tcomm = NULL);
 
     ParCSRMatrix* subtract(ParCSRMatrix* B);
     

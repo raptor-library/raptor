@@ -84,11 +84,14 @@ namespace raptor
                     int max_levels = -1,
                     int tap_amg = -1) // which level to start tap_amg (-1 == no TAP)
             {
+                double t0;
                 int rank, num_procs;
                 MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                 MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
                 int last_level = 0;
+
+                t0 = MPI_Wtime();
 
                 // Add original, fine level to hierarchy
                 levels.push_back(new ParLevel());
@@ -106,7 +109,11 @@ namespace raptor
                     levels[0]->A->tap_comm = new TAPComm(Af->partition,
                             Af->off_proc_column_map, Af->on_proc_column_map);
                 }
-                        
+                strength_times.push_back(0);
+                coarsen_times.push_back(0);
+                interp_times.push_back(0);
+                matmat_times.push_back(0);
+                matmat_comm_times.push_back(0);
 
                 // Add coarse levels to hierarchy 
                 while (levels[last_level]->A->global_num_rows > max_coarse && 
@@ -116,6 +123,8 @@ namespace raptor
                     {
                         tap_extend_hierarchy(strength_threshold, coarsen_type,
                                 interp_type);
+                        setup_times.push_back(MPI_Wtime() - t0);
+                        t0 = MPI_Wtime();
                         last_level++;
                         levels[last_level]->A->tap_comm = new TAPComm(
                                 levels[last_level]->A->partition,
@@ -127,7 +136,14 @@ namespace raptor
                         extend_hierarchy(strength_threshold, coarsen_type,
                                 interp_type);
                         last_level++;
+                        setup_times.push_back(MPI_Wtime() - t0);
+                        t0 = MPI_Wtime();
                     }
+                    strength_times.push_back(0);
+                    coarsen_times.push_back(0);
+                    interp_times.push_back(0);
+                    matmat_times.push_back(0);
+                    matmat_comm_times.push_back(0);
                 }
                 num_levels = levels.size();
 
@@ -138,6 +154,7 @@ namespace raptor
                 relax_type = _relax_type;
                 relax_weight = _relax_weight;
                 num_smooth_sweeps = _num_smooth_sweeps;
+                setup_times.push_back(MPI_Wtime() - t0);
             }
 
             ~ParMultilevel()
@@ -185,9 +202,12 @@ namespace raptor
 
                 // Form strength of connection
                 std::vector<double> weights;
+                strength_times[level_ctr] -= MPI_Wtime();
                 S = A->strength(strong_threshold);
+                strength_times[level_ctr] += MPI_Wtime();
 
                 // Form CF Splitting
+                coarsen_times[level_ctr] -= MPI_Wtime();
                 switch (coarsen_type)
                 {
                     case RS:
@@ -206,8 +226,10 @@ namespace raptor
                         split_falgout(S, states, off_proc_states);
                         break;
                 }
+                coarsen_times[level_ctr] += MPI_Wtime();
 
                 // Form modified classical interpolation
+                interp_times[level_ctr] -= MPI_Wtime();
                 switch (interp_type)
                 {
                     case Direct:
@@ -217,13 +239,17 @@ namespace raptor
                         P = mod_classical_interpolation(A, S, states, off_proc_states, A->comm);
                         break;
                 }
+                interp_times[level_ctr] += MPI_Wtime();
                 levels[level_ctr]->P = P;
 
                 // Form coarse grid operator
                 levels.push_back(new ParLevel());
-                AP = A->mult(levels[level_ctr]->P);
+                AP = A->mult(levels[level_ctr]->P, &matmat_times[level_ctr], 
+                        &matmat_comm_times[level_ctr]);
+                matmat_times[level_ctr] -= MPI_Wtime();
                 P_csc = new ParCSCMatrix(levels[level_ctr]->P);
-                A = AP->mult_T(P_csc);
+                matmat_times[level_ctr] += MPI_Wtime();
+                A = AP->mult_T(P_csc, &matmat_times[level_ctr], &matmat_comm_times[level_ctr]);
 
                 level_ctr++;
                 levels[level_ctr]->A = A;
@@ -257,9 +283,12 @@ namespace raptor
 
                 // Form strength of connection
                 std::vector<double> weights;
+                strength_times[level_ctr] -= MPI_Wtime();
                 S = A->strength(strong_threshold);
+                strength_times[level_ctr] += MPI_Wtime();
 
                 // Form CF Splitting
+                coarsen_times[level_ctr] -= MPI_Wtime();
                 switch (coarsen_type)
                 {
                     case RS:
@@ -278,8 +307,10 @@ namespace raptor
                         split_falgout(S, states, off_proc_states);
                         break;
                 }
+                coarsen_times[level_ctr] += MPI_Wtime();
 
                 // Form modified classical interpolation
+                interp_times[level_ctr] -= MPI_Wtime();
                 switch (interp_type)
                 {
                     case Direct:
@@ -289,13 +320,16 @@ namespace raptor
                         P = mod_classical_interpolation(A, S, states, off_proc_states, A->tap_comm);
                         break;
                 }
+                interp_times[level_ctr] += MPI_Wtime();
                 levels[level_ctr]->P = P;
 
                 // Form coarse grid operator
                 levels.push_back(new ParLevel());
-                AP = A->tap_mult(levels[level_ctr]->P);
+                AP = A->tap_mult(levels[level_ctr]->P, &matmat_times[level_ctr], 
+                        &matmat_comm_times[level_ctr]);
                 P_csc = new ParCSCMatrix(levels[level_ctr]->P);
-                A = AP->tap_mult_T(P_csc);
+                A = AP->tap_mult_T(P_csc, &matmat_times[level_ctr], 
+                        &matmat_comm_times[level_ctr]);
 
                 level_ctr++;
                 levels[level_ctr]->A = A;
@@ -778,6 +812,12 @@ namespace raptor
             std::vector<double> level_times;
             std::vector<double> spmv_times;
             std::vector<double> spmv_comm_times;
+            std::vector<double> setup_times;
+            std::vector<double> strength_times;
+            std::vector<double> coarsen_times;
+            std::vector<double> interp_times;
+            std::vector<double> matmat_times;
+            std::vector<double> matmat_comm_times;
 
             int coarse_n;
             std::vector<double> A_coarse;

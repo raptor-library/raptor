@@ -155,9 +155,22 @@ int main(int argc, char *argv[])
     for (int i = 0; i < ml->num_levels; i++)
     {
         ParCSRMatrix* Al = ml->levels[i]->A;
+        ParCSRMatrix* Pl = ml->levels[i]->P;
         ParVector& xl = ml->levels[i]->x;
 
-        if (rank == 0) printf("Level %d\n", i);
+        MPI_Reduce(&ml->setup_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Setup Time %e\n", t0);
+
+        MPI_Reduce(&ml->strength_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Strength Time %e\n", t0);
+        MPI_Reduce(&ml->coarsen_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Coarsen Time %e\n", t0);
+        MPI_Reduce(&ml->interp_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Interp Time %e\n", t0);
+        MPI_Reduce(&ml->matmat_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("SpGEMM Time %e\n", t0);
+        MPI_Reduce(&ml->matmat_comm_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("SpGEMM Comm Time %e\n", t0);
 
         int n_active;
         int num_msgs = Al->comm->send_data->num_msgs;
