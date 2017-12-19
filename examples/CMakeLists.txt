@@ -14,6 +14,9 @@ if (WITH_MPI)
     add_executable(benchmark_setup benchmark_setup.cpp)
     target_link_libraries(benchmark_setup raptor ${MPI_LIBRARIES})
 
+    add_executable(benchmark_solve benchmark_solve.cpp)
+    target_link_libraries(benchmark_solve raptor ${MPI_LIBRARIES})
+
     add_executable(benchmark_tap_spmv benchmark_tap_spmv.cpp)
     target_link_libraries(benchmark_tap_spmv raptor ${MPI_LIBRARIES})
 

@@ -155,24 +155,12 @@ int main(int argc, char *argv[])
     for (int i = 0; i < ml->num_levels - 1; i++)
     {
         ParCSRMatrix* Al = ml->levels[i]->A;
-        ParCSRMatrix* Pl = ml->levels[i]->P;
+        ParVector& xl = ml->levels[i]->x;
 
         int n_active;
+        int num_msgs = Al->comm->send_data->num_msgs;
+        int size_msgs = Al->comm->send_data->size_msgs;
         int has_comm = 0;
-        int num_msgs = 2*Al->comm->send_data->num_msgs;
-        int size_msgs = 0;
-        for (int i = 0; i < Al->comm->send_data->num_msgs; i++)
-        {
-            int start = Al->comm->send_data->indptr[i];
-            int end = Al->comm->send_data->indptr[i+1];
-            size_msgs += (end - start)*sizeof(int);
-            for (int j = start; j < end; j++)
-            {
-                int idx = Al->comm->send_data->indices[j];
-                size_msgs +=  (sizeof(int) + sizeof(double)) * ((Pl->on_proc->idx1[idx+1] - Pl->on_proc->idx1[idx])
-                    + (Pl->off_proc->idx1[idx+1] - Pl->off_proc->idx1[idx]));
-            }
-        }
         if (num_msgs) has_comm = 1;
         MPI_Allreduce(&has_comm, &n_active, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
         int num_nodes = num_procs / 16;
@@ -199,22 +187,11 @@ int main(int argc, char *argv[])
         double model_eager_b = 0;
         double model_rend_a = 0;
         double model_rend_b = 0;
-
         for (int i = 0; i < Al->comm->send_data->num_msgs; i++)
         {
             int start = Al->comm->send_data->indptr[i];
             int end = Al->comm->send_data->indptr[i+1];
-            int size = end - start;
-            int row_size = 0;
-            for (int j = start; j < end; j++)
-            {
-                int idx = Al->comm->send_data->indices[j];
-                row_size += (Pl->on_proc->idx1[idx+1] - Pl->on_proc->idx1[idx])
-                    + (Pl->off_proc->idx1[idx+1] - Pl->off_proc->idx1[idx]);
-            }
-            size *= sizeof(int);
-            row_size = row_size*sizeof(int) + row_size*sizeof(double);
-
+            int size = (end - start) * sizeof(double);
             if (size < short_cutoff)
             {
                 model_short_a++;
@@ -233,66 +210,45 @@ int main(int argc, char *argv[])
                     b_tmp = rend_b_n;
                 }
                 model_rend_a++;
-                model_rend_b += ((ppn * size) / b_tmp);
-            }
-            if (row_size > 0)
-            {
-                if (row_size < short_cutoff)
-                {
-                    model_short_a++;
-                    model_short_b += ((ppn * row_size) / (short_b_max + (ppn - 1)*short_b_inj));
-                }
-                else if (row_size < eager_cutoff)
-                {
-                    model_eager_a++;
-                    model_eager_b += ((ppn * row_size) / (eager_b_max + (ppn - 1)*eager_b_inj));
-                }
-                else
-                {
-                    double b_tmp = rend_b_max + (ppn-1)*rend_b_inj;
-                    if (rend_b_n < b_tmp)
-                    {
-                        b_tmp = rend_b_n;
-                    }
-                    model_rend_a++;
-                    model_rend_b += ((ppn * row_size) / b_tmp);
-                }
+                model_rend_a += ((ppn*size) / b_tmp);
             }
         }
         model = model_short_a + model_short_b + model_eager_a + model_eager_b
             + model_rend_a + model_rend_b;
 
-
-        MPI_Reduce(&ml->setup_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Setup Time %e\n", t0);
-        MPI_Reduce(&ml->strength_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Strength Time %e\n", t0);
-        MPI_Reduce(&ml->coarsen_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Coarsen Time %e\n", t0);
-        MPI_Reduce(&ml->interp_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Interp Time %e\n", t0);
-        MPI_Reduce(&ml->matmat_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("SpGEMM Time %e\n", t0);
-        MPI_Reduce(&ml->matmat_comm_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("SpGEMM Comm Time %e\n", t0);
-
-        int n_tests = 10;
         double comm_time = 0;
-        for (int j = 0; j < n_tests; j++)
+        MPI_Barrier(MPI_COMM_WORLD);
+        t0 = MPI_Wtime();
+        for (int i = 0; i < 100; i++)
         {
-            clear_cache(cache_array);
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            CSRMatrix* recv_mat = Al->comm->communicate(Pl);
-            comm_time += (MPI_Wtime() - t0);
-            delete recv_mat;
+            Al->comm->communicate(xl);
         }
-        comm_time /= 10;
-        
-        MPI_Reduce(&model, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Model Time: %e\n", t0);
+        comm_time = (MPI_Wtime() - t0) / 100;
+       
+
+        MPI_Reduce(&ml->level_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Level Time: %e\n", t0);
+        MPI_Reduce(&ml->spmv_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("SpMV Time: %e\n", t0);
+        MPI_Reduce(&ml->spmv_comm_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("SpMV Comm Time: %e\n", t0);
+
         MPI_Reduce(&comm_time, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank == 0) printf("Measured Comm Time: %e\n", t0);
+        MPI_Reduce(&model, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Model Time: %e\n", t0);
+        MPI_Reduce(&model_short_a, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Model Short Latency Time: %e\n", t0);
+        MPI_Reduce(&model_short_b, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Model Short BW Time: %e\n", t0);
+        MPI_Reduce(&model_eager_a, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Model Eager Latency Time: %e\n", t0);
+        MPI_Reduce(&model_eager_b, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Model Eager BW Time: %e\n", t0);
+        MPI_Reduce(&model_rend_a, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Model Rend Latency Time: %e\n", t0);
+        MPI_Reduce(&model_rend_b, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Model Rend BW Time: %e\n", t0);
 
         int reduced;
         if (rank == 0) printf("Active Procs: %d\n", n_active);
@@ -304,6 +260,7 @@ int main(int argc, char *argv[])
         if (rank == 0) printf("Max Size Msgs: %d\n", reduced);
         MPI_Reduce(&size_msgs, &reduced, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
         if (rank == 0) printf("Total Size Msgs: %d\n", reduced);
+
     }
 
 

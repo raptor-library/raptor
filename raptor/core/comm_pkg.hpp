@@ -11,9 +11,6 @@
 
 #define STANDARD_PPN 4
 #define STANDARD_PROC_LAYOUT 1
-#define eager_cutoff 1000
-#define short_cutoff 62
-#define ideal_n_comm 4
 
 /**************************************************************
  *****   CommPkg Class:
