@@ -157,64 +157,142 @@ int main(int argc, char *argv[])
         ParCSRMatrix* Al = ml->levels[i]->A;
         ParVector& xl = ml->levels[i]->x;
 
-        int n_active;
-        int num_msgs = Al->comm->send_data->num_msgs;
-        int size_msgs = Al->comm->send_data->size_msgs;
-        int has_comm = 0;
-        if (num_msgs) has_comm = 1;
-        MPI_Allreduce(&has_comm, &n_active, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-        int num_nodes = num_procs / 16;
-        int ppn = n_active / num_nodes;
-        if (ppn == 0) ppn = 1;
+        double short_a_socket = 8.864564e-07;
+        double short_rcb_socket = 1.101622e+09;
+        double eager_a_socket = 1.047754e-06; 
+        double eager_rcb_socket = 1.586973e+09;
+        double rend_a_socket = 3.373955e-06;
+        double rend_rcb_socket =  3.129063e+09;
 
-        double short_a = 4.0e-6;
-        double eager_a = 1.1e-5;
-        double rend_a = 2.0e-5;
-        double short_b_inj = 6.3e8;
-        double short_b_max = -1.8e7;
+        double short_a_node = 1.701463e-06;
+        double short_rcb_node = 2.471809e+08;
+        double eager_a_node = 2.358333e-06;
+        double eager_rcb_node = 4.843898e+08;
+        double rend_a_node = 5.009861e-06;
+        double rend_rcb_node = 3.069830e+09;
 
-        double eager_b_inj = 1.7e9;
-        double eager_b_max = 6.2e7;
+        double short_a = 4.249670e-06;
+        double short_rcb = 7.006915e+08;
+        double eager_a = 1.337284e-05;
+        double eager_rcb = 9.838950e+08;
+        double eager_rci = 3.168782e+08;
+        double rend_a = 9.430665e-06; 
+        double rend_rcb = 2.007557e+09;
+        double rend_rci = 1.231642e+09;
+        double rend_rn = 6.254932e+09;
 
-        double rend_b_inj = 3.6e9;
-        double rend_b_max = 6.1e8;
-        double rend_b_n = 5.5e9;
-
+        double model_a = 0;
+        double model_b = 0;
         double model = 0;
-        double model_short_a = 0;
-        double model_short_b = 0;
-        double model_eager_a = 0;
-        double model_eager_b = 0;
-        double model_rend_a = 0;
-        double model_rend_b = 0;
+
+        int eager_active = 0;
+        int rend_active = 0;
+        int num_rend_active, num_eager_active;
+        int rend_size = 0;
+        int eager_size = 0;
+        int total_rend_size, total_eager_size;
+
+        int num_socket = 8;
+        int rank_node = Al->partition->topology->get_node(rank);
+        int rank_socket = Al->partition->topology->get_local_proc(rank) / num_socket;
+
         for (int i = 0; i < Al->comm->send_data->num_msgs; i++)
         {
+            int proc = Al->comm->send_data->procs[i];
             int start = Al->comm->send_data->indptr[i];
             int end = Al->comm->send_data->indptr[i+1];
+            int node = Al->partition->topology->get_node(proc);
+            int socket = Al->partition->topology->get_local_proc(proc) / num_socket;
+
             int size = (end - start) * sizeof(double);
-            if (size < short_cutoff)
+
+ if (size < short_cutoff)
             {
-                model_short_a++;
-                model_short_b += ((ppn * size) / (short_b_max + (ppn - 1)*short_b_inj));
+                if (node == rank_node)
+                {
+                    if (socket == rank_socket)
+                    {
+                        model_a += short_a_socket;
+                        model_b += size / short_rcb_socket;
+                    }
+                    else
+                    {
+                        model_a += short_a_node;
+                        model_b += size / short_rcb_node;
+                    }
+                }
+                else
+                {
+                    model_a += short_a;
+                    model_b += size / short_rcb;
+                }
             }
             else if (size < eager_cutoff)
             {
-                model_eager_a++;
-                model_eager_b += ((ppn * size) / (eager_b_max + (ppn - 1)*eager_b_inj));
+                if (node == rank_node)
+                {
+                    if (socket == rank_socket)
+                    {
+                        model_a += eager_a_socket;
+                        model_b += size / eager_rcb_socket;
+                    }
+                    else
+                    {
+                        model_a += eager_a_node;
+                        model_b += size / eager_rcb_node;
+                    }
+                }
+                else
+                {
+                    model_a += eager_a;
+                    eager_active = 1;
+                    eager_size += size;
+                }
             }
             else
             {
-                double b_tmp = rend_b_max + (ppn-1)*rend_b_inj;
-                if (rend_b_n < b_tmp)
+                if (node == rank_node)
                 {
-                    b_tmp = rend_b_n;
+                    if (socket == rank_socket)
+                    {
+                        model_a += rend_a_socket;
+                        model_b += size / rend_rcb_socket;
+                    }
+                    else
+                    {
+                        model_a += rend_a_node;
+                        model_b += size / rend_rcb_node;
+                    }
                 }
-                model_rend_a++;
-                model_rend_a += ((ppn*size) / b_tmp);
+                else
+                {
+                    model_a += rend_a;
+                    rend_active = 1;
+                    rend_size += size;
+                }
             }
         }
-        model = model_short_a + model_short_b + model_eager_a + model_eager_b
-            + model_rend_a + model_rend_b;
+
+        MPI_Allreduce(&eager_active, &num_eager_active, 1, MPI_INT, MPI_SUM, 
+                Al->partition->topology->local_comm);
+        MPI_Allreduce(&rend_active, &num_rend_active, 1, MPI_INT, MPI_SUM, 
+                Al->partition->topology->local_comm);
+        MPI_Allreduce(&eager_size, &total_eager_size, 1, MPI_INT, MPI_SUM, 
+                Al->partition->topology->local_comm);
+        MPI_Allreduce(&rend_size, &total_rend_size, 1, MPI_INT, MPI_SUM, 
+                Al->partition->topology->local_comm);
+        if (eager_active)
+        {
+            model_b += eager_size / (eager_rcb + (num_eager_active*eager_rci));
+        }
+        if (rend_active)
+        {
+            double b_tmp = rend_rcb + (num_rend_active * rend_rci);
+            if (rend_rn < b_tmp) b_tmp = rend_rn;
+            model_b += rend_size / b_tmp;
+        }
+        model = model_a + model_b;
+
 
         double comm_time = 0;
         MPI_Barrier(MPI_COMM_WORLD);
@@ -237,30 +315,10 @@ int main(int argc, char *argv[])
         if (rank == 0) printf("Measured Comm Time: %e\n", t0);
         MPI_Reduce(&model, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank == 0) printf("Model Time: %e\n", t0);
-        MPI_Reduce(&model_short_a, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Model Short Latency Time: %e\n", t0);
-        MPI_Reduce(&model_short_b, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Model Short BW Time: %e\n", t0);
-        MPI_Reduce(&model_eager_a, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Model Eager Latency Time: %e\n", t0);
-        MPI_Reduce(&model_eager_b, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Model Eager BW Time: %e\n", t0);
-        MPI_Reduce(&model_rend_a, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Model Rend Latency Time: %e\n", t0);
-        MPI_Reduce(&model_rend_b, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Model Rend BW Time: %e\n", t0);
-
-        int reduced;
-        if (rank == 0) printf("Active Procs: %d\n", n_active);
-        MPI_Reduce(&num_msgs, &reduced, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Max Num Msgs: %d\n", reduced);
-        MPI_Reduce(&num_msgs, &reduced, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Total Num Msgs: %d\n", reduced);
-        MPI_Reduce(&size_msgs, &reduced, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Max Size Msgs: %d\n", reduced);
-        MPI_Reduce(&size_msgs, &reduced, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Total Size Msgs: %d\n", reduced);
-
+        MPI_Reduce(&model_a, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Model Latency Time: %e\n", t0);
+        MPI_Reduce(&model_b, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Model BW Time: %e\n", t0);
     }
 
 
