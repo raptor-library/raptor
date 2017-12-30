@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
         delete[] stencil;
     }
 #ifdef USING_MFEM
-    else if (system == 2)
+    /*else if (system == 2)
     {
         const char* mesh_file = argv[2];
         int num_elements = 2;
@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
             }
         }
         A = mfem_linear_elasticity(x, b, mesh_file, num_elements, order);
-    }
+    }*/
 #endif
     else if (system == 3)
     {
@@ -204,13 +204,14 @@ int main(int argc, char *argv[])
     ml = new ParMultilevel(A, strong_threshold, CLJP, Classical, SOR,
             1, 1.0, 50, -1);
     raptor_setup = MPI_Wtime() - t0;
-    delete ml;
     clear_cache(cache_array);
 
+    ParCSRMatrix* Al;
+    ParCSRMatrix* Pl;
     for (int i = 0; i < ml->num_levels - 1; i++)
     {
-        ParCSRMatrix* Al = ml->levels[i]->A;
-        ParCSRMatrix* Pl = ml->levels[i]->P;
+        Al = ml->levels[i]->A;
+        Pl = ml->levels[i]->P;
 
         if (!Al->tap_comm)
         {
@@ -224,14 +225,12 @@ int main(int argc, char *argv[])
                     Pl->on_proc_column_map);
         }
     }
-
-    // Setup TAP Raptor Hierarchy
-    MPI_Barrier(MPI_COMM_WORLD);    
-    t0 = MPI_Wtime();
-    ml = new ParMultilevel(A, strong_threshold, CLJP, Classical, SOR,
-            1, 1.0, 50, -1, 0);
-    raptor_tap_setup = MPI_Wtime() - t0;
-    clear_cache(cache_array);
+    Al = ml->levels[ml->num_levels-1]->A;
+    if (!Al->tap_comm)
+    {
+        Al->tap_comm = new TAPComm(Al->partition, Al->off_proc_column_map,
+                Al->on_proc_column_map);
+    }
 
     // Solve Raptor Hierarchy
     x.set_const_value(0.0);
