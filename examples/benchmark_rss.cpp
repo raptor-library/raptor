@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
     double t0;
     double hypre_setup, hypre_solve;
     double raptor_setup, raptor_solve;
-    double raptor_tap_setup, raptor_tap_solve;
+    double raptor_tap_solve;
 
     int coarsen_type = 0; // CLJP
     //int coarsen_type = 6; // FALGOUT
@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
         delete[] stencil;
     }
 #ifdef USING_MFEM
-/*    else if (system == 2)
+    else if (system == 2)
     {
         const char* mesh_file = argv[2];
         int num_elements = 2;
@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
             }
         }
         A = mfem_linear_elasticity(x, b, mesh_file, num_elements, order);
-    }*/
+    }
 #endif
     else if (system == 3)
     {
@@ -152,19 +152,8 @@ int main(int argc, char *argv[])
                 A->on_proc_column_map);
         x = ParVector(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
         b = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-        //x.set_const_value(1.0);
         x.set_rand_values();
         A->mult(x, b);
-        //x.set_const_value(0.0);
-
-        //x.set_const_value(1.0);
-        ParVector c = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-        A->tap_mult(x, c);
-        for (int i = 0; i < A->local_num_rows; i++)
-        {
-            if (fabs(b[i] - c[i]) > zero_tol)
-                printf("b[%d] %e, c %e\n", i, b[i], c[i]);
-        }
     }
 
     // Convert system to Hypre format 
@@ -218,6 +207,24 @@ int main(int argc, char *argv[])
     delete ml;
     clear_cache(cache_array);
 
+    for (int i = 0; i < ml->num_levels - 1; i++)
+    {
+        ParCSRMatrix* Al = ml->levels[i]->A;
+        ParCSRMatrix* Pl = ml->levels[i]->P;
+
+        if (!Al->tap_comm)
+        {
+            Al->tap_comm = new TAPComm(Al->partition, Al->off_proc_column_map,
+                    Al->on_proc_column_map);
+        }
+
+        if (!Pl->tap_comm)
+        {
+            Pl->tap_comm = new TAPComm(Pl->partition, Pl->off_proc_column_map,
+                    Pl->on_proc_column_map);
+        }
+    }
+
     // Setup TAP Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
@@ -255,7 +262,6 @@ int main(int argc, char *argv[])
         if (rank == 0) printf("%d\t%d\t%ld\n", i, Al->global_num_rows, nnz);
     }   
 
-
     if (rank == 0)
     {
         for (int i = 0; i < res.size(); i++)
@@ -271,213 +277,10 @@ int main(int argc, char *argv[])
 
     MPI_Reduce(&raptor_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Raptor Setup Time: %e\n", t0);
-    MPI_Reduce(&raptor_tap_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    if (rank == 0) printf("Raptor TAP Setup Time: %e\n", t0);
     MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Raptor Solve Time: %e\n", t0);
     MPI_Reduce(&raptor_tap_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Raptor TAP Solve Time: %e\n", t0);
-
-    
-
-    // PROFILES SETUP AND SOLVE TIMES
-    for (int i = 0; i < ml->num_levels - 1; i++)
-    {
-        ParCSRMatrix* Al = ml->levels[i]->A;
-        ParCSRMatrix* Pl = ml->levels[i]->P;
-        ParVector& xl = ml->levels[i]->x;
-        ParVector& bl = ml->levels[i]->b;
-        ParVector& tmpl = ml->levels[i]->tmp;
-        ParVector& bl1 = ml->levels[i+1]->b;
-        ParVector& xl1 = ml->levels[i+1]->x;
-        ParCSRMatrix* Sl = Al->strength(strong_threshold);
-        std::vector<int> states;
-        std::vector<int> off_proc_states;
-
-        int n_times = 100;
-        if (rank == 0) printf("Level %d\n", i);
-
-        // TIME CLJP on Level i
-        std::vector<double> weights;
-        form_hypre_weights(weights, Al->local_num_rows);
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        split_cljp(Sl, states, off_proc_states, weights.data());
-        raptor_setup = (MPI_Wtime() - t0);
-        MPI_Reduce(&raptor_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("CLJP Time: %e\n", t0);
-
-        // TIME TAP CLJP on Level i
-        states.clear();
-        off_proc_states.clear();
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        tap_split_cljp(Sl, states, off_proc_states, weights.data());
-        raptor_setup = (MPI_Wtime() - t0);
-        MPI_Reduce(&raptor_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("TAP CLJP Time: %e\n", t0);
-
-        // TIME Interpolation on Level i
-        ParCSRMatrix* Ptmp;
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        Ptmp = mod_classical_interpolation(Al, Sl, states, off_proc_states, Al->comm);
-        raptor_setup = (MPI_Wtime() - t0);
-        MPI_Reduce(&raptor_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Interpolation Time: %e\n", t0);
-        delete Ptmp;
-
-        // TIME TAP Interpolation on Level i
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        Ptmp = mod_classical_interpolation(Al, Sl, states, off_proc_states, Al->tap_comm);
-        raptor_setup = (MPI_Wtime() - t0);
-        MPI_Reduce(&raptor_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("TAP Interpolation Time: %e\n", t0);
-        delete Ptmp;
-
-        // TIME A*P on Level i
-        ParCSRMatrix* APtmp;
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        APtmp = Al->mult(Pl);
-        raptor_setup = (MPI_Wtime() - t0);
-        MPI_Reduce(&raptor_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("A mult P Time: %e\n", t0);
-        delete APtmp;
-
-        // TIME TAP A*P on Level i
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        APtmp = Al->tap_mult(Pl);
-        raptor_setup = (MPI_Wtime() - t0);
-        MPI_Reduce(&raptor_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("TAP A mult P Time: %e\n", t0);
-        delete APtmp;
-
-        // TIME P^T*(AP) on Level i
-        ParCSCMatrix* Pcsc = new ParCSCMatrix(Pl);
-        ParCSRMatrix* Actmp;
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        Actmp = Al->mult_T(Pcsc);
-        raptor_setup = (MPI_Wtime() - t0);
-        MPI_Reduce(&raptor_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("PT mult AT Time: %e\n", t0);
-        delete Actmp;
-
-        // TIME TAP P^T*(AP) on Level i
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        Actmp = Al->tap_mult_T(Pcsc);
-        raptor_setup = (MPI_Wtime() - t0);
-        MPI_Reduce(&raptor_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("TAP PT mult AP Time: %e\n", t0);
-        delete Actmp;
-        delete Pcsc;
-
-
-
-        // TIME SOR on Level i
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        sor(Al, xl, bl, tmpl, n_times, 1.0, Al->comm);
-        raptor_solve = (MPI_Wtime() - t0) / n_times;
-        MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("SOR Time: %e\n", t0);
-        
-        // TIME TAP SOR on Level i
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        sor(Al, xl, bl, tmpl, n_times, 1.0, Al->tap_comm);
-        raptor_solve = (MPI_Wtime() - t0) / n_times;
-        MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("TAP SOR Time: %e\n", t0);
-
-        // TIME Residual on Level i
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        for (int i = 0; i < n_times; i++)
-        {
-            Al->residual(xl, bl, tmpl);
-        }
-        raptor_solve = (MPI_Wtime() - t0) / n_times;
-        MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Residual Time: %e\n", t0);
-
-        // TIME TAP Residual on Level i
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        for (int i = 0; i < n_times; i++)
-        {
-            Al->tap_residual(xl, bl, tmpl);
-        }
-        raptor_solve = (MPI_Wtime() - t0) / n_times;
-        MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("TAP Residual Time: %e\n", t0);
-
-        // Time Restriction (P->mult_T(tmp, levels[i+1]->b))
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        for (int i = 0; i < n_times; i++)
-        {
-            Pl->mult_T(tmpl, bl1);
-        }
-        raptor_solve = (MPI_Wtime() - t0) / n_times;
-        MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Restrict Time: %e\n", t0);
-
-        // Time TAP Restriction (P->mult_T(tmp, levels[i+1]->b))
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        for (int i = 0; i < n_times; i++)
-        {
-            Pl->tap_mult_T(tmpl, bl1);
-        }
-        raptor_solve = (MPI_Wtime() - t0) / n_times;
-        MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("TAP Restrict Time: %e\n", t0);
-
-        // Time Interpolation (P->mult(levels[i+1]->x, tmp))
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        for (int i = 0; i < n_times; i++)
-        {
-            Pl->mult(xl1, tmpl);
-        }
-        raptor_solve = (MPI_Wtime() - t0) / n_times;
-        MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Interp Time: %e\n", t0);
-
-        // Time Interpolation (P->mult(levels[i+1]->x, tmp))
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        for (int i = 0; i < n_times; i++)
-        {
-            Pl->tap_mult(xl1, tmpl);
-        }
-        raptor_solve = (MPI_Wtime() - t0) / n_times;
-        MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("TAP Interp Time: %e\n", t0);
-
-        delete Sl;
-    }
 
     // Delete raptor hierarchy
     delete ml;
