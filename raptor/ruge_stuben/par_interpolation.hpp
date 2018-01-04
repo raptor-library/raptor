@@ -10,11 +10,15 @@ using namespace raptor;
 
 ParCSRMatrix* direct_interpolation(ParCSRMatrix* A, 
         ParCSRMatrix* S, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states);
+        const std::vector<int>& off_proc_states,
+        MPI_Request* global_col_request,
+        int* global_col_buffer);
 
 ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const std::vector<int>& states,
         const std::vector<int>& off_proc_states,
+        MPI_Request* global_col_request,
+        int* global_col_buffer,
         CommPkg* comm);
 
 #endif
