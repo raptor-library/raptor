@@ -222,7 +222,7 @@ int main(int argc, char *argv[])
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
     ml = new ParMultilevel(A, strong_threshold, CLJP, Classical, SOR,
-            1, 1.0, 50, -1, 0);
+            1, 1.0, 50, -1, 3);
     raptor_tap_setup = MPI_Wtime() - t0;
     clear_cache(cache_array);
 
@@ -240,7 +240,7 @@ int main(int argc, char *argv[])
     std::vector<double> tap_res;
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
-    ml->tap_solve(x, b, tap_res, 0);
+    ml->tap_solve(x, b, tap_res, 3);
     raptor_tap_solve = MPI_Wtime() - t0;
     clear_cache(cache_array);
 
@@ -290,9 +290,17 @@ int main(int argc, char *argv[])
         ParVector& tmpl = ml->levels[i]->tmp;
         ParVector& bl1 = ml->levels[i+1]->b;
         ParVector& xl1 = ml->levels[i+1]->x;
-        ParCSRMatrix* Sl = Al->strength(strong_threshold);
         std::vector<int> states;
         std::vector<int> off_proc_states;
+
+        if (!Al->tap_comm)
+            Al->tap_comm = new TAPComm(Al->partition,
+                    Al->off_proc_column_map, Al->on_proc_column_map);
+        if (!Pl->tap_comm)
+            Pl->tap_comm = new TAPComm(Pl->partition, 
+                    Pl->off_proc_column_map, Pl->on_proc_column_map);
+
+        ParCSRMatrix* Sl = Al->strength(strong_threshold);
 
         int n_times = 100;
         if (rank == 0) printf("Level %d\n", i);
@@ -383,8 +391,6 @@ int main(int argc, char *argv[])
         if (rank == 0) printf("TAP PT mult AP Time: %e\n", t0);
         delete Actmp;
         delete Pcsc;
-
-
 
         // TIME SOR on Level i
         clear_cache(cache_array);

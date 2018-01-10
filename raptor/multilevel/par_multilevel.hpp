@@ -126,10 +126,6 @@ namespace raptor
                         setup_times.push_back(MPI_Wtime() - t0);
                         t0 = MPI_Wtime();
                         last_level++;
-                        levels[last_level]->A->tap_comm = new TAPComm(
-                                levels[last_level]->A->partition,
-                                levels[last_level]->A->off_proc_column_map,
-                                levels[last_level]->A->on_proc_column_map);
                     }
                     else
                     {
@@ -139,6 +135,16 @@ namespace raptor
                         setup_times.push_back(MPI_Wtime() - t0);
                         t0 = MPI_Wtime();
                     }
+
+                    if (tap_amg >= 0 && tap_amg <= last_level)
+                    {
+                        levels[last_level]->A->tap_comm = new TAPComm(
+                                levels[last_level]->A->partition,
+                                levels[last_level]->A->off_proc_column_map,
+                                levels[last_level]->A->on_proc_column_map);
+                    }
+
+
                     strength_times.push_back(0);
                     coarsen_times.push_back(0);
                     interp_times.push_back(0);
@@ -306,8 +312,8 @@ namespace raptor
                 switch (coarsen_type)
                 {
                     case RS:
-                        if (level_ctr < 2) tap_split_rs(S, states, off_proc_states);
-                        else tap_split_cljp(S, states, off_proc_states);
+                        if (level_ctr < 2) split_rs(S, states, off_proc_states);
+                        else split_cljp(S, states, off_proc_states);
                         break;
                     case CLJP:
 #ifdef USING_HYPRE
@@ -343,7 +349,7 @@ namespace raptor
                 AP = A->tap_mult(levels[level_ctr]->P, &matmat_times[level_ctr], 
                         &matmat_comm_times[level_ctr]);
                 P_csc = new ParCSCMatrix(levels[level_ctr]->P);
-                A = AP->tap_mult_T(P_csc, &matmat_times[level_ctr], 
+                A = AP->mult_T(P_csc, &matmat_times[level_ctr], 
                         &matmat_comm_times[level_ctr]);
 
                 level_ctr++;

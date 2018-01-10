@@ -7,6 +7,9 @@ if (WITH_HYPRE)
     add_executable(benchmark_rss benchmark_rss.cpp)
     target_link_libraries(benchmark_rss raptor ${MPI_LIBRARIES})
 
+    add_executable(profile_rss profile_rss.cpp)
+    target_link_libraries(profile_rss raptor ${MPI_LIBRARIES})
+
     add_executable(benchmark_nek5000 benchmark_nek5000.cpp)
     target_link_libraries(benchmark_nek5000 raptor ${MPI_LIBRARIES})
 endif()
@@ -28,6 +31,7 @@ if (WITH_MPI)
 
     add_executable(benchmark_matmult benchmark_matmult.cpp)
     target_link_libraries(benchmark_matmult raptor ${MPI_LIBRARIES})
+
 endif()
 
 
