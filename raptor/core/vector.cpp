@@ -151,3 +151,17 @@ data_t& Vector::operator[](const int index)
     return values[index];
 }
 
+
+data_t Vector::inner_product(Vector& x)
+{
+    data_t result = 0.0;
+
+    for (int i = 0; i < num_values; i++)
+    {
+        result += values[i] * x[i];
+    }
+
+    return result;
+}
+
+

@@ -256,6 +256,8 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
         std::vector<int>& col_indices, std::vector<double>& values,
         MPI_Comm comm, CommData* send_comm, CommData* recv_comm)
 {
+    comm_time -= MPI_Wtime();
+
     // Number of rows in recv_mat = size_recvs
     // Don't know number of columns, but does not matter (CSR)
     CSRMatrix* recv_mat = new CSRMatrix(recv_comm->size_msgs, -1);
@@ -419,6 +421,7 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
         recv_mat->idx2[i] = recv_buffer[i].index;
         recv_mat->vals[i] = recv_buffer[i].val;
     }
+    comm_time += MPI_Wtime();
 
     return recv_mat;
 }

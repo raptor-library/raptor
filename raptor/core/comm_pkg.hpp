@@ -38,12 +38,14 @@ namespace raptor
         {
             topology = partition->topology;
             topology->num_shared++;
+            comm_time = 0.0;
         }
         
         CommPkg(Topology* _topology)
         {
             topology = _topology;
             topology->num_shared++;
+            comm_time = 0.0;
         }
 
         virtual ~CommPkg()
@@ -256,9 +258,11 @@ namespace raptor
         template <typename T> std::vector<T>& get_recv_buffer();
         virtual std::vector<double>& get_double_recv_buffer() = 0;
         virtual std::vector<int>& get_int_recv_buffer() = 0;
+        virtual double get_comm_time() = 0;
 
         // Class Variables
         Topology* topology;
+        double comm_time;
     };
 
 
@@ -690,6 +694,7 @@ namespace raptor
         template<typename T>
         void initialize(const T* values, MPI_Comm comm)
         {
+            comm_time -= MPI_Wtime();
             int start, end;
             int proc;
 
@@ -717,12 +722,13 @@ namespace raptor
                 MPI_Irecv(&(recvbuf[start]), end - start, type,
                         proc, key, comm, &(recv_data->requests[i]));
             }
-
+            comm_time += MPI_Wtime();
         }
 
         template<typename T>
         std::vector<T>& complete()
         {
+            comm_time -= MPI_Wtime();
             if (send_data->num_msgs)
             {
                 MPI_Waitall(send_data->num_msgs, send_data->requests.data(), MPI_STATUS_IGNORE);
@@ -732,6 +738,7 @@ namespace raptor
             {
                 MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUS_IGNORE);
             }
+            comm_time += MPI_Wtime();
 
             return get_recv_buffer<T>();
         }
@@ -795,6 +802,7 @@ namespace raptor
         template<typename T>
         void initialize_T(const T* values, MPI_Comm comm)
         {
+            comm_time -= MPI_Wtime();
             int start, end;
             int proc, idx;
             std::vector<T>& sendbuf = send_data->get_buffer<T>();
@@ -822,6 +830,7 @@ namespace raptor
                 MPI_Irecv(&(sendbuf[start]), end - start, type,
                         proc, key, comm, &(send_data->requests[i]));
             }
+            comm_time += MPI_Wtime();
         }
 
         template<typename T, typename U>
@@ -841,6 +850,7 @@ namespace raptor
         template<typename T>
         void complete_T()
         {
+            comm_time -= MPI_Wtime();
             if (send_data->num_msgs)
             {
                 MPI_Waitall(send_data->num_msgs, send_data->requests.data(), MPI_STATUSES_IGNORE);
@@ -850,6 +860,7 @@ namespace raptor
             {
                 MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUSES_IGNORE);
             }
+            comm_time += MPI_Wtime();
         }
 
 
@@ -950,6 +961,7 @@ namespace raptor
                 MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {})
         {
+            comm_time -= MPI_Wtime();
             if (!compare_func) return communicate(values, comm);
 
             int proc, start, end;
@@ -1034,6 +1046,7 @@ namespace raptor
                 }
             }
             return recvbuf;
+            comm_time += MPI_Wtime();
         }
 
         template<typename T, typename U, MPI_Datatype MPI_T>
@@ -1045,6 +1058,7 @@ namespace raptor
                 std::function<bool(int)> compare_func = {},
                 std::function<U(U, T)> result_func = {})
         {
+            comm_time -= MPI_Wtime();
             if (!compare_func)
             {
                 communicate_T(values, result, comm);
@@ -1130,8 +1144,13 @@ namespace raptor
                     }
                 }
             }
+            comm_time += MPI_Wtime();
         }
 
+        double get_comm_time()
+        {
+            return comm_time;
+        }
 
         // Helper Methods
         std::vector<double>& get_double_recv_buffer()
@@ -2216,6 +2235,14 @@ namespace raptor
         std::vector<int>& get_int_recv_buffer()
         {
             return int_recv_buffer;
+        }
+
+        double get_comm_time()
+        {
+            return local_S_par_comm->get_comm_time() 
+                + local_R_par_comm->get_comm_time()
+                + local_L_par_comm->get_comm_time()
+                + global_par_comm->get_comm_time();
         }
 
         // Class Attributes

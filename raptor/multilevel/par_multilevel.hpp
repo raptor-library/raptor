@@ -196,8 +196,6 @@ namespace raptor
                 ParCSRMatrix* P;
                 ParCSRMatrix* AP;
                 ParCSCMatrix* P_csc;
-                MPI_Request global_col_request;
-                int global_col_buffer;
 
                 std::vector<int> states;
                 std::vector<int> off_proc_states;
@@ -235,12 +233,11 @@ namespace raptor
                 switch (interp_type)
                 {
                     case Direct:
-                        P = direct_interpolation(A, S, states, off_proc_states, 
-                                &global_col_request, &global_col_buffer);
+                        P = direct_interpolation(A, S, states, off_proc_states);
                         break;
                     case Classical:
                         P = mod_classical_interpolation(A, S, states, off_proc_states, 
-                                &global_col_request, &global_col_buffer, A->comm);
+                                A->comm);
                         break;
                 }
                 interp_times[level_ctr] += MPI_Wtime();
@@ -267,11 +264,6 @@ namespace raptor
                         A->partition->first_local_row);
                 levels[level_ctr]->P = NULL;
 
-                MPI_Wait(&global_col_request, MPI_STATUS_IGNORE);
-                levels[level_ctr-1]->P->global_num_cols = global_col_buffer;
-                levels[level_ctr]->A->global_num_rows = global_col_buffer;
-                levels[level_ctr]->A->global_num_cols = global_col_buffer;
-
                 delete AP;
                 delete P_csc;
                 delete S;
@@ -286,8 +278,6 @@ namespace raptor
                 ParCSRMatrix* P;
                 ParCSRMatrix* AP;
                 ParCSCMatrix* P_csc;
-                MPI_Request global_col_request;
-                int global_col_buffer;
 
                 std::vector<int> states;
                 std::vector<int> off_proc_states;
@@ -325,12 +315,11 @@ namespace raptor
                 switch (interp_type)
                 {
                     case Direct:
-                        P = direct_interpolation(A, S, states, off_proc_states,
-                                &global_col_request, &global_col_buffer);
+                        P = direct_interpolation(A, S, states, off_proc_states);
                         break;
                     case Classical:
                         P = mod_classical_interpolation(A, S, states, off_proc_states, 
-                                &global_col_request, &global_col_buffer, A->tap_comm);
+                                A->tap_comm);
                         break;
                 }
                 interp_times[level_ctr] += MPI_Wtime();
@@ -355,11 +344,6 @@ namespace raptor
                 levels[level_ctr]->tmp.resize(A->global_num_rows, A->local_num_rows,
                         A->partition->first_local_row);
                 levels[level_ctr]->P = NULL;
-
-                MPI_Wait(&global_col_request, MPI_STATUS_IGNORE);
-                levels[level_ctr-1]->P->global_num_cols = global_col_buffer;
-                levels[level_ctr]->A->global_num_rows = global_col_buffer;
-                levels[level_ctr]->A->global_num_cols = global_col_buffer;
 
                 delete AP;
                 delete P_csc;

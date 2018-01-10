@@ -9,8 +9,7 @@ using namespace raptor;
 ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const std::vector<int>& states,
         const std::vector<int>& off_proc_states, 
-        MPI_Request* global_col_request, 
-        int* global_col_buffer, CommPkg* comm)
+        CommPkg* comm)
 {
     int start, end;
     int start_k, end_k;
@@ -18,6 +17,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     int col, col_k, col_S;
     int ctr;
     int global_col;
+    int global_num_cols;
     double diag, val;
     double weak_sum, coarse_sum;
     double sign;
@@ -61,10 +61,9 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
             off_proc_cols++;
         }
     }
-    MPI_Iallreduce(&(on_proc_cols), global_col_buffer, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD, 
-            global_col_request);
+    MPI_Allreduce(&(on_proc_cols), &global_num_cols, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
    
-    ParCSRMatrix* P = new ParCSRMatrix(A->partition, A->global_num_rows, A->global_num_rows, 
+    ParCSRMatrix* P = new ParCSRMatrix(A->partition, A->global_num_rows, global_num_cols, 
             A->local_num_rows, on_proc_cols, off_proc_cols);
 
     for (int i = 0; i < A->on_proc_num_cols; i++)
@@ -524,12 +523,10 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
 ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states,
-        MPI_Request* global_col_request, 
-        int* global_col_buffer)
+        const std::vector<int>& off_proc_states)
 {
     int start, end, col;
-    
+    int global_num_cols;
     int ctr;
     double sum_strong_pos, sum_strong_neg;
     double sum_all_pos, sum_all_neg;
@@ -594,7 +591,6 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
 
     int off_proc_cols = 0;
     int on_proc_cols = 0;
-    int global_num_cols;
     for (int i = 0; i < S->on_proc_num_cols; i++)
     {
         if (states[i])
@@ -609,10 +605,9 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
             off_proc_cols++;
         }
     }
-    MPI_Iallreduce(&(on_proc_cols), global_col_buffer, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD,
-            global_col_request);
+    MPI_Allreduce(&(on_proc_cols), &global_num_cols, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
    
-    ParCSRMatrix* P = new ParCSRMatrix(S->partition, S->global_num_rows, S->global_num_rows, 
+    ParCSRMatrix* P = new ParCSRMatrix(S->partition, S->global_num_rows, global_num_cols, 
             S->local_num_rows, on_proc_cols, off_proc_cols);
 
     for (int i = 0; i < S->on_proc_num_cols; i++)

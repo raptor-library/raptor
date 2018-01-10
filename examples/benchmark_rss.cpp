@@ -242,13 +242,14 @@ int main(int argc, char *argv[])
     clear_cache(cache_array);
 
     // TAP Solve Raptor
-    x.set_const_value(0.0);
+    /*x.set_const_value(0.0);
     std::vector<double> tap_res;
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
     ml->tap_solve(x, b, tap_res, 0);
     raptor_tap_solve = MPI_Wtime() - t0;
     clear_cache(cache_array);
+*/
 
     long lcl_nnz;
     long nnz;
@@ -261,13 +262,13 @@ int main(int argc, char *argv[])
         if (rank == 0) printf("%d\t%d\t%ld\n", i, Al->global_num_rows, nnz);
     }   
 
-    if (rank == 0)
+    /*if (rank == 0)
     {
         for (int i = 0; i < res.size(); i++)
         {
             printf("%e, %e\n", res[i], tap_res[i]);
         }
-    }   
+    }*/   
 
     MPI_Reduce(&hypre_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Hypre Setup Time: %e\n", t0);
@@ -280,6 +281,27 @@ int main(int argc, char *argv[])
     if (rank == 0) printf("Raptor Solve Time: %e\n", t0);
     MPI_Reduce(&raptor_tap_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Raptor TAP Solve Time: %e\n", t0);
+
+    double comm_time, tap_comm_time;
+    double t1;
+    double total_comm_time = 0;
+    double total_tap_comm_time = 0;
+    for (int i = 0; i < ml->num_levels-1; i++)
+    {
+        ParCSRMatrix* Al = ml->levels[i]->A;
+        ParCSRMatrix* Pl = ml->levels[i]->P;
+        comm_time = Al->comm->get_comm_time() + Pl->comm->get_comm_time();
+        tap_comm_time = Al->tap_comm->get_comm_time() + Pl->tap_comm->get_comm_time();
+        MPI_Reduce(&comm_time, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&tap_comm_time, &t1, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Level %d CommTime %e, TAPCommTime %e\n", i, t0, t1);
+        total_comm_time += comm_time;
+        total_tap_comm_time += tap_comm_time;
+    }
+      
+    MPI_Reduce(&total_comm_time, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&total_tap_comm_time, &t1, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Total Comm Time: %e, Total TAP Comm Time: %e\n", t0, t1);
 
     // Delete raptor hierarchy
     delete ml;
