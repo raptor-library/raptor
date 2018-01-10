@@ -155,6 +155,19 @@ namespace raptor
                 relax_weight = _relax_weight;
                 num_smooth_sweeps = _num_smooth_sweeps;
                 setup_times.push_back(MPI_Wtime() - t0);
+
+                setup_comm_t = 0;
+                setup_comm_n = 0;
+                setup_comm_s = 0;
+                for (int i = 0; i < num_levels-1; i++)
+                {
+                    setup_comm_t += levels[i]->A->comm->get_comm_time() 
+                        + levels[i]->P->comm->get_comm_time();
+                    setup_comm_n += levels[i]->A->comm->get_comm_n()
+                        + levels[i]->P->comm->get_comm_n();
+                    setup_comm_s += levels[i]->A->comm->get_comm_s()
+                        + levels[i]->P->comm->get_comm_s();
+                }
             }
 
             ~ParMultilevel()
@@ -741,6 +754,19 @@ namespace raptor
             int solve(ParVector& sol, ParVector& rhs, double* res = NULL,
                     int num_iterations = 100)
             {
+                solve_comm_t = 0;
+                solve_comm_n = 0;
+                solve_comm_s = 0;
+                for (int i = 0; i < num_levels-1; i++)
+                {
+                    solve_comm_t -= (levels[i]->A->comm->get_comm_time() 
+                        + levels[i]->P->comm->get_comm_time());
+                    solve_comm_n -= (levels[i]->A->comm->get_comm_n()
+                        + levels[i]->P->comm->get_comm_n());
+                    solve_comm_s -= (levels[i]->A->comm->get_comm_s()
+                        + levels[i]->P->comm->get_comm_s());
+                }
+
                 double b_norm = rhs.norm(2);
                 double r_norm;
                 double t0;
@@ -800,6 +826,16 @@ namespace raptor
 
                 sol.copy(levels[0]->x);
 
+                for (int i = 0; i < num_levels-1; i++)
+                {
+                    solve_comm_t += (levels[i]->A->comm->get_comm_time() 
+                        + levels[i]->P->comm->get_comm_time());
+                    solve_comm_n += (levels[i]->A->comm->get_comm_n()
+                        + levels[i]->P->comm->get_comm_n());
+                    solve_comm_s += (levels[i]->A->comm->get_comm_s()
+                        + levels[i]->P->comm->get_comm_s());
+                }
+
                 return iter;
             } 
 
@@ -820,6 +856,13 @@ namespace raptor
             std::vector<double> interp_times;
             std::vector<double> matmat_times;
             std::vector<double> matmat_comm_times;
+            
+            double setup_comm_t;
+            double solve_comm_t;
+            int setup_comm_n;
+            int setup_comm_s;
+            int solve_comm_n;
+            int solve_comm_s;
 
             int coarse_n;
             std::vector<double> A_coarse;

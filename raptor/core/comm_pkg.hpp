@@ -39,6 +39,8 @@ namespace raptor
             topology = partition->topology;
             topology->num_shared++;
             comm_time = 0.0;
+            comm_n = 0;
+            comm_s = 0;
         }
         
         CommPkg(Topology* _topology)
@@ -46,6 +48,8 @@ namespace raptor
             topology = _topology;
             topology->num_shared++;
             comm_time = 0.0;
+            comm_n = 0;
+            comm_s = 0;
         }
 
         virtual ~CommPkg()
@@ -259,10 +263,14 @@ namespace raptor
         virtual std::vector<double>& get_double_recv_buffer() = 0;
         virtual std::vector<int>& get_int_recv_buffer() = 0;
         virtual double get_comm_time() = 0;
+        virtual int get_comm_n() = 0;
+        virtual int get_comm_s() = 0;
 
         // Class Variables
         Topology* topology;
         double comm_time;
+        int comm_n;
+        int comm_s;
     };
 
 
@@ -723,6 +731,8 @@ namespace raptor
                         proc, key, comm, &(recv_data->requests[i]));
             }
             comm_time += MPI_Wtime();
+            comm_n += send_data->num_msgs;
+            comm_s += (send_data->size_msgs * sizeof(T));
         }
 
         template<typename T>
@@ -831,6 +841,8 @@ namespace raptor
                         proc, key, comm, &(send_data->requests[i]));
             }
             comm_time += MPI_Wtime();
+            comm_n += recv_data->num_msgs;
+            comm_s += (recv_data->size_msgs * sizeof(T));
         }
 
         template<typename T, typename U>
@@ -1150,6 +1162,16 @@ namespace raptor
         double get_comm_time()
         {
             return comm_time;
+        }
+
+        int get_comm_n()
+        {
+            return comm_n;
+        }
+
+        int get_comm_s()
+        {
+            return comm_s;
         }
 
         // Helper Methods
@@ -2244,6 +2266,22 @@ namespace raptor
                 + local_L_par_comm->get_comm_time()
                 + global_par_comm->get_comm_time();
         }
+
+        int get_comm_n()
+        {
+            return local_S_par_comm->get_comm_n() 
+                + local_R_par_comm->get_comm_n()
+                + local_L_par_comm->get_comm_n()
+                + global_par_comm->get_comm_n();
+        }
+        int get_comm_s()
+        {
+            return local_S_par_comm->get_comm_s() 
+                + local_R_par_comm->get_comm_s()
+                + local_L_par_comm->get_comm_s()
+                + global_par_comm->get_comm_s();
+        }
+
 
         // Class Attributes
         ParComm* local_S_par_comm;

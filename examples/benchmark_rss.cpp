@@ -281,27 +281,18 @@ int main(int argc, char *argv[])
     if (rank == 0) printf("Raptor Solve Time: %e\n", t0);
     MPI_Reduce(&raptor_tap_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Raptor TAP Solve Time: %e\n", t0);
-
-    double comm_time, tap_comm_time;
-    double t1;
-    double total_comm_time = 0;
-    double total_tap_comm_time = 0;
-    for (int i = 0; i < ml->num_levels-1; i++)
-    {
-        ParCSRMatrix* Al = ml->levels[i]->A;
-        ParCSRMatrix* Pl = ml->levels[i]->P;
-        comm_time = Al->comm->get_comm_time() + Pl->comm->get_comm_time();
-        tap_comm_time = Al->tap_comm->get_comm_time() + Pl->tap_comm->get_comm_time();
-        MPI_Reduce(&comm_time, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        MPI_Reduce(&tap_comm_time, &t1, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Level %d CommTime %e, TAPCommTime %e\n", i, t0, t1);
-        total_comm_time += comm_time;
-        total_tap_comm_time += tap_comm_time;
-    }
       
-    MPI_Reduce(&total_comm_time, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&total_tap_comm_time, &t1, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    if (rank == 0) printf("Total Comm Time: %e, Total TAP Comm Time: %e\n", t0, t1);
+    int n0, s0;
+    MPI_Reduce(&ml->setup_comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&ml->setup_comm_n, &n0, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&ml->setup_comm_s, &s0, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Setup Comm Time: %e, Comm N: %d, Comm S: %d\n", t0, n0, s0);
+    MPI_Reduce(&ml->solve_comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&ml->solve_comm_n, &n0, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&ml->solve_comm_s, &s0, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Solve Comm Time: %e, Comm N: %d, Comm S: %d\n", t0, n0, s0);
+
+
 
     // Delete raptor hierarchy
     delete ml;

@@ -311,6 +311,8 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
         MPI_Irecv(&(recv_row_buffer[start]), end - start, MPI_INT, proc,
                 key, comm, &(recv_comm->requests[i]));
     }
+    comm_n += send_comm->num_msgs;
+    comm_s += (send_data->size_msgs * sizeof(int));
     
     if (send_comm->num_msgs)
     {
@@ -386,6 +388,8 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
             prev_ctr = ctr;
         }
     }
+    comm_n += send_comm->num_msgs;
+    comm_s += (send_mat_size * (sizeof(int) + sizeof(double)));
 
     // Recv pair_data corresponding to each off_proc column and add it to
     // correct location in matrix
