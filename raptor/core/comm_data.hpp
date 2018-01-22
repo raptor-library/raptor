@@ -116,11 +116,6 @@ public:
         procs.push_back(proc);
         indptr.push_back(last_ptr + msg_size);
 
-        for (int i = 0; i < msg_size; i++)
-        {
-            indices.push_back(idx_start + i);
-        }
-
         num_msgs++;
         size_msgs += msg_size;
     }

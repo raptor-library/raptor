@@ -420,7 +420,7 @@ void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
         node_recv_idx_orig_procs[idx] = proc;
     }
 
-    // Remove duplicates... Likely send same data to mulitple local procs, but
+    // Remove duplicates... Likely send same data to multiple local procs, but
     // only want to recv this data from a distant node once
     ctr = 0;
     start = global_par_comm->recv_data->indptr[0];
@@ -818,7 +818,7 @@ void TAPComm::adjust_send_indices(const int first_local_col)
     for (int i = 0; i < local_S_par_comm->recv_data->size_msgs; i++)
     {
         S_global_to_local[local_S_par_comm->recv_data->indices[i]] = i;
-        local_S_par_comm->recv_data->indices[i] = i;
+        local_S_par_comm->recv_data->indices.clear();
     }
     for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
     {
@@ -832,7 +832,7 @@ void TAPComm::adjust_send_indices(const int first_local_col)
     for (int i = 0; i < global_par_comm->recv_data->size_msgs; i++)
     {
         global_to_local[global_par_comm->recv_data->indices[i]] = i;
-        global_par_comm->recv_data->indices[i] = i;
+        global_par_comm->recv_data->indices.clear();
     }
     for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
     {
@@ -889,6 +889,11 @@ void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
         }
         local_L_par_comm->recv_data->add_msg(prev_proc, on_node_num_cols - prev_idx);
         local_L_par_comm->recv_data->finalize();
+
+        for (int i = 0; i < on_node_num_cols; i++)
+        {
+            local_L_par_comm->recv_data->indices.push_back(i);
+        }
     }
 
     MPI_Allreduce(MPI_IN_PLACE, recv_procs.data(), topology->PPN, MPI_INT, MPI_SUM, 

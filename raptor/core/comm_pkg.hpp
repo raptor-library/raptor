@@ -535,6 +535,7 @@ namespace raptor
 
             comm->communicate_T(off_proc_col_to_new);
 
+            recv_data->size_msgs = 0;
             for (int i = 0; i < comm->recv_data->num_msgs; i++)
             {
                 comm_proc = false;
@@ -543,22 +544,24 @@ namespace raptor
                 end = comm->recv_data->indptr[i+1];
                 for (int j = start; j < end; j++)
                 {
-                    idx = comm->recv_data->indices[j];
+                    if (comm->recv_data->indices.size())
+                        idx = comm->recv_data->indices[j];
+                    else 
+                        idx = j;
                     new_idx = off_proc_col_to_new[idx];
                     if (new_idx != -1)
                     {
                         comm_proc = true;
-                        recv_data->indices.push_back(new_idx);
+                        recv_data->size_msgs++;
                     }
                 }
                 if (comm_proc)
                 {
                     recv_data->procs.push_back(proc);
-                    recv_data->indptr.push_back(recv_data->indices.size());
+                    recv_data->indptr.push_back(recv_data->size_msgs);
                 }
             }
             recv_data->num_msgs = recv_data->procs.size();
-            recv_data->size_msgs = recv_data->indices.size();
             recv_data->finalize();
 
             for (int i = 0; i < comm->send_data->num_msgs; i++)
@@ -606,6 +609,7 @@ namespace raptor
 
             comm->communicate_T(off_proc_col_to_new);
 
+            recv_data->size_msgs = 0;
             for (int i = 0; i < comm->recv_data->num_msgs; i++)
             {
                 comm_proc = false;
@@ -614,22 +618,24 @@ namespace raptor
                 end = comm->recv_data->indptr[i+1];
                 for (int j = start; j < end; j++)
                 {
-                    idx = comm->recv_data->indices[j];
+                    if (comm->recv_data->indices.size())
+                        idx = comm->recv_data->indices[j];
+                    else
+                        idx = j;
                     new_idx = off_proc_col_to_new[idx];
                     if (new_idx != -1)
                     {
                         comm_proc = true;
-                        recv_data->indices.push_back(new_idx);
+                        recv_data->size_msgs++;
                     }
                 }
                 if (comm_proc)
                 {
                     recv_data->procs.push_back(proc);
-                    recv_data->indptr.push_back(recv_data->indices.size());
+                    recv_data->indptr.push_back(recv_data->size_msgs);
                 }
             }
             recv_data->num_msgs = recv_data->procs.size();
-            recv_data->size_msgs = recv_data->indices.size();
             recv_data->finalize();
 
             for (int i = 0; i < comm->send_data->num_msgs; i++)
@@ -826,7 +832,10 @@ namespace raptor
                 end = recv_data->indptr[i+1];
                 for (int j = start; j < end; j++)
                 {
-                    idx = recv_data->indices[j];
+                    if (recv_data->indices.size())
+                        idx = recv_data->indices[j];
+                    else 
+                        idx = j;
                     recvbuf[j] = values[idx];
                 }
                 MPI_Isend(&(recvbuf[start]), end - start, type,
@@ -1020,7 +1029,11 @@ namespace raptor
                 end = recv_data->indptr[i+1];
                 for (int j = start; j < end; j++)
                 {
-                    idx = recv_data->indices[j];
+                    if (recv_data->indices.size())
+                        idx = recv_data->indices[j];
+                    else 
+                        idx = j;
+
                     if (compare_func(recv_compares[idx]))
                     {
                         ctr++;
@@ -1047,7 +1060,11 @@ namespace raptor
             ctr--;
             for (int i = recv_data->size_msgs - 1; i >= 0; i--)
             {
-                idx = recv_data->indices[i];
+                if (recv_data->indices.size())
+                    idx = recv_data->indices[i];
+                else 
+                    idx = i;
+
                 if (compare_func(recv_compares[idx]))
                 {
                     recvbuf[idx] = recvbuf[ctr--];
@@ -1095,7 +1112,11 @@ namespace raptor
                 end = recv_data->indptr[i+1];
                 for (int j = start; j < end; j++)
                 {
-                    idx = recv_data->indices[j];
+                    if (recv_data->indices.size())
+                        idx = recv_data->indices[j];
+                    else 
+                        idx = j;
+
                     if (compare_func(recv_compares[idx]))
                     {
                         recvbuf[ctr++] = values[idx];
@@ -1226,12 +1247,6 @@ namespace raptor
     ***** recv_buffer : Vector
     *****    Combination of local_L_par_comm and local_R_par_comm
     *****    recv buffers, ordered to match off_proc_column_map
-    ***** L_to_orig : std::vector<int>
-    *****    Maps the columns recvd by local_L_par_comm to original
-    *****    position (in off_proc_column_map)
-    ***** R_to_orig : std::vector<int>
-    *****    Maps the columns recvd by local_R_par_comm to original
-    *****    position (in off_proc_column_map)
     ***** Partition* partition
     *****    Partition, holding information about topology
     **************************************************************/
@@ -1328,10 +1343,6 @@ namespace raptor
             {
                 recv_buffer.resize(recv_size);
                 int_recv_buffer.resize(recv_size);
-                std::copy(tap_comm->L_to_orig.begin(), tap_comm->L_to_orig.end(),
-                        std::back_inserter(L_to_orig));
-                std::copy(tap_comm->R_to_orig.begin(), tap_comm->R_to_orig.end(),
-                        std::back_inserter(R_to_orig));
             }
         }
 
@@ -1411,14 +1422,12 @@ namespace raptor
                 end = tap_comm->local_L_par_comm->recv_data->indptr[i+1];
                 for (int j = start; j < end; j++)
                 {
-                    idx = tap_comm->L_to_orig[j];
+                    idx = tap_comm->local_L_par_comm->recv_data->indices[j];
                     new_idx = off_proc_col_to_new[idx];
                     if (new_idx != -1)
                     {
                         comm_proc = true;
-                        new_idx_L = L_to_orig.size();
-                        L_to_orig.push_back(new_idx);
-                        local_L_par_comm->recv_data->indices.push_back(new_idx_L);
+                        local_L_par_comm->recv_data->indices.push_back(new_idx);
                     }
                 }
                 if (comm_proc)
@@ -1463,6 +1472,7 @@ namespace raptor
             local_S_par_comm->send_data->size_msgs = local_S_par_comm->send_data->indices.size();
             local_S_par_comm->send_data->finalize();
 
+            local_S_par_comm->recv_data->size_msgs = 0;
             for (int i = 0; i < tap_comm->local_S_par_comm->recv_data->num_msgs; i++)
             {
                 comm_proc = false;
@@ -1474,7 +1484,7 @@ namespace raptor
                     if (new_idx != -1)
                     {
                         comm_proc = true;
-                        local_S_par_comm->recv_data->indices.push_back(new_idx);
+                        local_S_par_comm->recv_data->size_msgs++;
                     }
                 }
                 if (comm_proc)
@@ -1482,11 +1492,10 @@ namespace raptor
                     proc = tap_comm->local_S_par_comm->recv_data->procs[i];
                     local_S_par_comm->recv_data->procs.push_back(proc);
                     local_S_par_comm->recv_data->indptr.push_back(
-                            local_S_par_comm->recv_data->indices.size());
+                            local_S_par_comm->recv_data->size_msgs);
                 }
             }
             local_S_par_comm->recv_data->num_msgs = local_S_par_comm->recv_data->procs.size();
-            local_S_par_comm->recv_data->size_msgs = local_S_par_comm->recv_data->indices.size();
             local_S_par_comm->recv_data->finalize();
 
 
@@ -1498,14 +1507,12 @@ namespace raptor
                 end = tap_comm->local_R_par_comm->recv_data->indptr[i+1];
                 for (int j = start; j < end; j++)
                 {
-                    idx = tap_comm->R_to_orig[tap_comm->local_R_par_comm->recv_data->indices[j]];
+                    idx = tap_comm->local_R_par_comm->recv_data->indices[j];
                     new_idx = off_proc_col_to_new[idx];
                     if (new_idx != -1)
                     {
                         comm_proc = true;
-                        new_idx_R = R_to_orig.size();
-                        R_to_orig.push_back(new_idx);
-                        local_R_par_comm->recv_data->indices.push_back(new_idx_R);
+                        local_R_par_comm->recv_data->indices.push_back(new_idx);
                     }
                 }
                 if (comm_proc)
@@ -1578,6 +1585,7 @@ namespace raptor
             global_par_comm->send_data->finalize();
 
 
+            global_par_comm->recv_data->size_msgs = 0;
             for (int i = 0; i < tap_comm->global_par_comm->recv_data->num_msgs; i++)
             {
                 comm_proc = false;
@@ -1589,7 +1597,7 @@ namespace raptor
                     if (new_idx != -1)
                     {
                         comm_proc = true;
-                        global_par_comm->recv_data->indices.push_back(new_idx);
+                        global_par_comm->recv_data->size_msgs++;
                     }
                 }
                 if (comm_proc)
@@ -1597,11 +1605,10 @@ namespace raptor
                     proc = tap_comm->global_par_comm->recv_data->procs[i];
                     global_par_comm->recv_data->procs.push_back(proc);
                     global_par_comm->recv_data->indptr.push_back(
-                            global_par_comm->recv_data->indices.size());
+                            global_par_comm->recv_data->size_msgs);
                 }
             }
             global_par_comm->recv_data->num_msgs = global_par_comm->recv_data->procs.size();
-            global_par_comm->recv_data->size_msgs = global_par_comm->recv_data->indices.size();
             global_par_comm->recv_data->finalize();
 
             
@@ -1698,12 +1705,10 @@ namespace raptor
                 // Map local_R recvs to original off_proc_column_map
                 if (local_R_par_comm->recv_data->size_msgs)
                 {
-                    R_to_orig.resize(local_R_par_comm->recv_data->size_msgs);
                     for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
                     {
                         idx = local_R_par_comm->recv_data->indices[i];
-                        int orig_i = off_node_to_off_proc[idx];
-                        R_to_orig[idx] = orig_i;
+                        local_R_par_comm->recv_data->indices[i] = off_node_to_off_proc[idx];
                     }
                 }
 
@@ -1711,12 +1716,10 @@ namespace raptor
                 // Map local_L recvs to original off_proc_column_map
                 if (local_L_par_comm->recv_data->size_msgs)
                 {
-                    L_to_orig.resize(local_L_par_comm->recv_data->size_msgs);
                     for (int i = 0; i < local_L_par_comm->recv_data->size_msgs; i++)
                     {
                         idx = local_L_par_comm->recv_data->indices[i];
-                        int orig_i = on_node_to_off_proc[idx];
-                        L_to_orig[idx] = orig_i;
+                        local_L_par_comm->recv_data->indices[i] = on_node_to_off_proc[idx];
                     }
                 }
             }
@@ -1805,13 +1808,12 @@ namespace raptor
             for (int i = 0; i < R_recv_size; i++)
             {
                 idx = local_R_par_comm->recv_data->indices[i];
-                new_idx = R_to_orig[idx];
-                recvbuf[new_idx] = R_recvbuf[i];
+                recvbuf[idx] = R_recvbuf[i];
             }
 
             for (int i = 0; i < L_recv_size; i++)
             {
-                idx = L_to_orig[i];
+                idx = local_L_par_comm->recv_data->indices[i];
                 recvbuf[idx] = L_recvbuf[i];
             }
 
@@ -1880,34 +1882,13 @@ namespace raptor
         template<typename T>
         void initialize_T(const T* values, MPI_Comm comm)
         {
-            int idx, new_idx;
-            std::vector<T> L_values;
-            std::vector<T> R_values;
-            if (local_L_par_comm->recv_data->size_msgs)
-            {
-                L_values.resize(local_L_par_comm->recv_data->size_msgs);
-                for (int i = 0; i < local_L_par_comm->recv_data->size_msgs; i++)
-                {
-                    idx = L_to_orig[i];
-                    L_values[i] = values[idx];
-                }
-            }
-            if (local_R_par_comm->recv_data->size_msgs)
-            {
-                R_values.resize(local_R_par_comm->recv_data->size_msgs);
-                for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
-                {
-                    idx = local_R_par_comm->recv_data->indices[i];
-                    new_idx = R_to_orig[idx];
-                    R_values[idx] = values[new_idx];
-                }
-            }
+            int idx;
 
             // Messages with origin and final destination on node
-            local_L_par_comm->communicate_T(L_values.data(), topology->local_comm);
+            local_L_par_comm->communicate_T(values, topology->local_comm);
 
             // Initial redistribution among node
-            local_R_par_comm->communicate_T(R_values.data(), topology->local_comm);
+            local_R_par_comm->communicate_T(values, topology->local_comm);
 
             // Begin inter-node communication 
             std::vector<T>& R_sendbuf = local_R_par_comm->send_data->get_buffer<T>();
@@ -2069,24 +2050,12 @@ namespace raptor
             std::vector<T> R_recvbuf;
             std::vector<T> G_recvbuf;
 
-            std::vector<int> R_recv_compares;
-            if (local_R_par_comm->recv_data->size_msgs)
-            {
-                R_recv_compares.resize(local_R_par_comm->recv_data->size_msgs);
-                for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
-                {
-                    idx = local_R_par_comm->recv_data->indices[i];
-                    new_idx = R_to_orig[idx];
-                    R_recv_compares[idx] = recv_compares[new_idx];
-                }
-            }
-            
             // Local communication... send states and off proc states
             local_S_par_comm->communicate(send_compares, topology->local_comm);
             std::copy(local_S_par_comm->recv_data->int_buffer.begin(),
                     local_S_par_comm->recv_data->int_buffer.end(),
                     std::back_inserter(global_send_compares));
-            local_R_par_comm->communicate_T(R_recv_compares, topology->local_comm);
+            local_R_par_comm->communicate_T(recv_compares, topology->local_comm);
             if (global_par_comm->recv_data->size_msgs)
             {
                 global_recv_compares.resize(global_par_comm->recv_data->size_msgs);
@@ -2116,7 +2085,7 @@ namespace raptor
 
             for (int i = 0; i < L_recvbuf.size(); i++)
             {
-                idx = L_to_orig[i];
+                idx = local_L_par_comm->recv_data->indices[i];
                 if (compare_func(recv_compares[idx]))
                 {
                     recvbuf[idx] = L_recvbuf[i];
@@ -2129,14 +2098,13 @@ namespace raptor
             for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
             {
                 idx = local_R_par_comm->recv_data->indices[i];
-                new_idx = R_to_orig[idx];
-                if (compare_func(recv_compares[new_idx]))
+                if (compare_func(recv_compares[idx]))
                 {
-                    recvbuf[new_idx] = R_recvbuf[i];
+                    recvbuf[idx] = R_recvbuf[i];
                 }
                 else
                 {
-                    recvbuf[new_idx] = 0.0;
+                    recvbuf[idx] = 0.0;
                 }
             }
 
@@ -2153,8 +2121,6 @@ namespace raptor
                 std::function<U(U, T)> result_func = {})
         {
             int idx, new_idx;
-            std::vector<T> L_values;
-            std::vector<T> R_values;
 
             std::vector<T> L_sendbuf;
             std::vector<T> R_sendbuf;
@@ -2164,38 +2130,15 @@ namespace raptor
             std::vector<T> G_recvbuf;
             std::vector<T> S_recvbuf;
 
-            std::vector<int> R_recv_compares;
             std::vector<int> global_send_compares;
             std::vector<int> global_recv_compares;
-
-            if (local_L_par_comm->recv_data->size_msgs)
-            {
-                L_values.resize(local_L_par_comm->recv_data->size_msgs);
-                for (int i = 0; i < local_L_par_comm->recv_data->size_msgs; i++)
-                {
-                    idx = L_to_orig[i];
-                    L_values[i] = values[idx];
-                }
-            }
-            if (local_R_par_comm->recv_data->size_msgs)
-            {
-                R_values.resize(local_R_par_comm->recv_data->size_msgs);
-                R_recv_compares.resize(local_R_par_comm->recv_data->size_msgs);
-                for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
-                {
-                    idx = local_R_par_comm->recv_data->indices[i];
-                    new_idx = R_to_orig[idx];
-                    R_values[idx] = values[new_idx];
-                    R_recv_compares[idx] = recv_compares[new_idx];
-                }
-            }
 
             // Local communication... send states and off proc states
             local_S_par_comm->communicate(send_compares, topology->local_comm);
             std::copy(local_S_par_comm->recv_data->int_buffer.begin(),
                     local_S_par_comm->recv_data->int_buffer.end(),
                     std::back_inserter(global_send_compares));
-            local_R_par_comm->communicate_T(R_recv_compares, topology->local_comm);
+            local_R_par_comm->communicate_T(recv_compares, topology->local_comm);
             if (global_par_comm->recv_data->size_msgs)
             {
                 global_recv_compares.resize(global_par_comm->recv_data->size_msgs);
@@ -2207,7 +2150,7 @@ namespace raptor
             }
 
             // Initial redistribution among node
-            local_R_par_comm->communicate_T(R_values, topology->local_comm);
+            local_R_par_comm->communicate_T(values, topology->local_comm);
             R_sendbuf = local_R_par_comm->send_data->get_buffer<T>();
 
             // Begin inter-node communication 
@@ -2233,7 +2176,7 @@ namespace raptor
             local_S_par_comm->communicate_T(S_recvbuf, topology->local_comm);
             S_sendbuf = local_S_par_comm->send_data->get_buffer<T>();
 
-            local_L_par_comm->communicate_T(L_values, topology->local_comm);
+            local_L_par_comm->communicate_T(values, topology->local_comm);
             L_sendbuf = local_L_par_comm->send_data->get_buffer<T>();
 
             for (int i = 0; i < local_S_par_comm->send_data->size_msgs; i++)
@@ -2290,8 +2233,6 @@ namespace raptor
         ParComm* global_par_comm;
         std::vector<double> recv_buffer;
         std::vector<int> int_recv_buffer;
-        std::vector<int> L_to_orig;
-        std::vector<int> R_to_orig;
     };
 }
 #endif

@@ -1065,19 +1065,8 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
      *****  Create global_recv_bool (whether to recv idx j)
      *****
      *********************************************************/
-    std::vector<int> R_off_proc_states;
-    if (local_R_par_comm->recv_data->size_msgs)
-    {
-        R_off_proc_states.resize(local_R_par_comm->recv_data->size_msgs);
-    }
     std::vector<int>& global_recv_bool = global_par_comm->get_recv_buffer<int>();
-    for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
-    {
-        idx = local_R_par_comm->recv_data->indices[i];
-        new_idx = S->tap_comm->R_to_orig[idx];
-        R_off_proc_states[idx] = off_proc_states[new_idx];
-    }
-    local_R_par_comm->communicate_T(R_off_proc_states.data(), 
+    local_R_par_comm->communicate_T(off_proc_states.data(), 
             local_R_par_comm->topology->local_comm);
     std::fill(global_recv_bool.begin(), global_recv_bool.end(), -1);
     for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
@@ -1296,15 +1285,14 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
     for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
     {
         idx = local_R_par_comm->recv_data->indices[i];
-        new_idx = S->tap_comm->R_to_orig[idx];
         if (local_R_recv_sizes[i] > 0)
         {
-            send_sizes[new_idx] += local_R_recv_sizes[i];
+            send_sizes[idx] += local_R_recv_sizes[i];
         }
     }
     for (int i = 0; i < local_L_par_comm->recv_data->size_msgs; i++)
     {
-        idx = S->tap_comm->L_to_orig[i];
+        idx = local_L_par_comm->recv_data->indices[i];
         if (local_recv_sizes[i] > 0)
         {
             send_sizes[idx] += local_recv_sizes[i];
@@ -1324,7 +1312,6 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
     for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
     {
         idx = local_R_par_comm->recv_data->indices[i];
-        new_idx = S->tap_comm->R_to_orig[idx];
         start = recv_ptr[i];
         end = recv_ptr[i+1];
         for (int j = start; j < end; j++)
@@ -1345,13 +1332,13 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
                 }   
                 else continue;
             }
-            ctr = off_proc_col_ptr[new_idx] + send_sizes[new_idx]++;
+            ctr = off_proc_col_ptr[idx] + send_sizes[idx]++;
             off_proc_col_coarse[ctr] = col;
         }
     }
     for (int i = 0; i < local_L_par_comm->recv_data->size_msgs; i++)
     {
-        idx = S->tap_comm->L_to_orig[i];
+        idx = local_L_par_comm->recv_data->indices[i];
         start = local_recv_ptr[i];
         end = local_recv_ptr[i+1];
         for (int j = start; j < end; j++)
