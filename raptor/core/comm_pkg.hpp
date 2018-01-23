@@ -915,7 +915,7 @@ namespace raptor
                 const int* recv_compares, 
                 std::function<bool(int)> compare_func = {})
         {
-            return conditional_communication<double, MPI_DOUBLE>(values, send_compares, 
+            return conditional_communication<double>(values, send_compares, 
                     recv_compares, compare_func);
         
         }
@@ -924,7 +924,7 @@ namespace raptor
                 const int* recv_compares, 
                 std::function<bool(int)> compare_func = {})
         {
-            return conditional_communication<int, MPI_INT>(values, send_compares, 
+            return conditional_communication<int>(values, send_compares, 
                     recv_compares, compare_func);
         }
 
@@ -935,7 +935,7 @@ namespace raptor
                 std::function<bool(int)> compare_func = {},
                 std::function<double(double, double)> result_func = {})
         {
-            conditional_communication_T<double, double, MPI_DOUBLE>(values, result, 
+            conditional_communication_T<double, double>(values, result, 
                     send_compares, recv_compares, compare_func, result_func);
         }
 
@@ -946,7 +946,7 @@ namespace raptor
                 std::function<bool(int)> compare_func = {},
                 std::function<int(int, int)> result_func = {})
         {
-            conditional_communication_T<int, int, MPI_INT>(values, result, send_compares, 
+            conditional_communication_T<int, int>(values, result, send_compares, 
                     recv_compares, compare_func, result_func);
         }
 
@@ -957,11 +957,11 @@ namespace raptor
                 std::function<bool(int)> compare_func = {},
                 std::function<double(double, int)> result_func = {})
         {
-            conditional_communication_T<int, double, MPI_INT>(values, result, 
+            conditional_communication_T<int, double>(values, result, 
                     send_compares, recv_compares, compare_func, result_func);
         }
 
-        template<typename T, MPI_Datatype MPI_T>
+        template<typename T>
         std::vector<T>& conditional_communication(const T* values, 
                 const int* send_compares,
                 const int* recv_compares,
@@ -977,6 +977,7 @@ namespace raptor
 
             std::vector<T>& sendbuf = send_data->get_buffer<T>();
             std::vector<T>& recvbuf = recv_data->get_buffer<T>();
+            MPI_Datatype type = get_type(sendbuf);
 
             n_sends = 0;
             ctr = 0;
@@ -997,7 +998,7 @@ namespace raptor
                 size = ctr - prev_ctr;
                 if (size)
                 {
-                    MPI_Issend(&(sendbuf[prev_ctr]), size, MPI_T, 
+                    MPI_Issend(&(sendbuf[prev_ctr]), size, type, 
                             proc, key, mpi_comm, &(send_data->requests[n_sends++]));
                     prev_ctr = ctr;
                 }
@@ -1027,7 +1028,7 @@ namespace raptor
                 size = ctr - prev_ctr;
                 if (size)
                 {
-                    MPI_Irecv(&(recvbuf[prev_ctr]), size, MPI_T,
+                    MPI_Irecv(&(recvbuf[prev_ctr]), size, type,
                             proc, key, mpi_comm, &(recv_data->requests[n_recvs++]));
                     prev_ctr = ctr;
                 }
@@ -1063,7 +1064,7 @@ namespace raptor
             comm_time += MPI_Wtime();
         }
 
-        template<typename T, typename U, MPI_Datatype MPI_T>
+        template<typename T, typename U>
         void conditional_communication_T(const T* values,
                 std::vector<U>& result, 
                 const int* send_compares,
@@ -1085,6 +1086,7 @@ namespace raptor
 
             std::vector<T>& sendbuf = send_data->get_buffer<T>();
             std::vector<T>& recvbuf = recv_data->get_buffer<T>();
+            MPI_Datatype type = get_type(sendbuf);
 
             n_sends = 0;
             ctr = 0;
@@ -1109,7 +1111,7 @@ namespace raptor
                 size = ctr - prev_ctr;
                 if (size)
                 {
-                    MPI_Issend(&(recvbuf[prev_ctr]), size, MPI_T, 
+                    MPI_Issend(&(recvbuf[prev_ctr]), size, type, 
                             proc, key, mpi_comm, &(recv_data->requests[n_sends++]));
                     prev_ctr = ctr;
                 }
@@ -1134,7 +1136,7 @@ namespace raptor
                 size = ctr - prev_ctr;
                 if (size)
                 {
-                    MPI_Irecv(&(sendbuf[prev_ctr]), size, MPI_T,
+                    MPI_Irecv(&(sendbuf[prev_ctr]), size, type,
                             proc, key, mpi_comm, &(send_data->requests[n_recvs++]));
                     prev_ctr = ctr;
                 }
@@ -1962,7 +1964,7 @@ namespace raptor
                 const int* recv_compares, 
                 std::function<bool(int)> compare_func = {})
         {
-            return conditional_communication<double, MPI_DOUBLE>(values, send_compares, 
+            return conditional_communication<double>(values, send_compares, 
                     recv_compares, compare_func);
         
         }
@@ -1971,7 +1973,7 @@ namespace raptor
                 const int* recv_compares, 
                 std::function<bool(int)> compare_func = {})
         {
-            return conditional_communication<int, MPI_INT>(values, send_compares, 
+            return conditional_communication<int>(values, send_compares, 
                     recv_compares, compare_func);
         }
 
@@ -1982,7 +1984,7 @@ namespace raptor
                 std::function<bool(int)> compare_func = {},
                 std::function<double(double, double)> result_func = {})
         {
-            conditional_communication_T<double, double, MPI_DOUBLE>(values, result, 
+            conditional_communication_T<double, double>(values, result, 
                     send_compares, recv_compares, compare_func, result_func);
         }
         void conditional_int_comm_T(const int* values, 
@@ -1992,7 +1994,7 @@ namespace raptor
                 std::function<bool(int)> compare_func = {},
                 std::function<int(int, int)> result_func = {})                
         {
-            conditional_communication_T<int, int, MPI_INT>(values, result, 
+            conditional_communication_T<int, int>(values, result, 
                     send_compares, recv_compares, compare_func, result_func);
         }
         void conditional_int_comm_T(const int* values, 
@@ -2002,11 +2004,11 @@ namespace raptor
                 std::function<bool(int)> compare_func = {},
                 std::function<double(double, int)> result_func = {})                
         {
-            conditional_communication_T<int, double, MPI_INT>(values, result, 
+            conditional_communication_T<int, double>(values, result, 
                     send_compares, recv_compares, compare_func, result_func);
         }
 
-        template<typename T, MPI_Datatype MPI_T>
+        template<typename T>
         std::vector<T>& conditional_communication(const T* values, 
                 const int* send_compares,
                 const int* recv_compares,
@@ -2087,7 +2089,7 @@ namespace raptor
             return recvbuf; 
         }
 
-        template<typename T, typename U, MPI_Datatype MPI_T>
+        template<typename T, typename U>
         void conditional_communication_T(const T* values,
                 std::vector<U>& result, 
                 const int* send_compares,
