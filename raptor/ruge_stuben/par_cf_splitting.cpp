@@ -166,7 +166,7 @@ void find_off_proc_weights(CommPkg* comm,
     int off_proc_num_cols = off_proc_states.size();
 
     std::vector<double> recvbuf = 
-        comm->conditional_comm(weights, states, off_proc_states, MPI_COMM_WORLD, 
+        comm->conditional_comm(weights, states, off_proc_states, 
             [&](const int a)
             {
                 return a == -1;
@@ -225,7 +225,7 @@ void find_max_off_weights(CommPkg* comm,
         else return d;
     };
     comm->conditional_comm_T(send_weights, max_weights, states, off_proc_states,
-            MPI_COMM_WORLD, compare_func, result_max);
+            compare_func, result_max);
 }
 
 int select_independent_set(const ParCSRMatrix* S, 
@@ -717,7 +717,7 @@ int find_off_proc_states(CommPkg* comm,
     int off_proc_num_cols = off_proc_states.size();
 
     std::vector<int>& recvbuf = comm->conditional_comm(states, 
-            states, off_proc_states, MPI_COMM_WORLD,
+            states, off_proc_states, 
             [&](const int a)
             {
                 return a == -1 || a == 2;
@@ -973,8 +973,7 @@ std::vector<int>& tap_find_local_helper(const ParCSRMatrix* S,
     }
 
     // Send "send_sizes" and recv sizes for each j in comm->recv_data->size_msgs
-    std::vector<int>& recv_sizes = comm->communicate(send_sizes, 
-            comm->topology->local_comm);
+    std::vector<int>& recv_sizes = comm->communicate(send_sizes);
 
     // Form recv_ptr for each msg in comm->recv_data->num_msgs
     recv_size = 0;
@@ -1066,8 +1065,7 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
      *****
      *********************************************************/
     std::vector<int>& global_recv_bool = global_par_comm->get_recv_buffer<int>();
-    local_R_par_comm->communicate_T(off_proc_states.data(), 
-            local_R_par_comm->topology->local_comm);
+    local_R_par_comm->communicate_T(off_proc_states.data());
     std::fill(global_recv_bool.begin(), global_recv_bool.end(), -1);
     for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
     {
@@ -1215,8 +1213,7 @@ void tap_find_off_proc_new_coarse(const ParCSRMatrix* S,
         send_ptr[i+1] = send_buffer.size();
     }
 
-    std::vector<int> local_R_recv_sizes = local_R_par_comm->communicate(recv_sizes, 
-            local_R_par_comm->topology->local_comm);
+    std::vector<int> local_R_recv_sizes = local_R_par_comm->communicate(recv_sizes);
     recv_ptr.resize(local_R_par_comm->recv_data->size_msgs + 1);
     recv_size = 0;
     recv_ptr[0] = recv_size;
@@ -1399,7 +1396,7 @@ void combine_weight_updates(CommPkg* comm,
         };
     
     comm->conditional_comm_T(off_proc_weight_updates,
-            weights, states, off_proc_states, MPI_COMM_WORLD,
+            weights, states, off_proc_states,
             compare_func, result_func);
 }
 

@@ -80,70 +80,67 @@ namespace raptor
 
         // Matrix Communication
         virtual CSRMatrix* communicate(std::vector<int>& rowptr, 
-                std::vector<int>& col_indices, std::vector<double>& values,
-                MPI_Comm comm = MPI_COMM_WORLD) = 0;
+                std::vector<int>& col_indices, std::vector<double>& values) = 0;
         virtual CSRMatrix* communicate_T(std::vector<int>& rowptr,
                 std::vector<int>& col_indices, std::vector<double>& values, 
-                int n_result_rows, MPI_Comm comm = MPI_COMM_WORLD) = 0;
-        CSRMatrix* communicate(ParCSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD);
-        CSRMatrix* communicate(CSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
+                int n_result_rows) = 0;
+        CSRMatrix* communicate(ParCSRMatrix* A);
+        CSRMatrix* communicate(CSRMatrix* A)
         {
-            return communicate(A->idx1, A->idx2, A->vals, comm);
+            return communicate(A->idx1, A->idx2, A->vals);
         }
-        CSRMatrix* communicate_T(CSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
+        CSRMatrix* communicate_T(CSRMatrix* A)
         {
-            return communicate_T(A->idx1, A->idx2, A->vals, comm);
+            return communicate_T(A->idx1, A->idx2, A->vals,
+                    A->n_rows);
         }
 
         // Vector Communication
-        std::vector<double>& communicate(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD);
-        void init_comm(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD);
+        std::vector<double>& communicate(ParVector& v);
+        void init_comm(ParVector& v);
 
         // Standard Communication
         template<typename T>
-        std::vector<T>& communicate(const std::vector<T>& values, 
-                MPI_Comm comm = MPI_COMM_WORLD)
+        std::vector<T>& communicate(const std::vector<T>& values)
         {  
-            return communicate(values.data(), comm);
+            return communicate(values.data());
         }
         template<typename T>
-        void init_comm(const std::vector<T>& values, MPI_Comm comm = MPI_COMM_WORLD)
+        void init_comm(const std::vector<T>& values)
         {
-            init_comm(values.data(), comm);
+            init_comm(values.data());
         }
-        template<typename T> void init_comm(const T* values, MPI_Comm comm = MPI_COMM_WORLD);
+        template<typename T> void init_comm(const T* values);
         template<typename T> std::vector<T>& complete_comm();
-        template<typename T> std::vector<T>& communicate(const T* values, MPI_Comm comm = MPI_COMM_WORLD);
-        virtual void init_double_comm(const double* values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
-        virtual void init_int_comm(const int* values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
+        template<typename T> std::vector<T>& communicate(const T* values);
+        virtual void init_double_comm(const double* values) = 0;
+        virtual void init_int_comm(const int* values) = 0;
         virtual std::vector<double>& complete_double_comm() = 0;
         virtual std::vector<int>& complete_int_comm() = 0;
 
         // Transpose Communication
         template<typename T, typename U>
-        void communicate_T(const std::vector<T>& values, std::vector<U>& result,
-                MPI_Comm comm = MPI_COMM_WORLD)
+        void communicate_T(const std::vector<T>& values, std::vector<U>& result)
         {  
-            communicate_T(values.data(), result, comm);
+            communicate_T(values.data(), result);
         }
         template<typename T>
-        void communicate_T(const std::vector<T>& values, MPI_Comm comm = MPI_COMM_WORLD)
+        void communicate_T(const std::vector<T>& values)
         {  
-            communicate_T(values.data(), comm);
+            communicate_T(values.data());
         }
         template<typename T>
-        void init_comm_T(const std::vector<T>& values, MPI_Comm comm = MPI_COMM_WORLD)
+        void init_comm_T(const std::vector<T>& values)
         {
-            init_comm_T(values.data(), comm);
+            init_comm_T(values.data());
         }
-        template<typename T> void init_comm_T(const T* values, MPI_Comm comm = MPI_COMM_WORLD);
+        template<typename T> void init_comm_T(const T* values);
         template<typename T, typename U> void complete_comm_T(std::vector<U>& result);
         template<typename T> void complete_comm_T();
-        template<typename T, typename U> void communicate_T(const T* values, std::vector<U>& result, 
-                MPI_Comm comm = MPI_COMM_WORLD);
-        template<typename T> void communicate_T(const T* values, MPI_Comm comm = MPI_COMM_WORLD);
-        virtual void init_double_comm_T(const double* values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
-        virtual void init_int_comm_T(const int* values, MPI_Comm comm = MPI_COMM_WORLD) = 0;
+        template<typename T, typename U> void communicate_T(const T* values, std::vector<U>& result);
+        template<typename T> void communicate_T(const T* values);
+        virtual void init_double_comm_T(const double* values) = 0;
+        virtual void init_int_comm_T(const int* values) = 0;
         virtual void complete_double_comm_T(std::vector<double>& result) = 0;
         virtual void complete_double_comm_T(std::vector<int>& result) = 0;
         virtual void complete_int_comm_T(std::vector<int>& result) = 0;
@@ -155,106 +152,93 @@ namespace raptor
         template<typename T> std::vector<T>& conditional_comm(const std::vector<T>& values, 
                 const std::vector<int>& send_compares, 
                 const std::vector<int>& recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {})
         {  
             return conditional_comm(values.data(), send_compares.data(), recv_compares.data(), 
-                    comm, compare_func);
+                    compare_func);
         }
         template<typename T> std::vector<T>& conditional_comm(const std::vector<T>& values, 
                 const int* send_compares, 
                 const int* recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {})
         {  
             return conditional_comm(values.data(), send_compares, recv_compares, 
-                    comm, compare_func);
+                    compare_func);
         }
         template<typename T> std::vector<T>& conditional_comm(const T* values, 
                 const std::vector<int>& send_compares, 
                 const std::vector<int>& recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {})
         {  
             return conditional_comm(values, send_compares.data(), recv_compares.data(), 
-                    comm, compare_func);
+                    compare_func);
         }
         template<typename T> std::vector<T>& conditional_comm(const T* values, 
                     const int* send_compares, 
                     const int* recv_compares,
-                    MPI_Comm comm = MPI_COMM_WORLD,
                     std::function<bool(int)> compare_func = {});
 
         template<typename T, typename U> void conditional_comm_T(const std::vector<T>& values,
                 std::vector<U>& result, 
                 const std::vector<int>& send_compares, 
                 const std::vector<int>& recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {},
                 std::function<U(U, T)> result_func = {})
         {  
             return conditional_comm_T(values.data(), result, send_compares.data(), 
-                    recv_compares.data(), comm, compare_func, result_func);
+                    recv_compares.data(), compare_func, result_func);
         }
         template<typename T, typename U> void conditional_comm_T(const std::vector<T>& values,
                 std::vector<U>& result, 
                 const int* send_compares, 
                 const int* recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {},
                 std::function<U(U, T)> result_func = {})
         {  
-            return conditional_comm_T(values.data(), result, send_compares, recv_compares, comm, 
+            return conditional_comm_T(values.data(), result, send_compares, recv_compares, 
                     compare_func, result_func);
         }
         template<typename T, typename U> void conditional_comm_T(const T* values,
                 std::vector<U>& result, 
                 const std::vector<int>& send_compares, 
                 const std::vector<int>& recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {},
                 std::function<U(U, T)> result_func = {})
         {  
             return conditional_comm_T(values, result, send_compares.data(), 
-                    recv_compares.data(), comm, compare_func, result_func);
+                    recv_compares.data(), compare_func, result_func);
         }
         template<typename T, typename U> void conditional_comm_T(const T* values,
                     std::vector<U>& result, 
                     const int* send_compares, 
                     const int* recv_compares,
-                    MPI_Comm comm = MPI_COMM_WORLD,
                     std::function<bool(int)> compare_func = {},
                     std::function<U(U, T)> result_func = {});
 
         virtual std::vector<double>& conditional_double_comm(const double* values,
                 const int* send_compares,
                 const int* recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {}) = 0;
         virtual std::vector<int>& conditional_int_comm(const int* values, 
                 const int* send_compares,
                 const int* recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {}) = 0;
         virtual void conditional_double_comm_T(const double* values, 
                 std::vector<double>& result, 
                 const int* send_compares,
                 const int* recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {},
                 std::function<double(double, double)> result_func = {}) = 0;
         virtual void conditional_int_comm_T(const int* values, 
                 std::vector<int>& result,
                 const int* send_compares,
                 const int* recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {},
                 std::function<int(int, int)> result_func = {}) = 0;
         virtual void conditional_int_comm_T(const int* values, 
                 std::vector<double>& result,
                 const int* send_compares,
                 const int* recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {},
                 std::function<double(double, int)> result_func = {}) = 0;
 
@@ -325,14 +309,18 @@ namespace raptor
         ***** _key : int (optional)
         *****    Tag to be used in MPI Communication (default 0)
         **************************************************************/
-        ParComm(Partition* partition, int _key = 0) : CommPkg(partition)
+        ParComm(Partition* partition, int _key = 0, 
+                MPI_Comm _comm = MPI_COMM_WORLD) : CommPkg(partition)
         {
+            mpi_comm = _comm;
             key = _key;
             send_data = new CommData();
             recv_data = new CommData();
         }
-        ParComm(Topology* topology, int _key = 0) : CommPkg(topology)
+        ParComm(Topology* topology, int _key = 0, 
+                MPI_Comm _comm = MPI_COMM_WORLD) : CommPkg(topology)
         {
+            mpi_comm = _comm;
             key = _key;
             send_data = new CommData();
             recv_data = new CommData();
@@ -355,6 +343,7 @@ namespace raptor
                 int _key = 9999,
                 MPI_Comm comm = MPI_COMM_WORLD) : CommPkg(partition)
         {
+            mpi_comm = comm;
             init_par_comm(partition, off_proc_column_map, _key, comm);
         }
 
@@ -364,6 +353,7 @@ namespace raptor
                 int _key = 9999, 
                 MPI_Comm comm = MPI_COMM_WORLD) : CommPkg(partition)
         {
+            mpi_comm = comm;
             int idx;
             int ctr = 0;
             std::vector<int> part_col_to_new;
@@ -511,6 +501,7 @@ namespace raptor
 
         ParComm(ParComm* comm) : CommPkg(comm->topology)
         {
+            mpi_comm = comm->mpi_comm;
             send_data = new CommData(comm->send_data);
             recv_data = new CommData(comm->recv_data);
             key = comm->key;
@@ -519,6 +510,7 @@ namespace raptor
         ParComm(ParComm* comm, const std::vector<int>& off_proc_col_to_new)
             : CommPkg(comm->topology)
         {
+            mpi_comm = comm->mpi_comm;
             bool comm_proc;
             int proc, start, end;
             int idx, new_idx;
@@ -593,6 +585,7 @@ namespace raptor
                 const std::vector<int>& off_proc_col_to_new) 
             : CommPkg(comm->topology)
         {
+            mpi_comm = comm->mpi_comm;
             bool comm_proc;
             int proc, start, end;
             int idx, new_idx;
@@ -678,13 +671,13 @@ namespace raptor
         }
 
         // Standard Communication
-        void init_double_comm(const double* values, MPI_Comm comm = MPI_COMM_WORLD)
+        void init_double_comm(const double* values)
         {
-            initialize(values, comm);
+            initialize(values);
         }
-        void init_int_comm(const int* values, MPI_Comm comm = MPI_COMM_WORLD)
+        void init_int_comm(const int* values)
         {
-            initialize(values, comm);
+            initialize(values);
         }
         std::vector<double>& complete_double_comm()
         {
@@ -695,18 +688,18 @@ namespace raptor
             return complete<int>();
         }
         template<typename T>
-        std::vector<T>& communicate(const std::vector<T>& values, MPI_Comm comm = MPI_COMM_WORLD)
+        std::vector<T>& communicate(const std::vector<T>& values)
         {
-            return CommPkg::communicate(values.data(), comm);
+            return CommPkg::communicate(values.data());
         }
         template<typename T>
-        std::vector<T>& communicate(const T* values, MPI_Comm comm = MPI_COMM_WORLD)
+        std::vector<T>& communicate(const T* values)
         {
-            return CommPkg::communicate(values, comm);
+            return CommPkg::communicate(values);
         }
 
         template<typename T>
-        void initialize(const T* values, MPI_Comm comm)
+        void initialize(const T* values)
         {
             comm_time -= MPI_Wtime();
             int start, end;
@@ -726,7 +719,7 @@ namespace raptor
                     sendbuf[j] = values[send_data->indices[j]];
                 }
                 MPI_Isend(&(sendbuf[start]), end - start, type,
-                        proc, key, comm, &(send_data->requests[i]));
+                        proc, key, mpi_comm, &(send_data->requests[i]));
             }
             for (int i = 0; i < recv_data->num_msgs; i++)
             {
@@ -734,7 +727,7 @@ namespace raptor
                 start = recv_data->indptr[i];
                 end = recv_data->indptr[i+1];
                 MPI_Irecv(&(recvbuf[start]), end - start, type,
-                        proc, key, comm, &(recv_data->requests[i]));
+                        proc, key, mpi_comm, &(recv_data->requests[i]));
             }
             comm_time += MPI_Wtime();
             comm_n += send_data->num_msgs;
@@ -760,13 +753,13 @@ namespace raptor
         }
 
         // Transpose Communication
-        void init_double_comm_T(const double* values, MPI_Comm comm = MPI_COMM_WORLD)
+        void init_double_comm_T(const double* values)
         {
-            initialize_T(values, comm);
+            initialize_T(values);
         }
-        void init_int_comm_T(const int* values, MPI_Comm comm = MPI_COMM_WORLD)
+        void init_int_comm_T(const int* values)
         {
-            initialize_T(values, comm);
+            initialize_T(values);
         }
         void complete_double_comm_T(std::vector<double>& result)
         {
@@ -793,30 +786,28 @@ namespace raptor
             complete_T<int>();
         }
         template<typename T, typename U>
-        void communicate_T(const std::vector<T>& values, std::vector<U>& result, 
-                MPI_Comm comm = MPI_COMM_WORLD)
+        void communicate_T(const std::vector<T>& values, std::vector<U>& result)
         {
-            CommPkg::communicate_T(values.data(), result, comm);
+            CommPkg::communicate_T(values.data(), result);
         }
         template<typename T, typename U>
-        void communicate_T(const T* values, std::vector<U>& result,
-                MPI_Comm comm = MPI_COMM_WORLD)
+        void communicate_T(const T* values, std::vector<U>& result)
         {
-            CommPkg::communicate_T(values, result, comm);
+            CommPkg::communicate_T(values, result);
         }
         template<typename T>
-        void communicate_T(const std::vector<T>& values, MPI_Comm comm = MPI_COMM_WORLD)
+        void communicate_T(const std::vector<T>& values)
         {
-            CommPkg::communicate_T(values.data(), comm);
+            CommPkg::communicate_T(values.data());
         }
         template<typename T>
-        void communicate_T(const T* values, MPI_Comm comm = MPI_COMM_WORLD)
+        void communicate_T(const T* values)
         {
-            CommPkg::communicate_T(values, comm);
+            CommPkg::communicate_T(values);
         }
 
         template<typename T>
-        void initialize_T(const T* values, MPI_Comm comm)
+        void initialize_T(const T* values)
         {
             comm_time -= MPI_Wtime();
             int start, end;
@@ -839,7 +830,7 @@ namespace raptor
                     recvbuf[j] = values[idx];
                 }
                 MPI_Isend(&(recvbuf[start]), end - start, type,
-                        proc, key, comm, &(recv_data->requests[i]));
+                        proc, key, mpi_comm, &(recv_data->requests[i]));
             }
             for (int i = 0; i < send_data->num_msgs; i++)
             {
@@ -847,7 +838,7 @@ namespace raptor
                 start = send_data->indptr[i];
                 end = send_data->indptr[i+1];
                 MPI_Irecv(&(sendbuf[start]), end - start, type,
-                        proc, key, comm, &(send_data->requests[i]));
+                        proc, key, mpi_comm, &(send_data->requests[i]));
             }
             comm_time += MPI_Wtime();
             comm_n += recv_data->num_msgs;
@@ -887,34 +878,34 @@ namespace raptor
 
         // Matrix Communication
         CSRMatrix* communicate(std::vector<int>& rowptr, std::vector<int>& col_indices,
-                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
+                std::vector<double>& values);
         CSRMatrix* communicate_T(std::vector<int>& rowptr, std::vector<int>& col_indices,
-                std::vector<double>& values, int n_result_rows, MPI_Comm comm = MPI_COMM_WORLD);
+                std::vector<double>& values, int n_result_rows);
         CSRMatrix* communication_helper(std::vector<int>& rowptr, 
                 std::vector<int>& col_indices, std::vector<double>& values,
-                MPI_Comm comm, CommData* send_comm, CommData* recv_comm);
-        CSRMatrix* communicate(ParCSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
+                CommData* send_comm, CommData* recv_comm);
+        CSRMatrix* communicate(ParCSRMatrix* A)
         {
-            return CommPkg::communicate(A, comm);
+            return CommPkg::communicate(A);
         }
-        CSRMatrix* communicate(CSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
+        CSRMatrix* communicate(CSRMatrix* A)
         {
-            return CommPkg::communicate(A, comm);
+            return CommPkg::communicate(A);
         }
-        CSRMatrix* communicate_T(CSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
+        CSRMatrix* communicate_T(CSRMatrix* A)
         {
-            return CommPkg::communicate_T(A, comm);
+            return CommPkg::communicate_T(A);
         }
 
 
         // Vector Communication
-        std::vector<double>& communicate(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD)
+        std::vector<double>& communicate(ParVector& v)
         {
-            return CommPkg::communicate(v, comm);
+            return CommPkg::communicate(v);
         }
-        void init_comm(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD)
+        void init_comm(ParVector& v)
         {
-            CommPkg::init_comm(v, comm);
+            CommPkg::init_comm(v);
         }
 
 
@@ -922,68 +913,62 @@ namespace raptor
         std::vector<double>& conditional_double_comm(const double* values, 
                 const int* send_compares,
                 const int* recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {})
         {
             return conditional_communication<double, MPI_DOUBLE>(values, send_compares, 
-                    recv_compares, comm, compare_func);
+                    recv_compares, compare_func);
         
         }
         std::vector<int>& conditional_int_comm(const int* values,
                 const int* send_compares,
                 const int* recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {})
         {
             return conditional_communication<int, MPI_INT>(values, send_compares, 
-                    recv_compares, comm, compare_func);
+                    recv_compares, compare_func);
         }
 
         void conditional_double_comm_T(const double* values, 
                 std::vector<double>& result,
                 const int* send_compares,
                 const int* recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {},
                 std::function<double(double, double)> result_func = {})
         {
             conditional_communication_T<double, double, MPI_DOUBLE>(values, result, 
-                    send_compares, recv_compares, comm, compare_func, result_func);
+                    send_compares, recv_compares, compare_func, result_func);
         }
 
         void conditional_int_comm_T(const int* values, 
                 std::vector<int>& result,
                 const int* send_compares,
                 const int* recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {},
                 std::function<int(int, int)> result_func = {})
         {
             conditional_communication_T<int, int, MPI_INT>(values, result, send_compares, 
-                    recv_compares, comm, compare_func, result_func);
+                    recv_compares, compare_func, result_func);
         }
 
         void conditional_int_comm_T(const int* values, 
                 std::vector<double>& result,
                 const int* send_compares,
                 const int* recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {},
                 std::function<double(double, int)> result_func = {})
         {
             conditional_communication_T<int, double, MPI_INT>(values, result, 
-                    send_compares, recv_compares, comm, compare_func, result_func);
+                    send_compares, recv_compares, compare_func, result_func);
         }
 
         template<typename T, MPI_Datatype MPI_T>
         std::vector<T>& conditional_communication(const T* values, 
                 const int* send_compares,
                 const int* recv_compares,
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {})
         {
             comm_time -= MPI_Wtime();
-            if (!compare_func) return communicate(values, comm);
+            if (!compare_func) return communicate(values);
 
             int proc, start, end;
             int idx, size;
@@ -1013,7 +998,7 @@ namespace raptor
                 if (size)
                 {
                     MPI_Issend(&(sendbuf[prev_ctr]), size, MPI_T, 
-                            proc, key, comm, &(send_data->requests[n_sends++]));
+                            proc, key, mpi_comm, &(send_data->requests[n_sends++]));
                     prev_ctr = ctr;
                 }
             }
@@ -1043,7 +1028,7 @@ namespace raptor
                 if (size)
                 {
                     MPI_Irecv(&(recvbuf[prev_ctr]), size, MPI_T,
-                            proc, key, comm, &(recv_data->requests[n_recvs++]));
+                            proc, key, mpi_comm, &(recv_data->requests[n_recvs++]));
                     prev_ctr = ctr;
                 }
             }
@@ -1083,14 +1068,13 @@ namespace raptor
                 std::vector<U>& result, 
                 const int* send_compares,
                 const int* recv_compares,
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {},
                 std::function<U(U, T)> result_func = {})
         {
             comm_time -= MPI_Wtime();
             if (!compare_func)
             {
-                communicate_T(values, result, comm);
+                communicate_T(values, result);
                 return;
             }
 
@@ -1126,7 +1110,7 @@ namespace raptor
                 if (size)
                 {
                     MPI_Issend(&(recvbuf[prev_ctr]), size, MPI_T, 
-                            proc, key, comm, &(recv_data->requests[n_sends++]));
+                            proc, key, mpi_comm, &(recv_data->requests[n_sends++]));
                     prev_ctr = ctr;
                 }
             }
@@ -1151,7 +1135,7 @@ namespace raptor
                 if (size)
                 {
                     MPI_Irecv(&(sendbuf[prev_ctr]), size, MPI_T,
-                            proc, key, comm, &(send_data->requests[n_recvs++]));
+                            proc, key, mpi_comm, &(send_data->requests[n_recvs++]));
                     prev_ctr = ctr;
                 }
             }
@@ -1216,6 +1200,7 @@ namespace raptor
         int key;
         CommData* send_data;
         CommData* recv_data;
+        MPI_Comm mpi_comm;
     };
 
 
@@ -1256,10 +1241,10 @@ namespace raptor
 
         TAPComm(Partition* partition) : CommPkg(partition)
         {
-            local_S_par_comm = new ParComm(partition, 2345);
-            local_R_par_comm = new ParComm(partition, 3456);
-            local_L_par_comm = new ParComm(partition, 4567);
-            global_par_comm = new ParComm(partition, 5678);
+            local_S_par_comm = new ParComm(partition, 2345, partition->topology->local_comm);
+            local_R_par_comm = new ParComm(partition, 3456, partition->topology->local_comm);
+            local_L_par_comm = new ParComm(partition, 4567, partition->topology->local_comm);
+            global_par_comm = new ParComm(partition, 5678, MPI_COMM_WORLD);
         }
 
 
@@ -1358,18 +1343,17 @@ namespace raptor
             int new_idx_R;
 
             local_L_par_comm = new ParComm(tap_comm->topology, 
-                    tap_comm->local_L_par_comm->key);
+                    tap_comm->local_L_par_comm->key, tap_comm->local_L_par_comm->mpi_comm);
             local_S_par_comm = new ParComm(tap_comm->topology,
-                    tap_comm->local_S_par_comm->key);
+                    tap_comm->local_S_par_comm->key, tap_comm->local_S_par_comm->mpi_comm);
             local_R_par_comm = new ParComm(tap_comm->topology,
-                    tap_comm->local_R_par_comm->key);
+                    tap_comm->local_R_par_comm->key, tap_comm->local_R_par_comm->mpi_comm);
             global_par_comm = new ParComm(tap_comm->topology,
-                    tap_comm->global_par_comm->key);
+                    tap_comm->global_par_comm->key, tap_comm->global_par_comm->mpi_comm);
             
             // Communicate the col_to_new lists to other local procs
-            tap_comm->local_S_par_comm->communicate(on_proc_col_to_new, topology->local_comm);
-            tap_comm->local_R_par_comm->communicate_T(off_proc_col_to_new,
-                    topology->local_comm);
+            tap_comm->local_S_par_comm->communicate(on_proc_col_to_new);
+            tap_comm->local_R_par_comm->communicate_T(off_proc_col_to_new);
 
             // Form col_to_new for S_recv, R_send, and global_recv
             std::vector<int>& S_recv_col_to_new 
@@ -1644,10 +1628,10 @@ namespace raptor
             MPI_Comm_size(comm, &num_procs);
 
             // Initialize class variables
-            local_S_par_comm = new ParComm(partition, 2345);
-            local_R_par_comm = new ParComm(partition, 3456);
-            local_L_par_comm = new ParComm(partition, 4567);
-            global_par_comm = new ParComm(partition, 5678);
+            local_S_par_comm = new ParComm(partition, 2345, partition->topology->local_comm);
+            local_R_par_comm = new ParComm(partition, 3456, partition->topology->local_comm);
+            local_L_par_comm = new ParComm(partition, 4567, partition->topology->local_comm);
+            global_par_comm = new ParComm(partition, 5678, comm);
 
             // Initialize Variables
             int idx;
@@ -1745,13 +1729,13 @@ namespace raptor
                 const int first_local_col);
 
         // Class Methods
-        void init_double_comm(const double* values, MPI_Comm comm = MPI_COMM_WORLD)
+        void init_double_comm(const double* values)
         {
-            initialize(values, comm);
+            initialize(values);
         }
-        void init_int_comm(const int* values, MPI_Comm comm = MPI_COMM_WORLD)
+        void init_int_comm(const int* values)
         {
-            initialize(values, comm);
+            initialize(values);
         }
         std::vector<double>& complete_double_comm()
         {
@@ -1763,28 +1747,28 @@ namespace raptor
         }
         
         template<typename T>
-        std::vector<T>& communicate(const std::vector<T>& values, MPI_Comm comm = MPI_COMM_WORLD)
+        std::vector<T>& communicate(const std::vector<T>& values)
         {
-            return CommPkg::communicate<T>(values.data(), comm);
+            return CommPkg::communicate<T>(values.data());
         }
         template<typename T>
-        std::vector<T>& communicate(const T* values, MPI_Comm comm = MPI_COMM_WORLD)
+        std::vector<T>& communicate(const T* values)
         {
-            return CommPkg::communicate<T>(values, comm);
+            return CommPkg::communicate<T>(values);
         }
 
         template<typename T>
-        void initialize(const T* values, MPI_Comm comm)
+        void initialize(const T* values)
         {
             // Messages with origin and final destination on node
-            local_L_par_comm->communicate<T>(values, topology->local_comm);
+            local_L_par_comm->communicate<T>(values);
 
             // Initial redistribution among node
             std::vector<T>& S_vals = 
-                local_S_par_comm->communicate<T>(values, topology->local_comm);
+                local_S_par_comm->communicate<T>(values);
 
             // Begin inter-node communication 
-            global_par_comm->initialize(S_vals.data(), comm);
+            global_par_comm->initialize(S_vals.data());
         }
 
         template<typename T>
@@ -1794,7 +1778,7 @@ namespace raptor
             std::vector<T>& G_vals = global_par_comm->complete<T>();
 
             // Redistributing recvd inter-node values
-            local_R_par_comm->communicate<T>(G_vals.data(), topology->local_comm);
+            local_R_par_comm->communicate<T>(G_vals.data());
 
             std::vector<T>& recvbuf = get_recv_buffer<T>();
             std::vector<T>& R_recvbuf = local_R_par_comm->recv_data->get_buffer<T>();
@@ -1822,13 +1806,13 @@ namespace raptor
 
 
         // Transpose Communication
-        void init_double_comm_T(const double* values, MPI_Comm comm = MPI_COMM_WORLD)
+        void init_double_comm_T(const double* values)
         {
-            initialize_T(values, comm);
+            initialize_T(values);
         }
-        void init_int_comm_T(const int* values, MPI_Comm comm = MPI_COMM_WORLD)
+        void init_int_comm_T(const int* values)
         {
-            initialize_T(values, comm);
+            initialize_T(values);
         }
         void complete_double_comm_T(std::vector<double>& result)
         {
@@ -1857,38 +1841,36 @@ namespace raptor
         }
 
         template<typename T, typename U>
-        void communicate_T(const std::vector<T>& values, std::vector<U>& result,
-                MPI_Comm comm = MPI_COMM_WORLD)
+        void communicate_T(const std::vector<T>& values, std::vector<U>& result)
         {
-            CommPkg::communicate_T(values.data(), result, comm);
+            CommPkg::communicate_T(values.data(), result);
         }
         template<typename T, typename U>
-        void communicate_T(const T* values, std::vector<U>& result,
-                MPI_Comm comm = MPI_COMM_WORLD)
+        void communicate_T(const T* values, std::vector<U>& result)
         {
-            CommPkg::communicate_T(values, result, comm);
+            CommPkg::communicate_T(values, result);
         }
         template<typename T>
-        void communicate_T(const std::vector<T>& values, MPI_Comm comm = MPI_COMM_WORLD)
+        void communicate_T(const std::vector<T>& values)
         {
-            CommPkg::communicate_T(values.data(), comm);
+            CommPkg::communicate_T(values.data());
         }
         template<typename T>
-        void communicate_T(const T* values, MPI_Comm comm = MPI_COMM_WORLD)
+        void communicate_T(const T* values)
         {
-            CommPkg::communicate_T(values, comm);
+            CommPkg::communicate_T(values);
         }
 
         template<typename T>
-        void initialize_T(const T* values, MPI_Comm comm)
+        void initialize_T(const T* values)
         {
             int idx;
 
             // Messages with origin and final destination on node
-            local_L_par_comm->communicate_T(values, topology->local_comm);
+            local_L_par_comm->communicate_T(values);
 
             // Initial redistribution among node
-            local_R_par_comm->communicate_T(values, topology->local_comm);
+            local_R_par_comm->communicate_T(values);
 
             // Begin inter-node communication 
             std::vector<T>& R_sendbuf = local_R_par_comm->send_data->get_buffer<T>();
@@ -1899,7 +1881,7 @@ namespace raptor
                 idx = local_R_par_comm->send_data->indices[i];
                 G_recvbuf[idx] += R_sendbuf[i];
             }
-            global_par_comm->init_comm_T(G_recvbuf, comm);
+            global_par_comm->init_comm_T(G_recvbuf);
 
         }
 
@@ -1940,37 +1922,37 @@ namespace raptor
             }
 
             // Redistributing recvd inter-node values
-            local_S_par_comm->communicate_T(S_recvbuf, topology->local_comm);
+            local_S_par_comm->communicate_T(S_recvbuf);
         }
 
 
         // Matrix Communication
         CSRMatrix* communicate(std::vector<int>& rowptr, std::vector<int>& col_indices,
-                std::vector<double>& values, MPI_Comm comm = MPI_COMM_WORLD);
+                std::vector<double>& values);
         CSRMatrix* communicate_T(std::vector<int>& rowptr, std::vector<int>& col_indices, 
-                std::vector<double>& values, int n_result_rows, MPI_Comm comm = MPI_COMM_WORLD);
-        CSRMatrix* communicate(ParCSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
+                std::vector<double>& values, int n_result_rows);
+        CSRMatrix* communicate(ParCSRMatrix* A)
         {
-            return CommPkg::communicate(A, comm);
+            return CommPkg::communicate(A);
         }
-        CSRMatrix* communicate(CSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
+        CSRMatrix* communicate(CSRMatrix* A)
         {
-            return CommPkg::communicate(A, comm);
+            return CommPkg::communicate(A);
         }
-        CSRMatrix* communicate_T(CSRMatrix* A, MPI_Comm comm = MPI_COMM_WORLD)
+        CSRMatrix* communicate_T(CSRMatrix* A)
         {
-            return CommPkg::communicate_T(A, comm);
+            return CommPkg::communicate_T(A);
         }
 
         // Vector Communication        
-        std::vector<double>& communicate(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD)
+        std::vector<double>& communicate(ParVector& v)
         {
-            return CommPkg::communicate(v, comm);
+            return CommPkg::communicate(v);
         }
 
-        void init_comm(ParVector& v, MPI_Comm comm = MPI_COMM_WORLD)
+        void init_comm(ParVector& v)
         {
-            CommPkg::init_comm(v, comm);
+            CommPkg::init_comm(v);
         }
 
 
@@ -1978,62 +1960,56 @@ namespace raptor
         std::vector<double>& conditional_double_comm(const double* values, 
                 const int* send_compares,
                 const int* recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {})
         {
             return conditional_communication<double, MPI_DOUBLE>(values, send_compares, 
-                    recv_compares, comm, compare_func);
+                    recv_compares, compare_func);
         
         }
         std::vector<int>& conditional_int_comm(const int* values,
                 const int* send_compares,
                 const int* recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {})
         {
             return conditional_communication<int, MPI_INT>(values, send_compares, 
-                    recv_compares, comm, compare_func);
+                    recv_compares, compare_func);
         }
 
         void conditional_double_comm_T(const double* values, 
                 std::vector<double>& result,
                 const int* send_compares,
                 const int* recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {},
                 std::function<double(double, double)> result_func = {})
         {
             conditional_communication_T<double, double, MPI_DOUBLE>(values, result, 
-                    send_compares, recv_compares, comm, compare_func, result_func);
+                    send_compares, recv_compares, compare_func, result_func);
         }
         void conditional_int_comm_T(const int* values, 
                 std::vector<int>& result,
                 const int* send_compares,
                 const int* recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {},
                 std::function<int(int, int)> result_func = {})                
         {
             conditional_communication_T<int, int, MPI_INT>(values, result, 
-                    send_compares, recv_compares, comm, compare_func, result_func);
+                    send_compares, recv_compares, compare_func, result_func);
         }
         void conditional_int_comm_T(const int* values, 
                 std::vector<double>& result,
                 const int* send_compares,
                 const int* recv_compares, 
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {},
                 std::function<double(double, int)> result_func = {})                
         {
             conditional_communication_T<int, double, MPI_INT>(values, result, 
-                    send_compares, recv_compares, comm, compare_func, result_func);
+                    send_compares, recv_compares, compare_func, result_func);
         }
 
         template<typename T, MPI_Datatype MPI_T>
         std::vector<T>& conditional_communication(const T* values, 
                 const int* send_compares,
                 const int* recv_compares,
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {})
         {
             int start, end;
@@ -2051,11 +2027,11 @@ namespace raptor
             std::vector<T> G_recvbuf;
 
             // Local communication... send states and off proc states
-            local_S_par_comm->communicate(send_compares, topology->local_comm);
+            local_S_par_comm->communicate(send_compares);
             std::copy(local_S_par_comm->recv_data->int_buffer.begin(),
                     local_S_par_comm->recv_data->int_buffer.end(),
                     std::back_inserter(global_send_compares));
-            local_R_par_comm->communicate_T(recv_compares, topology->local_comm);
+            local_R_par_comm->communicate_T(recv_compares);
             if (global_par_comm->recv_data->size_msgs)
             {
                 global_recv_compares.resize(global_par_comm->recv_data->size_msgs);
@@ -2067,18 +2043,18 @@ namespace raptor
             }
 
             // Local communication... can send / recv everything
-            S_recvbuf = local_S_par_comm->communicate(values, topology->local_comm);
+            S_recvbuf = local_S_par_comm->communicate(values);
 
             // Global communication... only send if compare yields true
             G_recvbuf = global_par_comm->conditional_comm(S_recvbuf,
                     global_send_compares,  
                     global_recv_compares, 
-                    comm, compare_func);
+                    compare_func);
             //G_recvbuf = global_par_comm->communicate(S_recvbuf, comm);
 
             // local communication ... send as normal
-            R_recvbuf = local_R_par_comm->communicate(G_recvbuf, topology->local_comm);
-            L_recvbuf = local_L_par_comm->communicate(values, topology->local_comm);
+            R_recvbuf = local_R_par_comm->communicate(G_recvbuf);
+            L_recvbuf = local_L_par_comm->communicate(values);
 
             // Add values to recv_buffer
             std::vector<T>& recvbuf = get_recv_buffer<T>();
@@ -2116,7 +2092,6 @@ namespace raptor
                 std::vector<U>& result, 
                 const int* send_compares,
                 const int* recv_compares,
-                MPI_Comm comm = MPI_COMM_WORLD,
                 std::function<bool(int)> compare_func = {},
                 std::function<U(U, T)> result_func = {})
         {
@@ -2134,11 +2109,11 @@ namespace raptor
             std::vector<int> global_recv_compares;
 
             // Local communication... send states and off proc states
-            local_S_par_comm->communicate(send_compares, topology->local_comm);
+            local_S_par_comm->communicate(send_compares);
             std::copy(local_S_par_comm->recv_data->int_buffer.begin(),
                     local_S_par_comm->recv_data->int_buffer.end(),
                     std::back_inserter(global_send_compares));
-            local_R_par_comm->communicate_T(recv_compares, topology->local_comm);
+            local_R_par_comm->communicate_T(recv_compares);
             if (global_par_comm->recv_data->size_msgs)
             {
                 global_recv_compares.resize(global_par_comm->recv_data->size_msgs);
@@ -2150,7 +2125,7 @@ namespace raptor
             }
 
             // Initial redistribution among node
-            local_R_par_comm->communicate_T(values, topology->local_comm);
+            local_R_par_comm->communicate_T(values);
             R_sendbuf = local_R_par_comm->send_data->get_buffer<T>();
 
             // Begin inter-node communication 
@@ -2169,14 +2144,13 @@ namespace raptor
                     S_recvbuf,
                     global_send_compares,  
                     global_recv_compares, 
-                    comm, 
                     compare_func, 
                     result_func);
 
-            local_S_par_comm->communicate_T(S_recvbuf, topology->local_comm);
+            local_S_par_comm->communicate_T(S_recvbuf);
             S_sendbuf = local_S_par_comm->send_data->get_buffer<T>();
 
-            local_L_par_comm->communicate_T(values, topology->local_comm);
+            local_L_par_comm->communicate_T(values);
             L_sendbuf = local_L_par_comm->send_data->get_buffer<T>();
 
             for (int i = 0; i < local_S_par_comm->send_data->size_msgs; i++)

@@ -43,8 +43,8 @@ TEST(TAPCommTest, TestsInCore)
     {
         x[i] = A->local_row_map[i];
     }
-    tap_recv = A->tap_comm->communicate(x, MPI_COMM_WORLD);
-    par_recv = A->comm->communicate(x, MPI_COMM_WORLD);
+    tap_recv = A->tap_comm->communicate(x);
+    par_recv = A->comm->communicate(x);
     ASSERT_EQ(tap_recv.size(), par_recv.size());
     for (int i = 0; i < par_recv.size(); i++)
     {
@@ -52,8 +52,8 @@ TEST(TAPCommTest, TestsInCore)
     }
 
     x.set_rand_values();
-    tap_recv = A->tap_comm->communicate(x, MPI_COMM_WORLD);
-    par_recv = A->comm->communicate(x, MPI_COMM_WORLD);
+    tap_recv = A->tap_comm->communicate(x);
+    par_recv = A->comm->communicate(x);
     ASSERT_EQ(tap_recv.size(), par_recv.size());
     for (int i = 0; i < par_recv.size(); i++)
     {

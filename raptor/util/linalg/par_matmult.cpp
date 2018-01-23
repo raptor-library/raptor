@@ -102,7 +102,7 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, double* t, double* tcomm)
     CSRMatrix* Ctmp = mult_T_partial(A);
     if (tcomm) *tcomm -= MPI_Wtime();
     CSRMatrix* recv_mat = A->comm->communicate_T(Ctmp->idx1, Ctmp->idx2, 
-            Ctmp->vals, A->on_proc_num_cols, MPI_COMM_WORLD);
+            Ctmp->vals, A->on_proc_num_cols);
     if (tcomm) *tcomm += MPI_Wtime();
 
 
@@ -178,7 +178,7 @@ ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A, double* t, double* tcomm
     CSRMatrix* Ctmp = mult_T_partial(A);
     if (tcomm) *tcomm -= MPI_Wtime();
     CSRMatrix* recv_mat = A->tap_comm->communicate_T(Ctmp->idx1, Ctmp->idx2, 
-            Ctmp->vals, A->on_proc_num_cols, MPI_COMM_WORLD);
+            Ctmp->vals, A->on_proc_num_cols);
     if (tcomm) *tcomm += MPI_Wtime();
 
 

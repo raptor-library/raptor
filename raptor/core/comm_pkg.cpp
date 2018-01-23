@@ -18,29 +18,27 @@ namespace raptor
     }
 
     template<>
-    std::vector<double>& CommPkg::communicate<double>(const double* values,
-            MPI_Comm comm)
+    std::vector<double>& CommPkg::communicate<double>(const double* values)
     {
-        init_double_comm(values, comm);
+        init_double_comm(values);
         return complete_double_comm();
     }
     template<>
-    std::vector<int>& CommPkg::communicate<int>(const int* values,
-            MPI_Comm comm)
+    std::vector<int>& CommPkg::communicate<int>(const int* values)
     {
-        init_int_comm(values, comm);
+        init_int_comm(values);
         return complete_int_comm();
     }
 
     template<>
-    void CommPkg::init_comm<double>(const double* values, MPI_Comm comm)
+    void CommPkg::init_comm<double>(const double* values)
     {
-        init_double_comm(values, comm);
+        init_double_comm(values);
     }
     template<>
-    void CommPkg::init_comm<int>(const int* values, MPI_Comm comm)
+    void CommPkg::init_comm<int>(const int* values)
     {
-        init_int_comm(values, comm);
+        init_int_comm(values);
     }
 
     template<>
@@ -56,55 +54,54 @@ namespace raptor
 
     template<>
     void CommPkg::communicate_T(const double* values,
-            std::vector<double>& result, MPI_Comm comm)
+            std::vector<double>& result)
     {
-        init_double_comm_T(values, comm);
+        init_double_comm_T(values);
         complete_double_comm_T(result);
     }
     template<>
     void CommPkg::communicate_T(const double* values,
-            std::vector<int>& result, MPI_Comm comm)
+            std::vector<int>& result)
     {
-        init_double_comm_T(values, comm);
+        init_double_comm_T(values);
         complete_double_comm_T(result);
     }
     template<>
     void CommPkg::communicate_T(const int* values,
-            std::vector<int>& result, MPI_Comm comm)
+            std::vector<int>& result)
     {
-        init_int_comm_T(values, comm);
+        init_int_comm_T(values);
         complete_int_comm_T(result);
     }
     template<>
     void CommPkg::communicate_T(const int* values,
-            std::vector<double>& result, MPI_Comm comm)
+            std::vector<double>& result)
     {
-        init_int_comm_T(values, comm);
+        init_int_comm_T(values);
         complete_int_comm_T(result);
     }
     template<>
-    void CommPkg::communicate_T<double>(const double* values,
-            MPI_Comm comm)
+    void CommPkg::communicate_T<double>(const double* values)
     {
-        init_double_comm_T(values, comm);
+        init_double_comm_T(values);
         complete_double_comm_T();
     }
     template<>
-    void CommPkg::communicate_T<int>(const int* values, MPI_Comm comm)
+    void CommPkg::communicate_T<int>(const int* values)
     {
-        init_int_comm_T(values, comm);
+        init_int_comm_T(values);
         complete_int_comm_T();
     }
 
     template<>
-    void CommPkg::init_comm_T<double>(const double* values, MPI_Comm comm)
+    void CommPkg::init_comm_T<double>(const double* values)
     {
-        init_double_comm_T(values, comm);
+        init_double_comm_T(values);
     }
     template<>
-    void CommPkg::init_comm_T<int>(const int* values, MPI_Comm comm)
+    void CommPkg::init_comm_T<int>(const int* values)
     {
-        init_int_comm_T(values, comm);
+        init_int_comm_T(values);
     }
 
     template<>
@@ -142,75 +139,70 @@ namespace raptor
     std::vector<double>& CommPkg::conditional_comm<double>(const double* values, 
                 const int* send_compares, 
                 const int* recv_compares,
-                MPI_Comm comm,
                 std::function<bool(int)> compare_func)
     {
         return conditional_double_comm(values, send_compares, recv_compares,
-                comm, compare_func);
+                compare_func);
     }
     template<> 
     std::vector<int>& CommPkg::conditional_comm<int>(const int* values, 
                 const int* send_compares, 
                 const int* recv_compares,
-                MPI_Comm comm,
                 std::function<bool(int)> compare_func)
     {
         return conditional_int_comm(values, send_compares, recv_compares,
-                comm, compare_func);
+                compare_func);
     }
     template<> 
     void CommPkg::conditional_comm_T<double, double>(const double* values, 
                 std::vector<double>& result,
                 const int* send_compares, 
                 const int* recv_compares,
-                MPI_Comm comm,
                 std::function<bool(int)> compare_func,
                 std::function<double(double, double)> result_func)
     {
         conditional_double_comm_T(values, result, send_compares, recv_compares,
-                comm, compare_func, result_func);
+                compare_func, result_func);
     }
     template<> 
     void CommPkg::conditional_comm_T<int, double>(const int* values, 
                 std::vector<double>& result,
                 const int* send_compares, 
                 const int* recv_compares,
-                MPI_Comm comm,
                 std::function<bool(int)> compare_func, 
                 std::function<double(double, int)> result_func)
     {
         conditional_int_comm_T(values, result, send_compares, recv_compares,
-                comm, compare_func, result_func);
+                compare_func, result_func);
     }
     template<> 
     void CommPkg::conditional_comm_T<int, int>(const int* values, 
                 std::vector<int>& result,
                 const int* send_compares, 
                 const int* recv_compares,
-                MPI_Comm comm,
                 std::function<bool(int)> compare_func,
                 std::function<int(int, int)> result_func)
     {
         conditional_int_comm_T(values, result, send_compares, recv_compares,
-                comm, compare_func, result_func);
+                compare_func, result_func);
     }
 }
 
 
 using namespace raptor;
 
-std::vector<double>& CommPkg::communicate(ParVector& v, MPI_Comm comm)
+std::vector<double>& CommPkg::communicate(ParVector& v)
 {
-    init_double_comm(v.local.data(), comm);
+    init_double_comm(v.local.data());
     return complete_double_comm();
 }
 
-void CommPkg::init_comm(ParVector& v, MPI_Comm comm)
+void CommPkg::init_comm(ParVector& v)
 {
-    init_double_comm(v.local.data(), comm);
+    init_double_comm(v.local.data());
 }
 
-CSRMatrix* CommPkg::communicate(ParCSRMatrix* A, MPI_Comm comm)
+CSRMatrix* CommPkg::communicate(ParCSRMatrix* A)
 {
     int start, end;
     int ctr;
@@ -249,12 +241,12 @@ CSRMatrix* CommPkg::communicate(ParCSRMatrix* A, MPI_Comm comm)
         }
         rowptr[i+1] = ctr;
     }
-    return communicate(rowptr, col_indices, values, comm);
+    return communicate(rowptr, col_indices, values);
 }
 
 CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
         std::vector<int>& col_indices, std::vector<double>& values,
-        MPI_Comm comm, CommData* send_comm, CommData* recv_comm)
+        CommData* send_comm, CommData* recv_comm)
 {
     comm_time -= MPI_Wtime();
 
@@ -304,7 +296,7 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
         }
         ctr = send_buffer.size();
         MPI_Isend(&(send_buffer[prev_ctr]), ctr - prev_ctr, MPI_DOUBLE_INT, proc, 
-                key, comm, &(send_comm->requests[i]));
+                key, mpi_comm, &(send_comm->requests[i]));
         prev_ctr = ctr;
     }
 
@@ -316,13 +308,13 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
         start = recv_comm->indptr[i];
         end = recv_comm->indptr[i+1];
         size = end - start;
-        MPI_Probe(proc, key, comm, &recv_status);
+        MPI_Probe(proc, key, mpi_comm, &recv_status);
         MPI_Get_count(&recv_status, MPI_DOUBLE_INT, &count);
         if (count > recv_buffer.size())
         {
             recv_buffer.resize(count);
         }
-        MPI_Recv((&recv_buffer[0]), count, MPI_DOUBLE_INT, proc, key, comm,
+        MPI_Recv((&recv_buffer[0]), count, MPI_DOUBLE_INT, proc, key, mpi_comm,
             &recv_status);
         ctr = 0;
         for (int j = 0; j < size; j++)
@@ -347,16 +339,15 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
 }    
 
 CSRMatrix* ParComm::communicate(std::vector<int>& rowptr, 
-        std::vector<int>& col_indices, std::vector<double>& values,
-        MPI_Comm comm)
+        std::vector<int>& col_indices, std::vector<double>& values)
 {
-    return communication_helper(rowptr, col_indices, values, comm,
+    return communication_helper(rowptr, col_indices, values,
             send_data, recv_data);
 }
 
 CSRMatrix* ParComm::communicate_T(std::vector<int>& rowptr, 
         std::vector<int>& col_indices, std::vector<double>& values,
-        int n_result_rows, MPI_Comm comm)
+        int n_result_rows)
 {
     int idx, ptr;
     int start, end;
@@ -364,7 +355,7 @@ CSRMatrix* ParComm::communicate_T(std::vector<int>& rowptr,
     std::vector<int> row_sizes;
     if (n_result_rows) row_sizes.resize(n_result_rows, 0);
 
-    CSRMatrix* recv_mat_T = communication_helper(rowptr, col_indices, values, comm,
+    CSRMatrix* recv_mat_T = communication_helper(rowptr, col_indices, values,
             recv_data, send_data);
 
 
@@ -403,31 +394,28 @@ CSRMatrix* ParComm::communicate_T(std::vector<int>& rowptr,
         }
     }
 
-
     delete recv_mat_T;
 
     return recv_mat;
 }
     
 CSRMatrix* TAPComm::communicate(std::vector<int>& rowptr, 
-        std::vector<int>& col_indices, std::vector<double>& values,
-        MPI_Comm comm)
+        std::vector<int>& col_indices, std::vector<double>& values)
 {   
     int ctr, idx, row;
     int start, end;
 
     CSRMatrix* L_mat = local_L_par_comm->communicate(rowptr, col_indices,
-            values, topology->local_comm);
+            values);
 
-    CSRMatrix* S_mat = local_S_par_comm->communicate(rowptr, col_indices, values, 
-            topology->local_comm);
+    CSRMatrix* S_mat = local_S_par_comm->communicate(rowptr, col_indices, values);
 
     CSRMatrix* G_mat = global_par_comm->communicate(S_mat->idx1, S_mat->idx2, 
-            S_mat->vals, comm);
+            S_mat->vals);
     delete S_mat;
 
     CSRMatrix* R_mat = local_R_par_comm->communicate(G_mat->idx1, G_mat->idx2, 
-            G_mat->vals, topology->local_comm);
+            G_mat->vals);
     delete G_mat;
 
 
@@ -495,7 +483,7 @@ CSRMatrix* TAPComm::communicate(std::vector<int>& rowptr,
 
 CSRMatrix* TAPComm::communicate_T(std::vector<int>& rowptr, 
         std::vector<int>& col_indices, std::vector<double>& values,
-        int n_result_rows, MPI_Comm comm)
+        int n_result_rows)
 {   
     int n_rows = rowptr.size() - 1;
     int idx, ptr;
@@ -504,21 +492,20 @@ CSRMatrix* TAPComm::communicate_T(std::vector<int>& rowptr,
     int row_start, row_end, row_size;
 
     CSRMatrix* L_mat = local_L_par_comm->communication_helper(rowptr, col_indices, 
-            values, topology->local_comm, local_L_par_comm->recv_data, 
+            values, local_L_par_comm->recv_data, 
             local_L_par_comm->send_data);
 
     CSRMatrix* R_mat = local_R_par_comm->communicate_T(rowptr, col_indices,
-            values, global_par_comm->recv_data->size_msgs, topology->local_comm);
+            values, global_par_comm->recv_data->size_msgs);
     R_mat->sort();
     R_mat->remove_duplicates();
 
     CSRMatrix* G_mat = global_par_comm->communicate_T(R_mat->idx1, R_mat->idx2,
-            R_mat->vals, local_S_par_comm->recv_data->size_msgs, comm);
+            R_mat->vals, local_S_par_comm->recv_data->size_msgs);
     delete R_mat;
 
     CSRMatrix* S_mat = local_S_par_comm->communication_helper(G_mat->idx1, G_mat->idx2,
-            G_mat->vals, topology->local_comm, local_S_par_comm->recv_data,
-            local_S_par_comm->send_data);
+            G_mat->vals, local_S_par_comm->recv_data, local_S_par_comm->send_data);
     delete G_mat;
 
     CSRMatrix* recv_mat = new CSRMatrix(n_result_rows, -1);
