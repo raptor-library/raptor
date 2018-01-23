@@ -274,30 +274,107 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
 
     // Send pair_data for each row using MPI_DOUBLE_INT
     ctr = 0;
-    for (int i = 0; i < send_comm->num_msgs; i++)
-    {
-        start = send_comm->indptr[i];
-        end = send_comm->indptr[i+1];
-        for (int j = start; j < end; j++)
+    if (send_comm->indptr_T.size())
+    {        
+        int size_pos, idx_start, idx_end;
+        for (int i = 0; i < send_comm->num_msgs; i++)
         {
-            if (send_comm->indices.size())
-                row = send_comm->indices[j];
-            else
-                row = j;
-            row_start = rowptr[row];
-            row_end = rowptr[row+1];
-            send_buffer.push_back(PairData());
-            send_buffer[ctr++].index = row_end - row_start;
-            for (int k = row_start; k < row_end; k++)
+            start = send_comm->indptr[i];
+            end = send_comm->indptr[i+1];
+            for (int j = start; j < end; j++)
             {
+                size_pos = ctr;
                 send_buffer.push_back(PairData());
-                send_buffer[ctr].index = col_indices[k];
-                send_buffer[ctr++].val = values[k];
+                send_buffer[ctr++].index = 0;
+                idx_start = send_comm->indptr_T[j];
+                idx_end = send_comm->indptr_T[j+1];
+                for (int k = idx_start; k < idx_end; k++)
+                {
+                    row = send_comm->indices[k];
+                    row_start = rowptr[row];
+                    row_end = rowptr[row+1];
+                    send_buffer[size_pos].index += (row_end - row_start);
+                    for (int l = row_start; l < row_end; l++)
+                    {
+                        send_buffer.push_back(PairData());
+                        send_buffer[ctr].index = col_indices[l];
+                        send_buffer[ctr++].val = values[l];
+                    }
+                }
+                if (ctr > size_pos + 1)
+                {
+                    std::sort(send_buffer.begin() + size_pos + 1, send_buffer.begin() + ctr, 
+                            [&](const PairData& lhs, const PairData& rhs)
+                            {
+                                return lhs.index < rhs.index;
+                            });
+                    int pos = size_pos + 1;
+                    for (int k = size_pos + 2; k < ctr; k++)
+                    {
+                        if (send_buffer[k].index == send_buffer[pos].index)
+                        {
+                            send_buffer[pos].val += send_buffer[k].val;
+                        }
+                        else
+                        {
+                            pos++;
+                            send_buffer[pos].index = send_buffer[k].index;
+                            send_buffer[pos].val = send_buffer[k].val;
+                        }
+                    }
+                    send_buffer.resize(pos+1);
+                    send_buffer[size_pos].index = pos - size_pos;
+                }
             }
+            send_ptr[i+1] = ctr;
         }
-        send_ptr[i+1] = ctr;
     }
-
+    else if (send_comm->indices.size())
+    {
+        for (int i = 0; i < send_comm->num_msgs; i++)
+        {
+            start = send_comm->indptr[i];
+            end = send_comm->indptr[i+1];
+            for (int j = start; j < end; j++)
+            {
+                row = send_comm->indices[j];
+                row_start = rowptr[row];
+                row_end = rowptr[row+1];
+                send_buffer.push_back(PairData());
+                send_buffer[ctr++].index = row_end - row_start;
+                for (int k = row_start; k < row_end; k++)
+                {
+                    send_buffer.push_back(PairData());
+                    send_buffer[ctr].index = col_indices[k];
+                    send_buffer[ctr++].val = values[k];
+                }
+            }
+            send_ptr[i+1] = ctr;
+        }
+    }
+    else
+    {
+        for (int i = 0; i < send_comm->num_msgs; i++)
+        {
+            start = send_comm->indptr[i];
+            end = send_comm->indptr[i+1];
+            for (int j = start; j < end; j++)
+            {
+                row = j;
+                row_start = rowptr[row];
+                row_end = rowptr[row+1];
+                send_buffer.push_back(PairData());
+                send_buffer[ctr++].index = row_end - row_start;
+                for (int k = row_start; k < row_end; k++)
+                {
+                    send_buffer.push_back(PairData());
+                    send_buffer[ctr].index = col_indices[k];
+                    send_buffer[ctr++].val = values[k];
+                }
+            }
+            send_ptr[i+1] = ctr;
+        }
+    }
     for (int i = 0; i < send_comm->num_msgs; i++)
     {
         proc = send_comm->procs[i];
@@ -502,13 +579,18 @@ CSRMatrix* TAPComm::communicate_T(std::vector<int>& rowptr,
             values, local_L_par_comm->recv_data, 
             local_L_par_comm->send_data);
 
-    CSRMatrix* R_mat = local_R_par_comm->communicate_T(rowptr, col_indices,
-            values, global_par_comm->recv_data->size_msgs);
-    R_mat->sort();
-    R_mat->remove_duplicates();
+    CSRMatrix* R_mat = local_R_par_comm->communication_helper(rowptr, col_indices, 
+            values, local_R_par_comm->recv_data, 
+            local_R_par_comm->send_data);
+    //CSRMatrix* R_mat = local_R_par_comm->communicate_T(rowptr, col_indices,
+    //        values, global_par_comm->recv_data->size_msgs);
+    //R_mat->sort();
+    //R_mat->remove_duplicates();
 
-    CSRMatrix* G_mat = global_par_comm->communicate_T(R_mat->idx1, R_mat->idx2,
-            R_mat->vals, local_S_par_comm->recv_data->size_msgs);
+    CSRMatrix* G_mat = global_par_comm->communication_helper(R_mat->idx1, R_mat->idx2,
+            R_mat->vals, global_par_comm->recv_data, global_par_comm->send_data);
+    //CSRMatrix* G_mat = global_par_comm->communicate_T(R_mat->idx1, R_mat->idx2,
+    //        R_mat->vals, local_S_par_comm->recv_data->size_msgs);
     delete R_mat;
 
     CSRMatrix* S_mat = local_S_par_comm->communication_helper(G_mat->idx1, G_mat->idx2,
@@ -566,6 +648,7 @@ CSRMatrix* TAPComm::communicate_T(std::vector<int>& rowptr,
         }
     }
     recv_mat->nnz = recv_mat->idx2.size();
+    recv_mat->sort();
 
     delete L_mat;
     delete S_mat;

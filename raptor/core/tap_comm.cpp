@@ -804,7 +804,8 @@ void TAPComm::form_local_S_par_comm(std::vector<int>& orig_procs)
 
 void TAPComm::adjust_send_indices(const int first_local_col)
 {
-    int idx;
+    int idx, idx_pos, size;
+    int local_S_idx, global_comm_idx;
 
     // Update global row index with local row to send 
     for (int i = 0; i < local_S_par_comm->send_data->size_msgs; i++)
@@ -818,12 +819,32 @@ void TAPComm::adjust_send_indices(const int first_local_col)
     for (int i = 0; i < local_S_par_comm->recv_data->size_msgs; i++)
     {
         S_global_to_local[local_S_par_comm->recv_data->indices[i]] = i;
-        local_S_par_comm->recv_data->indices.clear();
     }
+    std::vector<int> local_S_num_pos;
+    if (local_S_par_comm->recv_data->size_msgs)
+        local_S_num_pos.resize(local_S_par_comm->recv_data->size_msgs, 0);
     for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
     {
         idx = global_par_comm->send_data->indices[i];
-        global_par_comm->send_data->indices[i] = S_global_to_local[idx];
+        local_S_idx = S_global_to_local[idx];
+        global_par_comm->send_data->indices[i] = local_S_idx;
+        local_S_num_pos[local_S_idx]++;
+    }
+    local_S_par_comm->recv_data->indptr_T.resize(local_S_par_comm->recv_data->size_msgs + 1);
+    local_S_par_comm->recv_data->indptr_T[0] = 0;
+    size = 0;
+    for (int i = 0; i < local_S_par_comm->recv_data->size_msgs; i++)
+    {
+        size += local_S_num_pos[i];
+        local_S_par_comm->recv_data->indptr_T[i+1] = size;
+        local_S_num_pos[i] = 0;
+    }
+    local_S_par_comm->recv_data->indices.resize(size);
+    for(int i = 0; i < global_par_comm->send_data->size_msgs; i++)
+    {
+        idx = global_par_comm->send_data->indices[i];
+        idx_pos = local_S_par_comm->recv_data->indptr_T[idx] + local_S_num_pos[idx]++;
+        local_S_par_comm->recv_data->indices[idx_pos] = i;
     }
 
     // Update local_R_par_comm->send_data->indices (global_rows)
@@ -832,13 +853,34 @@ void TAPComm::adjust_send_indices(const int first_local_col)
     for (int i = 0; i < global_par_comm->recv_data->size_msgs; i++)
     {
         global_to_local[global_par_comm->recv_data->indices[i]] = i;
-        global_par_comm->recv_data->indices.clear();
     }
+    std::vector<int> global_num_pos;
+    if (global_par_comm->recv_data->size_msgs)
+        global_num_pos.resize(global_par_comm->recv_data->size_msgs, 0);
     for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
     {
         idx = local_R_par_comm->send_data->indices[i];
-        local_R_par_comm->send_data->indices[i] = global_to_local[idx];
+        global_comm_idx = global_to_local[idx];
+        local_R_par_comm->send_data->indices[i] = global_comm_idx;
+        global_num_pos[global_comm_idx]++;
     }
+    global_par_comm->recv_data->indptr_T.resize(global_par_comm->recv_data->size_msgs + 1);
+    global_par_comm->recv_data->indptr_T[0] = 0;
+    size = 0;
+    for (int i = 0; i < global_par_comm->recv_data->size_msgs; i++)
+    {
+        size += global_num_pos[i];
+        global_par_comm->recv_data->indptr_T[i+1] = size;
+        global_num_pos[i] = 0;
+    }
+    global_par_comm->recv_data->indices.resize(size);
+    for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
+    {
+        idx = local_R_par_comm->send_data->indices[i];
+        idx_pos = global_par_comm->recv_data->indptr_T[idx] + global_num_pos[idx]++;
+        global_par_comm->recv_data->indices[idx_pos] = i;
+    }
+
 }
 
 /**************************************************************

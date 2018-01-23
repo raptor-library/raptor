@@ -528,29 +528,54 @@ namespace raptor
             comm->communicate_T(off_proc_col_to_new);
 
             recv_data->size_msgs = 0;
-            for (int i = 0; i < comm->recv_data->num_msgs; i++)
+            if (comm->recv_data->indices.size())
             {
-                comm_proc = false;
-                proc = comm->recv_data->procs[i];
-                start = comm->recv_data->indptr[i];
-                end = comm->recv_data->indptr[i+1];
-                for (int j = start; j < end; j++)
+                for (int i = 0; i < comm->recv_data->num_msgs; i++)
                 {
-                    if (comm->recv_data->indices.size())
-                        idx = comm->recv_data->indices[j];
-                    else 
-                        idx = j;
-                    new_idx = off_proc_col_to_new[idx];
-                    if (new_idx != -1)
+                    comm_proc = false;
+                    proc = comm->recv_data->procs[i];
+                    start = comm->recv_data->indptr[i];
+                    end = comm->recv_data->indptr[i+1];
+                    for (int j = start; j < end; j++)
                     {
-                        comm_proc = true;
-                        recv_data->size_msgs++;
+                        idx = comm->recv_data->indices[j];
+                        new_idx = off_proc_col_to_new[idx];
+                        if (new_idx != -1)
+                        {
+                            comm_proc = true;
+                            recv_data->size_msgs++;
+                        }
+                    }
+                    if (comm_proc)
+                    {
+                        recv_data->procs.push_back(proc);
+                        recv_data->indptr.push_back(recv_data->size_msgs);
                     }
                 }
-                if (comm_proc)
+            }
+            else
+            {
+                for (int i = 0; i < comm->recv_data->num_msgs; i++)
                 {
-                    recv_data->procs.push_back(proc);
-                    recv_data->indptr.push_back(recv_data->size_msgs);
+                    comm_proc = false;
+                    proc = comm->recv_data->procs[i];
+                    start = comm->recv_data->indptr[i];
+                    end = comm->recv_data->indptr[i+1];
+                    for (int j = start; j < end; j++)
+                    {
+                        idx = j;
+                        new_idx = off_proc_col_to_new[idx];
+                        if (new_idx != -1)
+                        {
+                            comm_proc = true;
+                            recv_data->size_msgs++;
+                        }
+                    }
+                    if (comm_proc)
+                    {
+                        recv_data->procs.push_back(proc);
+                        recv_data->indptr.push_back(recv_data->size_msgs);
+                    }
                 }
             }
             recv_data->num_msgs = recv_data->procs.size();
@@ -603,31 +628,57 @@ namespace raptor
             comm->communicate_T(off_proc_col_to_new);
 
             recv_data->size_msgs = 0;
-            for (int i = 0; i < comm->recv_data->num_msgs; i++)
+            if (comm->recv_data->indices.size())
             {
-                comm_proc = false;
-                proc = comm->recv_data->procs[i];
-                start = comm->recv_data->indptr[i];
-                end = comm->recv_data->indptr[i+1];
-                for (int j = start; j < end; j++)
+                for (int i = 0; i < comm->recv_data->num_msgs; i++)
                 {
-                    if (comm->recv_data->indices.size())
-                        idx = comm->recv_data->indices[j];
-                    else
-                        idx = j;
-                    new_idx = off_proc_col_to_new[idx];
-                    if (new_idx != -1)
+                    comm_proc = false;
+                    proc = comm->recv_data->procs[i];
+                    start = comm->recv_data->indptr[i];
+                    end = comm->recv_data->indptr[i+1];
+                    for (int j = start; j < end; j++)
                     {
-                        comm_proc = true;
-                        recv_data->size_msgs++;
+                        idx = comm->recv_data->indices[j];
+                        new_idx = off_proc_col_to_new[idx];
+                        if (new_idx != -1)
+                        {
+                            comm_proc = true;
+                            recv_data->size_msgs++;
+                        }
+                    }
+                    if (comm_proc)
+                    {
+                        recv_data->procs.push_back(proc);
+                        recv_data->indptr.push_back(recv_data->size_msgs);
                     }
                 }
-                if (comm_proc)
+            }
+            else
+            {
+                for (int i = 0; i < comm->recv_data->num_msgs; i++)
                 {
-                    recv_data->procs.push_back(proc);
-                    recv_data->indptr.push_back(recv_data->size_msgs);
+                    comm_proc = false;
+                    proc = comm->recv_data->procs[i];
+                    start = comm->recv_data->indptr[i];
+                    end = comm->recv_data->indptr[i+1];
+                    for (int j = start; j < end; j++)
+                    {
+                        idx = j;
+                        new_idx = off_proc_col_to_new[idx];
+                        if (new_idx != -1)
+                        {
+                            comm_proc = true;
+                            recv_data->size_msgs++;
+                        }
+                    }
+                    if (comm_proc)
+                    {
+                        recv_data->procs.push_back(proc);
+                        recv_data->indptr.push_back(recv_data->size_msgs);
+                    }
                 }
             }
+
             recv_data->num_msgs = recv_data->procs.size();
             recv_data->finalize();
 
@@ -816,21 +867,61 @@ namespace raptor
             std::vector<T>& recvbuf = recv_data->get_buffer<T>();
             MPI_Datatype type = get_type(sendbuf);
 
-            for (int i = 0; i < recv_data->num_msgs; i++)
+            if (recv_data->indptr_T.size())
             {
-                proc = recv_data->procs[i];
-                start = recv_data->indptr[i];
-                end = recv_data->indptr[i+1];
-                for (int j = start; j < end; j++)
+                int idx_start, idx_end;
+                T val;
+                for (int i = 0; i < recv_data->num_msgs; i++)
                 {
-                    if (recv_data->indices.size())
-                        idx = recv_data->indices[j];
-                    else 
-                        idx = j;
-                    recvbuf[j] = values[idx];
+                    proc = recv_data->procs[i];
+                    start = recv_data->indptr[i];
+                    end = recv_data->indptr[i+1];
+                    for (int j = start; j < end; j++)
+                    {
+                        idx_start = recv_data->indptr_T[j];
+                        idx_end = recv_data->indptr_T[j+1];
+                        val = 0;
+                        for (int k = idx_start; k < idx_end; k++)
+                        {
+                            val += values[recv_data->indices[k]];
+                        }
+                        recvbuf[j] = val;
+                    }
+                    MPI_Isend(&(recvbuf[start]), end - start, type,
+                            proc, key, mpi_comm, &(recv_data->requests[i]));
                 }
-                MPI_Isend(&(recvbuf[start]), end - start, type,
-                        proc, key, mpi_comm, &(recv_data->requests[i]));
+            }
+            else if (recv_data->indices.size())
+            {
+                for (int i = 0; i < recv_data->num_msgs; i++)
+                {
+                    proc = recv_data->procs[i];
+                    start = recv_data->indptr[i];
+                    end = recv_data->indptr[i+1];
+                    for (int j = start; j < end; j++)
+                    {
+                        idx = recv_data->indices[j];
+                        recvbuf[j] = values[idx];
+                    }
+                    MPI_Isend(&(recvbuf[start]), end - start, type,
+                            proc, key, mpi_comm, &(recv_data->requests[i]));
+                }
+            }
+            else
+            {
+                for (int i = 0; i < recv_data->num_msgs; i++)
+                {
+                    proc = recv_data->procs[i];
+                    start = recv_data->indptr[i];
+                    end = recv_data->indptr[i+1];
+                    for (int j = start; j < end; j++)
+                    {
+                        idx = j;
+                        recvbuf[j] = values[idx];
+                    }
+                    MPI_Isend(&(recvbuf[start]), end - start, type,
+                            proc, key, mpi_comm, &(recv_data->requests[i]));
+                }
             }
             for (int i = 0; i < send_data->num_msgs; i++)
             {
@@ -1008,29 +1099,54 @@ namespace raptor
             n_recvs = 0;
             ctr = 0;
             prev_ctr = 0;
-            for (int i = 0; i < recv_data->num_msgs; i++)
+            if (recv_data->indices.size())
             {
-                proc = recv_data->procs[i];
-                start = recv_data->indptr[i];
-                end = recv_data->indptr[i+1];
-                for (int j = start; j < end; j++)
+                for (int i = 0; i < recv_data->num_msgs; i++)
                 {
-                    if (recv_data->indices.size())
-                        idx = recv_data->indices[j];
-                    else 
-                        idx = j;
-
-                    if (compare_func(recv_compares[idx]))
+                    proc = recv_data->procs[i];
+                    start = recv_data->indptr[i];
+                    end = recv_data->indptr[i+1];
+                    for (int j = start; j < end; j++)
                     {
-                        ctr++;
+                        idx = recv_data->indices[j];
+
+                        if (compare_func(recv_compares[idx]))
+                        {
+                            ctr++;
+                        }
+                    }
+                    size = ctr - prev_ctr;
+                    if (size)
+                    {
+                        MPI_Irecv(&(recvbuf[prev_ctr]), size, type,
+                                proc, key, mpi_comm, &(recv_data->requests[n_recvs++]));
+                        prev_ctr = ctr;
                     }
                 }
-                size = ctr - prev_ctr;
-                if (size)
+            }
+            else
+            {
+                for (int i = 0; i < recv_data->num_msgs; i++)
                 {
-                    MPI_Irecv(&(recvbuf[prev_ctr]), size, type,
-                            proc, key, mpi_comm, &(recv_data->requests[n_recvs++]));
-                    prev_ctr = ctr;
+                    proc = recv_data->procs[i];
+                    start = recv_data->indptr[i];
+                    end = recv_data->indptr[i+1];
+                    for (int j = start; j < end; j++)
+                    {
+                        idx = j;
+
+                        if (compare_func(recv_compares[idx]))
+                        {
+                            ctr++;
+                        }
+                    }
+                    size = ctr - prev_ctr;
+                    if (size)
+                    {
+                        MPI_Irecv(&(recvbuf[prev_ctr]), size, type,
+                                proc, key, mpi_comm, &(recv_data->requests[n_recvs++]));
+                        prev_ctr = ctr;
+                    }
                 }
             }
 
@@ -1044,20 +1160,36 @@ namespace raptor
             }
 
             ctr--;
-            for (int i = recv_data->size_msgs - 1; i >= 0; i--)
+            if (recv_data->indices.size())
             {
-                if (recv_data->indices.size())
+                for (int i = recv_data->size_msgs - 1; i >= 0; i--)
+                {
                     idx = recv_data->indices[i];
-                else 
+
+                    if (compare_func(recv_compares[idx]))
+                    {
+                        recvbuf[idx] = recvbuf[ctr--];
+                    }
+                    else
+                    {
+                        recvbuf[idx] = 0.0;
+                    }
+                }
+            }
+            else
+            {
+                for (int i = recv_data->size_msgs - 1; i >= 0; i--)
+                {
                     idx = i;
 
-                if (compare_func(recv_compares[idx]))
-                {
-                    recvbuf[idx] = recvbuf[ctr--];
-                }
-                else
-                {
-                    recvbuf[idx] = 0.0;
+                    if (compare_func(recv_compares[idx]))
+                    {
+                        recvbuf[idx] = recvbuf[ctr--];
+                    }
+                    else
+                    {
+                        recvbuf[idx] = 0.0;
+                    }
                 }
             }
             return recvbuf;
@@ -1091,29 +1223,86 @@ namespace raptor
             n_sends = 0;
             ctr = 0;
             prev_ctr = 0;
-            for (int i = 0; i < recv_data->num_msgs; i++)
+            if (recv_data->indptr_T.size())
             {
-                proc = recv_data->procs[i];
-                start = recv_data->indptr[i];
-                end = recv_data->indptr[i+1];
-                for (int j = start; j < end; j++)
+                int idx_start, idx_end;
+                T val;
+                for (int i = 0; i < recv_data->num_msgs; i++)
                 {
-                    if (recv_data->indices.size())
-                        idx = recv_data->indices[j];
-                    else 
-                        idx = j;
-
-                    if (compare_func(recv_compares[idx]))
+                    proc = recv_data->procs[i];
+                    start = recv_data->indptr[i];
+                    end = recv_data->indptr[i+1];
+                    for (int j = start; j < end; j++)
                     {
-                        recvbuf[ctr++] = values[idx];
+                        if (compare_func(recv_compares[idx]))
+                        {
+                            idx_start = recv_data->indptr_T[j];
+                            idx_end = recv_data->indptr_T[j+1];
+                            val = 0;
+                            for (int k = idx_start; k < idx_end; k++)
+                            {
+                                val += values[recv_data->indices[k]];
+                            }
+                            recvbuf[ctr++] = val;
+                        }
+                    }
+                    size = ctr - prev_ctr;
+                    if (size)
+                    {
+                        MPI_Issend(&(recvbuf[prev_ctr]), size, type, 
+                                proc, key, mpi_comm, &(recv_data->requests[n_sends++]));
+                        prev_ctr = ctr;
                     }
                 }
-                size = ctr - prev_ctr;
-                if (size)
+            }
+            else if (recv_data->indices.size())
+            {
+                for (int i = 0; i < recv_data->num_msgs; i++)
                 {
-                    MPI_Issend(&(recvbuf[prev_ctr]), size, type, 
-                            proc, key, mpi_comm, &(recv_data->requests[n_sends++]));
-                    prev_ctr = ctr;
+                    proc = recv_data->procs[i];
+                    start = recv_data->indptr[i];
+                    end = recv_data->indptr[i+1];
+                    for (int j = start; j < end; j++)
+                    {
+                        idx = recv_data->indices[j];
+
+                        if (compare_func(recv_compares[idx]))
+                        {
+                            recvbuf[ctr++] = values[idx];
+                        }
+                    }
+                    size = ctr - prev_ctr;
+                    if (size)
+                    {
+                        MPI_Issend(&(recvbuf[prev_ctr]), size, type, 
+                                proc, key, mpi_comm, &(recv_data->requests[n_sends++]));
+                        prev_ctr = ctr;
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < recv_data->num_msgs; i++)
+                {
+                    proc = recv_data->procs[i];
+                    start = recv_data->indptr[i];
+                    end = recv_data->indptr[i+1];
+                    for (int j = start; j < end; j++)
+                    {
+                        idx = j;
+
+                        if (compare_func(recv_compares[idx]))
+                        {
+                            recvbuf[ctr++] = values[idx];
+                        }
+                    }
+                    size = ctr - prev_ctr;
+                    if (size)
+                    {
+                        MPI_Issend(&(recvbuf[prev_ctr]), size, type, 
+                                proc, key, mpi_comm, &(recv_data->requests[n_sends++]));
+                        prev_ctr = ctr;
+                    }
                 }
             }
 
@@ -1876,14 +2065,15 @@ namespace raptor
 
             // Begin inter-node communication 
             std::vector<T>& R_sendbuf = local_R_par_comm->send_data->get_buffer<T>();
-            std::vector<T>& G_recvbuf = global_par_comm->recv_data->get_buffer<T>();
-            std::fill(G_recvbuf.begin(), G_recvbuf.end(), 0);
-            for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
-            {
-                idx = local_R_par_comm->send_data->indices[i];
-                G_recvbuf[idx] += R_sendbuf[i];
-            }
-            global_par_comm->init_comm_T(G_recvbuf);
+            global_par_comm->init_comm_T(R_sendbuf);
+            //std::vector<T>& G_recvbuf = global_par_comm->recv_data->get_buffer<T>();
+            //std::fill(G_recvbuf.begin(), G_recvbuf.end(), 0);
+            //for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
+            //{
+            //    idx = local_R_par_comm->send_data->indices[i];
+            //    G_recvbuf[idx] += R_sendbuf[i];
+            //}
+            //global_par_comm->init_comm_T(G_recvbuf);
 
         }
 
@@ -1915,16 +2105,17 @@ namespace raptor
 
             int idx;
             std::vector<T>& G_sendbuf = global_par_comm->send_data->get_buffer<T>();
-            std::vector<T>& S_recvbuf = local_S_par_comm->recv_data->get_buffer<T>();
-            std::fill(S_recvbuf.begin(), S_recvbuf.end(), 0);
-            for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
-            {
-                idx = global_par_comm->send_data->indices[i];
-                S_recvbuf[idx] += G_sendbuf[i];
-            }
+            local_S_par_comm->communicate_T(G_sendbuf);
+            //std::vector<T>& S_recvbuf = local_S_par_comm->recv_data->get_buffer<T>();
+            //std::fill(S_recvbuf.begin(), S_recvbuf.end(), 0);
+            //for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
+            //{
+            //    idx = global_par_comm->send_data->indices[i];
+            //    S_recvbuf[idx] += G_sendbuf[i];
+            //}
 
             // Redistributing recvd inter-node values
-            local_S_par_comm->communicate_T(S_recvbuf);
+            //local_S_par_comm->communicate_T(S_recvbuf);
         }
 
 

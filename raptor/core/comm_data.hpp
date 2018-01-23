@@ -138,6 +138,7 @@ public:
     std::vector<int> procs;
     std::vector<int> indptr;
     std::vector<int> indices;
+    std::vector<int> indptr_T;
     std::vector<MPI_Request> requests;
     std::vector<double> buffer;
     std::vector<int> int_buffer;
