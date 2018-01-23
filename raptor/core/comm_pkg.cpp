@@ -269,15 +269,15 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
     };
     std::vector<PairData> send_buffer;
     std::vector<PairData> recv_buffer;
+    std::vector<int> send_ptr(send_comm->num_msgs+1);
+    send_ptr[0] = 0;
 
     // Send pair_data for each row using MPI_DOUBLE_INT
     ctr = 0;
-    prev_ctr = 0;
     for (int i = 0; i < send_comm->num_msgs; i++)
     {
         start = send_comm->indptr[i];
         end = send_comm->indptr[i+1];
-        proc = send_comm->procs[i];
         for (int j = start; j < end; j++)
         {
             if (send_comm->indices.size())
@@ -286,18 +286,25 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
                 row = j;
             row_start = rowptr[row];
             row_end = rowptr[row+1];
-            PairData size_pair = {0.0, row_end - row_start};
-            send_buffer.push_back(size_pair);
+            send_buffer.push_back(PairData());
+            send_buffer[ctr++].index = row_end - row_start;
             for (int k = row_start; k < row_end; k++)
             {
-                PairData pair = {values[k], col_indices[k]};
-                send_buffer.push_back(pair);
+                send_buffer.push_back(PairData());
+                send_buffer[ctr].index = col_indices[k];
+                send_buffer[ctr++].val = values[k];
             }
         }
-        ctr = send_buffer.size();
-        MPI_Isend(&(send_buffer[prev_ctr]), ctr - prev_ctr, MPI_DOUBLE_INT, proc, 
+        send_ptr[i+1] = ctr;
+    }
+
+    for (int i = 0; i < send_comm->num_msgs; i++)
+    {
+        proc = send_comm->procs[i];
+        start = send_ptr[i];
+        end = send_ptr[i+1];
+        MPI_Isend(&(send_buffer[start]), end - start, MPI_DOUBLE_INT, proc, 
                 key, mpi_comm, &(send_comm->requests[i]));
-        prev_ctr = ctr;
     }
 
     // Recv pair_data for each row, and add to recv_mat
