@@ -582,15 +582,9 @@ CSRMatrix* TAPComm::communicate_T(std::vector<int>& rowptr,
     CSRMatrix* R_mat = local_R_par_comm->communication_helper(rowptr, col_indices, 
             values, local_R_par_comm->recv_data, 
             local_R_par_comm->send_data);
-    //CSRMatrix* R_mat = local_R_par_comm->communicate_T(rowptr, col_indices,
-    //        values, global_par_comm->recv_data->size_msgs);
-    //R_mat->sort();
-    //R_mat->remove_duplicates();
 
     CSRMatrix* G_mat = global_par_comm->communication_helper(R_mat->idx1, R_mat->idx2,
             R_mat->vals, global_par_comm->recv_data, global_par_comm->send_data);
-    //CSRMatrix* G_mat = global_par_comm->communicate_T(R_mat->idx1, R_mat->idx2,
-    //        R_mat->vals, local_S_par_comm->recv_data->size_msgs);
     delete R_mat;
 
     CSRMatrix* S_mat = local_S_par_comm->communication_helper(G_mat->idx1, G_mat->idx2,

@@ -2066,15 +2066,6 @@ namespace raptor
             // Begin inter-node communication 
             std::vector<T>& R_sendbuf = local_R_par_comm->send_data->get_buffer<T>();
             global_par_comm->init_comm_T(R_sendbuf);
-            //std::vector<T>& G_recvbuf = global_par_comm->recv_data->get_buffer<T>();
-            //std::fill(G_recvbuf.begin(), G_recvbuf.end(), 0);
-            //for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
-            //{
-            //    idx = local_R_par_comm->send_data->indices[i];
-            //    G_recvbuf[idx] += R_sendbuf[i];
-            //}
-            //global_par_comm->init_comm_T(G_recvbuf);
-
         }
 
         template<typename T, typename U>
@@ -2106,16 +2097,6 @@ namespace raptor
             int idx;
             std::vector<T>& G_sendbuf = global_par_comm->send_data->get_buffer<T>();
             local_S_par_comm->communicate_T(G_sendbuf);
-            //std::vector<T>& S_recvbuf = local_S_par_comm->recv_data->get_buffer<T>();
-            //std::fill(S_recvbuf.begin(), S_recvbuf.end(), 0);
-            //for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
-            //{
-            //    idx = global_par_comm->send_data->indices[i];
-            //    S_recvbuf[idx] += G_sendbuf[i];
-            //}
-
-            // Redistributing recvd inter-node values
-            //local_S_par_comm->communicate_T(S_recvbuf);
         }
 
 
