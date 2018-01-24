@@ -759,6 +759,8 @@ namespace raptor
             std::vector<T>& sendbuf = send_data->get_buffer<T>();
             std::vector<T>& recvbuf = recv_data->get_buffer<T>();
             MPI_Datatype type = get_type(sendbuf);
+            send_data->vector_data.num_msgs += send_data->num_msgs;
+            send_data->vector_data.size_msgs += send_data->size_msgs;
 
             for (int i = 0; i < send_data->num_msgs; i++)
             {
@@ -866,6 +868,8 @@ namespace raptor
             std::vector<T>& sendbuf = send_data->get_buffer<T>();
             std::vector<T>& recvbuf = recv_data->get_buffer<T>();
             MPI_Datatype type = get_type(sendbuf);
+            recv_data->vector_data.num_msgs += recv_data->num_msgs;
+            recv_data->vector_data.size_msgs += recv_data->size_msgs;
 
             if (recv_data->indptr_T.size())
             {

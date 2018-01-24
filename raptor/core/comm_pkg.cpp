@@ -375,6 +375,8 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
             send_ptr[i+1] = ctr;
         }
     }
+    send_comm->matrix_data.num_msgs += send_comm->num_msgs;
+    send_comm->matrix_data.size_msgs += send_buffer.size();
     for (int i = 0; i < send_comm->num_msgs; i++)
     {
         proc = send_comm->procs[i];

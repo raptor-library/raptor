@@ -31,6 +31,9 @@ public:
         num_msgs = 0;
         size_msgs = 0;
         indptr.push_back(0);
+
+        vector_data = (OpData) {0, 0};
+        matrix_data = (OpData) {0, 0};
     }
 
     CommData(CommData* data)
@@ -77,6 +80,9 @@ public:
             buffer.resize(size_msgs);
             int_buffer.resize(size_msgs);
         }
+
+        vector_data = (OpData) {0, 0};
+        matrix_data = (OpData) {0, 0};
     }
 
     /**************************************************************
@@ -142,6 +148,16 @@ public:
     std::vector<MPI_Request> requests;
     std::vector<double> buffer;
     std::vector<int> int_buffer;
+
+    struct OpData
+    {
+        int num_msgs;
+        int size_msgs;
+    };
+
+    OpData vector_data;
+    OpData matrix_data;
+
 };
 }
 #endif

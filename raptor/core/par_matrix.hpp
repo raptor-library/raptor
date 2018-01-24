@@ -88,10 +88,10 @@ namespace raptor
         comm = NULL;
         tap_comm = NULL;
 
-        spgemm_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
-        spgemm_T_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
-        spmv_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
-        spmv_T_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
+        spgemm_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spgemm_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spmv_data = (OpData) {0.0, 0.0, 0.0, 0.0};;
+        spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
     }
 
     ParMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows, 
@@ -108,10 +108,10 @@ namespace raptor
         comm = NULL;
         tap_comm = NULL;
 
-        spgemm_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
-        spgemm_T_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
-        spmv_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
-        spmv_T_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
+        spgemm_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spgemm_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spmv_data = (OpData) {0.0, 0.0, 0.0, 0.0};;
+        spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
     }
 
     ParMatrix(index_t glob_rows,
@@ -127,10 +127,10 @@ namespace raptor
         comm = NULL;
         tap_comm = NULL;
 
-        spgemm_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
-        spgemm_T_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
-        spmv_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
-        spmv_T_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
+        spgemm_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spgemm_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spmv_data = (OpData) {0.0, 0.0, 0.0, 0.0};;
+        spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
     }
 
     ParMatrix(index_t glob_rows, 
@@ -152,10 +152,10 @@ namespace raptor
         comm = NULL;
         tap_comm = NULL;
 
-        spgemm_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
-        spgemm_T_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
-        spmv_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
-        spmv_T_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
+        spgemm_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spgemm_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spmv_data = (OpData) {0.0, 0.0, 0.0, 0.0};;
+        spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
     }
        
     ParMatrix()
@@ -174,10 +174,10 @@ namespace raptor
 
         partition = NULL;
 
-        spgemm_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
-        spgemm_T_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
-        spmv_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
-        spmv_T_data = (OpData) {(CommData){0, 0, 0, 0}, (CommData){0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0};
+        spgemm_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spgemm_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spmv_data = (OpData) {0.0, 0.0, 0.0, 0.0};;
+        spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
     }
 
     virtual ~ParMatrix()
@@ -315,18 +315,8 @@ namespace raptor
     ParComm* comm;
     TAPComm* tap_comm;
 
-    struct CommData
-    {
-        int num_inter;
-        int num_intra;
-        int size_inter;
-        int size_intra;
-    };
-
     struct OpData
     {
-        CommData comm_data;
-        CommData tap_comm_data;
         double comm_time;
         double tap_comm_time;
         double time;
