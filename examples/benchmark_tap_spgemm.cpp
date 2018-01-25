@@ -81,10 +81,9 @@ void time_spgemm(ParCSRMatrix* A, ParCSRMatrix* P)
 
         MPI_Barrier(MPI_COMM_WORLD);
         ParCSRMatrix* C = A->mult(P);
+        delete C;
    
         A->comm->print_comm_data(false);
-
-        delete C;
     }
     for (int i = 1; i < n_tests; i++)
     {
@@ -181,8 +180,6 @@ void time_spgemm_T(ParCSRMatrix* A, ParCSCMatrix* P)
 
 void time_tap_spgemm_T(ParCSRMatrix* A, ParCSCMatrix* P)
 {
-    if (!A->tap_comm) A->tap_comm = new TAPComm(A->partition,
-            A->off_proc_column_map, A->on_proc_column_map);
     if (!P->tap_comm) P->tap_comm = new TAPComm(P->partition, 
             P->off_proc_column_map, P->on_proc_column_map);
 
@@ -330,13 +327,14 @@ int main(int argc, char *argv[])
         ParCSRMatrix* AP = Al->mult(Pl);
 
         if (rank == 0) printf("Level %d\n", i);
-        time_spgemm(Al, Pl);
-        time_tap_spgemm(Al, Pl);
-        time_spgemm_T(AP, Pl_csc);
+        //time_spgemm(Al, Pl);
+        //time_tap_spgemm(Al, Pl);
+        //time_spgemm_T(AP, Pl_csc);
         time_tap_spgemm_T(AP, Pl_csc);
         delete Pl_csc;
         delete AP;
 
+        if (rank == 0) printf("Now testing P_new...\n");
         ParCSRMatrix* P_new = Al->mult(Pl);
         ParCSRMatrix* AP_new = Al->mult(P_new);
         ParCSCMatrix* P_new_csc = new ParCSCMatrix(P_new);
@@ -344,6 +342,7 @@ int main(int argc, char *argv[])
         time_tap_spgemm(Al, P_new);
         time_spgemm_T(AP_new, P_new_csc);
         time_tap_spgemm_T(AP_new, P_new_csc);        
+        delete P_new;
         delete P_new_csc;
         delete AP_new;
     }
