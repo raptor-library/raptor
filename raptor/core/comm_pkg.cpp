@@ -244,12 +244,10 @@ CSRMatrix* CommPkg::communicate(ParCSRMatrix* A)
     return communicate(rowptr, col_indices, values);
 }
 
-CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
+CSRMatrix* communication_helper(std::vector<int>& rowptr,
         std::vector<int>& col_indices, std::vector<double>& values,
-        CommData* send_comm, CommData* recv_comm)
+        CommData* send_comm, CommData* recv_comm, int key, MPI_Comm mpi_comm)
 {
-    comm_time -= MPI_Wtime();
-
     int start, end, proc;
     int ctr, prev_ctr, size;
     int row, row_start, row_end;
@@ -375,6 +373,9 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
             send_ptr[i+1] = ctr;
         }
     }
+
+    send_comm->matrix_data.wait_time -= MPI_Wtime();
+
     send_comm->matrix_data.num_msgs += send_comm->num_msgs;
     send_comm->matrix_data.size_msgs += send_buffer.size();
     for (int i = 0; i < send_comm->num_msgs; i++)
@@ -418,8 +419,7 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
     recv_mat->nnz = recv_mat->idx2.size();
 
     MPI_Waitall(send_comm->num_msgs, send_comm->requests.data(), MPI_STATUSES_IGNORE);
-
-    comm_time += MPI_Wtime();
+    send_comm->matrix_data.wait_time += MPI_Wtime();
 
     return recv_mat;
 }    
@@ -428,7 +428,7 @@ CSRMatrix* ParComm::communicate(std::vector<int>& rowptr,
         std::vector<int>& col_indices, std::vector<double>& values)
 {
     return communication_helper(rowptr, col_indices, values,
-            send_data, recv_data);
+            send_data, recv_data, key, mpi_comm);
 }
 
 CSRMatrix* ParComm::communicate_T(std::vector<int>& rowptr, 
@@ -442,7 +442,7 @@ CSRMatrix* ParComm::communicate_T(std::vector<int>& rowptr,
     if (n_result_rows) row_sizes.resize(n_result_rows, 0);
 
     CSRMatrix* recv_mat_T = communication_helper(rowptr, col_indices, values,
-            recv_data, send_data);
+            recv_data, send_data, key, mpi_comm);
 
 
     CSRMatrix* recv_mat = new CSRMatrix(n_result_rows, -1);
@@ -577,20 +577,24 @@ CSRMatrix* TAPComm::communicate_T(std::vector<int>& rowptr,
     int ctr, size;
     int row_start, row_end, row_size;
 
-    CSRMatrix* L_mat = local_L_par_comm->communication_helper(rowptr, col_indices, 
+    CSRMatrix* L_mat = communication_helper(rowptr, col_indices, 
             values, local_L_par_comm->recv_data, 
-            local_L_par_comm->send_data);
+            local_L_par_comm->send_data, local_L_par_comm->key,
+            local_L_par_comm->mpi_comm);
 
-    CSRMatrix* R_mat = local_R_par_comm->communication_helper(rowptr, col_indices, 
+    CSRMatrix* R_mat = communication_helper(rowptr, col_indices, 
             values, local_R_par_comm->recv_data, 
-            local_R_par_comm->send_data);
+            local_R_par_comm->send_data, local_R_par_comm->key,
+            local_R_par_comm->mpi_comm);
 
-    CSRMatrix* G_mat = global_par_comm->communication_helper(R_mat->idx1, R_mat->idx2,
-            R_mat->vals, global_par_comm->recv_data, global_par_comm->send_data);
+    CSRMatrix* G_mat = communication_helper(R_mat->idx1, R_mat->idx2,
+            R_mat->vals, global_par_comm->recv_data, global_par_comm->send_data,
+            global_par_comm->key, global_par_comm->mpi_comm);
     delete R_mat;
 
-    CSRMatrix* S_mat = local_S_par_comm->communication_helper(G_mat->idx1, G_mat->idx2,
-            G_mat->vals, local_S_par_comm->recv_data, local_S_par_comm->send_data);
+    CSRMatrix* S_mat = communication_helper(G_mat->idx1, G_mat->idx2,
+            G_mat->vals, local_S_par_comm->recv_data, local_S_par_comm->send_data, 
+            local_S_par_comm->key, local_S_par_comm->mpi_comm);
     delete G_mat;
 
     CSRMatrix* recv_mat = new CSRMatrix(n_result_rows, -1);

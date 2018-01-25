@@ -317,7 +317,7 @@ int main(int argc, char *argv[])
         if (rank == 0) printf("CLJP Time: %e\n", t0);
 
         // TIME TAP CLJP on Level i
-        states.clear();
+/*        states.clear();
         off_proc_states.clear();
         clear_cache(cache_array);
         MPI_Barrier(MPI_COMM_WORLD);
@@ -326,7 +326,7 @@ int main(int argc, char *argv[])
         raptor_setup = (MPI_Wtime() - t0);
         MPI_Reduce(&raptor_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank == 0) printf("TAP CLJP Time: %e\n", t0);
-
+*/
         // TIME Interpolation on Level i
         ParCSRMatrix* Ptmp;
         clear_cache(cache_array);
@@ -367,7 +367,6 @@ int main(int argc, char *argv[])
         raptor_setup = (MPI_Wtime() - t0);
         MPI_Reduce(&raptor_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank == 0) printf("TAP A mult P Time: %e\n", t0);
-        delete APtmp;
 
         // TIME P^T*(AP) on Level i
         ParCSCMatrix* Pcsc = new ParCSCMatrix(Pl);
@@ -375,7 +374,7 @@ int main(int argc, char *argv[])
         clear_cache(cache_array);
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        Actmp = Al->mult_T(Pcsc);
+        Actmp = APtmp->mult_T(Pcsc);
         raptor_setup = (MPI_Wtime() - t0);
         MPI_Reduce(&raptor_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank == 0) printf("PT mult AT Time: %e\n", t0);
@@ -385,10 +384,11 @@ int main(int argc, char *argv[])
         clear_cache(cache_array);
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        Actmp = Al->tap_mult_T(Pcsc);
+        Actmp = APtmp->tap_mult_T(Pcsc);
         raptor_setup = (MPI_Wtime() - t0);
         MPI_Reduce(&raptor_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank == 0) printf("TAP PT mult AP Time: %e\n", t0);
+        delete APtmp;
         delete Actmp;
         delete Pcsc;
 

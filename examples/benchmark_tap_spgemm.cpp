@@ -20,6 +20,208 @@
 #define eager_cutoff 1000
 #define short_cutoff 62
 
+void print_times(double time, double time_comm, double time_wait, char* name)
+{
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    double t0;
+    MPI_Reduce(&time, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("%s Time: %e\n", name, t0);
+    MPI_Reduce(&time_comm, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("%s Time Comm: %e\n", name, t0);
+    MPI_Reduce(&time_wait, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("%s Time Wait: %e\n", name, t0);
+}
+
+void print_tap_times(double time, double time_comm, double* time_wait, char* name)
+{
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+ 
+    double t0;
+    double max_time_wait[4];
+    MPI_Reduce(&time, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("%s TAP Time: %e\n", name, t0);
+    MPI_Allreduce(&time_comm, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    if (rank == 0) printf("%s TAP Comm Time: %e\n", name, t0);
+    if (fabs(time_comm - t0) > zero_tol)
+    {
+        for (int i = 0; i < 4; i++)
+            time_wait[i] = 0;
+    }
+    MPI_Reduce(time_wait, max_time_wait, 4, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0)
+    {
+        char letters[4] = {'L', 'R', 'S', 'G'};
+        for (int i = 0; i < 4; i++)
+        {
+            printf("%s TAP Wait %c Time: %e\n", name, letters[i], max_time_wait[i]);
+        }
+    }
+}
+
+void time_spgemm(ParCSRMatrix* A, ParCSRMatrix* P)
+{
+    if (!A->comm) A->comm = new ParComm(A->partition, 
+            A->off_proc_column_map, A->on_proc_column_map);
+
+    double time, time_comm, time_wait;
+    int n_tests = 10;
+    int cache_len = 10000;
+    std::vector<double> cache_array(cache_len);
+
+    A->spgemm_data.time = 0;
+    A->spgemm_data.comm_time = 0;
+    A->comm->reset_comm_data();
+    
+    // Initial matmult (grab comm data)
+    {
+        clear_cache(cache_array);
+
+        MPI_Barrier(MPI_COMM_WORLD);
+        ParCSRMatrix* C = A->mult(P);
+   
+        A->comm->print_comm_data(false);
+
+        delete C;
+    }
+    for (int i = 1; i < n_tests; i++)
+    {
+        clear_cache(cache_array);
+        MPI_Barrier(MPI_COMM_WORLD);
+        ParCSRMatrix* C = A->mult(P);
+        delete C;
+    }
+    time = A->spgemm_data.time / n_tests;
+    time_comm = A->spgemm_data.comm_time / n_tests;
+    time_wait = A->comm->send_data->matrix_data.wait_time / n_tests;
+
+    print_times(time, time_comm, time_wait, "SpGEMM");
+}
+
+void time_tap_spgemm(ParCSRMatrix* A, ParCSRMatrix* P)
+{
+    double time, time_comm;
+    double time_wait[4];
+    int n_tests = 10;
+    int cache_len = 10000;
+    std::vector<double> cache_array(cache_len);
+
+    if (!A->tap_comm) A->tap_comm = new TAPComm(A->partition, 
+            A->off_proc_column_map, A->on_proc_column_map);
+
+    // Time TAP SpGEMM on Level i
+    A->spgemm_data.tap_time = 0;
+    A->spgemm_data.tap_comm_time = 0;
+    A->tap_comm->reset_comm_data();
+
+    // Initial matmult (grab comm data)
+    {
+        clear_cache(cache_array);
+        MPI_Barrier(MPI_COMM_WORLD);
+
+        ParCSRMatrix* C = A->tap_mult(P);
+        delete C;
+     
+        A->tap_comm->print_comm_data(false);
+    }
+    for (int i = 1; i < n_tests; i++)
+    {
+        clear_cache(cache_array);
+        MPI_Barrier(MPI_COMM_WORLD);
+        ParCSRMatrix* C = A->tap_mult(P);
+        delete C;
+    }
+    time = A->spgemm_data.tap_time / n_tests;
+    time_comm = A->spgemm_data.tap_comm_time / n_tests;
+    time_wait[0] = A->tap_comm->local_L_par_comm->send_data->matrix_data.wait_time / n_tests;
+    time_wait[1] = A->tap_comm->local_R_par_comm->send_data->matrix_data.wait_time / n_tests;
+    time_wait[2] = A->tap_comm->local_S_par_comm->send_data->matrix_data.wait_time / n_tests;
+    time_wait[3] = A->tap_comm->global_par_comm->send_data->matrix_data.wait_time / n_tests;
+ 
+    print_tap_times(time, time_comm, time_wait, "SpGEMM");
+}
+
+void time_spgemm_T(ParCSRMatrix* A, ParCSCMatrix* P)
+{
+    if (!P->comm) P->comm = new ParComm(P->partition, 
+            P->off_proc_column_map, P->on_proc_column_map);
+
+    double time, time_comm, time_wait;
+    int n_tests = 10;
+    int cache_len = 10000;
+    std::vector<double> cache_array(cache_len);
+
+    // Time SpGEMM on Level i
+    A->spgemm_T_data.time = 0;
+    A->spgemm_T_data.comm_time = 0;
+    P->comm->reset_comm_T_data();
+    {
+        clear_cache(cache_array);
+        MPI_Barrier(MPI_COMM_WORLD);
+        ParCSRMatrix* C = A->mult_T(P);
+        delete C;
+
+        P->comm->print_comm_T_data(false);
+
+    }
+    for (int i = 1; i < n_tests; i++)
+    {
+        clear_cache(cache_array);
+        MPI_Barrier(MPI_COMM_WORLD);
+        ParCSRMatrix* C = A->mult_T(P);
+        delete C;
+    }
+    time = A->spgemm_T_data.time / n_tests;
+    time_comm = A->spgemm_T_data.comm_time / n_tests;
+    time_wait = P->comm->recv_data->matrix_data.wait_time / n_tests;
+    print_times(time, time_comm, time_wait, "Transpose SpGEMM");
+}
+
+void time_tap_spgemm_T(ParCSRMatrix* A, ParCSCMatrix* P)
+{
+    if (!A->tap_comm) A->tap_comm = new TAPComm(A->partition,
+            A->off_proc_column_map, A->on_proc_column_map);
+    if (!P->tap_comm) P->tap_comm = new TAPComm(P->partition, 
+            P->off_proc_column_map, P->on_proc_column_map);
+
+    double time, time_comm;
+    double time_wait[4];
+    int n_tests = 10;
+    int cache_len = 10000;
+    std::vector<double> cache_array(cache_len);
+
+    // Time TAP SpGEMM on Level i
+    A->spgemm_T_data.tap_time = 0;
+    A->spgemm_T_data.tap_comm_time = 0;
+    P->tap_comm->reset_comm_T_data();
+    {
+        clear_cache(cache_array);
+        MPI_Barrier(MPI_COMM_WORLD);
+        ParCSRMatrix* C = A->tap_mult_T(P);
+        delete C;
+    
+        P->tap_comm->print_comm_T_data(false);
+    }
+    for (int i = 1; i < n_tests; i++)
+    {
+        clear_cache(cache_array);
+        MPI_Barrier(MPI_COMM_WORLD);
+        ParCSRMatrix* C = A->tap_mult_T(P);
+        delete C;
+    }
+    time = A->spgemm_T_data.tap_time / n_tests;
+    time_comm = A->spgemm_T_data.tap_comm_time / n_tests;
+    time_wait[0] = P->tap_comm->local_L_par_comm->recv_data->matrix_data.wait_time / n_tests;
+    time_wait[1] = P->tap_comm->local_R_par_comm->recv_data->matrix_data.wait_time / n_tests;
+    time_wait[2] = P->tap_comm->local_S_par_comm->recv_data->matrix_data.wait_time / n_tests;
+    time_wait[3] = P->tap_comm->global_par_comm->recv_data->matrix_data.wait_time / n_tests;
+
+    print_tap_times(time, time_comm, time_wait, "Transpose SpGEMM");
+
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -42,11 +244,14 @@ int main(int argc, char *argv[])
     ParVector b;
 
     double t0, tfinal;
+    double t0_comm, tfinal_comm;
+    double t0_wait, tfinal_wait;
+    double wait_L, wait_R, wait_S, wait_G;
+    int n0, s0;
+    int nfinal, sfinal;
     double raptor_setup, raptor_solve;
 
     double strong_threshold = 0.25;
-    int cache_len = 10000;
-    std::vector<double> cache_array(cache_len);
     std::vector<double> residuals;
 
     if (system < 2)
@@ -109,7 +314,6 @@ int main(int argc, char *argv[])
     }
 
     ParMultilevel* ml;
-    clear_cache(cache_array);
 
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
@@ -117,228 +321,31 @@ int main(int argc, char *argv[])
     ml = new ParMultilevel(A, strong_threshold, RS, Direct, SOR,
             1, 1.0, 50, -1);
     raptor_setup = MPI_Wtime() - t0;
-    clear_cache(cache_array);
 
-    int n_tests = 10;
-    int comm;
-    int proc, node;
-    int start, end;
-    int idx, size, recv_size;
     for (int i = 0; i < ml->num_levels - 1; i++)
     {
         ParCSRMatrix* Al = ml->levels[i]->A;
         ParCSRMatrix* Pl = ml->levels[i]->P;
-        if (!Al->tap_comm) Al->tap_comm = new TAPComm(Al->partition,
-                Al->off_proc_column_map, Al->on_proc_column_map);
+        ParCSCMatrix* Pl_csc = new ParCSCMatrix(Pl);
+        ParCSRMatrix* AP = Al->mult(Pl);
 
         if (rank == 0) printf("Level %d\n", i);
+        time_spgemm(Al, Pl);
+        time_tap_spgemm(Al, Pl);
+        time_spgemm_T(AP, Pl_csc);
+        time_tap_spgemm_T(AP, Pl_csc);
+        delete Pl_csc;
+        delete AP;
 
-        // Time SpGEMM on Level i
-        clear_cache(cache_array);
-        tfinal = 0;
-        for (int i = 0; i < n_tests; i++)
-        {
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            ParCSRMatrix* Cl = Al->mult(Pl);
-            tfinal += MPI_Wtime() - t0;
-            delete Cl;
-            clear_cache(cache_array);
-        }
-        tfinal /= n_tests;
-        MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("SpGEMM Time: %e\n", t0);
-
-        // Time TAP SpGEMM on Level i
-        clear_cache(cache_array);
-        tfinal = 0;
-        for (int i = 0; i < n_tests; i++)
-        {
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            ParCSRMatrix* Cl = Al->tap_mult(Pl);
-            tfinal += MPI_Wtime() - t0;
-            delete Cl;
-            clear_cache(cache_array);
-        }
-        tfinal /= n_tests;
-        MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("TAP SpGEMM Time: %e\n", t0);
-
-
-        // Gather number of messages / size (by inter/intra)
-        int n_inter = 0;
-        int n_intra = 0;
-        int s_inter = 0;
-        int s_intra = 0;
-        int tap_n_inter = 0;
-        int tap_n_intra = 0;
-        int tap_s_inter = 0;
-        int tap_s_intra = 0;
-
-        int rank_node = Al->partition->topology->get_node(rank);
-        for (int i = 0; i < Al->comm->send_data->num_msgs; i++)
-        {
-            proc = Al->comm->send_data->procs[i];
-            start = Al->comm->send_data->indptr[i];
-            end = Al->comm->send_data->indptr[i+1];
-            node = Al->partition->topology->get_node(proc);
-            size = 0;
-            for (int j = start; j < end; j++)
-            {
-                idx = Al->comm->send_data->indices[j];
-                size += (Pl->on_proc->idx1[idx+1] - Pl->on_proc->idx1[idx]) + 
-                    (Pl->off_proc->idx1[idx+1] - Pl->off_proc->idx1[idx]);
-            }
-            if (node == rank_node)
-            {
-                n_intra += 2;
-                s_intra += (end - start)*sizeof(int) + size*sizeof(int) + size*sizeof(double);
-            }
-            else
-            {
-                n_inter += 2;
-                s_inter += (end - start)*sizeof(int) + size*sizeof(int) + size*sizeof(double);
-            }
-        }
-
-        MPI_Reduce(&n_intra, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Num Intra Msgs: %d\n", comm);
-        MPI_Reduce(&n_inter, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Num Inter Msgs: %d\n", comm);
-        MPI_Reduce(&s_intra, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Size Intra Msgs: %d\n", comm);
-        MPI_Reduce(&s_inter, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Size Inter Msgs: %d\n", comm);
-
-
-        // Calculate message info from fully local par comm
-        for (int i = 0; i < Al->tap_comm->local_L_par_comm->send_data->num_msgs; i++)
-        {
-            proc = Al->tap_comm->local_L_par_comm->send_data->procs[i];
-            start = Al->tap_comm->local_L_par_comm->send_data->indptr[i];
-            end = Al->tap_comm->local_L_par_comm->send_data->indptr[i+1];
-            size = 0;
-            for (int j = start; j < end; j++)
-            {
-                idx = Al->tap_comm->local_L_par_comm->send_data->indices[j];
-                recv_size = (Pl->on_proc->idx1[idx+1] - Pl->on_proc->idx1[idx]) +
-                    (Pl->off_proc->idx1[idx+1] - Pl->off_proc->idx1[idx]);
-                size += recv_size;
-            }
-            tap_n_intra += 2;
-            tap_s_intra += (end - start)*sizeof(int) + size*sizeof(int) + size*sizeof(double);
-        }
-
-        // Calculate message info from local_S par comm and send
-        // communication sizes through communicator
-        for (int i = 0; i < Al->tap_comm->local_S_par_comm->send_data->num_msgs; i++)
-        {
-            proc = Al->tap_comm->local_S_par_comm->send_data->procs[i];
-            start = Al->tap_comm->local_S_par_comm->send_data->indptr[i];
-            end = Al->tap_comm->local_S_par_comm->send_data->indptr[i+1];
-            size = 0;
-            for (int j = start; j < end; j++)
-            {
-                idx = Al->tap_comm->local_S_par_comm->send_data->indices[j];
-                recv_size = (Pl->on_proc->idx1[idx+1] - Pl->on_proc->idx1[idx]) +
-                    (Pl->off_proc->idx1[idx+1] - Pl->off_proc->idx1[idx]);
-                Al->tap_comm->local_S_par_comm->send_data->int_buffer[j] = recv_size;
-                size += recv_size;
-            }
-            tap_n_intra += 2;
-            tap_s_intra += (end - start)*sizeof(int) + size*sizeof(int) + size*sizeof(double);
-            MPI_Isend(&(Al->tap_comm->local_S_par_comm->send_data->int_buffer[start]), end - start, MPI_INT,
-                    proc, Al->tap_comm->local_S_par_comm->key, Al->partition->topology->local_comm, 
-                    &(Al->tap_comm->local_S_par_comm->send_data->requests[i]));
-        }
-        for (int i = 0; i < Al->tap_comm->local_S_par_comm->recv_data->num_msgs; i++)
-        {
-            proc = Al->tap_comm->local_S_par_comm->recv_data->procs[i];
-            start = Al->tap_comm->local_S_par_comm->recv_data->indptr[i];
-            end = Al->tap_comm->local_S_par_comm->recv_data->indptr[i+1];
-            MPI_Irecv(&(Al->tap_comm->local_S_par_comm->recv_data->int_buffer[start]), end - start, MPI_INT,
-                    proc, Al->tap_comm->local_S_par_comm->key, Al->partition->topology->local_comm,
-                    &(Al->tap_comm->local_S_par_comm->recv_data->requests[i]));
-        }
-        if (Al->tap_comm->local_S_par_comm->send_data->num_msgs)
-        {
-            MPI_Waitall(Al->tap_comm->local_S_par_comm->send_data->num_msgs,
-                    Al->tap_comm->local_S_par_comm->send_data->requests.data(),
-                    MPI_STATUSES_IGNORE);
-        }
-        if (Al->tap_comm->local_S_par_comm->recv_data->num_msgs)
-        {
-            MPI_Waitall(Al->tap_comm->local_S_par_comm->recv_data->num_msgs,
-                    Al->tap_comm->local_S_par_comm->recv_data->requests.data(),
-                    MPI_STATUSES_IGNORE);
-        }
-
-        // Calculate message info from global par comm and send
-        // communication sizes through communicator
-        for (int i = 0; i < Al->tap_comm->global_par_comm->send_data->num_msgs; i++)
-        {
-            proc = Al->tap_comm->global_par_comm->send_data->procs[i];
-            start = Al->tap_comm->global_par_comm->send_data->indptr[i];
-            end = Al->tap_comm->global_par_comm->send_data->indptr[i+1];
-            size = 0;
-            for (int j = start; j < end; j++)
-            {
-                idx = Al->tap_comm->global_par_comm->send_data->indices[j];
-                recv_size = Al->tap_comm->local_S_par_comm->recv_data->int_buffer[idx];
-                Al->tap_comm->global_par_comm->send_data->int_buffer[j] = recv_size;
-                size += recv_size;
-            }
-            tap_n_inter += 2;
-            tap_s_inter += (end - start)*sizeof(int) + size*sizeof(int) + size*sizeof(double);
-            MPI_Isend(&(Al->tap_comm->global_par_comm->send_data->int_buffer[start]), end - start, MPI_INT,
-                    proc, Al->tap_comm->global_par_comm->key, MPI_COMM_WORLD, 
-                    &(Al->tap_comm->global_par_comm->send_data->requests[i]));
-        }
-        for (int i = 0; i < Al->tap_comm->global_par_comm->recv_data->num_msgs; i++)
-        {
-            proc = Al->tap_comm->global_par_comm->recv_data->procs[i];
-            start = Al->tap_comm->global_par_comm->recv_data->indptr[i];
-            end = Al->tap_comm->global_par_comm->recv_data->indptr[i+1];
-            MPI_Irecv(&(Al->tap_comm->global_par_comm->recv_data->int_buffer[start]), end - start, MPI_INT,
-                    proc, Al->tap_comm->global_par_comm->key, MPI_COMM_WORLD,
-                    &(Al->tap_comm->global_par_comm->recv_data->requests[i]));
-        }
-        if (Al->tap_comm->global_par_comm->send_data->num_msgs)
-        {
-            MPI_Waitall(Al->tap_comm->global_par_comm->send_data->num_msgs,
-                    Al->tap_comm->global_par_comm->send_data->requests.data(),
-                    MPI_STATUSES_IGNORE);
-        }
-        if (Al->tap_comm->global_par_comm->recv_data->num_msgs)
-        {
-            MPI_Waitall(Al->tap_comm->global_par_comm->recv_data->num_msgs,
-                    Al->tap_comm->global_par_comm->recv_data->requests.data(),
-                    MPI_STATUSES_IGNORE);
-        }
-
-        // Calculate message info from local_R par comm
-        for (int i = 0; i < Al->tap_comm->local_R_par_comm->send_data->num_msgs; i++)
-        {
-            start = Al->tap_comm->local_R_par_comm->send_data->indptr[i];
-            end = Al->tap_comm->local_R_par_comm->send_data->indptr[i+1];
-            for (int j = start; j < end; j++)
-            {
-                idx = Al->tap_comm->local_R_par_comm->send_data->indices[j];
-                size += Al->tap_comm->global_par_comm->recv_data->int_buffer[idx];
-            }
-            tap_n_intra += 2;
-            tap_s_intra += (end - start)*sizeof(int) + size*sizeof(int) + size*sizeof(double);
-        }
-
-        MPI_Reduce(&tap_n_intra, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("TAP Num Intra Msgs: %d\n", comm);
-        MPI_Reduce(&tap_n_inter, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("TAP Num Inter Msgs: %d\n", comm);
-        MPI_Reduce(&tap_s_intra, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("TAP Size Intra Msgs: %d\n", comm);
-        MPI_Reduce(&tap_s_inter, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("TAP Size Inter Msgs: %d\n", comm);
+        ParCSRMatrix* P_new = Al->mult(Pl);
+        ParCSRMatrix* AP_new = Al->mult(P_new);
+        ParCSCMatrix* P_new_csc = new ParCSCMatrix(P_new);
+        time_spgemm(Al, P_new);
+        time_tap_spgemm(Al, P_new);
+        time_spgemm_T(AP_new, P_new_csc);
+        time_tap_spgemm_T(AP_new, P_new_csc);        
+        delete P_new_csc;
+        delete AP_new;
     }
 
 

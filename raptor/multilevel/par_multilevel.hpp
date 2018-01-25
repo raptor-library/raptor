@@ -161,19 +161,6 @@ namespace raptor
                 relax_weight = _relax_weight;
                 num_smooth_sweeps = _num_smooth_sweeps;
                 setup_times.push_back(MPI_Wtime() - t0);
-
-                setup_comm_t = 0;
-                setup_comm_n = 0;
-                setup_comm_s = 0;
-                for (int i = 0; i < num_levels-1; i++)
-                {
-                    setup_comm_t += levels[i]->A->comm->get_comm_time() 
-                        + levels[i]->P->comm->get_comm_time();
-                    setup_comm_n += levels[i]->A->comm->get_comm_n()
-                        + levels[i]->P->comm->get_comm_n();
-                    setup_comm_s += levels[i]->A->comm->get_comm_s()
-                        + levels[i]->P->comm->get_comm_s();
-                }
             }
 
             ~ParMultilevel()
@@ -768,19 +755,6 @@ namespace raptor
             int solve(ParVector& sol, ParVector& rhs, double* res = NULL,
                     int num_iterations = 100)
             {
-                solve_comm_t = 0;
-                solve_comm_n = 0;
-                solve_comm_s = 0;
-                for (int i = 0; i < num_levels-1; i++)
-                {
-                    solve_comm_t -= (levels[i]->A->comm->get_comm_time() 
-                        + levels[i]->P->comm->get_comm_time());
-                    solve_comm_n -= (levels[i]->A->comm->get_comm_n()
-                        + levels[i]->P->comm->get_comm_n());
-                    solve_comm_s -= (levels[i]->A->comm->get_comm_s()
-                        + levels[i]->P->comm->get_comm_s());
-                }
-
                 double b_norm = rhs.norm(2);
                 double r_norm;
                 double t0;
@@ -849,16 +823,6 @@ namespace raptor
 
                 sol.copy(levels[0]->x);
 
-                for (int i = 0; i < num_levels-1; i++)
-                {
-                    solve_comm_t += (levels[i]->A->comm->get_comm_time() 
-                        + levels[i]->P->comm->get_comm_time());
-                    solve_comm_n += (levels[i]->A->comm->get_comm_n()
-                        + levels[i]->P->comm->get_comm_n());
-                    solve_comm_s += (levels[i]->A->comm->get_comm_s()
-                        + levels[i]->P->comm->get_comm_s());
-                }
-
                 for (int i = 0; i < num_levels; i++)
                 {
                     ParCSRMatrix* Al = levels[0]->A;
@@ -872,7 +836,6 @@ namespace raptor
                             + Pl->spmv_data.comm_time + Pl->spmv_data.tap_comm_time
                             + Pl->spmv_T_data.comm_time + Pl->spmv_T_data.tap_comm_time);
                 }
-
 
                 return iter;
             } 

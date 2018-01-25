@@ -38,18 +38,12 @@ namespace raptor
         {
             topology = partition->topology;
             topology->num_shared++;
-            comm_time = 0.0;
-            comm_n = 0;
-            comm_s = 0;
         }
         
         CommPkg(Topology* _topology)
         {
             topology = _topology;
             topology->num_shared++;
-            comm_time = 0.0;
-            comm_n = 0;
-            comm_s = 0;
         }
 
         virtual ~CommPkg()
@@ -246,15 +240,14 @@ namespace raptor
         template <typename T> std::vector<T>& get_recv_buffer();
         virtual std::vector<double>& get_double_recv_buffer() = 0;
         virtual std::vector<int>& get_int_recv_buffer() = 0;
-        virtual double get_comm_time() = 0;
-        virtual int get_comm_n() = 0;
-        virtual int get_comm_s() = 0;
+
+        virtual void reset_comm_data() = 0;
+        virtual void reset_comm_T_data() = 0;
+        virtual void print_comm_data(bool vec = true) = 0;
+        virtual void print_comm_T_data(bool vec = true) = 0;
 
         // Class Variables
         Topology* topology;
-        double comm_time;
-        int comm_n;
-        int comm_s;
     };
 
 
@@ -752,7 +745,6 @@ namespace raptor
         template<typename T>
         void initialize(const T* values)
         {
-            comm_time -= MPI_Wtime();
             int start, end;
             int proc;
 
@@ -762,6 +754,7 @@ namespace raptor
             send_data->vector_data.num_msgs += send_data->num_msgs;
             send_data->vector_data.size_msgs += send_data->size_msgs;
 
+            send_data->matrix_data.wait_time -= MPI_Wtime();
             for (int i = 0; i < send_data->num_msgs; i++)
             {
                 proc = send_data->procs[i];
@@ -782,15 +775,13 @@ namespace raptor
                 MPI_Irecv(&(recvbuf[start]), end - start, type,
                         proc, key, mpi_comm, &(recv_data->requests[i]));
             }
-            comm_time += MPI_Wtime();
-            comm_n += send_data->num_msgs;
-            comm_s += (send_data->size_msgs * sizeof(T));
+            send_data->matrix_data.wait_time += MPI_Wtime();
         }
 
         template<typename T>
         std::vector<T>& complete()
         {
-            comm_time -= MPI_Wtime();
+            send_data->matrix_data.wait_time -= MPI_Wtime();
             if (send_data->num_msgs)
             {
                 MPI_Waitall(send_data->num_msgs, send_data->requests.data(), MPI_STATUS_IGNORE);
@@ -800,7 +791,7 @@ namespace raptor
             {
                 MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUS_IGNORE);
             }
-            comm_time += MPI_Wtime();
+            send_data->matrix_data.wait_time += MPI_Wtime();
 
             return get_recv_buffer<T>();
         }
@@ -862,7 +853,6 @@ namespace raptor
         template<typename T>
         void initialize_T(const T* values)
         {
-            comm_time -= MPI_Wtime();
             int start, end;
             int proc, idx;
             std::vector<T>& sendbuf = send_data->get_buffer<T>();
@@ -871,6 +861,7 @@ namespace raptor
             recv_data->vector_data.num_msgs += recv_data->num_msgs;
             recv_data->vector_data.size_msgs += recv_data->size_msgs;
 
+            recv_data->matrix_data.wait_time -= MPI_Wtime();
             if (recv_data->indptr_T.size())
             {
                 int idx_start, idx_end;
@@ -935,9 +926,7 @@ namespace raptor
                 MPI_Irecv(&(sendbuf[start]), end - start, type,
                         proc, key, mpi_comm, &(send_data->requests[i]));
             }
-            comm_time += MPI_Wtime();
-            comm_n += recv_data->num_msgs;
-            comm_s += (recv_data->size_msgs * sizeof(T));
+            recv_data->matrix_data.wait_time += MPI_Wtime();
         }
 
         template<typename T, typename U>
@@ -957,7 +946,7 @@ namespace raptor
         template<typename T>
         void complete_T()
         {
-            comm_time -= MPI_Wtime();
+            recv_data->matrix_data.wait_time -= MPI_Wtime();
             if (send_data->num_msgs)
             {
                 MPI_Waitall(send_data->num_msgs, send_data->requests.data(), MPI_STATUSES_IGNORE);
@@ -967,7 +956,7 @@ namespace raptor
             {
                 MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUSES_IGNORE);
             }
-            comm_time += MPI_Wtime();
+            recv_data->matrix_data.wait_time += MPI_Wtime();
         }
 
 
@@ -976,9 +965,6 @@ namespace raptor
                 std::vector<double>& values);
         CSRMatrix* communicate_T(std::vector<int>& rowptr, std::vector<int>& col_indices,
                 std::vector<double>& values, int n_result_rows);
-        CSRMatrix* communication_helper(std::vector<int>& rowptr, 
-                std::vector<int>& col_indices, std::vector<double>& values,
-                CommData* send_comm, CommData* recv_comm);
         CSRMatrix* communicate(ParCSRMatrix* A)
         {
             return CommPkg::communicate(A);
@@ -1062,7 +1048,6 @@ namespace raptor
                 const int* recv_compares,
                 std::function<bool(int)> compare_func = {})
         {
-            comm_time -= MPI_Wtime();
             if (!compare_func) return communicate(values);
 
             int proc, start, end;
@@ -1197,7 +1182,6 @@ namespace raptor
                 }
             }
             return recvbuf;
-            comm_time += MPI_Wtime();
         }
 
         template<typename T, typename U>
@@ -1208,7 +1192,6 @@ namespace raptor
                 std::function<bool(int)> compare_func = {},
                 std::function<U(U, T)> result_func = {})
         {
-            comm_time -= MPI_Wtime();
             if (!compare_func)
             {
                 communicate_T(values, result);
@@ -1356,22 +1339,6 @@ namespace raptor
                     }
                 }
             }
-            comm_time += MPI_Wtime();
-        }
-
-        double get_comm_time()
-        {
-            return comm_time;
-        }
-
-        int get_comm_n()
-        {
-            return comm_n;
-        }
-
-        int get_comm_s()
-        {
-            return comm_s;
         }
 
         // Helper Methods
@@ -1390,6 +1357,24 @@ namespace raptor
         std::vector<int>& get_int_send_buffer()
         {
             return send_data->int_buffer;
+        }
+
+
+        void reset_comm_data()
+        {
+            send_data->reset_data();
+        }
+        void reset_comm_T_data()
+        {
+            recv_data->reset_data();
+        }
+        void print_comm_data(bool vec)
+        {
+            send_data->print_data(vec);
+        }
+        void print_comm_T_data(bool vec)
+        {
+            recv_data->print_data(vec);
         }
 
         int key;
@@ -2354,29 +2339,48 @@ namespace raptor
             return int_recv_buffer;
         }
 
-        double get_comm_time()
+        void reset_comm_data()
         {
-            return local_S_par_comm->get_comm_time() 
-                + local_R_par_comm->get_comm_time()
-                + local_L_par_comm->get_comm_time()
-                + global_par_comm->get_comm_time();
+            local_L_par_comm->send_data->reset_data();
+            local_R_par_comm->send_data->reset_data();
+            local_S_par_comm->send_data->reset_data();
+            global_par_comm->send_data->reset_data();
         }
+        void reset_comm_T_data()
+        {
+            local_L_par_comm->recv_data->reset_data();
+            local_R_par_comm->recv_data->reset_data();
+            local_S_par_comm->recv_data->reset_data();
+            global_par_comm->recv_data->reset_data();
+        }
+        void print_comm_data(bool vec)
+        {
+            int rank;
+            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-        int get_comm_n()
-        {
-            return local_S_par_comm->get_comm_n() 
-                + local_R_par_comm->get_comm_n()
-                + local_L_par_comm->get_comm_n()
-                + global_par_comm->get_comm_n();
+            if (rank == 0) printf("Local L: ");
+            local_L_par_comm->send_data->print_data(vec);
+            if (rank == 0) printf("Local R: ");
+            local_R_par_comm->send_data->print_data(vec);
+            if (rank == 0) printf("Local S: ");
+            local_S_par_comm->send_data->print_data(vec);
+            if (rank == 0) printf("Global: ");
+            global_par_comm->send_data->print_data(vec);
         }
-        int get_comm_s()
+        void print_comm_T_data(bool vec)
         {
-            return local_S_par_comm->get_comm_s() 
-                + local_R_par_comm->get_comm_s()
-                + local_L_par_comm->get_comm_s()
-                + global_par_comm->get_comm_s();
-        }
+            int rank;
+            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+            if (rank == 0) printf("Local L: ");
+            local_L_par_comm->recv_data->print_data(vec);
+            if (rank == 0) printf("Local R: ");
+            local_R_par_comm->recv_data->print_data(vec);
+            if (rank == 0) printf("Local S: ");
+            local_S_par_comm->recv_data->print_data(vec);
+            if (rank == 0) printf("Global L: ");
+            global_par_comm->recv_data->print_data(vec);
+        }
 
         // Class Attributes
         ParComm* local_S_par_comm;
