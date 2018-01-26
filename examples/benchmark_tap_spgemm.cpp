@@ -20,7 +20,7 @@
 #define eager_cutoff 1000
 #define short_cutoff 62
 
-void print_times(double time, double time_comm, double time_wait, char* name)
+void print_times(double time, double time_comm, double time_wait, const char* name)
 {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -34,7 +34,7 @@ void print_times(double time, double time_comm, double time_wait, char* name)
     if (rank == 0) printf("%s Time Wait: %e\n", name, t0);
 }
 
-void print_tap_times(double time, double time_comm, double* time_wait, char* name)
+void print_tap_times(double time, double time_comm, double* time_wait, const char* name)
 {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -287,17 +287,8 @@ int main(int argc, char *argv[])
     }
     else if (system == 3)
     {
-        const char* file = "../../examples/LFAT5.mtx";
-        int sym = 1;
-        if (argc > 2)
-        {
-            file = argv[2];
-            if (argc > 3)
-            {
-                sym = atoi(argv[3]);
-            }
-        }
-        A = readParMatrix(file, MPI_COMM_WORLD, 1, sym);
+        const char* file = "../../examples/LFAT5.pm";
+        A = readParMatrix(file);
     }
 
     if (system != 2)
@@ -327,9 +318,9 @@ int main(int argc, char *argv[])
         ParCSRMatrix* AP = Al->mult(Pl);
 
         if (rank == 0) printf("Level %d\n", i);
-        //time_spgemm(Al, Pl);
-        //time_tap_spgemm(Al, Pl);
-        //time_spgemm_T(AP, Pl_csc);
+        time_spgemm(Al, Pl);
+        time_tap_spgemm(Al, Pl);
+        time_spgemm_T(AP, Pl_csc);
         time_tap_spgemm_T(AP, Pl_csc);
         delete Pl_csc;
         delete AP;

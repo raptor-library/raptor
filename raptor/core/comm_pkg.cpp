@@ -291,7 +291,7 @@ CSRMatrix* communication_helper(std::vector<int>& rowptr,
                     row = send_comm->indices[k];
                     row_start = rowptr[row];
                     row_end = rowptr[row+1];
-                    send_buffer[size_pos].index += (row_end - row_start);
+		    send_buffer[size_pos].index += (row_end - row_start);
                     for (int l = row_start; l < row_end; l++)
                     {
                         send_buffer.push_back(PairData());
@@ -312,6 +312,7 @@ CSRMatrix* communication_helper(std::vector<int>& rowptr,
                         if (send_buffer[k].index == send_buffer[pos].index)
                         {
                             send_buffer[pos].val += send_buffer[k].val;
+			    send_buffer[size_pos].index--;
                         }
                         else
                         {
@@ -320,11 +321,11 @@ CSRMatrix* communication_helper(std::vector<int>& rowptr,
                             send_buffer[pos].val = send_buffer[k].val;
                         }
                     }
-                    send_buffer.resize(pos+1);
-                    send_buffer[size_pos].index = pos - size_pos;
+		    ctr = pos + 1;
+                    send_buffer.resize(ctr);
                 }
             }
-            send_ptr[i+1] = ctr;
+            send_ptr[i+1] = send_buffer.size();
         }
     }
     else if (send_comm->indices.size())

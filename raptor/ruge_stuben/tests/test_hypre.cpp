@@ -14,6 +14,7 @@
 #include "gallery/external/hypre_wrapper.hpp"
 #include "multilevel/par_multilevel.hpp"
 #include "multilevel/multilevel.hpp"
+#include "_hypre_utilities.h"
 
 using namespace raptor;
 
