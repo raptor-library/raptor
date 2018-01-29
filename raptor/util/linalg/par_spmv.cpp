@@ -149,14 +149,24 @@ void ParMatrix::tap_mult_T(ParVector& x, ParVector& b)
 
     // Append b.local (add recvd values)
     std::vector<double>& L_tmp = tap_comm->local_L_par_comm->send_data->buffer;
-    std::vector<double>& S_tmp = tap_comm->local_S_par_comm->send_data->buffer;
     for (int i = 0; i < tap_comm->local_L_par_comm->send_data->size_msgs; i++)
     {
         b.local[tap_comm->local_L_par_comm->send_data->indices[i]] += L_tmp[i];
     }
-    for (int i = 0; i < tap_comm->local_S_par_comm->send_data->size_msgs; i++)
+
+    ParComm* final_comm;
+    if (tap_comm->local_S_par_comm)
     {
-        b.local[tap_comm->local_S_par_comm->send_data->indices[i]] += S_tmp[i];
+        final_comm = tap_comm->local_S_par_comm;
+    }
+    else
+    {
+        final_comm = tap_comm->global_par_comm;
+    }
+    std::vector<double>& final_tmp = final_comm->send_data->buffer;
+    for (int i = 0; i < final_comm->send_data->size_msgs; i++)
+    {
+        b.local[final_comm->send_data->indices[i]] += final_tmp[i];
     }
     spmv_T_data.tap_time += MPI_Wtime();
 }

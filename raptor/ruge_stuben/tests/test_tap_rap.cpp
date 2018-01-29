@@ -41,33 +41,59 @@ TEST(TestTAPRAP, TestsInRuge_Stuben)
 
     // TEST LEVEL 0
     A = readParMatrix(A0_fn);
-    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
     P = readParMatrix(P0_fn);
-    AP = A->tap_mult(P);
     P_csc = new ParCSCMatrix(P);
+
+    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, true);
+    AP = A->tap_mult(P);
     Ac = AP->tap_mult_T(P_csc);
     Ac_rap = readParMatrix(A1_fn);
     compare(Ac, Ac_rap);
     delete Ac_rap;
     delete Ac;
-    delete P_csc;
     delete AP;
+
+    delete A->tap_comm;
+
+    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, false);
+    AP = A->tap_mult(P);
+    Ac = AP->tap_mult_T(P_csc);
+    Ac_rap = readParMatrix(A1_fn);
+    compare(Ac, Ac_rap);
+    delete Ac_rap;
+    delete Ac;
+    delete AP;
+
+    delete P_csc;
     delete P;
     delete A;
 
     // TEST LEVEL 1
     A = readParMatrix(A1_fn);
-    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
     P = readParMatrix(P1_fn);
-    AP = A->tap_mult(P);
     P_csc = new ParCSCMatrix(P);
+
+    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, true);
+    AP = A->tap_mult(P);
     Ac = AP->tap_mult_T(P_csc);
     Ac_rap = readParMatrix(A2_fn);
     compare(Ac, Ac_rap);
     delete Ac_rap;
     delete Ac;
-    delete P_csc;
     delete AP;
+
+    delete A->tap_comm;
+
+    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, false);
+    AP = A->tap_mult(P);
+    Ac = AP->tap_mult_T(P_csc);
+    Ac_rap = readParMatrix(A2_fn);
+    compare(Ac, Ac_rap);
+    delete Ac_rap;
+    delete Ac;
+    delete AP;
+
+    delete P_csc;
     delete P;
     delete A;
 

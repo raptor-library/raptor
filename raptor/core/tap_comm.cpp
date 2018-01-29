@@ -807,44 +807,54 @@ void TAPComm::adjust_send_indices(const int first_local_col)
     int idx, idx_pos, size;
     int local_S_idx, global_comm_idx;
 
-    // Update global row index with local row to send 
-    for (int i = 0; i < local_S_par_comm->send_data->size_msgs; i++)
+    if (local_S_par_comm)
     {
-        local_S_par_comm->send_data->indices[i] -= first_local_col;
-    }
+        // Update global row index with local row to send 
+        for (int i = 0; i < local_S_par_comm->send_data->size_msgs; i++)
+        {
+            local_S_par_comm->send_data->indices[i] -= first_local_col;
+        }
 
-    // Update global_par_comm->send_data->indices (global rows) to 
-    // index of global row in local_S_par_comm->recv_data->indices
-    std::map<int, int> S_global_to_local;
-    for (int i = 0; i < local_S_par_comm->recv_data->size_msgs; i++)
-    {
-        S_global_to_local[local_S_par_comm->recv_data->indices[i]] = i;
+        // Update global_par_comm->send_data->indices (global rows) to 
+        // index of global row in local_S_par_comm->recv_data->indices
+        std::map<int, int> S_global_to_local;
+        for (int i = 0; i < local_S_par_comm->recv_data->size_msgs; i++)
+        {
+            S_global_to_local[local_S_par_comm->recv_data->indices[i]] = i;
+        }
+        std::vector<int> local_S_num_pos;
+        if (local_S_par_comm->recv_data->size_msgs)
+            local_S_num_pos.resize(local_S_par_comm->recv_data->size_msgs, 0);
+        for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
+        {
+            idx = global_par_comm->send_data->indices[i];
+            local_S_idx = S_global_to_local[idx];
+            global_par_comm->send_data->indices[i] = local_S_idx;
+            local_S_num_pos[local_S_idx]++;
+        }
+        local_S_par_comm->recv_data->indptr_T.resize(local_S_par_comm->recv_data->size_msgs + 1);
+        local_S_par_comm->recv_data->indptr_T[0] = 0;
+        size = 0;
+        for (int i = 0; i < local_S_par_comm->recv_data->size_msgs; i++)
+        {
+            size += local_S_num_pos[i];
+            local_S_par_comm->recv_data->indptr_T[i+1] = size;
+            local_S_num_pos[i] = 0;
+        }
+        local_S_par_comm->recv_data->indices.resize(size);
+        for(int i = 0; i < global_par_comm->send_data->size_msgs; i++)
+        {
+            idx = global_par_comm->send_data->indices[i];
+            idx_pos = local_S_par_comm->recv_data->indptr_T[idx] + local_S_num_pos[idx]++;
+            local_S_par_comm->recv_data->indices[idx_pos] = i;
+        }
     }
-    std::vector<int> local_S_num_pos;
-    if (local_S_par_comm->recv_data->size_msgs)
-        local_S_num_pos.resize(local_S_par_comm->recv_data->size_msgs, 0);
-    for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
+    else
     {
-        idx = global_par_comm->send_data->indices[i];
-        local_S_idx = S_global_to_local[idx];
-        global_par_comm->send_data->indices[i] = local_S_idx;
-        local_S_num_pos[local_S_idx]++;
-    }
-    local_S_par_comm->recv_data->indptr_T.resize(local_S_par_comm->recv_data->size_msgs + 1);
-    local_S_par_comm->recv_data->indptr_T[0] = 0;
-    size = 0;
-    for (int i = 0; i < local_S_par_comm->recv_data->size_msgs; i++)
-    {
-        size += local_S_num_pos[i];
-        local_S_par_comm->recv_data->indptr_T[i+1] = size;
-        local_S_num_pos[i] = 0;
-    }
-    local_S_par_comm->recv_data->indices.resize(size);
-    for(int i = 0; i < global_par_comm->send_data->size_msgs; i++)
-    {
-        idx = global_par_comm->send_data->indices[i];
-        idx_pos = local_S_par_comm->recv_data->indptr_T[idx] + local_S_num_pos[idx]++;
-        local_S_par_comm->recv_data->indices[idx_pos] = i;
+        for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
+        {
+            global_par_comm->send_data->indices[i] -= first_local_col;
+        }
     }
 
     // Update local_R_par_comm->send_data->indices (global_rows)
@@ -973,5 +983,253 @@ void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
                 MPI_STATUSES_IGNORE);
     }
 }
+
+void TAPComm::form_simple_R_par_comm(std::vector<int>& off_node_column_map,
+        std::vector<int>& off_node_col_to_proc)
+{
+    int rank, local_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_rank(topology->local_comm, &local_rank);
+
+    int proc, local_proc;
+    int proc_idx, idx;
+    int start, end;
+    int count;
+    MPI_Status recv_status;
+    int off_node_num_cols = off_node_column_map.size();
+    std::vector<int> local_proc_sizes(topology->PPN, 0);
+    std::vector<int> proc_size_idx(topology->PPN);
+
+    // Form local_R_par_comm recv_data (currently with global recv indices)
+    for (std::vector<int>::iterator it = off_node_col_to_proc.begin();
+            it != off_node_col_to_proc.end(); ++it)
+    {
+        local_proc = topology->get_local_proc(*it);
+        local_proc_sizes[local_proc]++;
+    }
+
+    local_R_par_comm->recv_data->size_msgs = 0;
+    local_R_par_comm->recv_data->indptr[0] = local_R_par_comm->recv_data->size_msgs;
+    for (int i = 0; i < topology->PPN; i++)
+    {
+        if (local_proc_sizes[i])
+        {
+            local_R_par_comm->recv_data->num_msgs++;
+            local_R_par_comm->recv_data->size_msgs += local_proc_sizes[i];
+            local_proc_sizes[i] = 0;
+
+            proc_size_idx[i] = local_R_par_comm->recv_data->procs.size();
+            local_R_par_comm->recv_data->procs.push_back(i);
+            local_R_par_comm->recv_data->indptr.push_back(
+                    local_R_par_comm->recv_data->size_msgs);
+        }
+    }
+    if (local_R_par_comm->recv_data->size_msgs)
+    {
+        local_R_par_comm->recv_data->indices.resize(local_R_par_comm->recv_data->size_msgs);
+    }
+
+    for (int i = 0; i < off_node_num_cols; i++)
+    {
+        proc = off_node_col_to_proc[i];
+        local_proc = topology->get_local_proc(proc);
+        proc_idx = proc_size_idx[local_proc];
+        idx = local_R_par_comm->recv_data->indptr[proc_idx] + local_proc_sizes[local_proc]++;
+        local_R_par_comm->recv_data->indices[idx] = i;
+    }
+    local_R_par_comm->recv_data->finalize();
+
+    // Communicate local_R recv_data so send_data can be formed
+    MPI_Allreduce(MPI_IN_PLACE, local_proc_sizes.data(), topology->PPN, MPI_INT,
+            MPI_SUM, topology->local_comm);
+    local_R_par_comm->send_data->size_msgs = local_proc_sizes[local_rank];
+
+    if (local_R_par_comm->send_data->size_msgs)
+    {
+        local_R_par_comm->send_data->indices.resize(local_R_par_comm->send_data->size_msgs);
+    }
+
+    for (int i = 0; i < local_R_par_comm->recv_data->num_msgs; i++)
+    {
+        proc = local_R_par_comm->recv_data->procs[i];
+        start = local_R_par_comm->recv_data->indptr[i];
+        end = local_R_par_comm->recv_data->indptr[i+1];
+        for (int j = start; j < end; j++)
+        {
+            idx = local_R_par_comm->recv_data->indices[j];
+            local_R_par_comm->recv_data->int_buffer[j] = off_node_column_map[idx];
+        }
+        MPI_Issend(&(local_R_par_comm->recv_data->int_buffer[start]), end - start, MPI_INT,
+                proc, 6543, topology->local_comm, &(local_R_par_comm->recv_data->requests[i]));
+    }
+
+    // Recv data and form local_R_par_comm send_data
+    local_R_par_comm->send_data->indptr[0] = 0;
+    int size_recvd = 0;
+    while (size_recvd < local_R_par_comm->send_data->size_msgs)
+    {
+        MPI_Probe(MPI_ANY_SOURCE, 6543, topology->local_comm, &recv_status);
+        proc = recv_status.MPI_SOURCE;
+        MPI_Get_count(&recv_status, MPI_INT, &count);
+        MPI_Recv(&(local_R_par_comm->send_data->indices[size_recvd]), count, MPI_INT,
+                proc, 6543, topology->local_comm, &recv_status);
+        size_recvd += count;
+        local_R_par_comm->send_data->procs.push_back(proc);
+        local_R_par_comm->send_data->indptr.push_back(size_recvd);
+    }
+    local_R_par_comm->send_data->num_msgs = local_R_par_comm->send_data->procs.size();
+    local_R_par_comm->send_data->finalize();
+
+    if (local_R_par_comm->recv_data->num_msgs)
+    {
+        MPI_Waitall(local_R_par_comm->recv_data->num_msgs,
+                local_R_par_comm->recv_data->requests.data(),
+                MPI_STATUSES_IGNORE);
+    }
+}
+
+void TAPComm::form_simple_global_comm(std::vector<int>& off_proc_col_to_proc)
+{
+    int rank;
+    int num_procs;
+    int proc, start, end;
+    int finished, msg_avail;
+    int count;
+    int idx, proc_idx;
+    int global_idx;
+    MPI_Status recv_status;
+    MPI_Request barrier_request;
+
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+    std::vector<int> proc_sizes(num_procs, 0);
+    std::vector<int> proc_ctr;
+
+    // Communicate processes on which each index originates
+    for (int i = 0; i < local_R_par_comm->recv_data->num_msgs; i++)
+    {
+        proc = local_R_par_comm->recv_data->procs[i];
+        start = local_R_par_comm->recv_data->indptr[i];
+        end = local_R_par_comm->recv_data->indptr[i+1];
+        MPI_Isend(&(off_proc_col_to_proc[start]), end - start, MPI_INT,
+                proc, 6544, topology->local_comm, &(local_R_par_comm->recv_data->requests[i]));
+    }
+    for (int i = 0; i < local_R_par_comm->send_data->num_msgs; i++)
+    {
+        proc = local_R_par_comm->send_data->procs[i];
+        start = local_R_par_comm->send_data->indptr[i];
+        end = local_R_par_comm->send_data->indptr[i+1];
+        MPI_Irecv(&(local_R_par_comm->send_data->int_buffer[start]), end - start, MPI_INT,
+                proc, 6544, topology->local_comm, &(local_R_par_comm->send_data->requests[i]));
+    }
+    if (local_R_par_comm->recv_data->num_msgs)
+        MPI_Waitall(local_R_par_comm->recv_data->num_msgs,
+                local_R_par_comm->recv_data->requests.data(),
+                MPI_STATUSES_IGNORE);
+    if (local_R_par_comm->send_data->num_msgs)
+        MPI_Waitall(local_R_par_comm->send_data->num_msgs,
+                local_R_par_comm->send_data->requests.data(),
+                MPI_STATUSES_IGNORE);
+
+
+    for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
+    {
+        proc = local_R_par_comm->send_data->int_buffer[i];
+        if (proc_sizes[proc] == 0)
+        {
+            global_par_comm->recv_data->procs.push_back(proc);
+        }
+        proc_sizes[proc]++;
+    }
+
+    global_par_comm->recv_data->num_msgs = global_par_comm->recv_data->procs.size();
+    global_par_comm->recv_data->indptr[0] = 0;
+    global_par_comm->recv_data->size_msgs = 0;
+    for (int i = 0; i < global_par_comm->recv_data->num_msgs; i++)
+    {
+        proc = global_par_comm->recv_data->procs[i];
+        global_par_comm->recv_data->size_msgs += proc_sizes[proc];
+        proc_sizes[proc] = i; // Will now use this for proc_idx
+        global_par_comm->recv_data->indptr.push_back(global_par_comm->recv_data->size_msgs);
+    }
+    if (global_par_comm->recv_data->size_msgs)
+    {
+        global_par_comm->recv_data->indices.resize(global_par_comm->recv_data->size_msgs);
+        proc_ctr.resize(global_par_comm->recv_data->num_msgs, 0);
+    }
+
+    for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
+    {
+        global_idx = local_R_par_comm->send_data->indices[i];
+        proc = local_R_par_comm->send_data->int_buffer[i];
+        proc_idx = proc_sizes[proc];
+        idx = global_par_comm->recv_data->indptr[proc_idx] + proc_ctr[proc_idx]++;
+        global_par_comm->recv_data->indices[idx] = global_idx;
+    }
+    global_par_comm->recv_data->finalize();
+
+    // Communicate global recv_data so send_data can be formed (dynamic comm)
+    for (int i = 0; i < global_par_comm->recv_data->num_msgs; i++)
+    {
+        proc = global_par_comm->recv_data->procs[i];
+        start = global_par_comm->recv_data->indptr[i];
+        end = global_par_comm->recv_data->indptr[i+1];
+        MPI_Issend(&(global_par_comm->recv_data->indices[start]), end - start, MPI_INT,
+                proc, 6789, MPI_COMM_WORLD, &(global_par_comm->recv_data->requests[i]));
+    }
+
+    if (global_par_comm->recv_data->num_msgs)
+    {
+        MPI_Testall(global_par_comm->recv_data->num_msgs, 
+                global_par_comm->recv_data->requests.data(), &finished, MPI_STATUSES_IGNORE);
+        while (!finished)
+        {
+            MPI_Iprobe(MPI_ANY_SOURCE, 6789, MPI_COMM_WORLD, &msg_avail, &recv_status);
+            if (msg_avail)
+            {
+                proc = recv_status.MPI_SOURCE;
+                MPI_Get_count(&recv_status, MPI_INT, &count);
+                int recvbuf[count];
+                MPI_Recv(recvbuf, count, MPI_INT, proc, 6789, MPI_COMM_WORLD, &recv_status);
+                for (int i = 0; i < count; i++)
+                {
+                    global_par_comm->send_data->indices.push_back(recvbuf[i]);
+                }
+                global_par_comm->send_data->procs.push_back(proc);
+                global_par_comm->send_data->indptr.push_back(
+                        global_par_comm->send_data->indices.size());
+            }
+            MPI_Testall(global_par_comm->recv_data->num_msgs, 
+                    global_par_comm->recv_data->requests.data(), &finished, 
+                    MPI_STATUSES_IGNORE);
+        }
+    }
+    MPI_Ibarrier(MPI_COMM_WORLD, &barrier_request);
+    MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
+    while (!finished)
+    {
+        MPI_Iprobe(MPI_ANY_SOURCE, 6789, MPI_COMM_WORLD, &msg_avail, &recv_status);
+        if (msg_avail)
+        {
+            proc = recv_status.MPI_SOURCE;
+            MPI_Get_count(&recv_status, MPI_INT, &count);
+            int recvbuf[count];
+            MPI_Recv(recvbuf, count, MPI_INT, proc, 6789, MPI_COMM_WORLD, &recv_status);
+            for (int i = 0; i < count; i++)
+            {
+                global_par_comm->send_data->indices.push_back(recvbuf[i]);
+            }
+            global_par_comm->send_data->procs.push_back(proc);
+            global_par_comm->send_data->indptr.push_back(
+                    global_par_comm->send_data->indices.size());
+        }
+        MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
+    }
+    global_par_comm->send_data->num_msgs = global_par_comm->send_data->procs.size();
+    global_par_comm->send_data->size_msgs = global_par_comm->send_data->indices.size();
+    global_par_comm->send_data->finalize();
+}
+
 
 

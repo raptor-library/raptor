@@ -34,7 +34,8 @@ void print_times(double time, double time_comm, double time_wait, const char* na
     if (rank == 0) printf("%s Time Wait: %e\n", name, t0);
 }
 
-void print_tap_times(double time, double time_comm, double* time_wait, const char* name)
+void print_tap_times(double time, double time_comm, double* time_wait, const char* name,
+        bool use_S = true)
 {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -56,6 +57,7 @@ void print_tap_times(double time, double time_comm, double* time_wait, const cha
         char letters[4] = {'L', 'R', 'S', 'G'};
         for (int i = 0; i < 4; i++)
         {
+            if (i == 2 && !use_S) continue;
             printf("%s TAP Wait %c Time: %e\n", name, letters[i], max_time_wait[i]);
         }
     }
@@ -99,7 +101,7 @@ void time_spgemm(ParCSRMatrix* A, ParCSRMatrix* P)
     print_times(time, time_comm, time_wait, "SpGEMM");
 }
 
-void time_tap_spgemm(ParCSRMatrix* A, ParCSRMatrix* P)
+void time_tap_spgemm(ParCSRMatrix* A, ParCSRMatrix* P, bool use_S = true)
 {
     double time, time_comm;
     double time_wait[4];
@@ -107,8 +109,9 @@ void time_tap_spgemm(ParCSRMatrix* A, ParCSRMatrix* P)
     int cache_len = 10000;
     std::vector<double> cache_array(cache_len);
 
-    if (!A->tap_comm) A->tap_comm = new TAPComm(A->partition, 
-            A->off_proc_column_map, A->on_proc_column_map);
+    if (A->tap_comm) delete A->tap_comm;
+    A->tap_comm = new TAPComm(A->partition, 
+            A->off_proc_column_map, A->on_proc_column_map, use_S);
 
     // Time TAP SpGEMM on Level i
     A->spgemm_data.tap_time = 0;
@@ -134,12 +137,20 @@ void time_tap_spgemm(ParCSRMatrix* A, ParCSRMatrix* P)
     }
     time = A->spgemm_data.tap_time / n_tests;
     time_comm = A->spgemm_data.tap_comm_time / n_tests;
+
+    if (use_S)
+    {        
+        time_wait[2] = A->tap_comm->local_S_par_comm->send_data->matrix_data.wait_time / n_tests;
+    }
+
     time_wait[0] = A->tap_comm->local_L_par_comm->send_data->matrix_data.wait_time / n_tests;
     time_wait[1] = A->tap_comm->local_R_par_comm->send_data->matrix_data.wait_time / n_tests;
-    time_wait[2] = A->tap_comm->local_S_par_comm->send_data->matrix_data.wait_time / n_tests;
     time_wait[3] = A->tap_comm->global_par_comm->send_data->matrix_data.wait_time / n_tests;
  
-    print_tap_times(time, time_comm, time_wait, "SpGEMM");
+    print_tap_times(time, time_comm, time_wait, "SpGEMM0", use_S);
+
+    delete A->tap_comm;
+    A->tap_comm = NULL;
 }
 
 void time_spgemm_T(ParCSRMatrix* A, ParCSCMatrix* P)
@@ -178,10 +189,11 @@ void time_spgemm_T(ParCSRMatrix* A, ParCSCMatrix* P)
     print_times(time, time_comm, time_wait, "Transpose SpGEMM");
 }
 
-void time_tap_spgemm_T(ParCSRMatrix* A, ParCSCMatrix* P)
+void time_tap_spgemm_T(ParCSRMatrix* A, ParCSCMatrix* P, bool use_S = true)
 {
-    if (!P->tap_comm) P->tap_comm = new TAPComm(P->partition, 
-            P->off_proc_column_map, P->on_proc_column_map);
+    if (P->tap_comm) delete P->tap_comm;
+    P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map, 
+            P->on_proc_column_map, use_S);
 
     double time, time_comm;
     double time_wait[4];
@@ -210,13 +222,18 @@ void time_tap_spgemm_T(ParCSRMatrix* A, ParCSCMatrix* P)
     }
     time = A->spgemm_T_data.tap_time / n_tests;
     time_comm = A->spgemm_T_data.tap_comm_time / n_tests;
+    if (use_S)
+    {
+        time_wait[2] = P->tap_comm->local_S_par_comm->recv_data->matrix_data.wait_time / n_tests;
+    }
     time_wait[0] = P->tap_comm->local_L_par_comm->recv_data->matrix_data.wait_time / n_tests;
     time_wait[1] = P->tap_comm->local_R_par_comm->recv_data->matrix_data.wait_time / n_tests;
-    time_wait[2] = P->tap_comm->local_S_par_comm->recv_data->matrix_data.wait_time / n_tests;
     time_wait[3] = P->tap_comm->global_par_comm->recv_data->matrix_data.wait_time / n_tests;
 
-    print_tap_times(time, time_comm, time_wait, "Transpose SpGEMM");
+    print_tap_times(time, time_comm, time_wait, "Transpose SpGEMM", use_S);
 
+    delete P->tap_comm;
+    P->tap_comm = NULL;
 }
 
 int main(int argc, char *argv[])
@@ -318,10 +335,25 @@ int main(int argc, char *argv[])
         ParCSRMatrix* AP = Al->mult(Pl);
 
         if (rank == 0) printf("Level %d\n", i);
+
+        if (rank == 0) printf("A*P:\n");
         time_spgemm(Al, Pl);
+        
+        if (rank == 0) printf("\nTAP A*P:\n");
         time_tap_spgemm(Al, Pl);
+
+        if (rank == 0) printf("\nSimple TAP A*P:\n");
+        time_tap_spgemm(Al, Pl, false);
+
+        if (rank == 0) printf("\nP.T*AP:\n");
         time_spgemm_T(AP, Pl_csc);
+
+        if (rank == 0) printf("\nTAP P.T*AP:\n");
         time_tap_spgemm_T(AP, Pl_csc);
+
+        if (rank == 0) printf("\nSimple TAP P.T*AP:\n");
+        time_tap_spgemm_T(AP, Pl_csc, false);
+
         delete Pl_csc;
         delete AP;
 
@@ -329,9 +361,17 @@ int main(int argc, char *argv[])
         ParCSRMatrix* P_new = Al->mult(Pl);
         ParCSRMatrix* AP_new = Al->mult(P_new);
         ParCSCMatrix* P_new_csc = new ParCSCMatrix(P_new);
+
+        if (rank == 0) printf("A*P:\n");
         time_spgemm(Al, P_new);
+        
+        if (rank == 0) printf("\nTAP A*P:\n");
         time_tap_spgemm(Al, P_new);
+
+        if (rank == 0) printf("\nP.T*AP:\n");
         time_spgemm_T(AP_new, P_new_csc);
+
+        if (rank == 0) printf("\nTAP P.T*AP:\n");
         time_tap_spgemm_T(AP_new, P_new_csc);        
         delete P_new;
         delete P_new_csc;

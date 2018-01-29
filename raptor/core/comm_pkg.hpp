@@ -1446,18 +1446,25 @@ namespace raptor
         **************************************************************/
         TAPComm(Partition* partition, 
                 const std::vector<int>& off_proc_column_map,
+                bool form_S = true,
                 MPI_Comm comm = MPI_COMM_WORLD) : CommPkg(partition)
         {
-            init_tap_comm(partition, off_proc_column_map, comm);
+            if (form_S)
+            {
+                init_tap_comm(partition, off_proc_column_map, comm);
+            }
+            else
+            {
+                init_tap_comm_simple(partition, off_proc_column_map, comm);
+            }
         }
 
         TAPComm(Partition* partition,
                 const std::vector<int>& off_proc_column_map,
                 const std::vector<int>& on_proc_column_map,
+                bool form_S = true,
                 MPI_Comm comm = MPI_COMM_WORLD) : CommPkg(partition)
         {
-            init_tap_comm(partition, off_proc_column_map, comm);
-
             std::vector<int> on_proc_to_new;
             int on_proc_num_cols = on_proc_column_map.size();
             if (partition->local_num_cols)
@@ -1468,11 +1475,26 @@ namespace raptor
                     on_proc_to_new[on_proc_column_map[i] - partition->first_local_col] = i;
                 }
             }
-            
-            for (std::vector<int>::iterator it = local_S_par_comm->send_data->indices.begin();
-                    it != local_S_par_comm->send_data->indices.end(); ++it)
+
+            if (form_S)
             {
-                *it = on_proc_to_new[*it];
+                init_tap_comm(partition, off_proc_column_map, comm);
+
+                for (std::vector<int>::iterator it = local_S_par_comm->send_data->indices.begin();
+                        it != local_S_par_comm->send_data->indices.end(); ++it)
+                {
+                    *it = on_proc_to_new[*it];
+                }
+            }
+            else
+            {
+                init_tap_comm_simple(partition, off_proc_column_map, comm);
+
+                for (std::vector<int>::iterator it = global_par_comm->send_data->indices.begin();
+                        it != global_par_comm->send_data->indices.end(); ++it)
+                {
+                    *it = on_proc_to_new[*it];
+                }
             }
 
             for (std::vector<int>::iterator it = local_L_par_comm->send_data->indices.begin();
@@ -1498,8 +1520,12 @@ namespace raptor
         **************************************************************/
         TAPComm(TAPComm* tap_comm) : CommPkg(tap_comm->topology)
         {
+            if (tap_comm->local_S_par_comm)
+            {
+                local_S_par_comm = new ParComm(tap_comm->local_S_par_comm);
+            }
+
             global_par_comm = new ParComm(tap_comm->global_par_comm);
-            local_S_par_comm = new ParComm(tap_comm->local_S_par_comm);
             local_R_par_comm = new ParComm(tap_comm->local_R_par_comm);
             local_L_par_comm = new ParComm(tap_comm->local_L_par_comm);
 
@@ -1522,10 +1548,14 @@ namespace raptor
             int new_idx_L;
             int new_idx_R;
 
+            if (tap_comm->local_S_par_comm)
+            {
+                local_S_par_comm = new ParComm(tap_comm->topology,
+                        tap_comm->local_S_par_comm->key, tap_comm->local_S_par_comm->mpi_comm);
+            }
+
             local_L_par_comm = new ParComm(tap_comm->topology, 
                     tap_comm->local_L_par_comm->key, tap_comm->local_L_par_comm->mpi_comm);
-            local_S_par_comm = new ParComm(tap_comm->topology,
-                    tap_comm->local_S_par_comm->key, tap_comm->local_S_par_comm->mpi_comm);
             local_R_par_comm = new ParComm(tap_comm->topology,
                     tap_comm->local_R_par_comm->key, tap_comm->local_R_par_comm->mpi_comm);
             global_par_comm = new ParComm(tap_comm->topology,
@@ -1793,7 +1823,7 @@ namespace raptor
         ~TAPComm()
         {
             delete global_par_comm;
-            delete local_S_par_comm;
+            delete local_S_par_comm;  // May be NULL but can still call delete
             delete local_R_par_comm;
             delete local_L_par_comm;
         }
@@ -1889,6 +1919,96 @@ namespace raptor
             }
         }
 
+        void init_tap_comm_simple(Partition* partition,
+                const std::vector<int>& off_proc_column_map,
+                MPI_Comm comm)
+        {
+            // Get MPI Information
+            int rank, num_procs;
+            MPI_Comm_rank(comm, &rank);
+            MPI_Comm_size(comm, &num_procs);
+
+            // Initialize class variables
+            local_S_par_comm = NULL;
+            local_R_par_comm = new ParComm(partition, 3456, partition->topology->local_comm);
+            local_L_par_comm = new ParComm(partition, 4567, partition->topology->local_comm);
+            global_par_comm = new ParComm(partition, 5678, comm);
+
+            // Initialize Variables
+            int idx;
+            int recv_size;
+            std::vector<int> off_proc_col_to_proc;
+            std::vector<int> on_node_column_map;
+            std::vector<int> on_node_col_to_proc;
+            std::vector<int> off_node_column_map;
+            std::vector<int> off_node_col_to_proc;
+            std::vector<int> on_node_to_off_proc;
+            std::vector<int> off_node_to_off_proc;
+
+            // Find process on which vector value associated with each column is
+            // stored
+            partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
+
+            // Partition off_proc cols into on_node and off_node
+            split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
+                   on_node_column_map, on_node_col_to_proc, on_node_to_off_proc,
+                   off_node_column_map, off_node_col_to_proc, off_node_to_off_proc);
+
+            // Form local recv communicator.  Will recv from local rank
+            // corresponding to global rank on which data originates.  E.g. if
+            // data is on rank r = (p, n), and my rank is s = (q, m), I will
+            // recv data from (p, m).
+            form_simple_R_par_comm(off_node_column_map, off_node_col_to_proc);
+
+            // Form global par comm.. Will recv from proc on which data
+            // originates
+            form_simple_global_comm(off_node_col_to_proc);
+
+            // Adjust send indices (currently global vector indices) to be
+            // index of global vector value from previous recv (only updating
+            // local_R to match position in global)
+            adjust_send_indices(partition->first_local_col);
+
+            // Form local_L_par_comm: fully local communication (origin and
+            // destination processes both local to node)
+            form_local_L_par_comm(on_node_column_map, on_node_col_to_proc,
+                    partition->first_local_col);
+
+            // Determine size of final recvs (should be equal to 
+            // number of off_proc cols)
+            recv_size = local_R_par_comm->recv_data->size_msgs +
+                local_L_par_comm->recv_data->size_msgs;
+            if (recv_size)
+            {
+                // Want a single recv buffer local_R and local_L par_comms
+                recv_buffer.resize(recv_size);
+                int_recv_buffer.resize(recv_size);
+
+                // Map local_R recvs to original off_proc_column_map
+                if (local_R_par_comm->recv_data->size_msgs)
+                {
+                    for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
+                    {
+                        idx = local_R_par_comm->recv_data->indices[i];
+                        local_R_par_comm->recv_data->indices[i] = off_node_to_off_proc[idx];
+                    }
+                }
+
+
+                // Map local_L recvs to original off_proc_column_map
+                if (local_L_par_comm->recv_data->size_msgs)
+                {
+                    for (int i = 0; i < local_L_par_comm->recv_data->size_msgs; i++)
+                    {
+                        idx = local_L_par_comm->recv_data->indices[i];
+                        local_L_par_comm->recv_data->indices[i] = on_node_to_off_proc[idx];
+                    }
+                }
+            }
+        }
+
+
+
         // Helper methods for forming TAPComm:
         void split_off_proc_cols(const std::vector<int>& off_proc_column_map,
                 const std::vector<int>& off_proc_col_to_proc,
@@ -1907,6 +2027,9 @@ namespace raptor
         void form_local_L_par_comm(const std::vector<int>& on_node_column_map,
                 const std::vector<int>& on_node_col_to_proc,
                 const int first_local_col);
+        void form_simple_R_par_comm(std::vector<int>& off_node_column_map,
+                std::vector<int>& off_node_col_to_proc);
+        void form_simple_global_comm(std::vector<int>& off_node_col_to_proc);
 
         // Class Methods
         void init_double_comm(const double* values)
@@ -1943,12 +2066,18 @@ namespace raptor
             // Messages with origin and final destination on node
             local_L_par_comm->communicate<T>(values);
 
-            // Initial redistribution among node
-            std::vector<T>& S_vals = 
-                local_S_par_comm->communicate<T>(values);
+            if (local_S_par_comm)
+            {
+                // Initial redistribution among node
+                std::vector<T>& S_vals = local_S_par_comm->communicate<T>(values);
 
-            // Begin inter-node communication 
-            global_par_comm->initialize(S_vals.data());
+                // Begin inter-node communication 
+                global_par_comm->initialize(S_vals.data());
+            }
+            else
+            {
+                global_par_comm->initialize(values);
+            }
         }
 
         template<typename T>
@@ -2063,29 +2192,43 @@ namespace raptor
             complete_T<T>();
 
             int idx;
-            std::vector<T>& S_sendbuf = local_S_par_comm->send_data->get_buffer<T>();
             std::vector<T>& L_sendbuf = local_L_par_comm->send_data->get_buffer<T>();
-
             for (int i = 0; i < local_L_par_comm->send_data->size_msgs; i++)
             {
                 idx = local_L_par_comm->send_data->indices[i];
                 result[idx] += L_sendbuf[i];
             }
-            for (int i = 0; i < local_S_par_comm->send_data->size_msgs; i++)
+
+            if (local_S_par_comm)
             {
-                idx = local_S_par_comm->send_data->indices[i];
-                result[idx] += S_sendbuf[i];
-            } 
+                std::vector<T>& S_sendbuf = local_S_par_comm->send_data->get_buffer<T>();
+                for (int i = 0; i < local_S_par_comm->send_data->size_msgs; i++)
+                {
+                    idx = local_S_par_comm->send_data->indices[i];
+                    result[idx] += S_sendbuf[i];
+                }
+            }
+            else
+            {
+                std::vector<T>& G_sendbuf = global_par_comm->send_data->get_buffer<T>();
+                for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
+                {
+                    idx = global_par_comm->send_data->indices[i];
+                    result[idx] += G_sendbuf[i];
+                }
+            }
         }
         template<typename T>
         void complete_T()
         {
             // Complete inter-node communication
             global_par_comm->complete_comm_T<T>();
-
-            int idx;
-            std::vector<T>& G_sendbuf = global_par_comm->send_data->get_buffer<T>();
-            local_S_par_comm->communicate_T(G_sendbuf);
+    
+            if (local_S_par_comm)
+            {
+                std::vector<T>& G_sendbuf = global_par_comm->send_data->get_buffer<T>();
+                local_S_par_comm->communicate_T(G_sendbuf);
+            }
         }
 
 
@@ -2341,16 +2484,24 @@ namespace raptor
 
         void reset_comm_data()
         {
+            if (local_S_par_comm)
+            {
+                local_S_par_comm->send_data->reset_data();
+            }
+
             local_L_par_comm->send_data->reset_data();
             local_R_par_comm->send_data->reset_data();
-            local_S_par_comm->send_data->reset_data();
             global_par_comm->send_data->reset_data();
         }
         void reset_comm_T_data()
         {
+            if (local_S_par_comm)
+            {
+                local_S_par_comm->recv_data->reset_data();
+            }
+
             local_L_par_comm->recv_data->reset_data();
             local_R_par_comm->recv_data->reset_data();
-            local_S_par_comm->recv_data->reset_data();
             global_par_comm->recv_data->reset_data();
         }
         void print_comm_data(bool vec)
@@ -2358,12 +2509,15 @@ namespace raptor
             int rank;
             MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-            if (rank == 0) printf("Local L: ");
-            local_L_par_comm->send_data->print_data(vec);
+            if (local_S_par_comm)
+            {
+                if (rank == 0) printf("Local S: ");
+                local_S_par_comm->send_data->print_data(vec);
+            }
             if (rank == 0) printf("Local R: ");
             local_R_par_comm->send_data->print_data(vec);
-            if (rank == 0) printf("Local S: ");
-            local_S_par_comm->send_data->print_data(vec);
+            if (rank == 0) printf("Local L: ");
+            local_L_par_comm->send_data->print_data(vec);
             if (rank == 0) printf("Global: ");
             global_par_comm->send_data->print_data(vec);
         }
@@ -2372,13 +2526,17 @@ namespace raptor
             int rank;
             MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-            if (rank == 0) printf("Local L: ");
-            local_L_par_comm->recv_data->print_data(vec);
+            if (local_S_par_comm)
+            {
+                if (rank == 0) printf("Local S: ");
+                local_S_par_comm->recv_data->print_data(vec);
+            }
+
             if (rank == 0) printf("Local R: ");
             local_R_par_comm->recv_data->print_data(vec);
-            if (rank == 0) printf("Local S: ");
-            local_S_par_comm->recv_data->print_data(vec);
-            if (rank == 0) printf("Global L: ");
+            if (rank == 0) printf("Local L: ");
+            local_L_par_comm->recv_data->print_data(vec);
+            if (rank == 0) printf("Global: ");
             global_par_comm->recv_data->print_data(vec);
         }
 
