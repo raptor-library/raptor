@@ -327,7 +327,12 @@ int main(int argc, char *argv[])
             1, 1.0, 50, -1);
     raptor_setup = MPI_Wtime() - t0;
 
-    for (int i = 0; i < ml->num_levels - 1; i++)
+    ParCSRMatrix* A3 = ml->levels[3]->A;
+    if (A3->tap_comm) delete A3->tap_comm;
+    A3->tap_comm = new TAPComm(A3->partition, A3->off_proc_column_map,
+            A3->on_proc_column_map, false);
+    
+    /*for (int i = 0; i < ml->num_levels - 1; i++)
     {
         ParCSRMatrix* Al = ml->levels[i]->A;
         ParCSRMatrix* Pl = ml->levels[i]->P;
@@ -377,7 +382,7 @@ int main(int argc, char *argv[])
         delete P_new_csc;
         delete AP_new;
     }
-
+*/
 
     // Delete raptor hierarchy
     delete ml;
