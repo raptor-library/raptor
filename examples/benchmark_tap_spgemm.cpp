@@ -147,7 +147,7 @@ void time_tap_spgemm(ParCSRMatrix* A, ParCSRMatrix* P, bool use_S = true)
     time_wait[1] = A->tap_comm->local_R_par_comm->send_data->matrix_data.wait_time / n_tests;
     time_wait[3] = A->tap_comm->global_par_comm->send_data->matrix_data.wait_time / n_tests;
  
-    print_tap_times(time, time_comm, time_wait, "SpGEMM0", use_S);
+    print_tap_times(time, time_comm, time_wait, "SpGEMM", use_S);
 
     delete A->tap_comm;
     A->tap_comm = NULL;
@@ -327,12 +327,7 @@ int main(int argc, char *argv[])
             1, 1.0, 50, -1);
     raptor_setup = MPI_Wtime() - t0;
 
-    ParCSRMatrix* A3 = ml->levels[3]->A;
-    if (A3->tap_comm) delete A3->tap_comm;
-    A3->tap_comm = new TAPComm(A3->partition, A3->off_proc_column_map,
-            A3->on_proc_column_map, false);
-    
-    /*for (int i = 0; i < ml->num_levels - 1; i++)
+    for (int i = 0; i < ml->num_levels - 1; i++)
     {
         ParCSRMatrix* Al = ml->levels[i]->A;
         ParCSRMatrix* Pl = ml->levels[i]->P;
@@ -373,16 +368,22 @@ int main(int argc, char *argv[])
         if (rank == 0) printf("\nTAP A*P:\n");
         time_tap_spgemm(Al, P_new);
 
+        if (rank == 0) printf("\nSimple TAP A*P:\n");
+        time_tap_spgemm(Al, P_new, false);
+
         if (rank == 0) printf("\nP.T*AP:\n");
         time_spgemm_T(AP_new, P_new_csc);
 
         if (rank == 0) printf("\nTAP P.T*AP:\n");
         time_tap_spgemm_T(AP_new, P_new_csc);        
+
+        if (rank == 0) printf("\nSimple TAP P.T*AP:\n");
+        time_tap_spgemm_T(AP_new, P_new_csc, false);
+
         delete P_new;
         delete P_new_csc;
         delete AP_new;
     }
-*/
 
     // Delete raptor hierarchy
     delete ml;

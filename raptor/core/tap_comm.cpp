@@ -1112,7 +1112,12 @@ void TAPComm::form_simple_global_comm(std::vector<int>& off_proc_col_to_proc)
         proc = local_R_par_comm->recv_data->procs[i];
         start = local_R_par_comm->recv_data->indptr[i];
         end = local_R_par_comm->recv_data->indptr[i+1];
-        MPI_Isend(&(off_proc_col_to_proc[start]), end - start, MPI_INT,
+        for (int j = start; j < end; j++)
+        {
+            idx = local_R_par_comm->recv_data->indices[j];
+            local_R_par_comm->recv_data->int_buffer[j] = off_proc_col_to_proc[idx];
+        }
+        MPI_Isend(&(local_R_par_comm->recv_data->int_buffer[start]), end - start, MPI_INT,
                 proc, 6544, topology->local_comm, &(local_R_par_comm->recv_data->requests[i]));
     }
     for (int i = 0; i < local_R_par_comm->send_data->num_msgs; i++)
