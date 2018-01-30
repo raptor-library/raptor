@@ -287,7 +287,7 @@ int main(int argc, char *argv[])
         {
             dim = 2;
             grid.resize(dim, n);
-            double eps = 0.1;
+            double eps = 0.001;
             double theta = M_PI/4.0;
             if (argc > 3)
             {
@@ -323,7 +323,7 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(A, strong_threshold, RS, Direct, SOR,
+    ml = new ParMultilevel(A, strong_threshold, CLJP, Falgout, SOR,
             1, 1.0, 50, -1);
     raptor_setup = MPI_Wtime() - t0;
 
