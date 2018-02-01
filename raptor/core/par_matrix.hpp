@@ -266,6 +266,8 @@ namespace raptor
         off_proc->sort();
     }
 
+    virtual ParMatrix* transpose() = 0;
+
     std::vector<index_t>& get_off_proc_column_map()
     {
         return off_proc_column_map;
@@ -420,6 +422,8 @@ namespace raptor
     void tap_mult(ParVector& x, ParVector& b);
     void mult_T(ParVector& x, ParVector& b);
     void tap_mult_T(ParVector& x, ParVector& b);
+
+    ParMatrix* transpose();
   };
 
   class ParCSRMatrix : public ParMatrix
@@ -460,6 +464,17 @@ namespace raptor
         off_proc = new CSRMatrix(partition->local_num_rows, partition->global_num_cols, 
                 nnz_per_row);
     }
+
+    ParCSRMatrix(Partition* part, Matrix* _on_proc, Matrix* _off_proc) : ParMatrix(part)
+    {
+        on_proc = _on_proc;
+        off_proc = _off_proc;
+        on_proc_num_cols = on_proc->n_cols;
+        off_proc_num_cols = off_proc->n_cols;
+        local_num_rows = on_proc->n_rows;
+        finalize();
+    }
+
 
     ParCSRMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows,
             int on_proc_cols, int off_proc_cols, int nnz_per_row = 5) : ParMatrix(part, 
@@ -562,6 +577,8 @@ namespace raptor
     CSRMatrix* mult_T_partial(CSCMatrix* A_off);
     void mult_T_combine(ParCSCMatrix* A, ParCSRMatrix* C, CSRMatrix* recv_on,
             CSRMatrix* recv_off);
+
+    ParMatrix* transpose();
   };
 
   class ParCSCMatrix : public ParMatrix
@@ -638,6 +655,7 @@ namespace raptor
     void mult_T(ParVector& x, ParVector& b);
     void tap_mult_T(ParVector& x, ParVector& b);
 
+    ParMatrix* transpose();
   };
 
 }

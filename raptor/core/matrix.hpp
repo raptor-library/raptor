@@ -227,6 +227,8 @@ namespace raptor
 
     void resize(int _n_rows, int _n_cols);
 
+    virtual Matrix* transpose() = 0;
+
     std::vector<int>& index1()
     {
         return idx1;
@@ -340,6 +342,19 @@ namespace raptor
         }
     }
 
+    COOMatrix(int _nrows, int _ncols, std::vector<int>& rows, std::vector<int>& cols, 
+            std::vector<double>& data) : Matrix(_nrows, _ncols)
+    {
+        nnz = idx1.size();
+        idx1.resize(nnz);
+        idx2.resize(nnz);
+        vals.resize(nnz);
+
+        std::copy(rows.begin(), rows.end(), idx1.begin());
+        std::copy(cols.begin(), cols.end(), idx2.begin());
+        std::copy(data.begin(), data.end(), vals.begin());
+    }
+
     COOMatrix()
     {
     }
@@ -394,6 +409,8 @@ namespace raptor
     {
 
     }
+
+    Matrix* transpose();
 
     void print();
 
@@ -609,6 +626,18 @@ namespace raptor
         }
     }
 
+    CSRMatrix(int _nrows, int _ncols, std::vector<int>& rowptr, 
+            std::vector<int>& cols, std::vector<double>& data) : Matrix(_nrows, _ncols)
+    {
+        nnz = cols.size();
+        idx1.resize(n_rows+1);
+        idx2.resize(nnz);
+        vals.resize(nnz);
+
+        std::copy(rowptr.begin(), rowptr.end(), idx1.begin());
+        std::copy(cols.begin(), cols.end(), idx2.begin());
+        std::copy(data.begin(), data.end(), vals.begin());
+    }
 
     /**************************************************************
     *****   CSRMatrix Class Constructor
@@ -663,6 +692,8 @@ namespace raptor
     {
 
     }
+
+    Matrix* transpose();
 
     void print();
 
@@ -893,6 +924,18 @@ namespace raptor
         }
     }
 
+    CSCMatrix(int _nrows, int _ncols, std::vector<int>& colptr, 
+            std::vector<int>& rows, std::vector<double>& data) : Matrix(_nrows, _ncols)
+    {
+        nnz = rows.size();
+        idx1.resize(n_cols+1);
+        idx2.resize(nnz);
+        vals.resize(nnz);
+
+        std::copy(colptr.begin(), colptr.end(), idx1.begin());
+        std::copy(rows.begin(), rows.end(), idx2.begin());
+        std::copy(data.begin(), data.end(), vals.begin());
+    }
 
     /**************************************************************
     *****   CSCMatrix Class Constructor
@@ -948,6 +991,8 @@ namespace raptor
 
     }
 
+
+    Matrix* transpose();
     void print();
 
     void copy(const COOMatrix* A);

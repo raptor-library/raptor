@@ -99,6 +99,7 @@ CSRMatrix* readMatrix(const char* filename)
         }
     }
     A->nnz = A->idx2.size();
+    printf("%d\n", A->nnz);
 
     ifs.close();
 

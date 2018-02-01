@@ -62,6 +62,41 @@ void CSCMatrix::print()
     }
 }
 
+
+
+Matrix* COOMatrix::transpose()
+{
+    Matrix* T = new COOMatrix(n_rows, n_cols, idx2, idx1, vals);
+
+    return T;
+}
+
+Matrix* CSRMatrix::transpose()
+{
+    // Create CSC Matrix... rowptr is now colptr
+    CSCMatrix* T_csc = new CSCMatrix(n_rows, n_cols, idx1, idx2, vals); 
+
+    // Convert back to CSR to tranpose
+    Matrix* T = new CSRMatrix(T_csc);
+
+    delete T_csc;
+
+    return T;
+}
+
+Matrix* CSCMatrix::transpose()
+{
+    // Create CSR Matrix... colptr is now rowptr
+    CSRMatrix* T_csr = new CSRMatrix(n_rows, n_cols, idx1, idx2, vals); 
+
+    // Convert back to CSC to tranpose
+    Matrix* T = new CSCMatrix(T_csr);
+
+    delete T_csr;
+
+    return T;
+}
+
 /**************************************************************
 *****   Matrix Resize
 **************************************************************

@@ -291,7 +291,7 @@ CSRMatrix* communication_helper(std::vector<int>& rowptr,
                     row = send_comm->indices[k];
                     row_start = rowptr[row];
                     row_end = rowptr[row+1];
-		    send_buffer[size_pos].index += (row_end - row_start);
+		            send_buffer[size_pos].index += (row_end - row_start);
                     for (int l = row_start; l < row_end; l++)
                     {
                         send_buffer.push_back(PairData());

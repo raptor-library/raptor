@@ -108,7 +108,6 @@ void ParMatrix::condense_off_proc()
     }
 }
 
-
 void ParMatrix::finalize(bool create_comm)
 {
     on_proc->sort();
@@ -450,4 +449,156 @@ void ParCSCMatrix::copy(ParCOOMatrix* A)
     ParMatrix::copy(A);
 }
 
+
+ParMatrix* ParCOOMatrix::transpose()
+{
+    // NOT IMPLEMENTED
+    return NULL;
+}
+
+ParMatrix* ParCSRMatrix::transpose()
+{
+    int start, end;
+    int proc;
+    int col, col_start, col_end;
+    int ctr, size;
+    int col_count, count;
+    int col_size;
+    int idx, row;
+    MPI_Status recv_status;
+
+    Partition* part_T;
+    Matrix* on_proc_T;
+    Matrix* off_proc_T;
+    CSCMatrix* send_mat;
+    CSCMatrix* recv_mat;
+    ParCSRMatrix* T = NULL;
+
+    struct PairData 
+    {
+        double val;
+        int index;
+    };
+
+    std::vector<PairData> send_buffer;
+    std::vector<PairData> recv_buffer;
+    std::vector<int> send_ptr(comm->recv_data->num_msgs+1);
+
+    // Transpose partition
+    part_T = partition->transpose();
+
+    // Transpose local (on_proc) matrix
+    on_proc_T = on_proc->transpose();
+
+    // Allocate vectors for sending off_proc matrix
+    send_mat = new CSCMatrix((CSRMatrix*) off_proc);
+    recv_mat = new CSCMatrix(local_num_rows, comm->send_data->size_msgs);
+
+    // Add off_proc cols of matrix to send buffer
+    ctr = 0;
+    send_ptr[0] = 0;
+    for (int i = 0; i < comm->recv_data->num_msgs; i++)
+    {
+        start = comm->recv_data->indptr[i];
+        end = comm->recv_data->indptr[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = j;
+            col_start = send_mat->idx1[col];
+            col_end = send_mat->idx1[col+1];
+            send_buffer.push_back(PairData());
+            send_buffer[ctr++].index = col_end - col_start;
+            for (int k = col_start; k < col_end; k++)
+            {
+                send_buffer.push_back(PairData());
+                send_buffer[ctr].index = local_row_map[send_mat->idx2[k]];
+                send_buffer[ctr++].val = send_mat->vals[k];
+            }
+        }
+        send_ptr[i+1] = send_buffer.size();
+    }
+    for (int i = 0; i < comm->recv_data->num_msgs; i++)
+    {
+        proc = comm->recv_data->procs[i];
+        start = send_ptr[i];
+        end = send_ptr[i+1];
+        MPI_Isend(&(send_buffer[start]), end - start, MPI_DOUBLE_INT, proc,
+                comm->key, comm->mpi_comm, &(comm->recv_data->requests[i]));
+    }
+    col_count = 0;
+    recv_mat->idx1[0] = 0;
+    for (int i = 0; i < comm->send_data->num_msgs; i++)
+    {
+        proc = comm->send_data->procs[i];
+        start = comm->send_data->indptr[i];
+        end = comm->send_data->indptr[i+1];
+        size = end - start;
+        MPI_Probe(proc, comm->key, comm->mpi_comm, &recv_status);
+        MPI_Get_count(&recv_status, MPI_DOUBLE_INT, &count);
+        if (count > recv_buffer.size())
+        {
+            recv_buffer.resize(count);
+        }
+        MPI_Recv(&(recv_buffer[0]), count, MPI_DOUBLE_INT, proc,
+                comm->key, comm->mpi_comm, &recv_status);
+        ctr = 0;
+        for (int j = 0; j < size; j++)
+        {
+            col_size = recv_buffer[ctr++].index;
+            recv_mat->idx1[col_count+1] = recv_mat->idx1[col_count] + col_size;
+            col_count++;
+            for (int k = 0; k < col_size; k++)
+            {
+                recv_mat->idx2.push_back(recv_buffer[ctr].index);
+                recv_mat->vals.push_back(recv_buffer[ctr++].val);
+            }
+        }
+    }
+    recv_mat->nnz = recv_mat->idx2.size();
+    MPI_Waitall(comm->recv_data->num_msgs, comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
+
+    off_proc_T = new CSRMatrix(on_proc_num_cols, -1);
+    std::vector<int> off_T_sizes(on_proc_num_cols, 0);
+    for (int i = 0; i < comm->send_data->size_msgs; i++)
+    {
+        row = comm->send_data->indices[i];
+        start = recv_mat->idx1[i];
+        end = recv_mat->idx1[i+1];
+        off_T_sizes[row] += (end - start);
+    }
+    off_proc_T->idx1[0] = 0;
+    for (int i = 0; i < off_proc_T->n_rows; i++)
+    {
+        off_proc_T->idx1[i+1] = off_proc_T->idx1[i] + off_T_sizes[i];
+        off_T_sizes[i] = 0;
+    }
+    off_proc_T->nnz = off_proc_T->idx1[off_proc_T->n_rows];
+    off_proc_T->idx2.resize(off_proc_T->nnz);
+    off_proc_T->vals.resize(off_proc_T->nnz);
+    for (int i = 0; i < comm->send_data->size_msgs; i++)
+    {
+        row = comm->send_data->indices[i];
+        start = recv_mat->idx1[i];
+        end = recv_mat->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            idx = off_proc_T->idx1[row] + off_T_sizes[row]++;
+            off_proc_T->idx2[idx] = recv_mat->idx2[j];
+            off_proc_T->vals[idx] = recv_mat->vals[j];
+        }
+    }
+
+    T = new ParCSRMatrix(part_T, on_proc_T, off_proc_T);
+
+    delete send_mat;
+    delete recv_mat;
+
+    return T;
+}
+
+ParMatrix* ParCSCMatrix::transpose()
+{
+    // NOT IMPLEMENTED
+    return NULL;
+}
 

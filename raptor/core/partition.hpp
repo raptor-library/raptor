@@ -172,6 +172,14 @@ namespace raptor
         }
     }
 
+    Partition* transpose()
+    {
+        Partition* part = new Partition(global_num_cols, global_num_rows,
+                local_num_cols, local_num_rows, first_local_col,
+                first_local_row, topology);
+        return part;
+    }
+
     void create_assumed_partition()
     {
         // Get MPI Information
