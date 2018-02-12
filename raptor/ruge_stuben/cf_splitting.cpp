@@ -101,7 +101,7 @@ void rs_first_pass(const CSRMatrix* S,
     for (int i = 0; i < S->n_cols; i++)
     {
         weight = weights[i];
-        idx = weight_ptr[weight] + weight_sizes[weight]++;
+        idx = weight_ptr[weight+1] - (weight_sizes[weight]++ + 1);
         weight_idx_to_col[idx] = i;
         col_to_weight_idx[i] = idx;
     }
@@ -154,6 +154,7 @@ void rs_first_pass(const CSRMatrix* S,
                             new_pos = weight_ptr[weight_k] + weight_sizes[weight_k] - 1;
                             col_to_weight_idx[weight_idx_to_col[old_pos]] = new_pos;
                             col_to_weight_idx[weight_idx_to_col[new_pos]] = old_pos;
+
                             std::swap(weight_idx_to_col[old_pos], weight_idx_to_col[new_pos]);
 
                             weight_sizes[weight_k] -= 1;
@@ -455,10 +456,9 @@ void cljp_main_loop(CSRMatrix* S, std::vector<int>& col_ptr, std::vector<int>& c
     }
     else
     {
+        srand(time(NULL));
         for (int i = 0; i < S->n_rows; i++)
         {
-            srand(i);
-
             // Random value [0,1)
             weights[i] = ((double)(rand())) / RAND_MAX;
         }
@@ -496,6 +496,99 @@ void cljp_main_loop(CSRMatrix* S, std::vector<int>& col_ptr, std::vector<int>& c
     }
 }
 
+void pmis_main_loop(CSRMatrix* S, std::vector<int>& col_ptr, std::vector<int>& col_indices,
+        std::vector<int>& states, double* rand_vals)
+{
+    int num_new_coarse;
+    int start, end, col, row;
+    int ctr, idx;
+    int num_remaining;
+    double row_weight, col_weight;
+    double max_row_weight, max_col_weight;
+    std::vector<double> weights;
+    std::vector<int> unassigned;
+    std::vector<int> new_coarse_list;
+
+    if (S->n_rows)
+    {
+        weights.resize(S->n_rows);
+        unassigned.resize(S->n_rows);
+        new_coarse_list.resize(S->n_rows);
+    }
+
+    // Assign random weight to each vertex
+    if (rand_vals)
+    {
+        for (int i = 0; i < S->n_rows; i++)
+        {
+            weights[i] = rand_vals[i];
+        }
+    }
+    else
+    {
+        srand(102483);
+        for (int i = 0; i < S->n_rows; i++)
+        {
+            // Random value [0,1)
+            weights[i] = ((double)(rand())) / RAND_MAX;
+        }
+    }
+
+    // Update vertex weights (number of rows in which it is a column)
+    for (int i = 0; i < S->n_rows; i++)
+    {
+        start = S->idx1[i];
+        end = S->idx1[i+1];
+        if (S->idx2[start] == i)
+        {
+            start++;
+        }
+        for (int j = start; j < end; j++)
+        {
+            col = S->idx2[j];
+            weights[col] += 1;
+        }
+    }
+
+    num_remaining = 0;
+    for (int i = 0; i < S->n_rows; i++)
+    {
+        if (weights[i] < 1)
+        {
+            states[i] = 0;
+        }
+        else
+        {
+            unassigned[num_remaining++] = i;
+        }
+    }
+
+    while (num_remaining > 0)
+    {
+        // Find max unassigned weight in each row / column
+        num_new_coarse = select_independent_set(S, col_ptr, col_indices,
+                num_remaining, unassigned, states, weights, new_coarse_list);
+
+        for (int i = 0; i < num_new_coarse; i++)
+        {
+            idx = new_coarse_list[i];
+            start = col_ptr[idx];
+            end = col_ptr[idx+1];
+            for (int j = start; j < end; j++)
+            {
+                row = col_indices[j];
+                if (states[row] == -1)
+                {
+                    states[row] = 0;
+                    weights[row] = 0;
+                }
+            }
+        }
+
+        num_remaining = update_states(num_remaining, unassigned, states, weights);
+    }
+}
+
 void split_cljp(CSRMatrix* S, 
         std::vector<int>& states,
         double* rand_vals)
@@ -525,5 +618,30 @@ void split_cljp(CSRMatrix* S,
     cljp_main_loop(S, col_ptr, col_indices, states, rand_vals);
 }
 
+
+void split_pmis(CSRMatrix* S, std::vector<int>& states, double* rand_vals)
+{
+    std::vector<int> col_ptr;
+    std::vector<int> col_indices;
+
+    if (!S->diag_first)
+    {
+        S->move_diag();
+    }
+    if (S->n_rows)
+    {
+        states.resize(S->n_rows);
+    }
+
+    // Find column-wise sparsity pattern of S
+    transpose(S, col_ptr, col_indices);
+
+    for (int i = 0; i < S->n_rows; i++)
+    {
+        states[i] = -1;
+    }
+
+    pmis_main_loop(S, col_ptr, col_indices, states, rand_vals);
+}
 
 

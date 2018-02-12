@@ -67,10 +67,12 @@ int main(int argc, char *argv[])
     double raptor_setup, raptor_solve;
     double raptor_tap_solve;
 
-    int coarsen_type = 0; // CLJP
+    int coarsen_type = 8; // PMIS
+    //int coarsen_type = 0; // CLJP
     //int coarsen_type = 6; // FALGOUT
     //int interp_type = 3; // Direct Interp
-    int interp_type = 0; // Classical Mod Interp
+    //int interp_type = 0; // Classical Mod Interp
+    int interp_type = 6;
     double strong_threshold = 0.25;
     int agg_num_levels = 0;
     int p_max_elmts = 0;
@@ -201,7 +203,7 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(A, strong_threshold, CLJP, Classical, SOR,
+    ml = new ParMultilevel(A, strong_threshold, PMIS, Extended, SOR,
             1, 1.0, 50, -1);
     raptor_setup = MPI_Wtime() - t0;
     clear_cache(cache_array);

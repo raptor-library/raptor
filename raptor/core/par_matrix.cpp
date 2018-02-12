@@ -154,7 +154,7 @@ void ParMatrix::finalize(bool create_comm)
 int* ParMatrix::map_partition_to_local()
 {
     int* on_proc_partition_to_col = NULL;
-    if (on_proc->nnz && partition->local_num_cols)
+    if (partition->local_num_cols)
     {
         on_proc_partition_to_col = new int[partition->local_num_cols];
         for (int i = 0; i < on_proc_num_cols; i++)

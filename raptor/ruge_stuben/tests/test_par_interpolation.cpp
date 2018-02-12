@@ -59,6 +59,10 @@ ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, 
     {
         P_rap = mod_classical_interpolation(A, S, splitting, S->comm->recv_data->int_buffer, A->comm);
     }
+    else if (interp_option == 2)
+    {
+        P_rap = extended_interpolation(A, S, splitting, S->comm->recv_data->int_buffer, A->comm);
+    }
     MPI_Allgather(&P_rap->on_proc_num_cols, 1, MPI_INT, proc_sizes.data(), 1, 
                 MPI_INT, MPI_COMM_WORLD);
     first_col = 0;
@@ -107,7 +111,8 @@ TEST(TestParInterpolation, TestsInRuge_Stuben)
     const char* cf1_fn = "../../../../test_data/rss_cf1.txt";
     const char* P0_mc_fn = "../../../../test_data/rss_P0_mc.pm";
     const char* P1_mc_fn = "../../../../test_data/rss_P1_mc.pm";
-
+    const char* P0_extend = "../../../../test_data/rss_P0_extend.pm";
+    const char* P1_extend = "../../../../test_data/rss_P1_extend.pm";
 
     // TEST LEVEL 0
     A = readParMatrix(A0_fn);
@@ -120,38 +125,48 @@ TEST(TestParInterpolation, TestsInRuge_Stuben)
     delete P_rap;
     delete P;
 
-    P_rap = form_Prap(A, S, cf0_fn, 
-            &first_row, &first_col, 1);
+    P_rap = form_Prap(A, S, cf0_fn, &first_row, &first_col, 1);
     P = readParMatrix(P0_mc_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
             first_row, first_col);
     compare(P, P_rap);
-
     delete P;
     delete P_rap;
+
+    P_rap = form_Prap(A, S, cf0_fn, &first_row, &first_col, 2);
+    P = readParMatrix(P0_extend, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
+            first_row, first_col);
+    compare(P, P_rap);
+    delete P;
+    delete P_rap;
+
     delete S;
     delete A;
 
     // TEST LEVEL 1
     A = readParMatrix(A1_fn);
     S = readParMatrix(S1_fn);
-    P_rap = form_Prap(A, S, cf1_fn, 
-            &first_row, &first_col, 0);
+    P_rap = form_Prap(A, S, cf1_fn, &first_row, &first_col, 0);
     P = readParMatrix(P1_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
             first_row, first_col);
     compare(P, P_rap);
     delete P_rap;
     delete P;
 
-    P_rap = form_Prap(A, S, cf1_fn, 
-            &first_row, &first_col, 1);
+    P_rap = form_Prap(A, S, cf1_fn, &first_row, &first_col, 1);
     P = readParMatrix(P1_mc_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
             first_row, first_col);
-
-    P->sort();
-    P_rap->sort();
     compare(P, P_rap);
     delete P;
     delete P_rap;
+
+    P_rap = form_Prap(A, S, cf1_fn, &first_row, &first_col, 2);
+    P_rap->sort();
+    P = readParMatrix(P1_extend, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
+            first_row, first_col);
+    compare(P, P_rap);
+    delete P;
+    delete P_rap;
+
     delete S;
     delete A;
 

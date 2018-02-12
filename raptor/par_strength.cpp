@@ -28,6 +28,8 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
 
     sort();
     on_proc->move_diag();
+    S->on_proc->vals.clear();
+    S->off_proc->vals.clear();
     
     if (on_proc->nnz)
     {

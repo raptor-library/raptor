@@ -14,5 +14,8 @@ CSRMatrix* direct_interpolation(CSRMatrix* A,
 CSRMatrix* mod_classical_interpolation(CSRMatrix* A,
         CSRMatrix* S, const std::vector<int>& states);
 
+CSRMatrix* extended_interpolation(CSRMatrix* A,
+        CSRMatrix* S, const std::vector<int>& states);
+
 #endif
 

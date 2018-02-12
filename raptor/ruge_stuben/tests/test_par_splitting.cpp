@@ -39,7 +39,9 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     const char* S0_fn = "../../../../test_data/rss_S0.pm";
     const char* S1_fn = "../../../../test_data/rss_S1.pm";
     const char* cf0_fn = "../../../../test_data/rss_cf0.txt";
+    const char* cf0_pmis = "../../../../test_data/rss_cf0_pmis.txt";
     const char* cf1_fn = "../../../../test_data/rss_cf1.txt";
+    const char* cf1_pmis = "../../../../test_data/rss_cf1_pmis.txt";
     const char* weights_fn = "../../../../test_data/weights.txt";
 
     // TEST LEVEL 0
@@ -56,9 +58,26 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
         fscanf(f, "%lf\n", &weights[i]);
     }
     fclose(f);
+
+    // TEST CLJP
     split_cljp(S, states, off_proc_states, weights.data());
     
     f = fopen(cf0_fn, "r");
+    for (int i = 0; i < S->partition->first_local_row; i++)
+    {
+        fscanf(f, "%d\n", &cf);
+    }
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+        fscanf(f, "%d\n", &cf);
+        ASSERT_EQ(cf, states[i]);
+    }
+    fclose(f);
+
+    // Test PMIS
+    split_pmis(S, states, off_proc_states, weights.data());
+    
+    f = fopen(cf0_pmis, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
         fscanf(f, "%d\n", &cf);
@@ -99,6 +118,22 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
         ASSERT_EQ(cf, states[i]);
     }
     fclose(f);
+
+    // Test PMIS
+    split_pmis(S, states, off_proc_states, weights.data());
+    
+    f = fopen(cf1_pmis, "r");
+    for (int i = 0; i < S->partition->first_local_row; i++)
+    {
+        fscanf(f, "%d\n", &cf);
+    }
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+        fscanf(f, "%d\n", &cf);
+        ASSERT_EQ(cf, states[i]);
+    }
+    fclose(f);
+
 
     delete S;
 

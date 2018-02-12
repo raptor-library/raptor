@@ -34,10 +34,13 @@
  *****      - RS : ruge stuben splitting
  *****      - CLJP 
  *****      - Falgout : RS on_proc, but CLJP on processor boundaries
+ *****      - PMIS 
+ *****      - HMIS
  ***** interp_type : interp_t (default Direct)
  *****    Type of interpolation scheme.  Options are
  *****      - Direct 
- *****      - Classical
+ *****      - Classical (modified classical interpolation)
+ *****      - Extended (extended + i interpolation)
  ***** relax_type : relax_t (default SOR)
  *****    Relaxation scheme used in every cycle of solve phase.
  *****    Options are:
@@ -177,19 +180,22 @@ namespace raptor
             }
 
 #ifdef USING_HYPRE
-            void form_hypre_weights(std::vector<double>& weights, int n_rows)
+            void form_hypre_weights(double** weight_ptr, int n_rows)
             {
                 int rank;
                 MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                 hypre_SeedRand(2747 + rank);
+                double* weights;
                 if (n_rows)
                 {
-                    weights.resize(n_rows);
+                    weights = new double[n_rows];
                     for (int i = 0; i < n_rows; i++)
                     {
                         weights[i] = hypre_Rand();
                     }
                 }
+
+                *weight_ptr = weights;
             }
 #endif
 
@@ -207,7 +213,11 @@ namespace raptor
                 std::vector<int> off_proc_states;
 
                 // Form strength of connection
-                std::vector<double> weights;
+                double* weights = NULL;
+#ifdef USING_HYPRE
+                form_hypre_weights(&weights, A->local_num_rows);
+#endif
+
                 strength_times[level_ctr] -= MPI_Wtime();
                 S = A->strength(strong_threshold);
                 strength_times[level_ctr] += MPI_Wtime();
@@ -221,15 +231,18 @@ namespace raptor
                         else split_falgout(S, states, off_proc_states);
                         break;
                     case CLJP:
-#ifdef USING_HYPRE
-                        form_hypre_weights(weights, A->local_num_rows);
-                        split_cljp(S, states, off_proc_states, weights.data());
-#else
-                        split_cljp(S, states, off_proc_states);
-#endif
+                        split_cljp(S, states, off_proc_states, weights);
                         break;
                     case Falgout:
                         split_falgout(S, states, off_proc_states);
+                        break;
+                    case PMIS:
+                        //if (level_ctr < 1)
+                            split_pmis(S, states, off_proc_states, weights);
+                        //else
+                        //    split_cljp(S, states, off_proc_states, weights);
+                        break;
+                    case HMIS:
                         break;
                 }
                 coarsen_times[level_ctr] += MPI_Wtime();
@@ -244,6 +257,13 @@ namespace raptor
                     case Classical:
                         P = mod_classical_interpolation(A, S, states, off_proc_states, 
                                 A->comm);
+                        break;
+                    case Extended:
+                        //if (level_ctr < 1)
+                            P = extended_interpolation(A, S, states, off_proc_states, A->comm);
+                        //else
+                        //    P = mod_classical_interpolation(A, S, states, off_proc_states, 
+                        //            A->comm);
                         break;
                 }
                 interp_times[level_ctr] += MPI_Wtime();
@@ -267,6 +287,7 @@ namespace raptor
                         A->partition->first_local_row);
                 levels[level_ctr]->P = NULL;
 
+                delete[] weights;
                 delete AP;
                 delete P_csc;
                 delete S;
@@ -286,7 +307,11 @@ namespace raptor
                 std::vector<int> off_proc_states;
 
                 // Form strength of connection
-                std::vector<double> weights;
+                double* weights = NULL;
+#ifdef USING_HYPRE
+                form_hypre_weights(&weights, A->local_num_rows);
+#endif
+
                 strength_times[level_ctr] -= MPI_Wtime();
                 S = A->strength(strong_threshold);
                 strength_times[level_ctr] += MPI_Wtime();
@@ -300,15 +325,18 @@ namespace raptor
                         else split_cljp(S, states, off_proc_states);
                         break;
                     case CLJP:
-#ifdef USING_HYPRE
-                        form_hypre_weights(weights, A->local_num_rows);
-                        split_cljp(S, states, off_proc_states, weights.data());
-#else
-                        split_cljp(S, states, off_proc_states);
-#endif
+                        split_cljp(S, states, off_proc_states, weights);
                         break;
                     case Falgout:
                         split_falgout(S, states, off_proc_states);
+                        break;
+                    case PMIS:
+                        //if (level_ctr < 1)
+                            split_pmis(S, states, off_proc_states, weights);
+                        //else
+                        //    split_cljp(S, states, off_proc_states, weights);
+                        break;
+                    case HMIS:
                         break;
                 }
                 coarsen_times[level_ctr] += MPI_Wtime();
@@ -323,6 +351,13 @@ namespace raptor
                     case Classical:
                         P = mod_classical_interpolation(A, S, states, off_proc_states, 
                                 A->tap_comm);
+                        break;
+                    case Extended:
+                        //if (level_ctr < 1)
+                            P = extended_interpolation(A, S, states, off_proc_states, A->tap_comm);
+                        //else
+                        //    P = mod_classical_interpolation(A, S, states, off_proc_states,
+                        //            A->tap_comm);
                         break;
                 }
                 interp_times[level_ctr] += MPI_Wtime();
@@ -346,6 +381,7 @@ namespace raptor
                         A->partition->first_local_row);
                 levels[level_ctr]->P = NULL;
 
+                delete[] weights;
                 delete AP;
                 delete P_csc;
                 delete S;

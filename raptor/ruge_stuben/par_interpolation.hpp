@@ -17,5 +17,10 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         const std::vector<int>& off_proc_states,
         CommPkg* comm);
 
+ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
+        ParCSRMatrix* S, const std::vector<int>& states,
+        const std::vector<int>& off_proc_states,
+        CommPkg* comm);
+
 #endif
 

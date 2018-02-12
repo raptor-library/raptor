@@ -53,6 +53,26 @@ if (WITH_HYPRE)
     target_link_libraries(test_hypre raptor ${MPI_LIBRARIES} googletest pthread)
     add_test(TestHypre_1 mpirun -n 1 ./test_hypre)
     add_test(TestHypre_2 mpirun -n 2 ./test_hypre)
+
+    add_executable(test_hypre_agg test_hypre_agg.cpp)
+    target_link_libraries(test_hypre_agg raptor ${MPI_LIBRARIES} googletest pthread)
+    add_test(TestHypreAgg_1 mpirun -n 1 ./test_hypre_agg)
+    add_test(TestHypreAgg_2 mpirun -n 2 ./test_hypre_agg)
+
+    add_executable(test_hypre_strength test_hypre_strength.cpp)
+    target_link_libraries(test_hypre_strength raptor ${MPI_LIBRARIES} googletest pthread)
+    add_test(TestHypreStr_1 mpirun -n 1 ./test_hypre_strength)
+    add_test(TestHypreStr_2 mpirun -n 2 ./test_hypre_strength)
+
+    add_executable(test_hypre_splitting test_hypre_splitting.cpp)
+    target_link_libraries(test_hypre_splitting raptor ${MPI_LIBRARIES} googletest pthread)
+    add_test(TestHypreSplit_1 mpirun -n 1 ./test_hypre_splitting)
+    add_test(TestHypreSplit_2 mpirun -n 2 ./test_hypre_splitting)
+
+    add_executable(test_hypre_interpolation test_hypre_interpolation.cpp)
+    target_link_libraries(test_hypre_interpolation raptor ${MPI_LIBRARIES} googletest pthread)
+    add_test(TestHypreInterp_1 mpirun -n 1 ./test_hypre_interpolation)
+    add_test(TestHypreInterp_2 mpirun -n 2 ./test_hypre_interpolation)
 endif()
 
 

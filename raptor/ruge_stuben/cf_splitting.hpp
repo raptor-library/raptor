@@ -14,5 +14,6 @@ void cljp_update_weights(CSRMatrix* S, std::vector<int>& col_ptr,
         int num_new_coarse, std::vector<int>& states, std::vector<double>& weights);
 void split_rs(CSRMatrix* S, std::vector<int>& states);
 void split_cljp(CSRMatrix* S, std::vector<int>& states, double* rand_vals = NULL);
+void split_pmis(CSRMatrix* S, std::vector<int>& states, double* rand_vals = NULL);
 
 #endif
