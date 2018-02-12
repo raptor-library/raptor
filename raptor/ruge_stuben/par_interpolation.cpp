@@ -76,6 +76,7 @@ void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const std::vector<int>& state
 
                     }
                     ctr++;
+
                 }
                 else if (ctr_S < end_S && S->on_proc->idx2[ctr_S] == col)
                 {
@@ -98,14 +99,14 @@ void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const std::vector<int>& state
                 if (ctr_S < end_S && S->off_proc_column_map[S->off_proc->idx2[ctr_S]]
                         == A->off_proc_column_map[col])
                 {
-                    if (off_proc_states[col] == 0) global_col += A->global_num_cols;
+                    if (off_proc_states[col] == 0) global_col += A->partition->global_num_cols;
 
                     send_buffer[ctr].index = global_col; // In S, send positive col
                     ctr_S++;
                 }
                 else
                 {
-                    if (off_proc_states[col] == 0) global_col += A->global_num_cols;
+                    if (off_proc_states[col] == 0) global_col += A->partition->global_num_cols;
                     send_buffer[ctr].index = -(global_col+1); // If not in S, store with neg sign
                 }
 
@@ -152,8 +153,8 @@ void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const std::vector<int>& state
                 tmp_global_col = global_col;
                 if (tmp_global_col < 0)
                     tmp_global_col = (-tmp_global_col) - 1;
-                if (tmp_global_col >= A->global_num_cols)
-                    tmp_global_col -= A->global_num_cols;
+                if (tmp_global_col >= A->partition->global_num_cols)
+                    tmp_global_col -= A->partition->global_num_cols;
 
                 if (tmp_global_col >= A->partition->first_local_row &&
                         tmp_global_col <= A->partition->last_local_row)
@@ -163,7 +164,8 @@ void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const std::vector<int>& state
                 }
                 else
                 {
-                    if (global_col >= A->global_num_cols || global_col < -(A->global_num_cols))
+                    if (global_col >= A->partition->global_num_cols || 
+                            global_col < -(A->partition->global_num_cols))
                             continue; // Don't add Fine points to off proc
                     recv_off->idx2.push_back(global_col);
                     recv_off->vals.push_back(val);
@@ -376,25 +378,21 @@ MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     // Change on_proc_cols to local
     recv_on->n_cols = A->on_proc_num_cols;
     int* on_proc_partition_to_col = A->map_partition_to_local();
-    if (on_proc_partition_to_col == NULL) printf("NULL!\n");
-    printf("OnProcPartitionToCol[%d] = %d\n", 0, on_proc_partition_to_col[0]);
     for (std::vector<int>::iterator it = recv_on->idx2.begin();
             it != recv_on->idx2.end(); ++it)
     {
         if (*it >= 0)
         {
             // In S, add positive column
-            if (*it >= A->global_num_cols)
+            if (*it >= A->partition->global_num_cols)
             {
-                *it -= A->global_num_cols;
+                *it -= A->partition->global_num_cols;
                 *it = on_proc_partition_to_col[*it - A->partition->first_local_row];
-//                *it = *it - A->partition->first_local_row;
-                *it += A->global_num_cols;
+                *it += A->partition->global_num_cols;
             }
             else
             {
                 *it = on_proc_partition_to_col[*it - A->partition->first_local_row];
-//                *it = *it - A->partition->first_local_row;
             }
         }
         else
@@ -402,17 +400,15 @@ MPI_Comm_rank(MPI_COMM_WORLD, &rank);
             // Not in S, add negative column
             global_col = (-*it)-1;
 
-            if (global_col >= A->global_num_cols)
+            if (global_col >= A->partition->global_num_cols)
             {
-                global_col -= A->global_num_cols;
+                global_col -= A->partition->global_num_cols;
                 global_col = on_proc_partition_to_col[global_col - A->partition->first_local_row];
-//                global_col = global_col - A->partition->first_local_row;
-                global_col += A->global_num_cols;
+                global_col += A->partition->global_num_cols;
             }
             else
             {
                 global_col = on_proc_partition_to_col[global_col - A->partition->first_local_row];
-//                global_col = global_col - A->partition->first_local_row;
             }
             *it  = -(global_col + 1);
         }
@@ -715,16 +711,16 @@ MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                 for (int k = start_k; k < end_k; k++)
                 {
                     col_k = recv_on->idx2[k];
-                    if (col_k < 0 || col_k >= A->global_num_cols)
+                    if (col_k < 0 || col_k >= A->partition->global_num_cols)
                     {
                         continue; // NOT IN S
                     }
-             //       if (row_coarse[col_k] == 0)
+                    if (row_coarse[col_k] == 0)
                     {
-             //           pos[col_k] = P->on_proc->idx2.size();
-             //           P->on_proc->idx2.push_back(on_proc_col_to_new[col_k]);
-             //           P->on_proc->vals.push_back(0.0);
-             //           row_coarse[col_k] = 1;
+                        pos[col_k] = P->on_proc->idx2.size();
+                        P->on_proc->idx2.push_back(on_proc_col_to_new[col_k]);
+                        P->on_proc->vals.push_back(0.0);
+                        row_coarse[col_k] = 1;
                     }
                 }
                     col_k = 0;
@@ -750,7 +746,7 @@ MPI_Comm_rank(MPI_COMM_WORLD, &rank);
             }
         }
 
-      /*  row_end_on = P->on_proc->idx2.size();
+        row_end_on = P->on_proc->idx2.size();
         row_end_off = P->off_proc->idx2.size();
 
         start = A->on_proc->idx1[i] + 1;
@@ -827,9 +823,9 @@ MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                         col_k = recv_on->idx2[k];
                         if (col_k < 0)
                             col_k = (-col_k) - 1;
-                        if (col_k >= A->global_num_cols)
+                        if (col_k >= A->partition->global_num_cols)
                         {
-                            col_k -= A->global_num_cols;
+                            col_k -= A->partition->global_num_cols;
                             if (col_k != i) continue;
                         }
 
@@ -932,11 +928,11 @@ MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                         col_k = (-col_k) - 1;
                     }
 
-                    if (val * sign < 0 && col_k - A->global_num_cols == i)
+                    if (val * sign < 0 && col_k - A->partition->global_num_cols == i)
                     {
                         weak_sum += (off_proc_row_strong[col] * val);
                     }
-                    if (col_k >= A->global_num_cols) continue;
+                    if (col_k >= A->partition->global_num_cols) continue;
                     idx = pos[col_k];
                     if (val * sign < 0 && idx >= 0)
                     {
@@ -1005,7 +1001,7 @@ MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         {
             col = off_proc_S_to_A[S->off_proc->idx2[j]];
             off_proc_row_strong[col] = 0;
-        }*/
+        }
 
         P->on_proc->idx1[i+1] = P->on_proc->idx2.size();
         P->off_proc->idx1[i+1] = P->off_proc->idx2.size();

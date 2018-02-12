@@ -66,43 +66,82 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
     delete[] stencil;
     form_hypre_weights(&weights, A->local_num_rows);
 
+    HYPRE_IJMatrix Aij;
+    hypre_ParCSRMatrix* A_hyp;
+    Aij = convert(A);
+    HYPRE_IJMatrixGetObject(Aij, (void**) &A_hyp);
+    compare(A, A_hyp);
+
+    hypre_ParCSRMatrix* S_hyp;
+    hypre_ParCSRMatrix* P_hyp;
+    hypre_ParCSRMatrix* Ac_hyp;
+    int* states_hypre;
+    int* coarse_dof_func;
+    int* coarse_pnts_gbl;
+
     std::vector<int> states;
     std::vector<int> off_proc_states;
 
     int nrows = A_array[0]->global_num_rows;
     int level = 0;
-//    while (nrows > 500)
+    while (nrows > 50)
     {
         ParCSRMatrix* Al = A_array[level];
-        printf("Al->global_num_rows, %d\n", Al->global_num_rows);
+
+        // Create Strength of Connection Matrix
         ParCSRMatrix* Sl = Al->strength(0.25);
+        hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, 1, NULL, &S_hyp);
+        compareS(Sl, S_hyp);
+
+        // C/F Splitting (PMIS)
         split_pmis(Sl, states, off_proc_states, weights);
+        hypre_BoomerAMGCoarsenPMIS(S_hyp, A_hyp, 0, 0, &states_hypre);
+        for (int i = 0; i < Al->local_num_rows; i++)
+        {
+            if (states[i] == 1) ASSERT_EQ(states[i], states_hypre[i]);
+            else 
+            {
+                ASSERT_EQ(states[i], 0);
+                ASSERT_EQ(states_hypre[i], -1);
+            }
+        }
 
-        ParCSRMatrix* Pl = mod_classical_interpolation(Al, Sl, states, off_proc_states, Al->comm);
-        //ParCSRMatrix* Pl = extended_interpolation(Al, Sl, states, off_proc_states, Al->comm);
+        // Extended Interpolation
+        ParCSRMatrix* Pl = extended_interpolation(Al, Sl, states, off_proc_states, Al->comm);
         P_array.push_back(Pl);
+        hypre_BoomerAMGCoarseParms(MPI_COMM_WORLD, Al->local_num_rows, 1, NULL, states_hypre,
+                &coarse_dof_func, &coarse_pnts_gbl);
+        hypre_BoomerAMGBuildExtPIInterp(A_hyp, states_hypre, S_hyp, coarse_pnts_gbl, 1, NULL, 
+                0, 0.0, 0.0, NULL, &P_hyp);
+        compare(Pl, P_hyp);
 
+        // SpGEMM (Form Ac)
         ParCSRMatrix* APl = Al->mult(Pl);
         ParCSCMatrix* Pcsc = new ParCSCMatrix(Pl);
         ParCSRMatrix* Ac = APl->mult_T(Pcsc);
         Ac->comm = new ParComm(Ac->partition, Ac->off_proc_column_map, Ac->on_proc_column_map);
         A_array.push_back(Ac);
+        hypre_BoomerAMGBuildCoarseOperatorKT(P_hyp, A_hyp, P_hyp, 0, &Ac_hyp);
+        compare(Ac, Ac_hyp);
+                
 
+        if (level > 0)
+            hypre_ParCSRMatrixDestroy(A_hyp);
+        A_hyp = Ac_hyp;
 
         nrows = Ac->global_num_rows;
         level++;
 
-        ParCSRMatrix* Al2 = A_array[level];
-        printf("Al2->global_num_rows, %d\n", Al2->global_num_rows);
-        ParCSRMatrix* Sl2 = Al2->strength(0.25);
-        split_pmis(Sl2, states, off_proc_states, weights);
-        ParCSRMatrix* Pl2 = extended_interpolation(Al2, Sl2, states, off_proc_states, Al2->comm);
+        hypre_TFree(states_hypre);
+        hypre_ParCSRMatrixDestroy(P_hyp);
+        hypre_ParCSRMatrixDestroy(S_hyp);
 
 
         delete Sl;
         delete APl;
         delete Pcsc;
     }
+    hypre_ParCSRMatrixDestroy(Ac_hyp);
 
     for (std::vector<ParCSRMatrix*>::iterator it = A_array.begin(); it != A_array.end(); ++it)
         delete *it;
@@ -111,6 +150,8 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
         delete *it;
 
     delete[] weights;
+
+    HYPRE_IJMatrixDestroy(Aij);
 
 
 } // end of TEST(TestParSplitting, TestsInRuge_Stuben) //

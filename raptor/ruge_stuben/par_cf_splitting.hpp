@@ -17,6 +17,8 @@ void split_cljp(ParCSRMatrix* S, std::vector<int>& states,
         std::vector<int>& off_proc_states, double* rand_vals = NULL);
 void split_pmis(ParCSRMatrix* S, std::vector<int>& states,
         std::vector<int>& off_proc_states, double* rand_vals = NULL);
+void split_hmis(ParCSRMatrix* S, std::vector<int>& states,
+        std::vector<int>& off_proc_states, double* rand_vals = NULL);
 
 void tap_split_falgout(ParCSRMatrix* S, std::vector<int>& states, 
         std::vector<int>& off_proc_states, double* rand_vals = NULL);
@@ -25,6 +27,8 @@ void tap_split_rs(ParCSRMatrix* S, std::vector<int>& states,
 void tap_split_cljp(ParCSRMatrix* S, std::vector<int>& states, 
         std::vector<int>& off_proc_states, double* rand_vals = NULL);
 void tap_split_pmis(ParCSRMatrix* S, std::vector<int>& states,
+        std::vector<int>& off_proc_states, double* rand_vals = NULL);
+void tap_split_hmis(ParCSRMatrix* S, std::vector<int>& states,
         std::vector<int>& off_proc_states, double* rand_vals = NULL);
 
 #endif

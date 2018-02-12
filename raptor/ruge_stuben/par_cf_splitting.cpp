@@ -2078,8 +2078,16 @@ void split_falgout(ParCSRMatrix* S,
     {
         if (boundary[i])
         {
-            states[i] = -1;
-            remaining++;
+            if  (S->on_proc->idx1[i+1] - S->on_proc->idx1[i]
+                    || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
+            {
+                states[i] = -1;
+                remaining++;
+            }
+            else
+            {
+                states[i] = -3;
+            }
         } 
         else if (states[i] == 1)
         {
@@ -2312,7 +2320,6 @@ void split_pmis(ParCSRMatrix* S,
     {
         states.resize(S->local_num_rows);
     }
-    remaining = S->local_num_rows;
     for (int i = 0; i < S->local_num_rows; i++)
     {
         if (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] > 1 
@@ -2323,7 +2330,6 @@ void split_pmis(ParCSRMatrix* S,
         else
         {
             states[i] = -3;
-            remaining--;
         }
     }
 
@@ -2339,6 +2345,152 @@ void split_pmis(ParCSRMatrix* S,
              off_col_indices, weights, states, off_proc_states);
 }
 
+
+void split_hmis(ParCSRMatrix* S,
+        std::vector<int>& states, 
+        std::vector<int>& off_proc_states,
+        double* rand_vals)
+{
+
+    int remaining, idx;
+    int start, end, row;
+    std::vector<int> boundary;
+    std::vector<double> weights;
+    std::vector<int> on_col_ptr;
+    std::vector<int> on_col_indices;
+    std::vector<int> off_col_ptr;
+    std::vector<int> off_col_indices;
+
+    if (!S->comm)
+    {
+        S->comm = new ParComm(S->partition, S->off_proc_column_map, 
+                S->on_proc_column_map);
+    }
+    if (!S->on_proc->diag_first)
+    {
+        S->on_proc->move_diag();
+    }
+
+    if (S->local_num_rows)
+    {
+        boundary.resize(S->local_num_rows, 0);
+        weights.resize(S->local_num_rows, 0);
+    }
+
+    /**********************************************
+     * Find which local rows are on boundary 
+     * 1 - boundary
+     * 0 - interior
+     **********************************************/
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+        // If cols in off_proc, i is boundary
+        if (S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
+        {
+            boundary[i] = 1;
+        }
+    }
+    for (int i = 0; i < S->comm->send_data->size_msgs; i++)
+    {
+        // idx in send_data, so idx is boundary
+        idx = S->comm->send_data->indices[i];
+        boundary[idx] = 1;
+    }
+
+
+    /**********************************************
+     * Form S^T ptr and indices for on_proc and off_proc
+     * Needed for column-wise searches (which indices
+     * influence each on_proc/off_proc index)
+     **********************************************/
+    transpose(S, on_col_ptr, off_col_ptr,
+            on_col_indices, off_col_indices);
+
+    /**********************************************
+     *  Set initial states (usually -1)
+     **********************************************/
+    if (S->local_num_rows)
+    {
+        states.resize(S->local_num_rows);
+    }
+
+    /**********************************************
+     * Ruge-Stuben on local portion
+     **********************************************/
+    split_rs((CSRMatrix*)S->on_proc, states, false); // Only first pass
+
+    /**********************************************
+     * Reset states of boundary indices
+     **********************************************/
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+        if (boundary[i])
+        {
+            if  (S->on_proc->idx1[i+1] - S->on_proc->idx1[i]
+                    || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
+            {
+                states[i] = -1;
+                remaining++;
+            }
+            else
+            {
+                states[i] = -3;
+            }
+        } 
+    }
+
+    /**********************************************
+     * Set initial CLJP boundary weights
+     **********************************************/
+    initial_weights(S, S->comm, weights, rand_vals);
+
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+        if (states[i] >= 0) weights[i] = 0;
+    }
+
+    std::vector<int>& recvbuf = S->comm->communicate(states);
+    for (int i = 0; i < S->on_proc_num_cols; i++)
+    {
+        if (states[i] == 1)
+        {
+            start = S->on_proc->idx1[i];
+            end = S->on_proc->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                row = S->on_proc->idx2[j];
+                if (states[row] == -1)
+                {
+                    states[row] = 0;
+                    weights[row] = 0;
+                }
+            }
+        }
+    }
+    for (int i = 0; i < S->off_proc_num_cols; i++)
+    {
+        if (recvbuf[i] == 1)
+        {
+            start = S->off_proc->idx1[i];
+            end = S->off_proc->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                row = S->off_proc->idx2[j];
+                if (states[row] == -1)
+                {
+                    states[row] = 0;
+                    weights[row] = 0;
+                }
+            }
+        }
+    }
+
+    /**********************************************
+     * CLJP Main Loop
+     **********************************************/
+    pmis_main_loop(S, on_col_ptr, off_col_ptr, on_col_indices,
+             off_col_indices, weights, states, off_proc_states);
+}
 
 
 
@@ -2483,8 +2635,16 @@ void tap_split_falgout(ParCSRMatrix* S,
     {
         if (boundary[i])
         {
-            states[i] = -1;
-            remaining++;
+            if  (S->on_proc->idx1[i+1] - S->on_proc->idx1[i]
+                    || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
+            {
+                states[i] = -1;
+                remaining++;
+            }
+            else
+            {
+                states[i] = -3;
+            }
         } 
         else if (states[i] == 1)
         {
@@ -2723,7 +2883,6 @@ void tap_split_pmis(ParCSRMatrix* S,
     {
         states.resize(S->local_num_rows);
     }
-    remaining = S->local_num_rows;
     for (int i = 0; i < S->local_num_rows; i++)
     {
         if (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] > 1 
@@ -2734,7 +2893,6 @@ void tap_split_pmis(ParCSRMatrix* S,
         else
         {
             states[i] = -3;
-            remaining--;
         }
     }
 
@@ -2750,3 +2908,150 @@ void tap_split_pmis(ParCSRMatrix* S,
             off_col_indices, weights, states, off_proc_states);
 }
 
+
+
+void tap_split_hmis(ParCSRMatrix* S,
+        std::vector<int>& states, 
+        std::vector<int>& off_proc_states,
+        double* rand_vals)
+{
+
+    int remaining, idx;
+    int start, end, row;
+    std::vector<int> boundary;
+    std::vector<double> weights;
+    std::vector<int> on_col_ptr;
+    std::vector<int> on_col_indices;
+    std::vector<int> off_col_ptr;
+    std::vector<int> off_col_indices;
+
+    if (!S->comm)
+    {
+        S->comm = new ParComm(S->partition, S->off_proc_column_map, 
+                S->on_proc_column_map);
+    }
+    if (!S->on_proc->diag_first)
+    {
+        S->on_proc->move_diag();
+    }
+
+    if (S->local_num_rows)
+    {
+        boundary.resize(S->local_num_rows, 0);
+        weights.resize(S->local_num_rows, 0);
+    }
+
+    /**********************************************
+     * Find which local rows are on boundary 
+     * 1 - boundary
+     * 0 - interior
+     **********************************************/
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+        // If cols in off_proc, i is boundary
+        if (S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
+        {
+            boundary[i] = 1;
+        }
+    }
+    for (int i = 0; i < S->comm->send_data->size_msgs; i++)
+    {
+        // idx in send_data, so idx is boundary
+        idx = S->comm->send_data->indices[i];
+        boundary[idx] = 1;
+    }
+
+
+    /**********************************************
+     * Form S^T ptr and indices for on_proc and off_proc
+     * Needed for column-wise searches (which indices
+     * influence each on_proc/off_proc index)
+     **********************************************/
+    transpose(S, on_col_ptr, off_col_ptr,
+            on_col_indices, off_col_indices);
+
+    /**********************************************
+     *  Set initial states (usually -1)
+     **********************************************/
+    if (S->local_num_rows)
+    {
+        states.resize(S->local_num_rows);
+    }
+
+    /**********************************************
+     * Ruge-Stuben on local portion
+     **********************************************/
+    split_rs((CSRMatrix*)S->on_proc, states, false); // Only first pass
+
+    /**********************************************
+     * Reset states of boundary indices
+     **********************************************/
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+        if (boundary[i])
+        {
+            if  (S->on_proc->idx1[i+1] - S->on_proc->idx1[i]
+                    || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
+            {
+                states[i] = -1;
+                remaining++;
+            }
+            else
+            {
+                states[i] = -3;
+            }
+        } 
+    }
+
+    /**********************************************
+     * Set initial CLJP boundary weights
+     **********************************************/
+    initial_weights(S, S->comm, weights, rand_vals);
+
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+        if (states[i] >= 0) weights[i] = 0;
+    }
+
+    std::vector<int>& recvbuf = S->comm->communicate(states);
+    for (int i = 0; i < S->on_proc_num_cols; i++)
+    {
+        if (states[i] == 1)
+        {
+            start = S->on_proc->idx1[i];
+            end = S->on_proc->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                row = S->on_proc->idx2[j];
+                if (states[row] == -1)
+                {
+                    states[row] = 0;
+                    weights[row] = 0;
+                }
+            }
+        }
+    }
+    for (int i = 0; i < S->off_proc_num_cols; i++)
+    {
+        if (recvbuf[i] == 1)
+        {
+            start = S->off_proc->idx1[i];
+            end = S->off_proc->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                row = S->off_proc->idx2[j];
+                if (states[row] == -1)
+                {
+                    states[row] = 0;
+                    weights[row] = 0;
+                }
+            }
+        }
+    }
+
+    /**********************************************
+     * CLJP Main Loop
+     **********************************************/
+    pmis_main_loop(S, on_col_ptr, off_col_ptr, on_col_indices,
+             off_col_indices, weights, states, off_proc_states);
+}

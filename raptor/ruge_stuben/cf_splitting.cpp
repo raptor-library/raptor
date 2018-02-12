@@ -101,7 +101,7 @@ void rs_first_pass(const CSRMatrix* S,
     for (int i = 0; i < S->n_cols; i++)
     {
         weight = weights[i];
-        idx = weight_ptr[weight+1] - (weight_sizes[weight]++ + 1);
+        idx = weight_ptr[weight] + weight_sizes[weight]++;
         weight_idx_to_col[idx] = i;
         col_to_weight_idx[i] = idx;
     }
@@ -154,7 +154,6 @@ void rs_first_pass(const CSRMatrix* S,
                             new_pos = weight_ptr[weight_k] + weight_sizes[weight_k] - 1;
                             col_to_weight_idx[weight_idx_to_col[old_pos]] = new_pos;
                             col_to_weight_idx[weight_idx_to_col[new_pos]] = old_pos;
-
                             std::swap(weight_idx_to_col[old_pos], weight_idx_to_col[new_pos]);
 
                             weight_sizes[weight_k] -= 1;
@@ -209,6 +208,60 @@ void rs_first_pass(const CSRMatrix* S,
     }
 }
 
+void rs_second_pass(const CSRMatrix* S,
+        std::vector<int>& weights,
+        std::vector<int>& states)
+{
+    int start, end, col;
+    int start_k, end_k, col_k;
+    bool connection;
+
+    std::vector<int> row_coarse(S->n_rows, -1);
+
+    for (int i = 0; i < S->n_rows; i++)
+    {
+        if (states[i] == 1) continue;
+
+        start = S->idx1[i];
+        end = S->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = S->idx2[j];
+            if (states[col] == 1) 
+                row_coarse[col] = i;
+        }
+
+        for (int j = start; j < end; j++)
+        {
+            col = S->idx2[j];
+            if (states[col] == 0)
+            {
+                start_k = S->idx1[col];
+                end_k = S->idx1[col+1];
+                connection = false;
+                if (start_k == end_k) continue;
+                for (int k = start_k; k < end_k; k++)
+                {
+                    col_k = S->idx2[k];
+                    if (row_coarse[col_k] == i)
+                    {
+                        connection = true;
+                        break;
+                    }
+                }
+                
+                if (!connection)
+                {
+                    row_coarse[col] = i;
+                    states[col] = 1;
+                }
+            }
+        }
+    }
+}
+
+
+
 
 /**************************************************************
  *****   C/F Splitting
@@ -224,7 +277,7 @@ void rs_first_pass(const CSRMatrix* S,
  *****    Strength of connection matrix
  **************************************************************/
 void split_rs(CSRMatrix* S,
-        std::vector<int>& states)
+        std::vector<int>& states, bool second_pass)
 {
     int start, end;
     
@@ -261,7 +314,10 @@ void split_rs(CSRMatrix* S,
 
     rs_first_pass(S, col_ptr, col_indices, weights, states);
 
-
+    if (second_pass)
+    {
+        rs_second_pass(S, weights, states);
+    }
 }
 
 int select_independent_set(CSRMatrix* S, std::vector<int>& col_ptr,
