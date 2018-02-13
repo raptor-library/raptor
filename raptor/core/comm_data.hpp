@@ -114,11 +114,6 @@ public:
             int msg_size)
     {
         int last_ptr = indptr[num_msgs];
-        int idx_start = 0;
-        if (size_msgs)
-        {
-            idx_start = indices[size_msgs-1] + 1;
-        }
         procs.push_back(proc);
         indptr.push_back(last_ptr + msg_size);
 

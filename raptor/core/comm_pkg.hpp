@@ -369,6 +369,7 @@ namespace raptor
                 send_data->indices[i] = part_col_to_new[idx];
                 assert(part_col_to_new[idx] >= 0);
             }
+	    
         }
 
         void init_par_comm(Partition* partition,

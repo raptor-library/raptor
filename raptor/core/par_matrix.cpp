@@ -153,14 +153,11 @@ void ParMatrix::finalize(bool create_comm)
 
 int* ParMatrix::map_partition_to_local()
 {
-    int* on_proc_partition_to_col = NULL;
-    if (partition->local_num_cols)
+    int* on_proc_partition_to_col = new int[partition->local_num_cols+1];
+    for (int i = 0; i < partition->local_num_cols+1; i++) on_proc_partition_to_col[i] = -1;
+    for (int i = 0; i < on_proc_num_cols; i++)
     {
-        on_proc_partition_to_col = new int[partition->local_num_cols];
-        for (int i = 0; i < on_proc_num_cols; i++)
-        {
-            on_proc_partition_to_col[on_proc_column_map[i] - partition->first_local_col] = i;
-        }
+        on_proc_partition_to_col[on_proc_column_map[i] - partition->first_local_col] = i;
     }
 
     return on_proc_partition_to_col;
