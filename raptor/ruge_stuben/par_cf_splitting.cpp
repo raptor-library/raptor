@@ -122,16 +122,17 @@ void initial_weights(const ParCSRMatrix* S,
     }
     else
     {
-        srand(time(NULL));
+        //srand(time(NULL));
         for (int i = 0; i < S->on_proc_num_cols; i++)
         {
+            srand(S->on_proc_column_map[i]);
             weights[i] = ((double)(rand())) / RAND_MAX;
         }
-        std::vector<double>& recvbuf = comm->communicate(weights);
-        for (int i = 0; i < S->off_proc_num_cols; i++)
-        {
-            off_proc_weights[i] = recvbuf[i];
-        }
+        //std::vector<double>& recvbuf = comm->communicate(weights);
+        //for (int i = 0; i < S->off_proc_num_cols; i++)
+        //{
+        //    off_proc_weights[i] = recvbuf[i];
+        //}
     }
 
     // Go through each row i, for each column j
@@ -1474,11 +1475,13 @@ void pmis_main_loop(ParCSRMatrix* S,
         if (states[i] == -1 && weights[i] < 1)
         {
             states[i] = 0;
+	    weights[i] = 0.0;
         }
         else if (states[i] == -1)
         {
             unassigned[num_remaining++] = i;
         }
+	else weights[i] = 0.0;
     }   
     std::vector<int>& recvbuf = S->comm->communicate(states);
     num_remaining_off = 0;
@@ -1603,12 +1606,7 @@ void cljp_main_loop(ParCSRMatrix* S,
     {
         max_weights.resize(S->local_num_rows);
         new_coarse_list.resize(S->local_num_rows);
-        unassigned.reserve(S->local_num_rows);
-        for (int i = 0; i < S->local_num_rows; i++)
-        {
-            if (states[i] == -1)
-                unassigned.push_back(i);
-        }
+        unassigned.resize(S->local_num_rows);
     }
     if (S->off_proc_num_cols)
     {
@@ -1616,16 +1614,12 @@ void cljp_main_loop(ParCSRMatrix* S,
         off_proc_weights.resize(S->off_proc_num_cols, 0);
         off_proc_states.resize(S->off_proc_num_cols);
         off_new_coarse_list.resize(S->off_proc_num_cols);
-        unassigned_off.reserve(S->off_proc_num_cols);
+        unassigned_off.resize(S->off_proc_num_cols);
     }
     S->comm->communicate(states);
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
         off_proc_states[i] = S->comm->recv_data->int_buffer[i];
-        if (off_proc_states[i] == -1)
-        {
-            unassigned_off.push_back(i);
-        }
     }
     if (S->comm->send_data->size_msgs)
     {
@@ -1643,12 +1637,6 @@ void cljp_main_loop(ParCSRMatrix* S,
      **********************************************/
     find_off_proc_weights(S->comm, states, off_proc_states, 
             weights, off_proc_weights);
-    off_remaining = S->off_proc_num_cols;
-    for (int i = 0; i < S->off_proc_num_cols; i++)
-    {
-        if (off_proc_states[i] == -1)
-            off_remaining--;
-    }
 
     remaining = 0;
     off_remaining = 0;
@@ -1658,6 +1646,10 @@ void cljp_main_loop(ParCSRMatrix* S,
         {
             unassigned[remaining++] = i;
         }
+	else
+	{
+            weights[i] = 0.0;
+	}
     }
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
@@ -1665,6 +1657,10 @@ void cljp_main_loop(ParCSRMatrix* S,
         {
             unassigned_off[off_remaining++] = i;
         }
+	else
+	{
+            off_proc_weights[i] = 0.0;
+	}
     }
 
     /**********************************************
@@ -2078,7 +2074,7 @@ void split_falgout(ParCSRMatrix* S,
     {
         if (boundary[i])
         {
-            if  (S->on_proc->idx1[i+1] - S->on_proc->idx1[i]
+            if  (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] > 1
                     || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
             {
                 states[i] = -1;
@@ -2426,7 +2422,7 @@ void split_hmis(ParCSRMatrix* S,
     {
         if (boundary[i])
         {
-            if  (S->on_proc->idx1[i+1] - S->on_proc->idx1[i]
+            if  (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] > 1
                     || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
             {
                 states[i] = -1;
@@ -2635,7 +2631,7 @@ void tap_split_falgout(ParCSRMatrix* S,
     {
         if (boundary[i])
         {
-            if  (S->on_proc->idx1[i+1] - S->on_proc->idx1[i]
+            if  (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] > 1
                     || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
             {
                 states[i] = -1;
@@ -2990,7 +2986,7 @@ void tap_split_hmis(ParCSRMatrix* S,
     {
         if (boundary[i])
         {
-            if  (S->on_proc->idx1[i+1] - S->on_proc->idx1[i]
+            if  (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] > 1
                     || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
             {
                 states[i] = -1;

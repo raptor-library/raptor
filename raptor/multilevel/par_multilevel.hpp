@@ -237,12 +237,10 @@ namespace raptor
                         split_falgout(S, states, off_proc_states);
                         break;
                     case PMIS:
-                        //if (level_ctr < 1)
-                            split_pmis(S, states, off_proc_states, weights);
-                        //else
-                        //    split_cljp(S, states, off_proc_states, weights);
+                        split_pmis(S, states, off_proc_states, weights);
                         break;
                     case HMIS:
+			split_hmis(S, states, off_proc_states, weights);
                         break;
                 }
                 coarsen_times[level_ctr] += MPI_Wtime();
@@ -259,11 +257,7 @@ namespace raptor
                                 A->comm);
                         break;
                     case Extended:
-                        //if (level_ctr < 1)
-                            P = extended_interpolation(A, S, states, off_proc_states, A->comm);
-                        //else
-                        //    P = mod_classical_interpolation(A, S, states, off_proc_states, 
-                        //            A->comm);
+                        P = extended_interpolation(A, S, states, off_proc_states, A->comm);
                         break;
                 }
                 interp_times[level_ctr] += MPI_Wtime();
@@ -331,12 +325,10 @@ namespace raptor
                         split_falgout(S, states, off_proc_states);
                         break;
                     case PMIS:
-                        //if (level_ctr < 1)
-                            split_pmis(S, states, off_proc_states, weights);
-                        //else
-                        //    split_cljp(S, states, off_proc_states, weights);
+                        split_pmis(S, states, off_proc_states, weights);
                         break;
                     case HMIS:
+			split_hmis(S, states, off_proc_states, weights);
                         break;
                 }
                 coarsen_times[level_ctr] += MPI_Wtime();
@@ -350,14 +342,10 @@ namespace raptor
                         break;
                     case Classical:
                         P = mod_classical_interpolation(A, S, states, off_proc_states, 
-                                A->tap_comm);
+                                A->comm);
                         break;
                     case Extended:
-                        //if (level_ctr < 1)
-                            P = extended_interpolation(A, S, states, off_proc_states, A->tap_comm);
-                        //else
-                        //    P = mod_classical_interpolation(A, S, states, off_proc_states,
-                        //            A->tap_comm);
+                        P = extended_interpolation(A, S, states, off_proc_states, A->comm);
                         break;
                 }
                 interp_times[level_ctr] += MPI_Wtime();
@@ -367,7 +355,7 @@ namespace raptor
                 levels.push_back(new ParLevel());
                 AP = A->tap_mult(levels[level_ctr]->P);
                 P_csc = new ParCSCMatrix(levels[level_ctr]->P);
-                A = AP->mult_T(P_csc);
+                A = AP->tap_mult_T(P_csc);
 
                 level_ctr++;
                 levels[level_ctr]->A = A;
