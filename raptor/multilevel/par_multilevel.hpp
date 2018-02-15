@@ -185,7 +185,7 @@ namespace raptor
                 int rank;
                 MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                 hypre_SeedRand(2747 + rank);
-                double* weights;
+                double* weights = NULL;
                 if (n_rows)
                 {
                     weights = new double[n_rows];
@@ -281,7 +281,9 @@ namespace raptor
                         A->partition->first_local_row);
                 levels[level_ctr]->P = NULL;
 
+#ifdef USING_HYPRE
                 delete[] weights;
+#endif
                 delete AP;
                 delete P_csc;
                 delete S;

@@ -321,8 +321,6 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         const std::vector<int>& off_proc_states, 
         CommPkg* comm)
 {
-int rank;
-MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     int start, end, idx;
     int start_S, end_S;
     int start_k, end_k;
@@ -524,11 +522,14 @@ MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     P->local_row_map = S->get_local_row_map();
 
     std::vector<int> off_proc_A_to_P;
-    if (S->off_proc_num_cols) off_proc_A_to_P.resize(A->off_proc_num_cols, -1);
+    if (A->off_proc_num_cols) 
+    {
+	    off_proc_A_to_P.resize(A->off_proc_num_cols, -1);
+    }
     ctr = 0;
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
-        if (off_proc_states[i] == 0)
+        if (off_proc_states[i] != 1)
         {
             continue; // Only for coarse points
         }
@@ -566,7 +567,6 @@ MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         off_proc_pos.resize(P->off_proc_num_cols, -1);
         off_proc_row_coarse.resize(P->off_proc_num_cols, 0);
     }
-
     for (int i = 0; i < A->local_num_rows; i++)
     {
         // If coarse row, add to P
@@ -1002,7 +1002,6 @@ MPI_Comm_rank(MPI_COMM_WORLD, &rank);
             col = off_proc_S_to_A[S->off_proc->idx2[j]];
             off_proc_row_strong[col] = 0;
         }
-
         P->on_proc->idx1[i+1] = P->on_proc->idx2.size();
         P->off_proc->idx1[i+1] = P->off_proc->idx2.size();
     }

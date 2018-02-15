@@ -67,8 +67,8 @@ int main(int argc, char *argv[])
     double raptor_setup, raptor_solve;
     double raptor_tap_solve;
 
-    int coarsen_type = 8; // PMIS
-    //int coarsen_type = 0; // CLJP
+    //int coarsen_type = 8; // PMIS
+    int coarsen_type = 0; // CLJP
     //int coarsen_type = 6; // FALGOUT
     //int interp_type = 3; // Direct Interp
     //int interp_type = 0; // Classical Mod Interp
@@ -158,8 +158,10 @@ int main(int argc, char *argv[])
         A->mult(x, b);
     }
 
+    ParMultilevel* ml;
+
     // Convert system to Hypre format 
-    HYPRE_IJMatrix A_h_ij = convert(A);
+/*    HYPRE_IJMatrix A_h_ij = convert(A);
     HYPRE_IJVector x_h_ij = convert(x);
     HYPRE_IJVector b_h_ij = convert(b);
     hypre_ParCSRMatrix* A_h;
@@ -170,7 +172,6 @@ int main(int argc, char *argv[])
     HYPRE_IJVectorGetObject(b_h_ij, (void **) &b_h);
 
     HYPRE_Solver solver_data;
-    ParMultilevel* ml;
 
     double* x_h_data = hypre_VectorData(hypre_ParVectorLocalVector(x_h));
     for (int i = 0; i < A->local_num_rows; i++)
@@ -199,12 +200,12 @@ int main(int argc, char *argv[])
     // Delete hypre hierarchy
     hypre_BoomerAMGDestroy(solver_data);     
     clear_cache(cache_array);
-
+*/
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(A, strong_threshold, PMIS, Extended, SOR,
-            1, 1.0, 50, -1);
+    ml = new ParMultilevel(A, strong_threshold, HMIS, Extended, SOR,
+            1, 1.0, 50, 6, -1);
     raptor_setup = MPI_Wtime() - t0;
     clear_cache(cache_array);
 
@@ -235,14 +236,14 @@ int main(int argc, char *argv[])
     }
 
     // Solve Raptor Hierarchy
-    x.set_const_value(0.0);
+/*    x.set_const_value(0.0);
     std::vector<double> res;
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
     ml->solve(x, b, res);
     raptor_solve = MPI_Wtime() - t0;
     clear_cache(cache_array);
-
+*/
     // TAP Solve Raptor
     /*x.set_const_value(0.0);
     std::vector<double> tap_res;
@@ -294,14 +295,12 @@ int main(int argc, char *argv[])
     MPI_Reduce(&ml->solve_comm_s, &s0, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Solve Comm Time: %e, Comm N: %d, Comm S: %d\n", t0, n0, s0);
 
-
-
     // Delete raptor hierarchy
-    delete ml;
+//    delete ml;
 
-    HYPRE_IJMatrixDestroy(A_h_ij);
-    HYPRE_IJVectorDestroy(x_h_ij);
-    HYPRE_IJVectorDestroy(b_h_ij);
+//    HYPRE_IJMatrixDestroy(A_h_ij);
+//    HYPRE_IJVectorDestroy(x_h_ij);
+//    HYPRE_IJVectorDestroy(b_h_ij);
     delete A;
     MPI_Finalize();
 
