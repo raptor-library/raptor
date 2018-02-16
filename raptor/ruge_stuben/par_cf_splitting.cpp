@@ -122,17 +122,17 @@ void initial_weights(const ParCSRMatrix* S,
     }
     else
     {
-        //srand(time(NULL));
+        srand(time(NULL));
         for (int i = 0; i < S->on_proc_num_cols; i++)
         {
-            srand(S->on_proc_column_map[i]);
+        //    srand(S->on_proc_column_map[i]);
             weights[i] = ((double)(rand())) / RAND_MAX;
         }
-        //std::vector<double>& recvbuf = comm->communicate(weights);
-        //for (int i = 0; i < S->off_proc_num_cols; i++)
-        //{
-        //    off_proc_weights[i] = recvbuf[i];
-        //}
+        std::vector<double>& recvbuf = comm->communicate(weights);
+        for (int i = 0; i < S->off_proc_num_cols; i++)
+        {
+            off_proc_weights[i] = recvbuf[i];
+        }
     }
 
     // Go through each row i, for each column j
