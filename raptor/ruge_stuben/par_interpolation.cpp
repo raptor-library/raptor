@@ -99,14 +99,14 @@ void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const std::vector<int>& state
                 if (ctr_S < end_S && S->off_proc_column_map[S->off_proc->idx2[ctr_S]]
                         == A->off_proc_column_map[col])
                 {
-                    if (off_proc_states[col] == 0) global_col += A->partition->global_num_cols;
+                    if (off_proc_states[col] != 1) global_col += A->partition->global_num_cols;
 
                     send_buffer[ctr].index = global_col; // In S, send positive col
                     ctr_S++;
                 }
                 else
                 {
-                    if (off_proc_states[col] == 0) global_col += A->partition->global_num_cols;
+                    if (off_proc_states[col] != 1) global_col += A->partition->global_num_cols;
                     send_buffer[ctr].index = -(global_col+1); // If not in S, store with neg sign
                 }
 
@@ -723,8 +723,6 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                         row_coarse[col_k] = 1;
                     }
                 }
-                    col_k = 0;
-                // RECV OFF IDX's are wrong...
                 start_k = recv_off->idx1[col_A];
                 end_k = recv_off->idx1[col_A+1];
                 for (int k = start_k; k < end_k; k++)

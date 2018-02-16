@@ -240,7 +240,7 @@ namespace raptor
                         split_pmis(S, states, off_proc_states, weights);
                         break;
                     case HMIS:
-			split_hmis(S, states, off_proc_states, weights);
+			split_hmis(S, states, off_proc_states);
                         break;
                 }
                 coarsen_times[level_ctr] += MPI_Wtime();
@@ -330,7 +330,7 @@ namespace raptor
                         split_pmis(S, states, off_proc_states, weights);
                         break;
                     case HMIS:
-			split_hmis(S, states, off_proc_states, weights);
+			split_hmis(S, states, off_proc_states);
                         break;
                 }
                 coarsen_times[level_ctr] += MPI_Wtime();
