@@ -92,6 +92,7 @@ void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const std::vector<int>& state
             for (int k = row_start; k < row_end; k++)
             {
                 col = A->off_proc->idx2[k];
+		if (off_proc_states[col] == -3) continue;
                 send_buffer.push_back(PairData());
                 send_buffer[ctr].val = A->off_proc->vals[k];
                 global_col = A->off_proc_column_map[col];
@@ -99,14 +100,14 @@ void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const std::vector<int>& state
                 if (ctr_S < end_S && S->off_proc_column_map[S->off_proc->idx2[ctr_S]]
                         == A->off_proc_column_map[col])
                 {
-                    if (off_proc_states[col] != 1) global_col += A->partition->global_num_cols;
+                    if (off_proc_states[col] == 0) global_col += A->partition->global_num_cols;
 
                     send_buffer[ctr].index = global_col; // In S, send positive col
                     ctr_S++;
                 }
                 else
                 {
-                    if (off_proc_states[col] != 1) global_col += A->partition->global_num_cols;
+                    if (off_proc_states[col] == 0) global_col += A->partition->global_num_cols;
                     send_buffer[ctr].index = -(global_col+1); // If not in S, store with neg sign
                 }
 
@@ -644,7 +645,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                     P->off_proc->vals.push_back(val);
                     off_proc_row_coarse[col_P] = 1;
                 }
-                else if (off_proc_states_A[col] != -3)
+                else if (off_proc_states_A[col] == 0)
                 {
                     off_proc_row_strong[col] = val;
                 }
@@ -1008,14 +1009,17 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     P->local_nnz = P->on_proc->nnz + P->off_proc->nnz;
 
     // Update off_proc columns in P (remove col j if col_exists[j] is false)
-    std::vector<int> P_to_new(P->off_proc_num_cols);
-    for (int i = 0; i < P->off_proc_num_cols; i++)
+/*    if (P->off_proc_num_cols)
     {
-        if (col_exists[i])
-        {
-            P_to_new[i] = P->off_proc_column_map.size();
-            P->off_proc_column_map.push_back(off_proc_column_map[i]);
-        }
+    	std::vector<int> P_to_new(P->off_proc_num_cols);
+    	for (int i = 0; i < P->off_proc_num_cols; i++)
+    	{
+        	if (col_exists[i])
+        	{
+            	P_to_new[i] = P->off_proc_column_map.size();
+            	P->off_proc_column_map.push_back(off_proc_column_map[i]);
+        	}
+	}
     }
     for (std::vector<int>::iterator it = P->off_proc->idx2.begin(); 
             it != P->off_proc->idx2.end(); ++it)
@@ -1040,7 +1044,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map,
                 P->on_proc_column_map);
     }
-    
+*/    
     delete recv_on;
     delete recv_off;
 
