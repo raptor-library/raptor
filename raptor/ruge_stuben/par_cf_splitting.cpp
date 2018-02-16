@@ -1475,13 +1475,16 @@ void pmis_main_loop(ParCSRMatrix* S,
         if (states[i] == -1 && weights[i] < 1)
         {
             states[i] = 0;
-	    weights[i] = 0.0;
+	        weights[i] = 0.0;
         }
         else if (states[i] == -1)
         {
             unassigned[num_remaining++] = i;
         }
-	else weights[i] = 0.0;
+	    else 
+        {
+            weights[i] = 0.0;
+        }
     }   
     std::vector<int>& recvbuf = S->comm->communicate(states);
     num_remaining_off = 0;
@@ -2348,7 +2351,7 @@ void split_hmis(ParCSRMatrix* S,
         double* rand_vals)
 {
 
-    int remaining, idx;
+    int idx;
     int start, end, row;
     std::vector<int> boundary;
     std::vector<double> weights;
@@ -2426,7 +2429,6 @@ void split_hmis(ParCSRMatrix* S,
                     || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
             {
                 states[i] = -1;
-                remaining++;
             }
             else
             {
@@ -2442,7 +2444,7 @@ void split_hmis(ParCSRMatrix* S,
 
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        if (states[i] >= 0) weights[i] = 0;
+        if (states[i] != -1) weights[i] = 0;
     }
 
     std::vector<int>& recvbuf = S->comm->communicate(states);
@@ -2450,11 +2452,11 @@ void split_hmis(ParCSRMatrix* S,
     {
         if (states[i] == 1)
         {
-            start = S->on_proc->idx1[i];
-            end = S->on_proc->idx1[i+1];
-            for (int j = start; j < end; j++)
+            start = on_col_ptr[i];
+            end = on_col_ptr[i+1];
+            for (int j = startl; j < end; j++)
             {
-                row = S->on_proc->idx2[j];
+                row = on_col_indices[j];
                 if (states[row] == -1)
                 {
                     states[row] = 0;
@@ -2463,15 +2465,15 @@ void split_hmis(ParCSRMatrix* S,
             }
         }
     }
-    for (int i = 0; i < S->off_proc_num_cols; i++)
+    for (int i = 0; i < off_proc_num_cols; i++)
     {
         if (recvbuf[i] == 1)
         {
-            start = S->off_proc->idx1[i];
-            end = S->off_proc->idx1[i+1];
+            start = off_col_ptr[i];
+            end = off_col_ptr[i+1];
             for (int j = start; j < end; j++)
             {
-                row = S->off_proc->idx2[j];
+                row = off_col_indices[j];
                 if (states[row] == -1)
                 {
                     states[row] = 0;
