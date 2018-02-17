@@ -20,7 +20,7 @@
 #include "gallery/external/hypre_wrapper.hpp"
 
 #ifdef USING_MFEM
-//#include "gallery/external/mfem_wrapper.hpp"
+  #include "gallery/external/mfem_wrapper.hpp"
 #endif
 
 //using namespace raptor;
@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
         delete[] stencil;
     }
 #ifdef USING_MFEM
-    /*else if (system == 2)
+    else if (system == 2)
     {
         const char* mesh_file = argv[2];
         int num_elements = 2;
@@ -130,8 +130,8 @@ int main(int argc, char *argv[])
                 order = atoi(argv[4]);
             }
         }
-        A = mfem_linear_elasticity(x, b, mesh_file, num_elements, order);
-    }*/
+        A = mfem_laplacian(x, b, mesh_file, num_elements, order);
+    }
 #endif
     else if (system == 3)
     {
