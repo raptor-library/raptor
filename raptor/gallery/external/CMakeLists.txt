@@ -8,6 +8,7 @@ if (WITH_MFEM)
         )
     set(external_mfem_SOURCES 
         gallery/external/mfem/mfem_linear_elasticity.cpp
+        gallery/external/mfem/mfem_laplacian.cpp
        )
 endif()
 

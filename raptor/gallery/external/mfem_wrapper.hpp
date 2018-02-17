@@ -20,4 +20,10 @@ raptor::ParCSRMatrix* mfem_linear_elasticity(raptor::ParVector& x_raptor,
         int order = 3, int seq_n_refines = 2, int par_n_refines = 2,
         MPI_Comm comm_mat = MPI_COMM_WORLD);
 
+raptor::ParCSRMatrix* mfem_laplacian(raptor::ParVector& x_raptor, 
+        raptor::ParVector& b_raptor,
+        const char* mesh_file, 
+        int order = 3, int seq_n_refines = 2, int par_n_refines = 2,
+        MPI_Comm comm_mat = MPI_COMM_WORLD);
+
 #endif
