@@ -2454,7 +2454,7 @@ void split_hmis(ParCSRMatrix* S,
         {
             start = on_col_ptr[i];
             end = on_col_ptr[i+1];
-            for (int j = startl; j < end; j++)
+            for (int j = start; j < end; j++)
             {
                 row = on_col_indices[j];
                 if (states[row] == -1)
@@ -2465,7 +2465,7 @@ void split_hmis(ParCSRMatrix* S,
             }
         }
     }
-    for (int i = 0; i < off_proc_num_cols; i++)
+    for (int i = 0; i < S->off_proc_num_cols; i++)
     {
         if (recvbuf[i] == 1)
         {
