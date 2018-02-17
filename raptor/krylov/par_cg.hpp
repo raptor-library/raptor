@@ -4,6 +4,7 @@
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
+#include "multilevel/par_multilevel.hpp"
 #include <vector>
 
 using namespace raptor;

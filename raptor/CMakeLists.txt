@@ -32,7 +32,7 @@ install(FILES ${ext_gallery_HEADERS} DESTINATION "include/raptor/gallery/externa
 install(FILES ${util_HEADERS} DESTINATION "include/raptor/util/linalg")
 install(FILES ${ruge_stuben_HEADERS} DESTINATION "include/raptor/ruge_stuben")
 install(FILES ${multilevel_HEADERS} DESTINATION "include/raptor/multilevel")
-install(FILES ${krylov_HEADERS} DESTINATION "include/raptor/multilevel")
+install(FILES ${krylov_HEADERS} DESTINATION "include/raptor/krylov")
 
 
 include_directories(".")

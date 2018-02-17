@@ -66,6 +66,10 @@
     #include "multilevel/par_level.hpp"
 #endif 
 
+// Krylov methods
+#include "krylov/cg.hpp"
+#include "krylov/par_cg.hpp"
+
 // Relaxation methods
 #include "util/linalg/relax.hpp"
 #ifndef NO_MPI

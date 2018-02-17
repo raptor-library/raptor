@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
     ml = new ParMultilevel(A, strong_threshold, HMIS, Extended, SOR,
-            1, 1.0, 50, 6, -1);
+            1, 1.0, 50, -1, -1);
     raptor_setup = MPI_Wtime() - t0;
     clear_cache(cache_array);
 
@@ -236,14 +236,14 @@ int main(int argc, char *argv[])
     }
 
     // Solve Raptor Hierarchy
-/*    x.set_const_value(0.0);
+    x.set_const_value(0.0);
     std::vector<double> res;
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
     ml->solve(x, b, res);
     raptor_solve = MPI_Wtime() - t0;
     clear_cache(cache_array);
-*/
+
     // TAP Solve Raptor
     /*x.set_const_value(0.0);
     std::vector<double> tap_res;
@@ -265,13 +265,13 @@ int main(int argc, char *argv[])
         if (rank == 0) printf("%d\t%d\t%ld\n", i, Al->global_num_rows, nnz);
     }   
 
-    /*if (rank == 0)
+    if (rank == 0)
     {
         for (int i = 0; i < res.size(); i++)
         {
-            printf("%e, %e\n", res[i], tap_res[i]);
+            printf("Res[%d] = %e\n", i, res[i]);
         }
-    }*/   
+    }   
 
     MPI_Reduce(&hypre_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Hypre Setup Time: %e\n", t0);

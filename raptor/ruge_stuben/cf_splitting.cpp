@@ -113,7 +113,7 @@ void rs_first_pass(const CSRMatrix* S,
         weight = weights[col];
         weight_sizes[weight]--;
 
-        if (states[col] == 0)
+        if (states[col] != -1)
         {
             continue;
         }
@@ -275,7 +275,7 @@ void rs_second_pass(const CSRMatrix* S,
  *****    Strength of connection matrix
  **************************************************************/
 void split_rs(CSRMatrix* S,
-        std::vector<int>& states, bool second_pass)
+        std::vector<int>& states, bool prev_states, bool second_pass)
 {
     int start, end;
     
@@ -288,15 +288,18 @@ void split_rs(CSRMatrix* S,
     std::vector<int> col_ptr;
     std::vector<int> col_indices;
     std::vector<int> weights;
-
     if (S->n_rows)
     {
-        states.resize(S->n_rows);
         weights.resize(S->n_rows);
     }
-    for (int i = 0; i < S->n_rows; i++)
+
+    if (!prev_states && S->n_rows)
     {
-        states[i] = -1;
+        states.resize(S->n_rows);
+        for (int i = 0; i < S->n_rows; i++)
+        {
+            states[i] = -1;
+        }
     }
 
     // Find CSC sparsity pattern of S

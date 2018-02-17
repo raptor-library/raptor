@@ -1009,7 +1009,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     P->local_nnz = P->on_proc->nnz + P->off_proc->nnz;
 
     // Update off_proc columns in P (remove col j if col_exists[j] is false)
-/*    if (P->off_proc_num_cols)
+    if (P->off_proc_num_cols)
     {
     	std::vector<int> P_to_new(P->off_proc_num_cols);
     	for (int i = 0; i < P->off_proc_num_cols; i++)
@@ -1020,13 +1020,12 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
             	P->off_proc_column_map.push_back(off_proc_column_map[i]);
         	}
 	}
+    	for (std::vector<int>::iterator it = P->off_proc->idx2.begin(); 
+        	    it != P->off_proc->idx2.end(); ++it)
+    	{
+        	*it = P_to_new[*it];
+    	}
     }
-    for (std::vector<int>::iterator it = P->off_proc->idx2.begin(); 
-            it != P->off_proc->idx2.end(); ++it)
-    {
-        *it = P_to_new[*it];
-    }
-
 
     P->off_proc_num_cols = P->off_proc_column_map.size();
     P->on_proc_num_cols = P->on_proc_column_map.size();
@@ -1044,7 +1043,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map,
                 P->on_proc_column_map);
     }
-*/    
+    
     delete recv_on;
     delete recv_off;
 
