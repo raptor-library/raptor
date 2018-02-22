@@ -4,6 +4,170 @@
 
 using namespace raptor;
 
+void split_rs(ParCSRMatrix* S, std::vector<int>& states, 
+        std::vector<int>& off_proc_states, bool tap_cf)
+{
+    CommPkg* comm = S->comm;
+    if (tap_cf)
+    {
+        comm = S->tap_comm;
+    }
+
+    set_initial_states(S, states);
+
+    // Call serial ruge-stuben cf_splitting
+    split_rs((CSRMatrix*) S->on_proc, states, true);
+
+    // Find states of off_proc_cols
+    if (S->off_proc_num_cols)
+    {
+        off_proc_states.resize(S->off_proc_num_cols);
+    }
+    std::vector<int>& recvbuf = comm->communicate(states);
+    std::copy(recvbuf.begin(), recvbuf.end(), off_proc_states.begin());
+}
+
+void split_cljp(ParCSRMatrix* S, std::vector<int>& states, 
+        std::vector<int>& off_proc_states, bool tap_cf, 
+        double* rand_vals)
+{
+    
+    S->on_proc->move_diag();
+
+    /**********************************************
+     * Reset states of boundary indices
+     **********************************************/
+    set_initial_states(S, states);
+
+    /**********************************************
+     * CLJP Main Loop
+     **********************************************/
+    cljp_main_loop(S, states, off_proc_states, rand_vals);
+}
+
+void split_falgout(ParCSRMatrix* S, std::vector<int>& states, 
+        std::vector<int>& off_proc_states, bool tap_cf, 
+        double* rand_vals)
+{
+    S->on_proc->move_diag();
+
+    /**********************************************
+     * Reset states of boundary indices
+     **********************************************/
+    set_initial_states(S, states);
+
+    /**********************************************
+     * Ruge-Stuben on local portion
+     **********************************************/
+    split_rs((CSRMatrix*)S->on_proc, states, true);
+
+    reset_boundaries(S, states);
+
+    /**********************************************
+     * CLJP Main Loop
+     **********************************************/
+    cljp_main_loop(S, states, off_proc_states, rand_vals);
+}
+
+void split_pmis(ParCSRMatrix* S, std::vector<int>& states,
+        std::vector<int>& off_proc_states, bool tap_cf, 
+        double* rand_vals)
+{
+    int remaining;
+
+    if (!S->comm)
+    {
+        S->comm = new ParComm(S->partition, S->off_proc_column_map, 
+                S->on_proc_column_map);
+    }
+    S->on_proc->move_diag();
+
+    set_initial_states(S, states);
+
+    /**********************************************
+     * CLJP Main Loop
+     **********************************************/
+    pmis_main_loop(S, states, off_proc_states, rand_vals);
+
+}
+
+
+void split_hmis(ParCSRMatrix* S, std::vector<int>& states,
+        std::vector<int>& off_proc_states, bool tap_cf, 
+        double* rand_vals)
+{
+    if (!S->comm)
+    {
+        S->comm = new ParComm(S->partition, S->off_proc_column_map, 
+                S->on_proc_column_map);
+    }
+    S->on_proc->move_diag();
+
+    set_initial_states(S, states);
+
+    /**********************************************
+     * Ruge-Stuben on local portion
+     * Initialized States = true
+     * Second pass of RS = false
+     **********************************************/
+    split_rs((CSRMatrix*)S->on_proc, states, true, false); // Only first pass
+
+    reset_boundaries(S, states);
+
+    /**********************************************
+     * PMIS Main Loop
+     **********************************************/
+    pmis_main_loop(S, states, off_proc_states, rand_vals);
+
+}
+
+
+
+
+void set_initial_states(ParCSRMatrix* S, std::vector<int>& states)
+{
+    if (S->local_num_rows == 0) return;
+
+    states.resize(S->local_num_rows);
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+        if (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] > 1
+                || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
+        {
+            states[i] = -1;
+        }
+        else
+        {
+            states[i] = -3;
+        }
+    }
+}
+
+void reset_boundaries(ParCSRMatrix* S, std::vector<int>& states)
+{
+    if (S->local_num_rows == 0) return;
+
+    std::vector<int> boundary(S->local_num_rows, 0);
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+        if (S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
+        {
+            boundary[i] = 1;
+        }
+    }
+    for (int i = 0; i < S->comm->send_data->size_msgs; i++)
+    {
+        boundary[S->comm->send_data->indices[i]] = 1;
+    }
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+        if (boundary[i])
+        {
+            states[i] = -1;
+        }
+    }
+}
+
 void transpose(const ParCSRMatrix* S,
         std::vector<int>& on_col_ptr, 
         std::vector<int>& off_col_ptr, 
@@ -125,13 +289,7 @@ void initial_weights(const ParCSRMatrix* S,
         srand(time(NULL));
         for (int i = 0; i < S->on_proc_num_cols; i++)
         {
-        //    srand(S->on_proc_column_map[i]);
             weights[i] = ((double)(rand())) / RAND_MAX;
-        }
-        std::vector<double>& recvbuf = comm->communicate(weights);
-        for (int i = 0; i < S->off_proc_num_cols; i++)
-        {
-            off_proc_weights[i] = recvbuf[i];
         }
     }
 
@@ -441,9 +599,12 @@ void update_local_dist2_weights(const ParCSRMatrix* S,
         }
     }
 
-    for (int i = 0; i < S->local_num_rows; i++)
+    if (off_num_new_coarse)
     {
-        c_dep_cache[i] = -1;
+        for (int i = 0; i < S->local_num_rows; i++)
+        {
+            c_dep_cache[i] = -1;
+        }
     }
 
     // Update local weights based on off_proc new coarse values
@@ -1436,13 +1597,9 @@ int update_states(std::vector<double>& weights,
 }
 
 void pmis_main_loop(ParCSRMatrix* S,
-        const std::vector<int>& on_col_ptr,
-        const std::vector<int>& off_col_ptr,
-        const std::vector<int>& on_col_indices,
-        const std::vector<int>& off_col_indices,
-        std::vector<double>& weights,
         std::vector<int>& states,
-        std::vector<int>& off_proc_states)
+        std::vector<int>& off_proc_states,
+        double* rand_vals)
 {
     int start, end, row;
     int idx, ctr;
@@ -1455,8 +1612,15 @@ void pmis_main_loop(ParCSRMatrix* S,
     std::vector<int> unassigned;
     std::vector<int> unassigned_off;
 
+    std::vector<int> on_col_ptr;
+    std::vector<int> off_col_ptr;
+    std::vector<int> on_col_indices;
+    std::vector<int> off_col_indices;
+    std::vector<double> weights;
+
     if (S->local_num_rows)
     {
+        weights.resize(S->local_num_rows);
         unassigned.resize(S->local_num_rows);
         max_weights.resize(S->local_num_rows);
         new_coarse_list.resize(S->local_num_rows);
@@ -1468,8 +1632,28 @@ void pmis_main_loop(ParCSRMatrix* S,
         off_proc_states.resize(S->off_proc_num_cols);
     }
 
+    transpose(S, on_col_ptr, off_col_ptr, on_col_indices, off_col_indices);
+    initial_weights(S, S->comm, weights, rand_vals);
+
     // Find remaining vertices in on and off proc matrices
     num_remaining = 0;
+
+    for (int i = 0; i < S->on_proc_num_cols; i++)
+    {
+        if (states[i] == 1)
+        {
+            start = on_col_ptr[i];
+            end = on_col_ptr[i+1];
+            for (int j = start; j < end; j++)
+            {
+                row = on_col_indices[j];
+                if (states[row] == -1)
+                {
+                    states[row] = 0;
+                }
+            }
+        }
+    }
     for (int i = 0; i < S->local_num_rows; i++)
     {
         if (states[i] == -1 && weights[i] < 1)
@@ -1554,23 +1738,10 @@ void pmis_main_loop(ParCSRMatrix* S,
     }
 }
 
-
-
-
-
-
-
 void cljp_main_loop(ParCSRMatrix* S,
-        const std::vector<int>& on_col_ptr,
-        const std::vector<int>& off_col_ptr,
-        const std::vector<int>& on_col_indices,
-        const std::vector<int>& off_col_indices,
-        std::vector<double>& weights,
         std::vector<int>& states,
         std::vector<int>& off_proc_states,
-        int remaining,
-        std::vector<int>& on_edgemark,
-        std::vector<int>& off_edgemark)
+        double* rand_vals)
 {
     /**********************************************
      * Declare and Initialize Variables
@@ -1582,7 +1753,7 @@ void cljp_main_loop(ParCSRMatrix* S,
     int num_fine;
     int off_num_fine;
     int unassigned_off_proc;
-    int off_remaining;
+    int remaining, off_remaining;
     int size, global_col;
 
     std::vector<double> max_weights;
@@ -1596,6 +1767,13 @@ void cljp_main_loop(ParCSRMatrix* S,
     std::vector<int> off_new_coarse_list;
     std::vector<int> unassigned;
     std::vector<int> unassigned_off;
+    std::vector<int> on_col_ptr;
+    std::vector<int> off_col_ptr;
+    std::vector<int> on_col_indices;
+    std::vector<int> off_col_indices;
+    std::vector<int> on_edgemark;
+    std::vector<int> off_edgemark;
+    std::vector<double> weights;
 
     int count;
     int n_sends, n_recvs;
@@ -1607,6 +1785,7 @@ void cljp_main_loop(ParCSRMatrix* S,
 
     if (S->local_num_rows)
     {
+        weights.resize(S->local_num_rows, 0);
         max_weights.resize(S->local_num_rows);
         new_coarse_list.resize(S->local_num_rows);
         unassigned.resize(S->local_num_rows);
@@ -1618,6 +1797,14 @@ void cljp_main_loop(ParCSRMatrix* S,
         off_proc_states.resize(S->off_proc_num_cols);
         off_new_coarse_list.resize(S->off_proc_num_cols);
         unassigned_off.resize(S->off_proc_num_cols);
+    }
+    if (S->on_proc->nnz)
+    {
+        on_edgemark.resize(S->on_proc->nnz, 1);
+    }
+    if (S->off_proc->nnz)
+    {
+        off_edgemark.resize(S->off_proc->nnz, 1);
     }
     S->comm->communicate(states);
     for (int i = 0; i < S->off_proc_num_cols; i++)
@@ -1635,35 +1822,56 @@ void cljp_main_loop(ParCSRMatrix* S,
         global_to_local[S->off_proc_column_map[i]] = i;
     }
 
-    /**********************************************
-     * Find weights of unassigned neighbors (off proc cols)
-     **********************************************/
-    find_off_proc_weights(S->comm, states, off_proc_states, 
-            weights, off_proc_weights);
+    initial_weights(S, S->comm, weights, rand_vals);
+    transpose(S, on_col_ptr, off_col_ptr, on_col_indices, off_col_indices);
 
     remaining = 0;
     off_remaining = 0;
+    num_new_coarse = 0;
     for (int i = 0; i < S->on_proc_num_cols; i++)
     {
         if (states[i] == -1)
         {
             unassigned[remaining++] = i;
         }
-	else
-	{
+	    else
+	    {
             weights[i] = 0.0;
-	}
+            
+            if (states[i] == 1)
+            {
+                new_coarse_list[num_new_coarse++] = i;
+            }
+	    }
     }
+
+    if (num_new_coarse)
+    {
+        update_row_weights(S, num_new_coarse, new_coarse_list,
+                on_edgemark, off_edgemark, states, off_proc_states,
+                weights, off_proc_weight_updates);
+        update_local_dist2_weights(S, num_new_coarse, new_coarse_list,
+                0, off_new_coarse_list, on_col_ptr, on_col_indices,
+                off_col_ptr, off_col_indices, on_edgemark, states, weights);
+    }
+
+    /**********************************************
+     * Find weights of unassigned neighbors (off proc cols)
+     **********************************************/
+    find_off_proc_weights(S->comm, states, off_proc_states, 
+            weights, off_proc_weights);
+
+
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
         if (off_proc_states[i] == -1)
         {
             unassigned_off[off_remaining++] = i;
         }
-	else
-	{
+	    else
+	    {
             off_proc_weights[i] = 0.0;
-	}
+	    }
     }
 
     /**********************************************
@@ -1942,990 +2150,5 @@ void tap_cljp_main_loop(ParCSRMatrix* S,
     delete[] part_to_col;
 }
 
-/**************************************************************
- *****   C/F Splitting
- **************************************************************
- *****  Assigns C (coarse) and F (fine) points to each local
- *****  index using Falgout coarsening:
- *****  Ruge-Stuben on interior nodes followed by CLJP on
- *****  all boundary nodes
- *****
- ***** Parameters
- ***** -------------
- ***** S : ParCSRMatrix*
- *****    Strength of connection matrix
- **************************************************************/
-void split_rs(ParCSRMatrix* S,
-        std::vector<int>& states, 
-        std::vector<int>& off_proc_states)
-{
-    // Allocate space
-    if (S->on_proc_num_cols)
-    {
-        states.resize(S->on_proc_num_cols);
-    }
-    if (S->off_proc_num_cols)
-    {
-        off_proc_states.resize(S->off_proc_num_cols);
-    }
 
-    // Call serial ruge-stuben cf_splitting
-    split_rs((CSRMatrix*) S->on_proc, states);
 
-    if (S->comm == NULL)
-    {
-        S->comm = new ParComm(S->partition, S->off_proc_column_map, S->on_proc_column_map);
-    }
-
-    // Find states of off_proc_cols
-    S->comm->communicate(states);
-    std::copy(S->comm->recv_data->int_buffer.begin(), 
-            S->comm->recv_data->int_buffer.end(), off_proc_states.begin());
-}
-
-
-
-/**************************************************************
- *****   C/F Splitting
- **************************************************************
- *****  Assigns C (coarse) and F (fine) points to each local
- *****  index using Falgout coarsening:
- *****  Ruge-Stuben on interior nodes followed by CLJP on
- *****  all boundary nodes
- *****
- ***** Parameters
- ***** -------------
- ***** S : ParCSRMatrix*
- *****    Strength of connection matrix
- **************************************************************/
-void split_falgout(ParCSRMatrix* S,
-        std::vector<int>& states, 
-        std::vector<int>& off_proc_states,
-        double* rand_vals)
-{
-    int start, end;
-    int idx, idx_k, c;
-    int idx_start, idx_end;
-    int head, length, tmp;
-    int remaining;
-    int max_idx;
-    double max_weight;
-
-    std::vector<int> boundary;
-    std::vector<int> on_col_ptr;
-    std::vector<int> on_col_indices;
-    std::vector<int> off_col_ptr;
-    std::vector<int> off_col_indices;
-    std::vector<int> on_edgemark;
-    std::vector<int> off_edgemark;
-    std::vector<double> weights;
-
-    if (S->local_num_rows)
-    {
-        boundary.resize(S->local_num_rows, 0);
-        weights.resize(S->local_num_rows, 0);
-    }
-    if (S->on_proc->nnz)
-    {
-        on_edgemark.resize(S->on_proc->nnz, 1);
-    }
-    if (S->off_proc->nnz)
-    {
-        off_edgemark.resize(S->off_proc->nnz, 1);
-    }
-        
-    /**********************************************
-     * Find which local rows are on boundary 
-     * 1 - boundary
-     * 0 - interior
-     **********************************************/
-    for (int i = 0; i < S->local_num_rows; i++)
-    {
-        // If cols in off_proc, i is boundary
-        if (S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
-        {
-            boundary[i] = 1;
-        }
-    }
-    for (int i = 0; i < S->comm->send_data->size_msgs; i++)
-    {
-        // idx in send_data, so idx is boundary
-        idx = S->comm->send_data->indices[i];
-        boundary[idx] = 1;
-    }
-
-    /**********************************************
-     * Form S^T ptr and indices for on_proc and off_proc
-     * Needed for column-wise searches (which indices
-     * influence each on_proc/off_proc index)
-     **********************************************/
-    transpose(S, on_col_ptr, off_col_ptr,
-            on_col_indices, off_col_indices);
-
-    /**********************************************
-     * Ruge-Stuben on local portion
-     **********************************************/
-    split_rs((CSRMatrix*)S->on_proc, states);
-
-    /**********************************************
-     * Reset states of boundary indices
-     **********************************************/
-    remaining = 0;
-    int num_new_coarse = 0;
-    std::vector<int> new_coarse_list;
-    for (int i = 0; i < S->local_num_rows; i++)
-    {
-        if (boundary[i])
-        {
-            if  (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] > 1
-                    || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
-            {
-                states[i] = -1;
-                remaining++;
-            }
-            else
-            {
-                states[i] = -3;
-            }
-        } 
-        else if (states[i] == 1)
-        {
-            new_coarse_list.push_back(i);
-        }
-    }
-    num_new_coarse = new_coarse_list.size();
-
-    /**********************************************
-     * Set initial CLJP boundary weights
-     **********************************************/
-    initial_weights(S, S->comm, weights, rand_vals);
-
-    for (int i = 0; i < S->local_num_rows; i++)
-    {
-        if (states[i] != -1)
-        {
-            weights[i] = 0.0;
-        }
-    }
-
-    for (int i = 0; i < num_new_coarse; i++)
-    {
-        c = new_coarse_list[i];
-
-        start = S->on_proc->idx1[c];
-        end = S->on_proc->idx1[c+1];
-        if (S->on_proc->idx2[start] == c)
-        {
-            start++;
-        }
-        for (int j = start; j < end; j++)
-        {
-            idx = S->on_proc->idx2[j];
-            if (states[idx] == -1 && on_edgemark[j])
-            {
-                on_edgemark[j] = 0;
-                weights[idx]--;
-            }
-        }
-    }
-
-    std::vector<int> c_dep_cache;
-    if (S->on_proc_num_cols)
-    {
-        c_dep_cache.resize(S->on_proc_num_cols, -1);
-    }
-
-    // Update local weights based on new_coarse values
-    for (int i = 0; i < num_new_coarse; i++)
-    {
-        c = new_coarse_list[i];
-
-        // Find rows strongly connected to c and add to c_dep_cache
-        start = on_col_ptr[c];
-        end = on_col_ptr[c+1];
-        for (int j = start; j < end; j++)
-        {
-            idx = on_col_indices[j];
-            if (states[idx] == -1)
-            {
-                c_dep_cache[idx] = c;
-            }
-        }
-
-        // Go through each row i strongly connected to c, and see if any column
-        // in Si is also in c_dep_cache (and edge not already removed), reduce
-        // weight and remove edge
-        for (int j = start; j < end; j++)
-        {
-            idx = on_col_indices[j];
-
-            idx_start = S->on_proc->idx1[idx];
-            idx_end = S->on_proc->idx1[idx+1];
-            if (S->on_proc->idx2[idx_start] == idx)
-            {
-                idx_start++;
-            }
-            for (int k = idx_start; k < idx_end; k++)
-            {
-                idx_k = S->on_proc->idx2[k];
-                if (states[idx_k] == -1 && on_edgemark[k] && c_dep_cache[idx_k] == c)
-                {
-                    on_edgemark[k] = 0;
-                    weights[idx_k]--;
-                }
-            }
-        }
-    }
-
-
-    /**********************************************
-     * CLJP Main Loop
-     **********************************************/
-    cljp_main_loop(S, on_col_ptr, off_col_ptr,
-            on_col_indices, off_col_indices, weights,
-            states, off_proc_states, remaining, on_edgemark,
-            off_edgemark);
-}
-
-/**************************************************************
- *****   C/F Splitting
- **************************************************************
- *****  Assigns C (coarse) and F (fine) points to each local
- *****  index using Falgout coarsening:
- *****  Ruge-Stuben on interior nodes followed by CLJP on
- *****  all boundary nodes
- *****
- ***** Parameters
- ***** -------------
- ***** S : ParCSRMatrix*
- *****    Strength of connection matrix
- **************************************************************/
-void split_cljp(ParCSRMatrix* S,
-        std::vector<int>& states, 
-        std::vector<int>& off_proc_states,
-        double* rand_vals)
-{
-    int remaining;
-    std::vector<int> on_col_ptr;
-    std::vector<int> on_col_indices;
-    std::vector<int> off_col_ptr;
-    std::vector<int> off_col_indices;
-    std::vector<int> on_edgemark;
-    std::vector<int> off_edgemark;
-    std::vector<double> weights;
-
-    if (!S->on_proc->diag_first)
-    {
-        S->on_proc->move_diag();
-    }
-
-    if (S->local_num_rows)
-    {
-        weights.resize(S->local_num_rows, 0);
-    }
-    if (S->on_proc->nnz)
-    {
-        on_edgemark.resize(S->on_proc->nnz, 1);
-    }
-    if (S->off_proc->nnz)
-    {
-        off_edgemark.resize(S->off_proc->nnz, 1);
-    }
-        
-    /**********************************************
-     * Form S^T ptr and indices for on_proc and off_proc
-     * Needed for column-wise searches (which indices
-     * influence each on_proc/off_proc index)
-     **********************************************/
-    transpose(S, on_col_ptr, off_col_ptr,
-            on_col_indices, off_col_indices);
-
-    /**********************************************
-     * Reset states of boundary indices
-     **********************************************/
-    if (S->local_num_rows)
-    {
-        states.resize(S->local_num_rows);
-    }
-    remaining = S->local_num_rows;
-    for (int i = 0; i < S->local_num_rows; i++)
-    {
-        if (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] > 1 
-                || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
-        {
-            states[i] = -1;
-        }
-        else
-        {
-            states[i] = -3;
-            remaining--;
-        }
-    }
-
-    /**********************************************
-     * Set initial CLJP boundary weights
-     **********************************************/
-    initial_weights(S, S->comm, weights, rand_vals);
-
-    /**********************************************
-     * CLJP Main Loop
-     **********************************************/
-    cljp_main_loop(S, on_col_ptr, off_col_ptr,
-            on_col_indices, off_col_indices, weights,
-            states, off_proc_states, remaining, on_edgemark,
-            off_edgemark);
-
-}
-
-void split_pmis(ParCSRMatrix* S,
-        std::vector<int>& states, 
-        std::vector<int>& off_proc_states,
-        double* rand_vals)
-{
-    int remaining;
-    std::vector<double> weights;
-    std::vector<int> on_col_ptr;
-    std::vector<int> on_col_indices;
-    std::vector<int> off_col_ptr;
-    std::vector<int> off_col_indices;
-
-    if (!S->comm)
-    {
-        S->comm = new ParComm(S->partition, S->off_proc_column_map, 
-                S->on_proc_column_map);
-    }
-    if (!S->on_proc->diag_first)
-    {
-        S->on_proc->move_diag();
-    }
-
-    if (S->local_num_rows)
-    {
-        weights.resize(S->local_num_rows, 0);
-    }
-
-    /**********************************************
-     * Form S^T ptr and indices for on_proc and off_proc
-     * Needed for column-wise searches (which indices
-     * influence each on_proc/off_proc index)
-     **********************************************/
-    transpose(S, on_col_ptr, off_col_ptr,
-            on_col_indices, off_col_indices);
-
-    /**********************************************
-     *  Set initial states (usually -1)
-     **********************************************/
-    if (S->local_num_rows)
-    {
-        states.resize(S->local_num_rows);
-    }
-    for (int i = 0; i < S->local_num_rows; i++)
-    {
-        if (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] > 1 
-                || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
-        {
-            states[i] = -1;
-        }
-        else
-        {
-            states[i] = -3;
-        }
-    }
-
-    /**********************************************
-     * Set initial CLJP boundary weights
-     **********************************************/
-    initial_weights(S, S->comm, weights, rand_vals);
-
-    /**********************************************
-     * CLJP Main Loop
-     **********************************************/
-    pmis_main_loop(S, on_col_ptr, off_col_ptr, on_col_indices,
-             off_col_indices, weights, states, off_proc_states);
-}
-
-
-void split_hmis(ParCSRMatrix* S,
-        std::vector<int>& states, 
-        std::vector<int>& off_proc_states,
-        double* rand_vals)
-{
-
-    int idx;
-    int start, end, row;
-    std::vector<int> boundary;
-    std::vector<double> weights;
-    std::vector<int> on_col_ptr;
-    std::vector<int> on_col_indices;
-    std::vector<int> off_col_ptr;
-    std::vector<int> off_col_indices;
-
-    if (!S->comm)
-    {
-        S->comm = new ParComm(S->partition, S->off_proc_column_map, 
-                S->on_proc_column_map);
-    }
-    if (!S->on_proc->diag_first)
-    {
-        S->on_proc->move_diag();
-    }
-
-    if (S->local_num_rows)
-    {
-        boundary.resize(S->local_num_rows, 0);
-        weights.resize(S->local_num_rows, 0);
-    }
-
-    /**********************************************
-     * Find which local rows are on boundary 
-     * 1 - boundary
-     * 0 - interior
-     **********************************************/
-    for (int i = 0; i < S->local_num_rows; i++)
-    {
-        // If cols in off_proc, i is boundary
-        if (S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
-        {
-            boundary[i] = 1;
-        }
-    }
-    for (int i = 0; i < S->comm->send_data->size_msgs; i++)
-    {
-        // idx in send_data, so idx is boundary
-        idx = S->comm->send_data->indices[i];
-        boundary[idx] = 1;
-    }
-
-
-    /**********************************************
-     * Form S^T ptr and indices for on_proc and off_proc
-     * Needed for column-wise searches (which indices
-     * influence each on_proc/off_proc index)
-     **********************************************/
-    transpose(S, on_col_ptr, off_col_ptr,
-            on_col_indices, off_col_indices);
-
-    /**********************************************
-     *  Set initial states (usually -1)
-     **********************************************/
-    if (S->local_num_rows)
-    {
-        states.resize(S->local_num_rows);
-        for (int i = 0; i < S->local_num_rows; i++)
-        {
-            if (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] > 1 
-                    || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
-            {
-                states[i] = -1;
-            }
-            else
-            {
-                states[i] = -3;
-            }
-        }
-    }
-
-    /**********************************************
-     * Ruge-Stuben on local portion
-     * Initialized States = true
-     * Second pass of RS = false
-     **********************************************/
-    split_rs((CSRMatrix*)S->on_proc, states, true, false); // Only first pass
-
-    /**********************************************
-     * Reset states of boundary indices
-     **********************************************/
-    for (int i = 0; i < S->local_num_rows; i++)
-    {
-        if (boundary[i])
-        {
-            if  (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] > 1
-                    || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
-            {
-                states[i] = -1;
-            }
-            else
-            {
-                states[i] = -3;
-            }
-        } 
-    }
-
-    /**********************************************
-     * Set initial CLJP boundary weights
-     **********************************************/
-    initial_weights(S, S->comm, weights, rand_vals);
-
-    for (int i = 0; i < S->local_num_rows; i++)
-    {
-        if (states[i] != -1) weights[i] = 0;
-    }
-
-    std::vector<int>& recvbuf = S->comm->communicate(states);
-    for (int i = 0; i < S->on_proc_num_cols; i++)
-    {
-        if (states[i] == 1)
-        {
-            start = on_col_ptr[i];
-            end = on_col_ptr[i+1];
-            for (int j = start; j < end; j++)
-            {
-                row = on_col_indices[j];
-                if (states[row] == -1)
-                {
-                    states[row] = 0;
-                    weights[row] = 0;
-                }
-            }
-        }
-    }
-    for (int i = 0; i < S->off_proc_num_cols; i++)
-    {
-        if (recvbuf[i] == 1)
-        {
-            start = off_col_ptr[i];
-            end = off_col_ptr[i+1];
-            for (int j = start; j < end; j++)
-            {
-                row = off_col_indices[j];
-                if (states[row] == -1)
-                {
-                    states[row] = 0;
-                    weights[row] = 0;
-                }
-            }
-        }
-    }
-
-    /**********************************************
-     * CLJP Main Loop
-     **********************************************/
-    pmis_main_loop(S, on_col_ptr, off_col_ptr, on_col_indices,
-             off_col_indices, weights, states, off_proc_states);
-}
-
-
-
-
-
-
-/**************************************************************
- *****   C/F Splitting
- **************************************************************
- *****  Assigns C (coarse) and F (fine) points to each local
- *****  index using Falgout coarsening:
- *****  Ruge-Stuben on interior nodes followed by CLJP on
- *****  all boundary nodes
- *****
- ***** Parameters
- ***** -------------
- ***** S : ParCSRMatrix*
- *****    Strength of connection matrix
- **************************************************************/
-void tap_split_rs(ParCSRMatrix* S,
-        std::vector<int>& states, 
-        std::vector<int>& off_proc_states)
-{
-    // Allocate space
-    if (S->on_proc_num_cols)
-    {
-        states.resize(S->on_proc_num_cols);
-    }
-    if (S->off_proc_num_cols)
-    {
-        off_proc_states.resize(S->off_proc_num_cols);
-    }
-
-    // Call serial ruge-stuben cf_splitting
-    split_rs((CSRMatrix*) S->on_proc, states);
-
-    if (S->tap_comm == NULL)
-    {
-        S->tap_comm = new TAPComm(S->partition, S->off_proc_column_map, 
-                S->on_proc_column_map);
-    }
-
-    // Find states of off_proc_cols
-    S->tap_comm->communicate(states);
-    std::copy(S->comm->recv_data->int_buffer.begin(), 
-            S->comm->recv_data->int_buffer.end(), off_proc_states.begin());
-}
-
-
-
-/**************************************************************
- *****   C/F Splitting
- **************************************************************
- *****  Assigns C (coarse) and F (fine) points to each local
- *****  index using Falgout coarsening:
- *****  Ruge-Stuben on interior nodes followed by CLJP on
- *****  all boundary nodes
- *****
- ***** Parameters
- ***** -------------
- ***** S : ParCSRMatrix*
- *****    Strength of connection matrix
- **************************************************************/
-void tap_split_falgout(ParCSRMatrix* S,
-        std::vector<int>& states, 
-        std::vector<int>& off_proc_states, 
-        double* rand_vals)
-{
-    int start, end;
-    int idx, idx_k, c;
-    int idx_start, idx_end;
-    int remaining;
-
-    std::vector<int> boundary;
-    std::vector<int> on_col_ptr;
-    std::vector<int> on_col_indices;
-    std::vector<int> off_col_ptr;
-    std::vector<int> off_col_indices;
-    std::vector<int> on_edgemark;
-    std::vector<int> off_edgemark;
-    std::vector<double> weights;
-
-    if (!S->tap_comm)
-    {
-        S->tap_comm = new TAPComm(S->partition, S->off_proc_column_map, 
-                S->on_proc_column_map);
-    }
-    if (S->local_num_rows)
-    {
-        boundary.resize(S->local_num_rows, 0);
-        weights.resize(S->local_num_rows, 0);
-    }
-    if (S->on_proc->nnz)
-    {
-        on_edgemark.resize(S->on_proc->nnz, 1);
-    }
-    if (S->off_proc->nnz)
-    {
-        off_edgemark.resize(S->off_proc->nnz, 1);
-    }
-        
-    /**********************************************
-     * Find which local rows are on boundary 
-     * 1 - boundary
-     * 0 - interior
-     **********************************************/
-    for (int i = 0; i < S->local_num_rows; i++)
-    {
-        // If cols in off_proc, i is boundary
-        if (S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
-        {
-            boundary[i] = 1;
-        }
-    }
-    for (int i = 0; i < S->comm->send_data->size_msgs; i++)
-    {
-        // idx in send_data, so idx is boundary
-        idx = S->comm->send_data->indices[i];
-        boundary[idx] = 1;
-    }
-
-    /**********************************************
-     * Form S^T ptr and indices for on_proc and off_proc
-     * Needed for column-wise searches (which indices
-     * influence each on_proc/off_proc index)
-     **********************************************/
-    transpose(S, on_col_ptr, off_col_ptr,
-            on_col_indices, off_col_indices);
-
-    /**********************************************
-     * Ruge-Stuben on local portion
-     **********************************************/
-    split_rs((CSRMatrix*)S->on_proc, states);
-
-    /**********************************************
-     * Reset states of boundary indices
-     **********************************************/
-    remaining = 0;
-    int num_new_coarse = 0;
-    std::vector<int> new_coarse_list;
-    for (int i = 0; i < S->local_num_rows; i++)
-    {
-        if (boundary[i])
-        {
-            if  (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] > 1
-                    || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
-            {
-                states[i] = -1;
-                remaining++;
-            }
-            else
-            {
-                states[i] = -3;
-            }
-        } 
-        else if (states[i] == 1)
-        {
-            new_coarse_list.push_back(i);
-        }
-    }
-    num_new_coarse = new_coarse_list.size();
-
-    /**********************************************
-     * Set initial CLJP boundary weights
-     **********************************************/
-    initial_weights(S, S->tap_comm, weights, rand_vals);
-
-    for (int i = 0; i < S->local_num_rows; i++)
-    {
-        if (states[i] != -1)
-        {
-            weights[i] = 0.0;
-        }
-    }
-
-    for (int i = 0; i < num_new_coarse; i++)
-    {
-        c = new_coarse_list[i];
-
-        start = S->on_proc->idx1[c];
-        end = S->on_proc->idx1[c+1];
-        if (S->on_proc->idx2[start] == c)
-        {
-            start++;
-        }
-        for (int j = start; j < end; j++)
-        {
-            idx = S->on_proc->idx2[j];
-            if (states[idx] == -1 && on_edgemark[j])
-            {
-                on_edgemark[j] = 0;
-                weights[idx]--;
-            }
-        }
-    }
-
-    std::vector<int> c_dep_cache;
-    if (S->on_proc_num_cols)
-    {
-        c_dep_cache.resize(S->on_proc_num_cols, -1);
-    }
-
-    // Update local weights based on new_coarse values
-    for (int i = 0; i < num_new_coarse; i++)
-    {
-        c = new_coarse_list[i];
-
-        // Find rows strongly connected to c and add to c_dep_cache
-        start = on_col_ptr[c];
-        end = on_col_ptr[c+1];
-        for (int j = start; j < end; j++)
-        {
-            idx = on_col_indices[j];
-            if (states[idx] == -1)
-            {
-                c_dep_cache[idx] = c;
-            }
-        }
-
-        // Go through each row i strongly connected to c, and see if any column
-        // in Si is also in c_dep_cache (and edge not already removed), reduce
-        // weight and remove edge
-        for (int j = start; j < end; j++)
-        {
-            idx = on_col_indices[j];
-
-            idx_start = S->on_proc->idx1[idx];
-            idx_end = S->on_proc->idx1[idx+1];
-            if (S->on_proc->idx2[idx_start] == idx)
-            {
-                idx_start++;
-            }
-            for (int k = idx_start; k < idx_end; k++)
-            {
-                idx_k = S->on_proc->idx2[k];
-                if (states[idx_k] == -1 && on_edgemark[k] && c_dep_cache[idx_k] == c)
-                {
-                    on_edgemark[k] = 0;
-                    weights[idx_k]--;
-                }
-            }
-        }
-    }
-
-
-    /**********************************************
-     * CLJP Main Loop
-     **********************************************/
-    tap_cljp_main_loop(S, on_col_ptr, off_col_ptr,
-            on_col_indices, off_col_indices, weights,
-            states, off_proc_states, remaining, on_edgemark,
-            off_edgemark);
-}
-
-/**************************************************************
- *****   C/F Splitting
- **************************************************************
- *****  Assigns C (coarse) and F (fine) points to each local
- *****  index using Falgout coarsening:
- *****  Ruge-Stuben on interior nodes followed by CLJP on
- *****  all boundary nodes
- *****
- ***** Parameters
- ***** -------------
- ***** S : ParCSRMatrix*
- *****    Strength of connection matrix
- **************************************************************/
-void tap_split_cljp(ParCSRMatrix* S,
-        std::vector<int>& states, 
-        std::vector<int>& off_proc_states,
-        double* rand_vals)
-{
-    int remaining;
-    std::vector<int> on_col_ptr;
-    std::vector<int> on_col_indices;
-    std::vector<int> off_col_ptr;
-    std::vector<int> off_col_indices;
-    std::vector<int> on_edgemark;
-    std::vector<int> off_edgemark;
-    std::vector<double> weights;
-
-    if (!S->tap_comm)
-    {
-        S->tap_comm = new TAPComm(S->partition, S->off_proc_column_map, 
-                S->on_proc_column_map);
-    }
-    if (!S->on_proc->diag_first)
-    {
-        S->on_proc->move_diag();
-    }
-
-    if (S->local_num_rows)
-    {
-        weights.resize(S->local_num_rows, 0);
-    }
-    if (S->on_proc->nnz)
-    {
-        on_edgemark.resize(S->on_proc->nnz, 1);
-    }
-    if (S->off_proc->nnz)
-    {
-        off_edgemark.resize(S->off_proc->nnz, 1);
-    }
-        
-    /**********************************************
-     * Form S^T ptr and indices for on_proc and off_proc
-     * Needed for column-wise searches (which indices
-     * influence each on_proc/off_proc index)
-     **********************************************/
-    transpose(S, on_col_ptr, off_col_ptr,
-            on_col_indices, off_col_indices);
-
-    /**********************************************
-     * Reset states of boundary indices
-     **********************************************/
-    if (S->local_num_rows)
-    {
-        states.resize(S->local_num_rows);
-    }
-    remaining = S->local_num_rows;
-    for (int i = 0; i < S->local_num_rows; i++)
-    {
-        if (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] > 1 
-                || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
-        {
-            states[i] = -1;
-        }
-        else
-        {
-            states[i] = -3;
-            remaining--;
-        }
-    }
-
-    /**********************************************
-     * Set initial CLJP boundary weights
-     **********************************************/
-    initial_weights(S, S->tap_comm, weights, rand_vals);
-
-    /**********************************************
-     * CLJP Main Loop
-     **********************************************/
-    tap_cljp_main_loop(S, on_col_ptr, off_col_ptr,
-            on_col_indices, off_col_indices, weights,
-            states, off_proc_states, remaining, on_edgemark,
-            off_edgemark);
-
-}
-
-
-void tap_split_pmis(ParCSRMatrix* S,
-        std::vector<int>& states, 
-        std::vector<int>& off_proc_states,
-        double* rand_vals)
-{
-    int remaining;
-    std::vector<double> weights;
-    std::vector<int> on_col_ptr;
-    std::vector<int> on_col_indices;
-    std::vector<int> off_col_ptr;
-    std::vector<int> off_col_indices;
-
-    if (!S->tap_comm)
-    {
-        S->tap_comm = new TAPComm(S->partition, S->off_proc_column_map, 
-                S->on_proc_column_map);
-    }
-    if (!S->on_proc->diag_first)
-    {
-        S->on_proc->move_diag();
-    }
-
-    if (S->local_num_rows)
-    {
-        weights.resize(S->local_num_rows, 0);
-    }
-
-    /**********************************************
-     * Form S^T ptr and indices for on_proc and off_proc
-     * Needed for column-wise searches (which indices
-     * influence each on_proc/off_proc index)
-     **********************************************/
-    transpose(S, on_col_ptr, off_col_ptr,
-            on_col_indices, off_col_indices);
-
-    /**********************************************
-     *  Set initial states (usually -1)
-     **********************************************/
-    if (S->local_num_rows)
-    {
-        states.resize(S->local_num_rows);
-    }
-    for (int i = 0; i < S->local_num_rows; i++)
-    {
-        if (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] > 1 
-                || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
-        {
-            states[i] = -1;
-        }
-        else
-        {
-            states[i] = -3;
-        }
-    }
-
-    /**********************************************
-     * Set initial CLJP boundary weights
-     **********************************************/
-    initial_weights(S, S->tap_comm, weights, rand_vals);
-
-    /**********************************************
-     * CLJP Main Loop
-     **********************************************/
-    pmis_main_loop(S, on_col_ptr, off_col_ptr, on_col_indices, 
-            off_col_indices, weights, states, off_proc_states);
-}
-
-
-
-void tap_split_hmis(ParCSRMatrix* S,
-        std::vector<int>& states, 
-        std::vector<int>& off_proc_states,
-        double* rand_vals)
-{
-    split_hmis(S, states, off_proc_states, rand_vals);
-}

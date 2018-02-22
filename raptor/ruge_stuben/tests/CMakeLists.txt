@@ -73,6 +73,11 @@ if (WITH_HYPRE)
     target_link_libraries(test_hypre_interpolation raptor ${MPI_LIBRARIES} googletest pthread)
     add_test(TestHypreInterp_1 mpirun -n 1 ./test_hypre_interpolation)
     add_test(TestHypreInterp_2 mpirun -n 2 ./test_hypre_interpolation)
+
+    add_executable(test_hypre_unknown test_hypre_unknown.cpp)
+    target_link_libraries(test_hypre_unknown raptor ${MPI_LIBRARIES} googletest pthread)
+    add_test(TestHypreUnknown_1 mpirun -n 1 ./test_hypre_unknown)
+    add_test(TestHypreUnknown_2 mpirun -n 2 ./test_hypre_unknown)
 endif()
 
 

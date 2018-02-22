@@ -320,8 +320,11 @@ void communicate(ParCSRMatrix* A, const std::vector<int>& states,
 ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const std::vector<int>& states,
         const std::vector<int>& off_proc_states, 
-        CommPkg* comm)
+        bool tap_interp, int num_variables, int* variables)
 {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
     int start, end, idx;
     int start_S, end_S;
     int start_k, end_k;
@@ -336,9 +339,16 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     double coarse_sum;
     double val, weak_sum;
 
+    CommPkg* comm = A->comm;
+    if (tap_interp)
+    {
+        comm = A->tap_comm;
+    }
+
     std::set<int> global_set;
     std::map<int, int> global_to_local;
     std::vector<int> off_proc_column_map;
+    std::vector<int> off_variables;
 
     CSRMatrix* recv_on; // On Proc Block of Recvd A
     CSRMatrix* recv_off; // Off Proc Block of Recvd A
@@ -349,6 +359,16 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     S->sort();
     A->on_proc->move_diag();
     S->on_proc->move_diag();
+
+    if (A->off_proc_num_cols) off_variables.resize(A->off_proc_num_cols);
+    if (num_variables > 1)
+    {
+        A->comm->communicate(variables);
+        for (int i = 0; i < A->off_proc_num_cols; i++)
+        {
+            off_variables[i] = A->comm->recv_data->int_buffer[i];
+        }
+    }
 
     // Gather off_proc_states_A
     std::vector<int> off_proc_states_A;
@@ -571,14 +591,18 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     for (int i = 0; i < A->local_num_rows; i++)
     {
         // If coarse row, add to P
-        if (states[i] == 1)
+        if (states[i] != 0)
         {
-            P->on_proc->idx2.push_back(on_proc_col_to_new[i]);
-            P->on_proc->vals.push_back(1);
+            if (states[i] == 1)
+            {
+                P->on_proc->idx2.push_back(on_proc_col_to_new[i]);
+                P->on_proc->vals.push_back(1);
+            }
             P->on_proc->idx1[i+1] = P->on_proc->idx2.size();
             P->off_proc->idx1[i+1] = P->off_proc->idx2.size();
             continue;
         }
+
         // Store diagonal value
         start = A->on_proc->idx1[i] + 1;
         end = A->on_proc->idx1[i+1];
@@ -618,9 +642,12 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                 }
                 ctr++;
             }
-            else // weak connection
+            else if (num_variables == 1 || variables[i] == variables[col])// weak connection
             {
-                weak_sum += val;
+                if (states[col] != -3)
+                {
+                    weak_sum += val;
+                }
             }
         }
         start = A->off_proc->idx1[i];
@@ -651,9 +678,12 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                 }
                 ctr++;
             }
-            else
+            else if (num_variables == 1 || variables[i] == off_variables[col])
             {
-                weak_sum += val;
+                if (off_proc_states_A[col] != -3)
+                {
+                    weak_sum += val;
+                }
             }
         }
 
@@ -1053,7 +1083,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
 ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const std::vector<int>& states,
         const std::vector<int>& off_proc_states, 
-        CommPkg* comm)
+        bool tap_interp, int num_variables, int* variables)
 {
     int start, end;
     int start_k, end_k;
@@ -1065,6 +1095,14 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     double diag, val;
     double weak_sum, coarse_sum;
     double sign;
+    std::vector<int> off_variables;
+    if (A->off_proc_num_cols) off_variables.resize(A->off_proc_num_cols);
+
+    CommPkg* comm = A->comm;
+    if (tap_interp)
+    {
+        comm = A->tap_comm;
+    }
 
     CSRMatrix* recv_on; // On Proc Block of Recvd A
     CSRMatrix* recv_off; // Off Proc Block of Recvd A
@@ -1073,6 +1111,15 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     S->sort();
     A->on_proc->move_diag();
     S->on_proc->move_diag();
+
+    if (num_variables > 1)
+    {
+        A->comm->communicate(variables);
+        for (int i = 0; i < A->off_proc_num_cols; i++)
+        {
+            off_variables[i] = A->comm->recv_data->int_buffer[i];
+        }
+    }
 
     // Initialize P
     std::vector<int> on_proc_col_to_new;
@@ -1185,7 +1232,6 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     recv_off->idx2.resize(ctr);
     recv_off->vals.resize(ctr);
 
-
     // For each row, will calculate coarse sums and store 
     // strong connections in vector
     std::vector<int> pos;
@@ -1256,7 +1302,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
                 }
                 ctr++;
             }
-            else // weak connection
+            else if (num_variables == 1 || variables[i] == variables[col]) // weak connection
             {
                 weak_sum += val;
             }
@@ -1290,7 +1336,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
                 }
                 ctr++;
             }
-            else
+            else if (num_variables == 1 || variables[i] == off_variables[col])
             {
                 weak_sum += val;
             }
@@ -1533,7 +1579,6 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     {
         *it = off_proc_col_to_new[*it];
     }
-
 
     P->off_proc_num_cols = P->off_proc_column_map.size();
     P->on_proc_num_cols = P->on_proc_column_map.size();

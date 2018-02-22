@@ -18,6 +18,7 @@
 #include "multilevel/par_multilevel.hpp"
 #include "tests/hypre_compare.hpp"
 #include "gallery/external/hypre_wrapper.hpp"
+#include "krylov/par_cg.hpp"
 
 #ifdef USING_MFEM
   #include "gallery/external/mfem_wrapper.hpp"
@@ -59,16 +60,17 @@ int main(int argc, char *argv[])
     }
 
     ParCSRMatrix* A;
-    ParVector x;
+    ParVector x, x_tap;
     ParVector b;
 
     double t0;
-    double hypre_setup, hypre_solve;
     double raptor_setup, raptor_solve;
     double raptor_tap_solve;
+    int num_variables = 1;
 
-    //int coarsen_type = 8; // PMIS
-    int coarsen_type = 0; // CLJP
+    int coarsen_type = 8;
+    //int coarsen_type = 10; // HMIS (8 is PMIS)
+    //int coarsen_type = 0; // CLJP
     //int coarsen_type = 6; // FALGOUT
     //int interp_type = 3; // Direct Interp
     //int interp_type = 0; // Classical Mod Interp
@@ -120,17 +122,51 @@ int main(int argc, char *argv[])
     else if (system == 2)
     {
         const char* mesh_file = argv[2];
-        int num_elements = 2;
-        int order = 3;
+        int mfem_system = 0;
+        int order = 2;
+        int seq_refines = 1;
+        int par_refines = 1;
         if (argc > 3)
         {
-            num_elements = atoi(argv[3]);
+            mfem_system = atoi(argv[3]);
             if (argc > 4)
             {
                 order = atoi(argv[4]);
+                if (argc > 5)
+                {
+                    seq_refines = atoi(argv[5]);
+                    if (argc > 6)
+                    {
+                        par_refines = atoi(argv[6]);
+                    }
+                }
             }
         }
-        A = mfem_laplacian(x, b, mesh_file, num_elements, order);
+        
+        switch (mfem_system)
+        {
+            case 0:
+                A = mfem_laplacian(x, b, mesh_file, order, seq_refines, par_refines);
+                break;
+            case 1:
+                A = mfem_grad_div(x, b, mesh_file, order, seq_refines, par_refines);
+                break;
+            case 2:
+                strong_threshold = 0.5;
+                A = mfem_linear_elasticity(x, b, &num_variables, mesh_file, order, 
+                        seq_refines, par_refines);
+                break;
+            case 3:
+                A = mfem_adaptive_laplacian(x, b, mesh_file, order);
+                x.set_const_value(1.0);
+                A->mult(x, b);
+                x.set_const_value(0.0);
+                break;
+            case 4:
+                A = mfem_dg_diffusion(x, b, mesh_file, order, seq_refines, par_refines);
+            case 5:
+                A = mfem_dg_elasticity(x, b, &num_variables, mesh_file, order, seq_refines, par_refines);
+        }                
     }
 #endif
     else if (system == 3)
@@ -157,102 +193,41 @@ int main(int argc, char *argv[])
         x.set_rand_values();
         A->mult(x, b);
     }
-
-    ParMultilevel* ml;
-
-    // Convert system to Hypre format 
-/*    HYPRE_IJMatrix A_h_ij = convert(A);
-    HYPRE_IJVector x_h_ij = convert(x);
-    HYPRE_IJVector b_h_ij = convert(b);
-    hypre_ParCSRMatrix* A_h;
-    HYPRE_IJMatrixGetObject(A_h_ij, (void**) &A_h);
-    hypre_ParVector* x_h;
-    HYPRE_IJVectorGetObject(x_h_ij, (void **) &x_h);
-    hypre_ParVector* b_h;
-    HYPRE_IJVectorGetObject(b_h_ij, (void **) &b_h);
-
-    HYPRE_Solver solver_data;
-
-    double* x_h_data = hypre_VectorData(hypre_ParVectorLocalVector(x_h));
+    x_tap = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        x_h_data[i] = 0.0;
+        x_tap[i] = x[i];
     }
 
-    clear_cache(cache_array);
 
-    // Create Hypre Hierarchy
-    MPI_Barrier(MPI_COMM_WORLD);
-    t0 = MPI_Wtime();
-    solver_data = hypre_create_hierarchy(A_h, x_h, b_h, 
-                            coarsen_type, interp_type, p_max_elmts, agg_num_levels, 
-                            strong_threshold);
-    hypre_setup = MPI_Wtime() - t0;
-    clear_cache(cache_array);
-
-    // Solve Hypre Hierarchy
-    MPI_Barrier(MPI_COMM_WORLD);
-    t0 = MPI_Wtime();
-    HYPRE_BoomerAMGSolve(solver_data, A_h, b_h, x_h);
-    hypre_solve = MPI_Wtime() - t0;
-    clear_cache(cache_array);
-
-    // Delete hypre hierarchy
-    hypre_BoomerAMGDestroy(solver_data);     
-    clear_cache(cache_array);
-*/
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(A, strong_threshold, HMIS, Extended, SOR,
-            1, 1.0, 50, -1, -1);
+    
+    ParMultilevel* ml = new ParMultilevel(strong_threshold, HMIS, Extended, SOR);
+    ml->num_variables = num_variables;
+    ml->setup(A);
     raptor_setup = MPI_Wtime() - t0;
     clear_cache(cache_array);
 
-    ParCSRMatrix* Al;
-    ParCSRMatrix* Pl;
-    for (int i = 0; i < ml->num_levels - 1; i++)
-    {
-        Al = ml->levels[i]->A;
-        Pl = ml->levels[i]->P;
-
-        if (!Al->tap_comm)
-        {
-            Al->tap_comm = new TAPComm(Al->partition, Al->off_proc_column_map,
-                    Al->on_proc_column_map);
-        }
-
-        if (!Pl->tap_comm)
-        {
-            Pl->tap_comm = new TAPComm(Pl->partition, Pl->off_proc_column_map,
-                    Pl->on_proc_column_map);
-        }
-    }
-    Al = ml->levels[ml->num_levels-1]->A;
-    if (!Al->tap_comm)
-    {
-        Al->tap_comm = new TAPComm(Al->partition, Al->off_proc_column_map,
-                Al->on_proc_column_map);
-    }
 
     // Solve Raptor Hierarchy
-    x.set_const_value(0.0);
     std::vector<double> res;
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
-    ml->solve(x, b, res);
+    //ml->tap_solve(x, b);
+    //res = ml->get_residuals();
+    PCG(A, ml, x, b, res, 1e-6, 100);
     raptor_solve = MPI_Wtime() - t0;
     clear_cache(cache_array);
 
     // TAP Solve Raptor
-    /*x.set_const_value(0.0);
     std::vector<double> tap_res;
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
-    ml->tap_solve(x, b, tap_res, 0);
+    PCG(A, ml, x_tap, b, tap_res, 1e-6, 100);
     raptor_tap_solve = MPI_Wtime() - t0;
     clear_cache(cache_array);
-*/
 
     long lcl_nnz;
     long nnz;
@@ -269,14 +244,9 @@ int main(int argc, char *argv[])
     {
         for (int i = 0; i < res.size(); i++)
         {
-            printf("Res[%d] = %e\n", i, res[i]);
+            printf("Res[%d] = %e\n", i+1, res[i]);
         }
     }   
-
-    MPI_Reduce(&hypre_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    if (rank == 0) printf("Hypre Setup Time: %e\n", t0);
-    MPI_Reduce(&hypre_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    if (rank == 0) printf("Hypre Solve Time: %e\n", t0);
 
     MPI_Reduce(&raptor_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Raptor Setup Time: %e\n", t0);
@@ -296,11 +266,8 @@ int main(int argc, char *argv[])
     if (rank == 0) printf("Solve Comm Time: %e, Comm N: %d, Comm S: %d\n", t0, n0, s0);
 
     // Delete raptor hierarchy
-//    delete ml;
+    delete ml;
 
-//    HYPRE_IJMatrixDestroy(A_h_ij);
-//    HYPRE_IJVectorDestroy(x_h_ij);
-//    HYPRE_IJVectorDestroy(b_h_ij);
     delete A;
     MPI_Finalize();
 
