@@ -22,10 +22,16 @@ raptor::ParCSRMatrix* mfem_adaptive_laplacian(raptor::ParVector& x_raptor,
     space_dim = mesh->SpaceDimension();
 
     // Uniform refinement on parallel mesh
+    if (mesh->NURBSext)
+    {
+        printf("NURBS\n");
+        mesh->UniformRefinement();
+        mesh->SetCurvature(2);
+    }
+    mesh->EnsureNCMesh();
+
     ParMesh par_mesh(comm, *mesh);
     delete mesh;
-    MFEM_VERIFY(par_mesh.bdr_attributes.Size() > 0,
-               "Boundary attributes required in the mesh.");
 
     // Get dims
     boundary_n = par_mesh.bdr_attributes.Max();
