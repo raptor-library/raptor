@@ -375,7 +375,6 @@ CSRMatrix* communication_helper(std::vector<int>& rowptr,
         }
     }
 
-    send_comm->matrix_data.wait_time -= MPI_Wtime();
 
     send_comm->matrix_data.num_msgs += send_comm->num_msgs;
     send_comm->matrix_data.size_msgs += send_buffer.size();
@@ -420,7 +419,6 @@ CSRMatrix* communication_helper(std::vector<int>& rowptr,
     recv_mat->nnz = recv_mat->idx2.size();
 
     MPI_Waitall(send_comm->num_msgs, send_comm->requests.data(), MPI_STATUSES_IGNORE);
-    send_comm->matrix_data.wait_time += MPI_Wtime();
 
     return recv_mat;
 }    

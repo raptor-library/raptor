@@ -32,8 +32,8 @@ public:
         size_msgs = 0;
         indptr.push_back(0);
 
-        vector_data = (OpData) {0, 0, 0};
-        matrix_data = (OpData) {0, 0, 0};
+        vector_data = (OpData) {0, 0};
+        matrix_data = (OpData) {0, 0};
     }
 
     CommData(CommData* data)
@@ -81,8 +81,8 @@ public:
             int_buffer.resize(size_msgs);
         }
 
-        vector_data = (OpData) {0, 0, 0};
-        matrix_data = (OpData) {0, 0, 0};
+        vector_data = (OpData) {0, 0};
+        matrix_data = (OpData) {0, 0};
     }
 
     /**************************************************************
@@ -135,10 +135,8 @@ public:
     {
         vector_data.num_msgs = 0;
         vector_data.size_msgs = 0;
-        vector_data.wait_time = 0;
         matrix_data.num_msgs = 0;
         matrix_data.size_msgs = 0;
-        matrix_data.wait_time = 0;
     }
 
     void print_data(bool vec)
@@ -177,7 +175,6 @@ public:
     {
         int num_msgs;
         int size_msgs;
-        double wait_time;
     };
 
     OpData vector_data;

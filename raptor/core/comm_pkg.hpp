@@ -755,7 +755,6 @@ namespace raptor
             send_data->vector_data.num_msgs += send_data->num_msgs;
             send_data->vector_data.size_msgs += send_data->size_msgs;
 
-            send_data->matrix_data.wait_time -= MPI_Wtime();
             for (int i = 0; i < send_data->num_msgs; i++)
             {
                 proc = send_data->procs[i];
@@ -776,13 +775,11 @@ namespace raptor
                 MPI_Irecv(&(recvbuf[start]), end - start, type,
                         proc, key, mpi_comm, &(recv_data->requests[i]));
             }
-            send_data->matrix_data.wait_time += MPI_Wtime();
         }
 
         template<typename T>
         std::vector<T>& complete()
         {
-            send_data->matrix_data.wait_time -= MPI_Wtime();
             if (send_data->num_msgs)
             {
                 MPI_Waitall(send_data->num_msgs, send_data->requests.data(), MPI_STATUS_IGNORE);
@@ -792,7 +789,6 @@ namespace raptor
             {
                 MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUS_IGNORE);
             }
-            send_data->matrix_data.wait_time += MPI_Wtime();
 
             return get_recv_buffer<T>();
         }
@@ -862,7 +858,6 @@ namespace raptor
             recv_data->vector_data.num_msgs += recv_data->num_msgs;
             recv_data->vector_data.size_msgs += recv_data->size_msgs;
 
-            recv_data->matrix_data.wait_time -= MPI_Wtime();
             if (recv_data->indptr_T.size())
             {
                 int idx_start, idx_end;
@@ -927,7 +922,6 @@ namespace raptor
                 MPI_Irecv(&(sendbuf[start]), end - start, type,
                         proc, key, mpi_comm, &(send_data->requests[i]));
             }
-            recv_data->matrix_data.wait_time += MPI_Wtime();
         }
 
         template<typename T, typename U>
@@ -947,7 +941,6 @@ namespace raptor
         template<typename T>
         void complete_T()
         {
-            recv_data->matrix_data.wait_time -= MPI_Wtime();
             if (send_data->num_msgs)
             {
                 MPI_Waitall(send_data->num_msgs, send_data->requests.data(), MPI_STATUSES_IGNORE);
@@ -957,7 +950,6 @@ namespace raptor
             {
                 MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUSES_IGNORE);
             }
-            recv_data->matrix_data.wait_time += MPI_Wtime();
         }
 
 

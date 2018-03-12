@@ -41,7 +41,8 @@ raptor::ParCSRMatrix* mfem_grad_div(raptor::ParVector& x_raptor,
 raptor::ParCSRMatrix* mfem_adaptive_laplacian(raptor::ParVector& x_raptor, 
         raptor::ParVector& b_raptor,
         const char* mesh_file, 
-        int order = 3, MPI_Comm comm_mat = MPI_COMM_WORLD);
+        int order = 3, int max_dofs = 1000000,
+        MPI_Comm comm_mat = MPI_COMM_WORLD);
 
 raptor::ParCSRMatrix* mfem_dg_diffusion(raptor::ParVector& x_raptor, 
         raptor::ParVector& b_raptor,
