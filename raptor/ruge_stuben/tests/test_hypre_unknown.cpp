@@ -116,7 +116,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     compareS(S, S_hyp);
 
     // C/F Splitting as usual
-    split_cljp(S, states, off_proc_states, weights);
+    split_cljp(S, states, off_proc_states, false, weights);
     hypre_BoomerAMGCoarsen(S_hyp, A_hyp, 0, 0, &states_hypre);
     for (int i = 0; i < A->local_num_rows; i++)
     {
@@ -145,7 +145,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
         ASSERT_EQ(coarse_variables[i], coarse_dof_func[i]);
     }
 
-    P = mod_classical_interpolation(A, S, states, off_proc_states, A->comm, num_variables, var);
+    P = mod_classical_interpolation(A, S, states, off_proc_states, false, num_variables, var);
     hypre_BoomerAMGBuildInterp(A_hyp, states_hypre, S_hyp, coarse_pnts_gbl, num_variables, var, 0, 0.0, 0.0, NULL, &P_hyp);
     compare(P, P_hyp);
 
@@ -187,7 +187,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     compareS(S, S_hyp);
 
     // C/F Splitting as usual
-    split_pmis(S, states, off_proc_states, weights);
+    split_pmis(S, states, off_proc_states, false, weights);
     hypre_BoomerAMGCoarsenPMIS(S_hyp, A_hyp, 0, 0, &states_hypre);
     for (int i = 0; i < A->local_num_rows; i++)
     {
@@ -204,7 +204,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
 
     hypre_BoomerAMGCoarseParms(MPI_COMM_WORLD, A->local_num_rows, num_variables, var, states_hypre,
             &coarse_dof_func, &coarse_pnts_gbl);
-    P = mod_classical_interpolation(A, S, states, off_proc_states, A->comm, num_variables, var);
+    P = mod_classical_interpolation(A, S, states, off_proc_states, false, num_variables, var);
     hypre_BoomerAMGBuildInterp(A_hyp, states_hypre, S_hyp, coarse_pnts_gbl, num_variables, var, 0, 0.0, 0.0, NULL, &P_hyp);
     compare(P, P_hyp);
     hypre_ParCSRMatrixDestroy(P_hyp);

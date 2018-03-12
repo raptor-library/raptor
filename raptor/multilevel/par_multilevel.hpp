@@ -10,6 +10,7 @@
 #include "util/linalg/par_relax.hpp"
 #include "ruge_stuben/par_interpolation.hpp"
 #include "ruge_stuben/par_cf_splitting.hpp"
+#include "multilevel/par_sparsify.hpp"
 
 #ifdef USING_HYPRE
 #include "_hypre_utilities.h"
@@ -94,6 +95,7 @@ namespace raptor
                 weights = NULL;
                 variables = NULL;
                 store_residuals = true;
+                sparsify_tol = 0.0;
             }
 
             ~ParMultilevel()
@@ -163,6 +165,19 @@ namespace raptor
                     interp_times.push_back(0);
                     matmat_times.push_back(0);
                     matmat_comm_times.push_back(0);
+                }
+
+                if (sparsify_tol > 0.0)
+                {
+                    for (int i = 0; i < num_levels-1; i++)
+                    {
+                        ParLevel* l = levels[i];
+                        sparsify(l->A, l->P, l->I, l->AP, levels[i+1]->A, sparsify_tol);
+                        delete l->AP;
+                        delete l->I;
+                        l->AP = NULL;
+                        l->I = NULL;
+                    }
                 }
 
                 num_levels = levels.size();
@@ -308,7 +323,37 @@ namespace raptor
                             levels[level_ctr]->A->on_proc_column_map);
                 }
 
-                delete AP;
+                if (sparsify_tol > 0.0)
+                {
+                    levels[level_ctr-1]->AP = AP;
+                    
+                    // Create and store injection
+                    ParCSRMatrix* I = new ParCSRMatrix(P->partition, P->global_num_rows,
+                            P->global_num_cols, P->local_num_rows, P->on_proc_num_cols, 0);
+
+                    I->on_proc->idx1[0] = 0;
+                    I->off_proc->idx1[0] = 0;
+                    int ctr = 0;
+                    for (int i = 0; i < A->local_num_rows; i++)
+                    {
+                        if (states[i])
+                        {
+                            I->on_proc->idx2.push_back(ctr++);
+                            I->on_proc->vals.push_back(1.0);
+                        }
+                        I->on_proc->idx1[i+1] = I->on_proc->idx2.size();
+                        I->off_proc->idx1[i+1] = I->off_proc->idx2.size();
+                    }
+                    I->on_proc->nnz = I->on_proc->idx2.size();
+                    I->off_proc->nnz = I->off_proc->idx2.size();
+                    I->finalize();
+                    levels[level_ctr-1]->I = I;
+                }
+                else
+                {
+                    delete AP;
+                }
+
                 delete P_csc;
                 delete S;
             }
@@ -613,6 +658,7 @@ namespace raptor
             int num_variables;
             int* variables;
             double* weights;
+            double sparsify_tol;
             bool store_residuals;
             std::vector<double> residuals;
 

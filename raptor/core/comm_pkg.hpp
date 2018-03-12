@@ -61,6 +61,7 @@ namespace raptor
             }
         }
 
+        virtual void update(const std::vector<int>& off_proc_col_exists) = 0;
 
         static MPI_Datatype get_type(std::vector<int> buffer)
         {
@@ -713,6 +714,96 @@ namespace raptor
         {
             delete send_data;
             delete recv_data;
+        }
+
+        void update(const std::vector<int>& off_proc_col_exists)
+        {
+            int ctr, send_ctr;
+            int start, end;
+            int idx;
+            communicate_T(off_proc_col_exists);
+            std::vector<int>& send_exists = send_data->int_buffer;
+
+            // Update recv_data
+            ctr = 0;
+            send_ctr = 0;
+            start = recv_data->indptr[0];
+            for (int i = 0; i < recv_data->num_msgs; i++)
+            {
+                end = recv_data->indptr[i+1];
+                for (int j = start; j < end; j++)
+                {
+                    if (recv_data->indices.size())
+                    {
+                        idx = recv_data->indices[j];
+                        if (off_proc_col_exists[idx])
+                        {
+                            recv_data->indices[ctr++] = idx;
+                        }
+                    }
+                    else
+                    {
+                        if (off_proc_col_exists[j])
+                        {
+                            ctr++;
+                        }
+                    }
+                }
+                if (ctr > start)
+                {
+                    recv_data->procs[send_ctr] = recv_data->procs[i];
+                    recv_data->indptr[++send_ctr] = ctr;
+                }
+                start = end;
+            }
+            recv_data->num_msgs = send_ctr;
+            recv_data->size_msgs = ctr;
+            
+            recv_data->indptr.resize(recv_data->num_msgs+1);
+            if (recv_data->num_msgs)
+            {
+                recv_data->procs.resize(recv_data->num_msgs);
+                recv_data->requests.resize(recv_data->num_msgs);
+                if (recv_data->indices.size())
+                {
+                    recv_data->indices.resize(recv_data->size_msgs);
+                }
+                recv_data->buffer.resize(recv_data->size_msgs);
+                recv_data->int_buffer.resize(recv_data->size_msgs);
+            }
+
+            // Update send_data
+            ctr = 0;
+            send_ctr = 0;
+            start = send_data->indptr[0];
+            for (int i = 0; i < send_data->num_msgs; i++)
+            {
+                end = send_data->indptr[i+1];
+                for (int j = start; j < end; j++)
+                {
+                    if (send_exists[j])
+                    {
+                        ctr++;
+                    }
+                }
+                if (ctr > start)
+                {
+                    send_data->procs[send_ctr] = send_data->procs[i];
+                    send_data->indptr[++send_ctr] = ctr;
+                }
+                start = end;
+            }
+            send_data->num_msgs = send_ctr;
+            send_data->size_msgs = ctr;
+            send_data->indptr.resize(send_data->num_msgs+1);
+            if (send_data->num_msgs)
+            {
+                send_data->procs.resize(send_data->num_msgs);
+                send_data->requests.resize(send_data->num_msgs);
+                send_data->indices.resize(send_data->size_msgs);
+                send_data->buffer.resize(send_data->size_msgs);
+                send_data->int_buffer.resize(send_data->size_msgs);
+            }
         }
 
         // Standard Communication
@@ -2008,6 +2099,10 @@ namespace raptor
             }
         }
 
+        void update(const std::vector<int>& off_proc_col_exists)
+        {
+            // TODO
+        }
 
 
         // Helper methods for forming TAPComm:

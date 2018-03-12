@@ -114,8 +114,8 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(A, strong_threshold, RS, Direct, SOR,
-            1, 1.0, 50, -1);
+    ml = new ParMultilevel(strong_threshold, RS, Direct, SOR);
+    ml->setup(A);
     raptor_setup = MPI_Wtime() - t0;
     clear_cache(cache_array);
 
@@ -124,7 +124,8 @@ int main(int argc, char *argv[])
     std::vector<double> res;
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
-    ml->solve(x, b, res);
+    ml->solve(x, b);
+    res = ml->get_residuals();
     raptor_solve = MPI_Wtime() - t0;
     clear_cache(cache_array);
 
@@ -304,7 +305,7 @@ int main(int argc, char *argv[])
         comm_time = (MPI_Wtime() - t0) / 100;
        
 
-        MPI_Reduce(&ml->level_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        /*MPI_Reduce(&ml->level_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank == 0) printf("Level Time: %e\n", t0);
         MPI_Reduce(&ml->spmv_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank == 0) printf("SpMV Time: %e\n", t0);
@@ -318,7 +319,7 @@ int main(int argc, char *argv[])
         MPI_Reduce(&model_a, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank == 0) printf("Model Latency Time: %e\n", t0);
         MPI_Reduce(&model_b, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Model BW Time: %e\n", t0);
+        if (rank == 0) printf("Model BW Time: %e\n", t0);*/
     }
 
 

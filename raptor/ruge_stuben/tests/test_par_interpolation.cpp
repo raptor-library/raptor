@@ -57,11 +57,11 @@ ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, 
     }
     else if (interp_option == 1)
     {
-        P_rap = mod_classical_interpolation(A, S, splitting, S->comm->recv_data->int_buffer, A->comm);
+        P_rap = mod_classical_interpolation(A, S, splitting, S->comm->recv_data->int_buffer);
     }
     else if (interp_option == 2)
     {
-        P_rap = extended_interpolation(A, S, splitting, S->comm->recv_data->int_buffer, A->comm);
+        P_rap = extended_interpolation(A, S, splitting, S->comm->recv_data->int_buffer);
     }
     MPI_Allgather(&P_rap->on_proc_num_cols, 1, MPI_INT, proc_sizes.data(), 1, 
                 MPI_INT, MPI_COMM_WORLD);

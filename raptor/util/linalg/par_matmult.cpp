@@ -74,6 +74,14 @@ ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B)
     return C;
 }
 
+ParCSRMatrix* ParCSRMatrix::mult_T(ParCSRMatrix* A)
+{
+    ParCSCMatrix* Acsc = new ParCSCMatrix(A);
+    ParCSRMatrix* C = this->mult_T(Acsc);
+    delete Acsc;
+    return C;
+}
+
 ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A)
 {
     spgemm_T_data.time -= MPI_Wtime();
@@ -609,8 +617,7 @@ CSRMatrix* ParCSRMatrix::mult_T_partial(ParCSCMatrix* A)
 
 void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* recv_on, 
         CSRMatrix* recv_off)
-{
-    
+{ 
     int head, length, tmp;
     int row_start_PT, row_end_PT;
     int row_start, row_end;

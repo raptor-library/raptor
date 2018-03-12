@@ -79,7 +79,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
 
 
     // CLJP
-    split_cljp(S_rap, states, off_proc_states, weights);
+    split_cljp(S_rap, states, off_proc_states, false, weights);
     hypre_BoomerAMGCoarsen(S_hyp, A_hyp, 0, 0, &states_hypre);
     for (int i = 0; i < states.size(); i++)
     {
@@ -115,7 +115,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     */
 
     // PMIS
-    split_pmis(S_rap, states, off_proc_states, weights);
+    split_pmis(S_rap, states, off_proc_states, false, weights);
     hypre_BoomerAMGCoarsenPMIS(S_hyp, A_hyp, 0, 0, &states_hypre);
     for (int i = 0; i < states.size(); i++)
     {
@@ -172,7 +172,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     // TODO - implementation doesnt match hypre
 
     // CLJP
-    split_cljp(S_rap, states, off_proc_states, weights);
+    split_cljp(S_rap, states, off_proc_states, false, weights);
     hypre_BoomerAMGCoarsen(S_hyp, A_hyp, 0, 0, &states_hypre);
 
     for (int i = 0; i < states.size(); i++)
@@ -194,7 +194,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
 
 
     // PMIS
-    split_pmis(S_rap, states, off_proc_states, weights);
+    split_pmis(S_rap, states, off_proc_states, false, weights);
     hypre_BoomerAMGCoarsenPMIS(S_hyp, A_hyp, 0, 0, &states_hypre);
     for (int i = 0; i < states.size(); i++)
     {

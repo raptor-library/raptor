@@ -59,7 +59,7 @@ TEST(TestTAPSplitting, TestsInRuge_Stuben)
         fscanf(f, "%lf\n", &weights[i]);
     }
     fclose(f);
-    tap_split_cljp(S, states, off_proc_states, weights.data());
+    split_cljp(S, states, off_proc_states, true, weights.data());
     
     f = fopen(cf0_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
@@ -90,7 +90,7 @@ TEST(TestTAPSplitting, TestsInRuge_Stuben)
         fscanf(f, "%lf\n", &weights[i]);
     }
     fclose(f);
-    tap_split_cljp(S, states, off_proc_states, weights.data());
+    split_cljp(S, states, off_proc_states, true, weights.data());
     
     f = fopen(cf1_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)

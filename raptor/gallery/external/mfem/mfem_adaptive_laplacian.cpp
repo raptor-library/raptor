@@ -63,7 +63,7 @@ raptor::ParCSRMatrix* mfem_adaptive_laplacian(raptor::ParVector& x_raptor,
     ThresholdRefiner refiner(estimator);
     refiner.SetTotalErrorFraction(0.7);
 
-    const int max_dofs = 100000;
+    const int max_dofs = 10000000;
     while(1)
     {
         a.Assemble();

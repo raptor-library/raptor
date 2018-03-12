@@ -258,7 +258,11 @@ namespace raptor
     ParMatrix* mult(ParCSRMatrix* B);
     ParMatrix* tap_mult(ParCSRMatrix* B);
     ParMatrix* mult_T(ParCSCMatrix* B);
+    ParMatrix* mult_T(ParCSRMatrix* B);
     ParMatrix* tap_mult_T(ParCSCMatrix* B);
+    ParMatrix* tap_mult_T(ParCSRMatrix* B);
+    ParMatrix* add(ParCSRMatrix* A);
+    ParMatrix* subtract(ParCSRMatrix* A);
 
     void sort()
     {
@@ -568,8 +572,10 @@ namespace raptor
     ParCSRMatrix* mult(ParCSRMatrix* B);
     ParCSRMatrix* tap_mult(ParCSRMatrix* B);
     ParCSRMatrix* mult_T(ParCSCMatrix* A);
+    ParCSRMatrix* mult_T(ParCSRMatrix* A);
     ParCSRMatrix* tap_mult_T(ParCSCMatrix* A);
-
+    ParCSRMatrix* tap_mult_T(ParCSRMatrix* A);
+    ParCSRMatrix* add(ParCSRMatrix* A);
     ParCSRMatrix* subtract(ParCSRMatrix* B);
     
     void mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, CSRMatrix* recv);

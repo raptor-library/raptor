@@ -94,7 +94,7 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
         compareS(Sl, S_hyp);
 
         // C/F Splitting (PMIS)
-        split_pmis(Sl, states, off_proc_states, weights);
+        split_pmis(Sl, states, off_proc_states, false, weights);
         hypre_BoomerAMGCoarsenPMIS(S_hyp, A_hyp, 0, 0, &states_hypre);
         for (int i = 0; i < Al->local_num_rows; i++)
         {
@@ -107,7 +107,7 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
         }
 
         // Extended Interpolation
-        ParCSRMatrix* Pl = extended_interpolation(Al, Sl, states, off_proc_states, Al->comm);
+        ParCSRMatrix* Pl = extended_interpolation(Al, Sl, states, off_proc_states, false);
         P_array.push_back(Pl);
         hypre_BoomerAMGCoarseParms(MPI_COMM_WORLD, Al->local_num_rows, 1, NULL, states_hypre,
                 &coarse_dof_func, &coarse_pnts_gbl);

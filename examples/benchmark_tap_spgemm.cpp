@@ -17,6 +17,11 @@
 #include "gallery/par_matrix_IO.hpp"
 #include "multilevel/par_multilevel.hpp"
 
+#ifdef USING_MFEM
+  #include "gallery/external/mfem_wrapper.hpp"
+#endif
+
+
 #define eager_cutoff 1000
 #define short_cutoff 62
 
@@ -264,6 +269,7 @@ int main(int argc, char *argv[])
     int n0, s0;
     int nfinal, sfinal;
     double raptor_setup, raptor_solve;
+    int num_variables = 1;
 
     double strong_threshold = 0.25;
     std::vector<double> residuals;
@@ -302,6 +308,58 @@ int main(int argc, char *argv[])
         A = par_stencil_grid(stencil, grid.data(), dim);
         delete[] stencil;
     }
+#ifdef USING_MFEM
+    else if (system == 2)
+    {
+        const char* mesh_file = argv[2];
+        int mfem_system = 0;
+        int order = 2;
+        int seq_refines = 1;
+        int par_refines = 1;
+        if (argc > 3)
+        {
+            mfem_system = atoi(argv[3]);
+            if (argc > 4)
+            {
+                order = atoi(argv[4]);
+                if (argc > 5)
+                {
+                    seq_refines = atoi(argv[5]);
+                    if (argc > 6)
+                    {
+                        par_refines = atoi(argv[6]);
+                    }
+                }
+            }
+        }
+        
+        switch (mfem_system)
+        {
+            case 0:
+                A = mfem_laplacian(x, b, mesh_file, order, seq_refines, par_refines);
+                break;
+            case 1:
+                A = mfem_grad_div(x, b, mesh_file, order, seq_refines, par_refines);
+                break;
+            case 2:
+                strong_threshold = 0.5;
+                A = mfem_linear_elasticity(x, b, &num_variables, mesh_file, order, 
+                        seq_refines, par_refines);
+                break;
+            case 3:
+                A = mfem_adaptive_laplacian(x, b, mesh_file, order);
+                x.set_const_value(1.0);
+                A->mult(x, b);
+                x.set_const_value(0.0);
+                break;
+            case 4:
+                A = mfem_dg_diffusion(x, b, mesh_file, order, seq_refines, par_refines);
+            case 5:
+                A = mfem_dg_elasticity(x, b, &num_variables, mesh_file, order, seq_refines, par_refines);
+        }                
+    }
+#endif
+
     else if (system == 3)
     {
         const char* file = "../../examples/LFAT5.pm";
@@ -323,8 +381,9 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(A, strong_threshold, CLJP, Classical, SOR,
-            1, 1.0, 50, -1);
+    ml = new ParMultilevel(strong_threshold, CLJP, Classical, SOR);
+    ml->num_variables = num_variables;
+    ml->setup(A);
     raptor_setup = MPI_Wtime() - t0;
 
     for (int i = 0; i < ml->num_levels - 1; i++)

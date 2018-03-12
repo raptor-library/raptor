@@ -60,7 +60,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     fclose(f);
 
     // TEST CLJP
-    split_cljp(S, states, off_proc_states, weights.data());
+    split_cljp(S, states, off_proc_states, false, weights.data());
     
     f = fopen(cf0_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
@@ -75,7 +75,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     fclose(f);
 
     // Test PMIS
-    split_pmis(S, states, off_proc_states, weights.data());
+    split_pmis(S, states, off_proc_states, false, weights.data());
     
     f = fopen(cf0_pmis, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
@@ -105,7 +105,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
         fscanf(f, "%lf\n", &weights[i]);
     }
     fclose(f);
-    split_cljp(S, states, off_proc_states, weights.data());
+    split_cljp(S, states, off_proc_states, false, weights.data());
     
     f = fopen(cf1_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
@@ -120,7 +120,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     fclose(f);
 
     // Test PMIS
-    split_pmis(S, states, off_proc_states, weights.data());
+    split_pmis(S, states, off_proc_states, false, weights.data());
     
     f = fopen(cf1_pmis, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)

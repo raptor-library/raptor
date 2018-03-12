@@ -321,7 +321,7 @@ CSRMatrix* communication_helper(std::vector<int>& rowptr,
                             send_buffer[pos].val = send_buffer[k].val;
                         }
                     }
-		    ctr = pos + 1;
+		            ctr = pos + 1;
                     send_buffer.resize(ctr);
                 }
             }
