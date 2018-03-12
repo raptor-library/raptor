@@ -80,7 +80,7 @@ TEST(TestTAPRugeStuben, TestsInRuge_Stuben)
         rand_vals[i] = weights[i + first_row];
     }
     // TODO -- work on adding TAP communication to CLJP effectively
-    split_cljp(S, splitting, off_proc_splitting, rand_vals.data());
+    split_cljp(S, splitting, off_proc_splitting, true, rand_vals.data());
     P = direct_interpolation(A, S, splitting, off_proc_splitting);
     MPI_Allgather(&P->on_proc_num_cols, 1, MPI_INT, proc_sizes.data(),
             1, MPI_INT, MPI_COMM_WORLD);
@@ -116,7 +116,7 @@ TEST(TestTAPRugeStuben, TestsInRuge_Stuben)
     {
         rand_vals[i] = weights[i + first_row];
     }
-    split_cljp(S, splitting, off_proc_splitting, rand_vals.data());
+    split_cljp(S, splitting, off_proc_splitting, true, rand_vals.data());
     P = direct_interpolation(A, S, splitting, off_proc_splitting);
     MPI_Allgather(&P->on_proc_num_cols, 1, MPI_INT, proc_sizes.data(),
             1, MPI_INT, MPI_COMM_WORLD);

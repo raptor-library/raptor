@@ -17,13 +17,17 @@ namespace raptor
         public:
             ParLevel()
             {
-
+                AP = NULL;
+                I = NULL;
             }
 
             ~ParLevel()
             {
                 delete A;
                 delete P;
+
+                delete AP;
+                delete I;
             }
 
             ParCSRMatrix* A;
@@ -31,6 +35,9 @@ namespace raptor
             ParVector x;
             ParVector b;
             ParVector tmp;
+
+            ParCSRMatrix* AP;
+            ParCSRMatrix* I;
     };
 }
 #endif

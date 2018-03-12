@@ -114,17 +114,17 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(A, strong_threshold, RS, Direct, SOR,
-            1, 1.0, 50, -1);
+    ml = new ParMultilevel(strong_threshold, RS, Direct, SOR);
+    ml->setup(A);
     raptor_setup = MPI_Wtime() - t0;
     clear_cache(cache_array);
 
     // Solve Raptor Hierarchy
     x.set_const_value(0.0);
-    std::vector<double> res;
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
-    ml->solve(x, b, res);
+    ml->solve(x, b);
+    std::vector<double>& res = ml->get_residuals();
     raptor_solve = MPI_Wtime() - t0;
     clear_cache(cache_array);
 

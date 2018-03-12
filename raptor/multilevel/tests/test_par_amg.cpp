@@ -46,10 +46,6 @@ TEST(ParAMGTest, TestsInMultilevel)
 
     double strong_threshold = 0.25;
 
-
-
-
-
     double* stencil = laplace_stencil_27pt();
     A = par_stencil_grid(stencil, grid, dim);
     delete[] stencil;
@@ -60,7 +56,8 @@ TEST(ParAMGTest, TestsInMultilevel)
     A->mult(x, b);
     x.set_const_value(0.0);
     
-    ml = new ParMultilevel(A, strong_threshold, CLJP, Classical, SOR, 1, 1.0, 50, -1);
+    ml = new ParMultilevel(strong_threshold, CLJP, Classical, SOR);
+    ml->setup(A);
 
     if (rank == 0)
     {

@@ -679,15 +679,28 @@ void CSRMatrix::remove_duplicates()
             }
             else
             {
+                if (fabs(vals[ctr - 1 + new_start]) < zero_tol)
+                {
+                    ctr--;
+                }
+
                 idx2[ctr + new_start] = col;
                 vals[ctr + new_start] = val;
                 ctr++;
                 prev_col = col;
             }
         }
+        if (fabs(vals[ctr - 1 + new_start]) < zero_tol)
+        {
+            ctr--;
+        }
+
         orig_start = orig_end;
         idx1[row+1] = idx1[row] + ctr;
     }
+    nnz = idx1[n_rows];
+    idx2.resize(nnz);
+    vals.resize(nnz);
 }
 
 /**************************************************************

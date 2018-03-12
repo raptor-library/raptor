@@ -43,7 +43,7 @@ TEST(TestSplitting, TestsInRuge_Stuben)
     splitting.resize(S->n_rows);;
 
     // Test RugeStuben Splitting
-/*    split_rs(S, splitting_rap);
+    split_rs(S, splitting_rap);
     f = fopen(cf0_rs, "r");
     for (int i = 0; i < S->n_rows; i++)
     {
@@ -54,7 +54,7 @@ TEST(TestSplitting, TestsInRuge_Stuben)
     for (int i = 0; i < S->n_rows; i++)
     {
         ASSERT_EQ(splitting[i], splitting_rap[i]);
-    }*/
+    }
 
     // Test CLJP Splittings
     f = fopen(weights_fn, "r");
@@ -101,7 +101,8 @@ TEST(TestSplitting, TestsInRuge_Stuben)
     splitting.resize(S->n_rows);;
 
     // Test RugeStuben Splitting
-    split_rs(S, splitting_rap);
+    // PYAMG does not test second pass 
+    split_rs(S, splitting_rap, false, false);
     f = fopen(cf1_rs, "r");
     for (int i = 0; i < S->n_rows; i++)
     {
@@ -113,7 +114,6 @@ TEST(TestSplitting, TestsInRuge_Stuben)
     {
         ASSERT_EQ(splitting[i], splitting_rap[i]);
     }
-
 
     // Test CLJP Splittings
     f = fopen(weights_fn, "r");

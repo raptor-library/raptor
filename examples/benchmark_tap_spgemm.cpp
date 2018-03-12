@@ -227,6 +227,7 @@ int main(int argc, char *argv[])
     int n0, s0;
     int nfinal, sfinal;
     double raptor_setup, raptor_solve;
+    int num_variables = 1;
 
     int num_variables = 1;
     relax_t relax_type = SOR;
@@ -309,11 +310,12 @@ int main(int argc, char *argv[])
                 A = mfem_grad_div(x, b, mesh_file, order, seq_refines, par_refines);
                 break;
             case 2:
-                A = mfem_linear_elasticity(x, b, &num_variables, mesh_file, order,
+                strong_threshold = 0.5;
+                A = mfem_linear_elasticity(x, b, &num_variables, mesh_file, order, 
                         seq_refines, par_refines);
                 break;
             case 3:
-                A = mfem_adaptive_laplacian(x, b, mesh_file, order, max_dofs); 
+                A = mfem_adaptive_laplacian(x, b, mesh_file, order);
                 x.set_const_value(1.0);
                 A->mult(x, b);
                 x.set_const_value(0.0);
@@ -348,6 +350,7 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
+    ml = new ParMultilevel(strong_threshold, CLJP, Classical, SOR);
     ml->num_variables = num_variables;
     ml->setup(A);
     raptor_setup = MPI_Wtime() - t0;
