@@ -212,8 +212,8 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(A, strong_threshold, CLJP, Classical, SOR,
-            1, 1.0, 50, -1);
+    ml = new ParMultilevel(strong_threshold, CLJP, Classical, SOR);
+    ml->setup(A);
     raptor_setup = MPI_Wtime() - t0;
     delete ml;
     clear_cache(cache_array);
@@ -221,8 +221,9 @@ int main(int argc, char *argv[])
     // Setup TAP Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(A, strong_threshold, CLJP, Classical, SOR,
-            1, 1.0, 50, -1, 3);
+    ml = new ParMultilevel(strong_threshold, CLJP, Classical, SOR);
+    ml->tap_amg = 3;
+    ml->setup(A);
     raptor_tap_setup = MPI_Wtime() - t0;
     clear_cache(cache_array);
 

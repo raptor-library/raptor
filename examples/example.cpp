@@ -57,7 +57,8 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);
     time_base = MPI_Wtime();
-    ml = new ParMultilevel(A, strong_threshold, Falgout, Direct, SOR);
+    ml = new ParMultilevel(strong_threshold, Falgout, Direct, SOR);
+    ml->setup(A);
     time_setup = MPI_Wtime() - time_base;
 
     // Print out information on the AMG hierarchy

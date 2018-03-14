@@ -96,7 +96,8 @@ int main(int argc, char *argv[])
         }
         ParVector x;
         ParVector b;
-        A = mfem_linear_elasticity(x, b, mesh_file, num_elements, order);
+        int num_variables = 1;
+        A = mfem_linear_elasticity(x, b, &num_variables, mesh_file, num_elements, order);
     }
 #endif
     else if (system == 3)
