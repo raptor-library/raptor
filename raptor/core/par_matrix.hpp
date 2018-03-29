@@ -577,6 +577,9 @@ namespace raptor
     ParCSRMatrix* tap_mult_T(ParCSRMatrix* A);
     ParCSRMatrix* add(ParCSRMatrix* A);
     ParCSRMatrix* subtract(ParCSRMatrix* B);
+
+    void print_mult(ParCSRMatrix* B);
+    void print_mult_T(ParCSCMatrix* A);
     
     void mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, CSRMatrix* recv);
     CSRMatrix* mult_T_partial(ParCSCMatrix* A);

@@ -646,27 +646,30 @@ namespace raptor
                 return residuals;
             }
 
-            double strong_threshold;
             coarsen_t coarsen_type;
             interp_t interp_type;
             relax_t relax_type;
+
             int num_smooth_sweeps;
-            double relax_weight;
             int max_coarse;
             int max_levels;
             int tap_amg;
             int num_variables;
+
+            double strong_threshold;
+            double relax_weight;
+            double sparsify_tol;
+
+            bool store_residuals;
+
             int* variables;
             double* weights;
-            double sparsify_tol;
-            bool store_residuals;
             std::vector<double> residuals;
 
             std::vector<ParLevel*> levels;
             std::vector<int> LU_permute;
             int num_levels;
             
-
             std::vector<double> spmv_times;
             std::vector<double> spmv_comm_times;
             std::vector<double> setup_times;
