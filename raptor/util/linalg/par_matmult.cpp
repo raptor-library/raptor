@@ -915,5 +915,156 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
     }
 }
 
+void ParCSRMatrix::print_mult(ParCSRMatrix* B)
+{
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    int num_short = 0;
+    int num_eager = 0;
+    int num_rend = 0;
+
+    int size_short = 0;
+    int size_eager = 0;
+    int size_rend = 0;
+
+    int short_cutoff = 500;
+    int eager_cutoff = 8000; 
+
+    int start, end, size, idx;
+
+    // Check that communication package has been initialized
+    if (comm == NULL)
+    {
+        comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
+    }
+
+    // Communicate data and multiply
+    // Will communicate the rows of B based on comm
+    for (int i = 0; i < comm->send_data->num_msgs; i++)
+    {
+        start = comm->send_data->indptr[i];
+        end = comm->send_data->indptr[i+1];
+        size = 0;
+        for (int j = start; j < end; j++)
+        {
+            idx = comm->send_data->indices[j];
+            size += (B->on_proc->idx1[idx+1] - B->on_proc->idx1[idx])
+                + (B->off_proc->idx1[idx+1] - B->off_proc->idx1[idx]);
+        }
+        size = size * (2*sizeof(int) + sizeof(double));
+
+        if (size < short_cutoff)
+        {
+            size_short += size;
+            num_short++;
+        }
+        else if (size < eager_cutoff)
+        {
+            size_eager += size;
+            num_eager++;
+        }
+        else
+        {
+            size_rend += size;
+            num_rend++;
+        }
+    }
+    
+    int max_num_short, max_num_eager, max_num_rend;
+    int max_size_short, max_size_eager, max_size_rend;
+    MPI_Reduce(&num_short, &max_num_short, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&num_eager, &max_num_eager, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&num_rend, &max_num_rend, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&size_short, &max_size_short, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&size_eager, &max_size_eager, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&size_rend, &max_size_rend, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+
+    if (rank == 0)
+    {
+        printf("Num Short: %d\n", max_num_short);
+        printf("Num Eager: %d\n", max_num_eager);
+        printf("Num Rend: %d\n", max_num_rend);
+        printf("Size Short: %d\n", max_size_short);
+        printf("Size Eager: %d\n", max_size_eager);
+        printf("Size Rend: %d\n", max_size_rend);
+    }
+}
+
+
+void ParCSRMatrix::print_mult_T(ParCSCMatrix* A)
+{
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    int num_short = 0;
+    int num_eager = 0;
+    int num_rend = 0;
+
+    int size_short = 0;
+    int size_eager = 0;
+    int size_rend = 0;
+
+    int short_cutoff = 500;
+    int eager_cutoff = 8000; 
+
+    int start, end, size, idx;
+
+    if (A->comm == NULL)
+    {
+        A->comm = new ParComm(A->partition, A->off_proc_column_map, A->on_proc_column_map);
+    }
+
+    CSRMatrix* Ctmp = mult_T_partial(A);
+
+    for (int i = 0; i < A->comm->recv_data->num_msgs; i++)
+    {
+        start = A->comm->recv_data->indptr[i];
+        end = A->comm->recv_data->indptr[i+1];
+        size = 0;
+        for (int j = start; j < end; j++)
+        {
+            size += (Ctmp->idx1[j+1] - Ctmp->idx1[j]);
+        }
+        size = size * (2*sizeof(int) + sizeof(double));
+
+        if (size < short_cutoff)
+        {
+            size_short += size;
+            num_short++;
+        }
+        else if (size < eager_cutoff)
+        {
+            size_eager += size;
+            num_eager++;
+        }
+        else
+        {
+            size_rend += size;
+            num_rend++;
+        }
+    }
+    
+    int max_num_short, max_num_eager, max_num_rend;
+    int max_size_short, max_size_eager, max_size_rend;
+    MPI_Reduce(&num_short, &max_num_short, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&num_eager, &max_num_eager, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&num_rend, &max_num_rend, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&size_short, &max_size_short, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&size_eager, &max_size_eager, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&size_rend, &max_size_rend, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+
+    if (rank == 0)
+    {
+        printf("Num Short: %d\n", max_num_short);
+        printf("Num Eager: %d\n", max_num_eager);
+        printf("Num Rend: %d\n", max_num_rend);
+        printf("Size Short: %d\n", max_size_short);
+        printf("Size Eager: %d\n", max_size_eager);
+        printf("Size Rend: %d\n", max_size_rend);
+    }
+
+    delete Ctmp;
+}
 
 
