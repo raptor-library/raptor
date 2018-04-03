@@ -14,6 +14,10 @@ add_executable(test_bsr test_bsr.cpp)
 target_link_libraries(test_bsr raptor)
 add_test(BSRtest ./test_bsr)
 
+add_executable(test_ilu test_ilu.cpp)
+target_link_libraries(test_ilu raptor)
+add_test(ILUtest ./test_ilu)
+
 if (WITH_MPI)
     add_executable(test_par_add test_par_add.cpp)
     target_link_libraries(test_par_add raptor ${MPI_LIBRARIES} googletest pthread )
