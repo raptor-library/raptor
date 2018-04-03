@@ -10,6 +10,10 @@ add_executable(test_spmv_random test_spmv_random.cpp)
 target_link_libraries(test_spmv_random raptor googletest pthread )
 add_test(RandomSpMVTest ./test_spmv_random)
 
+add_executable(test_ilu test_ilu.cpp)
+target_link_libraries(test_ilu raptor)
+add_test(ILUtest ./test_ilu)
+
 if (WITH_MPI)
     add_executable(test_par_spmv_laplacian test_par_spmv_laplacian.cpp)
     target_link_libraries(test_par_spmv_laplacian raptor ${MPI_LIBRARIES} googletest pthread )
