@@ -224,6 +224,8 @@ namespace raptor
     void RAP(const CSCMatrix& P, CSCMatrix* Ac);
     void RAP(const CSCMatrix& P, CSRMatrix* Ac);
 
+	virtual void ilu_k(int lof) = 0;
+
     Matrix* subtract(Matrix* B);
 
     void resize(int _n_rows, int _n_cols);
@@ -518,6 +520,8 @@ namespace raptor
     void mult_append_neg(Vector& x, Vector& b);
     void mult_append_T(Vector& x, Vector& b);
     void mult_append_neg_T(Vector& x, Vector& b);
+
+	void ilu_k(int lof);
 
     format_t format()
     {
@@ -836,6 +840,8 @@ namespace raptor
     CSRMatrix* fit_candidates(data_t* B, data_t* R, int num_candidates, 
             double tol = 1e-10);
 
+	void ilu_k(int lof);
+
     format_t format()
     {
         return CSR;
@@ -1146,7 +1152,8 @@ namespace raptor
     {
         return vals;
     }
-
+	
+	void ilu_k(int lof);
   };
 
 
