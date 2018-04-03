@@ -42,7 +42,7 @@ set(linalg_HEADERS
 set(linalg_SOURCES 
     util/linalg/matmult.cpp
     util/linalg/relax.cpp
-	util/linalg/seq/ilu.cpp
+	util/linalg/ilu.cpp
     ${par_linalg_SOURCES}
     PARENT_SCOPE
     )
