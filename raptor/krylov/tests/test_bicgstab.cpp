@@ -22,30 +22,15 @@ int main(int argc, char* argv[])
     A->mult(x, b);
     x.set_const_value(0.0);
 
-    printf("Before BiCGStab\n");
-    BiCGStab(A, x, b, residuals);
-    //printf("Residuals[0] = %e\n", residuals[0]);
-   
-    /*FILE* f1 = fopen("../../../../test_data/bicgstab_x.txt", "r");
-    double x_i;
-    printf("Pyamg -- RAPtor- Difference\n");
-    printf("---------------------------\n");
-    for(int i=0; i<x.size(); i++){ 
-	fscanf(f1, "%lf\n", &x_i);
-	printf("%lf %lf %lf\n", x_i, x[i], fabs(x_i-x[i]));
-	assert(fabs(x_i - x[i]) < 1e-04);
-    }
-    fclose(f1);*/
+    BiCGStab(A, x, b, residuals);   
 
     FILE* f = fopen("../../../../test_data/bicgstab_res.txt", "r");
     double res;
-    printf("Pyamg -- RAPTOR- Difference\n");
-    printf("---------------------------\n");
-    for (int i = 0; i < residuals.size(); i++)
+    for (int i = 0; i < 10; i++)
     {
         fscanf(f, "%lf\n", &res);
-	printf("%lf %lf %lf\n", res, residuals[i], fabs(res-residuals[i]));
-        //assert(fabs(res - residuals[i]) < 1e-06);
+	//printf("%lf %lf %lf\n", res, residuals[i], fabs(res-residuals[i]));
+        assert(fabs(res - residuals[i]) < 1e-06);
     }
     fclose(f);
 

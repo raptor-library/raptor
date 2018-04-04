@@ -20,7 +20,6 @@ int main(int argc, char* argv[])
     double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
 
-    //printf("A size: %d %d\n", A->global_num_rows, A->global_num_rows);
     ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     std::vector<double> residuals;
@@ -29,42 +28,21 @@ int main(int argc, char* argv[])
     A->mult(x, b);
     x.set_const_value(0.0);
 
-    /*for(int i=0; i<num_procs; i++){
-        if(i == rank){
-	    b.local.print();
-	}
-        MPI_Barrier(MPI_COMM_WORLD);
-    }*/
-
-    data_t temp;
-    temp = b.inner_product(b);
-
-    printf("%lf\n", temp);
-
     BiCGStab(A, x, b, residuals);
 
-    /*for(int i=0; i<num_procs; i++){
-        if(i == rank){
-	    x.local.print();
-	}
-        MPI_Barrier(MPI_COMM_WORLD);
-    }*/
-
-    // CHANGE ALL OF THIS FOR BICGSTAB
+    // Just testing the first 10 residuals
     if(rank == 0){
-    FILE* f = fopen("../../../../test_data/bicgstab_res_v2.txt", "r");
-    double res;
-    printf("Pyamg -- RAPtor- Difference\n");
-    for (int i = 0; i < residuals.size(); i++)
-    {
-        fscanf(f, "%lf\n", &res);
-	printf("%lf %lf %lf\n", res, residuals[i], fabs(res - residuals[i]));
-        //assert(fabs(res - residuals[i]) < 1e-06);
-    }
-    fclose(f);
+        FILE* f = fopen("../../../../test_data/bicgstab_res.txt", "r");
+        double res;
+        for (int i = 0; i < 10; i++)
+        {
+            fscanf(f, "%lf\n", &res);
+	    //printf("%lf %lf %lf\n", res, residuals[i], fabs(res - residuals[i]));
+            assert(fabs(res - residuals[i]) < 1e-06);
+        }
+        fclose(f);
     }
     MPI_Barrier(MPI_COMM_WORLD);
-    printf("Done\n");
 
 
     delete[] stencil;
