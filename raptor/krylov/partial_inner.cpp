@@ -17,6 +17,18 @@ data_t half_inner_contig(ParVector &x, ParVector &y, int half, int part_global){
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
+    data_t inner_prod = 0.0;
+
+    // Check if single process
+    if (num_procs <= 1){
+	if (x.local_n != y.local_n){
+            printf("Error. Dimensions do not match.\n");
+	    exit(-1);
+	}
+	inner_prod = x.local.inner_product(y.local);
+	return inner_prod;
+    }
+
     // Make sure that half_procs is even or adjust
     int half_procs = num_procs/2;
     if (num_procs % 2 != 0) half_procs++;
@@ -49,8 +61,6 @@ data_t half_inner_contig(ParVector &x, ParVector &y, int half, int part_global){
 	MPI_Comm_split(MPI_COMM_WORLD, color, rank, &recv_comm);
         MPI_Comm_size(recv_comm, &recv_comm_size);
     }
-
-    data_t inner_prod = 0.0;
 
     if (x.local_n != y.local_n){
         printf("Error. Dimensions do not match.\n");
