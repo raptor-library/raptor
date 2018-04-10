@@ -10,4 +10,6 @@ using namespace raptor;
 
 void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, double tol = 1e-05, int max_iter = -1);
 
+void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, double tol = 1e-05, int max_iter = -1);
+
 #endif

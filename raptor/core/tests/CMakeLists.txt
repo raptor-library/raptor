@@ -25,6 +25,10 @@ if (WITH_MPI)
     add_test(ParTransposeTest_16 mpirun -n 16 ./test_par_transpose)
 endif ()
 
+add_executable(test_bsr_matrix test_bsr_matrix.cpp)
+target_link_libraries(test_bsr_matrix raptor googletest pthread )
+add_test(BSRMatrixTest ./test_bsr_matrix)
+
 add_executable(test_matrix test_matrix.cpp)
 target_link_libraries(test_matrix raptor googletest pthread )
 add_test(MatrixTest ./test_matrix)

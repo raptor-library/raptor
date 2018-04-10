@@ -53,6 +53,7 @@ namespace raptor
   class COOMatrix;
   class CSRMatrix;
   class CSCMatrix;
+  class BSRMatrix;
 
   class Matrix
   {
@@ -494,7 +495,7 @@ namespace raptor
             b[idx2[i]] -= vals[i] * x[idx1[i]];
         }
     }
-    void residual(const std::vector<double>& x, const std::vector<double>& b, 
+    void residual(const std::vector<double>& x, const std::vector<double>& b,
             std::vector<double>& r)
     {
         for (int i = 0; i < n_rows; i++)
@@ -1149,6 +1150,517 @@ namespace raptor
   };
 
 
+/**************************************************************
+ *****   BSRMatrix Class (Inherits from Matrix Base Class)
+ **************************************************************
+ ***** This class constructs a sparse matrix in CSR format.
+ *****
+ ***** Methods
+ ***** -------
+ ***** format() 
+ *****    Returns the format of the sparse matrix (CSR)
+ ***** sort()
+ *****    Sorts the matrix.  Already in row-wise order, but sorts
+ *****    the columns in each row.
+ ***** add_value(int row, int col, double val)
+ *****     TODO -- add this functionality
+ ***** indptr()
+ *****     Returns std::vector<int>& row pointer.  The ith element points to
+ *****     the index of indices() corresponding to the first column to lie on 
+ *****     row i.
+ ***** indices()
+ *****     Returns std::vector<int>& containing the cols corresponding
+ *****     to each nonzero
+ ***** data()
+ *****     Returns std::vector<double>& containing the nonzero values
+ **************************************************************/
+  class BSRMatrix : public Matrix
+  {
+  public:
+
+    /**************************************************************
+    *****   BSRMatrix Class Constructor
+    **************************************************************
+    ***** Initializes an empty BSRMatrix
+    *****
+    ***** Parameters
+    ***** -------------
+    ***** _nrows : int
+    *****    Number of rows in Matrix
+    ***** _ncols : int
+    *****    Number of columns in Matrix
+    ***** _brows : int
+    *****    Number of rows in block
+    ***** _bcols : int
+    *****    Number of columns in block
+    ***** _nblocks : int
+    *****    Number of blocks in matrix
+    ***** nnz_per_row : int
+    *****    Prediction of (approximately) number of nonzeros 
+    *****    per row, used in reserving space
+    *****
+    ***** idx2 : columns of each block in matrix (row-ordered)
+    ***** idx1 : block row pointer - first index in idx1 of block in row i
+    ***** b_rows : rows per block
+    ***** b_cols : columns per block
+    ***** n_blocks : number of dense blocks in matrix
+    ***** b_size : number of non-zeros in a block
+    **************************************************************/
+    BSRMatrix(int _nrows, int _ncols, int _brows, int _bcols, 
+            int _nblocks=0, int _nnz = 0): Matrix(_nrows, _ncols)
+    {
+        if (_nrows % _brows != 0 || _ncols % _bcols != 0)
+	{
+            printf("Matrix dimensions must be divisible by block dimensions.\n");
+	    exit(-1);
+	}
+
+	n_rows = _nrows;
+	n_cols = _ncols;
+	b_rows = _brows;
+	b_cols = _bcols;
+	b_size = b_rows * b_cols;
+
+	if (_nblocks)
+	{
+	    n_blocks = _nblocks;
+	}
+	else
+	{
+	    // Assume dense number of blocks
+            n_blocks = _nrows/_brows * _ncols/_bcols;
+	}
+
+        idx1.resize(n_rows/b_rows + 1);
+        idx2.reserve(n_blocks);
+        vals.reserve(b_size * n_blocks);
+    }
+
+    BSRMatrix(int _nrows, int _ncols, int _brows, int _bcols, double* _data) : Matrix(_nrows, _ncols)
+    {
+        if (_nrows % _brows != 0 || _ncols % _bcols != 0)
+	{
+            printf("Matrix dimensions must be divisible by block dimensions.\n");
+	    exit(-1);
+	}
+
+	// Assumes dense data array given
+	n_rows = _nrows;
+	n_cols = _ncols;
+	b_rows = _brows;
+	b_cols = _bcols;
+	b_size = b_rows * b_cols;
+	n_blocks = 0;
+	nnz = 0;
+
+        int nnz_dense = n_rows*n_cols;
+
+        idx1.resize(n_rows/b_rows + 1);
+        //idx2.reserve(n_blocks);
+        vals.reserve(nnz_dense);
+
+	std::vector<double> test;
+	double val;
+	int data_offset = 0;
+	idx1[0] = 0;
+	for (int i=0; i<n_rows/b_rows; i++)
+	{
+            for (int j=0; j<n_cols/b_cols; j++)
+	    {
+		// 1. Push block data to test vector & check if it's a 0 block
+                for (int k=data_offset; k<data_offset+b_size; k++){
+		    val = _data[k];
+		    if (fabs(val) > zero_tol) test.push_back(val);
+		}
+		// 2. If not all 0 then add block
+		if (test.size() > 0)
+		{
+		    for (int k=data_offset; k<data_offset+b_size; k++){
+			val = _data[k];
+		        vals.push_back(val);
+			nnz++;
+		    }
+		    n_blocks++;
+		    idx2.push_back(j);
+                    data_offset += b_size;
+		}
+		test.clear();
+	    }
+	    idx1[i+1] = idx2.size();
+	}
+
+    }
+
+    BSRMatrix(int _nrows, int _ncols, int _brows, int _bcols, 
+            std::vector<int>& rowptr, std::vector<int>& cols, 
+	    std::vector<double>& data) : Matrix(_nrows, _ncols)
+    {
+        if (_nrows % _brows != 0 || _ncols % _bcols != 0)
+	{
+            printf("Matrix dimensions must be divisible by block dimensions.\n");
+	    exit(-1);
+	}
+
+        nnz = data.size();
+	b_rows = _brows;
+	b_cols = _bcols;
+	n_blocks = cols.size();
+	b_size = nnz/n_blocks;
+        idx1.resize(n_blocks+1);
+        idx2.resize(n_blocks);
+        vals.resize(nnz);
+
+        std::copy(rowptr.begin(), rowptr.end(), idx1.begin());
+        std::copy(cols.begin(), cols.end(), idx2.begin());
+        std::copy(data.begin(), data.end(), vals.begin());
+    }
+
+    /**************************************************************
+    *****   BSRMatrix Class Constructor
+    **************************************************************
+    ***** Constructs a BSRMatrix from a COOMatrix
+    *****
+    ***** Parameters
+    ***** -------------
+    ***** A : const COOMatrix*
+    *****    COOMatrix A, from which to copy data
+    **************************************************************/
+    /*explicit BSRMatrix(const COOMatrix* A) 
+    {
+        copy(A);
+    }*/
+
+    /**************************************************************
+    *****   BSRMatrix Class Constructor
+    **************************************************************
+    ***** Constructs a BSRMatrix from a CSCMatrix
+    *****
+    ***** Parameters
+    ***** -------------
+    ***** A : const CSCMatrix*
+    *****    CSCMatrix A, from which to copy data
+    **************************************************************/
+    /*explicit BSRMatrix(const CSCMatrix* A)
+    {
+        copy(A);
+    }*/
+
+    /**************************************************************
+    *****   BSRMatrix Class Constructor
+    **************************************************************
+    ***** Constructs a BSRMatrix from a CSRMatrix
+    *****
+    ***** Parameters
+    ***** -------------
+    ***** A : const CSRMatrix*
+    *****    CSRMatrix A, from which to copy data
+    **************************************************************/
+    /*explicit BSRMatrix(const CSRMatrix* A) 
+    {
+        copy(A);
+    }*/
+
+    BSRMatrix()
+    {
+    }
+
+    ~BSRMatrix()
+    {
+
+    }
+
+    Matrix* transpose();
+
+    void print();
+    void block_print(int row, int num_blocks_prev, int col);
+
+    void copy(const COOMatrix* A);
+    void copy(const CSRMatrix* A);
+    void copy(const CSCMatrix* A);
+
+    void add_value(int row, int col, double value);
+    void sort();
+    void move_diag();
+    void remove_duplicates();
+
+    template <typename T, typename U> void mult(T& x, U& b)
+    { 
+        Matrix::mult(x, b);
+    }
+    template <typename T, typename U> void mult_T(T& x, U& b)
+    { 
+        Matrix::mult_T(x, b);
+    }
+    template <typename T, typename U> void mult_append(T& x, U& b)
+    { 
+        Matrix::mult_append(x, b);
+    }
+    template <typename T, typename U> void mult_append_T(T& x, U& b)
+    { 
+        Matrix::mult_append_T(x, b);
+    }
+    template <typename T, typename U> void mult_append_neg(T& x, U& b)
+    { 
+        Matrix::mult_append_neg(x, b);
+    }
+    template <typename T, typename U> void mult_append_neg_T(T& x, U& b)
+    { 
+        Matrix::mult_append_neg_T(x, b);
+    }
+    template <typename T, typename U, typename V> 
+    void residual(const T& x, const U& b, V& r)
+    { 
+        Matrix::residual(x, b, r);
+    }
+
+    // STANDARD MULTIPLICATION
+    void mult(std::vector<double>& x, std::vector<double>& b)
+    {
+        for (int i = 0; i < n_rows; i++)
+            b[i] = 0.0;
+        mult_append(x, b);
+    }
+
+    // TRANSPOSE MULTIPLICATION
+    void mult_T(std::vector<double>& x, std::vector<double>& b)
+
+    {
+        for (int i = 0; i < n_cols; i++)
+            b[i] = 0.0;
+
+        mult_append_T(x, b);    
+    }
+
+    // STANDARD MULTIPLICATION HELPER
+    void mult_append(std::vector<double>& x, std::vector<double>& b)
+    { 
+        int start, end;
+	int rowsOfBlocks = n_rows/b_rows;
+        for (int i = 0; i < rowsOfBlocks; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+		// Dense multiplication on block
+                block_mult(i, j, idx2[j], x, b);
+            }
+        }
+    }
+
+    void block_mult(int row, int num_blocks_prev, int col,
+		    std::vector<double>& x, std::vector<double>& b)
+    {
+        int upper_i = row * b_rows;
+	int upper_j = col * b_cols;
+	int data_offset = num_blocks_prev * b_size;
+
+	int glob_i, glob_j, ind;
+	for(int i=0; i<b_rows; i++){
+            for(int j=0; j<b_cols; j++){
+		glob_i = upper_i + i;
+		glob_j = upper_j + j;
+		ind = i * b_cols + j + data_offset;
+		b[glob_i] += vals[ind] * x[glob_j];
+	    }
+	}
+    }
+
+    void mult_append_T(std::vector<double>& x, std::vector<double>& b)
+    {
+        int start, end;
+        for (int i = 0; i < n_rows/b_rows; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                // Dense transpose multiplication on block
+                block_mult_T(i, j, idx2[j], x, b);
+            }
+        }
+    }
+
+    void block_mult_T(int row, int num_blocks_prev, int col,
+		    std::vector<double>& x, std::vector<double>& b)
+    {
+        int upper_i = row * b_rows;
+	int upper_j = col * b_cols;
+	int data_offset = num_blocks_prev * b_size;
+
+	int glob_i, glob_j, ind;
+	for(int i=0; i<b_rows; i++){
+            for(int j=0; j<b_cols; j++){
+		glob_i = upper_i + i;
+		glob_j = upper_j + j;
+		ind = i * b_cols + j + data_offset;
+		b[glob_j] += vals[ind] * x[glob_i];
+	    }
+	}
+    }
+
+    void mult_append_neg(std::vector<double>& x, std::vector<double>& b)
+    {
+        int start, end;
+        for (int i = 0; i < n_rows/b_rows; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                // Dense negative multiplication on block
+                block_mult_neg(i, j, idx2[j], x, b);
+            }
+        }
+    }
+
+    void block_mult_neg(int row, int num_blocks_prev, int col,
+		    std::vector<double>& x, std::vector<double>& b)
+    {
+        int upper_i = row * b_rows;
+	int upper_j = col * b_cols;
+	int data_offset = num_blocks_prev * b_size;
+
+	int glob_i, glob_j, ind;
+	for(int i=0; i<b_rows; i++){
+            for(int j=0; j<b_cols; j++){
+		glob_i = upper_i + i;
+		glob_j = upper_j + j;
+		ind = i * b_cols + j + data_offset;
+		b[glob_i] -= vals[ind] * x[glob_j];
+	    }
+	}
+    }
+
+    void mult_append_neg_T(std::vector<double>& x, std::vector<double>& b)
+    {
+        int start, end;
+        for (int i = 0; i < n_rows/b_rows; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                block_mult_neg_T(i, j, idx2[j], x, b);
+            }
+        }
+    }
+
+    void block_mult_neg_T(int row, int num_blocks_prev, int col,
+		    std::vector<double>& x, std::vector<double>& b)
+    {
+        int upper_i = row * b_rows;
+	int upper_j = col * b_cols;
+	int data_offset = num_blocks_prev * b_size;
+
+	int glob_i, glob_j, ind;
+	for(int i=0; i<b_rows; i++){
+            for(int j=0; j<b_cols; j++){
+		glob_i = upper_i + i;
+		glob_j = upper_j + j;
+		ind = i * b_cols + j + data_offset;
+		b[glob_j] -= vals[ind] * x[glob_i];
+	    }
+	}
+    }
+
+    void residual(const std::vector<double>& x, const std::vector<double>& b, 
+            std::vector<double>& r)
+    {
+        for (int i = 0; i < n_rows; i++)
+            r[i] = b[i];
+
+        int start, end;
+        for (int i = 0; i < n_rows/b_rows; i++)
+        {
+            start = idx1[i];
+            end = idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                block_res(i, j, idx2[j], x, r);
+            }
+        }
+    }
+
+    void block_res(int row, int num_blocks_prev, int col,
+		    const std::vector<double>& x, std::vector<double>& r)
+    {
+        int upper_i = row * b_rows;
+	int upper_j = col * b_cols;
+	int data_offset = num_blocks_prev * b_size;
+
+	int glob_i, glob_j, ind;
+	for(int i=0; i<b_rows; i++){
+            for(int j=0; j<b_cols; j++){
+		glob_i = upper_i + i;
+		glob_j = upper_j + j;
+		ind = i * b_cols + j + data_offset;
+		r[glob_i] -= vals[ind] * x[glob_j];
+	    }
+	}
+    }
+
+
+    //CSRMatrix* mult(const CSRMatrix* B);
+    //CSRMatrix* mult(const CSCMatrix* B);
+    //CSRMatrix* mult(const COOMatrix* B);
+    //CSRMatrix* mult_T(const CSCMatrix* A);
+    //CSRMatrix* mult_T(const CSRMatrix* A);
+    //CSRMatrix* mult_T(const COOMatrix* A);
+
+    //CSRMatrix* subtract(CSRMatrix* B);
+
+    //CSRMatrix* strength(double theta = 0.0);
+    //CSRMatrix* aggregate();
+    //CSRMatrix* fit_candidates(data_t* B, data_t* R, int num_candidates, 
+      //      double tol = 1e-10);
+
+    format_t format()
+    {
+        return BSR;
+    }
+
+    std::vector<int>& row_ptr()
+    {
+        return idx1;
+    }
+
+    std::vector<int>& cols()
+    {
+        return idx2;
+    }
+
+    std::vector<double>& data()
+    {
+        return vals;
+    }
+
+    int block_rows()
+    {
+        return b_rows;
+    }
+
+    int block_cols()
+    {
+        return b_cols;
+    }
+
+    int block_size()
+    {
+        return b_size;
+    }
+
+    int num_blocks()
+    {
+        return n_blocks;
+    }
+
+    int b_rows;
+    int b_cols;
+    int n_blocks;
+    int b_size;
+
+};
 
 }
 

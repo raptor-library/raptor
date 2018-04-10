@@ -61,7 +61,42 @@ void CSCMatrix::print()
         }
     }
 }
+void BSRMatrix::print()
+{
+    int col, start, end;
 
+    for (int i = 0; i < n_rows/b_rows; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            // Call block print function
+	    block_print(i, j, idx2[j]);
+        }
+    }
+}
+
+void BSRMatrix::block_print(int row, int num_blocks_prev, int col)
+{
+    int upper_i = row * b_rows;
+    int upper_j = col * b_cols;
+    int data_offset = num_blocks_prev * b_size;
+
+    int glob_i, glob_j, ind;
+    double val;
+    for (int i=0; i<b_rows; i++)
+    {
+        for (int j=0; j<b_cols; j++)
+	{
+            glob_i = upper_i + i;
+	    glob_j = upper_j + j;
+	    ind = i * b_cols + j + data_offset;
+	    val = vals[ind];
+	    printf("A[%d][%d] = %e\n", glob_i, glob_j, val);
+	}
+    }
+}
 
 
 Matrix* COOMatrix::transpose()
@@ -95,6 +130,13 @@ Matrix* CSCMatrix::transpose()
     delete T_csr;
 
     return T;
+}
+
+Matrix* BSRMatrix::transpose()
+{
+    Matrix* B = new BSRMatrix(n_rows, n_cols, b_rows, b_cols, idx1, idx2, vals);
+
+    return B;
 }
 
 /**************************************************************
@@ -701,6 +743,53 @@ void CSRMatrix::remove_duplicates()
     nnz = idx1[n_rows];
     idx2.resize(nnz);
     vals.resize(nnz);
+}
+
+/**************************************************************
+*****  BSRMatrix Add Value
+**************************************************************
+**************************************************************/
+void BSRMatrix::copy(const COOMatrix* A)
+{
+    printf("Currently not implemented\n");
+}
+
+void BSRMatrix::copy(const CSRMatrix* A)
+{
+    printf("Currently not implemented\n");
+}
+
+void BSRMatrix::copy(const CSCMatrix* A)
+{
+    printf("Currently not implemented\n");
+}
+
+/**************************************************************
+*****  BSRMatrix Add Value
+**************************************************************
+**************************************************************/
+void BSRMatrix::add_value(int row, int col, double val)
+{
+    printf("Currently not implemented\n");
+}
+
+/**************************************************************
+*****   BSRMatrix Sort
+**************************************************************
+**************************************************************/
+void BSRMatrix::sort()
+{
+    printf("Currently not implemented\n");
+}
+
+void BSRMatrix::move_diag()
+{
+    printf("Currently not implemented\n");
+}
+
+void BSRMatrix::remove_duplicates()
+{
+    printf("Currently not implemented\n");
 }
 
 /**************************************************************
