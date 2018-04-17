@@ -71,6 +71,7 @@ namespace raptor
   class ParCOOMatrix;
   class ParCSRMatrix;
   class ParCSCMatrix;
+  class ParBSRMatrix;
 
   class ParMatrix
   {
@@ -118,6 +119,25 @@ namespace raptor
             index_t glob_cols)
     {
         partition = new Partition(glob_rows, glob_cols);
+
+        global_num_rows = partition->global_num_rows;
+        global_num_cols = partition->global_num_cols;
+        on_proc_num_cols = partition->local_num_cols;
+        local_num_rows = partition->local_num_rows;
+
+        comm = NULL;
+        tap_comm = NULL;
+
+        spgemm_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spgemm_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spmv_data = (OpData) {0.0, 0.0, 0.0, 0.0};;
+        spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+    }
+
+    // For BSR Matrix class use only
+    ParMatrix(index_t glob_rows, index_t glob_cols, int _brows, int _bcols)
+    {
+        partition = new Partition(glob_rows, glob_cols, _brows, _bcols);
 
         global_num_rows = partition->global_num_rows;
         global_num_cols = partition->global_num_cols;
@@ -660,6 +680,195 @@ namespace raptor
     void tap_mult(ParVector& x, ParVector& b);
     void mult_T(ParVector& x, ParVector& b);
     void tap_mult_T(ParVector& x, ParVector& b);
+
+    ParMatrix* transpose();
+  };
+
+  class ParBSRMatrix : public ParMatrix
+  {
+  public:
+    ParBSRMatrix() : ParMatrix()
+    {
+        on_proc = new BSRMatrix(0, 0, 0, 0);
+        off_proc = new BSRMatrix(0, 0, 0, 0);
+    }
+
+    ParBSRMatrix(index_t glob_rows, 
+            index_t glob_cols, int _brows, int _bcols,
+            int blocks_per_row = 5) : ParMatrix(glob_rows, glob_cols, _brows, _bcols)
+    {
+
+	if ( glob_rows % _brows != 0 || glob_cols % _bcols != 0)
+	{
+	    printf("Matrix dimensions must be divisible by block dimensions.\n");
+	    exit(-1);
+	}
+
+        on_proc = new BSRMatrix(partition->local_num_rows, 
+		partition->local_num_cols, _brows, _bcols, 
+                blocks_per_row);
+        off_proc = new BSRMatrix(partition->local_num_rows, 
+		partition->global_num_cols, _brows, _bcols, 
+                blocks_per_row);
+    }
+
+    ParBSRMatrix(index_t glob_rows, index_t glob_cols, int local_rows, 
+            int local_cols, int _brows, int _bcols, index_t first_row, index_t first_col, 
+	    Topology* topology = NULL, int blocks_per_row = 5) : ParMatrix(glob_rows, glob_cols,
+                local_rows, local_cols, first_row, first_col, topology)
+    {
+	if ( glob_rows % _brows != 0 || glob_cols % _bcols != 0)
+	{
+	    printf("Matrix dimensions must be divisible by block dimensions.\n");
+	    exit(-1);
+	}
+
+        on_proc = new BSRMatrix(partition->local_num_rows, 
+		partition->local_num_cols, _brows, _bcols, blocks_per_row);
+        off_proc = new BSRMatrix(partition->local_num_rows, 
+		partition->global_num_cols, _brows, _bcols, blocks_per_row);
+    }
+
+    ParBSRMatrix(Partition* part, int _brows, int _bcols,
+            int blocks_per_row = 5) : ParMatrix(part)
+    {
+        on_proc = new BSRMatrix(partition->local_num_rows, 
+		partition->local_num_cols, _brows, _bcols, 
+                blocks_per_row);
+        off_proc = new BSRMatrix(partition->local_num_rows, 
+		partition->global_num_cols, _brows, _bcols,
+                blocks_per_row);
+    }
+
+    ParBSRMatrix(Partition* part, BSRMatrix* _on_proc, BSRMatrix* _off_proc) : ParMatrix(part)
+    {
+        on_proc = _on_proc;
+        off_proc = _off_proc;
+        on_proc_num_cols = on_proc->n_cols;
+        off_proc_num_cols = off_proc->n_cols;
+        local_num_rows = on_proc->n_rows;
+        finalize();
+    }
+
+
+    ParBSRMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows,
+	    int _brows, int _bcols, int on_proc_cols, int off_proc_cols, 
+	    int blocks_per_row = 5) : ParMatrix(part, 
+                glob_rows, glob_cols, local_rows, on_proc_cols)
+    {
+	if ( glob_rows % _brows != 0 || glob_cols % _bcols != 0)
+	{
+	    printf("Matrix dimensions must be divisible by block dimensions.\n");
+	    exit(-1);
+	}
+
+        off_proc_num_cols = off_proc_cols;
+        on_proc = new BSRMatrix(local_num_rows, on_proc_cols, _brows, _bcols, blocks_per_row);
+        off_proc = new BSRMatrix(local_num_rows, off_proc_num_cols, _brows, _bcols, 
+		blocks_per_row);
+    }
+
+    // FIX THIS CONSTRUCTOR *****************************************
+    ParBSRMatrix(index_t glob_rows, index_t glob_cols, int _brows, int _bcols,
+            data_t* values) : ParMatrix(glob_rows, glob_cols, _brows, _bcols)
+    {
+        if (glob_rows % _brows != 0 || glob_cols % _bcols != 0)
+	{
+            printf("Matrix dimensions must be divisible by block dimensions.\n");
+	    exit(-1);
+	}
+
+        // Initialize empty diag/offd matrices
+        on_proc = new COOMatrix(partition->local_num_rows, partition->local_num_cols, 
+                partition->local_num_rows*5);
+        off_proc = new COOMatrix(partition->local_num_rows, partition->global_num_cols, 
+                partition->local_num_rows*5);
+
+        // Add values to on/off proc matrices
+        on_proc->idx1[0] = 0;
+        off_proc->idx1[0] = 0;
+
+        int val_start = partition->first_local_row * partition->global_num_cols;
+        for (int i = 0; i < partition->local_num_rows; i++)
+        {
+            for (int j = 0; j < partition->global_num_cols; j++)
+            {
+                int idx = val_start + (i*partition->global_num_cols) + j;
+
+                if (fabs(values[idx]) > zero_tol)
+                {
+                    int global_col = idx % partition->global_num_cols;
+                    
+                    if (global_col >= partition->first_local_col && 
+                        global_col < partition->first_local_col + partition->local_num_cols)
+                    {
+                        on_proc->idx2.push_back(global_col - partition->first_local_col);
+                        on_proc->vals.push_back(values[idx]);
+                    }
+                    else
+                    {
+                        off_proc->idx2.push_back(global_col);
+                        off_proc->vals.push_back(values[idx]);
+                    }
+
+                }
+            }
+            on_proc->idx1[i+1] = on_proc->idx2.size();
+            off_proc->idx1[i+1] = off_proc->idx2.size();
+        }
+        on_proc->nnz = on_proc->idx2.size();
+        off_proc->nnz = off_proc->idx2.size();
+
+        // Convert on/off proc to compressed formats and
+        // create parallel communicator
+        finalize();
+    }
+    // *********************************************  
+
+    /*ParBSRMatrix(ParCSRMatrix* A)
+    {
+        copy(A);
+    }
+
+    ParBSRMatrix(ParCSCMatrix* A)
+    {
+        copy(A);
+    }
+
+    ParBSRMatrix(ParCOOMatrix* A)
+    {
+        copy(A);
+    }*/
+
+    void copy(ParCSRMatrix* A);
+    void copy(ParCSCMatrix* A);
+    void copy(ParCOOMatrix* A);
+
+    //ParCSRMatrix* strength(double theta = 0.0, int num_variables = 1, int* variables = NULL);
+    //ParCSRMatrix* aggregate();
+    //ParCSRMatrix* fit_candidates(double* B, double* R, int num_candidates, 
+    //        double tol = 1e-10);
+    //int maximal_independent_set(std::vector<int>& local_states,
+    //        std::vector<int>& off_proc_states, int max_iters = -1);
+
+    void mult(ParVector& x, ParVector& b);
+    void tap_mult(ParVector& x, ParVector& b);
+    void mult_T(ParVector& x, ParVector& b);
+    void tap_mult_T(ParVector& x, ParVector& b);
+    ParBSRMatrix* mult(ParBSRMatrix* B);
+    ParBSRMatrix* tap_mult(ParBSRMatrix* B);
+    //ParBSRMatrix* mult_T(ParCSCMatrix* A);
+    ParBSRMatrix* mult_T(ParBSRMatrix* A);
+    //ParBSRMatrix* tap_mult_T(ParCSCMatrix* A);
+    ParBSRMatrix* tap_mult_T(ParBSRMatrix* A);
+    //ParBSRMatrix* add(ParCSRMatrix* A);
+    //ParBSRMatrix* subtract(ParCSRMatrix* B);
+    
+    //void mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, CSRMatrix* recv);
+    //CSRMatrix* mult_T_partial(ParCSCMatrix* A);
+    //CSRMatrix* mult_T_partial(CSCMatrix* A_off);
+    //void mult_T_combine(ParCSCMatrix* A, ParCSRMatrix* C, CSRMatrix* recv_on,
+    //        CSRMatrix* recv_off);
 
     ParMatrix* transpose();
   };

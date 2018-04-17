@@ -746,7 +746,7 @@ void CSRMatrix::remove_duplicates()
 }
 
 /**************************************************************
-*****  BSRMatrix Add Value
+*****  BSRMatrix Copy
 **************************************************************
 **************************************************************/
 void BSRMatrix::copy(const COOMatrix* A)
@@ -768,9 +768,42 @@ void BSRMatrix::copy(const CSCMatrix* A)
 *****  BSRMatrix Add Value
 **************************************************************
 **************************************************************/
-void BSRMatrix::add_value(int row, int col, double val)
+void BSRMatrix::add_value(int row, int col, double value)
 {
     printf("Currently not implemented\n");
+}
+
+void BSRMatrix::add_block(int row, int col, std::vector<double>& values)
+{
+    printf("Currently not implemented\n");
+    return;
+
+    int start, end, j, data_offset;
+    start = idx1[row];
+    end = idx1[row+1];
+
+    // Update indptr
+    while(j < end)
+    {
+	// Fix this line here because vector takes an iterator
+	// j is not an iterator, it's a position in the array 
+        //if(col < idx2[j]) idx2.insert(j, col);
+	j++;
+    }
+
+    // Update rowptr
+    for(int i=row+1; i<n_rows/b_rows; i++){
+        idx1[i]++;
+    }
+
+    // Update vals array
+    data_offset = idx1[row] * b_size;
+    //**** THIS ISN'T CORRECT EITHER. FIX THIS
+    //vals.insert(data_offset, values.begin(), values.end());
+
+    // Update matrix variablees
+    nnz += b_size;
+    n_blocks++;
 }
 
 /**************************************************************

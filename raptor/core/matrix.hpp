@@ -1379,6 +1379,7 @@ namespace raptor
     void copy(const CSCMatrix* A);
 
     void add_value(int row, int col, double value);
+    void add_block(int row, int col, std::vector<double>& values);
     void sort();
     void move_diag();
     void remove_duplicates();

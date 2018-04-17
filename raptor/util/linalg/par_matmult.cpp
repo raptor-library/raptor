@@ -915,5 +915,26 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
     }
 }
 
+ParBSRMatrix* ParBSRMatrix::mult(ParBSRMatrix* B)
+{
+    // NOT IMPLEMENTED
+    return NULL;
+}
 
+ParBSRMatrix* ParBSRMatrix::tap_mult(ParBSRMatrix* B)
+{
+    // NOT IMPLEMENTED
+    return NULL;
+}
 
+ParBSRMatrix* ParBSRMatrix::mult_T(ParBSRMatrix* B)
+{
+    // NOT IMPLEMENTED
+    return NULL;
+}
+
+ParBSRMatrix* ParBSRMatrix::tap_mult_T(ParBSRMatrix* B)
+{
+    // NOT IMPLEMENTED
+    return NULL;
+}
