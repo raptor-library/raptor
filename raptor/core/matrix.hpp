@@ -1,4 +1,4 @@
-// Copyright (c) 2015-2017, RAPtor Developer Team
+	// Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #ifndef RAPTOR_CORE_MATRIX_HPP
 #define RAPTOR_CORE_MATRIX_HPP
@@ -224,7 +224,11 @@ namespace raptor
     void RAP(const CSCMatrix& P, CSCMatrix* Ac);
     void RAP(const CSCMatrix& P, CSRMatrix* Ac);
 
-	virtual void ilu_k(int lof) = 0;
+	virtual CSRMatrix* ilu_k(int lof) = 0;
+	virtual CSRMatrix* ilu_levels() = 0;
+	virtual CSRMatrix* ilu_sparsity(CSRMatrix* levls, int lof) = 0;
+	virtual CSRMatrix* ilu_symbolic(int lof) = 0;
+	virtual std::vector<double>& ilu_numeric(CSRMatrix* sparsity) = 0;
 
     Matrix* subtract(Matrix* B);
 
@@ -521,7 +525,14 @@ namespace raptor
     void mult_append_T(Vector& x, Vector& b);
     void mult_append_neg_T(Vector& x, Vector& b);
 
-	void ilu_k(int lof);
+	CSRMatrix* ilu_k(int lof);
+	CSRMatrix* ilu_levels();
+	CSRMatrix* ilu_sparsity(CSRMatrix* levls, int lof);
+	CSRMatrix* ilu_symbolic(int lof);
+	std::vector<double>& ilu_numeric(CSRMatrix* sparsity);
+
+
+
 
     format_t format()
     {
@@ -840,7 +851,11 @@ namespace raptor
     CSRMatrix* fit_candidates(data_t* B, data_t* R, int num_candidates, 
             double tol = 1e-10);
 
-	void ilu_k(int lof);
+	CSRMatrix* ilu_k(int lof);
+	CSRMatrix* ilu_levels();
+	CSRMatrix* ilu_sparsity(CSRMatrix* levls, int lof);
+	CSRMatrix* ilu_symbolic(int lof);
+	std::vector<double>& ilu_numeric(CSRMatrix* sparsity);
 
     format_t format()
     {
@@ -1153,7 +1168,12 @@ namespace raptor
         return vals;
     }
 	
-	void ilu_k(int lof);
+	CSRMatrix* ilu_k(int lof);
+	CSRMatrix* ilu_levels();
+	CSRMatrix* ilu_sparsity(CSRMatrix* levls, int lof);
+	CSRMatrix* ilu_symbolic(int lof);
+	std::vector<double>& ilu_numeric(CSRMatrix* sparsity);
+
   };
 
 
