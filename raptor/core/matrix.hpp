@@ -1302,11 +1302,13 @@ namespace raptor
 	}
 
         nnz = data.size();
+	n_rows = _nrows;
+	n_cols = _ncols;
 	b_rows = _brows;
 	b_cols = _bcols;
 	n_blocks = cols.size();
 	b_size = nnz/n_blocks;
-        idx1.resize(n_blocks+1);
+        idx1.resize(n_rows/b_rows + 1);
         idx2.resize(n_blocks);
         vals.resize(nnz);
 

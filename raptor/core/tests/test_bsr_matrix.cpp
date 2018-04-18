@@ -10,11 +10,10 @@ using namespace raptor;
 
 int main(int argc, char** argv)
 {
-    std::vector<int> row_ptr = {0,2,3,5};
-    std::vector<int> cols = {0,1,1,1,2};
+    std::vector<int> row_ptr = {0,1,3,5};
+    std::vector<int> cols = {0,0,2,1,2};
     std::vector<double> vals = {1.0, 0.0, 2.0, 1.0, 6.0, 7.0, 8.0, 2.0, 1.0, 4.0, 5.0, 1.0,
                                 4.0, 3.0, 0.0, 0.0, 7.0, 2.0, 0.0, 0.0};
-
 
     int rows_in_block = 2;
     int cols_in_block = 2;
@@ -30,9 +29,55 @@ int main(int argc, char** argv)
     b.set_const_value(0.0);
     r.set_const_value(0.0);
    
+    printf("nnz: %d, n_blocks: %d, n_rows: %d, n_cols %d\n\n", A_bsr.nnz, A_bsr.n_blocks, A_bsr.n_rows, A_bsr.n_cols);
+
+    printf("vals: %d, idx1: %d, idx2: %d\n\n", A_bsr.data().size(), A_bsr.row_ptr().size(), A_bsr.cols().size());
+
+    std::vector<int> rows = A_bsr.row_ptr();
+    std::vector<int> colss = A_bsr.cols();
+
+    printf("rowptr: ");
+    for(int i=0; i<rows.size(); i++){
+        printf(" %d", rows[i]);
+    }
+    printf("\n");
+
+    printf("cols: ");
+    for(int i=0; i<colss.size(); i++){
+        printf(" %d", colss[i]);
+    }
+    printf("\n\n");
+
     A_bsr.print();
 
-    printf("\n-----------------------\n");
+    printf("\n\n");
+
+    std::vector<double> block = {1.0, 0.0, 2.0, 3.0};
+    A_bsr.add_block(1, 1, block);
+
+    printf("nnz: %d, n_blocks: %d, n_rows: %d, n_cols %d\n\n", A_bsr.nnz, A_bsr.n_blocks, A_bsr.n_rows, A_bsr.n_cols);
+
+    rows = A_bsr.row_ptr();
+    colss = A_bsr.cols();
+
+    printf("vals: %d, idx1: %d, idx2: %d\n\n", A_bsr.data().size(), A_bsr.row_ptr().size(), A_bsr.cols().size());
+
+    printf("rowptr: ");
+    for(int i=0; i<rows.size(); i++){
+        printf(" %d", rows[i]);
+    }
+    printf("\n");
+
+    printf("cols: ");
+    for(int i=0; i<colss.size(); i++){
+        printf(" %d", colss[i]);
+    }
+    printf("\n\n");
+
+    A_bsr.print();
+
+
+    /*printf("\n-----------------------\n");
     printf("A * x = b\n");
     printf("-----------------------\n");
     A_bsr.mult(x, b);
@@ -50,7 +95,7 @@ int main(int argc, char** argv)
     printf("\n-----------------------\n");
     printf("r = b - A * x\n");
     printf("-----------------------\n");
-    r.print();
+    r.print();*/
 
     return 0;
 

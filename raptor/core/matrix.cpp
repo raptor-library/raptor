@@ -73,6 +73,7 @@ void BSRMatrix::print()
         {
             // Call block print function
 	    block_print(i, j, idx2[j]);
+	    printf("----------\n");
         }
     }
 }
@@ -775,33 +776,58 @@ void BSRMatrix::add_value(int row, int col, double value)
 
 void BSRMatrix::add_block(int row, int col, std::vector<double>& values)
 {
-    printf("Currently not implemented\n");
-    return;
+    //printf("Currently not implemented\n");
+    //return;
+
+    // Only add correct number of elements for block if values is longer than
+    // block size
+    if (values.size() > b_size) values.erase(values.begin()+b_size, values.end());
+
+    // Add zeros to end of values vector if smaller than block size
+    if (values.size() < b_size)
+    {
+        for(int k=values.size(); k<b_size; k++)
+	{
+            values.push_back(0.0);
+	}
+    }
 
     int start, end, j, data_offset;
     start = idx1[row];
     end = idx1[row+1];
 
-    // Update indptr
-    while(j < end)
+    printf("start: %d end: %d\n", start, end);
+
+    data_offset = idx1[row] * b_size;
+
+    // Update cols vector and data offset
+    if(col > idx2[end])
     {
-	// Fix this line here because vector takes an iterator
-	// j is not an iterator, it's a position in the array 
-        //if(col < idx2[j]) idx2.insert(j, col);
-	j++;
+        idx2.insert(idx2.begin()+end, col);
+	data_offset += b_size * (end-start);
+    }
+    else if(col < idx2[start]) idx2.insert(idx2.begin()+start, col);
+    else
+    {
+        while(j < end)
+        {
+            if(col < idx2[j])
+            {
+                idx2.insert(idx2.begin()+j, col);
+		data_offset += b_size * (j-start);
+            }
+	    else j++;
+        }
     }
 
     // Update rowptr
-    for(int i=row+1; i<n_rows/b_rows; i++){
+    for(int i=row+1; i<idx1.size(); i++){
         idx1[i]++;
     }
 
-    // Update vals array
-    data_offset = idx1[row] * b_size;
-    //**** THIS ISN'T CORRECT EITHER. FIX THIS
-    //vals.insert(data_offset, values.begin(), values.end());
+    vals.insert(vals.begin()+data_offset, values.begin(), values.end());
 
-    // Update matrix variablees
+    // Update matrix variables
     nnz += b_size;
     n_blocks++;
 }
