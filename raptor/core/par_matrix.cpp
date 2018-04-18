@@ -446,9 +446,10 @@ void ParCSCMatrix::copy(ParCOOMatrix* A)
     ParMatrix::copy(A);
 }
 
+/*
 void ParBSRMatrix::copy(ParCSRMatrix* A)
 {
-    /*if (on_proc)
+    if (on_proc)
     {   
         delete on_proc;
     }
@@ -459,13 +460,13 @@ void ParBSRMatrix::copy(ParCSRMatrix* A)
     on_proc = new CSRMatrix((CSRMatrix*) A->on_proc);
     off_proc = new CSRMatrix((CSRMatrix*) A->off_proc);
 
-    ParMatrix::copy(A);*/
+    ParMatrix::copy(A);
     printf("Currently not implemented.\n");
 }
 
 void ParBSRMatrix::copy(ParCSCMatrix* A)
 {
-    /*if (on_proc)
+    if (on_proc)
     {   
         delete on_proc;
     }
@@ -476,13 +477,13 @@ void ParBSRMatrix::copy(ParCSCMatrix* A)
     on_proc = new CSRMatrix((CSCMatrix*) A->on_proc);
     off_proc = new CSRMatrix((CSCMatrix*) A->off_proc);
 
-    ParMatrix::copy(A);*/
+    ParMatrix::copy(A);
     printf("Currently not implemented.\n");
 }
 
 void ParBSRMatrix::copy(ParCOOMatrix* A)
 {
-    /*if (on_proc)
+    if (on_proc)
     {   
         delete on_proc;
     }
@@ -494,9 +495,10 @@ void ParBSRMatrix::copy(ParCOOMatrix* A)
     on_proc = new CSRMatrix((COOMatrix*) A->on_proc);
     off_proc = new CSRMatrix((COOMatrix*) A->off_proc);
 
-    ParMatrix::copy(A);*/
+    ParMatrix::copy(A);
     printf("Currently not implemented.\n");
 }
+*/
 
 ParMatrix* ParCOOMatrix::transpose()
 {
@@ -649,9 +651,9 @@ ParMatrix* ParCSCMatrix::transpose()
     // NOT IMPLEMENTED
     return NULL;
 }
-
+/*
 ParMatrix* ParBSRMatrix::transpose()
 {
     // NOT IMPLEMENTED
     return NULL;
-}
+}*/

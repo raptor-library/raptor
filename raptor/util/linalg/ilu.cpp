@@ -7,31 +7,31 @@
 using namespace raptor;
 
 
-CSRMatrix* COOMatrix::ilu_k(int lof)
+Matrix* COOMatrix::ilu_k(int lof)
 {
 	printf("Function not implemented for COO type\n");
 	return NULL;
 }
 
-CSRMatrix* COOMatrix::ilu_levels()
+Matrix* COOMatrix::ilu_levels()
 {
 	printf("Function not implemented for COO type\n");
 	return NULL;
 }
 
-CSRMatrix* COOMatrix::ilu_sparsity(CSRMatrix* levls, int lof)
+Matrix* COOMatrix::ilu_sparsity(Matrix* levls, int lof)
 {
 	printf("Function not implemented for COO type\n");
 	return NULL;
 }
 
-CSRMatrix* COOMatrix::ilu_symbolic(int lof)
+Matrix* COOMatrix::ilu_symbolic(int lof)
 {
 	printf("Function not implemented for COO type\n");
 	return NULL;
 }
 
-std::vector<double>& COOMatrix::ilu_numeric(CSRMatrix* sparsity)
+std::vector<double>& COOMatrix::ilu_numeric(Matrix* sparsity)
 {
 	printf("Function not implemented for COO type\n");
 	std::vector<double> emp;
@@ -39,10 +39,10 @@ std::vector<double>& COOMatrix::ilu_numeric(CSRMatrix* sparsity)
 }
 
 
-CSRMatrix* CSRMatrix::ilu_k(int lof)
+Matrix* CSRMatrix::ilu_k(int lof)
 {
 	printf("Begin ilu symbolic phase \n");
-	CSRMatrix* sparsity = ilu_symbolic(lof);
+	Matrix* sparsity = ilu_symbolic(lof);
 
 	printf("\n");
 	
@@ -73,17 +73,17 @@ CSRMatrix* CSRMatrix::ilu_k(int lof)
 	//return factors;
 }
 
-CSRMatrix* CSRMatrix::ilu_symbolic(int lof)
+Matrix* CSRMatrix::ilu_symbolic(int lof)
 {
-	CSRMatrix* levels = this->ilu_levels();
-	CSRMatrix* sparsity = this->ilu_sparsity(levels, lof);
+	Matrix* levels = this->ilu_levels();
+	Matrix* sparsity = this->ilu_sparsity(levels, lof);
 	return sparsity;
 }
 
-CSRMatrix* CSRMatrix::ilu_sparsity(CSRMatrix* levls, int lof)
+Matrix* CSRMatrix::ilu_sparsity(Matrix* levls, int lof)
 {
 	//printf("Begin ilu sparsity \n");
-	CSRMatrix* sparsity = new CSRMatrix(levls->n_rows,levls->n_cols);
+	Matrix* sparsity = new CSRMatrix(levls->n_rows,levls->n_cols);
 
 	sparsity->n_rows = levls->n_rows;
 	sparsity->n_cols = levls->n_cols;
@@ -132,7 +132,7 @@ CSRMatrix* CSRMatrix::ilu_sparsity(CSRMatrix* levls, int lof)
 	return sparsity; 
 }
 
-std::vector<double>& CSRMatrix::ilu_numeric(CSRMatrix* sparsity){
+std::vector<double>& CSRMatrix::ilu_numeric(Matrix* sparsity){
 
 	int m = n_rows;
 	int n = n_cols;
@@ -310,10 +310,10 @@ std::vector<double>& CSRMatrix::ilu_numeric(CSRMatrix* sparsity){
 	return factors;
 }
 
-CSRMatrix* CSRMatrix::ilu_levels()
+Matrix* CSRMatrix::ilu_levels()
 {
 	//printf("Begin ilu levels \n");
-	CSRMatrix * levls = new CSRMatrix(n_rows,n_cols);
+	Matrix * levls = new CSRMatrix(n_rows,n_cols);
 
 	//initialize vectors for final levels matrix
 	levls->n_rows = n_rows;
@@ -684,37 +684,443 @@ CSRMatrix* CSRMatrix::ilu_levels()
 }
 
 
-CSRMatrix* CSCMatrix::ilu_k(int lof)
+Matrix* CSCMatrix::ilu_k(int lof)
 {
 	printf("Function not implemented \n");
 	return NULL;
 }
 
-CSRMatrix* CSCMatrix::ilu_levels()
+Matrix* CSCMatrix::ilu_levels()
 {
 	printf("Function not implemented \n");
 	return NULL;
 }
 
 
-CSRMatrix* CSCMatrix::ilu_sparsity(CSRMatrix* levls, int lof)
+Matrix* CSCMatrix::ilu_sparsity(Matrix* levls, int lof)
 {
 	printf("Function not implemented \n");
 	return NULL;
 }
 
-CSRMatrix* CSCMatrix::ilu_symbolic(int lof)
+Matrix* CSCMatrix::ilu_symbolic(int lof)
 {
 	printf("Function not implemented \n");
 	return NULL;
 }
 
-std::vector<double>& CSCMatrix::ilu_numeric(CSRMatrix* sparsity)
+std::vector<double>& CSCMatrix::ilu_numeric(Matrix* sparsity)
 {
 	printf("Function not implemented \n");
 	std::vector<double> emp;
 	return emp;
 }
+
+
+
+
+///////////////////////////BSR////////////////////////// 
+Matrix* BSRMatrix::ilu_k(int lof)
+{
+	printf("Function not implemented \n");
+	return NULL;
+}
+
+Matrix* BSRMatrix::ilu_levels()
+{
+	//printf("Begin ilu levels \n");
+	Matrix * levls = new BSRMatrix(n_rows,n_cols,b_rows,b_cols);
+
+	//initialize vectors for final levels matrix
+	//levls->n_rows = n_rows;
+	//levls->n_cols = n_cols;
+	//levls->b_rows = b_rows;
+	//levls->b_cols = b_cols;
+	//levls->b_size = b_size;
+	//levls->nnz = 0;
+	int levls_nnz_dense = n_rows*n_cols;
+
+	
+	levls->idx1.resize(n_rows/b_rows+1);
+	if(levls_nnz_dense){
+		levls->idx2.reserve(levls_nnz_dense);
+		levls->vals.reserve(levls_nnz_dense);
+	}
+
+	levls->idx1[0] = 0;
+
+	//copy first row indices into final levls matrix cz that doesn't change
+	int start_r = idx1[0];
+	int end_r = idx1[1];
+	for(int i = start_r; i<end_r;i++){
+		levls->idx2.push_back(idx2[i]);
+		levls->vals.push_back(0);
+		levls->nnz = levls->nnz + 1;
+		//printf("First row: Added %lf at 0,%d\n",val,col);
+	}
+	levls->idx1[1] = levls->nnz;
+	
+	/*	
+	printf("Levls idx1 = ");
+    for (auto i: levls->idx1)
+		printf("%d ",i);
+	printf("\n");
+  
+	printf("Levls idx2 = ");
+    for (auto i: levls->idx2)
+		printf("%d ",i);
+	printf("\n");
+  	
+	printf("Levls vals = ");
+    for (auto i: levls->vals)
+		printf("%e ",i);
+	printf("\n");
+	*/
+
+	//temporary vector for level of fills of current row
+	std::vector <int>  current_row_levls;
+	std::vector <int>  current_row_idx2;
+	std::vector <int>  temp_row_levls;
+	std::vector <int>  temp_row_idx2;
+
+	//dummy pointers for swapping
+	std::vector <int>  dummy_row_levls;
+	std::vector <int>  dummy_row_idx2;
+/////////////////////////////////////////
+//////////// ASK AMANDA HOW TO ACCESS NNZ PER ROW
+	current_row_levls.reserve(n_cols);
+	current_row_idx2.reserve(n_cols);
+	temp_row_levls.reserve(n_cols);
+	temp_row_idx2.reserve(n_cols);
+	dummy_row_levls.reserve(n_cols);
+	dummy_row_idx2.reserve(n_cols);
+
+	int start_ri, end_ri;
+		
+	//begin ILU process
+	for(int row_i = 1; row_i < n_rows;row_i++){
+		//get row i
+		//printf("row i = %d\n",row_i);
+
+		start_ri = idx1[row_i];
+		end_ri = idx1[row_i+1];
+		int nnz_i = 0;
+		int temp_nnz_i = 0;
+		int current_row_ind = 0;
+
+		//initialize temporary levls and idx2 vectors for row i
+		for(int j = start_ri; j < end_ri; j++){
+			current_row_levls.push_back(0);
+			current_row_idx2.push_back(idx2[j]);
+			nnz_i++;
+		}
+
+		//printf("Initialize temp levls and idx2 for row i\n");
+		/*
+		printf("current row Levls = ");
+    	for (auto i: current_row_levls)
+			printf("%d ",i);
+		printf("\n");
+  	
+		printf("current row idx2 = ");
+    	for (auto i: current_row_idx2)
+			printf("%d ",i);
+		printf("\n");
+  		
+		printf("\n");
+		*/
+
+		for(int j = start_ri; j < end_ri; j++){
+			//printf("j = %d\n",j);
+
+			int col_k = idx2[j];
+			
+			//printf("col k = %d\n", col_k);
+			//since Gaussian elimination k loop goes from 0 to i-1
+			if(col_k >= row_i){
+				//printf("exit k loop\n");
+				break;
+			}
+			
+			//Add multiplier levels to final matrix 
+			//printf("multiplier\n");
+			/*
+			printf("current row Levls = ");
+    		for (auto i: current_row_levls)
+				printf("%d ",i);
+			printf("\n");
+  	
+			printf("current row idx2 = ");
+    		for (auto i: current_row_idx2)
+				printf("%d ",i);
+			printf("\n");
+  		
+			printf("\n");
+			*/
+			
+			levls->vals.push_back(current_row_levls[current_row_ind]);
+			levls->idx2.push_back(current_row_idx2[current_row_ind]);
+			/*
+			printf("Levls idx1 = ");
+    		for (auto i: levls->idx1)
+				printf("%d ",i);
+			printf("\n");
+  
+			printf("Levls idx2 = ");
+    		for (auto i: levls->idx2)
+				printf("%d ",i);
+			printf("\n");
+  	
+			printf("Levls vals = ");
+    		for (auto i: levls->vals)
+				printf("%e ",i);
+			printf("\n");
+			*/
+			current_row_ind ++;
+			levls->nnz = levls->nnz + 1;		
+
+
+			//get row k from updated levls matrix
+			int start_rk = levls->idx1[col_k];
+			int end_rk = levls->idx1[col_k+1];
+			
+			//temp variables
+			int ind_i = -1;
+			int ind_k = -1;
+			
+			int col_ij = -1;
+			int col_kj = -1;
+			int col_ik = col_k;
+
+			int lev_ij = 100000;
+			int lev_ik = 100000;
+			int lev_kj = 100000;
+			
+			//printf("Update rest\n");
+			//get starting indices for rows i and k such that col >=k+1
+			for(int i = 0; i < nnz_i; i++){
+				int col = current_row_idx2[i];
+				if(col == col_k)
+					lev_ik = current_row_levls[i];
+				if(col >= col_k+1){
+					ind_i = i;
+					col_ij = current_row_idx2[i];
+					break;
+				}
+			}
+
+
+			for(int i = start_rk; i < end_rk; i++){
+				int col = levls->idx2[i];
+				if(col >=col_k+1){
+					ind_k = i;
+					col_kj = levls->idx2[i];
+					break;
+				}
+			}
+
+			//check if reached end of row k
+			if(ind_k == -1)
+				col_kj = n_rows + 1;
+
+			int current_col = -1;
+			int current_row = -1;
+			//printf("\n");
+			//printf("indices before while loop");
+			//printf("ind i = %d\n",ind_i);
+			//printf("ind k = %d\n",ind_k);
+			//printf("\n");
+
+			while(1){
+				//printf("While iteration \n");
+				//printf("col ij = %d\n",col_ij);
+				//printf("col ik = %d\n",col_ik);
+				//printf("col kj = %d\n",col_kj);
+				//printf("ind i = %d\n",ind_i);
+				//printf("ind k = %d\n",ind_k);
+				//printf("\n");
+				/*
+				printf("temp row idx2 = ");
+    			for (auto i: temp_row_idx2)
+					printf("%d ",i);
+				printf("\n");
+  	
+				printf("temp row levls = ");
+    			for (auto i: temp_row_levls)
+					printf("%d ",i);
+				printf("\n");
+  		
+				printf("\n");
+
+
+				printf("current row idx2 = ");
+    			for (auto i: current_row_idx2)
+					printf("%d ",i);
+				printf("\n");
+  	
+				printf("current row levls = ");
+    			for (auto i: current_row_levls)
+					printf("%d ",i);
+				printf("\n");
+  		
+				printf("\n");
+				*/
+
+		
+				if((col_ij >= n_rows) and (col_kj >= n_rows)){
+					//printf("exit j loop\n");
+					break;
+				}
+
+				if(col_ij == col_kj){
+					//printf("col(i,j) = col(k,j), equal\n");
+					current_col = col_ij;
+					current_row = row_i;
+
+					lev_ij = current_row_levls[ind_i];
+					//printf("lev(i,j) = %d\n",lev_ij);
+					lev_kj = levls->vals[ind_k];
+
+					//printf("lev(k,j) = %d\n",lev_kj);
+					lev_ij = min(lev_ij, lev_ik+lev_kj+1);
+
+					//printf("updated lev(i,j) = %d\n",lev_ij);
+					if(lev_ij < 10000){
+						temp_row_levls.push_back(lev_ij);
+						temp_row_idx2.push_back(current_col);
+						temp_nnz_i++;
+					}
+
+					ind_i++;
+					ind_k++;
+				}
+
+				else if(col_ij<col_kj){
+					//printf("col(i,j) < col(k,j)\n");
+					current_col=col_ij;
+					current_row=row_i;
+
+					lev_ij = current_row_levls[ind_i];
+
+					//printf("updated lev(i,j) = %d\n",lev_ij);
+					if(lev_ij < 10000){
+						temp_row_levls.push_back(lev_ij);
+						temp_row_idx2.push_back(current_col);
+						temp_nnz_i++;
+					}
+
+					ind_i++;
+				}
+
+				else if(col_ij>col_kj){
+					//printf("col(i,j) > col(k,j)\n");
+					current_col = col_kj;
+					current_row = col_k;
+					
+					lev_kj = levls->vals[ind_k];
+
+					//printf("lev(k,j) = %d\n",lev_kj);
+					lev_ij = lev_ik + lev_kj + 1;
+					
+					//printf("updated lev(i,j) = %d\n",lev_ij);
+					if(lev_ij < 10000){
+						temp_row_levls.push_back(lev_ij);
+						temp_row_idx2.push_back(current_col);
+						temp_nnz_i++;
+					}
+
+					ind_k++;
+				}
+
+				//printf("ind i = %d\n",ind_i);
+				//printf("nnz i = %d\n",nnz_i);
+				if((ind_i < nnz_i) && (ind_i != -1))
+					col_ij=current_row_idx2[ind_i];
+				else
+					col_ij = n_rows+1;
+
+				//printf("ind k = %d\n",ind_k);
+				//printf("end rk = %d\n",end_rk);
+				if((ind_k < end_rk) && (ind_k != -1))
+					col_kj=levls->idx2[ind_k];
+				else
+					col_kj = n_rows+1;
+				/*
+				printf("temp row levls = ");
+    			for (auto i: temp_row_levls)
+					printf("%d ",i);
+				printf("\n");
+  	
+				printf("temp row idx2 = ");
+    			for (auto i: temp_row_idx2)
+					printf("%d ",i);
+				printf("\n");
+				*/
+			}
+			
+			current_row_levls = temp_row_levls;
+			current_row_idx2 = temp_row_idx2;
+			nnz_i = temp_nnz_i;
+			
+			temp_row_levls.clear();
+			temp_row_idx2.clear();
+			temp_nnz_i = 0; 	
+		}
+		
+		//Add current row levels to final levls matrix
+		for(int i = 0; i<nnz_i;i++){
+			levls->idx2.push_back(current_row_idx2[i]);
+			levls->vals.push_back(current_row_levls[i]);
+			levls->nnz = levls->nnz + 1;
+			//printf("First row: Added %lf at 0,%d\n",val,col);
+		}
+
+		current_row_levls.clear();
+		current_row_idx2.clear();
+
+		levls->idx1[row_i+1] = levls->nnz;
+
+	}//end i loop
+ 	
+/*	
+	printf("Levls rowptr = ");
+    for (auto i: levls->idx1)
+		printf("%d ",i);
+	printf("\n");
+  
+	printf("Levls cols = ");
+    for (auto i: levls->idx2)
+		printf("%d ",i);
+	printf("\n");
+  	
+	printf("Levls data = ");
+    for (auto i: levls->vals)
+		printf("%.2f ",i);
+	printf("\n");
+*/	
+	return levls;    
+}
+
+
+Matrix* BSRMatrix::ilu_sparsity(Matrix* levls, int lof)
+{
+	printf("Function not implemented \n");
+	return NULL;
+}
+
+Matrix* BSRMatrix::ilu_symbolic(int lof)
+{
+	printf("Function not implemented \n");
+	return NULL;
+}
+
+std::vector<double>& BSRMatrix::ilu_numeric(Matrix* sparsity)
+{
+	printf("Function not implemented \n");
+	std::vector<double> emp;
+	return emp;
+}
+
 
 
 /*

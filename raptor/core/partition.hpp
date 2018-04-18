@@ -108,7 +108,7 @@ namespace raptor
         }
     }
 
-    Partition(index_t _global_num_rows, index_t _global_num_cols,
+/*    Partition(index_t _global_num_rows, index_t _global_num_cols,
             index_t _brows, index_t _bcols, Topology* _topology = NULL)
     {
         int rank, num_procs;
@@ -183,7 +183,7 @@ namespace raptor
             topology->num_shared++;
         }
     }
-
+*/
     Partition(index_t _global_num_rows, index_t _global_num_cols,
             int _local_num_rows, int _local_num_cols,
             index_t _first_local_row, index_t _first_local_col,

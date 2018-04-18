@@ -66,7 +66,7 @@ int main(int argc, char* argv[]){
 
 	//CSRMatrix* levls_csr = new CSRMatrix(levls);
 	
-	CSRMatrix* factors = A->ilu_k(1);
+	Matrix* factors = A->ilu_k(1);
 	
 	printf("After ilu k funtion returns\n");	
 	//printf("ILU factors: \n");
