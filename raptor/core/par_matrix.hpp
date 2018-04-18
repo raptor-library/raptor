@@ -779,11 +779,17 @@ namespace raptor
 	}
 
         // Initialize empty diag/offd matrices
-        on_proc = new COOMatrix(partition->local_num_rows, partition->local_num_cols, 
+        /*on_proc = new COOMatrix(partition->local_num_rows, partition->local_num_cols, 
                 partition->local_num_rows*5);
         off_proc = new COOMatrix(partition->local_num_rows, partition->global_num_cols, 
-                partition->local_num_rows*5);
+                partition->local_num_rows*5);*/
 
+	on_proc = new BSRMatrix(partition->local_num_rows, partition->local_num_cols,
+			_brows, _bcols);
+	off_proc = new BSRMatrix(partition->local_num_rows, partition->global_num_cols,
+			_brows, _bcols);
+
+        // ************************************************
         // Add values to on/off proc matrices
         on_proc->idx1[0] = 0;
         off_proc->idx1[0] = 0;

@@ -93,8 +93,54 @@ data_t half_inner_contig(ParVector &x, ParVector &y, int half, int part_global){
     return ((1.0*x.global_n)/part_global) * inner_prod;
 }
 
+// Sequential Inner Product for Testing Reproducibility
+data_t sequential_inner(ParVector &x, ParVector &y){
+    int rank, num_procs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
+    data_t inner_prod = 0.0;
 
+    // Check if single process
+    if (num_procs <= 1){
+	if (x.local_n != y.local_n){
+            printf("Error. Dimensions do not match.\n");
+	    exit(-1);
+	}
+	inner_prod = x.local.inner_product(y.local);
+	return inner_prod;
+    }
+
+    if (rank > 1)
+    {
+        MPI_Recv(&inner_prod, 1, MPI_DATA_T, rank-1, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
+
+    for(int i=0; i<x.local_n; i++){
+        inner_prod += x.local[i] * y.local[i];
+    }
+
+    if (rank < num_procs-1)
+    {
+        MPI_Send(&inner_prod, 1, MPI_DATA_T, rank+1, 1, MPI_COMM_WORLD);
+    }
+
+    MPI_Bcast(&inner_prod, 1, MPI_DATA_T, num_procs-1, MPI_COMM_WORLD);
+
+    return inner_prod;
+}
+
+data_t sequential_norm(ParVector &x, index_t p){
+    int rank, num_procs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+    data_t norm;
+
+    norm = sequential_inner(x, x);
+
+    return pow(norm, 1./p);
+}
 
 
 

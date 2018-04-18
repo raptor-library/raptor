@@ -794,9 +794,6 @@ void BSRMatrix::add_block(int row, int col, std::vector<double>& values)
     int start, end, j, data_offset;
     start = idx1[row];
     end = idx1[row+1];
-
-    printf("start: %d end: %d\n", start, end);
-
     data_offset = idx1[row] * b_size;
 
     // Update cols vector and data offset
@@ -824,6 +821,7 @@ void BSRMatrix::add_block(int row, int col, std::vector<double>& values)
         idx1[i]++;
     }
 
+    // Update vals array
     vals.insert(vals.begin()+data_offset, values.begin(), values.end());
 
     // Update matrix variables
