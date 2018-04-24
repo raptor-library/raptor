@@ -498,6 +498,58 @@ void ParBSRMatrix::copy(ParCOOMatrix* A)
     printf("Currently not implemented.\n");
 }
 
+void ParCOOMatrix::add_block(int global_row_coarse, int global_col_coarse, std::vector<double>& data){
+    printf("currently not implemented.\n");
+}
+
+void ParCSRMatrix::add_block(int global_row_coarse, int global_col_coarse, std::vector<double>& data){
+    printf("currently not implemented.\n");
+}
+
+void ParCSCMatrix::add_block(int global_row_coarse, int global_col_coarse, std::vector<double>& data){
+    printf("currently not implemented.\n");
+}
+
+// THIS FUNCTION NEEDS TO BE TESTED
+void ParBSRMatrix::add_block(int global_row_coarse, int global_col_coarse, std::vector<double>& data){
+    // Takes global row and global column of block in coarse matrix
+    
+    // Global indices for block
+    int first_row = global_row_coarse * b_rows; // first global row
+    int last_row = first_row + b_rows - 1; // last global row
+    int first_col = global_col_coarse * b_cols; // first global col
+    int last_col = first_col + b_cols - 1; // last global col 
+
+    // local block row index in coarse matrix
+    int local_block_row = global_row_coarse % (partition->local_num_rows / b_rows);
+    int local_block_col; // local block col index in coarse matrix
+
+    // Check if block belongs to this process - then add to on_proc or off_proc
+    if (first_row >= partition->first_local_row &&
+        last_row <= partition->last_local_row)
+    {
+        if (first_col >= partition->first_local_col &&
+            last_col <= partition->last_local_col)
+        {
+	    local_block_col = global_col_coarse % (partition->local_num_cols / b_cols);
+            on_proc->add_block(local_block_row, local_block_col, data);
+	}
+	else
+	{
+            // Check to see if block is before on_proc columns or after to 
+	    // determine whether local_block_col changes or stays the same
+            if (last_col < partition->last_local_col) local_block_col = global_col_coarse;
+            else local_block_col = global_col_coarse - (partition->local_num_cols / b_cols);
+            off_proc->add_block(local_block_row, local_block_col, data);
+	}
+
+	// Update local nnz
+	local_nnz += b_size;
+    }
+
+}
+
+
 ParMatrix* ParCOOMatrix::transpose()
 {
     // NOT IMPLEMENTED

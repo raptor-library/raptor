@@ -180,6 +180,10 @@ void COOMatrix::add_value(int row, int col, double value)
     nnz++;
 }
 
+void COOMatrix::add_block(int row, int col, std::vector<double>& values){
+    printf("Not implemented.\n");
+}
+
 void COOMatrix::copy(const COOMatrix* A)
 {
     n_rows = A->n_rows;
@@ -417,6 +421,10 @@ void CSRMatrix::add_value(int row, int col, double value)
     idx2.push_back(col);
     vals.push_back(value);
     nnz++;
+}
+
+void CSRMatrix::add_block(int row, int col, std::vector<double>& values){
+    printf("Not implemented.\n");
 }
 
 void CSRMatrix::copy(const COOMatrix* A)
@@ -872,6 +880,10 @@ void CSCMatrix::add_value(int row, int col, double value)
     idx2.push_back(row);
     vals.push_back(value);
     nnz++;
+}
+
+void CSCMatrix::add_block(int row, int col, std::vector<double>& values){
+    printf("Not implemented.\n");
 }
 
 void CSCMatrix::copy(const COOMatrix* A)

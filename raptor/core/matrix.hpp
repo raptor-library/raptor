@@ -226,6 +226,8 @@ namespace raptor
 
     Matrix* subtract(Matrix* B);
 
+    virtual void add_block(int row, int col, std::vector<double>& values) = 0;
+
     void resize(int _n_rows, int _n_cols);
 
     virtual Matrix* transpose() = 0;
@@ -518,6 +520,8 @@ namespace raptor
     void mult_append_neg(Vector& x, Vector& b);
     void mult_append_T(Vector& x, Vector& b);
     void mult_append_neg_T(Vector& x, Vector& b);
+
+    void add_block(int row, int col, std::vector<double>& values);
 
     format_t format()
     {
@@ -836,6 +840,8 @@ namespace raptor
     CSRMatrix* fit_candidates(data_t* B, data_t* R, int num_candidates, 
             double tol = 1e-10);
 
+    void add_block(int row, int col, std::vector<double>& values);
+
     format_t format()
     {
         return CSR;
@@ -1124,6 +1130,8 @@ namespace raptor
     CSRMatrix* mult_T(const CSRMatrix* A);
     CSRMatrix* mult_T(const CSCMatrix* A);
     CSRMatrix* mult_T(const COOMatrix* A);
+
+    void add_block(int row, int col, std::vector<double>& values);
 
     void jacobi(Vector& x, Vector& b, Vector& tmp, double omega = .667);    
 

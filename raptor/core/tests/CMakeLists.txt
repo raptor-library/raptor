@@ -22,8 +22,12 @@ if (WITH_MPI)
     add_executable(test_par_transpose test_par_transpose.cpp)
     target_link_libraries(test_par_transpose raptor ${MPI_LIBRARIES} googletest pthread )
     add_test(ParTransposeTest_1 mpirun -n 1 ./test_par_transpose)
-    add_test(ParTransposeTest_16 mpirun -n 16 ./test_par_transpose)
+    add_test(ParTransposeTest_16 mpirun -n 16 ./test_par_transpose)    
 endif ()
+
+add_executable(test_par_bsr test_par_bsr.cpp)
+target_link_libraries(test_par_bsr raptor ${MPI_LIBRARIES} googletest pthread )
+add_test(ParBSRTest ./test_par_bsr)
 
 add_executable(test_bsr_matrix test_bsr_matrix.cpp)
 target_link_libraries(test_bsr_matrix raptor googletest pthread )
