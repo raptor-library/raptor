@@ -142,6 +142,7 @@ namespace raptor
         global_num_rows = partition->global_num_rows;
         global_num_cols = partition->global_num_cols;
         on_proc_num_cols = partition->local_num_cols;
+	off_proc_num_cols = global_num_cols - on_proc_num_cols;
         local_num_rows = partition->local_num_rows;
 
         comm = NULL;
@@ -264,10 +265,11 @@ namespace raptor
     ***** the local_to_global indices, and creates the parallel
     ***** communicator
     **************************************************************/
-    void finalize(bool create_comm = true);
+    void finalize(bool create_comm = true, int b_cols = 0); //b_cols added for BSR
 
     int* map_partition_to_local();
     void condense_off_proc();
+    void expand_off_proc(int b_cols); // to be used by BSR matrix class
 
     void residual(ParVector& x, ParVector& b, ParVector& r);
     void tap_residual(ParVector& x, ParVector& b, ParVector& r);

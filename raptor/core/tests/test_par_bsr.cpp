@@ -31,8 +31,6 @@ int main(int argc, char** argv)
     std::vector<std::vector<double>> off_blocks = {{1,0,0,1}, {2,0,0,0}, {3,0,1,0}};
     std::vector<std::vector<int>> off_indx = {{0,4}, {1,3}, {2,5}};
 
-    // TEST ADD_BLOCK()
-
     // Add on_proc blocks
     for (int i=0; i<on_blocks.size(); i++){
         A_par_bsr->add_block(on_indx[i][0], on_indx[i][1], on_blocks[i]);
@@ -42,10 +40,9 @@ int main(int argc, char** argv)
     for(int i=0; i<off_blocks.size(); i++){
         A_par_bsr->add_block(off_indx[i][0], off_indx[i][1], off_blocks[i]);
 	A_par_bsr->add_block(off_indx[i][0]+3, off_indx[i][1]-3, off_blocks[i]);
-    }
+    } 
 
-
-    for (int i=0; i<num_procs; i++){
+    /*for (int i=0; i<num_procs; i++){
         if (rank == i){
             printf("Proc %d\n", rank);
 	    printf("on_proc\n");
@@ -54,7 +51,7 @@ int main(int argc, char** argv)
 	    A_par_bsr->off_proc->print();
 	}
 	MPI_Barrier(MPI_COMM_WORLD);
-    }
+    }*/
 
     delete A_par_bsr;
 
@@ -72,6 +69,10 @@ TEST(ParMatrixTest, TestsInCore)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     ParBSRMatrix* A_par_bsr = new ParBSRMatrix();
+
+    // INSERT BLOCKS INTO MATRIX
+    // TEST TO COMPARE TO DENSE MATRIX
+    // TEST FOR SPMV
 
     delete A_par_bsr;
 

@@ -24,6 +24,9 @@ using namespace raptor;
  **************************************************************/
 void ParMatrix::mult(ParVector& x, ParVector& b)
 {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
     spmv_data.time -= MPI_Wtime();
     // Check that communication package has been initialized
     if (comm == NULL)

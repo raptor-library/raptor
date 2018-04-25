@@ -852,7 +852,8 @@ void BSRMatrix::add_block(int row, int col, std::vector<double>& values)
 **************************************************************/
 void BSRMatrix::sort()
 {
-    printf("Currently not implemented\n");
+    //printf("Currently not implemented\n");
+    return;
 }
 
 void BSRMatrix::move_diag()

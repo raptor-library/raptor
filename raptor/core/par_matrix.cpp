@@ -108,7 +108,30 @@ void ParMatrix::condense_off_proc()
     }
 }
 
-void ParMatrix::finalize(bool create_comm)
+// Expands the off_proc_column_map for BSR matrices to hold the
+// global columns in off process with non-zeros, not just the
+// coarse block columns
+void ParMatrix::expand_off_proc(int b_cols)
+{
+    int start, end;
+    std::vector<int> new_map;
+
+    for(int i=0; i<off_proc_column_map.size(); i++)
+    {
+	start = off_proc_column_map[i] * b_cols;
+	if (start >= partition->first_local_col) start += partition->local_num_cols;
+	end = start + b_cols;
+        for(int j=start; j<end; j++)
+	{
+            new_map.push_back(j);
+	}
+    }
+
+    off_proc_column_map.clear();
+    std::copy(new_map.begin(), new_map.end(), std::back_inserter(off_proc_column_map));
+}
+
+void ParMatrix::finalize(bool create_comm, int b_cols)
 {
     on_proc->sort();
     off_proc->sort();
@@ -145,8 +168,12 @@ void ParMatrix::finalize(bool create_comm)
     off_proc->resize(local_num_rows, off_proc_num_cols);
     local_nnz = on_proc->nnz + off_proc->nnz;
 
-    if (create_comm)
+    // If BSR matrix - correct the off_proc_column_map
+    if (b_cols) expand_off_proc(b_cols);
+
+    if (create_comm){
         comm = new ParComm(partition, off_proc_column_map);
+    }
     else
         comm = new ParComm(partition);
 }
