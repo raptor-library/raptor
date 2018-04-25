@@ -15,13 +15,20 @@ int main(int argc, char** argv)
     std::vector<double> vals = {1.0, 0.0, 2.0, 1.0, 6.0, 7.0, 8.0, 2.0, 1.0, 4.0, 5.0, 1.0,
                                 4.0, 3.0, 0.0, 0.0, 7.0, 2.0, 0.0, 0.0};
 
+    std::vector<std::vector<double>> blocks = {{1.0, 0.0, 2.0, 1.0}, {6.0, 7.0, 8.0, 2.0},
+	    		{1.0, 4.0, 5.0, 1.0}, {4.0, 3.0, 0.0, 0.0}, {7.0, 2.0, 0.0, 0.0}};
+
+    std::vector<std::vector<int>> indx = {{0,0}, {0,1}, {1,1}, {2,1}, {2,2}};
+
     int rows_in_block = 2;
     int cols_in_block = 2;
     int n = 6;
 
     // Create BSR Matrix (6x6)
     BSRMatrix A_bsr(n, n, rows_in_block, cols_in_block, row_ptr, cols, vals);
+    BSRMatrix A2(n, n, rows_in_block, cols_in_block);
 
+    // Vectors for testing SpMV
     Vector x(6);
     Vector b(6);
     Vector r(6);
@@ -31,12 +38,12 @@ int main(int argc, char** argv)
    
     printf("nnz: %d, n_blocks: %d, n_rows: %d, n_cols %d\n\n", A_bsr.nnz, A_bsr.n_blocks, A_bsr.n_rows, A_bsr.n_cols);
 
-    printf("vals: %d, idx1: %d, idx2: %d\n\n", A_bsr.data().size(), A_bsr.row_ptr().size(), A_bsr.cols().size());
+    //printf("vals: %d, idx1: %d, idx2: %d\n\n", A_bsr.data().size(), A_bsr.row_ptr().size(), A_bsr.cols().size());
 
-    std::vector<int> rows = A_bsr.row_ptr();
-    std::vector<int> colss = A_bsr.cols();
+    //std::vector<int> rows = A_bsr.row_ptr();
+    //std::vector<int> colss = A_bsr.cols();
 
-    printf("rowptr: ");
+    /*printf("rowptr: ");
     for(int i=0; i<rows.size(); i++){
         printf(" %d", rows[i]);
     }
@@ -46,13 +53,49 @@ int main(int argc, char** argv)
     for(int i=0; i<colss.size(); i++){
         printf(" %d", colss[i]);
     }
-    printf("\n\n");
+    printf("\n\n");*/
 
     A_bsr.print();
 
     printf("\n\n");
 
-    std::vector<double> block = {1.0, 0.0, 2.0, 3.0};
+
+    std::vector<int> rows2 = A2.row_ptr();
+    std::vector<int> cols2 = A2.cols();
+
+    printf("rowptr: ");
+    for(int i=0; i<rows2.size(); i++){
+        printf(" %d", rows2[i]);
+    }
+    printf("\n");
+    printf("cols: ");
+    for(int i=0; i<cols2.size(); i++){
+        printf(" %d", cols2[i]);
+    }
+    printf("\n\n");
+
+    for(int i=0; i<blocks.size(); i++){
+        A2.add_block(indx[i][0], indx[i][1], blocks[i]);
+	A2.print();
+
+	rows2 = A2.row_ptr();
+	cols2 = A2.cols();
+
+        printf("rowptr: ");
+        for(int i=0; i<rows2.size(); i++){
+            printf(" %d", rows2[i]);
+        }
+        printf("\n");
+
+        printf("cols: ");
+        for(int i=0; i<cols2.size(); i++){
+            printf(" %d", cols2[i]);
+        }
+        printf("\n\n");
+    }
+
+
+    /*std::vector<double> block = {1.0, 0.0, 2.0, 3.0};
     A_bsr.add_block(1, 1, block);
 
     printf("nnz: %d, n_blocks: %d, n_rows: %d, n_cols %d\n\n", A_bsr.nnz, A_bsr.n_blocks, A_bsr.n_rows, A_bsr.n_cols);
@@ -62,6 +105,7 @@ int main(int argc, char** argv)
 
     printf("vals: %d, idx1: %d, idx2: %d\n\n", A_bsr.data().size(), A_bsr.row_ptr().size(), A_bsr.cols().size());
 
+    // For testing add_block function
     printf("rowptr: ");
     for(int i=0; i<rows.size(); i++){
         printf(" %d", rows[i]);
@@ -74,7 +118,7 @@ int main(int argc, char** argv)
     }
     printf("\n\n");
 
-    A_bsr.print();
+    A_bsr.print();*/
 
 
     /*printf("\n-----------------------\n");

@@ -108,6 +108,8 @@ namespace raptor
     virtual void remove_duplicates() = 0;
     virtual void add_value(int row, int col, double val) = 0;
 
+    virtual void print() = 0;
+
     virtual void copy(const COOMatrix* A) = 0;
     virtual void copy(const CSRMatrix* A) = 0;
     virtual void copy(const CSCMatrix* A) = 0;

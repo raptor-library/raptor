@@ -783,9 +783,6 @@ void BSRMatrix::add_value(int row, int col, double value)
 
 void BSRMatrix::add_block(int row, int col, std::vector<double>& values)
 {
-    //printf("Currently not implemented\n");
-    //return;
-
     // Only add correct number of elements for block if values is longer than
     // block size
     if (values.size() > b_size) values.erase(values.begin()+b_size, values.end());
@@ -805,12 +802,23 @@ void BSRMatrix::add_block(int row, int col, std::vector<double>& values)
     data_offset = idx1[row] * b_size;
 
     // Update cols vector and data offset
-    if(col > idx2[end])
+    if(idx2.size() < 1)
+    {
+        idx2.push_back(col);
+	data_offset = 0;
+    }
+    else if(start == end)
+    {
+        idx2.push_back(col);
+    }
+    else if(col > idx2[end-1])
     {
         idx2.insert(idx2.begin()+end, col);
 	data_offset += b_size * (end-start);
     }
-    else if(col < idx2[start]) idx2.insert(idx2.begin()+start, col);
+    else if(col < idx2[start]){
+        idx2.insert(idx2.begin()+start, col);
+    }
     else
     {
         while(j < end)
@@ -835,6 +843,7 @@ void BSRMatrix::add_block(int row, int col, std::vector<double>& values)
     // Update matrix variables
     nnz += b_size;
     n_blocks++;
+
 }
 
 /**************************************************************

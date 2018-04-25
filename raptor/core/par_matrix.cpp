@@ -512,6 +512,10 @@ void ParCSCMatrix::add_block(int global_row_coarse, int global_col_coarse, std::
 
 // THIS FUNCTION NEEDS TO BE TESTED
 void ParBSRMatrix::add_block(int global_row_coarse, int global_col_coarse, std::vector<double>& data){
+
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
     // Takes global row and global column of block in coarse matrix
     
     // Global indices for block
@@ -528,6 +532,7 @@ void ParBSRMatrix::add_block(int global_row_coarse, int global_col_coarse, std::
     if (first_row >= partition->first_local_row &&
         last_row <= partition->last_local_row)
     {
+	//printf("Before add block %d\n", rank);
         if (first_col >= partition->first_local_col &&
             last_col <= partition->last_local_col)
         {
@@ -543,6 +548,9 @@ void ParBSRMatrix::add_block(int global_row_coarse, int global_col_coarse, std::
             off_proc->add_block(local_block_row, local_block_col, data);
 	}
 
+	//printf("After add block %d\n", rank);
+        //printf("rank: %d, fr: %d, lr: %d, fc: %d, lc: %d\n", rank, first_row, last_row, first_col, last_col);
+        //printf("rank: %d, lbr: %d, lbc: %d\n", rank, local_block_row, local_block_col);
 	// Update local nnz
 	local_nnz += b_size;
     }

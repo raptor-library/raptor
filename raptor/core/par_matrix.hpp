@@ -695,6 +695,7 @@ namespace raptor
   class ParBSRMatrix : public ParMatrix
   {
   public:
+    // This constructor isn't working - not sure why
     ParBSRMatrix() : ParMatrix()
     {
         on_proc = new BSRMatrix(0, 0, 0, 0);
@@ -705,6 +706,7 @@ namespace raptor
 	b_size = 0;
     }
 
+    // This constructor works
     ParBSRMatrix(index_t glob_rows, 
             index_t glob_cols, int _brows, int _bcols,
             int blocks_per_row = 5) : ParMatrix(glob_rows, glob_cols, _brows, _bcols)
