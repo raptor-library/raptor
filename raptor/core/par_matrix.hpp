@@ -312,6 +312,7 @@ namespace raptor
     virtual void copy(ParCSRMatrix* A) = 0;
     virtual void copy(ParCSCMatrix* A) = 0;
     virtual void copy(ParCOOMatrix* A) = 0;
+    virtual void copy(ParBSRMatrix* A) = 0;
 
     virtual void add_block(int global_row_coarse, int global_col_coarse, std::vector<double>& data) = 0;
 
@@ -446,6 +447,8 @@ namespace raptor
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
+    void copy(ParBSRMatrix* A);
+
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
     void mult_T(ParVector& x, ParVector& b);
@@ -583,6 +586,7 @@ namespace raptor
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
+    void copy(ParBSRMatrix* A);
 
     ParCSRMatrix* strength(double theta = 0.0, int num_variables = 1, int* variables = NULL);
     ParCSRMatrix* aggregate();
@@ -683,6 +687,7 @@ namespace raptor
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
+    void copy(ParBSRMatrix* A);
 
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
@@ -697,18 +702,20 @@ namespace raptor
   class ParBSRMatrix : public ParMatrix
   {
   public:
-    // This constructor isn't working - not sure why
+    // Better to use a constructor with block size defined
     ParBSRMatrix() : ParMatrix()
     {
         on_proc = new BSRMatrix(0, 0, 0, 0);
         off_proc = new BSRMatrix(0, 0, 0, 0);
 
+	local_nnz = 0;
 	b_rows = 0;
 	b_cols = 0;
 	b_size = 0;
     }
 
-    // This constructor works
+    // Creates an empty ParBSRMatrix of size glob_rows x glob_cols with blocks of
+    // size _brows x _bcols
     ParBSRMatrix(index_t glob_rows, 
             index_t glob_cols, int _brows, int _bcols,
             int blocks_per_row = 5) : ParMatrix(glob_rows, glob_cols, _brows, _bcols)
@@ -727,32 +734,13 @@ namespace raptor
 		partition->global_num_cols, _brows, _bcols, 
                 blocks_per_row);
 
+	local_nnz = 0;
 	b_rows = _brows;
 	b_cols = _bcols;
 	b_size = b_rows * b_cols;
     }
 
-    ParBSRMatrix(index_t glob_rows, index_t glob_cols, int local_rows, 
-            int local_cols, int _brows, int _bcols, index_t first_row, index_t first_col, 
-	    Topology* topology = NULL, int blocks_per_row = 5) : ParMatrix(glob_rows, glob_cols,
-                local_rows, local_cols, first_row, first_col, topology)
-    {
-	if ( glob_rows % _brows != 0 || glob_cols % _bcols != 0)
-	{
-	    printf("Matrix dimensions must be divisible by block dimensions.\n");
-	    exit(-1);
-	}
-
-        on_proc = new BSRMatrix(partition->local_num_rows, 
-		partition->local_num_cols, _brows, _bcols, blocks_per_row);
-        off_proc = new BSRMatrix(partition->local_num_rows, 
-		partition->global_num_cols, _brows, _bcols, blocks_per_row);
-
-	b_rows = _brows;
-	b_cols = _bcols;
-	b_size = b_rows * b_cols;
-    }
-
+    // Creates a ParBSRMatrix based on a given partitioning
     ParBSRMatrix(Partition* part, int _brows, int _bcols,
             int blocks_per_row = 5) : ParMatrix(part)
     {
@@ -763,11 +751,14 @@ namespace raptor
 		partition->global_num_cols, _brows, _bcols,
                 blocks_per_row);
 
+        local_nnz = 0;
 	b_rows = _brows;
 	b_cols = _bcols;
 	b_size = b_rows * b_cols;
     }
 
+    // Creates a ParBSRMatrix based on a given partitioning and 
+    // given on_proc and off_proc matrices
     ParBSRMatrix(Partition* part, BSRMatrix* _on_proc, BSRMatrix* _off_proc) : ParMatrix(part)
     {
         on_proc = _on_proc;
@@ -775,10 +766,12 @@ namespace raptor
         on_proc_num_cols = on_proc->n_cols;
         off_proc_num_cols = off_proc->n_cols;
         local_num_rows = on_proc->n_rows;
-        finalize();
+	local_nnz = on_proc->nnz + off_proc->nnz;
+        finalize(true, _on_proc->b_cols);
     }
 
-
+    // Creates a ParBSRMatrix based on a partitioning with given number of columns
+    // in on_proc and off_proc
     ParBSRMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows,
 	    int _brows, int _bcols, int on_proc_cols, int off_proc_cols, 
 	    int blocks_per_row = 5) : ParMatrix(part, 
@@ -795,13 +788,15 @@ namespace raptor
         off_proc = new BSRMatrix(local_num_rows, off_proc_num_cols, _brows, _bcols, 
 		blocks_per_row);
 
+	local_nnz = 0;
 	b_rows = _brows;
 	b_cols = _bcols;
 	b_size = b_rows * b_cols;
     }
 
-    // FIX THIS CONSTRUCTOR *****************************************
-    ParBSRMatrix(index_t glob_rows, index_t glob_cols, int _brows, int _bcols,
+    // This constructor should take a dense data array and convert to a
+    // ParBSRMatrix
+    /*ParBSRMatrix(index_t glob_rows, index_t glob_cols, int _brows, int _bcols,
             data_t* values) : ParMatrix(glob_rows, glob_cols, _brows, _bcols)
     {
         if (glob_rows % _brows != 0 || glob_cols % _bcols != 0)
@@ -809,12 +804,6 @@ namespace raptor
             printf("Matrix dimensions must be divisible by block dimensions.\n");
 	    exit(-1);
 	}
-
-        // Initialize empty diag/offd matrices
-        /*on_proc = new COOMatrix(partition->local_num_rows, partition->local_num_cols, 
-                partition->local_num_rows*5);
-        off_proc = new COOMatrix(partition->local_num_rows, partition->global_num_cols, 
-                partition->local_num_rows*5);*/
 
 	on_proc = new BSRMatrix(partition->local_num_rows, partition->local_num_cols,
 			_brows, _bcols);
@@ -864,8 +853,7 @@ namespace raptor
 	b_rows = _brows;
 	b_cols = _bcols;
 	b_size = b_rows * b_cols;
-    }
-    // *********************************************  
+    }*/
 
     /*ParBSRMatrix(ParCSRMatrix* A)
     {
@@ -885,6 +873,7 @@ namespace raptor
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
+    void copy(ParBSRMatrix* A);
 
     // Takes coarse global block indices
     void add_block(int global_row_coarse, int global_col_coarse, std::vector<double>& data);
@@ -917,9 +906,9 @@ namespace raptor
 
     ParMatrix* transpose();
 
-    int b_rows;
-    int b_cols;
-    int b_size;
+    int b_rows; // rows in a block
+    int b_cols; // columns in a block
+    int b_size; // nnz per dense block
   };
 
 }

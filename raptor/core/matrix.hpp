@@ -113,6 +113,7 @@ namespace raptor
     virtual void copy(const COOMatrix* A) = 0;
     virtual void copy(const CSRMatrix* A) = 0;
     virtual void copy(const CSCMatrix* A) = 0;
+    virtual void copy(const BSRMatrix* A) = 0;
 
     void jacobi(Vector& x, Vector& b, Vector& tmp, double omega = .667);
     void gauss_seidel(Vector& x, Vector& b);
@@ -410,6 +411,22 @@ namespace raptor
     {
         copy(A);
     }
+
+    /**************************************************************
+    *****   COOMatrix Class Constructor
+    **************************************************************
+    ***** Constructs a COOMatrix from a BSRMatrix
+    *****
+    ***** Parameters
+    ***** -------------
+    ***** A : const BSRMatrix*
+    *****    BSRMatrix A, from which to copy data
+    **************************************************************/
+    explicit COOMatrix(const BSRMatrix* A)
+    {
+        copy(A);
+    }
+
     ~COOMatrix()
     {
 
@@ -422,6 +439,8 @@ namespace raptor
     void copy(const COOMatrix* A);
     void copy(const CSRMatrix* A);
     void copy(const CSCMatrix* A);
+    void copy(const BSRMatrix* A);
+    void block_copy(const BSRMatrix* A, int row, int num_blocks_prev, int col);
 
     void add_value(int row, int col, double value);
     void sort();
@@ -707,6 +726,7 @@ namespace raptor
     void copy(const COOMatrix* A);
     void copy(const CSRMatrix* A);
     void copy(const CSCMatrix* A);
+    void copy(const BSRMatrix* A);
 
     void add_value(int row, int col, double value);
     void sort();
@@ -1007,6 +1027,7 @@ namespace raptor
     void copy(const COOMatrix* A);
     void copy(const CSRMatrix* A);
     void copy(const CSCMatrix* A);
+    void copy(const BSRMatrix* A);
 
     void sort();
     void move_diag();
@@ -1168,21 +1189,31 @@ namespace raptor
  ***** Methods
  ***** -------
  ***** format() 
- *****    Returns the format of the sparse matrix (CSR)
- ***** sort()
- *****    Sorts the matrix.  Already in row-wise order, but sorts
- *****    the columns in each row.
+ *****    Returns the format of the sparse matrix (BSR)
  ***** add_value(int row, int col, double val)
  *****     TODO -- add this functionality
- ***** indptr()
+ ***** add_block(int row, int col, std::vector<double>& data)
+ *****     Adds the row-wise flattened block 'data' to the matrix
+ *****     at block location (row, col) in the coarse matrix defined 
+ *****     by blocks - NOT global row and column indices
+ ***** row_ptr()
  *****     Returns std::vector<int>& row pointer.  The ith element points to
  *****     the index of indices() corresponding to the first column to lie on 
  *****     row i.
- ***** indices()
+ ***** cols()
  *****     Returns std::vector<int>& containing the cols corresponding
  *****     to each nonzero
  ***** data()
  *****     Returns std::vector<double>& containing the nonzero values
+ *****     - flattened array of block values 
+ ***** block_rows()
+ *****     Returns b_rows - number of rows per block
+ ***** block_cols()
+ *****     Returns b_cols - number of columns per block
+ ***** block_size()
+ *****     Returns nnz in dense block
+ ***** num_blocks()
+ *****     Returns number of dense blocks in sparse matrix
  **************************************************************/
   class BSRMatrix : public Matrix
   {
@@ -1235,7 +1266,7 @@ namespace raptor
 	{
 	    n_blocks = _nblocks;
 	}
-	else
+	else if (_brows != 0 && _bcols != 0)
 	{
 	    // Assume dense number of blocks
             n_blocks = _nrows/_brows * _ncols/_bcols;
@@ -1246,6 +1277,9 @@ namespace raptor
         vals.reserve(b_size * n_blocks);
     }
 
+    // Constructs BSRMatrix from flattened _data array of entire matrix 
+    // - dropping blocks that are entirely zero
+    // Assumes data array is flattened array of matrix in 'block' format
     BSRMatrix(int _nrows, int _ncols, int _brows, int _bcols, double* _data) : Matrix(_nrows, _ncols)
     {
         if (_nrows % _brows != 0 || _ncols % _bcols != 0)
@@ -1301,6 +1335,8 @@ namespace raptor
 
     }
 
+    // Constructs BSRMatrix of size _nrows * _ncols with blocks of size _brows * _bcols
+    // and rowptr, cols, and data vectors given
     BSRMatrix(int _nrows, int _ncols, int _brows, int _bcols, 
             std::vector<int>& rowptr, std::vector<int>& cols, 
 	    std::vector<double>& data) : Matrix(_nrows, _ncols)
@@ -1385,10 +1421,12 @@ namespace raptor
 
     void print();
     void block_print(int row, int num_blocks_prev, int col);
+    std::vector<double> to_dense();
 
     void copy(const COOMatrix* A);
     void copy(const CSRMatrix* A);
     void copy(const CSCMatrix* A);
+    void copy(const BSRMatrix* A);
 
     void add_value(int row, int col, double value);
     void add_block(int row, int col, std::vector<double>& values);

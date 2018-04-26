@@ -255,6 +255,58 @@ void COOMatrix::copy(const CSCMatrix* A)
     }
 }
 
+void COOMatrix::copy(const BSRMatrix* A)
+{
+    n_rows = A->n_rows;
+    n_cols = A->n_cols;
+    nnz = A->nnz;
+
+    idx1.clear();
+    idx2.clear();
+    vals.clear();
+
+    idx1.reserve(A->nnz);
+    idx2.reserve(A->nnz);
+    vals.reserve(A->nnz);
+
+    for (int i = 0; i < n_rows/A->b_rows; i++)
+    {
+        int row_start = A->idx1[i];
+        int row_end = A->idx1[i+1];
+        for (int j = row_start; j < row_end; j++)
+        {
+            // Call block copy function
+	    block_copy(A, i, j, A->idx2[j]);
+        }
+    }
+}
+
+void COOMatrix::block_copy(const BSRMatrix* A, int row, int num_blocks_prev, int col)
+{
+    int upper_i = row * A->b_rows;
+    int upper_j = col * A->b_cols;
+    int data_offset = num_blocks_prev * A->b_size;
+
+    int glob_i, glob_j, ind;
+    double val;
+    for (int i = 0; i < A->b_rows; i++)
+    {
+        for (int j = 0; j < A->b_cols; j++)
+	{
+            glob_i = upper_i + i;
+	    glob_j = upper_j + j;
+	    ind = i * A->b_cols + j + data_offset;
+	    val = A->vals[ind];
+
+	    if (fabs(val) > zero_tol)
+	    {
+	        idx1.push_back(glob_i);
+	        idx2.push_back(glob_j);
+                vals.push_back(val);
+	    }
+	}
+    }
+}
 
 /**************************************************************
 *****   COOMatrix Sort
@@ -532,6 +584,10 @@ void CSRMatrix::copy(const CSCMatrix* A)
         }
     }
 }
+void CSRMatrix::copy(const BSRMatrix* A)
+{
+    printf("Currently not implemented\n");
+}
 
 /**************************************************************
 *****   CSRMatrix Sort
@@ -772,6 +828,59 @@ void BSRMatrix::copy(const CSCMatrix* A)
     printf("Currently not implemented\n");
 }
 
+void BSRMatrix::copy(const BSRMatrix* A)
+{
+    n_rows = A->n_rows;
+    n_cols = A->n_cols;
+    b_rows = A->b_rows;
+    b_cols = A->b_cols;
+    b_size = A->b_size;
+    n_blocks = A->n_blocks;
+
+    idx1.clear();
+    idx2.clear();
+    vals.clear();
+
+    std::copy(A->idx1.begin(), A->idx1.end(), idx1.begin());
+    std::copy(A->idx2.begin(), A->idx2.end(), idx2.begin());
+    std::copy(A->vals.begin(), A->vals.end(), vals.begin());
+}
+
+std::vector<double> BSRMatrix::to_dense()
+{
+    std::vector<double> dense(n_rows * n_cols);
+    std::fill(dense.begin(), dense.end(), 0.0);
+
+    int start, end;
+    int upper_i, upper_j, data_offset;
+    double val;
+    int glob_i, glob_j, ind;
+    for (int i=0; i<n_rows/b_rows; i++)
+    {
+	start = idx1[i];
+	end = idx1[i+1];
+        for (int j=start; j<end; j++)
+	{
+            upper_i = i * b_rows;
+	    upper_j = idx2[j] * b_cols;
+	    data_offset = j * b_size;
+	    for (int block_i = 0; block_i < b_rows; block_i++)
+	    {
+                for (int block_j = 0; block_j < b_cols; block_j++)
+		{
+                    glob_i = upper_i + block_i;
+		    glob_j = upper_j + block_j;
+		    ind = block_i * b_cols + block_j + data_offset;
+		    val = vals[ind];
+                    dense[glob_i*n_cols + glob_j] = val;
+		}
+	    }
+	}
+    }
+
+    return dense;
+}
+
 /**************************************************************
 *****  BSRMatrix Add Value
 **************************************************************
@@ -781,6 +890,10 @@ void BSRMatrix::add_value(int row, int col, double value)
     printf("Currently not implemented\n");
 }
 
+/**************************************************************
+*****  BSRMatrix Add Block
+**************************************************************
+**************************************************************/
 void BSRMatrix::add_block(int row, int col, std::vector<double>& values)
 {
     // Only add correct number of elements for block if values is longer than
@@ -804,14 +917,16 @@ void BSRMatrix::add_block(int row, int col, std::vector<double>& values)
     // Update cols vector and data offset
     if(idx2.size() < 1)
     {
+        // First block added
         idx2.push_back(col);
 	data_offset = 0;
     }
-    else if(start == end)
+    /*else if(start == end)
     {
+        // First block added in this column
         idx2.push_back(col);
-    }
-    else if(col > idx2[end-1])
+    }*/
+    else if(start == end || col > idx2[end-1])
     {
         idx2.insert(idx2.begin()+end, col);
 	data_offset += b_size * (end-start);
@@ -1009,6 +1124,12 @@ void CSCMatrix::copy(const CSCMatrix* A)
             vals[j] = A->vals[j];
         }
     }
+}
+
+void CSCMatrix::copy(const BSRMatrix* A)
+{
+    printf("Currently not implemented");
+    return;
 }
 
 /**************************************************************
