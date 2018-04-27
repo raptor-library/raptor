@@ -15,7 +15,7 @@ int main(int argc, char** argv)
 
 } // end of main() //
 
-TEST(MatrixTest, TestsInCore)
+TEST(BSRMatrixTest, TestsInCore)
 {
     std::vector<int> row_ptr = {0,2,3,5};
     std::vector<int> cols = {0,1,1,1,2};
@@ -32,7 +32,7 @@ TEST(MatrixTest, TestsInCore)
     int n = 6;
 
     // Create BSR Matrices (6x6)
-    BSRMatrix A_BSR1(n, n, rows_in_block, cols_in_block, row_ptr, cols, vals);
+    const BSRMatrix A_BSR1(n, n, rows_in_block, cols_in_block, row_ptr, cols, vals);
     BSRMatrix A_BSR2(n, n, rows_in_block, cols_in_block);
 
     // Add blocks
@@ -59,7 +59,7 @@ TEST(MatrixTest, TestsInCore)
     // Check data
     for (int i=0; i<A_BSR1.nnz; i++){
         ASSERT_EQ(A_BSR2.vals[i], A_BSR1.vals[i]);
-    } 
-   
+    }
+
 } // end of TEST(MatrixTest, TestsInCore) //
 

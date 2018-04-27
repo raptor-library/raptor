@@ -259,7 +259,7 @@ void COOMatrix::copy(const BSRMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
-    nnz = A->nnz;
+    nnz = 0;
 
     idx1.clear();
     idx2.clear();
@@ -303,6 +303,7 @@ void COOMatrix::block_copy(const BSRMatrix* A, int row, int num_blocks_prev, int
 	        idx1.push_back(glob_i);
 	        idx2.push_back(glob_j);
                 vals.push_back(val);
+		nnz++;
 	    }
 	}
     }
@@ -590,6 +591,27 @@ void CSRMatrix::copy(const BSRMatrix* A)
 }
 
 /**************************************************************
+*****   CSRMatrix to_dense
+**************************************************************
+***** Converts the CSRMatrix into a dense matrix
+***** in the form of a flattened vector ordered row-wise
+**************************************************************/
+std::vector<double> CSRMatrix::to_dense() const
+{
+    std::vector<double> dense(n_rows * n_cols);
+    std::fill(dense.begin(), dense.end(), 0.0);
+
+    for (int i = 0; i < n_rows; i++)
+    {
+        for (int j = idx1[i]; j < idx1[i+1]; j++)
+	{
+            dense[i*n_cols + idx2[j]] = vals[j];
+	}
+    }
+    return dense;
+}
+
+/**************************************************************
 *****   CSRMatrix Sort
 **************************************************************
 ***** Sorts the sparse matrix by columns within each row.  
@@ -820,7 +842,34 @@ void BSRMatrix::copy(const COOMatrix* A)
 
 void BSRMatrix::copy(const CSRMatrix* A)
 {
-    printf("Currently not implemented\n");
+    n_rows = A->n_rows;
+    n_cols = A->n_cols;
+
+    std::vector<double> A_dense = A->to_dense();
+    double block_dense[n_rows*n_cols] = {0.0};
+
+    int block_ind, glob_i, glob_j;
+    for (int k = 0; k < n_rows/b_rows; k++)
+    {
+        for (int w = 0; w < n_cols/b_cols; w++)
+	{
+            for (int i = 0; i < b_rows; i++)
+	    {
+                for (int j = 0; j < b_cols; j++)
+		{
+                    block_ind = k*n_cols/b_cols + w;
+		    glob_i = k * b_rows + i;
+		    glob_j = w * b_cols + j;
+		    block_dense[block_ind * b_size + i * b_cols + j] = A_dense[glob_i * n_cols + glob_j];
+		}
+	    }
+	}
+    }
+
+    const BSRMatrix* B = new BSRMatrix(n_rows, n_cols, b_rows, b_cols, block_dense);
+    copy(B);
+
+    delete B;
 }
 
 void BSRMatrix::copy(const CSCMatrix* A)
@@ -836,16 +885,33 @@ void BSRMatrix::copy(const BSRMatrix* A)
     b_cols = A->b_cols;
     b_size = A->b_size;
     n_blocks = A->n_blocks;
+    nnz = A->nnz;
 
-    idx1.clear();
-    idx2.clear();
+    idx1.resize(A->idx1.size());
+    idx2.resize(A->idx2.size());
     vals.clear();
 
-    std::copy(A->idx1.begin(), A->idx1.end(), idx1.begin());
-    std::copy(A->idx2.begin(), A->idx2.end(), idx2.begin());
-    std::copy(A->vals.begin(), A->vals.end(), vals.begin());
+    idx1[0] = 0;
+    for (int i=0; i<A->idx1.size(); i++){
+        idx1[i+1] = A->idx1[i+1];
+	int row_start = idx1[i];
+	int row_end = idx1[i+1];
+	for (int j=row_start; j<row_end; j++){
+	    idx2[j] = A->idx2[j];
+	}
+    }
+
+    for (int i=0; i<A->vals.size(); i++){
+        vals.push_back(A->vals[i]);
+    }
 }
 
+/**************************************************************
+*****   BSRMatrix to_dense
+**************************************************************
+***** Converts the BSRMatrix into a dense matrix
+***** in the form of a flattened vector ordered row-wise
+**************************************************************/
 std::vector<double> BSRMatrix::to_dense()
 {
     std::vector<double> dense(n_rows * n_cols);

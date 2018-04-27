@@ -728,6 +728,9 @@ namespace raptor
     void copy(const CSCMatrix* A);
     void copy(const BSRMatrix* A);
 
+    // Converts matrix to a dense flattened vector
+    std::vector<double> to_dense() const;
+
     void add_value(int row, int col, double value);
     void sort();
     void move_diag();
@@ -1301,7 +1304,7 @@ namespace raptor
 
         idx1.resize(n_rows/b_rows + 1);
         //idx2.reserve(n_blocks);
-        vals.reserve(nnz_dense);
+        //vals.reserve(nnz_dense);
 
 	std::vector<double> test;
 	double val;
@@ -1314,8 +1317,11 @@ namespace raptor
 		// 1. Push block data to test vector & check if it's a 0 block
                 for (int k=data_offset; k<data_offset+b_size; k++){
 		    val = _data[k];
-		    if (fabs(val) > zero_tol) test.push_back(val);
+		    if (fabs(val) > zero_tol){
+		         test.push_back(val);
+	            }
 		}
+
 		// 2. If not all 0 then add block
 		if (test.size() > 0)
 		{
@@ -1326,8 +1332,8 @@ namespace raptor
 		    }
 		    n_blocks++;
 		    idx2.push_back(j);
-                    data_offset += b_size;
 		}
+                data_offset += b_size;
 		test.clear();
 	    }
 	    idx1[i+1] = idx2.size();
@@ -1373,8 +1379,12 @@ namespace raptor
     ***** A : const COOMatrix*
     *****    COOMatrix A, from which to copy data
     **************************************************************/
-    /*explicit BSRMatrix(const COOMatrix* A) 
+    /*explicit BSRMatrix(const COOMatrix* A, int _brows, int _bcols) 
     {
+	b_rows = _brows;
+	b_cols = _bcols;
+	b_size = b_rows * b_cols;
+
         copy(A);
     }*/
 
@@ -1403,10 +1413,14 @@ namespace raptor
     ***** A : const CSRMatrix*
     *****    CSRMatrix A, from which to copy data
     **************************************************************/
-    /*explicit BSRMatrix(const CSRMatrix* A) 
+    explicit BSRMatrix(const CSRMatrix* A, int _brows, int _bcols) 
     {
+        b_rows = _brows;
+	b_cols = _bcols;
+	b_size = b_rows * b_cols;
+
         copy(A);
-    }*/
+    }
 
     BSRMatrix()
     {

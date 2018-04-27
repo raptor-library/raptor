@@ -21,7 +21,7 @@ int main(int argc, char** argv)
 
 } // end of main() //
 
-TEST(ParMatrixTest, TestsInCore)
+TEST(ParBSRMatrixTest, TestsInCore)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
