@@ -32,9 +32,9 @@ TEST(TAPCommTest, TestsInCore)
     double theta = M_PI / 8.0;
     int grid[2] = {25, 25};
     double* stencil = diffusion_stencil_2d(eps, theta);
-    std::vector<double> tap_recv;
-    std::vector<double> par_recv;
-    std::vector<double> tap_simp_recv;
+    aligned_vector<double> tap_recv;
+    aligned_vector<double> par_recv;
+    aligned_vector<double> tap_simp_recv;
 
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
     A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);

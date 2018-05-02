@@ -24,21 +24,21 @@ void make_contiguous(ParCSRMatrix* A)
     MPI_Request barrier_request;
     
 
-    std::vector<int> assumed_col_to_new;
+    aligned_vector<int> assumed_col_to_new;
 
-    std::vector<int> proc_num_cols(num_procs);
-    std::vector<int> send_procs;
-    std::vector<int> send_ptr;
-    std::vector<int> send_ctr;
-    std::vector<int> send_buffer;
-    std::vector<int> recv_buffer;
-    std::vector<MPI_Request> send_requests;
+    aligned_vector<int> proc_num_cols(num_procs);
+    aligned_vector<int> send_procs;
+    aligned_vector<int> send_ptr;
+    aligned_vector<int> send_ctr;
+    aligned_vector<int> send_buffer;
+    aligned_vector<int> recv_buffer;
+    aligned_vector<MPI_Request> send_requests;
 
-    std::vector<MPI_Request> recv_requests;
+    aligned_vector<MPI_Request> recv_requests;
 
     std::map<int, int> global_to_local;
     ctr = 0;
-    for (std::vector<int>::const_iterator it = A->off_proc_column_map.begin();  
+    for (aligned_vector<int>::const_iterator it = A->off_proc_column_map.begin();  
             it != A->off_proc_column_map.end(); ++it)
     {
         global_to_local[*it] = ctr++;
@@ -336,7 +336,7 @@ void make_contiguous(ParCSRMatrix* A)
     {
         // Find permutation of off_proc columns, sorted by global 
         // column indices in ascending order
-        std::vector<int> p(A->off_proc_num_cols);
+        aligned_vector<int> p(A->off_proc_num_cols);
         std::iota(p.begin(), p.end(), 0);
         std::sort(p.begin(), p.end(), 
                 [&](int i, int j)
@@ -346,21 +346,21 @@ void make_contiguous(ParCSRMatrix* A)
     
         // Form off_proc_orig_to_new, mapping original off_proc local
         // column indices to new local column indices
-        std::vector<int> off_proc_orig_to_new(A->off_proc_num_cols);
+        aligned_vector<int> off_proc_orig_to_new(A->off_proc_num_cols);
         for (int i = 0; i < A->off_proc_num_cols; i++)
         {
             off_proc_orig_to_new[p[i]] = i;
         }
 
         // Re-index columns of off_proc
-        for (std::vector<int>::iterator it = A->off_proc->idx2.begin();
+        for (aligned_vector<int>::iterator it = A->off_proc->idx2.begin();
                 it != A->off_proc->idx2.end(); ++it)
         {
             *it = off_proc_orig_to_new[*it];
         }
 
         // Sort off_proc_column_map based on permutation vector p
-        std::vector<bool> done(A->off_proc_num_cols);
+        aligned_vector<bool> done(A->off_proc_num_cols);
         for (int i = 0; i < A->off_proc_num_cols; i++)
         {
             if (done[i]) continue;
@@ -387,7 +387,7 @@ void make_contiguous(ParCSRMatrix* A)
     A->off_proc->sort();
 }
 
-ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, std::vector<int>& new_local_rows)
+ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector<int>& new_local_rows)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -400,8 +400,8 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, std::vector<in
     };
 
     ParCSRMatrix* A_part;
-    std::vector<int> send_row_buffer;
-    std::vector<int> recv_row_buffer;
+    aligned_vector<int> send_row_buffer;
+    aligned_vector<int> recv_row_buffer;
     std::vector<PairData> send_buffer;
     std::vector<PairData> recv_buffer;
     
@@ -419,16 +419,16 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, std::vector<in
     double val;
     MPI_Status recv_status;
     MPI_Request barrier_request;
-    std::vector<int> send_procs;
-    std::vector<int> send_ptr;
-    std::vector<int> proc_sizes(num_procs, 0);
-    std::vector<int> proc_to_idx(num_procs);
-    std::vector<MPI_Request> send_requests;
-    std::vector<MPI_Request> recv_requests;
-    std::vector<int> recv_rows;
-    std::vector<int> recv_row_sizes;
-    std::vector<int> recv_procs;
-    std::vector<int> recv_ptr;
+    aligned_vector<int> send_procs;
+    aligned_vector<int> send_ptr;
+    aligned_vector<int> proc_sizes(num_procs, 0);
+    aligned_vector<int> proc_to_idx(num_procs);
+    aligned_vector<MPI_Request> send_requests;
+    aligned_vector<MPI_Request> recv_requests;
+    aligned_vector<int> recv_rows;
+    aligned_vector<int> recv_row_sizes;
+    aligned_vector<int> recv_procs;
+    aligned_vector<int> recv_ptr;
 
     // Find how many rows go to each proc
     for (int i = 0; i < A->local_num_rows; i++)
@@ -670,13 +670,13 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, std::vector<in
     A_part->off_proc->nnz = A_part->off_proc->idx2.size();
     A_part->local_nnz = A_part->on_proc->nnz + A_part->off_proc->nnz;
 
-    std::vector<int> off_proc_cols;
+    aligned_vector<int> off_proc_cols;
     std::copy(A_part->off_proc->idx2.begin(), A_part->off_proc->idx2.end(),
             std::back_inserter(off_proc_cols));
     std::sort(off_proc_cols.begin(), off_proc_cols.end());
     int prev_col = -1;
     std::map<int, int> global_to_local;
-    for (std::vector<int>::iterator it = off_proc_cols.begin(); 
+    for (aligned_vector<int>::iterator it = off_proc_cols.begin(); 
             it != off_proc_cols.end(); ++it)
     {
         if (*it != prev_col)
@@ -688,7 +688,7 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, std::vector<in
     }
     A_part->off_proc_num_cols = A_part->off_proc_column_map.size();
 
-    for (std::vector<int>::iterator it = A_part->off_proc->idx2.begin();
+    for (aligned_vector<int>::iterator it = A_part->off_proc->idx2.begin();
             it != A_part->off_proc->idx2.end(); ++it)
     {
         *it = global_to_local[*it];

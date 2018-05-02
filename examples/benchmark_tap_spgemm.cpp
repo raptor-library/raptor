@@ -56,7 +56,7 @@ void time_spgemm(ParCSRMatrix* A, ParCSRMatrix* P)
     double time, time_comm;
     int n_tests = 10;
     int cache_len = 10000;
-    std::vector<double> cache_array(cache_len);
+    aligned_vector<double> cache_array(cache_len);
 
     A->spgemm_data.time = 0;
     A->spgemm_data.comm_time = 0;
@@ -90,7 +90,7 @@ void time_tap_spgemm(ParCSRMatrix* A, ParCSRMatrix* P)
     double time, time_comm;
     int n_tests = 10;
     int cache_len = 10000;
-    std::vector<double> cache_array(cache_len);
+    aligned_vector<double> cache_array(cache_len);
 
     if (A->tap_comm) delete A->tap_comm;
     A->tap_comm = new TAPComm(A->partition, 
@@ -135,7 +135,7 @@ void time_spgemm_T(ParCSRMatrix* A, ParCSCMatrix* P)
     double time, time_comm;
     int n_tests = 10;
     int cache_len = 10000;
-    std::vector<double> cache_array(cache_len);
+    aligned_vector<double> cache_array(cache_len);
 
     // Time SpGEMM on Level i
     A->spgemm_T_data.time = 0;
@@ -171,7 +171,7 @@ void time_tap_spgemm_T(ParCSRMatrix* A, ParCSCMatrix* P)
     double time, time_comm;
     int n_tests = 10;
     int cache_len = 10000;
-    std::vector<double> cache_array(cache_len);
+    aligned_vector<double> cache_array(cache_len);
 
     // Time TAP SpGEMM on Level i
     A->spgemm_T_data.tap_time = 0;
@@ -203,7 +203,6 @@ void time_tap_spgemm_T(ParCSRMatrix* A, ParCSCMatrix* P)
 
 int main(int argc, char *argv[])
 {
-
     MPI_Init(&argc, &argv);
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -228,19 +227,17 @@ int main(int argc, char *argv[])
     int nfinal, sfinal;
     double raptor_setup, raptor_solve;
     int num_variables = 1;
-
-    int num_variables = 1;
     relax_t relax_type = SOR;
     coarsen_t coarsen_type = CLJP;
     interp_t interp_type = Classical;
     double strong_threshold = 0.25;
 
-    std::vector<double> residuals;
+    aligned_vector<double> residuals;
 
     if (system < 2)
     {
         double* stencil = NULL;
-        std::vector<int> grid;
+        aligned_vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);
@@ -345,15 +342,16 @@ int main(int argc, char *argv[])
         A->mult(x, b);
     }
 
-    ParMultilevel* ml = new ParMultilevel(strong_threshold, HMIS, Extended, SOR);;
+    ParMultilevel* ml;
 
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(strong_threshold, CLJP, Classical, SOR);
+    ml = new ParMultilevel(strong_threshold, coarsen_type, interp_type, relax_type);
     ml->num_variables = num_variables;
     ml->setup(A);
     raptor_setup = MPI_Wtime() - t0;
+
 
     for (int i = 0; i < ml->num_levels - 1; i++)
     {

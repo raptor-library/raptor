@@ -9,9 +9,9 @@ if (WITH_HYPRE)
 
     add_executable(profile_rss profile_rss.cpp)
     target_link_libraries(profile_rss raptor ${MPI_LIBRARIES})
-
-    add_executable(benchmark_nek5000 benchmark_nek5000.cpp)
-    target_link_libraries(benchmark_nek5000 raptor ${MPI_LIBRARIES})
+     
+    add_executable(benchmark_matops benchmark_matops.cpp)
+    target_link_libraries(benchmark_matops raptor ${MPI_LIBRARIES})
 endif()
 if (WITH_MPI)
     add_executable(benchmark_setup benchmark_setup.cpp)
@@ -35,8 +35,8 @@ if (WITH_MPI)
     add_executable(benchmark_spmv benchmark_spmv.cpp)
     target_link_libraries(benchmark_spmv raptor ${MPI_LIBRARIES})
 
-    add_executable(benchmark_matmult benchmark_matmult.cpp)
-    target_link_libraries(benchmark_matmult raptor ${MPI_LIBRARIES})
+    add_executable(benchmark_commpkg benchmark_commpkg.cpp)
+    target_link_libraries(benchmark_commpkg raptor ${MPI_LIBRARIES})
 
 endif()
 

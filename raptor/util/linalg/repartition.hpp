@@ -13,7 +13,7 @@
 
 using namespace raptor;
 
-ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, std::vector<int>& new_local_rows);
+ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector<int>& new_local_rows);
 void make_contiguous(ParCSRMatrix* A);
 
 #endif

@@ -20,11 +20,11 @@ ParCSRMatrix* par_stencil_grid(data_t* stencil, int* grid, int dim)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    std::vector<int> diags;
-    std::vector<double> nonzero_stencil;
-    std::vector<int> strides(dim);
-    std::vector<double> data;
-    std::vector<int> stack_indices;
+    aligned_vector<int> diags;
+    aligned_vector<double> nonzero_stencil;
+    aligned_vector<int> strides(dim);
+    aligned_vector<double> data;
+    aligned_vector<int> stack_indices;
 
     int stencil_len, ctr;
     int N_v;  // Number of rows (and cols) in matrix

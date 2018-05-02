@@ -89,7 +89,7 @@ void ParMatrix::condense_off_proc()
     std::sort(off_proc_column_map.begin(), off_proc_column_map.end());
 
     off_proc_num_cols = 0;
-    for (std::vector<int>::iterator it = off_proc_column_map.begin(); 
+    for (aligned_vector<int>::iterator it = off_proc_column_map.begin(); 
             it != off_proc_column_map.end(); ++it)
     {
         if (*it != prev_col)
@@ -101,7 +101,7 @@ void ParMatrix::condense_off_proc()
     }
     off_proc_column_map.resize(off_proc_num_cols);
 
-    for (std::vector<int>::iterator it = off_proc->idx2.begin();
+    for (aligned_vector<int>::iterator it = off_proc->idx2.begin();
             it != off_proc->idx2.end(); ++it)
     {
         *it = orig_to_new[*it];
@@ -479,7 +479,7 @@ ParMatrix* ParCSRMatrix::transpose()
 
     std::vector<PairData> send_buffer;
     std::vector<PairData> recv_buffer;
-    std::vector<int> send_ptr(comm->recv_data->num_msgs+1);
+    aligned_vector<int> send_ptr(comm->recv_data->num_msgs+1);
 
     // Transpose partition
     part_T = partition->transpose();
@@ -555,7 +555,7 @@ ParMatrix* ParCSRMatrix::transpose()
     MPI_Waitall(comm->recv_data->num_msgs, comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
 
     off_proc_T = new CSRMatrix(on_proc_num_cols, -1);
-    std::vector<int> off_T_sizes(on_proc_num_cols, 0);
+    aligned_vector<int> off_T_sizes(on_proc_num_cols, 0);
     for (int i = 0; i < comm->send_data->size_msgs; i++)
     {
         row = comm->send_data->indices[i];

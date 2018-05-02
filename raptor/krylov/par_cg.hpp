@@ -9,11 +9,9 @@
 
 using namespace raptor;
 
-void CG(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, 
+void CG(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, 
         double tol = 1e-05, int max_iter = -1);
 void PCG(ParCSRMatrix* A, ParMultilevel* ml, ParVector& x, ParVector& b, 
-        std::vector<double>& res, double tol = 1e-05, int max_iter = -1);
-void tap_PCG(ParCSRMatrix* A, ParMultilevel* ml, ParVector& x, ParVector& b, 
-        std::vector<double>& res, double tol = 1e-05, int max_iter = -1, int tap_level = 3);
+        aligned_vector<double>& res, double tol = 1e-05, int max_iter = -1);
 
 #endif

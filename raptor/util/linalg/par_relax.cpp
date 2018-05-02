@@ -27,7 +27,7 @@
  *****    Vector of distant x-values recvd from other processes
  **************************************************************/
 void SOR_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
-        const std::vector<double>& dist_x, double omega)
+        const aligned_vector<double>& dist_x, double omega)
 {
     int start, end, col;
     double diag;
@@ -63,7 +63,7 @@ void SOR_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
 }
 
 void SOR_backward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
-        const std::vector<double>& dist_x, double omega)
+        const aligned_vector<double>& dist_x, double omega)
 {
     int start, end, col;
     double diag;
@@ -116,7 +116,7 @@ void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     for (int iter = 0; iter < num_sweeps; iter++)
     {
         comm->communicate(x);
-        std::vector<double>& dist_x = comm->get_recv_buffer<double>();
+        aligned_vector<double>& dist_x = comm->get_recv_buffer<double>();
         for (int i = 0; i < A->local_num_rows; i++)
         {
             tmp[i] = x[i];

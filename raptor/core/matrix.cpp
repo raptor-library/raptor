@@ -227,8 +227,8 @@ void COOMatrix::sort()
 
     int k, prev_k;
 
-    std::vector<int> permutation(nnz);
-    std::vector<bool> done(nnz, false);
+    aligned_vector<int> permutation(nnz);
+    aligned_vector<bool> done(nnz, false);
 
     // Create permutation vector p
     std::iota(permutation.begin(), permutation.end(), 0);
@@ -403,7 +403,7 @@ void CSRMatrix::copy(const COOMatrix* A)
     }
 
     // Add indices and data
-    std::vector<int> ctr;
+    aligned_vector<int> ctr;
     if (n_rows)
     {
     	ctr.resize(n_rows, 0);
@@ -468,7 +468,7 @@ void CSRMatrix::copy(const CSCMatrix* A)
     }
 
     // Add values to indices and data
-    std::vector<int> ctr(n_rows, 0);
+    aligned_vector<int> ctr(n_rows, 0);
     for (int i = 0; i < A->n_cols; i++)
     {
         int col_start = A->idx1[i];
@@ -501,8 +501,8 @@ void CSRMatrix::sort()
         return;
     }
 
-    std::vector<int> permutation;
-    std::vector<bool> done;
+    aligned_vector<int> permutation;
+    aligned_vector<bool> done;
 
     // Sort the columns of each row (and data accordingly) and remove
     // duplicates (summing values together)
@@ -758,7 +758,7 @@ void CSCMatrix::copy(const COOMatrix* A)
     }
 
     // Add indices and data
-    std::vector<int> ctr;
+    aligned_vector<int> ctr;
     if (n_cols)
     {
         ctr.resize(n_cols, 0);
@@ -804,7 +804,7 @@ void CSCMatrix::copy(const CSRMatrix* A)
     // Add values to indices and data
     if (A->n_cols)
     {
-        std::vector<int> ctr(A->n_cols, 0);
+        aligned_vector<int> ctr(A->n_cols, 0);
         for (int i = 0; i < A->n_rows; i++)
         {
             int row_start = A->idx1[i];
@@ -856,8 +856,8 @@ void CSCMatrix::sort()
     int start, end, col_size;
     int prev_k, k;
 
-    std::vector<int> permutation;
-    std::vector<bool> done;
+    aligned_vector<int> permutation;
+    aligned_vector<bool> done;
 
     if (sorted || nnz == 0)
     {

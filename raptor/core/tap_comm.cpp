@@ -17,31 +17,31 @@ using namespace raptor;
 *****
 ***** Parameters
 ***** -------------
-***** off_proc_column_map : std::vector<int>&
+***** off_proc_column_map : aligned_vector<int>&
 *****    Vector holding rank's off_proc_columns
-***** off_proc_col_to_proc : std::vector<int>&
+***** off_proc_col_to_proc : aligned_vector<int>&
 *****    Vector mapping rank's off_proc_columns to distant procs
-***** on_node_column_map : std::vector<int>&
+***** on_node_column_map : aligned_vector<int>&
 *****    Will be returned holding on_node columns
-***** on_node_col_to_proc : std::vector<int>&
+***** on_node_col_to_proc : aligned_vector<int>&
 *****    Will be returned holding procs corresponding to on_node cols
-***** on_node_to_off_proc : std::vector<int>&
+***** on_node_to_off_proc : aligned_vector<int>&
 *****    Will be returned holding map from on_node to off_proc
-***** off_node_column_map : std::vector<int>&
+***** off_node_column_map : aligned_vector<int>&
 *****    Will be returned holding off_node columns
-***** off_node_col_to_node : std::vector<int>&
+***** off_node_col_to_node : aligned_vector<int>&
 *****    Will be returned holding procs corresponding to off_node cols
-***** off_node_to_off_proc : std::vector<int>&
+***** off_node_to_off_proc : aligned_vector<int>&
 *****    Will be returned holding map from off_node to off_proc
 **************************************************************/
-void TAPComm::split_off_proc_cols(const std::vector<int>& off_proc_column_map,
-        const std::vector<int>& off_proc_col_to_proc,
-        std::vector<int>& on_node_column_map,
-        std::vector<int>& on_node_col_to_proc,
-        std::vector<int>& on_node_to_off_proc,
-        std::vector<int>& off_node_column_map,
-        std::vector<int>& off_node_col_to_proc,
-        std::vector<int>& off_node_to_off_proc)
+void TAPComm::split_off_proc_cols(const aligned_vector<int>& off_proc_column_map,
+        const aligned_vector<int>& off_proc_col_to_proc,
+        aligned_vector<int>& on_node_column_map,
+        aligned_vector<int>& on_node_col_to_proc,
+        aligned_vector<int>& on_node_to_off_proc,
+        aligned_vector<int>& off_node_column_map,
+        aligned_vector<int>& off_node_col_to_proc,
+        aligned_vector<int>& off_node_to_off_proc)
 {
     int rank, rank_node, num_procs;
     int proc;
@@ -88,15 +88,15 @@ void TAPComm::split_off_proc_cols(const std::vector<int>& off_proc_column_map,
 *****
 ***** Parameters
 ***** -------------
-***** off_node_col_to_node : std::vector<int>&
+***** off_node_col_to_node : aligned_vector<int>&
 *****    Vector holding rank's off_node_columns
-***** recv_nodes : std::vector<int>&
+***** recv_nodes : aligned_vector<int>&
 *****    Returned holding all nodes with which any local
 *****    process communicates (union of off_node_col_to_node)
 **************************************************************/
-void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
-        const std::vector<int>& off_node_col_to_proc,
-        std::vector<int>& orig_procs)
+void TAPComm::form_local_R_par_comm(const aligned_vector<int>& off_node_column_map,
+        const aligned_vector<int>& off_node_col_to_proc,
+        aligned_vector<int>& orig_procs)
 {
     int local_rank;
     MPI_Comm_rank(topology->local_comm, &local_rank);
@@ -119,23 +119,23 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
     {
         N++;
     }
-    std::vector<int> tmp_recv_nodes(N, 0);
-    std::vector<int> nodal_recv_nodes(N, 0);
-    std::vector<int> node_sizes(topology->num_nodes, 0);
-    std::vector<int> nodal_off_node_sizes;
-    std::vector<int> node_to_local_proc;
-    std::vector<int> local_recv_procs(topology->PPN, 0);
-    std::vector<int> local_recv_sizes(topology->PPN, 0);
-    std::vector<int> local_send_procs(topology->PPN);
-    std::vector<int> proc_idx;
-    std::vector<int> off_node_col_to_lcl_proc;
-    std::vector<int> send_buffer;
-    std::vector<int> recv_nodes;
+    aligned_vector<int> tmp_recv_nodes(N, 0);
+    aligned_vector<int> nodal_recv_nodes(N, 0);
+    aligned_vector<int> node_sizes(topology->num_nodes, 0);
+    aligned_vector<int> nodal_off_node_sizes;
+    aligned_vector<int> node_to_local_proc;
+    aligned_vector<int> local_recv_procs(topology->PPN, 0);
+    aligned_vector<int> local_recv_sizes(topology->PPN, 0);
+    aligned_vector<int> local_send_procs(topology->PPN);
+    aligned_vector<int> proc_idx;
+    aligned_vector<int> off_node_col_to_lcl_proc;
+    aligned_vector<int> send_buffer;
+    aligned_vector<int> recv_nodes;
 
     MPI_Status recv_status;
 
     // Find nodes from which rank must recv, and the size of each recv
-    for (std::vector<int>::const_iterator it = off_node_col_to_proc.begin();
+    for (aligned_vector<int>::const_iterator it = off_node_col_to_proc.begin();
             it != off_node_col_to_proc.end(); ++it)
     {
         node = topology->get_node(*it);
@@ -179,7 +179,7 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
                 MPI_SUM, topology->local_comm);
 
         // Sort nodes, descending by msg size (find permutation)
-        std::vector<int> p(num_recv_nodes);
+        aligned_vector<int> p(num_recv_nodes);
         std::iota(p.begin(), p.end(), 0);
         std::sort(p.begin(), p.end(), 
                 [&](const int lhs, const int rhs)
@@ -188,7 +188,7 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
                 });
 
         // Sort recv nodes by total num bytes recvd from node
-        std::vector<bool> done(num_recv_nodes);
+        aligned_vector<bool> done(num_recv_nodes);
         for (int i = 0; i < num_recv_nodes; i++)
         {
             if (done[i]) continue;
@@ -209,7 +209,7 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
         // Map recv nodes to local processes
         local_proc = 0;
         node_to_local_proc.resize(topology->num_nodes);
-        for (std::vector<int>::iterator it = recv_nodes.begin();
+        for (aligned_vector<int>::iterator it = recv_nodes.begin();
                 it != recv_nodes.end(); ++it)
         {
             node_to_local_proc[*it] = local_proc++ ;
@@ -241,7 +241,7 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
 
     // Create displs based on local_recv_sizes
     recv_size = 0;
-    std::vector<int> proc_to_idx(topology->PPN);
+    aligned_vector<int> proc_to_idx(topology->PPN);
     for (int i = 0; i < topology->PPN; i++)
     {
         if (local_recv_sizes[i])
@@ -340,14 +340,14 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
 *****
 ***** Parameters
 ***** -------------
-***** recv_nodes : std::vector<int>&
+***** recv_nodes : aligned_vector<int>&
 *****    All nodes with which any local process communicates 
-***** send_procs : std::vector<int>&
+***** send_procs : aligned_vector<int>&
 *****    Returns with all off_node processes to which rank sends
-***** recv_procs : std::vector<int>&
+***** recv_procs : aligned_vector<int>&
 *****    Returns with all off_node process from which rank recvs
 **************************************************************/
-void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
+void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs)
 {
     int rank;
     int local_rank;
@@ -367,17 +367,17 @@ void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
     MPI_Status recv_status;
     MPI_Request barrier_request;
 
-    std::vector<int> node_list(topology->num_nodes, 0);
-    std::vector<int> sendbuf;
-    std::vector<int> sendbuf_sizes;
-    std::vector<int> send_procs;
-    std::vector<int> send_sizes(topology->PPN);
-    std::vector<int> send_displs(topology->PPN+1);
-    std::vector<int> node_sizes(topology->num_nodes, 0);
-    std::vector<int> send_proc_sizes;
-    std::vector<int> node_to_idx(topology->num_nodes, 0);
-    std::vector<int> node_recv_idx_orig_procs;
-    std::vector<int> send_buffer;
+    aligned_vector<int> node_list(topology->num_nodes, 0);
+    aligned_vector<int> sendbuf;
+    aligned_vector<int> sendbuf_sizes;
+    aligned_vector<int> send_procs;
+    aligned_vector<int> send_sizes(topology->PPN);
+    aligned_vector<int> send_displs(topology->PPN+1);
+    aligned_vector<int> node_sizes(topology->num_nodes, 0);
+    aligned_vector<int> send_proc_sizes;
+    aligned_vector<int> node_to_idx(topology->num_nodes, 0);
+    aligned_vector<int> node_recv_idx_orig_procs;
+    aligned_vector<int> send_buffer;
 
     if (local_R_par_comm->send_data->size_msgs)
     {
@@ -433,7 +433,7 @@ void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
         {
             // Find permutation of node_recv_indices (between start and end)
             // in ascending order
-            std::vector<int> p(size);
+            aligned_vector<int> p(size);
             std::iota(p.begin(), p.end(), 0);
             std::sort(p.begin(), p.end(),
                     [&] (int j, int k)
@@ -443,7 +443,7 @@ void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
                     });
 
             // Sort node_recv_indices and node_recv_idx_orig_procs together
-            std::vector<bool> done(size);
+            aligned_vector<bool> done(size);
             for (int j = 0; j < size; j++)
             {
                 if (done[j]) continue;
@@ -547,14 +547,14 @@ void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
             send_sizes.data(), send_displs.data(), MPI_INT, topology->local_comm);
 
     // Permute send_procs based on send_proc_sizes
-    std::vector<int> p(n_send_procs);
+    aligned_vector<int> p(n_send_procs);
     std::iota(p.begin(), p.end(), 0);
     std::sort(p.begin(), p.end(), 
             [&](const int lhs, const int rhs)
             {
                 return send_proc_sizes[lhs] > send_proc_sizes[rhs];
             });
-    std::vector<bool> done(n_send_procs);
+    aligned_vector<bool> done(n_send_procs);
     for (int i = 0; i < n_send_procs; i++)
     {
         if (done[i]) continue;
@@ -670,7 +670,7 @@ void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
 ***** Parameters
 ***** -------------
 **************************************************************/
-void TAPComm::form_local_S_par_comm(std::vector<int>& orig_procs)
+void TAPComm::form_local_S_par_comm(aligned_vector<int>& orig_procs)
 {
     int rank;
     int local_rank;
@@ -684,10 +684,10 @@ void TAPComm::form_local_S_par_comm(std::vector<int>& orig_procs)
     int ctr, idx;
     int size;
 
-    std::vector<int> local_procs(topology->PPN);
-    std::vector<int> proc_sizes(topology->PPN, 0);
-    std::vector<int> recv_procs(topology->PPN, 0);
-    std::vector<int> proc_to_idx(topology->PPN);
+    aligned_vector<int> local_procs(topology->PPN);
+    aligned_vector<int> proc_sizes(topology->PPN, 0);
+    aligned_vector<int> recv_procs(topology->PPN, 0);
+    aligned_vector<int> proc_to_idx(topology->PPN);
 
     if (global_par_comm->send_data->num_msgs)
     {
@@ -822,7 +822,7 @@ void TAPComm::adjust_send_indices(const int first_local_col)
         {
             S_global_to_local[local_S_par_comm->recv_data->indices[i]] = i;
         }
-        std::vector<int> local_S_num_pos;
+        aligned_vector<int> local_S_num_pos;
         if (local_S_par_comm->recv_data->size_msgs)
             local_S_num_pos.resize(local_S_par_comm->recv_data->size_msgs, 0);
         for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
@@ -864,7 +864,7 @@ void TAPComm::adjust_send_indices(const int first_local_col)
     {
         global_to_local[global_par_comm->recv_data->indices[i]] = i;
     }
-    std::vector<int> global_num_pos;
+    aligned_vector<int> global_num_pos;
     if (global_par_comm->recv_data->size_msgs)
         global_num_pos.resize(global_par_comm->recv_data->size_msgs, 0);
     for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
@@ -901,16 +901,16 @@ void TAPComm::adjust_send_indices(const int first_local_col)
 *****
 ***** Parameters
 ***** -------------
-***** on_node_column_map : std::vector<int>&
+***** on_node_column_map : aligned_vector<int>&
 *****    Columns corresponding to on_node processes
-***** on_node_col_to_proc : std::vector<int>&
+***** on_node_col_to_proc : aligned_vector<int>&
 *****    On node process corresponding to each column
 *****    in on_node_column_map
 ***** first_local_row : int
 *****    First row local to rank 
 **************************************************************/
-void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
-        const std::vector<int>& on_node_col_to_proc, const int first_local_col)
+void TAPComm::form_local_L_par_comm(const aligned_vector<int>& on_node_column_map,
+        const aligned_vector<int>& on_node_col_to_proc, const int first_local_col)
 {
     int local_rank;
     MPI_Comm_rank(topology->local_comm, &local_rank);
@@ -921,7 +921,7 @@ void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
     int proc, start, end;
     int count;
     MPI_Status recv_status;
-    std::vector<int> recv_procs(topology->PPN, 0);
+    aligned_vector<int> recv_procs(topology->PPN, 0);
 
     if (on_node_num_cols)
     {
@@ -984,8 +984,8 @@ void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
     }
 }
 
-void TAPComm::form_simple_R_par_comm(std::vector<int>& off_node_column_map,
-        std::vector<int>& off_node_col_to_proc)
+void TAPComm::form_simple_R_par_comm(aligned_vector<int>& off_node_column_map,
+        aligned_vector<int>& off_node_col_to_proc)
 {
     int rank, local_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -997,11 +997,11 @@ void TAPComm::form_simple_R_par_comm(std::vector<int>& off_node_column_map,
     int count;
     MPI_Status recv_status;
     int off_node_num_cols = off_node_column_map.size();
-    std::vector<int> local_proc_sizes(topology->PPN, 0);
-    std::vector<int> proc_size_idx(topology->PPN);
+    aligned_vector<int> local_proc_sizes(topology->PPN, 0);
+    aligned_vector<int> proc_size_idx(topology->PPN);
 
     // Form local_R_par_comm recv_data (currently with global recv indices)
-    for (std::vector<int>::iterator it = off_node_col_to_proc.begin();
+    for (aligned_vector<int>::iterator it = off_node_col_to_proc.begin();
             it != off_node_col_to_proc.end(); ++it)
     {
         local_proc = topology->get_local_proc(*it);
@@ -1088,7 +1088,7 @@ void TAPComm::form_simple_R_par_comm(std::vector<int>& off_node_column_map,
     }
 }
 
-void TAPComm::form_simple_global_comm(std::vector<int>& off_proc_col_to_proc)
+void TAPComm::form_simple_global_comm(aligned_vector<int>& off_proc_col_to_proc)
 {
     int rank;
     int num_procs;
@@ -1103,8 +1103,8 @@ void TAPComm::form_simple_global_comm(std::vector<int>& off_proc_col_to_proc)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    std::vector<int> proc_sizes(num_procs, 0);
-    std::vector<int> proc_ctr;
+    aligned_vector<int> proc_sizes(num_procs, 0);
+    aligned_vector<int> proc_ctr;
 
     // Communicate processes on which each index originates
     for (int i = 0; i < local_R_par_comm->recv_data->num_msgs; i++)

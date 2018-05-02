@@ -47,8 +47,8 @@ TEST(ParAnisoTest, TestsInGallery)
     ASSERT_EQ(A_sten->partition->first_local_col, A_io->partition->first_local_col);
     ASSERT_EQ(A_sten->partition->last_local_col, A_io->partition->last_local_col);
 
-    std::vector<int> global_col_starts(num_procs+1);
-    std::vector<int> global_row_starts(num_procs+1);
+    aligned_vector<int> global_col_starts(num_procs+1);
+    aligned_vector<int> global_row_starts(num_procs+1);
     MPI_Allgather(&A_sten->partition->first_local_row, 1, MPI_INT, &global_row_starts[0],
             1, MPI_INT, MPI_COMM_WORLD);
     MPI_Allgather(&A_sten->partition->first_local_col, 1, MPI_INT, &global_col_starts[0],

@@ -27,7 +27,7 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta, int num_variables, int* varia
         off_variables = comm->recv_data->int_buffer.data();
     }
 
-    std::vector<bool> col_exists;
+    aligned_vector<bool> col_exists;
     if (off_proc_num_cols)
     {
         col_exists.resize(off_proc_num_cols, false);
@@ -298,7 +298,7 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta, int num_variables, int* varia
     S->on_proc_column_map = get_on_proc_column_map();
     S->local_row_map = get_local_row_map();
 
-    std::vector<int> orig_to_S;
+    aligned_vector<int> orig_to_S;
     if (off_proc_num_cols)
     {
         orig_to_S.resize(off_proc_num_cols, -1);
@@ -313,7 +313,7 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta, int num_variables, int* varia
         }
     }
     S->off_proc_num_cols = S->off_proc_column_map.size();
-    for (std::vector<int>::iterator it = S->off_proc->idx2.begin();
+    for (aligned_vector<int>::iterator it = S->off_proc->idx2.begin();
             it != S->off_proc->idx2.end(); ++it)
     {
         *it = orig_to_S[*it];

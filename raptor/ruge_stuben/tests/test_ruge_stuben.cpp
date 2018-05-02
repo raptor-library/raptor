@@ -27,7 +27,7 @@ TEST(TestRugeStuben, TestsInRuge_Stuben)
     CSCMatrix* P_csc;
     CSRMatrix* Ac_rap;
     CSRMatrix* Ac;
-    std::vector<int> splitting;
+    aligned_vector<int> splitting;
 
     const char* weight_fn = "../../../../test_data/weights.txt";
     const char* A0_fn = "../../../../test_data/rss_A0.pm";
@@ -37,7 +37,7 @@ TEST(TestRugeStuben, TestsInRuge_Stuben)
     // Read in weights (for max num rows)
     FILE* f;
     int max_n = 5000;
-    std::vector<double> weights(max_n);
+    aligned_vector<double> weights(max_n);
     f = fopen(weight_fn, "r");
     for (int i = 0; i < max_n; i++)
     {

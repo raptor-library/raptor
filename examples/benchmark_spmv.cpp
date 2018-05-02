@@ -46,12 +46,12 @@ int main(int argc, char *argv[])
     int cache_len = 10000;
     int num_tests = 2;
 
-    std::vector<double> cache_array(cache_len);
+    aligned_vector<double> cache_array(cache_len);
 
     if (system < 2)
     {
         double* stencil = NULL;
-        std::vector<int> grid;
+        aligned_vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);
@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
     if (system < 2)
     {
         double* stencil = NULL;
-        std::vector<int> grid;
+        aligned_vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);

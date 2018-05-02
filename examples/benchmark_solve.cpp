@@ -46,13 +46,13 @@ int main(int argc, char *argv[])
 
     double strong_threshold = 0.25;
     int cache_len = 10000;
-    std::vector<double> cache_array(cache_len);
-    std::vector<double> residuals;
+    aligned_vector<double> cache_array(cache_len);
+    aligned_vector<double> residuals;
 
     if (system < 2)
     {
         double* stencil = NULL;
-        std::vector<int> grid;
+        aligned_vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 
     // Solve Raptor Hierarchy
     x.set_const_value(0.0);
-    std::vector<double> res;
+    aligned_vector<double> res;
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
     ml->solve(x, b);

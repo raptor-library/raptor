@@ -226,8 +226,8 @@ namespace raptor
                 ParCSRMatrix* AP;
                 ParCSCMatrix* P_csc;
 
-                std::vector<int> states;
-                std::vector<int> off_proc_states;
+                aligned_vector<int> states;
+                aligned_vector<int> off_proc_states;
 
                 // Form strength of connection
                 strength_times[level_ctr] -= MPI_Wtime();
@@ -366,8 +366,8 @@ namespace raptor
 
                 int last_level = num_levels - 1;
                 ParCSRMatrix* Ac = levels[last_level]->A;
-                std::vector<int> proc_sizes(num_procs);
-                std::vector<int> active_procs;
+                aligned_vector<int> proc_sizes(num_procs);
+                aligned_vector<int> active_procs;
                 MPI_Allgather(&(Ac->local_num_rows), 1, MPI_INT, proc_sizes.data(),
                         1, MPI_INT, MPI_COMM_WORLD);
                 for (int i = 0; i < num_procs; i++)
@@ -393,7 +393,7 @@ namespace raptor
                     int global_col, local_col;
                     int start, end;
 
-                    std::vector<double> A_coarse_lcl;
+                    aligned_vector<double> A_coarse_lcl;
 
                     // Gather global col indices
                     coarse_sizes.resize(num_active);
@@ -406,7 +406,7 @@ namespace raptor
                         coarse_displs[i+1] = coarse_displs[i] + coarse_sizes[i]; 
                     }
 
-                    std::vector<int> global_row_indices(coarse_displs[num_active]);
+                    aligned_vector<int> global_row_indices(coarse_displs[num_active]);
 
                     MPI_Allgatherv(Ac->local_row_map.data(), Ac->local_num_rows, MPI_INT,
                             global_row_indices.data(), coarse_sizes.data(), 
@@ -414,7 +414,7 @@ namespace raptor
     
                     std::map<int, int> global_to_local;
                     int ctr = 0;
-                    for (std::vector<int>::iterator it = global_row_indices.begin();
+                    for (aligned_vector<int>::iterator it = global_row_indices.begin();
                             it != global_row_indices.end(); ++it)
                     {
                         global_to_local[*it] = ctr++;
@@ -467,7 +467,7 @@ namespace raptor
                 }
             }
 
-            void cycle(ParVector& x, ParVector& b, int level = 0, int tap_level = -1)
+            void cycle(ParVector& x, ParVector& b, int level = 0)
             {
                 ParCSRMatrix* A = levels[level]->A;
                 ParCSRMatrix* P = levels[level]->P;
@@ -484,7 +484,7 @@ namespace raptor
                         int nhrs = 1; // Number of right hand sides
                         int info; // result
 
-                        std::vector<double> b_data(coarse_n);
+                        aligned_vector<double> b_data(coarse_n);
                         MPI_Allgatherv(b.local.data(), b.local_n, MPI_DOUBLE, b_data.data(), 
                                 coarse_sizes.data(), coarse_displs.data(), 
                                 MPI_DOUBLE, coarse_comm);
@@ -497,7 +497,7 @@ namespace raptor
                         }
                     }
                 }
-                else if (tap_level >= 0 && tap_level <= level) // TAP AMG
+                else if (tap_amg >= 0 && tap_amg <= level) // TAP AMG
                 {
                     levels[level+1]->x.set_const_value(0.0);
                     
@@ -519,7 +519,7 @@ namespace raptor
                     A->tap_residual(x, b, tmp);
                     P->tap_mult_T(tmp, levels[level+1]->b);
 
-                    cycle(levels[level+1]->x, levels[level+1]->b, level+1, tap_level);
+                    cycle(levels[level+1]->x, levels[level+1]->b, level+1);
 
                     P->tap_mult(levels[level+1]->x, tmp);
                     for (int i = 0; i < A->local_num_rows; i++)
@@ -562,7 +562,7 @@ namespace raptor
                     A->residual(x, b, tmp);
                     P->mult_T(tmp, levels[level+1]->b);
 
-                    cycle(levels[level+1]->x, levels[level+1]->b, level+1, tap_level);
+                    cycle(levels[level+1]->x, levels[level+1]->b, level+1);
 
                     P->mult(levels[level+1]->x, tmp);
                     for (int i = 0; i < A->local_num_rows; i++)
@@ -585,7 +585,7 @@ namespace raptor
                 }
             }
 
-            int tap_solve(ParVector& sol, ParVector& rhs, int tap_level = 0, int num_iterations = 100)
+            int solve(ParVector& sol, ParVector& rhs, int num_iterations = 100)
             {
                 double b_norm = rhs.norm(2);
                 double r_norm;
@@ -614,7 +614,7 @@ namespace raptor
 
                 while (r_norm > 1e-07 && iter < num_iterations)
                 {
-                    cycle(sol, rhs, 0, tap_level);
+                    cycle(sol, rhs, 0);
 
                     iter++;
                     levels[0]->A->residual(sol, rhs, resid);
@@ -636,12 +636,7 @@ namespace raptor
                 return iter;
             }
 
-            int solve(ParVector& sol, ParVector& rhs, int num_iterations = 100)
-            {
-                return tap_solve(sol, rhs, -1, num_iterations);
-            } 
-
-            std::vector<double>& get_residuals()
+            aligned_vector<double>& get_residuals()
             {
                 return residuals;
             }
@@ -664,20 +659,20 @@ namespace raptor
 
             int* variables;
             double* weights;
-            std::vector<double> residuals;
+            aligned_vector<double> residuals;
 
             std::vector<ParLevel*> levels;
-            std::vector<int> LU_permute;
+            aligned_vector<int> LU_permute;
             int num_levels;
             
-            std::vector<double> spmv_times;
-            std::vector<double> spmv_comm_times;
-            std::vector<double> setup_times;
-            std::vector<double> strength_times;
-            std::vector<double> coarsen_times;
-            std::vector<double> interp_times;
-            std::vector<double> matmat_times;
-            std::vector<double> matmat_comm_times;
+            aligned_vector<double> spmv_times;
+            aligned_vector<double> spmv_comm_times;
+            aligned_vector<double> setup_times;
+            aligned_vector<double> strength_times;
+            aligned_vector<double> coarsen_times;
+            aligned_vector<double> interp_times;
+            aligned_vector<double> matmat_times;
+            aligned_vector<double> matmat_comm_times;
             
             double setup_comm_t;
             double solve_comm_t;
@@ -687,9 +682,9 @@ namespace raptor
             int solve_comm_s;
 
             int coarse_n;
-            std::vector<double> A_coarse;
-            std::vector<int> coarse_sizes;
-            std::vector<int> coarse_displs;
+            aligned_vector<double> A_coarse;
+            aligned_vector<int> coarse_sizes;
+            aligned_vector<int> coarse_displs;
             MPI_Comm coarse_comm;
     };
 }

@@ -16,7 +16,7 @@ int main(int argc, char* argv[])
     CSRMatrix* A = stencil_grid(stencil, grid, 2);
     Vector x(A->n_rows);
     Vector b(A->n_rows);
-    std::vector<double> residuals;
+    aligned_vector<double> residuals;
 
     x.set_const_value(1.0);
     A->mult(x, b);

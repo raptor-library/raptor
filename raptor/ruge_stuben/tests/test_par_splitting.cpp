@@ -30,8 +30,8 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     FILE* f;
-    std::vector<int> states;
-    std::vector<int> off_proc_states;
+    aligned_vector<int> states;
+    aligned_vector<int> off_proc_states;
     int cf;
 
     ParCSRMatrix* S;
@@ -48,7 +48,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     S = readParMatrix(S0_fn);
 
     f = fopen(weights_fn, "r");
-    std::vector<double> weights(S->local_num_rows);
+    aligned_vector<double> weights(S->local_num_rows);
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
         fscanf(f, "%lf\n", &weights[0]);

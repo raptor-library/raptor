@@ -7,8 +7,8 @@
 using namespace raptor;
 
 // TODO -- if in S, col is positive, otherwise col is -(col+1)
-void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states, CSRMatrix** recv_on_ptr,
+void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<int>& states,
+        const aligned_vector<int>& off_proc_states, CSRMatrix** recv_on_ptr,
         CSRMatrix** recv_off_ptr)
 {
     int start, end, proc;
@@ -37,7 +37,7 @@ void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const std::vector<int>& state
     };
     std::vector<PairData> send_buffer;
     std::vector<PairData> recv_buffer;
-    std::vector<int> send_ptr(send_comm->num_msgs+1);
+    aligned_vector<int> send_ptr(send_comm->num_msgs+1);
     send_ptr[0] = 0;
 
     // Send pair_data for each row using MPI_DOUBLE_INT
@@ -187,8 +187,8 @@ void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const std::vector<int>& state
 }
 
 
-void communicate(ParCSRMatrix* A, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states, CSRMatrix** recv_on_ptr,
+void communicate(ParCSRMatrix* A, const aligned_vector<int>& states,
+        const aligned_vector<int>& off_proc_states, CSRMatrix** recv_on_ptr,
         CSRMatrix** recv_off_ptr)
 {
     int start, end, proc;
@@ -215,7 +215,7 @@ void communicate(ParCSRMatrix* A, const std::vector<int>& states,
     };
     std::vector<PairData> send_buffer;
     std::vector<PairData> recv_buffer;
-    std::vector<int> send_ptr(send_comm->num_msgs+1);
+    aligned_vector<int> send_ptr(send_comm->num_msgs+1);
     send_ptr[0] = 0;
 
     // Send pair_data for each row using MPI_DOUBLE_INT
@@ -318,8 +318,8 @@ void communicate(ParCSRMatrix* A, const std::vector<int>& states,
 }
 
 ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
-        ParCSRMatrix* S, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states, 
+        ParCSRMatrix* S, const aligned_vector<int>& states,
+        const aligned_vector<int>& off_proc_states, 
         bool tap_interp, int num_variables, int* variables)
 {
     int rank;
@@ -347,8 +347,8 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
 
     std::set<int> global_set;
     std::map<int, int> global_to_local;
-    std::vector<int> off_proc_column_map;
-    std::vector<int> off_variables;
+    aligned_vector<int> off_proc_column_map;
+    aligned_vector<int> off_variables;
 
     CSRMatrix* recv_on; // On Proc Block of Recvd A
     CSRMatrix* recv_off; // Off Proc Block of Recvd A
@@ -374,15 +374,15 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     }
 
     // Gather off_proc_states_A
-    std::vector<int> off_proc_states_A;
+    aligned_vector<int> off_proc_states_A;
     if (A->off_proc_num_cols) off_proc_states_A.resize(A->off_proc_num_cols);
-    std::vector<int>& recvbuf = comm->communicate(states);
+    aligned_vector<int>& recvbuf = comm->communicate(states);
     for (int i = 0; i < A->off_proc_num_cols; i++)
     {
         off_proc_states_A[i] = recvbuf[i];
     } 
     // Map off proc cols S to A
-    std::vector<int> off_proc_S_to_A;
+    aligned_vector<int> off_proc_S_to_A;
     if (S->off_proc_num_cols) off_proc_S_to_A.resize(S->off_proc_num_cols);
     ctr = 0;
     for (int i = 0; i < S->off_proc_num_cols; i++)
@@ -533,8 +533,8 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     delete recv_off;
 
     // Initialize P
-    std::vector<int> on_proc_col_to_new;
-    std::vector<bool> col_exists;
+    aligned_vector<int> on_proc_col_to_new;
+    aligned_vector<bool> col_exists;
     if (S->on_proc_num_cols)
     {
         on_proc_col_to_new.resize(S->on_proc_num_cols, -1);
@@ -566,7 +566,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     }
     P->local_row_map = S->get_local_row_map();
 
-    std::vector<int> off_proc_A_to_P;
+    aligned_vector<int> off_proc_A_to_P;
     if (A->off_proc_num_cols) 
     {
 	    off_proc_A_to_P.resize(A->off_proc_num_cols, -1);
@@ -589,13 +589,13 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
 
     // For each row, will calculate coarse sums and store 
     // strong connections in vector
-    std::vector<int> pos;
-    std::vector<int> off_proc_pos;
-    std::vector<int> recv_off_pos;
-    std::vector<int> row_coarse;
-    std::vector<int> off_proc_row_coarse;
-    std::vector<double> row_strong;
-    std::vector<double> off_proc_row_strong;
+    aligned_vector<int> pos;
+    aligned_vector<int> off_proc_pos;
+    aligned_vector<int> recv_off_pos;
+    aligned_vector<int> row_coarse;
+    aligned_vector<int> off_proc_row_coarse;
+    aligned_vector<double> row_strong;
+    aligned_vector<double> off_proc_row_strong;
     if (A->on_proc_num_cols)
     {
         pos.resize(A->on_proc_num_cols, -1);
@@ -1086,7 +1086,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     // Update off_proc columns in P (remove col j if col_exists[j] is false)
     if (P->off_proc_num_cols)
     {
-    	std::vector<int> P_to_new(P->off_proc_num_cols);
+    	aligned_vector<int> P_to_new(P->off_proc_num_cols);
     	for (int i = 0; i < P->off_proc_num_cols; i++)
     	{
         	if (col_exists[i])
@@ -1095,7 +1095,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
             	P->off_proc_column_map.push_back(off_proc_column_map[i]);
         	}
     	}
-        for (std::vector<int>::iterator it = P->off_proc->idx2.begin(); 
+        for (aligned_vector<int>::iterator it = P->off_proc->idx2.begin(); 
                 it != P->off_proc->idx2.end(); ++it)
         {
             *it = P_to_new[*it];
@@ -1129,8 +1129,8 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
 }
 
 ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
-        ParCSRMatrix* S, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states, 
+        ParCSRMatrix* S, const aligned_vector<int>& states,
+        const aligned_vector<int>& off_proc_states, 
         bool tap_interp, int num_variables, int* variables)
 {
     int start, end;
@@ -1143,7 +1143,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     double diag, val;
     double weak_sum, coarse_sum;
     double sign;
-    std::vector<int> off_variables;
+    aligned_vector<int> off_variables;
     if (A->off_proc_num_cols) off_variables.resize(A->off_proc_num_cols);
 
     CommPkg* comm = A->comm;
@@ -1170,9 +1170,9 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     }
 
     // Initialize P
-    std::vector<int> on_proc_col_to_new;
-    std::vector<int> off_proc_col_to_new;
-    std::vector<bool> col_exists;
+    aligned_vector<int> on_proc_col_to_new;
+    aligned_vector<int> off_proc_col_to_new;
+    aligned_vector<bool> col_exists;
     if (S->on_proc_num_cols)
     {
         on_proc_col_to_new.resize(S->on_proc_num_cols, -1);
@@ -1215,16 +1215,16 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     P->local_row_map = S->get_local_row_map();
 
     // Need off_proc_states_A
-    std::vector<int> off_proc_states_A;
+    aligned_vector<int> off_proc_states_A;
     if (A->off_proc_num_cols) off_proc_states_A.resize(A->off_proc_num_cols);
-    std::vector<int>& recvbuf = comm->communicate(states);
+    aligned_vector<int>& recvbuf = comm->communicate(states);
     for (int i = 0; i < A->off_proc_num_cols; i++)
     {
         off_proc_states_A[i] = recvbuf[i];
     } 
 
     // Map off proc cols S to A
-    std::vector<int> off_proc_S_to_A;
+    aligned_vector<int> off_proc_S_to_A;
     if (S->off_proc_num_cols) off_proc_S_to_A.resize(S->off_proc_num_cols);
     ctr = 0;
     for (int i = 0; i < S->off_proc_num_cols; i++)
@@ -1242,7 +1242,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     // Change on_proc_cols to local
     recv_on->n_cols = A->on_proc_num_cols;
     int* on_proc_partition_to_col = A->map_partition_to_local();
-    for (std::vector<int>::iterator it = recv_on->idx2.begin();
+    for (aligned_vector<int>::iterator it = recv_on->idx2.begin();
             it != recv_on->idx2.end(); ++it)
     {
         *it = on_proc_partition_to_col[*it - A->partition->first_local_row];
@@ -1252,7 +1252,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     // Change off_proc_cols to local (remove cols not on rank)
     ctr = 0;
     std::map<int, int> global_to_local;
-    for (std::vector<int>::iterator it = A->off_proc_column_map.begin();
+    for (aligned_vector<int>::iterator it = A->off_proc_column_map.begin();
             it != A->off_proc_column_map.end(); ++it)
     {
         global_to_local[*it] = ctr++;
@@ -1282,12 +1282,12 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     // For each row, will calculate coarse sums and store 
     // strong connections in vector
-    std::vector<int> pos;
-    std::vector<int> off_proc_pos;
-    std::vector<int> row_coarse;
-    std::vector<int> off_proc_row_coarse;
-    std::vector<double> row_strong;
-    std::vector<double> off_proc_row_strong;
+    aligned_vector<int> pos;
+    aligned_vector<int> off_proc_pos;
+    aligned_vector<int> row_coarse;
+    aligned_vector<int> off_proc_row_coarse;
+    aligned_vector<double> row_strong;
+    aligned_vector<double> off_proc_row_strong;
     if (A->on_proc_num_cols)
     {
         pos.resize(A->on_proc_num_cols, -1);
@@ -1622,7 +1622,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
             P->off_proc_column_map.push_back(S->off_proc_column_map[i]);
         }
     }
-    for (std::vector<int>::iterator it = P->off_proc->idx2.begin(); 
+    for (aligned_vector<int>::iterator it = P->off_proc->idx2.begin(); 
             it != P->off_proc->idx2.end(); ++it)
     {
         *it = off_proc_col_to_new[*it];
@@ -1652,8 +1652,8 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
 
 ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
-        ParCSRMatrix* S, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states)
+        ParCSRMatrix* S, const aligned_vector<int>& states,
+        const aligned_vector<int>& off_proc_states)
 {
     int start, end, col;
     int global_num_cols;
@@ -1669,8 +1669,8 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
     S->on_proc->move_diag();
 
     // Copy entries of A into sparsity pattern of S
-    std::vector<double> sa_on;
-    std::vector<double> sa_off;
+    aligned_vector<double> sa_on;
+    aligned_vector<double> sa_off;
     if (S->on_proc->nnz)
     {
         sa_on.resize(S->on_proc->nnz);
@@ -1708,8 +1708,8 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         }
     }
 
-    std::vector<int> on_proc_col_to_new;
-    std::vector<int> off_proc_col_to_new;
+    aligned_vector<int> on_proc_col_to_new;
+    aligned_vector<int> off_proc_col_to_new;
     if (S->on_proc_num_cols)
     {
         on_proc_col_to_new.resize(S->on_proc_num_cols, -1);
@@ -1748,7 +1748,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
             P->on_proc_column_map.push_back(S->on_proc_column_map[i]);
         }
     }
-    std::vector<bool> col_exists;
+    aligned_vector<bool> col_exists;
     if (S->off_proc_num_cols)
     {
         col_exists.resize(S->off_proc_num_cols, false);
@@ -1928,7 +1928,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
             P->off_proc_column_map.push_back(S->off_proc_column_map[i]);
         }
     }
-    for (std::vector<int>::iterator it = P->off_proc->idx2.begin(); 
+    for (aligned_vector<int>::iterator it = P->off_proc->idx2.begin(); 
             it != P->off_proc->idx2.end(); ++it)
     {
         *it = off_proc_col_to_new[*it];

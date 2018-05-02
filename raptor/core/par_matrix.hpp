@@ -41,7 +41,7 @@
  *****    Matrix storing local off-diagonal block
  ***** offd_num_cols : index_t
  *****    Number of columns in the off-diagonal matrix
- ***** offd_column_map : std::vector<index_t>
+ ***** offd_column_map : aligned_vector<int>
  *****    Maps local columns of offd Matrix to global
  ***** comm : ParComm*
  *****    Parallel communicator for matrix
@@ -272,17 +272,17 @@ namespace raptor
 
     virtual ParMatrix* transpose() = 0;
 
-    std::vector<index_t>& get_off_proc_column_map()
+    aligned_vector<int>& get_off_proc_column_map()
     {
         return off_proc_column_map;
     }
 
-    std::vector<index_t>& get_on_proc_column_map()
+    aligned_vector<int>& get_on_proc_column_map()
     {
         return on_proc_column_map;
     }
 
-    std::vector<index_t>& get_local_row_map()
+    aligned_vector<int>& get_local_row_map()
     {
         return local_row_map;
     }
@@ -310,9 +310,9 @@ namespace raptor
     // It will be condensed to only store columns with 
     // nonzeros, and these must be mapped to 
     // global column indices
-    std::vector<index_t> off_proc_column_map; // Maps off_proc local to global
-    std::vector<index_t> on_proc_column_map; // Maps on_proc local to global
-    std::vector<index_t> local_row_map; // Maps local rows to global
+    aligned_vector<int> off_proc_column_map; // Maps off_proc local to global
+    aligned_vector<int> on_proc_column_map; // Maps on_proc local to global
+    aligned_vector<int> local_row_map; // Maps local rows to global
 
     // Parallel communication package indicating which 
     // processes hold vector values associated with off_proc,
@@ -562,8 +562,8 @@ namespace raptor
     ParCSRMatrix* aggregate();
     ParCSRMatrix* fit_candidates(double* B, double* R, int num_candidates, 
             double tol = 1e-10);
-    int maximal_independent_set(std::vector<int>& local_states,
-            std::vector<int>& off_proc_states, int max_iters = -1);
+    int maximal_independent_set(aligned_vector<int>& local_states,
+            aligned_vector<int>& off_proc_states, int max_iters = -1);
 
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
@@ -578,8 +578,14 @@ namespace raptor
     ParCSRMatrix* add(ParCSRMatrix* A);
     ParCSRMatrix* subtract(ParCSRMatrix* B);
 
-    void print_mult(ParCSRMatrix* B);
-    void print_mult_T(ParCSCMatrix* A);
+    void print_mult(ParCSRMatrix* B, const aligned_vector<int>& proc_distances, 
+                const aligned_vector<int>& worst_proc_distances);
+    void print_mult_T(ParCSCMatrix* A, const aligned_vector<int>& proc_distances,
+                const aligned_vector<int>& worst_proc_distances);
+    void print_mult(const aligned_vector<int>& proc_distances,
+                const aligned_vector<int>& worst_proc_distances);
+    void print_mult_T(const aligned_vector<int>& proc_distances,
+                const aligned_vector<int>& worst_proc_distances);
     
     void mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, CSRMatrix* recv);
     CSRMatrix* mult_T_partial(ParCSCMatrix* A);

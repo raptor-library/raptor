@@ -159,17 +159,17 @@ public:
     }
 
     template<typename T>
-    std::vector<T>& get_buffer();
+    aligned_vector<T>& get_buffer();
 
     int num_msgs;
     int size_msgs;
-    std::vector<int> procs;
-    std::vector<int> indptr;
-    std::vector<int> indices;
-    std::vector<int> indptr_T;
-    std::vector<MPI_Request> requests;
-    std::vector<double> buffer;
-    std::vector<int> int_buffer;
+    aligned_vector<int> procs;
+    aligned_vector<int> indptr;
+    aligned_vector<int> indices;
+    aligned_vector<int> indptr_T;
+    aligned_vector<MPI_Request> requests;
+    aligned_vector<double> buffer;
+    aligned_vector<int> int_buffer;
 
     struct OpData
     {

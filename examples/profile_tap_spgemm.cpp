@@ -27,7 +27,6 @@
 
 int main(int argc, char *argv[])
 {
-
     MPI_Init(&argc, &argv);
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -48,20 +47,21 @@ int main(int argc, char *argv[])
 
     double t0, tfinal;
     double t0_comm, tfinal_comm;
-    double t0_wait, tfinal_wait;
-    double wait_L, wait_R, wait_S, wait_G;
     int n0, s0;
     int nfinal, sfinal;
     double raptor_setup, raptor_solve;
     int num_variables = 1;
-
+    relax_t relax_type = SOR;
+    coarsen_t coarsen_type = CLJP;
+    interp_t interp_type = Classical;
     double strong_threshold = 0.25;
-    std::vector<double> residuals;
+
+    aligned_vector<double> residuals;
 
     if (system < 2)
     {
         double* stencil = NULL;
-        std::vector<int> grid;
+        aligned_vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);
@@ -100,6 +100,7 @@ int main(int argc, char *argv[])
         int order = 2;
         int seq_refines = 1;
         int par_refines = 1;
+        int max_dofs = 1000000;
         if (argc > 3)
         {
             mfem_system = atoi(argv[3]);
@@ -109,6 +110,7 @@ int main(int argc, char *argv[])
                 if (argc > 5)
                 {
                     seq_refines = atoi(argv[5]);
+                    max_dofs = atoi(argv[5]);
                     if (argc > 6)
                     {
                         par_refines = atoi(argv[6]);
@@ -116,7 +118,10 @@ int main(int argc, char *argv[])
                 }
             }
         }
-        
+
+        coarsen_type = HMIS;
+        interp_type = Extended;
+        strong_threshold = 0.0;
         switch (mfem_system)
         {
             case 0:
@@ -138,12 +143,13 @@ int main(int argc, char *argv[])
                 break;
             case 4:
                 A = mfem_dg_diffusion(x, b, mesh_file, order, seq_refines, par_refines);
+                break;
             case 5:
                 A = mfem_dg_elasticity(x, b, &num_variables, mesh_file, order, seq_refines, par_refines);
-        }                
+                break;
+        }
     }
 #endif
-
     else if (system == 3)
     {
         const char* file = "../../examples/LFAT5.pm";
@@ -165,7 +171,7 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(strong_threshold, CLJP, Classical, SOR);
+    ml = new ParMultilevel(strong_threshold, coarsen_type, interp_type, relax_type);
     ml->num_variables = num_variables;
     ml->setup(A);
     raptor_setup = MPI_Wtime() - t0;
@@ -180,10 +186,20 @@ int main(int argc, char *argv[])
         if (rank == 0) printf("Level %d\n", i);
 
         if (rank == 0) printf("A*P:\n");
-        Al->print_mult(Pl);
+//        Al->print_mult(Pl);
+        int active = 1;
+        int sum_active;
+        if (Al->local_num_rows == 0) active = 0;
+        MPI_Reduce(&active, &sum_active, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Num Active Processes: %d\n", sum_active); 
 
         if (rank == 0) printf("\nP.T*AP:\n");
-        AP->print_mult_T(Pl_csc);
+//        AP->print_mult_T(Pl_csc);
+        active = 1;
+        if (AP->local_num_rows == 0) active = 0;
+        MPI_Reduce(&active, &sum_active, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Num Active Processes: %d\n", sum_active); 
+       
 
         delete Pl_csc;
         delete AP;

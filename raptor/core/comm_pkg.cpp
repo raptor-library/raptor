@@ -7,24 +7,24 @@
 namespace raptor
 {
     template<>
-    std::vector<double>& CommPkg::get_recv_buffer<double>()
+    aligned_vector<double>& CommPkg::get_recv_buffer<double>()
     {
         return get_double_recv_buffer();
     }
     template<>
-    std::vector<int>& CommPkg::get_recv_buffer<int>()
+    aligned_vector<int>& CommPkg::get_recv_buffer<int>()
     {
         return get_int_recv_buffer();
     }
 
     template<>
-    std::vector<double>& CommPkg::communicate<double>(const double* values)
+    aligned_vector<double>& CommPkg::communicate<double>(const double* values)
     {
         init_double_comm(values);
         return complete_double_comm();
     }
     template<>
-    std::vector<int>& CommPkg::communicate<int>(const int* values)
+    aligned_vector<int>& CommPkg::communicate<int>(const int* values)
     {
         init_int_comm(values);
         return complete_int_comm();
@@ -42,40 +42,40 @@ namespace raptor
     }
 
     template<>
-    std::vector<double>& CommPkg::complete_comm<double>()
+    aligned_vector<double>& CommPkg::complete_comm<double>()
     {
         return complete_double_comm();
     }
     template<>
-    std::vector<int>& CommPkg::complete_comm<int>()
+    aligned_vector<int>& CommPkg::complete_comm<int>()
     {
         return complete_int_comm();
     }
 
     template<>
     void CommPkg::communicate_T(const double* values,
-            std::vector<double>& result)
+            aligned_vector<double>& result)
     {
         init_double_comm_T(values);
         complete_double_comm_T(result);
     }
     template<>
     void CommPkg::communicate_T(const double* values,
-            std::vector<int>& result)
+            aligned_vector<int>& result)
     {
         init_double_comm_T(values);
         complete_double_comm_T(result);
     }
     template<>
     void CommPkg::communicate_T(const int* values,
-            std::vector<int>& result)
+            aligned_vector<int>& result)
     {
         init_int_comm_T(values);
         complete_int_comm_T(result);
     }
     template<>
     void CommPkg::communicate_T(const int* values,
-            std::vector<double>& result)
+            aligned_vector<double>& result)
     {
         init_int_comm_T(values);
         complete_int_comm_T(result);
@@ -105,22 +105,22 @@ namespace raptor
     }
 
     template<>
-    void CommPkg::complete_comm_T<double, double>(std::vector<double>& result)
+    void CommPkg::complete_comm_T<double, double>(aligned_vector<double>& result)
     {
         complete_double_comm_T(result);
     }
     template<>
-    void CommPkg::complete_comm_T<double, int>(std::vector<int>& result)
+    void CommPkg::complete_comm_T<double, int>(aligned_vector<int>& result)
     {
         complete_double_comm_T(result);
     }
     template<>
-    void CommPkg::complete_comm_T<int, int>(std::vector<int>& result)
+    void CommPkg::complete_comm_T<int, int>(aligned_vector<int>& result)
     {
         complete_int_comm_T(result);
     }
     template<>
-    void CommPkg::complete_comm_T<int, double>(std::vector<double>& result)
+    void CommPkg::complete_comm_T<int, double>(aligned_vector<double>& result)
     {
         complete_int_comm_T(result);
     }
@@ -136,7 +136,7 @@ namespace raptor
     }
 
     template<> 
-    std::vector<double>& CommPkg::conditional_comm<double>(const double* values, 
+    aligned_vector<double>& CommPkg::conditional_comm<double>(const double* values, 
                 const int* send_compares, 
                 const int* recv_compares,
                 std::function<bool(int)> compare_func)
@@ -145,7 +145,7 @@ namespace raptor
                 compare_func);
     }
     template<> 
-    std::vector<int>& CommPkg::conditional_comm<int>(const int* values, 
+    aligned_vector<int>& CommPkg::conditional_comm<int>(const int* values, 
                 const int* send_compares, 
                 const int* recv_compares,
                 std::function<bool(int)> compare_func)
@@ -155,7 +155,7 @@ namespace raptor
     }
     template<> 
     void CommPkg::conditional_comm_T<double, double>(const double* values, 
-                std::vector<double>& result,
+                aligned_vector<double>& result,
                 const int* send_compares, 
                 const int* recv_compares,
                 std::function<bool(int)> compare_func,
@@ -166,7 +166,7 @@ namespace raptor
     }
     template<> 
     void CommPkg::conditional_comm_T<int, double>(const int* values, 
-                std::vector<double>& result,
+                aligned_vector<double>& result,
                 const int* send_compares, 
                 const int* recv_compares,
                 std::function<bool(int)> compare_func, 
@@ -177,7 +177,7 @@ namespace raptor
     }
     template<> 
     void CommPkg::conditional_comm_T<int, int>(const int* values, 
-                std::vector<int>& result,
+                aligned_vector<int>& result,
                 const int* send_compares, 
                 const int* recv_compares,
                 std::function<bool(int)> compare_func,
@@ -191,7 +191,7 @@ namespace raptor
 
 using namespace raptor;
 
-std::vector<double>& CommPkg::communicate(ParVector& v)
+aligned_vector<double>& CommPkg::communicate(ParVector& v)
 {
     init_double_comm(v.local.data());
     return complete_double_comm();
@@ -209,9 +209,9 @@ CSRMatrix* CommPkg::communicate(ParCSRMatrix* A)
     int global_col;
 
     int nnz = A->on_proc->nnz + A->off_proc->nnz;
-    std::vector<int> rowptr(A->local_num_rows + 1);
-    std::vector<int> col_indices;
-    std::vector<double> values;
+    aligned_vector<int> rowptr(A->local_num_rows + 1);
+    aligned_vector<int> col_indices;
+    aligned_vector<double> values;
     if (nnz)
     {
         col_indices.resize(nnz);
@@ -244,8 +244,8 @@ CSRMatrix* CommPkg::communicate(ParCSRMatrix* A)
     return communicate(rowptr, col_indices, values);
 }
 
-CSRMatrix* communication_helper(std::vector<int>& rowptr,
-        std::vector<int>& col_indices, std::vector<double>& values,
+CSRMatrix* communication_helper(aligned_vector<int>& rowptr,
+        aligned_vector<int>& col_indices, aligned_vector<double>& values,
         CommData* send_comm, CommData* recv_comm, int key, MPI_Comm mpi_comm)
 {
     int start, end, proc;
@@ -267,7 +267,7 @@ CSRMatrix* communication_helper(std::vector<int>& rowptr,
     };
     std::vector<PairData> send_buffer;
     std::vector<PairData> recv_buffer;
-    std::vector<int> send_ptr(send_comm->num_msgs+1);
+    aligned_vector<int> send_ptr(send_comm->num_msgs+1);
     send_ptr[0] = 0;
 
     // Send pair_data for each row using MPI_DOUBLE_INT
@@ -423,21 +423,21 @@ CSRMatrix* communication_helper(std::vector<int>& rowptr,
     return recv_mat;
 }    
 
-CSRMatrix* ParComm::communicate(std::vector<int>& rowptr, 
-        std::vector<int>& col_indices, std::vector<double>& values)
+CSRMatrix* ParComm::communicate(aligned_vector<int>& rowptr, 
+        aligned_vector<int>& col_indices, aligned_vector<double>& values)
 {
     return communication_helper(rowptr, col_indices, values,
             send_data, recv_data, key, mpi_comm);
 }
 
-CSRMatrix* ParComm::communicate_T(std::vector<int>& rowptr, 
-        std::vector<int>& col_indices, std::vector<double>& values,
+CSRMatrix* ParComm::communicate_T(aligned_vector<int>& rowptr, 
+        aligned_vector<int>& col_indices, aligned_vector<double>& values,
         int n_result_rows)
 {
     int idx, ptr;
     int start, end;
 
-    std::vector<int> row_sizes;
+    aligned_vector<int> row_sizes;
     if (n_result_rows) row_sizes.resize(n_result_rows, 0);
 
     CSRMatrix* recv_mat_T = communication_helper(rowptr, col_indices, values,
@@ -484,8 +484,8 @@ CSRMatrix* ParComm::communicate_T(std::vector<int>& rowptr,
     return recv_mat;
 }
     
-CSRMatrix* TAPComm::communicate(std::vector<int>& rowptr, 
-        std::vector<int>& col_indices, std::vector<double>& values)
+CSRMatrix* TAPComm::communicate(aligned_vector<int>& rowptr, 
+        aligned_vector<int>& col_indices, aligned_vector<double>& values)
 {   
     int ctr, idx, row;
     int start, end;
@@ -513,7 +513,7 @@ CSRMatrix* TAPComm::communicate(std::vector<int>& rowptr,
 
     // Create recv_mat (combination of L_mat and R_mat)
     CSRMatrix* recv_mat = new CSRMatrix(L_mat->n_rows + R_mat->n_rows, -1);
-    std::vector<int>& row_sizes = get_recv_buffer<int>();
+    aligned_vector<int>& row_sizes = get_recv_buffer<int>();
     recv_mat->nnz = L_mat->nnz + R_mat->nnz;
     int ptr;
     if (recv_mat->nnz)
@@ -573,8 +573,8 @@ CSRMatrix* TAPComm::communicate(std::vector<int>& rowptr,
     return recv_mat;
 }
 
-CSRMatrix* TAPComm::communicate_T(std::vector<int>& rowptr, 
-        std::vector<int>& col_indices, std::vector<double>& values,
+CSRMatrix* TAPComm::communicate_T(aligned_vector<int>& rowptr, 
+        aligned_vector<int>& col_indices, aligned_vector<double>& values,
         int n_result_rows)
 {   
     int n_rows = rowptr.size() - 1;
@@ -615,7 +615,7 @@ CSRMatrix* TAPComm::communicate_T(std::vector<int>& rowptr,
     }
 
     CSRMatrix* recv_mat = new CSRMatrix(n_result_rows, -1);
-    std::vector<int> row_sizes(n_result_rows, 0);
+    aligned_vector<int> row_sizes(n_result_rows, 0);
     int nnz = L_mat->nnz + final_mat->nnz;
     if (nnz)
     {

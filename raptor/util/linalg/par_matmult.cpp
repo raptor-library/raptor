@@ -278,13 +278,13 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C,
     }
             
     // Split recv_mat into on and off proc portions
-    std::vector<int> recv_on_rowptr(recv_mat->n_rows+1);
-    std::vector<int> recv_on_cols;
-    std::vector<double> recv_on_vals;
+    aligned_vector<int> recv_on_rowptr(recv_mat->n_rows+1);
+    aligned_vector<int> recv_on_cols;
+    aligned_vector<double> recv_on_vals;
 
-    std::vector<int> recv_off_rowptr(recv_mat->n_rows+1);
-    std::vector<int> recv_off_cols;
-    std::vector<double> recv_off_vals;
+    aligned_vector<int> recv_off_rowptr(recv_mat->n_rows+1);
+    aligned_vector<int> recv_off_cols;
+    aligned_vector<double> recv_off_vals;
 
     int* part_to_col = B->map_partition_to_local();
     recv_on_rowptr[0] = 0;
@@ -316,11 +316,11 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C,
 
     // Calculate global_to_C and B_to_C column maps
     std::map<int, int> global_to_C;
-    std::vector<int> B_to_C(B->off_proc_num_cols);
+    aligned_vector<int> B_to_C(B->off_proc_num_cols);
 
     std::copy(recv_off_cols.begin(), recv_off_cols.end(),
             std::back_inserter(C->off_proc_column_map));
-    for (std::vector<int>::iterator it = B->off_proc_column_map.begin();
+    for (aligned_vector<int>::iterator it = B->off_proc_column_map.begin();
             it != B->off_proc_column_map.end(); ++it)
     {
         C->off_proc_column_map.push_back(*it);
@@ -329,7 +329,7 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C,
 
     int prev_col = -1;
     C->off_proc_num_cols = 0;
-    for (std::vector<int>::iterator it = C->off_proc_column_map.begin();
+    for (aligned_vector<int>::iterator it = C->off_proc_column_map.begin();
             it != C->off_proc_column_map.end(); ++it)
     {
         if (*it != prev_col)
@@ -346,7 +346,7 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C,
         global_col = B->off_proc_column_map[i];
         B_to_C[i] = global_to_C[global_col];
     }
-    for (std::vector<int>::iterator it = recv_off_cols.begin(); 
+    for (aligned_vector<int>::iterator it = recv_off_cols.begin(); 
             it != recv_off_cols.end(); ++it)
     {
         *it = global_to_C[*it];
@@ -363,8 +363,8 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C,
     C->off_proc->vals.reserve(local_nnz);
 
     // Variables for calculating row sums
-    std::vector<double> sums(C->on_proc->n_cols, 0);
-    std::vector<int> next(C->on_proc->n_cols, -1);
+    aligned_vector<double> sums(C->on_proc->n_cols, 0);
+    aligned_vector<int> next(C->on_proc->n_cols, -1);
 
     C->on_proc->idx1[0] = 0;
     for (int i = 0; i < local_num_rows; i++)
@@ -528,8 +528,8 @@ CSRMatrix* ParCSRMatrix::mult_T_partial(CSCMatrix* A_off)
     CSRMatrix* Ctmp = new CSRMatrix(A_off->n_cols, n_cols);
 
     // Create vectors for holding sums of each row
-    std::vector<double> sums;
-    std::vector<int> next;
+    aligned_vector<double> sums;
+    aligned_vector<int> next;
     if (n_cols)
     {
         sums.resize(n_cols, 0);
@@ -627,8 +627,8 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
     
     double val_PT, val;
 
-    std::vector<double> sums;
-    std::vector<int> next;
+    aligned_vector<double> sums;
+    aligned_vector<int> next;
 
     // Set dimensions of C
     C->global_num_rows = P->global_num_cols; // AT global rows
@@ -658,7 +658,7 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
 
     // Update recv_on columns (to match local cols)
     int* part_to_col = map_partition_to_local();
-    for (std::vector<int>::iterator it = recv_on->idx2.begin();
+    for (aligned_vector<int>::iterator it = recv_on->idx2.begin();
             it != recv_on->idx2.end(); ++it)
     {
         *it = part_to_col[(*it - partition->first_local_col)];
@@ -739,7 +739,7 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
      ******************************/
     // Calculate global_to_C and map_to_C column maps
     std::map<int, int> global_to_C;
-    std::vector<int> map_to_C;
+    aligned_vector<int> map_to_C;
     if (off_proc_num_cols)
     {
         map_to_C.reserve(off_proc_num_cols);
@@ -747,12 +747,12 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
 
     // Create set of global columns in B_off_proc and recv_mat
     std::set<int> C_col_set;
-    for (std::vector<int>::iterator it = recv_off->idx2.begin(); 
+    for (aligned_vector<int>::iterator it = recv_off->idx2.begin(); 
             it != recv_off->idx2.end(); ++it)
     {
         C_col_set.insert(*it);
     }
-    for (std::vector<int>::iterator it = off_proc_column_map.begin(); 
+    for (aligned_vector<int>::iterator it = off_proc_column_map.begin(); 
             it != off_proc_column_map.end(); ++it)
     {
         C_col_set.insert(*it);
@@ -771,7 +771,7 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
     }
 
     // Map local off_proc_cols to C->off_proc_column_map
-    for (std::vector<int>::iterator it = off_proc_column_map.begin();
+    for (aligned_vector<int>::iterator it = off_proc_column_map.begin();
             it != off_proc_column_map.end(); ++it)
     {
         col_C = global_to_C[*it];
@@ -779,7 +779,7 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
     }
 
     // Update recvd cols from global_col to local col in C
-    for (std::vector<int>::iterator it = recv_off->idx2.begin();
+    for (aligned_vector<int>::iterator it = recv_off->idx2.begin();
             it != recv_off->idx2.end(); ++it)
     {
         *it = global_to_C[*it];
@@ -867,8 +867,8 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
 
     // Condense columns!  A lot of them are zero columns...
     // Could instead add global column indices, and then map to local
-    std::vector<int> off_col_sizes;
-    std::vector<int> col_orig_to_new;
+    aligned_vector<int> off_col_sizes;
+    aligned_vector<int> col_orig_to_new;
     int start, end, ctr;
     if (C->off_proc_num_cols)
     {
@@ -915,29 +915,50 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
     }
 }
 
-void ParCSRMatrix::print_mult(ParCSRMatrix* B)
+void ParCSRMatrix::print_mult(ParCSRMatrix* B, const aligned_vector<int>& proc_distances,
+                const aligned_vector<int>& worst_proc_distances)
 {
-    int rank;
+    int rank, rank_node, rank_socket;
+    int ranks_per_socket;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     int num_short = 0;
     int num_eager = 0;
     int num_rend = 0;
+    int num_short_node = 0;
+    int num_eager_node = 0;
+    int num_rend_node = 0;
+    int num_short_socket = 0;
+    int num_eager_socket = 0;
+    int num_rend_socket = 0;
 
     int size_short = 0;
     int size_eager = 0;
     int size_rend = 0;
+    int size_short_node = 0;
+    int size_eager_node = 0;
+    int size_rend_node = 0;
+    int size_short_socket = 0;
+    int size_eager_socket = 0;
+    int size_rend_socket = 0;
+
+    long byte_hops = 0;
+    long worst_byte_hops = 0;
 
     int short_cutoff = 500;
     int eager_cutoff = 8000; 
 
     int start, end, size, idx;
+    int proc, node, socket, n;
 
     // Check that communication package has been initialized
     if (comm == NULL)
     {
         comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
     }
+    rank_node = comm->topology->get_node(rank);
+    ranks_per_socket = comm->topology->PPN / 2;
+    rank_socket = rank / ranks_per_socket;
 
     // Communicate data and multiply
     // Will communicate the rows of B based on comm
@@ -945,6 +966,9 @@ void ParCSRMatrix::print_mult(ParCSRMatrix* B)
     {
         start = comm->send_data->indptr[i];
         end = comm->send_data->indptr[i+1];
+        proc = comm->send_data->procs[i];
+        node = comm->topology->get_node(proc);
+        socket = proc / ranks_per_socket;
         size = 0;
         for (int j = start; j < end; j++)
         {
@@ -953,116 +977,373 @@ void ParCSRMatrix::print_mult(ParCSRMatrix* B)
                 + (B->off_proc->idx1[idx+1] - B->off_proc->idx1[idx]);
         }
         size = size * (2*sizeof(int) + sizeof(double));
+        byte_hops += (size * proc_distances[proc]);
+        worst_byte_hops += (size * worst_proc_distances[proc]);
 
         if (size < short_cutoff)
         {
-            size_short += size;
-            num_short++;
+            if (node == rank_node)
+            {
+                if (socket == rank_socket)
+                {
+                    size_short_socket += size;
+                    num_short_socket++;
+                }
+                else
+                {
+                    size_short_node += size;
+                    num_short_node++;
+                }
+            }
+            else
+            {
+                size_short += size;
+                num_short++;
+            }
         }
         else if (size < eager_cutoff)
         {
-            size_eager += size;
-            num_eager++;
+            if (node == rank_node)
+            {
+                if (socket == rank_socket)
+                {
+                    size_eager_socket += size;
+                    num_eager_socket++;
+                }
+                else
+                {
+                    size_eager_node += size;
+                    num_eager_node++;
+                }
+            }
+            else
+            {
+                size_eager += size;
+                num_eager++;
+            }
         }
         else
         {
-            size_rend += size;
-            num_rend++;
+            if (node == rank_node)
+            {
+                if (socket == rank_socket)
+                {
+                    size_rend_socket += size;
+                    num_rend_socket++;
+                }
+                else
+                {
+                    size_rend_node += size;
+                    num_rend_node++;
+                }
+            }
+            else
+            {
+                size_rend += size;
+                num_rend++;
+            }
         }
     }
     
-    int max_num_short, max_num_eager, max_num_rend;
-    int max_size_short, max_size_eager, max_size_rend;
-    MPI_Reduce(&num_short, &max_num_short, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&num_eager, &max_num_eager, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&num_rend, &max_num_rend, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&size_short, &max_size_short, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&size_eager, &max_size_eager, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&size_rend, &max_size_rend, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-
-    if (rank == 0)
+    int max_n;
+    int max_s;
+    long nl;
+    n = num_short + num_eager + num_rend + num_short_node + num_eager_node + num_rend_node
+            + num_short_socket + num_eager_socket + num_rend_socket;
+    MPI_Allreduce(&n, &max_n, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+    if (rank == 0) printf("Max Num Msgs: %d\n", max_n);
+    if (n < max_n)
     {
-        printf("Num Short: %d\n", max_num_short);
-        printf("Num Eager: %d\n", max_num_eager);
-        printf("Num Rend: %d\n", max_num_rend);
-        printf("Size Short: %d\n", max_size_short);
-        printf("Size Eager: %d\n", max_size_eager);
-        printf("Size Rend: %d\n", max_size_rend);
+        num_short = 0;
+        num_eager = 0;
+        num_rend = 0;
+        num_short_node = 0;
+        num_eager_node = 0;
+        num_rend_node = 0;
+        num_short_socket = 0;
+        num_eager_socket = 0;
+        num_rend_socket = 0;
     }
+
+    long bytes;
+    bytes = size_short + size_eager + size_rend;
+    MPI_Reduce(&bytes, &nl, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Total Bytes = %ld\n", nl);
+
+    n = size_short + size_eager + size_rend + size_short_node + size_eager_node
+            + size_rend_node + size_short_socket + size_eager_socket + size_rend_socket;
+    MPI_Allreduce(&n, &max_s, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+    if (n < max_s)
+    {
+        size_short = 0;
+        size_eager = 0;
+        size_rend = 0;
+        size_short_node = 0;
+        size_eager_node = 0;
+        size_rend_node = 0;
+        size_short_socket = 0;
+        size_eager_socket = 0;
+        size_rend_socket = 0;
+    }
+
+    MPI_Reduce(&num_short, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Short: %d\n", n);
+    MPI_Reduce(&num_eager, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Eager: %d\n", n);
+    MPI_Reduce(&num_rend, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Rend: %d\n", n);
+    MPI_Reduce(&size_short, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Short: %d\n", n);
+    MPI_Reduce(&size_eager, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Eager: %d\n", n);
+    MPI_Reduce(&size_rend, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Rend: %d\n", n);
+
+    MPI_Reduce(&num_short_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Short Node: %d\n", n);
+    MPI_Reduce(&num_eager_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Eager Node: %d\n", n);
+    MPI_Reduce(&num_rend_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Rend Node: %d\n", n);
+    MPI_Reduce(&size_short_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Short Node: %d\n", n);
+    MPI_Reduce(&size_eager_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Eager Node: %d\n", n);
+    MPI_Reduce(&size_rend_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Rend Node: %d\n", n);
+
+    MPI_Reduce(&num_short_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Short Socket: %d\n", n);
+    MPI_Reduce(&num_eager_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Eager Socket: %d\n", n);
+    MPI_Reduce(&num_rend_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Rend Socket: %d\n", n);
+    MPI_Reduce(&size_short_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Short Socket: %d\n", n);
+    MPI_Reduce(&size_eager_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Eager Socket: %d\n", n);
+    MPI_Reduce(&size_rend_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Rend Socket: %d\n", n);
+    
+    MPI_Reduce(&byte_hops, &nl, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Byte Hops = %ld\n", nl);
+    MPI_Reduce(&worst_byte_hops, &nl, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Worst Byte Hops = %ld\n", nl);
 }
 
-
-void ParCSRMatrix::print_mult_T(ParCSCMatrix* A)
+void ParCSRMatrix::print_mult_T(ParCSCMatrix* A, const aligned_vector<int>& proc_distances,
+                const aligned_vector<int>& worst_proc_distances)
 {
-    int rank;
+    int rank, rank_node, rank_socket;
+    int ranks_per_socket;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     int num_short = 0;
     int num_eager = 0;
     int num_rend = 0;
+    int num_short_node = 0;
+    int num_eager_node = 0;
+    int num_rend_node = 0;
+    int num_short_socket = 0;
+    int num_eager_socket = 0;
+    int num_rend_socket = 0;
 
     int size_short = 0;
     int size_eager = 0;
     int size_rend = 0;
+    int size_short_node = 0;
+    int size_eager_node = 0;
+    int size_rend_node = 0;
+    int size_short_socket = 0;
+    int size_eager_socket = 0;
+    int size_rend_socket = 0;
+
+    long byte_hops = 0;
+    long worst_byte_hops = 0;
 
     int short_cutoff = 500;
-    int eager_cutoff = 8000; 
+    int eager_cutoff = 8000;
 
     int start, end, size, idx;
+    int proc, node, socket, n;
 
     if (A->comm == NULL)
     {
         A->comm = new ParComm(A->partition, A->off_proc_column_map, A->on_proc_column_map);
     }
+    rank_node = A->comm->topology->get_node(rank);
+    ranks_per_socket = A->comm->topology->PPN / 2;
+    rank_socket = rank / ranks_per_socket;
 
     CSRMatrix* Ctmp = mult_T_partial(A);
 
+    // Communicate data and multiply
+    // Will communicate the rows of B based on comm
     for (int i = 0; i < A->comm->recv_data->num_msgs; i++)
     {
         start = A->comm->recv_data->indptr[i];
         end = A->comm->recv_data->indptr[i+1];
+        proc = A->comm->recv_data->procs[i];
+        node = A->comm->topology->get_node(proc);
+        socket = proc / ranks_per_socket;
         size = 0;
         for (int j = start; j < end; j++)
         {
             size += (Ctmp->idx1[j+1] - Ctmp->idx1[j]);
         }
         size = size * (2*sizeof(int) + sizeof(double));
+        byte_hops += (size * proc_distances[proc]);
+        worst_byte_hops += (size * worst_proc_distances[proc]);
 
         if (size < short_cutoff)
         {
-            size_short += size;
-            num_short++;
+            if (node == rank_node)
+            {
+                if (socket == rank_socket)
+                {
+                    size_short_socket += size;
+                    num_short_socket++;
+                }
+                else
+                {
+                    size_short_node += size;
+                    num_short_node++;
+                }
+            }
+            else
+            {
+                size_short += size;
+                num_short++;
+            }
         }
         else if (size < eager_cutoff)
         {
-            size_eager += size;
-            num_eager++;
+            if (node == rank_node)
+            {
+                if (socket == rank_socket)
+                {
+                    size_eager_socket += size;
+                    num_eager_socket++;
+                }
+                else
+                {
+                    size_eager_node += size;
+                    num_eager_node++;
+                }
+            }
+            else
+            {
+                size_eager += size;
+                num_eager++;
+            }
         }
         else
         {
-            size_rend += size;
-            num_rend++;
+            if (node == rank_node)
+            {
+                if (socket == rank_socket)
+                {
+                    size_rend_socket += size;
+                    num_rend_socket++;
+                }
+                else
+                {
+                    size_rend_node += size;
+                    num_rend_node++;
+                }
+            }
+            else
+            {
+                size_rend += size;
+                num_rend++;
+            }
         }
     }
-    
-    int max_num_short, max_num_eager, max_num_rend;
-    int max_size_short, max_size_eager, max_size_rend;
-    MPI_Reduce(&num_short, &max_num_short, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&num_eager, &max_num_eager, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&num_rend, &max_num_rend, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&size_short, &max_size_short, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&size_eager, &max_size_eager, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&size_rend, &max_size_rend, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
 
-    if (rank == 0)
+    int max_n;
+    int max_s;
+    long nl;
+    n = num_short + num_eager + num_rend + num_short_node + num_eager_node + num_rend_node
+            + num_short_socket + num_eager_socket + num_rend_socket;
+    MPI_Allreduce(&n, &max_n, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+    if (rank == 0) printf("Max Num Msgs: %d\n", max_n);
+    if (n < max_n)
     {
-        printf("Num Short: %d\n", max_num_short);
-        printf("Num Eager: %d\n", max_num_eager);
-        printf("Num Rend: %d\n", max_num_rend);
-        printf("Size Short: %d\n", max_size_short);
-        printf("Size Eager: %d\n", max_size_eager);
-        printf("Size Rend: %d\n", max_size_rend);
+        num_short = 0;
+        num_eager = 0;
+        num_rend = 0;
+        num_short_node = 0;
+        num_eager_node = 0;
+        num_rend_node = 0;
+        num_short_socket = 0;
+        num_eager_socket = 0;
+        num_rend_socket = 0;
     }
+
+    long bytes;
+    bytes = size_short + size_eager + size_rend;
+    MPI_Reduce(&bytes, &nl, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Total Bytes = %ld\n", nl);
+
+    n = size_short + size_eager + size_rend + size_short_node + size_eager_node
+            + size_rend_node + size_short_socket + size_eager_socket + size_rend_socket;
+    MPI_Allreduce(&n, &max_s, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+    if (n < max_s)
+    {
+        size_short = 0;
+        size_eager = 0;
+        size_rend = 0;
+        size_short_node = 0;
+        size_eager_node = 0;
+        size_rend_node = 0;
+        size_short_socket = 0;
+        size_eager_socket = 0;
+        size_rend_socket = 0;
+    }
+
+    MPI_Reduce(&num_short, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Short: %d\n", n);
+    MPI_Reduce(&num_eager, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Eager: %d\n", n);
+    MPI_Reduce(&num_rend, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Rend: %d\n", n);
+    MPI_Reduce(&size_short, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Short: %d\n", n);
+    MPI_Reduce(&size_eager, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Eager: %d\n", n);
+    MPI_Reduce(&size_rend, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Rend: %d\n", n);
+
+    MPI_Reduce(&num_short_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Short Node: %d\n", n);
+    MPI_Reduce(&num_eager_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Eager Node: %d\n", n);
+    MPI_Reduce(&num_rend_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Rend Node: %d\n", n);
+    MPI_Reduce(&size_short_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Short Node: %d\n", n);
+    MPI_Reduce(&size_eager_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Eager Node: %d\n", n);
+    MPI_Reduce(&size_rend_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Rend Node: %d\n", n);
+
+    MPI_Reduce(&num_short_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Short Socket: %d\n", n);
+    MPI_Reduce(&num_eager_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Eager Socket: %d\n", n);
+    MPI_Reduce(&num_rend_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Rend Socket: %d\n", n);
+    MPI_Reduce(&size_short_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Short Socket: %d\n", n);
+    MPI_Reduce(&size_eager_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Eager Socket: %d\n", n);
+    MPI_Reduce(&size_rend_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Rend Socket: %d\n", n);
+    
+    MPI_Reduce(&byte_hops, &nl, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Byte Hops = %ld\n", nl);
+    MPI_Reduce(&worst_byte_hops, &nl, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Worst Byte Hops = %ld\n", nl);
 
     delete Ctmp;
 }

@@ -91,8 +91,8 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     int* coarse_dof_func;
     int* coarse_pnts_gbl;
 
-    std::vector<int> states;
-    std::vector<int> off_proc_states;
+    aligned_vector<int> states;
+    aligned_vector<int> off_proc_states;
     double* weights;
 
     const char* A0_fn = "../../../../test_data/rss_A0.pm";
@@ -131,7 +131,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
         }
     }
 
-    std::vector<int> coarse_variables;
+    aligned_vector<int> coarse_variables;
     for (int i = 0; i < A->local_num_rows; i++)
     {
         if (states[i] == 1) 

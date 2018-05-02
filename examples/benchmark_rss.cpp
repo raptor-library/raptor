@@ -27,7 +27,7 @@
 //using namespace raptor;
 //
 
-void form_hypre_weights(std::vector<double>& weights, int n_rows)
+void form_hypre_weights(aligned_vector<double>& weights, int n_rows)
 {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -81,13 +81,13 @@ int main(int argc, char *argv[])
 
     int cache_len = 10000;
 
-    std::vector<double> cache_array(cache_len);
-    std::vector<double> residuals;
+    aligned_vector<double> cache_array(cache_len);
+    aligned_vector<double> residuals;
 
     if (system < 2)
     {
         double* stencil = NULL;
-        std::vector<int> grid;
+        aligned_vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);
@@ -212,7 +212,7 @@ int main(int argc, char *argv[])
 
 
     // Solve Raptor Hierarchy
-    std::vector<double> res;
+    aligned_vector<double> res;
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
     //ml->tap_solve(x, b);
@@ -222,7 +222,7 @@ int main(int argc, char *argv[])
     clear_cache(cache_array);
 
     // TAP Solve Raptor
-    std::vector<double> tap_res;
+    aligned_vector<double> tap_res;
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
     PCG(A, ml, x_tap, b, tap_res, 1e-6, 100);

@@ -82,7 +82,7 @@ namespace raptor
                 CSRMatrix* P;
                 CSRMatrix* AP;
                 CSCMatrix* P_csc;
-                std::vector<int> states;
+                aligned_vector<int> states;
 
                 // Form Strength Matrix
                 S = A->strength(strength_threshold);
@@ -271,8 +271,8 @@ namespace raptor
             double relax_weight;
 
             std::vector<Level*> levels;
-            std::vector<double> A_coarse;
-            std::vector<int> LU_permute;
+            aligned_vector<double> A_coarse;
+            aligned_vector<int> LU_permute;
             int coarse_n;
             int num_levels;
 

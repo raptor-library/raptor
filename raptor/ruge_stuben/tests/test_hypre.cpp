@@ -79,7 +79,7 @@ TEST(TestHypre, TestsInRuge_Stuben)
     int cache_len = 10000;
     int num_tests = 2;
 
-    std::vector<double> cache_array(cache_len);
+    aligned_vector<double> cache_array(cache_len);
 
     int dim = 2;
     int grid[2] = {100, 100};
