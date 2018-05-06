@@ -11,179 +11,126 @@ void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<int>& st
         const aligned_vector<int>& off_proc_states, CSRMatrix** recv_on_ptr,
         CSRMatrix** recv_off_ptr)
 {
-    int start, end, proc;
-    int ctr, prev_ctr, size;
-    int ctr_S, end_S;
-    int row, row_start, row_end;
-    int count, row_count, row_size;
-    int global_col, col, size_pos;
-    int tmp_global_col;
-    double val;
-    MPI_Status recv_status;
-    CommData* recv_comm = A->comm->recv_data;
-    CommData* send_comm = A->comm->send_data;
-    int key = A->comm->key;
-    MPI_Comm mpi_comm = A->comm->mpi_comm;
+    
+    int start, end, col;
+    int ctr_S, end_S, global_col;
+    int tmp_col;
 
-    // Don't know number of columns, but does not matter (CSR)
-    CSRMatrix* recv_on = new CSRMatrix(recv_comm->size_msgs, -1);
-    CSRMatrix* recv_off = new CSRMatrix(recv_comm->size_msgs, -1);
-
-    // Only sending and recving a single buffer
-    struct PairData 
+    aligned_vector<int> rowptr(A->local_num_rows + 1);
+    aligned_vector<int> col_indices;
+    aligned_vector<double> values;
+    if (A->local_nnz)
     {
-        double val;
-        int index;
-    };
-    std::vector<PairData> send_buffer;
-    std::vector<PairData> recv_buffer;
-    aligned_vector<int> send_ptr(send_comm->num_msgs+1);
-    send_ptr[0] = 0;
-
-    // Send pair_data for each row using MPI_DOUBLE_INT
-    ctr = 0;
-    for (int i = 0; i < send_comm->num_msgs; i++)
+        col_indices.reserve(A->local_nnz);
+        values.reserve(A->local_nnz);
+    }
+    rowptr[0] = 0;
+    for (int i = 0; i < A->local_num_rows; i++)
     {
-        start = send_comm->indptr[i];
-        end = send_comm->indptr[i+1];
+        start = A->on_proc->idx1[i]+1;
+        end = A->on_proc->idx1[i+1];
+        ctr_S = S->on_proc->idx1[i]+1;
+        end_S = S->on_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            row = send_comm->indices[j];
-            send_buffer.push_back(PairData());
-            size_pos = ctr++; 
-            row_start = A->on_proc->idx1[row]+1;
-            row_end = A->on_proc->idx1[row+1];
-            ctr_S = S->on_proc->idx1[row]+1;
-            end_S = S->on_proc->idx1[row+1];
-
-            for (int k = row_start; k < row_end; k++)
+            col = A->on_proc->idx2[j];
+            if (states[col] == 1)
             {
-                col = A->on_proc->idx2[k];
-                if (states[col] == 1)
+                global_col = A->on_proc_column_map[col];
+                if (ctr_S < end_S && S->on_proc->idx2[ctr_S] == col)
                 {
-                    send_buffer.push_back(PairData());
-                    send_buffer[ctr].val = A->on_proc->vals[k];
-                    global_col = A->on_proc_column_map[col];
-                    
-                    if (ctr_S < end_S && S->on_proc->idx2[ctr_S] == col)
-                    {
-                        send_buffer[ctr].index = global_col; // If in S, send positive col
-                        ctr_S++;
-                    }
-                    else
-                    {
-                        send_buffer[ctr].index = -(global_col+1); // If not in S, store with neg sign
-
-                    }
-                    ctr++;
-
-                }
-                else if (ctr_S < end_S && S->on_proc->idx2[ctr_S] == col)
-                {
-                    ctr_S++;
-                }
-
-            }
-
-            row_start = A->off_proc->idx1[row];
-            row_end = A->off_proc->idx1[row+1];
-            ctr_S = S->off_proc->idx1[row];
-            end_S = S->off_proc->idx1[row+1];
-            for (int k = row_start; k < row_end; k++)
-            {
-                col = A->off_proc->idx2[k];
-		if (off_proc_states[col] == -3) continue;
-                send_buffer.push_back(PairData());
-                send_buffer[ctr].val = A->off_proc->vals[k];
-                global_col = A->off_proc_column_map[col];
-
-                if (ctr_S < end_S && S->off_proc_column_map[S->off_proc->idx2[ctr_S]]
-                        == A->off_proc_column_map[col])
-                {
-                    if (off_proc_states[col] == 0) global_col += A->partition->global_num_cols;
-
-                    send_buffer[ctr].index = global_col; // In S, send positive col
+                    col_indices.push_back(global_col);
                     ctr_S++;
                 }
                 else
                 {
-                    if (off_proc_states[col] == 0) global_col += A->partition->global_num_cols;
-                    send_buffer[ctr].index = -(global_col+1); // If not in S, store with neg sign
+                    col_indices.push_back(-(global_col+1));
                 }
-
-                ctr++;
+                values.push_back(A->on_proc->vals[j]);
             }
-            send_buffer[size_pos].index = ctr - size_pos - 1;
-        }
-        send_ptr[i+1] = ctr;
-    }
-    for (int i = 0; i < send_comm->num_msgs; i++)
-    {
-        proc = send_comm->procs[i];
-        start = send_ptr[i];
-        end = send_ptr[i+1];
-        MPI_Isend(&(send_buffer[start]), end - start, MPI_DOUBLE_INT, proc, 
-                key, mpi_comm, &(send_comm->requests[i]));
-    }
-
-    row_count = 0;
-    recv_on->idx1[0] = 0;
-    recv_off->idx1[0] = 0;
-    for (int i = 0; i < recv_comm->num_msgs; i++)
-    {
-        proc = recv_comm->procs[i];
-        start = recv_comm->indptr[i];
-        end = recv_comm->indptr[i+1];
-        size = end - start;
-        MPI_Probe(proc, key, mpi_comm, &recv_status);
-        MPI_Get_count(&recv_status, MPI_DOUBLE_INT, &count);
-        if (count > recv_buffer.size())
-        {
-            recv_buffer.resize(count);
-        }
-        MPI_Recv((&recv_buffer[0]), count, MPI_DOUBLE_INT, proc, key, mpi_comm,
-            &recv_status);
-        ctr = 0;
-        for (int j = 0; j < size; j++)
-        {
-            row_size = recv_buffer[ctr++].index;
-            for (int k = 0; k < row_size; k++)
+            else if (ctr_S < end_S && S->on_proc->idx2[ctr_S] == col)
             {
-                val = recv_buffer[ctr].val;
-                global_col = recv_buffer[ctr++].index;
-                tmp_global_col = global_col;
-                if (tmp_global_col < 0)
-                    tmp_global_col = (-tmp_global_col) - 1;
-                if (tmp_global_col >= A->partition->global_num_cols)
-                    tmp_global_col -= A->partition->global_num_cols;
-
-                if (tmp_global_col >= A->partition->first_local_row &&
-                        tmp_global_col <= A->partition->last_local_row)
-                {
-                    recv_on->idx2.push_back(global_col);
-                    recv_on->vals.push_back(val);
-                }
-                else
-                {
-                    if (global_col >= A->partition->global_num_cols || 
-                            global_col < -(A->partition->global_num_cols))
-                            continue; // Don't add Fine points to off proc
-                    recv_off->idx2.push_back(global_col);
-                    recv_off->vals.push_back(val);
-                }
+                ctr_S++;
             }
-            recv_on->idx1[row_count+1] = recv_on->idx2.size();
-            recv_off->idx1[row_count+1] = recv_off->idx2.size();
-            row_count++;
         }
+
+        start = A->off_proc->idx1[i];
+        end = A->off_proc->idx1[i+1];
+        ctr_S = S->off_proc->idx1[i];
+        end_S = S->off_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = A->off_proc->idx2[j];
+            if (off_proc_states[col] == -3) continue;
+            global_col = A->off_proc_column_map[col];
+            if (ctr_S < end_S && S->off_proc_column_map[S->off_proc->idx2[ctr_S]] == global_col)
+            {
+                if (off_proc_states[col] == 0)
+                {
+                    global_col += A->partition->global_num_cols;
+                }
+                col_indices.push_back(global_col);
+                ctr_S++;
+            }
+            else
+            {
+                if (off_proc_states[col] == 0)
+                {
+                    global_col += A->partition->global_num_cols;
+                }
+                col_indices.push_back(-(global_col+1));
+            }
+            values.push_back(A->off_proc->vals[j]);
+        }
+        rowptr[i+1] = col_indices.size();
     }
+
+    CSRMatrix* recv_mat = A->comm->communicate(rowptr, col_indices, values);
+    CSRMatrix* recv_on = new CSRMatrix(recv_mat->n_rows, -1, recv_mat->nnz);
+    CSRMatrix* recv_off = new CSRMatrix(recv_mat->n_rows, -1, recv_mat->nnz);
+    for (int i = 0; i < recv_mat->n_rows; i++)
+    {
+        start = recv_mat->idx1[i];
+        end = recv_mat->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = recv_mat->idx2[j];
+            tmp_col = col;
+            if (tmp_col < 0) 
+            {
+                tmp_col = (-tmp_col) - 1;
+            }
+            if (tmp_col >= A->partition->global_num_cols)
+            {
+                tmp_col -= A->partition->global_num_cols;
+            }
+
+            if (tmp_col < A->partition->first_local_col || 
+                    tmp_col > A->partition->last_local_col)
+            {
+                if (col >= A->partition->global_num_cols || 
+                        col < -(A->partition->global_num_cols))
+                        continue; // Don't add fine points to off proc
+
+                recv_off->idx2.push_back(col);
+                recv_off->vals.push_back(recv_mat->vals[j]);
+            }
+            else
+            {
+                recv_on->idx2.push_back(col);
+                recv_on->vals.push_back(recv_mat->vals[j]);
+            }
+        }
+        recv_on->idx1[i+1] = recv_on->idx2.size();
+        recv_off->idx1[i+1] = recv_off->idx2.size();
+    }
+
     recv_on->nnz = recv_on->idx2.size();
     recv_off->nnz = recv_off->idx2.size();
 
-    MPI_Waitall(send_comm->num_msgs, send_comm->requests.data(), MPI_STATUSES_IGNORE);
-
+    delete recv_mat;
     *recv_on_ptr = recv_on;
-    *recv_off_ptr = recv_off;
+    *recv_off_ptr = recv_off;    
 }
 
 
@@ -191,128 +138,73 @@ void communicate(ParCSRMatrix* A, const aligned_vector<int>& states,
         const aligned_vector<int>& off_proc_states, CSRMatrix** recv_on_ptr,
         CSRMatrix** recv_off_ptr)
 {
-    int start, end, proc;
-    int ctr, prev_ctr, size;
-    int row, row_start, row_end;
-    int count, row_count, row_size;
-    int global_col, col, size_pos;
-    double val;
-    MPI_Status recv_status;
-    CommData* recv_comm = A->comm->recv_data;
-    CommData* send_comm = A->comm->send_data;
-    int key = A->comm->key;
-    MPI_Comm mpi_comm = A->comm->mpi_comm;
+    int start, end, col;
 
-    // Don't know number of columns, but does not matter (CSR)
-    CSRMatrix* recv_on = new CSRMatrix(recv_comm->size_msgs, -1);
-    CSRMatrix* recv_off = new CSRMatrix(recv_comm->size_msgs, -1);
-
-    // Only sending and recving a single buffer
-    struct PairData 
+    aligned_vector<int> rowptr(A->local_num_rows + 1);
+    aligned_vector<int> col_indices;
+    aligned_vector<double> values;
+    if (A->local_nnz)
     {
-        double val;
-        int index;
-    };
-    std::vector<PairData> send_buffer;
-    std::vector<PairData> recv_buffer;
-    aligned_vector<int> send_ptr(send_comm->num_msgs+1);
-    send_ptr[0] = 0;
+        col_indices.reserve(A->local_nnz);
+        values.reserve(A->local_nnz);
+    }
 
-    // Send pair_data for each row using MPI_DOUBLE_INT
-    ctr = 0;
-    for (int i = 0; i < send_comm->num_msgs; i++)
+    rowptr[0] = 0;
+    for (int i = 0; i < A->local_num_rows; i++)
     {
-        start = send_comm->indptr[i];
-        end = send_comm->indptr[i+1];
+        start = A->on_proc->idx1[i];
+        end = A->on_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            row = send_comm->indices[j];
-            send_buffer.push_back(PairData());
-            size_pos = ctr++; 
-            row_start = A->on_proc->idx1[row];
-            row_end = A->on_proc->idx1[row+1];
-            for (int k = row_start; k < row_end; k++)
+            col = A->on_proc->idx2[j];
+            if (states[col] == 1)
             {
-                col = A->on_proc->idx2[k];
-                if (states[col] == 1)
-                {
-                    send_buffer.push_back(PairData());
-                    send_buffer[ctr].index = A->on_proc_column_map[col];
-                    send_buffer[ctr++].val = A->on_proc->vals[k];
-                }
+                col_indices.push_back(A->on_proc_column_map[col]);
+                values.push_back(A->on_proc->vals[j]);
             }
-            row_start = A->off_proc->idx1[row];
-            row_end = A->off_proc->idx1[row+1];
-            for (int k = row_start; k < row_end; k++)
-            {
-                col = A->off_proc->idx2[k];
-                if (off_proc_states[col] == 1)
-                {
-                    send_buffer.push_back(PairData());
-                    send_buffer[ctr].index = A->off_proc_column_map[col];
-                    send_buffer[ctr++].val = A->off_proc->vals[k];
-                }
-            }
-            send_buffer[size_pos].index = ctr - size_pos - 1;
         }
-        send_ptr[i+1] = ctr;
-    }
-    for (int i = 0; i < send_comm->num_msgs; i++)
-    {
-        proc = send_comm->procs[i];
-        start = send_ptr[i];
-        end = send_ptr[i+1];
-        MPI_Isend(&(send_buffer[start]), end - start, MPI_DOUBLE_INT, proc, 
-                key, mpi_comm, &(send_comm->requests[i]));
+        start = A->off_proc->idx1[i];
+        end = A->off_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = A->off_proc->idx2[j];
+            if (off_proc_states[col] == 1)
+            {
+                col_indices.push_back(A->off_proc_column_map[col]);
+                values.push_back(A->off_proc->vals[j]);
+            }
+        }
+        rowptr[i+1] = col_indices.size();
     }
 
-    row_count = 0;
-    recv_on->idx1[0] = 0;
-    recv_off->idx1[0] = 0;
-    for (int i = 0; i < recv_comm->num_msgs; i++)
+    CSRMatrix* recv_mat = A->comm->communicate(rowptr, col_indices, values);
+    CSRMatrix* recv_on = new CSRMatrix(recv_mat->n_rows, -1, recv_mat->nnz);
+    CSRMatrix* recv_off = new CSRMatrix(recv_mat->n_rows, -1, recv_mat->nnz);
+    for (int i = 0; i < recv_mat->n_rows; i++)
     {
-        proc = recv_comm->procs[i];
-        start = recv_comm->indptr[i];
-        end = recv_comm->indptr[i+1];
-        size = end - start;
-        MPI_Probe(proc, key, mpi_comm, &recv_status);
-        MPI_Get_count(&recv_status, MPI_DOUBLE_INT, &count);
-        if (count > recv_buffer.size())
+        start = recv_mat->idx1[i];
+        end = recv_mat->idx1[i+1];
+        for (int j = start; j < end; j++)
         {
-            recv_buffer.resize(count);
-        }
-        MPI_Recv((&recv_buffer[0]), count, MPI_DOUBLE_INT, proc, key, mpi_comm,
-            &recv_status);
-        ctr = 0;
-        for (int j = 0; j < size; j++)
-        {
-            row_size = recv_buffer[ctr++].index;
-            for (int k = 0; k < row_size; k++)
+            col = recv_mat->idx2[j];
+            if (col < A->partition->first_local_col || col > A->partition->last_local_col)
             {
-                global_col = recv_buffer[ctr].index;
-                val = recv_buffer[ctr++].val;
-                if (global_col >= A->partition->first_local_row &&
-                        global_col <= A->partition->last_local_row)
-                {
-                    recv_on->idx2.push_back(global_col);
-                    recv_on->vals.push_back(val);
-                }
-                else
-                {
-                    recv_off->idx2.push_back(global_col);
-                    recv_off->vals.push_back(val);
-                }
+                recv_off->idx2.push_back(col);
+                recv_off->vals.push_back(recv_mat->vals[j]);
             }
-            recv_on->idx1[row_count+1] = recv_on->idx2.size();
-            recv_off->idx1[row_count+1] = recv_off->idx2.size();
-            row_count++;
+            else
+            {
+                recv_on->idx2.push_back(col);
+                recv_on->vals.push_back(recv_mat->vals[j]);
+            }
         }
+        recv_on->idx1[i+1] = recv_on->idx2.size();
+        recv_off->idx1[i+1] = recv_off->idx2.size();
     }
     recv_on->nnz = recv_on->idx2.size();
     recv_off->nnz = recv_off->idx2.size();
 
-    MPI_Waitall(send_comm->num_msgs, send_comm->requests.data(), MPI_STATUSES_IGNORE);
-
+    delete recv_mat;
     *recv_on_ptr = recv_on;
     *recv_off_ptr = recv_off;
 }

@@ -260,11 +260,6 @@ CSRMatrix* communication_helper(aligned_vector<int>& rowptr,
     CSRMatrix* recv_mat = new CSRMatrix(recv_comm->size_msgs, -1);
 
     // Only sending and recving a single buffer
-    struct PairData 
-    {
-        double val;
-        int index;
-    };
     std::vector<PairData> send_buffer;
     std::vector<PairData> recv_buffer;
     aligned_vector<int> send_ptr(send_comm->num_msgs+1);

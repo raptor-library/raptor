@@ -393,12 +393,6 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    struct PairData
-    {
-        double val;
-        int index;
-    };
-
     ParCSRMatrix* A_part;
     aligned_vector<int> send_row_buffer;
     aligned_vector<int> recv_row_buffer;

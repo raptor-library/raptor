@@ -9,11 +9,11 @@ add_test(TestBiCGStab ./test_bicgstab)
 if (WITH_MPI)
     add_executable(test_par_cg test_par_cg.cpp)
     target_link_libraries(test_par_cg raptor ${MPI_LIBRARIES})
-    add_test(TestParCG aprun -n 4 ./test_par_cg)
+    add_test(TestParCG mpirun -n 4 ./test_par_cg)
     
     add_executable(test_par_bicgstab test_par_bicgstab.cpp)
     target_link_libraries(test_par_bicgstab raptor ${MPI_LIBRARIES})
-    add_test(TestParBiCGStab aprun -n 4 ./test_par_bicgstab)
+    add_test(TestParBiCGStab mpirun -n 4 ./test_par_bicgstab)
 endif()
 
 

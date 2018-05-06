@@ -471,12 +471,6 @@ ParMatrix* ParCSRMatrix::transpose()
     CSCMatrix* recv_mat;
     ParCSRMatrix* T = NULL;
 
-    struct PairData 
-    {
-        double val;
-        int index;
-    };
-
     std::vector<PairData> send_buffer;
     std::vector<PairData> recv_buffer;
     aligned_vector<int> send_ptr(comm->recv_data->num_msgs+1);

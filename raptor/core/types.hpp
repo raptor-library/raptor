@@ -31,6 +31,12 @@ using namespace std;
 #include <mpi.h>
 #endif
 
+struct PairData 
+{
+    double val;
+    int index;
+};
+
 template <typename T, std::size_t Alignment>
         class AlignAllocator
 {
