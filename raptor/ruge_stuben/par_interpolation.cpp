@@ -8,8 +8,8 @@ using namespace raptor;
 
 // TODO -- if in S, col is positive, otherwise col is -(col+1)
 void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<int>& states,
-        const aligned_vector<int>& off_proc_states, CSRMatrix** recv_on_ptr,
-        CSRMatrix** recv_off_ptr)
+        const aligned_vector<int>& off_proc_states, CommPkg* comm,
+        CSRMatrix** recv_on_ptr, CSRMatrix** recv_off_ptr)
 {
     
     int start, end, col;
@@ -85,7 +85,7 @@ void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<int>& st
         rowptr[i+1] = col_indices.size();
     }
 
-    CSRMatrix* recv_mat = A->comm->communicate(rowptr, col_indices, values);
+    CSRMatrix* recv_mat = comm->communicate(rowptr, col_indices, values);
     CSRMatrix* recv_on = new CSRMatrix(recv_mat->n_rows, -1, recv_mat->nnz);
     CSRMatrix* recv_off = new CSRMatrix(recv_mat->n_rows, -1, recv_mat->nnz);
     for (int i = 0; i < recv_mat->n_rows; i++)
@@ -135,8 +135,8 @@ void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<int>& st
 
 
 void communicate(ParCSRMatrix* A, const aligned_vector<int>& states,
-        const aligned_vector<int>& off_proc_states, CSRMatrix** recv_on_ptr,
-        CSRMatrix** recv_off_ptr)
+        const aligned_vector<int>& off_proc_states, CommPkg* comm,
+        CSRMatrix** recv_on_ptr, CSRMatrix** recv_off_ptr)
 {
     int start, end, col;
 
@@ -177,7 +177,7 @@ void communicate(ParCSRMatrix* A, const aligned_vector<int>& states,
         rowptr[i+1] = col_indices.size();
     }
 
-    CSRMatrix* recv_mat = A->comm->communicate(rowptr, col_indices, values);
+    CSRMatrix* recv_mat = comm->communicate(rowptr, col_indices, values);
     CSRMatrix* recv_on = new CSRMatrix(recv_mat->n_rows, -1, recv_mat->nnz);
     CSRMatrix* recv_off = new CSRMatrix(recv_mat->n_rows, -1, recv_mat->nnz);
     for (int i = 0; i < recv_mat->n_rows; i++)
@@ -258,10 +258,10 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     if (A->off_proc_num_cols) off_variables.resize(A->off_proc_num_cols);
     if (num_variables > 1)
     {
-        A->comm->communicate(variables);
+        comm->communicate(variables);
         for (int i = 0; i < A->off_proc_num_cols; i++)
         {
-            off_variables[i] = A->comm->recv_data->int_buffer[i];
+            off_variables[i] = comm->get_int_recv_buffer()[i];
         }
     }
 
@@ -287,7 +287,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     }
 
     // Communicate parallel matrix A (Costly!)
-    communicate(A, S, states, off_proc_states_A, &recv_on, &recv_off);
+    communicate(A, S, states, off_proc_states_A, comm, &recv_on, &recv_off);
 
     // Change on_proc_cols to local
     recv_on->n_cols = A->on_proc_num_cols;
@@ -1054,10 +1054,10 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     if (num_variables > 1)
     {
-        A->comm->communicate(variables);
+        comm->communicate(variables);
         for (int i = 0; i < A->off_proc_num_cols; i++)
         {
-            off_variables[i] = A->comm->recv_data->int_buffer[i];
+            off_variables[i] = comm->get_int_recv_buffer()[i];
         }
     }
 
@@ -1129,7 +1129,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     }
 
     // Communicate parallel matrix A (Costly!)
-    communicate(A, states, off_proc_states_A, &recv_on, &recv_off);
+    communicate(A, states, off_proc_states_A, comm, &recv_on, &recv_off);
 
     // Change on_proc_cols to local
     recv_on->n_cols = A->on_proc_num_cols;
