@@ -223,7 +223,8 @@ namespace raptor
     void RAP(const CSCMatrix& P, CSCMatrix* Ac);
     void RAP(const CSCMatrix& P, CSRMatrix* Ac);
 
-    Matrix* subtract(Matrix* B);
+    Matrix* add(CSRMatrix* A);
+    Matrix* subtract(CSRMatrix* A);
 
     void resize(int _n_rows, int _n_cols);
 
@@ -828,7 +829,8 @@ namespace raptor
     CSRMatrix* mult_T(const CSRMatrix* A);
     CSRMatrix* mult_T(const COOMatrix* A);
 
-    CSRMatrix* subtract(CSRMatrix* B);
+    CSRMatrix* add(CSRMatrix* A);
+    CSRMatrix* subtract(CSRMatrix* A);
 
     CSRMatrix* strength(double theta = 0.0);
     CSRMatrix* aggregate();

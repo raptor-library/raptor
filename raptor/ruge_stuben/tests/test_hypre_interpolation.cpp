@@ -43,7 +43,7 @@ int main(int argc, char** argv)
     return temp;
 } // end of main() //
 
-TEST(TestParSplitting, TestsInRuge_Stuben)
+TEST(TestHypreInterpolation, TestsInRuge_Stuben)
 { 
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
