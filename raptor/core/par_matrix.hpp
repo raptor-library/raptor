@@ -629,6 +629,16 @@ namespace raptor
                 nnz_per_row);
     }
 
+    ParCSCMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows,
+            int on_proc_cols, int off_proc_cols, int nnz_per_row = 5) : ParMatrix(part, 
+                glob_rows, glob_cols, local_rows, on_proc_cols)
+    {
+        off_proc_num_cols = off_proc_cols;
+        on_proc = new CSCMatrix(local_num_rows, on_proc_cols, nnz_per_row);
+        off_proc = new CSCMatrix(local_num_rows, off_proc_num_cols, nnz_per_row);
+    }
+
+
     ParCSCMatrix(Partition* part, 
             int nnz_per_row = 5) : ParMatrix(part)
     {

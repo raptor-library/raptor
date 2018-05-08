@@ -2,6 +2,13 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "aggregation/par_mis.hpp"
 
+#define S 2
+#define NS 1
+#define U -1
+#define S_TMP -2
+#define S_NEW -3
+#define NS_NEW -4
+
 void comm_states(const ParCSRMatrix* A, const aligned_vector<int>& states,
         aligned_vector<int>& recv_indices, aligned_vector<int>& off_proc_states)
 {
@@ -30,7 +37,7 @@ void comm_states(const ParCSRMatrix* A, const aligned_vector<int>& states,
         size = ctr - prev_ctr;
         if (size)
         {
-            MPI_Issend(&(A->comm->send_data->int_buffer[prev_ctr]), size, MPI_INT, proc,
+            MPI_Isend(&(A->comm->send_data->int_buffer[prev_ctr]), size, MPI_INT, proc,
                     tag, MPI_COMM_WORLD, &(A->comm->send_data->requests[n_sends++]));
             prev_ctr = ctr;
         }
@@ -46,10 +53,9 @@ void comm_states(const ParCSRMatrix* A, const aligned_vector<int>& states,
         end = A->comm->recv_data->indptr[i+1];
         for (int j = start; j < end; j++)
         {
-            idx = A->comm->recv_data->indices[j];
-            if (off_proc_states[idx] <= U)
+            if (off_proc_states[j] <= U)
             {
-                recv_indices[ctr++] = idx;
+                recv_indices[ctr++] = j;
             }
         }
         size = ctr - prev_ctr;
@@ -95,10 +101,9 @@ void comm_off_proc_states(const ParCSRMatrix* A, const aligned_vector<int>& off_
         end = A->comm->recv_data->indptr[i+1];
         for (int j = start; j < end; j++)
         {
-            idx = A->comm->recv_data->indices[j];
-            if (off_proc_states[idx] <= U)
+            if (off_proc_states[j] <= U)
             {
-                A->comm->recv_data->int_buffer[ctr++] = off_proc_states[idx];
+                A->comm->recv_data->int_buffer[ctr++] = off_proc_states[j];
             }
         }
         size = ctr - prev_ctr;
@@ -462,6 +467,7 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
 
         // Communicate new (temporary) states
         comm_states(A, states, recv_indices, off_proc_states);
+        
 
         // Find max temp state random in each row
         for (int i = 0; i < A->local_num_rows; i++)
@@ -711,6 +717,17 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
 
         iterate++;
     }
+
+    for (std::vector<int>::iterator it = states.begin(); it != states.end(); ++it)
+    {
+        (*it)--;
+    }
+    for (std::vector<int>::iterator it = off_proc_states.begin(); 
+            it != off_proc_states.end(); ++it)
+    {
+        (*it)--;
+    }
+
 
     delete D_on;
     delete D_off;

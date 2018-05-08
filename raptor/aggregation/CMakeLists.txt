@@ -4,15 +4,15 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 if (WITH_MPI)
     set(par_aggregation_HEADERS
         aggregation/par_mis.hpp
-        #aggregation/par_aggregate.hpp
-        #aggregation/par_candidates.hpp
-        #aggregation/par_prolongation.hpp
+        aggregation/par_aggregate.hpp
+        aggregation/par_candidates.hpp
+        aggregation/par_prolongation.hpp
         )
     set(par_aggregation_SOURCES
         aggregation/par_mis.cpp
-        #aggregation/par_aggregate.cpp
-        #aggregation/par_candidates.cpp
-        #aggregation/par_prolongation.cpp
+        aggregation/par_aggregate.cpp
+        aggregation/par_candidates.cpp
+        aggregation/par_prolongation.cpp
         )
 else()
     set(par_aggregation_SOURCES

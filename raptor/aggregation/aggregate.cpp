@@ -3,11 +3,29 @@
 #include "aggregation/aggregate.hpp"
 
 int aggregate(CSRMatrix* A, CSRMatrix* S, aligned_vector<int>& states,
-        aligned_vector<int>& aggregates)
+        aligned_vector<int>& aggregates, double* rand_vals)
 {
     if (A->n_rows == 0)
     {
         return 0;
+    }
+
+    // Set random values
+    std::vector<double> r(A->n_rows);
+    if (rand_vals)
+    {
+        for (int i = 0; i < A->n_rows; i++)
+        {
+            r[i] = rand_vals[i];
+        }
+    }
+    else
+    {
+        for (int i = 0; i < A->n_rows; i++)
+        {
+            srand(i);
+            r[i] = ((double) rand()) / RAND_MAX;
+        }
     }
 
     // Initialize Variables
@@ -65,15 +83,21 @@ int aggregate(CSRMatrix* A, CSRMatrix* S, aligned_vector<int>& states,
             while (A->idx2[ctr] != col)
                 ctr++;
 
-            val = fabs(A->vals[ctr]);
+            val = fabs(A->vals[ctr]) + r[col];
             if (val > max_val && aggregates[col] >= 0)
             {
                 max_val = val;
                 max_agg = aggregates[col];
             }
         }
-        aggregates[i] = max_agg;
+        aggregates[i] = -(max_agg+1);
     } 
+
+    for (int i = 0; i < S->n_rows; i++)
+    {
+        if (aggregates[i] < 0) 
+            aggregates[i] = - (aggregates[i]+1);
+    }
 
     return n_aggs;
 }

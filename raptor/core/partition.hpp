@@ -141,6 +141,19 @@ namespace raptor
         }
     }
 
+    Partition(Topology* _topology = NULL)
+    {
+        if (_topology == NULL)
+        {
+            topology = new Topology();
+        }
+        else
+        {
+            topology = _topology;
+            topology->num_shared++;
+        }
+    }
+
     Partition(Partition* A, Partition* B)
     {
         global_num_rows = A->global_num_rows;
@@ -162,6 +175,19 @@ namespace raptor
 
     ~Partition()
     {
+        num_shared = 0;
+        global_num_rows = 0;
+        global_num_cols = 0;
+        local_num_rows = 0;
+        local_num_cols = 0;
+        first_local_row = 0;
+        first_local_col = 0;
+        last_local_row = 0;
+        last_local_col = 0;
+        assumed_first_col = 0;
+        assumed_last_col = 0;
+        assumed_num_cols = 0;
+
         if (topology->num_shared)
         {
             topology->num_shared--;

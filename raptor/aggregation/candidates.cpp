@@ -25,7 +25,6 @@ CSRMatrix* fit_candidates(const int n_aggs, const aligned_vector<int>& aggregate
     CSCMatrix* AggOp_csc = new CSCMatrix(AggOp);
     delete AggOp;
 
-
     // Initialize CSC matrix for tentative interpolation
     CSCMatrix* T_csc = new CSCMatrix(n_rows, n_aggs * num_candidates, n_rows * num_candidates);
     

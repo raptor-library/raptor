@@ -31,9 +31,18 @@ TEST(TestCandidates, TestsInAggregation)
     const char* S0_fn = "../../../../test_data/sas_S0.pm";
     const char* mis0_fn = "../../../../test_data/sas_mis0.txt";
     const char* T0_fn = "../../../../test_data/sas_T0.pm";
+    const char* weights_fn = "../../../../test_data/weights.txt";
 
     A = readMatrix(A0_fn);
     S = readMatrix(S0_fn);
+
+    f = fopen(weights_fn, "r");
+    aligned_vector<double> weights(S->n_rows);
+    for (int i = 0; i < S->n_rows; i++)
+    {
+        fscanf(f, "%lf\n", &weights[i]);
+    }
+    fclose(f);
 
     aligned_vector<int> python_states(S->n_rows);
     f = fopen(mis0_fn, "r");
@@ -43,7 +52,7 @@ TEST(TestCandidates, TestsInAggregation)
     }
     fclose(f);
     aligned_vector<int> aggregates;
-    int n_aggs =  aggregate(A, S, python_states, aggregates);
+    int n_aggs =  aggregate(A, S, python_states, aggregates, weights.data());
 
     CSRMatrix* T_py = readMatrix(T0_fn);
 

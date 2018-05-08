@@ -23,8 +23,6 @@ TEST(TestMIS, TestsInAggregation)
 { 
     FILE* f;
     CSRMatrix* S;
-    aligned_vector<int> splitting;
-    aligned_vector<int> splitting_rap;
 
     const char* S0_fn = "../../../../test_data/sas_S0.pm";
     const char* mis0_fn = "../../../../test_data/sas_mis0.txt";

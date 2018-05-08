@@ -9,9 +9,9 @@
 
 using namespace raptor;
 
-int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, std::vector<int>& states,
-        std::vector<int>& off_proc_states, std::vector<int>& aggregates,
-        std::vector<int>& off_proc_aggregates);
+int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
+        aligned_vector<int>& off_proc_states, aligned_vector<int>& aggregates,
+        aligned_vector<int>& off_proc_aggregates, double* rand_vals = NULL);
 
 #endif
 

@@ -6,14 +6,6 @@
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 
-#define S 2
-#define NS 1
-#define U -1
-#define S_TMP -2
-#define S_NEW -3
-#define NS_NEW -4
-
-
 using namespace raptor;
 
 int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
