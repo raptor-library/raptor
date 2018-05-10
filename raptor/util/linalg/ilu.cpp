@@ -191,8 +191,8 @@ std::vector<double>& CSRMatrix::ilu_numeric(Matrix* levls){
 		std::vector<double> current_row_factors(n_rows);
 		std::fill(current_row_factors.begin(),current_row_factors.end(),0.0);
 		
-		int start_ri = sparsity->idx1[row_i];
-		int end_ri = sparsity->idx1[row_i+1];
+		int start_ri = levls->idx1[row_i];
+		int end_ri = levls->idx1[row_i+1];
 
 		for(int jj=start_ri;jj<end_ri;jj++){
 			int col = levls->idx2[jj];
@@ -228,7 +228,7 @@ std::vector<double>& CSRMatrix::ilu_numeric(Matrix* levls){
 			}
 		}
 
-		for(int jj=start_ri;jj<end_ri;j++){
+		for(int jj=start_ri;jj<end_ri;jj++){
 			int col = levls->idx2[jj];
 			factors_data[jj] = current_row_factors[col];
 		}
@@ -303,11 +303,11 @@ Matrix* CSRMatrix::ilu_levels()
 		//get row i
 		//printf("row i = %d\n",row_i);
 
-		start_ri = idx1[row_i];
-		end_ri = idx1[row_i+1];
+		int start_ri = idx1[row_i];
+		int end_ri = idx1[row_i+1];
 
 		//initialize temporary levls and idx2 vectors for row i
-		for(int jj = start_ri; j < end_ri; j++){
+		for(int jj = start_ri; jj < end_ri; jj++){
 			current_row_levls[idx2[jj]] = 1;
 		}
 
@@ -340,7 +340,7 @@ Matrix* CSRMatrix::ilu_levels()
 				current_row_levls[j] = min(current_row_levls[j], current_row_levls[k]+row_k_levls[j]);
 		}
 
-		for(int jj=0; jj<n_rows;j++){
+		for(int jj=0; jj<n_rows;jj++){
 			if(current_row_levls[jj]<100){
 				levls->idx2[levls_nnz] = jj;
 				levls->vals[levls_nnz] = current_row_levls[jj];

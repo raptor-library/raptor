@@ -71,7 +71,7 @@ namespace raptor
   class ParCOOMatrix;
   class ParCSRMatrix;
   class ParCSCMatrix;
-  //class ParBSRMatrix;
+  class ParBSRMatrix;
 
   class ParMatrix
   {
@@ -134,7 +134,6 @@ namespace raptor
         spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
     }
 
-/*
     // For BSR Matrix class use only
     ParMatrix(index_t glob_rows, index_t glob_cols, int _brows, int _bcols)
     {
@@ -154,7 +153,7 @@ namespace raptor
         spmv_data = (OpData) {0.0, 0.0, 0.0, 0.0};;
         spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
     }
-*/
+
     ParMatrix(index_t glob_rows, 
             index_t glob_cols, 
             int local_rows, 
@@ -699,7 +698,7 @@ namespace raptor
 
     ParMatrix* transpose();
   };
-/*
+  
   class ParBSRMatrix : public ParMatrix
   {
   public:
@@ -856,7 +855,7 @@ namespace raptor
 	b_size = b_rows * b_cols;
     }*/
 
-    ParBSRMatrix(ParCSRMatrix* A)
+    /*ParBSRMatrix(ParCSRMatrix* A)
     {
         copy(A);
     }
@@ -869,7 +868,7 @@ namespace raptor
     ParBSRMatrix(ParCOOMatrix* A)
     {
         copy(A);
-    }
+    }*/
 
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
@@ -906,15 +905,11 @@ namespace raptor
     //        CSRMatrix* recv_off);
 
     ParMatrix* transpose();
-<<<<<<< HEAD
-  };*/
-=======
 
     int b_rows; // rows in a block
     int b_cols; // columns in a block
     int b_size; // nnz per dense block
   };
->>>>>>> da0142933cdd56da1db9c218742bdacccd4ada11
 
 }
 #endif

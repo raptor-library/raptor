@@ -548,7 +548,6 @@ namespace raptor
     void mult_append_T(Vector& x, Vector& b);
     void mult_append_neg_T(Vector& x, Vector& b);
 
-<<<<<<< HEAD
 	Matrix* ilu_k(int lof);
 	Matrix* ilu_levels();
 	Matrix* ilu_sparsity(Matrix* levls, int lof);
@@ -557,9 +556,7 @@ namespace raptor
 
 
 
-=======
     void add_block(int row, int col, std::vector<double>& values);
->>>>>>> da0142933cdd56da1db9c218742bdacccd4ada11
 
     format_t format()
     {
@@ -882,15 +879,13 @@ namespace raptor
     CSRMatrix* fit_candidates(data_t* B, data_t* R, int num_candidates, 
             double tol = 1e-10);
 
-<<<<<<< HEAD
 	Matrix* ilu_k(int lof);
 	Matrix* ilu_levels();
 	Matrix* ilu_sparsity(Matrix* levls, int lof);
 	Matrix* ilu_symbolic(int lof);
 	std::vector<double>& ilu_numeric(Matrix* levls);
-=======
-    void add_block(int row, int col, std::vector<double>& values);
->>>>>>> da0142933cdd56da1db9c218742bdacccd4ada11
+    
+	void add_block(int row, int col, std::vector<double>& values);
 
     format_t format()
     {

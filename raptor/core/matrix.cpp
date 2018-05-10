@@ -135,12 +135,7 @@ Matrix* CSCMatrix::transpose()
 
 Matrix* BSRMatrix::transpose()
 {
-<<<<<<< HEAD
-    //Matrix* B = new BSRMatrix(n_rows, n_cols, b_rows, b_cols, idx1, idx2, vals);
-
-=======
     printf("Currently not implemented.\n");	
->>>>>>> da0142933cdd56da1db9c218742bdacccd4ada11
     return NULL;
 }
 
