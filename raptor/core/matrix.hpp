@@ -228,7 +228,7 @@ namespace raptor
 	virtual Matrix* ilu_levels() = 0;
 	virtual Matrix* ilu_sparsity(Matrix* levls, int lof) = 0;
 	virtual Matrix* ilu_symbolic(int lof) = 0;
-	virtual std::vector<double>& ilu_numeric(Matrix* sparsity) = 0;
+	virtual std::vector<double>& ilu_numeric(Matrix* levls) = 0;
 
     Matrix* subtract(Matrix* B);
 
@@ -529,7 +529,7 @@ namespace raptor
 	Matrix* ilu_levels();
 	Matrix* ilu_sparsity(Matrix* levls, int lof);
 	Matrix* ilu_symbolic(int lof);
-	std::vector<double>& ilu_numeric(Matrix* sparsity);
+	std::vector<double>& ilu_numeric(Matrix* levls);
 
 
 
@@ -855,7 +855,7 @@ namespace raptor
 	Matrix* ilu_levels();
 	Matrix* ilu_sparsity(Matrix* levls, int lof);
 	Matrix* ilu_symbolic(int lof);
-	std::vector<double>& ilu_numeric(Matrix* sparsity);
+	std::vector<double>& ilu_numeric(Matrix* levls);
 
     format_t format()
     {
@@ -1172,7 +1172,7 @@ namespace raptor
 	Matrix* ilu_levels();
 	Matrix* ilu_sparsity(Matrix* levls, int lof);
 	Matrix* ilu_symbolic(int lof);
-	std::vector<double>& ilu_numeric(Matrix* sparsity);
+	std::vector<double>& ilu_numeric(Matrix* levls);
 
   };
 
@@ -1692,7 +1692,7 @@ namespace raptor
 	Matrix* ilu_levels();
 	Matrix* ilu_sparsity(Matrix* levls, int lof);
 	Matrix* ilu_symbolic(int lof);
-	std::vector<double>& ilu_numeric(Matrix* sparsity);
+	std::vector<double>& ilu_numeric(Matrix* levls);
 
 
 };
