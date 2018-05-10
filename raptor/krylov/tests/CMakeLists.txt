@@ -15,6 +15,10 @@ if (WITH_MPI)
     target_link_libraries(test_par_bicgstab raptor ${MPI_LIBRARIES})
     add_test(TestParBiCGStab ./test_par_bicgstab)
 
+    add_executable(test_bicgstab_reproducibility test_bicgstab_reproducibility.cpp)
+    target_link_libraries(test_bicgstab_reproducibility raptor ${MPI_LIBRARIES})
+    add_test(TestBiCGStabReprod ./test_bicgstab_reproducibility)
+
     add_executable(test_partial_inner test_partial_inner.cpp)
     target_link_libraries(test_partial_inner raptor ${MPI_LIBRARIES})
     add_test(TestPartialInner ./test_partial_inner)

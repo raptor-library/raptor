@@ -10,9 +10,21 @@ add_executable(test_spmv_random test_spmv_random.cpp)
 target_link_libraries(test_spmv_random raptor googletest pthread )
 add_test(RandomSpMVTest ./test_spmv_random)
 
-add_executable(test_bsr test_bsr.cpp)
-target_link_libraries(test_bsr raptor)
-add_test(BSRtest ./test_bsr)
+add_executable(test_bsr_spmv_aniso test_bsr_spmv_aniso.cpp)
+target_link_libraries(test_bsr_spmv_aniso raptor googletest pthread )
+add_test(AnisoBSRSpMVTest ./test_bsr_spmv_aniso)
+
+add_executable(test_bsr_spmv_laplacian test_bsr_spmv_laplacian.cpp)
+target_link_libraries(test_bsr_spmv_laplacian raptor googletest pthread )
+add_test(LaplacianBSRSpMVTest ./test_bsr_spmv_laplacian)
+
+add_executable(test_bsr_spmv_random test_bsr_spmv_random.cpp)
+target_link_libraries(test_bsr_spmv_random raptor googletest pthread )
+add_test(RandomBSRSpMVTest ./test_bsr_spmv_random)
+
+add_executable(test_par_bsr_spmv test_par_bsr_spmv.cpp)
+target_link_libraries(test_par_bsr_spmv raptor ${MPI_LIBRARIES} googletest pthread )
+add_test(ParBSRSpMVTest ./test_par_bsr_spmv)
 
 add_executable(test_ilu test_ilu.cpp)
 target_link_libraries(test_ilu raptor)

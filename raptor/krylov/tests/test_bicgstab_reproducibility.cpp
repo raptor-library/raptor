@@ -22,13 +22,21 @@ int main(int argc, char* argv[])
 
     ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    std::vector<double> residuals;
+    std::vector<double> residuals, residuals2, residuals3, residuals4;
 
     x.set_const_value(1.0);
     A->mult(x, b);
     x.set_const_value(0.0);
-
     BiCGStab(A, x, b, residuals);
+   
+    x.set_const_value(0.0);
+    SeqInner_BiCGStab(A, x, b, residuals2);
+
+    x.set_const_value(0.0);
+    SeqNorm_BiCGStab(A, x, b, residuals3);
+
+    x.set_const_value(0.0);
+    SeqInnerSeqNorm_BiCGStab(A, x, b, residuals4);
 
     // Just testing the first 10 residuals
     if(rank == 0){
@@ -38,7 +46,9 @@ int main(int argc, char* argv[])
         {
             fscanf(f, "%lf\n", &res);
 	    //printf("%lf %lf %lf\n", res, residuals[i], fabs(res - residuals[i]));
-            assert(fabs(res - residuals[i]) < 1e-06);
+	    printf("%lf %lf %lf %lf %lf\n", res, fabs(res-residuals[i]), fabs(res-residuals2[i]), fabs(res-residuals3[i]), fabs(res-residuals4[i]));
+	    printf("%lf %lf %lf %lf %lf\n", res, residuals[i], residuals2[i], residuals3[i], residuals4[i]);
+	    printf("----------------------------------------\n");
         }
         fclose(f);
     }
