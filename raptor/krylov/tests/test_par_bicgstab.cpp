@@ -17,8 +17,8 @@ int main(int argc, char* argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     int grid[2] = {50, 50};
-    //double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
-    double* stencil = diffusion_stencil_2d(0.1, M_PI/4.0);
+    double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
+    //double* stencil = diffusion_stencil_2d(0.1, M_PI/4.0);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
 
     ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
@@ -32,10 +32,10 @@ int main(int argc, char* argv[])
     BiCGStab(A, x, b, residuals);
 
     if(rank == 0){
-        //FILE* f = fopen("../../../../test_data/bicgstab_res.txt", "r");
-        FILE* f = fopen("../../../../test_data/bicgstab_res_TEST.txt", "r");
+        FILE* f = fopen("../../../../test_data/bicgstab_res.txt", "r");
+        //FILE* f = fopen("../../../../test_data/bicgstab_res_TEST.txt", "r");
         double res;
-        for (int i = 0; i < residuals.size(); i++)
+        for (int i = 0; i < 20; i++)
         {
             fscanf(f, "%lf\n", &res);
 	    //printf("%lf %lf %lf\n", res, residuals[i], fabs(res - residuals[i]));
