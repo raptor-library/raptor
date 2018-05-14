@@ -134,7 +134,8 @@ namespace raptor
         spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
     }
 
-    // For BSR Matrix class use only
+    // For BSR Matrix class use only - ensures that blocks are not
+    // divided when creating the partition
     ParMatrix(index_t glob_rows, index_t glob_cols, int _brows, int _bcols)
     {
         partition = new Partition(glob_rows, glob_cols, _brows, _bcols);
@@ -702,7 +703,8 @@ namespace raptor
   class ParBSRMatrix : public ParMatrix
   {
   public:
-    // Better to use a constructor with block size defined
+    // Creates an empty ParBSRMatrix with no defined size for matrix
+    // or blocks
     ParBSRMatrix() : ParMatrix()
     {
         on_proc = new BSRMatrix(0, 0, 0, 0);
@@ -716,6 +718,7 @@ namespace raptor
 
     // Creates an empty ParBSRMatrix of size glob_rows x glob_cols with blocks of
     // size _brows x _bcols
+    // RECOMMENDED CONSTRUCTOR FOR USING WITH ADD_BLOCK
     ParBSRMatrix(index_t glob_rows, 
             index_t glob_cols, int _brows, int _bcols,
             int blocks_per_row = 5) : ParMatrix(glob_rows, glob_cols, _brows, _bcols)
@@ -805,15 +808,14 @@ namespace raptor
 	    exit(-1);
 	}
 
-	on_proc = new BSRMatrix(partition->local_num_rows, partition->local_num_cols,
-			_brows, _bcols);
-	off_proc = new BSRMatrix(partition->local_num_rows, partition->global_num_cols,
-			_brows, _bcols);
+	COOMatrix* coo_on_proc = new COOMatrix(partition->local_num_rows, partition->local_num_cols,
+			partition->local_num_rows*5);
+	COOMatrix* coo_off_proc = new COOMatrix(partition->local_num_rows, partition->global_num_cols,
+			partition->local_num_rows*5);
 
-        // ************************************************
         // Add values to on/off proc matrices
-        on_proc->idx1[0] = 0;
-        off_proc->idx1[0] = 0;
+        //coo_on_proc->idx1[0] = 0;
+        //coo_off_proc->idx1[0] = 0;
 
         int val_start = partition->first_local_row * partition->global_num_cols;
         for (int i = 0; i < partition->local_num_rows; i++)
@@ -829,30 +831,43 @@ namespace raptor
                     if (global_col >= partition->first_local_col && 
                         global_col < partition->first_local_col + partition->local_num_cols)
                     {
-                        on_proc->idx2.push_back(global_col - partition->first_local_col);
-                        on_proc->vals.push_back(values[idx]);
+                        coo_on_proc->idx2.push_back(global_col - partition->first_local_col);
+                        coo_on_proc->vals.push_back(values[idx]);
+			coo_on_proc->idx1.push_back(i);
                     }
                     else
                     {
-                        off_proc->idx2.push_back(global_col);
-                        off_proc->vals.push_back(values[idx]);
+                        coo_off_proc->idx2.push_back(global_col);
+                        coo_off_proc->vals.push_back(values[idx]);
+			coo_off_proc->idx1.push_back(i);
                     }
 
                 }
             }
-            on_proc->idx1[i+1] = on_proc->idx2.size();
-            off_proc->idx1[i+1] = off_proc->idx2.size();
+            //coo_on_proc->idx1[i+1] = coo_on_proc->idx2.size();
+            //coo_off_proc->idx1[i+1] = coo_off_proc->idx2.size();
         }
-        on_proc->nnz = on_proc->idx2.size();
-        off_proc->nnz = off_proc->idx2.size();
+        coo_on_proc->nnz = coo_on_proc->idx2.size();
+        coo_off_proc->nnz = coo_off_proc->idx2.size();*/
 
-        // Convert on/off proc to compressed formats and
-        // create parallel communicator
-        finalize();
+        /*int rank, num_procs;
+	MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);*/
+
+        // Convert on/off proc to BSR
+	/*on_proc = new BSRMatrix(coo_on_proc, _brows, _bcols);
+	off_proc = new BSRMatrix(coo_off_proc, _brows, _bcols);
+
+	delete coo_on_proc;
+	delete coo_off_proc;
 
 	b_rows = _brows;
 	b_cols = _bcols;
 	b_size = b_rows * b_cols;
+	local_nnz = on_proc->nnz + off_proc->nnz;
+       
+        // Create parallel communicator
+	finalize(true, _bcols);
     }*/
 
     /*ParBSRMatrix(ParCSRMatrix* A)
@@ -875,7 +890,7 @@ namespace raptor
     void copy(ParCOOMatrix* A);
     void copy(ParBSRMatrix* A);
 
-    // Takes coarse global block indices
+    // Takes coarse global block indices and adds data to correct process
     void add_block(int global_row_coarse, int global_col_coarse, std::vector<double>& data);
 
     //ParCSRMatrix* strength(double theta = 0.0, int num_variables = 1, int* variables = NULL);

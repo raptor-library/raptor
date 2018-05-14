@@ -442,6 +442,8 @@ namespace raptor
     void copy(const BSRMatrix* A);
     void block_copy(const BSRMatrix* A, int row, int num_blocks_prev, int col);
 
+    std::vector<double> to_dense() const;
+
     void add_value(int row, int col, double value);
     void sort();
     void move_diag();
@@ -1187,7 +1189,7 @@ namespace raptor
 /**************************************************************
  *****   BSRMatrix Class (Inherits from Matrix Base Class)
  **************************************************************
- ***** This class constructs a sparse matrix in CSR format.
+ ***** This class constructs a sparse matrix in BSR format.
  *****
  ***** Methods
  ***** -------
@@ -1201,11 +1203,11 @@ namespace raptor
  *****     by blocks - NOT global row and column indices
  ***** row_ptr()
  *****     Returns std::vector<int>& row pointer.  The ith element points to
- *****     the index of indices() corresponding to the first column to lie on 
- *****     row i.
+ *****     the index of indices() corresponding to the first block column to 
+ *****     lie on block row i.
  ***** cols()
  *****     Returns std::vector<int>& containing the cols corresponding
- *****     to each nonzero
+ *****     to each nonzero dense block
  ***** data()
  *****     Returns std::vector<double>& containing the nonzero values
  *****     - flattened array of block values 
@@ -1238,7 +1240,7 @@ namespace raptor
     ***** _bcols : int
     *****    Number of columns in block
     ***** _nblocks : int
-    *****    Number of blocks in matrix
+    *****    Number of nonzero blocks in matrix
     ***** nnz_per_row : int
     *****    Prediction of (approximately) number of nonzeros 
     *****    per row, used in reserving space
@@ -1379,14 +1381,14 @@ namespace raptor
     ***** A : const COOMatrix*
     *****    COOMatrix A, from which to copy data
     **************************************************************/
-    /*explicit BSRMatrix(const COOMatrix* A, int _brows, int _bcols) 
+    explicit BSRMatrix(const COOMatrix* A, int _brows, int _bcols) 
     {
 	b_rows = _brows;
 	b_cols = _bcols;
 	b_size = b_rows * b_cols;
 
-        copy(A);
-    }*/
+	copy(A);
+    }
 
     /**************************************************************
     *****   BSRMatrix Class Constructor

@@ -116,10 +116,14 @@ void ParMatrix::expand_off_proc(int b_cols)
     int start, end;
     std::vector<int> new_map;
 
+    int rank, num_procs;
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
     for(int i=0; i<off_proc_column_map.size(); i++)
     {
 	start = off_proc_column_map[i] * b_cols;
-	if (start >= partition->first_local_col) start += partition->local_num_cols;
+	if (start >= partition->first_local_col && rank!= 0) start += partition->local_num_cols;
 	end = start + b_cols;
         for(int j=start; j<end; j++)
 	{
@@ -136,6 +140,10 @@ void ParMatrix::finalize(bool create_comm, int b_cols)
     on_proc->sort();
     off_proc->sort();
 
+    int rank, num_procs;
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
     // Assume nonzeros in each on_proc column
     if (on_proc_num_cols)
     {
@@ -145,7 +153,7 @@ void ParMatrix::finalize(bool create_comm, int b_cols)
             on_proc_column_map[i] = i + partition->first_local_col;
         }
     }
-
+    
     if (local_num_rows)
     {
         local_row_map.resize(local_num_rows);
@@ -169,6 +177,7 @@ void ParMatrix::finalize(bool create_comm, int b_cols)
     local_nnz = on_proc->nnz + off_proc->nnz;
 
     // If BSR matrix - correct the off_proc_column_map
+    // to include all global columns within block
     if (b_cols) expand_off_proc(b_cols);
 
     if (create_comm){
@@ -546,53 +555,16 @@ void ParCSCMatrix::copy(ParBSRMatrix* A)
 
 void ParBSRMatrix::copy(ParCSRMatrix* A)
 {
-    /*if (on_proc)
-    {   
-        delete on_proc;
-    }
-    if (off_proc)
-    {
-        delete off_proc;
-    }
-    on_proc = new CSRMatrix((CSRMatrix*) A->on_proc);
-    off_proc = new CSRMatrix((CSRMatrix*) A->off_proc);
-
-    ParMatrix::copy(A);*/
     printf("Currently not implemented.\n");
 }
 
 void ParBSRMatrix::copy(ParCSCMatrix* A)
 {
-    /*if (on_proc)
-    {   
-        delete on_proc;
-    }
-    if (off_proc)
-    {
-        delete off_proc;
-    }
-    on_proc = new CSRMatrix((CSCMatrix*) A->on_proc);
-    off_proc = new CSRMatrix((CSCMatrix*) A->off_proc);
-
-    ParMatrix::copy(A);*/
     printf("Currently not implemented.\n");
 }
 
 void ParBSRMatrix::copy(ParCOOMatrix* A)
 {
-    /*if (on_proc)
-    {   
-        delete on_proc;
-    }
-    if (off_proc)
-    {
-        delete off_proc;
-    }
-
-    on_proc = new CSRMatrix((COOMatrix*) A->on_proc);
-    off_proc = new CSRMatrix((COOMatrix*) A->off_proc);
-
-    ParMatrix::copy(A);*/
     printf("Currently not implemented.\n");
 }
 
@@ -614,7 +586,17 @@ void ParCSCMatrix::add_block(int global_row_coarse, int global_col_coarse, std::
     printf("currently not implemented.\n");
 }
 
-// THIS FUNCTION NEEDS TO BE TESTED
+/***********************************************************
+***** ParBSRMatrix::add_block()
+************************************************************
+***** Input:
+*****    global_row_coarse:
+*****        row index of block in coarse global block matrix
+*****    global_col_coarse:
+*****        colum index of block in coarse global block matrix
+*****    data:
+*****        vector of values for non-zero block to be added
+***********************************************************/
 void ParBSRMatrix::add_block(int global_row_coarse, int global_col_coarse, std::vector<double>& data){
 
     int rank, num_procs;
@@ -643,7 +625,6 @@ void ParBSRMatrix::add_block(int global_row_coarse, int global_col_coarse, std::
         if (first_row >= partition->first_local_row &&
             last_row <= partition->last_local_row)
         {
-	    //printf("Before add block %d\n", rank);
             if (first_col >= partition->first_local_col &&
                 last_col <= partition->last_local_col)
             {
@@ -659,9 +640,6 @@ void ParBSRMatrix::add_block(int global_row_coarse, int global_col_coarse, std::
                 off_proc->add_block(local_block_row, local_block_col, data);
 	    }
 
-	    //printf("After add block %d\n", rank);
-            //printf("rank: %d, fr: %d, lr: %d, fc: %d, lc: %d\n", rank, first_row, last_row, first_col, last_col);
-            //printf("rank: %d, lbr: %d, lbc: %d\n", rank, local_block_row, local_block_col);
 	    // Update local nnz
 	    local_nnz += b_size;
         }
