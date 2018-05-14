@@ -18,29 +18,27 @@ namespace raptor
     }
 
     template<>
-    std::vector<double>& CommPkg::communicate<double>(const double* values,
-            MPI_Comm comm)
+    std::vector<double>& CommPkg::communicate<double>(const double* values)
     {
-        init_double_comm(values, comm);
+        init_double_comm(values);
         return complete_double_comm();
     }
     template<>
-    std::vector<int>& CommPkg::communicate<int>(const int* values,
-            MPI_Comm comm)
+    std::vector<int>& CommPkg::communicate<int>(const int* values)
     {
-        init_int_comm(values, comm);
+        init_int_comm(values);
         return complete_int_comm();
     }
 
     template<>
-    void CommPkg::init_comm<double>(const double* values, MPI_Comm comm)
+    void CommPkg::init_comm<double>(const double* values)
     {
-        init_double_comm(values, comm);
+        init_double_comm(values);
     }
     template<>
-    void CommPkg::init_comm<int>(const int* values, MPI_Comm comm)
+    void CommPkg::init_comm<int>(const int* values)
     {
-        init_int_comm(values, comm);
+        init_int_comm(values);
     }
 
     template<>
@@ -55,51 +53,74 @@ namespace raptor
     }
 
     template<>
-    void CommPkg::communicate_T<double>(const double* values,
-            std::vector<double>& result, MPI_Comm comm)
+    void CommPkg::communicate_T(const double* values,
+            std::vector<double>& result)
     {
-        init_double_comm_T(values, comm);
+        init_double_comm_T(values);
         complete_double_comm_T(result);
     }
     template<>
-    void CommPkg::communicate_T<int>(const int* values,
-            std::vector<int>& result, MPI_Comm comm)
+    void CommPkg::communicate_T(const double* values,
+            std::vector<int>& result)
     {
-        init_int_comm_T(values, comm);
+        init_double_comm_T(values);
+        complete_double_comm_T(result);
+    }
+    template<>
+    void CommPkg::communicate_T(const int* values,
+            std::vector<int>& result)
+    {
+        init_int_comm_T(values);
         complete_int_comm_T(result);
     }
     template<>
-    void CommPkg::communicate_T<double>(const double* values,
-            MPI_Comm comm)
+    void CommPkg::communicate_T(const int* values,
+            std::vector<double>& result)
     {
-        init_double_comm_T(values, comm);
+        init_int_comm_T(values);
+        complete_int_comm_T(result);
+    }
+    template<>
+    void CommPkg::communicate_T<double>(const double* values)
+    {
+        init_double_comm_T(values);
         complete_double_comm_T();
     }
     template<>
-    void CommPkg::communicate_T<int>(const int* values, MPI_Comm comm)
+    void CommPkg::communicate_T<int>(const int* values)
     {
-        init_int_comm_T(values, comm);
+        init_int_comm_T(values);
         complete_int_comm_T();
     }
 
     template<>
-    void CommPkg::init_comm_T<double>(const double* values, MPI_Comm comm)
+    void CommPkg::init_comm_T<double>(const double* values)
     {
-        init_double_comm_T(values, comm);
+        init_double_comm_T(values);
     }
     template<>
-    void CommPkg::init_comm_T<int>(const int* values, MPI_Comm comm)
+    void CommPkg::init_comm_T<int>(const int* values)
     {
-        init_int_comm_T(values, comm);
+        init_int_comm_T(values);
     }
 
     template<>
-    void CommPkg::complete_comm_T<double>(std::vector<double>& result)
+    void CommPkg::complete_comm_T<double, double>(std::vector<double>& result)
     {
         complete_double_comm_T(result);
     }
     template<>
-    void CommPkg::complete_comm_T<int>(std::vector<int>& result)
+    void CommPkg::complete_comm_T<double, int>(std::vector<int>& result)
+    {
+        complete_double_comm_T(result);
+    }
+    template<>
+    void CommPkg::complete_comm_T<int, int>(std::vector<int>& result)
+    {
+        complete_int_comm_T(result);
+    }
+    template<>
+    void CommPkg::complete_comm_T<int, double>(std::vector<double>& result)
     {
         complete_int_comm_T(result);
     }
@@ -113,23 +134,75 @@ namespace raptor
     {
         complete_int_comm_T();
     }
+
+    template<> 
+    std::vector<double>& CommPkg::conditional_comm<double>(const double* values, 
+                const int* send_compares, 
+                const int* recv_compares,
+                std::function<bool(int)> compare_func)
+    {
+        return conditional_double_comm(values, send_compares, recv_compares,
+                compare_func);
+    }
+    template<> 
+    std::vector<int>& CommPkg::conditional_comm<int>(const int* values, 
+                const int* send_compares, 
+                const int* recv_compares,
+                std::function<bool(int)> compare_func)
+    {
+        return conditional_int_comm(values, send_compares, recv_compares,
+                compare_func);
+    }
+    template<> 
+    void CommPkg::conditional_comm_T<double, double>(const double* values, 
+                std::vector<double>& result,
+                const int* send_compares, 
+                const int* recv_compares,
+                std::function<bool(int)> compare_func,
+                std::function<double(double, double)> result_func)
+    {
+        conditional_double_comm_T(values, result, send_compares, recv_compares,
+                compare_func, result_func);
+    }
+    template<> 
+    void CommPkg::conditional_comm_T<int, double>(const int* values, 
+                std::vector<double>& result,
+                const int* send_compares, 
+                const int* recv_compares,
+                std::function<bool(int)> compare_func, 
+                std::function<double(double, int)> result_func)
+    {
+        conditional_int_comm_T(values, result, send_compares, recv_compares,
+                compare_func, result_func);
+    }
+    template<> 
+    void CommPkg::conditional_comm_T<int, int>(const int* values, 
+                std::vector<int>& result,
+                const int* send_compares, 
+                const int* recv_compares,
+                std::function<bool(int)> compare_func,
+                std::function<int(int, int)> result_func)
+    {
+        conditional_int_comm_T(values, result, send_compares, recv_compares,
+                compare_func, result_func);
+    }
 }
 
 
 using namespace raptor;
 
-std::vector<double>& CommPkg::communicate(ParVector& v, MPI_Comm comm)
+std::vector<double>& CommPkg::communicate(ParVector& v)
 {
-    init_double_comm(v.local.data(), comm);
+    init_double_comm(v.local.data());
     return complete_double_comm();
 }
 
-void CommPkg::init_comm(ParVector& v, MPI_Comm comm)
+void CommPkg::init_comm(ParVector& v)
 {
-    init_double_comm(v.local.data(), comm);
+    init_double_comm(v.local.data());
 }
 
-CSRMatrix* CommPkg::communicate(ParCSRMatrix* A, MPI_Comm comm)
+CSRMatrix* CommPkg::communicate(ParCSRMatrix* A)
 {
     int start, end;
     int ctr;
@@ -168,96 +241,25 @@ CSRMatrix* CommPkg::communicate(ParCSRMatrix* A, MPI_Comm comm)
         }
         rowptr[i+1] = ctr;
     }
-    return communicate(rowptr, col_indices, values, comm);
+    return communicate(rowptr, col_indices, values);
 }
 
-CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr, 
+CSRMatrix* communication_helper(std::vector<int>& rowptr,
         std::vector<int>& col_indices, std::vector<double>& values,
-        MPI_Comm comm, CommData* send_comm, CommData* recv_comm)
+        CommData* send_comm, CommData* recv_comm, int key, MPI_Comm mpi_comm)
 {
+    int start, end, proc;
+    int ctr, prev_ctr, size;
+    int row, row_start, row_end;
+    int count, row_count, row_size;
+
+    MPI_Status recv_status;
+
     // Number of rows in recv_mat = size_recvs
     // Don't know number of columns, but does not matter (CSR)
     CSRMatrix* recv_mat = new CSRMatrix(recv_comm->size_msgs, -1);
 
-    int start, end, proc;
-    int row, row_size;
-    int send_mat_size;
-    int ctr, prev_ctr;
-    int row_start, row_end;
-    int start_idx, end_idx;
-    int nsends, nrecvs;
-
-    // Calculate nnz/row for each row to be sent to a proc
-    std::vector<int> send_row_buffer;
-    std::vector<int> recv_row_buffer;
-    if (send_comm->num_msgs)
-    {
-        send_row_buffer.resize(send_comm->size_msgs);
-    }
-    if (recv_comm->num_msgs)
-    {
-        recv_row_buffer.resize(recv_comm->size_msgs);
-    }
-
-    // Send nnz/row for each row to be communicated
-    send_mat_size = 0;
-    for (int i = 0; i < send_comm->num_msgs; i++)
-    {
-        start = send_comm->indptr[i];
-        end = send_comm->indptr[i+1];
-        proc = send_comm->procs[i];
-        for (int j = start; j < end; j++)
-        {
-            row = send_comm->indices[j];
-            row_size = rowptr[row+1] - rowptr[row];
-            send_row_buffer[j] = row_size;
-            send_mat_size += row_size;
-        }
-
-        MPI_Isend(&(send_row_buffer[start]), end - start, MPI_INT, proc,
-                key, comm, &(send_comm->requests[i]));
-    }
-
-    // Recv nnz/row for each row to be received
-    for (int i = 0; i < recv_comm->num_msgs; i++)
-    {
-        start = recv_comm->indptr[i];
-        end = recv_comm->indptr[i+1];
-        proc = recv_comm->procs[i];
-        
-        MPI_Irecv(&(recv_row_buffer[start]), end - start, MPI_INT, proc,
-                key, comm, &(recv_comm->requests[i]));
-    }
-    
-    if (send_comm->num_msgs)
-    {
-        MPI_Waitall(send_comm->num_msgs, send_comm->requests.data(), MPI_STATUS_IGNORE);
-    }
-    send_row_buffer.clear();
-
-    // Wait for communication to complete
-    if (recv_comm->num_msgs)
-    {
-        MPI_Waitall(recv_comm->num_msgs, recv_comm->requests.data(), MPI_STATUS_IGNORE);
-    }
-
-    // Allocate Matrix Space
-    recv_mat->idx1[0] = 0;
-    for (int i = 0; i < recv_comm->size_msgs; i++)
-    {
-        recv_mat->idx1[i+1] = recv_mat->idx1[i] + recv_row_buffer[i];
-    }
-    recv_mat->nnz = recv_mat->idx1[recv_comm->size_msgs];
-    recv_row_buffer.clear();
-
-    if (recv_mat->nnz)
-    {
-        recv_mat->idx2.resize(recv_mat->nnz);
-        recv_mat->vals.resize(recv_mat->nnz);
-    }
-
-    // Create PairData for sends and recvs (pair of int
-    // and double: col idx and value)
+    // Only sending and recving a single buffer
     struct PairData 
     {
         double val;
@@ -265,121 +267,413 @@ CSRMatrix* ParComm::communication_helper(std::vector<int>& rowptr,
     };
     std::vector<PairData> send_buffer;
     std::vector<PairData> recv_buffer;
-    if (send_mat_size)
-    {
-        send_buffer.resize(send_mat_size);
-    }
-    if (recv_mat->nnz)
-    {
-        recv_buffer.resize(recv_mat->nnz);
-    }
+    std::vector<int> send_ptr(send_comm->num_msgs+1);
+    send_ptr[0] = 0;
 
     // Send pair_data for each row using MPI_DOUBLE_INT
     ctr = 0;
-    prev_ctr = 0;
-    nsends = 0;
+    if (send_comm->indptr_T.size())
+    {        
+        int size_pos, idx_start, idx_end;
+        for (int i = 0; i < send_comm->num_msgs; i++)
+        {
+            start = send_comm->indptr[i];
+            end = send_comm->indptr[i+1];
+            for (int j = start; j < end; j++)
+            {
+                size_pos = ctr;
+                send_buffer.push_back(PairData());
+                send_buffer[ctr++].index = 0;
+                idx_start = send_comm->indptr_T[j];
+                idx_end = send_comm->indptr_T[j+1];
+                for (int k = idx_start; k < idx_end; k++)
+                {
+                    row = send_comm->indices[k];
+                    row_start = rowptr[row];
+                    row_end = rowptr[row+1];
+		            send_buffer[size_pos].index += (row_end - row_start);
+                    for (int l = row_start; l < row_end; l++)
+                    {
+                        send_buffer.push_back(PairData());
+                        send_buffer[ctr].index = col_indices[l];
+                        send_buffer[ctr++].val = values[l];
+                    }
+                }
+                if (ctr > size_pos + 1)
+                {
+                    std::sort(send_buffer.begin() + size_pos + 1, send_buffer.begin() + ctr, 
+                            [&](const PairData& lhs, const PairData& rhs)
+                            {
+                                return lhs.index < rhs.index;
+                            });
+                    int pos = size_pos + 1;
+                    for (int k = size_pos + 2; k < ctr; k++)
+                    {
+                        if (send_buffer[k].index == send_buffer[pos].index)
+                        {
+                            send_buffer[pos].val += send_buffer[k].val;
+			    send_buffer[size_pos].index--;
+                        }
+                        else
+                        {
+                            pos++;
+                            send_buffer[pos].index = send_buffer[k].index;
+                            send_buffer[pos].val = send_buffer[k].val;
+                        }
+                    }
+		            ctr = pos + 1;
+                    send_buffer.resize(ctr);
+                }
+            }
+            send_ptr[i+1] = send_buffer.size();
+        }
+    }
+    else if (send_comm->indices.size())
+    {
+        for (int i = 0; i < send_comm->num_msgs; i++)
+        {
+            start = send_comm->indptr[i];
+            end = send_comm->indptr[i+1];
+            for (int j = start; j < end; j++)
+            {
+                row = send_comm->indices[j];
+                row_start = rowptr[row];
+                row_end = rowptr[row+1];
+                send_buffer.push_back(PairData());
+                send_buffer[ctr++].index = row_end - row_start;
+                for (int k = row_start; k < row_end; k++)
+                {
+                    send_buffer.push_back(PairData());
+                    send_buffer[ctr].index = col_indices[k];
+                    send_buffer[ctr++].val = values[k];
+                }
+            }
+            send_ptr[i+1] = ctr;
+        }
+    }
+    else
+    {
+        for (int i = 0; i < send_comm->num_msgs; i++)
+        {
+            start = send_comm->indptr[i];
+            end = send_comm->indptr[i+1];
+            for (int j = start; j < end; j++)
+            {
+                row = j;
+                row_start = rowptr[row];
+                row_end = rowptr[row+1];
+                send_buffer.push_back(PairData());
+                send_buffer[ctr++].index = row_end - row_start;
+                for (int k = row_start; k < row_end; k++)
+                {
+                    send_buffer.push_back(PairData());
+                    send_buffer[ctr].index = col_indices[k];
+                    send_buffer[ctr++].val = values[k];
+                }
+            }
+            send_ptr[i+1] = ctr;
+        }
+    }
+
+    send_comm->matrix_data.wait_time -= MPI_Wtime();
+
+    send_comm->matrix_data.num_msgs += send_comm->num_msgs;
+    send_comm->matrix_data.size_msgs += send_buffer.size();
     for (int i = 0; i < send_comm->num_msgs; i++)
     {
-        start = send_comm->indptr[i];
-        end = send_comm->indptr[i+1];
         proc = send_comm->procs[i];
-
-        for (int j = start; j < end; j++)
-        {
-            row = send_comm->indices[j];
-            row_start = rowptr[row];
-            row_end = rowptr[row+1];
-            for (int k = row_start; k < row_end; k++)
-            {
-                send_buffer[ctr].val = values[k];
-                send_buffer[ctr++].index = col_indices[k];
-            }
-        }
-
-        if (ctr - prev_ctr)
-        {
-            MPI_Isend(&(send_buffer[prev_ctr]), ctr - prev_ctr, MPI_DOUBLE_INT, proc, 
-                    key, comm, &(send_comm->requests[nsends++]));
-            prev_ctr = ctr;
-        }
+        start = send_ptr[i];
+        end = send_ptr[i+1];
+        MPI_Isend(&(send_buffer[start]), end - start, MPI_DOUBLE_INT, proc, 
+                key, mpi_comm, &(send_comm->requests[i]));
     }
 
-    // Recv pair_data corresponding to each off_proc column and add it to
-    // correct location in matrix
-    nrecvs = 0;
+    // Recv pair_data for each row, and add to recv_mat
+    row_count = 0;
     for (int i = 0; i < recv_comm->num_msgs; i++)
     {
+        proc = recv_comm->procs[i];
         start = recv_comm->indptr[i];
         end = recv_comm->indptr[i+1];
-        proc = recv_comm->procs[i];
-
-        start_idx = recv_mat->idx1[start];
-        end_idx = recv_mat->idx1[end];
-
-        if (end_idx - start_idx)
+        size = end - start;
+        MPI_Probe(proc, key, mpi_comm, &recv_status);
+        MPI_Get_count(&recv_status, MPI_DOUBLE_INT, &count);
+        if (count > recv_buffer.size())
         {
-            MPI_Irecv(&(recv_buffer[start_idx]), end_idx - start_idx, MPI_DOUBLE_INT,
-                    proc, key, comm, &(recv_comm->requests[nrecvs++]));
+            recv_buffer.resize(count);
+        }
+        MPI_Recv((&recv_buffer[0]), count, MPI_DOUBLE_INT, proc, key, mpi_comm,
+            &recv_status);
+        ctr = 0;
+        for (int j = 0; j < size; j++)
+        {
+            row_size = recv_buffer[ctr++].index;
+            recv_mat->idx1[row_count+1] = recv_mat->idx1[row_count] + row_size;
+            row_count++;
+            for (int k = 0; k < row_size; k++)
+            {
+                recv_mat->idx2.push_back(recv_buffer[ctr].index);
+                recv_mat->vals.push_back(recv_buffer[ctr++].val);
+            }
         }
     }
+    recv_mat->nnz = recv_mat->idx2.size();
 
-    if (recv_comm->num_msgs)
-    {
-        MPI_Waitall(nrecvs, recv_comm->requests.data(), MPI_STATUSES_IGNORE);
-    }
-    if (send_comm->num_msgs)
-    {
-        MPI_Waitall(nsends, send_comm->requests.data(), MPI_STATUSES_IGNORE);
-    }
-
-    // Add recvd values to matrix
-    for (int i = 0; i < recv_mat->nnz; i++)
-    {
-        recv_mat->idx2[i] = recv_buffer[i].index;
-        recv_mat->vals[i] = recv_buffer[i].val;
-    }
+    MPI_Waitall(send_comm->num_msgs, send_comm->requests.data(), MPI_STATUSES_IGNORE);
+    send_comm->matrix_data.wait_time += MPI_Wtime();
 
     return recv_mat;
-}
+}    
 
 CSRMatrix* ParComm::communicate(std::vector<int>& rowptr, 
-        std::vector<int>& col_indices, std::vector<double>& values,
-        MPI_Comm comm)
+        std::vector<int>& col_indices, std::vector<double>& values)
 {
-    return communication_helper(rowptr, col_indices, values, comm,
-            send_data, recv_data);
+    return communication_helper(rowptr, col_indices, values,
+            send_data, recv_data, key, mpi_comm);
 }
 
 CSRMatrix* ParComm::communicate_T(std::vector<int>& rowptr, 
         std::vector<int>& col_indices, std::vector<double>& values,
-        MPI_Comm comm)
+        int n_result_rows)
 {
-    return communication_helper(rowptr, col_indices, values, comm,
-            recv_data, send_data);
+    int idx, ptr;
+    int start, end;
+
+    std::vector<int> row_sizes;
+    if (n_result_rows) row_sizes.resize(n_result_rows, 0);
+
+    CSRMatrix* recv_mat_T = communication_helper(rowptr, col_indices, values,
+            recv_data, send_data, key, mpi_comm);
+
+
+    CSRMatrix* recv_mat = new CSRMatrix(n_result_rows, -1);
+
+    for (int i = 0; i < send_data->size_msgs; i++)
+    {
+        idx = send_data->indices[i];
+        start = recv_mat_T->idx1[i];
+        end = recv_mat_T->idx1[i+1];
+        row_sizes[idx] += (end - start);
+    }
+    recv_mat->idx1[0] = 0;
+    for (int i = 0; i < n_result_rows; i++)
+    {
+        recv_mat->idx1[i+1] = recv_mat->idx1[i] + row_sizes[i];
+        row_sizes[i] = 0;
+    }
+    recv_mat->nnz = recv_mat->idx1[n_result_rows];
+    if (recv_mat->nnz)
+    {
+        recv_mat->idx2.resize(recv_mat->nnz);
+        recv_mat->vals.resize(recv_mat->nnz);
+    }
+
+    for (int i = 0; i < send_data->size_msgs; i++)
+    {
+        idx = send_data->indices[i];
+        start = recv_mat_T->idx1[i];
+        end = recv_mat_T->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            ptr = recv_mat->idx1[idx] + row_sizes[idx]++;
+            recv_mat->idx2[ptr] = recv_mat_T->idx2[j];
+            recv_mat->vals[ptr] = recv_mat_T->vals[j];
+        }
+    }
+
+    delete recv_mat_T;
+
+    return recv_mat;
 }
     
 CSRMatrix* TAPComm::communicate(std::vector<int>& rowptr, 
-        std::vector<int>& col_indices, std::vector<double>& values,
-        MPI_Comm comm)
+        std::vector<int>& col_indices, std::vector<double>& values)
 {   
-    int rank;
-    MPI_Comm_rank(comm, &rank);
-    if (rank == 0) printf("Not yet implemented...\n");
-    return NULL;
+    int ctr, idx, row;
+    int start, end;
+
+    CSRMatrix* L_mat = local_L_par_comm->communicate(rowptr, col_indices,
+            values);
+
+    CSRMatrix* G_mat;
+    if (local_S_par_comm)
+    {
+        CSRMatrix* S_mat = local_S_par_comm->communicate(rowptr, col_indices, values);
+        G_mat = global_par_comm->communicate(S_mat->idx1, S_mat->idx2, 
+                S_mat->vals);
+        delete S_mat;
+    }
+    else
+    {
+        G_mat = global_par_comm->communicate(rowptr, col_indices, values);
+    }
+
+    CSRMatrix* R_mat = local_R_par_comm->communicate(G_mat->idx1, G_mat->idx2, 
+            G_mat->vals);
+    delete G_mat;
+
+
+    // Create recv_mat (combination of L_mat and R_mat)
+    CSRMatrix* recv_mat = new CSRMatrix(L_mat->n_rows + R_mat->n_rows, -1);
+    std::vector<int>& row_sizes = get_recv_buffer<int>();
+    recv_mat->nnz = L_mat->nnz + R_mat->nnz;
+    int ptr;
+    if (recv_mat->nnz)
+    {
+        recv_mat->idx2.resize(recv_mat->nnz);
+        recv_mat->vals.resize(recv_mat->nnz);
+    }
+
+    for (int i = 0; i < R_mat->n_rows; i++)
+    {
+        start = R_mat->idx1[i];
+        end = R_mat->idx1[i+1];
+        row = local_R_par_comm->recv_data->indices[i];
+        row_sizes[row] = end - start;
+    }
+    for (int i = 0; i < L_mat->n_rows; i++)
+    {
+        start = L_mat->idx1[i];
+        end = L_mat->idx1[i+1];
+        row = local_L_par_comm->recv_data->indices[i];
+        row_sizes[row] = end - start;
+    }
+    recv_mat->idx1[0] = 0;
+    for (int i = 0; i < recv_mat->n_rows; i++)
+    {
+        recv_mat->idx1[i+1] = recv_mat->idx1[i] + row_sizes[i];
+        row_sizes[i] = 0;
+    }
+    for (int i = 0; i < R_mat->n_rows; i++)
+    {
+        start = R_mat->idx1[i];
+        end = R_mat->idx1[i+1];
+        row = local_R_par_comm->recv_data->indices[i];
+        for (int j = start; j < end; j++)
+        {
+            ptr = recv_mat->idx1[row] + row_sizes[row]++;
+            recv_mat->idx2[ptr] = R_mat->idx2[j];
+            recv_mat->vals[ptr] = R_mat->vals[j];
+        }
+    }
+    for (int i = 0; i < L_mat->n_rows; i++)
+    {
+        start = L_mat->idx1[i];
+        end = L_mat->idx1[i+1];
+        row = local_L_par_comm->recv_data->indices[i];
+        for (int j = start; j < end; j++)
+        {
+            ptr = recv_mat->idx1[row] + row_sizes[row]++;
+            recv_mat->idx2[ptr] = L_mat->idx2[j];
+            recv_mat->vals[ptr] = L_mat->vals[j];
+        }
+    }
+
+    delete R_mat;
+    delete L_mat;
+
+    return recv_mat;
 }
 
-std::pair<CSRMatrix*, CSRMatrix*> TAPComm::communicate_T(std::vector<int>& rowptr, 
+CSRMatrix* TAPComm::communicate_T(std::vector<int>& rowptr, 
         std::vector<int>& col_indices, std::vector<double>& values,
-        MPI_Comm comm)
+        int n_result_rows)
 {   
-    int rank;
-    MPI_Comm_rank(comm, &rank);
-    if (rank == 0) printf("Not yet implemented...\n");
+    int n_rows = rowptr.size() - 1;
+    int idx, ptr;
+    int start, end, row;
+    int ctr, size;
+    int row_start, row_end, row_size;
 
-    CSRMatrix* recv_L = NULL;
-    CSRMatrix* recv_S = NULL;
-    return std::make_pair(recv_L, recv_S);
+    CSRMatrix* L_mat = communication_helper(rowptr, col_indices, 
+            values, local_L_par_comm->recv_data, 
+            local_L_par_comm->send_data, local_L_par_comm->key,
+            local_L_par_comm->mpi_comm);
+
+    CSRMatrix* R_mat = communication_helper(rowptr, col_indices, 
+            values, local_R_par_comm->recv_data, 
+            local_R_par_comm->send_data, local_R_par_comm->key,
+            local_R_par_comm->mpi_comm);
+
+    CSRMatrix* G_mat = communication_helper(R_mat->idx1, R_mat->idx2,
+            R_mat->vals, global_par_comm->recv_data, global_par_comm->send_data,
+            global_par_comm->key, global_par_comm->mpi_comm);
+    delete R_mat;
+
+    CSRMatrix* final_mat;
+    ParComm* final_comm;
+    if (local_S_par_comm)
+    {
+        final_mat = communication_helper(G_mat->idx1, G_mat->idx2,
+                G_mat->vals, local_S_par_comm->recv_data, local_S_par_comm->send_data, 
+                local_S_par_comm->key, local_S_par_comm->mpi_comm);
+        delete G_mat;
+        final_comm = local_S_par_comm;
+    }
+    else
+    {
+        final_mat = G_mat;
+        final_comm = global_par_comm;
+    }
+
+    CSRMatrix* recv_mat = new CSRMatrix(n_result_rows, -1);
+    std::vector<int> row_sizes(n_result_rows, 0);
+    int nnz = L_mat->nnz + final_mat->nnz;
+    if (nnz)
+    {
+        recv_mat->idx2.reserve(nnz);
+        recv_mat->vals.reserve(nnz);
+    }
+    for (int i = 0; i < final_comm->send_data->size_msgs; i++)
+    {
+        row = final_comm->send_data->indices[i];
+        row_size = final_mat->idx1[i+1] - final_mat->idx1[i];
+        row_sizes[row] += row_size;
+    }
+    for (int i = 0; i < local_L_par_comm->send_data->size_msgs; i++)
+    {
+        row = local_L_par_comm->send_data->indices[i];
+        row_size = L_mat->idx1[i+1] - L_mat->idx1[i];
+        row_sizes[row] += row_size;
+    }
+    recv_mat->idx1[0] = 0;
+    for (int i = 0; i < n_result_rows; i++)
+    {
+        recv_mat->idx1[i+1] = recv_mat->idx1[i] + row_sizes[i];
+        row_sizes[i] = 0;
+    }
+    for (int i = 0; i < final_comm->send_data->size_msgs; i++)
+    {
+        row = final_comm->send_data->indices[i];
+        row_start = final_mat->idx1[i];
+        row_end = final_mat->idx1[i+1];
+        for (int j = row_start; j < row_end; j++)
+        {
+            idx = recv_mat->idx1[row] + row_sizes[row]++;
+            recv_mat->idx2[idx] = final_mat->idx2[j];
+            recv_mat->vals[idx] = final_mat->vals[j];
+        }
+    }
+    for (int i = 0; i < local_L_par_comm->send_data->size_msgs; i++)
+    {
+        row = local_L_par_comm->send_data->indices[i];
+        row_start = L_mat->idx1[i];
+        row_end = L_mat->idx1[i+1];
+        for (int j = row_start; j < row_end; j++)
+        {
+            idx = recv_mat->idx1[row] + row_sizes[row]++;
+            recv_mat->idx2[idx] = L_mat->idx2[j];
+            recv_mat->vals[idx] = L_mat->vals[j];
+        }
+    }
+    recv_mat->nnz = recv_mat->idx2.size();
+    recv_mat->sort();
+
+    delete L_mat;
+    delete final_mat;
+
+
+    return recv_mat;
+    
 }
-
-
 

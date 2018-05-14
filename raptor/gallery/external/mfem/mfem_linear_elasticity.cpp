@@ -4,7 +4,7 @@ using namespace mfem;
 
 // Create an MFEM Linear Elasticity Matrix and convert to Raptor format
 raptor::ParCSRMatrix* mfem_linear_elasticity(raptor::ParVector& x_raptor, 
-        raptor::ParVector& b_raptor,
+        raptor::ParVector& b_raptor, int* num_variables,
         const char* mesh_file, int order, int seq_n_refines, 
         int par_n_refines, MPI_Comm comm)
 {
@@ -102,6 +102,7 @@ raptor::ParCSRMatrix* mfem_linear_elasticity(raptor::ParVector& x_raptor,
         x_raptor[i] = x_data[i];
         b_raptor[i] = b_data[i];
     }
+    *num_variables = mesh_dim;
 
     delete a;
     delete b;

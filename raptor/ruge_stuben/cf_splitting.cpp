@@ -113,7 +113,7 @@ void rs_first_pass(const CSRMatrix* S,
         weight = weights[col];
         weight_sizes[weight]--;
 
-        if (states[col] == 0)
+        if (states[col] != -1)
         {
             continue;
         }
@@ -208,6 +208,58 @@ void rs_first_pass(const CSRMatrix* S,
     }
 }
 
+void rs_second_pass(const CSRMatrix* S,
+        std::vector<int>& weights,
+        std::vector<int>& states)
+{
+    int start, end, col;
+    int start_k, end_k, col_k;
+    bool connection;
+
+    std::vector<int> row_coarse(S->n_rows, -1);
+
+    for (int i = 0; i < S->n_rows; i++)
+    {
+        if (states[i] == 1) continue;
+
+        start = S->idx1[i];
+        end = S->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = S->idx2[j];
+            if (states[col] == 1) 
+                row_coarse[col] = i;
+        }
+
+        for (int j = start; j < end; j++)
+        {
+            col = S->idx2[j];
+            if (states[col] == 0)
+            {
+                start_k = S->idx1[col];
+                end_k = S->idx1[col+1];
+                connection = false;
+                if (start_k == end_k) continue;
+                for (int k = start_k; k < end_k; k++)
+                {
+                    col_k = S->idx2[k];
+                    if (row_coarse[col_k] == i)
+                    {
+                        connection = true;
+                        break;
+                    }
+                }
+                
+                if (!connection)
+                {
+                    row_coarse[col] = i;
+                    states[col] = 1;
+                }
+            }
+        }
+    }
+}
+
 
 /**************************************************************
  *****   C/F Splitting
@@ -223,7 +275,7 @@ void rs_first_pass(const CSRMatrix* S,
  *****    Strength of connection matrix
  **************************************************************/
 void split_rs(CSRMatrix* S,
-        std::vector<int>& states)
+        std::vector<int>& states, bool prev_states, bool second_pass)
 {
     int start, end;
     
@@ -236,15 +288,18 @@ void split_rs(CSRMatrix* S,
     std::vector<int> col_ptr;
     std::vector<int> col_indices;
     std::vector<int> weights;
-
     if (S->n_rows)
     {
-        states.resize(S->n_rows);
         weights.resize(S->n_rows);
     }
-    for (int i = 0; i < S->n_rows; i++)
+
+    if (!prev_states && S->n_rows)
     {
-        states[i] = -1;
+        states.resize(S->n_rows);
+        for (int i = 0; i < S->n_rows; i++)
+        {
+            states[i] = -1;
+        }
     }
 
     // Find CSC sparsity pattern of S
@@ -260,7 +315,10 @@ void split_rs(CSRMatrix* S,
 
     rs_first_pass(S, col_ptr, col_indices, weights, states);
 
-
+    if (second_pass)
+    {
+        rs_second_pass(S, weights, states);
+    }
 }
 
 int select_independent_set(CSRMatrix* S, std::vector<int>& col_ptr,
@@ -455,10 +513,9 @@ void cljp_main_loop(CSRMatrix* S, std::vector<int>& col_ptr, std::vector<int>& c
     }
     else
     {
+        srand(time(NULL));
         for (int i = 0; i < S->n_rows; i++)
         {
-            srand(i);
-
             // Random value [0,1)
             weights[i] = ((double)(rand())) / RAND_MAX;
         }
@@ -496,6 +553,99 @@ void cljp_main_loop(CSRMatrix* S, std::vector<int>& col_ptr, std::vector<int>& c
     }
 }
 
+void pmis_main_loop(CSRMatrix* S, std::vector<int>& col_ptr, std::vector<int>& col_indices,
+        std::vector<int>& states, double* rand_vals)
+{
+    int num_new_coarse;
+    int start, end, col, row;
+    int ctr, idx;
+    int num_remaining;
+    double row_weight, col_weight;
+    double max_row_weight, max_col_weight;
+    std::vector<double> weights;
+    std::vector<int> unassigned;
+    std::vector<int> new_coarse_list;
+
+    if (S->n_rows)
+    {
+        weights.resize(S->n_rows);
+        unassigned.resize(S->n_rows);
+        new_coarse_list.resize(S->n_rows);
+    }
+
+    // Assign random weight to each vertex
+    if (rand_vals)
+    {
+        for (int i = 0; i < S->n_rows; i++)
+        {
+            weights[i] = rand_vals[i];
+        }
+    }
+    else
+    {
+        srand(102483);
+        for (int i = 0; i < S->n_rows; i++)
+        {
+            // Random value [0,1)
+            weights[i] = ((double)(rand())) / RAND_MAX;
+        }
+    }
+
+    // Update vertex weights (number of rows in which it is a column)
+    for (int i = 0; i < S->n_rows; i++)
+    {
+        start = S->idx1[i];
+        end = S->idx1[i+1];
+        if (S->idx2[start] == i)
+        {
+            start++;
+        }
+        for (int j = start; j < end; j++)
+        {
+            col = S->idx2[j];
+            weights[col] += 1;
+        }
+    }
+
+    num_remaining = 0;
+    for (int i = 0; i < S->n_rows; i++)
+    {
+        if (weights[i] < 1)
+        {
+            states[i] = 0;
+        }
+        else
+        {
+            unassigned[num_remaining++] = i;
+        }
+    }
+
+    while (num_remaining > 0)
+    {
+        // Find max unassigned weight in each row / column
+        num_new_coarse = select_independent_set(S, col_ptr, col_indices,
+                num_remaining, unassigned, states, weights, new_coarse_list);
+
+        for (int i = 0; i < num_new_coarse; i++)
+        {
+            idx = new_coarse_list[i];
+            start = col_ptr[idx];
+            end = col_ptr[idx+1];
+            for (int j = start; j < end; j++)
+            {
+                row = col_indices[j];
+                if (states[row] == -1)
+                {
+                    states[row] = 0;
+                    weights[row] = 0;
+                }
+            }
+        }
+
+        num_remaining = update_states(num_remaining, unassigned, states, weights);
+    }
+}
+
 void split_cljp(CSRMatrix* S, 
         std::vector<int>& states,
         double* rand_vals)
@@ -525,5 +675,30 @@ void split_cljp(CSRMatrix* S,
     cljp_main_loop(S, col_ptr, col_indices, states, rand_vals);
 }
 
+
+void split_pmis(CSRMatrix* S, std::vector<int>& states, double* rand_vals)
+{
+    std::vector<int> col_ptr;
+    std::vector<int> col_indices;
+
+    if (!S->diag_first)
+    {
+        S->move_diag();
+    }
+    if (S->n_rows)
+    {
+        states.resize(S->n_rows);
+    }
+
+    // Find column-wise sparsity pattern of S
+    transpose(S, col_ptr, col_indices);
+
+    for (int i = 0; i < S->n_rows; i++)
+    {
+        states[i] = -1;
+    }
+
+    pmis_main_loop(S, col_ptr, col_indices, states, rand_vals);
+}
 
 

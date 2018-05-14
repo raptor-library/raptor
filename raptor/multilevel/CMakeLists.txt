@@ -5,10 +5,17 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 if (WITH_MPI)
     set(par_multilevel_HEADERS
         multilevel/par_level.hpp
+        multilevel/par_sparsify.hpp
         multilevel/par_multilevel.hpp
+        )
+    set(par_multilevel_SOURCES
+        multilevel/par_sparsify.cpp
         )
 else ()
     set (par_multilevel_HEADERS
+        ""
+        )
+    set (par_multilevel_SOURCES
         ""
         )
 endif()
@@ -19,4 +26,10 @@ set(multilevel_HEADERS
     ${par_multilevel_HEADERS}
     PARENT_SCOPE
     )
+
+set(multilevel_SOURCES
+    ${par_multilevel_SOURCES}
+    PARENT_SCOPE
+    )
+
 

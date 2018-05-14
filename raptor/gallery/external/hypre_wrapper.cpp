@@ -4,12 +4,12 @@
 
 #include "hypre_wrapper.hpp"
 
-HYPRE_IJVector convert(raptor::ParVector* x_rap, MPI_Comm comm_mat)
+HYPRE_IJVector convert(raptor::ParVector& x_rap, MPI_Comm comm_mat)
 {
     HYPRE_IJVector x;
 
-    HYPRE_Int first_local = x_rap->first_local;
-    HYPRE_Int local_n = x_rap->local_n;
+    HYPRE_Int first_local = x_rap.first_local;
+    HYPRE_Int local_n = x_rap.local_n;
     HYPRE_Int last_local = first_local + local_n - 1;
 
     HYPRE_IJVectorCreate(comm_mat, first_local, last_local, &x);
@@ -21,7 +21,7 @@ HYPRE_IJVector convert(raptor::ParVector* x_rap, MPI_Comm comm_mat)
     {
         rows[i] = i+first_local;
     }
-    HYPRE_Real* x_data = x_rap->local.data();
+    HYPRE_Real* x_data = x_rap.local.data();
     HYPRE_IJVectorSetValues(x, local_n, rows, x_data);
 
     HYPRE_IJVectorAssemble(x);

@@ -19,4 +19,3 @@ std::vector<int>& CommData::get_buffer<int>()
 }
 
 }
-

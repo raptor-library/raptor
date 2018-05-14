@@ -7,7 +7,7 @@ using namespace raptor;
 
 // Assumes ParCSRMatrix is previously sorted
 // TODO -- have ParCSRMatrix bool sorted (and sort if not previously)
-ParCSRMatrix* ParCSRMatrix::strength(double theta)
+ParCSRMatrix* ParCSRMatrix::strength(double theta, int num_variables, int* variables)
 {
     int row_start_on, row_end_on;
     int row_start_off, row_end_off;
@@ -19,6 +19,13 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
 
     ParCSRMatrix* S = new ParCSRMatrix(partition, global_num_rows, global_num_cols,
             local_num_rows, on_proc_num_cols, off_proc_num_cols);
+    
+    int* off_variables;
+    if (num_variables > 1)
+    {
+        comm->communicate(variables);
+        off_variables = comm->recv_data->int_buffer.data();
+    }
 
     std::vector<bool> col_exists;
     if (off_proc_num_cols)
@@ -28,6 +35,8 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
 
     sort();
     on_proc->move_diag();
+    S->on_proc->vals.clear();
+    S->off_proc->vals.clear();
     
     if (on_proc->nnz)
     {
@@ -59,46 +68,110 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
             }
 
             // Find value with max magnitude in row
-            if (diag < 0.0)
+            if (num_variables == 1)
             {
-                row_scale = -RAND_MAX; 
-                for (int j = row_start_on; j < row_end_on; j++)
+                if (diag < 0.0)
                 {
-                    val = on_proc->vals[j];
-                    if (val > row_scale)
+                    row_scale = -RAND_MAX; 
+                    for (int j = row_start_on; j < row_end_on; j++)
                     {
-                        row_scale = val;
-                    }
-                }    
-                for (int j = row_start_off; j < row_end_off; j++)
+                        val = on_proc->vals[j];
+                        if (val > row_scale)
+                        {
+                            row_scale = val;
+                        }
+                    }    
+                    for (int j = row_start_off; j < row_end_off; j++)
+                    {
+                        val = off_proc->vals[j];
+                        if (val > row_scale)
+                        {
+                            row_scale = val;
+                        }
+                    } 
+                }
+                else
                 {
-                    val = off_proc->vals[j];
-                    if (val > row_scale)
+                    row_scale = RAND_MAX;
+                    for (int j = row_start_on; j < row_end_on; j++)
                     {
-                        row_scale = val;
-                    }
-                } 
+                        val = on_proc->vals[j];
+                        if (val < row_scale)
+                        {
+                            row_scale = val;
+                        }
+                    }    
+                    for (int j = row_start_off; j < row_end_off; j++)
+                    {
+                        val = off_proc->vals[j];
+                        if (val < row_scale)
+                        {
+                            row_scale = val;
+                        }
+                    } 
+                }
             }
             else
             {
-                row_scale = RAND_MAX;
-                for (int j = row_start_on; j < row_end_on; j++)
+                if (diag < 0.0)
                 {
-                    val = on_proc->vals[j];
-                    if (val < row_scale)
+                    row_scale = -RAND_MAX; 
+                    for (int j = row_start_on; j < row_end_on; j++)
                     {
-                        row_scale = val;
-                    }
-                }    
-                for (int j = row_start_off; j < row_end_off; j++)
+                        col = on_proc->idx2[j];
+                        if (variables[i] == variables[col])
+                        {
+                            val = on_proc->vals[j];
+                            if (val > row_scale)
+                            {
+                                row_scale = val;
+                            }
+                        }
+                    }    
+                    for (int j = row_start_off; j < row_end_off; j++)
+                    {
+                        col = off_proc->idx2[j];
+                        if (variables[i] == off_variables[col])
+                        {
+                            val = off_proc->vals[j];
+                            if (val > row_scale)
+                            {
+                                row_scale = val;
+                            }
+                        }
+                    } 
+                }
+                else
                 {
-                    val = off_proc->vals[j];
-                    if (val < row_scale)
+                    row_scale = RAND_MAX;
+                    for (int j = row_start_on; j < row_end_on; j++)
                     {
-                        row_scale = val;
-                    }
-                } 
+                        col = on_proc->idx2[j];
+                        if (variables[i] == variables[col])
+                        {
+                            val = on_proc->vals[j];
+                            if (val < row_scale)
+                            {
+                                row_scale = val;
+                            }
+                        }
+                    }    
+                    for (int j = row_start_off; j < row_end_off; j++)
+                    {
+                        col = off_proc->idx2[j];
+                        if (variables[i] == off_variables[col])
+                        {
+                            val = off_proc->vals[j];
+                            if (val < row_scale)
+                            {
+                                row_scale = val;
+                            }
+                        }
+                    } 
+                }
             }
+
+
 
             // Multiply row max magnitude by theta
             threshold = row_scale * theta;
@@ -109,45 +182,107 @@ ParCSRMatrix* ParCSRMatrix::strength(double theta)
             // Add all off-diagonal entries to strength
             // if magnitude greater than equal to 
             // row_max * theta
-            if (diag < 0)
+            if (num_variables == 1)
             {
-                for (int j = row_start_on; j < row_end_on; j++)
+                if (diag < 0)
                 {
-                    val = on_proc->vals[j];
-                    if (val > threshold)
+                    for (int j = row_start_on; j < row_end_on; j++)
                     {
-                        S->on_proc->idx2.push_back(on_proc->idx2[j]);
+                        val = on_proc->vals[j];
+                        if (val > threshold)
+                        {
+                            S->on_proc->idx2.push_back(on_proc->idx2[j]);
+                        }
+                    }
+                    for (int j = row_start_off; j < row_end_off; j++)
+                    {
+                        val = off_proc->vals[j];
+                        if (val > threshold)
+                        {
+                            col = off_proc->idx2[j];
+                            S->off_proc->idx2.push_back(col);
+                            col_exists[col] = true;
+                        }
                     }
                 }
-                for (int j = row_start_off; j < row_end_off; j++)
+                else
                 {
-                    val = off_proc->vals[j];
-                    if (val > threshold)
+                    for (int j = row_start_on; j < row_end_on; j++)
                     {
-                        col = off_proc->idx2[j];
-                        S->off_proc->idx2.push_back(col);
-                        col_exists[col] = true;
+                        val = on_proc->vals[j];
+                        if (val < threshold)
+                        {
+                            S->on_proc->idx2.push_back(on_proc->idx2[j]);
+                        }
+                    }
+                    for (int j = row_start_off; j < row_end_off; j++)
+                    {
+                        val = off_proc->vals[j];
+                        if (val < threshold)
+                        {
+                            col = off_proc->idx2[j];
+                            S->off_proc->idx2.push_back(col);
+                            col_exists[col] = true;
+                        }
                     }
                 }
             }
             else
             {
-                for (int j = row_start_on; j < row_end_on; j++)
+                if (diag < 0)
                 {
-                    val = on_proc->vals[j];
-                    if (val < threshold)
+                    for (int j = row_start_on; j < row_end_on; j++)
                     {
-                        S->on_proc->idx2.push_back(on_proc->idx2[j]);
+                        col = on_proc->idx2[j];
+                        if (variables[i] == variables[col])
+                        {
+                            val = on_proc->vals[j];
+                            if (val > threshold)
+                            {
+                                S->on_proc->idx2.push_back(on_proc->idx2[j]);
+                            }
+                        }
                     }
-                }
-                for (int j = row_start_off; j < row_end_off; j++)
-                {
-                    val = off_proc->vals[j];
-                    if (val < threshold)
+                    for (int j = row_start_off; j < row_end_off; j++)
                     {
                         col = off_proc->idx2[j];
-                        S->off_proc->idx2.push_back(col);
-                        col_exists[col] = true;
+                        if (variables[i] == off_variables[col])
+                        {
+                            val = off_proc->vals[j];
+                            if (val > threshold)
+                            {
+                                S->off_proc->idx2.push_back(col);
+                                col_exists[col] = true;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    for (int j = row_start_on; j < row_end_on; j++)
+                    {
+                        col = on_proc->idx2[j];
+                        if (variables[i] == variables[col])
+                        {
+                            val = on_proc->vals[j];
+                            if (val < threshold)
+                            {
+                                S->on_proc->idx2.push_back(on_proc->idx2[j]);
+                            }
+                        }
+                    }
+                    for (int j = row_start_off; j < row_end_off; j++)
+                    {
+                        col = off_proc->idx2[j];
+                        if (variables[i] == off_variables[col])
+                        {
+                            val = off_proc->vals[j];
+                            if (val < threshold)
+                            {
+                                S->off_proc->idx2.push_back(col);
+                                col_exists[col] = true;
+                            }
+                        }
                     }
                 }
             }

@@ -18,10 +18,29 @@ if (WITH_MPI)
     target_link_libraries(test_par_vector raptor ${MPI_LIBRARIES} googletest pthread )
     add_test(ParVectorTest_1  mpirun -n 1  ./test_par_vector)
     add_test(ParVectorTest_16 mpirun -n 16 ./test_par_vector)
+
+    add_executable(test_par_transpose test_par_transpose.cpp)
+    target_link_libraries(test_par_transpose raptor ${MPI_LIBRARIES} googletest pthread )
+    add_test(ParTransposeTest_1 mpirun -n 1 ./test_par_transpose)
+    add_test(ParTransposeTest_16 mpirun -n 16 ./test_par_transpose)    
+    
+    add_executable(test_par_bsr test_par_bsr.cpp)
+    target_link_libraries(test_par_bsr raptor ${MPI_LIBRARIES} googletest pthread )
+    add_test(ParBSRTest_1 mpirun -n 1 ./test_par_bsr)
+    add_test(ParBSRTest_3 mpirun -n 3 ./test_par_bsr)
+    add_test(ParBSRTest_4 mpirun -n 6 ./test_par_bsr)
 endif ()
+
+add_executable(test_bsr_matrix test_bsr_matrix.cpp)
+target_link_libraries(test_bsr_matrix raptor googletest pthread )
+add_test(BSRMatrixTest ./test_bsr_matrix)
 
 add_executable(test_matrix test_matrix.cpp)
 target_link_libraries(test_matrix raptor googletest pthread )
 add_test(MatrixTest ./test_matrix)
+
+add_executable(test_transpose test_transpose.cpp)
+target_link_libraries(test_transpose raptor googletest pthread )
+add_test(TransposeTest ./test_transpose)
 
 

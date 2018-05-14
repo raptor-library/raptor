@@ -7,7 +7,6 @@ enable_language(CXX)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_BUILD_TYPE Release)
 
-
 include(FeatureSummary)
 
 option(CRAYXE "Running on Cray XE" OFF)

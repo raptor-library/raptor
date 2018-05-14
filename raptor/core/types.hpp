@@ -31,10 +31,11 @@ namespace raptor
 {
     using data_t = double;
     using index_t = int;
-    enum format_t {CSR, CSC, COO};
-    enum coarsen_t {RS, CLJP, Falgout};
-    enum interp_t {Direct, Classical};
+    enum format_t {BSR, CSR, CSC, COO};
+    enum coarsen_t {RS, CLJP, Falgout, PMIS, HMIS};
+    enum interp_t {Direct, Classical, Extended};
     enum relax_t {Jacobi, SOR, SSOR};
+
 }
 
 #endif

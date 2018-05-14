@@ -71,6 +71,7 @@ namespace raptor
   class ParCOOMatrix;
   class ParCSRMatrix;
   class ParCSCMatrix;
+  class ParBSRMatrix;
 
   class ParMatrix
   {
@@ -87,6 +88,11 @@ namespace raptor
 
         comm = NULL;
         tap_comm = NULL;
+
+        spgemm_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spgemm_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spmv_data = (OpData) {0.0, 0.0, 0.0, 0.0};;
+        spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
     }
 
     ParMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows, 
@@ -102,6 +108,11 @@ namespace raptor
 
         comm = NULL;
         tap_comm = NULL;
+
+        spgemm_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spgemm_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spmv_data = (OpData) {0.0, 0.0, 0.0, 0.0};;
+        spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
     }
 
     ParMatrix(index_t glob_rows,
@@ -116,6 +127,32 @@ namespace raptor
 
         comm = NULL;
         tap_comm = NULL;
+
+        spgemm_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spgemm_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spmv_data = (OpData) {0.0, 0.0, 0.0, 0.0};;
+        spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+    }
+
+    // For BSR Matrix class use only - ensures that blocks are not
+    // divided when creating the partition
+    ParMatrix(index_t glob_rows, index_t glob_cols, int _brows, int _bcols)
+    {
+        partition = new Partition(glob_rows, glob_cols, _brows, _bcols);
+
+        global_num_rows = partition->global_num_rows;
+        global_num_cols = partition->global_num_cols;
+        on_proc_num_cols = partition->local_num_cols;
+	off_proc_num_cols = global_num_cols - on_proc_num_cols;
+        local_num_rows = partition->local_num_rows;
+
+        comm = NULL;
+        tap_comm = NULL;
+
+        spgemm_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spgemm_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spmv_data = (OpData) {0.0, 0.0, 0.0, 0.0};;
+        spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
     }
 
     ParMatrix(index_t glob_rows, 
@@ -136,6 +173,11 @@ namespace raptor
 
         comm = NULL;
         tap_comm = NULL;
+
+        spgemm_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spgemm_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spmv_data = (OpData) {0.0, 0.0, 0.0, 0.0};;
+        spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
     }
        
     ParMatrix()
@@ -153,6 +195,11 @@ namespace raptor
         off_proc = NULL;
 
         partition = NULL;
+
+        spgemm_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spgemm_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
+        spmv_data = (OpData) {0.0, 0.0, 0.0, 0.0};;
+        spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
     }
 
     virtual ~ParMatrix()
@@ -219,10 +266,11 @@ namespace raptor
     ***** the local_to_global indices, and creates the parallel
     ***** communicator
     **************************************************************/
-    void finalize(bool create_comm = true);
+    void finalize(bool create_comm = true, int b_cols = 0); //b_cols added for BSR
 
     int* map_partition_to_local();
     void condense_off_proc();
+    void expand_off_proc(int b_cols); // to be used by BSR matrix class
 
     void residual(ParVector& x, ParVector& b, ParVector& r);
     void tap_residual(ParVector& x, ParVector& b, ParVector& r);
@@ -233,21 +281,19 @@ namespace raptor
     ParMatrix* mult(ParCSRMatrix* B);
     ParMatrix* tap_mult(ParCSRMatrix* B);
     ParMatrix* mult_T(ParCSCMatrix* B);
+    ParMatrix* mult_T(ParCSRMatrix* B);
     ParMatrix* tap_mult_T(ParCSCMatrix* B);
-
-    ParCSRMatrix* RAP(ParCSRMatrix* P)
-    {
-        int rank;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        if (rank == 0) printf("Not impelemented for this matrix type");
-        return NULL;
-    }
+    ParMatrix* tap_mult_T(ParCSRMatrix* B);
+    ParMatrix* add(ParCSRMatrix* A);
+    ParMatrix* subtract(ParCSRMatrix* A);
 
     void sort()
     {
         on_proc->sort();
         off_proc->sort();
     }
+
+    virtual ParMatrix* transpose() = 0;
 
     std::vector<index_t>& get_off_proc_column_map()
     {
@@ -267,6 +313,9 @@ namespace raptor
     virtual void copy(ParCSRMatrix* A) = 0;
     virtual void copy(ParCSCMatrix* A) = 0;
     virtual void copy(ParCOOMatrix* A) = 0;
+    virtual void copy(ParBSRMatrix* A) = 0;
+
+    virtual void add_block(int global_row_coarse, int global_col_coarse, std::vector<double>& data) = 0;
 
     // Store dimensions of parallel matrix
     int local_nnz;
@@ -298,6 +347,18 @@ namespace raptor
     ParComm* comm;
     TAPComm* tap_comm;
 
+    struct OpData
+    {
+        double comm_time;
+        double tap_comm_time;
+        double time;
+        double tap_time;
+    };
+
+    OpData spgemm_data;
+    OpData spgemm_T_data;
+    OpData spmv_data;
+    OpData spmv_T_data;
 
   };
 
@@ -387,10 +448,16 @@ namespace raptor
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
+    void copy(ParBSRMatrix* A);
+
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
     void mult_T(ParVector& x, ParVector& b);
     void tap_mult_T(ParVector& x, ParVector& b);
+
+    void add_block(int global_row_coarse, int global_col_coarse, std::vector<double>& data);
+
+    ParMatrix* transpose();
   };
 
   class ParCSRMatrix : public ParMatrix
@@ -431,6 +498,17 @@ namespace raptor
         off_proc = new CSRMatrix(partition->local_num_rows, partition->global_num_cols, 
                 nnz_per_row);
     }
+
+    ParCSRMatrix(Partition* part, Matrix* _on_proc, Matrix* _off_proc) : ParMatrix(part)
+    {
+        on_proc = _on_proc;
+        off_proc = _off_proc;
+        on_proc_num_cols = on_proc->n_cols;
+        off_proc_num_cols = off_proc->n_cols;
+        local_num_rows = on_proc->n_rows;
+        finalize();
+    }
+
 
     ParCSRMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows,
             int on_proc_cols, int off_proc_cols, int nnz_per_row = 5) : ParMatrix(part, 
@@ -509,8 +587,9 @@ namespace raptor
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
+    void copy(ParBSRMatrix* A);
 
-    ParCSRMatrix* strength(double theta = 0.0);
+    ParCSRMatrix* strength(double theta = 0.0, int num_variables = 1, int* variables = NULL);
     ParCSRMatrix* aggregate();
     ParCSRMatrix* fit_candidates(double* B, double* R, int num_candidates, 
             double tol = 1e-10);
@@ -524,10 +603,10 @@ namespace raptor
     ParCSRMatrix* mult(ParCSRMatrix* B);
     ParCSRMatrix* tap_mult(ParCSRMatrix* B);
     ParCSRMatrix* mult_T(ParCSCMatrix* A);
+    ParCSRMatrix* mult_T(ParCSRMatrix* A);
     ParCSRMatrix* tap_mult_T(ParCSCMatrix* A);
-
-    ParCSRMatrix* RAP(ParCSRMatrix* P);
-
+    ParCSRMatrix* tap_mult_T(ParCSRMatrix* A);
+    ParCSRMatrix* add(ParCSRMatrix* A);
     ParCSRMatrix* subtract(ParCSRMatrix* B);
     
     void mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, CSRMatrix* recv);
@@ -535,6 +614,10 @@ namespace raptor
     CSRMatrix* mult_T_partial(CSCMatrix* A_off);
     void mult_T_combine(ParCSCMatrix* A, ParCSRMatrix* C, CSRMatrix* recv_on,
             CSRMatrix* recv_off);
+    
+    void add_block(int global_row_coarse, int global_col_coarse, std::vector<double>& data);
+
+    ParMatrix* transpose();
   };
 
   class ParCSCMatrix : public ParMatrix
@@ -605,12 +688,242 @@ namespace raptor
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
+    void copy(ParBSRMatrix* A);
 
     void mult(ParVector& x, ParVector& b);
     void tap_mult(ParVector& x, ParVector& b);
     void mult_T(ParVector& x, ParVector& b);
     void tap_mult_T(ParVector& x, ParVector& b);
 
+    void add_block(int global_row_coarse, int global_col_coarse, std::vector<double>& data);
+
+    ParMatrix* transpose();
+  };
+
+  class ParBSRMatrix : public ParMatrix
+  {
+  public:
+    // Creates an empty ParBSRMatrix with no defined size for matrix
+    // or blocks
+    ParBSRMatrix() : ParMatrix()
+    {
+        on_proc = new BSRMatrix(0, 0, 0, 0);
+        off_proc = new BSRMatrix(0, 0, 0, 0);
+
+	local_nnz = 0;
+	b_rows = 0;
+	b_cols = 0;
+	b_size = 0;
+    }
+
+    // Creates an empty ParBSRMatrix of size glob_rows x glob_cols with blocks of
+    // size _brows x _bcols
+    // RECOMMENDED CONSTRUCTOR FOR USING WITH ADD_BLOCK
+    ParBSRMatrix(index_t glob_rows, 
+            index_t glob_cols, int _brows, int _bcols,
+            int blocks_per_row = 5) : ParMatrix(glob_rows, glob_cols, _brows, _bcols)
+    {
+
+	if ( glob_rows % _brows != 0 || glob_cols % _bcols != 0)
+	{
+	    printf("Matrix dimensions must be divisible by block dimensions.\n");
+	    exit(-1);
+	}
+
+        on_proc = new BSRMatrix(partition->local_num_rows, 
+		partition->local_num_cols, _brows, _bcols, 
+                blocks_per_row);
+        off_proc = new BSRMatrix(partition->local_num_rows, 
+		partition->global_num_cols, _brows, _bcols, 
+                blocks_per_row);
+
+	local_nnz = 0;
+	b_rows = _brows;
+	b_cols = _bcols;
+	b_size = b_rows * b_cols;
+    }
+
+    // Creates a ParBSRMatrix based on a given partitioning
+    ParBSRMatrix(Partition* part, int _brows, int _bcols,
+            int blocks_per_row = 5) : ParMatrix(part)
+    {
+        on_proc = new BSRMatrix(partition->local_num_rows, 
+		partition->local_num_cols, _brows, _bcols, 
+                blocks_per_row);
+        off_proc = new BSRMatrix(partition->local_num_rows, 
+		partition->global_num_cols, _brows, _bcols,
+                blocks_per_row);
+
+        local_nnz = 0;
+	b_rows = _brows;
+	b_cols = _bcols;
+	b_size = b_rows * b_cols;
+    }
+
+    // Creates a ParBSRMatrix based on a given partitioning and 
+    // given on_proc and off_proc matrices
+    ParBSRMatrix(Partition* part, BSRMatrix* _on_proc, BSRMatrix* _off_proc) : ParMatrix(part)
+    {
+        on_proc = _on_proc;
+        off_proc = _off_proc;
+        on_proc_num_cols = on_proc->n_cols;
+        off_proc_num_cols = off_proc->n_cols;
+        local_num_rows = on_proc->n_rows;
+	local_nnz = on_proc->nnz + off_proc->nnz;
+        finalize(true, _on_proc->b_cols);
+    }
+
+    // Creates a ParBSRMatrix based on a partitioning with given number of columns
+    // in on_proc and off_proc
+    ParBSRMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows,
+	    int _brows, int _bcols, int on_proc_cols, int off_proc_cols, 
+	    int blocks_per_row = 5) : ParMatrix(part, 
+                glob_rows, glob_cols, local_rows, on_proc_cols)
+    {
+	if ( glob_rows % _brows != 0 || glob_cols % _bcols != 0)
+	{
+	    printf("Matrix dimensions must be divisible by block dimensions.\n");
+	    exit(-1);
+	}
+
+        off_proc_num_cols = off_proc_cols;
+        on_proc = new BSRMatrix(local_num_rows, on_proc_cols, _brows, _bcols, blocks_per_row);
+        off_proc = new BSRMatrix(local_num_rows, off_proc_num_cols, _brows, _bcols, 
+		blocks_per_row);
+
+	local_nnz = 0;
+	b_rows = _brows;
+	b_cols = _bcols;
+	b_size = b_rows * b_cols;
+    }
+
+    // This constructor should take a dense data array and convert to a
+    // ParBSRMatrix
+    /*ParBSRMatrix(index_t glob_rows, index_t glob_cols, int _brows, int _bcols,
+            data_t* values) : ParMatrix(glob_rows, glob_cols, _brows, _bcols)
+    {
+        if (glob_rows % _brows != 0 || glob_cols % _bcols != 0)
+	{
+            printf("Matrix dimensions must be divisible by block dimensions.\n");
+	    exit(-1);
+	}
+
+	COOMatrix* coo_on_proc = new COOMatrix(partition->local_num_rows, partition->local_num_cols,
+			partition->local_num_rows*5);
+	COOMatrix* coo_off_proc = new COOMatrix(partition->local_num_rows, partition->global_num_cols,
+			partition->local_num_rows*5);
+
+        // Add values to on/off proc matrices
+        //coo_on_proc->idx1[0] = 0;
+        //coo_off_proc->idx1[0] = 0;
+
+        int val_start = partition->first_local_row * partition->global_num_cols;
+        for (int i = 0; i < partition->local_num_rows; i++)
+        {
+            for (int j = 0; j < partition->global_num_cols; j++)
+            {
+                int idx = val_start + (i*partition->global_num_cols) + j;
+
+                if (fabs(values[idx]) > zero_tol)
+                {
+                    int global_col = idx % partition->global_num_cols;
+                    
+                    if (global_col >= partition->first_local_col && 
+                        global_col < partition->first_local_col + partition->local_num_cols)
+                    {
+                        coo_on_proc->idx2.push_back(global_col - partition->first_local_col);
+                        coo_on_proc->vals.push_back(values[idx]);
+			coo_on_proc->idx1.push_back(i);
+                    }
+                    else
+                    {
+                        coo_off_proc->idx2.push_back(global_col);
+                        coo_off_proc->vals.push_back(values[idx]);
+			coo_off_proc->idx1.push_back(i);
+                    }
+
+                }
+            }
+            //coo_on_proc->idx1[i+1] = coo_on_proc->idx2.size();
+            //coo_off_proc->idx1[i+1] = coo_off_proc->idx2.size();
+        }
+        coo_on_proc->nnz = coo_on_proc->idx2.size();
+        coo_off_proc->nnz = coo_off_proc->idx2.size();*/
+
+        /*int rank, num_procs;
+	MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);*/
+
+        // Convert on/off proc to BSR
+	/*on_proc = new BSRMatrix(coo_on_proc, _brows, _bcols);
+	off_proc = new BSRMatrix(coo_off_proc, _brows, _bcols);
+
+	delete coo_on_proc;
+	delete coo_off_proc;
+
+	b_rows = _brows;
+	b_cols = _bcols;
+	b_size = b_rows * b_cols;
+	local_nnz = on_proc->nnz + off_proc->nnz;
+       
+        // Create parallel communicator
+	finalize(true, _bcols);
+    }*/
+
+    /*ParBSRMatrix(ParCSRMatrix* A)
+    {
+        copy(A);
+    }
+
+    ParBSRMatrix(ParCSCMatrix* A)
+    {
+        copy(A);
+    }
+
+    ParBSRMatrix(ParCOOMatrix* A)
+    {
+        copy(A);
+    }*/
+
+    void copy(ParCSRMatrix* A);
+    void copy(ParCSCMatrix* A);
+    void copy(ParCOOMatrix* A);
+    void copy(ParBSRMatrix* A);
+
+    // Takes coarse global block indices and adds data to correct process
+    void add_block(int global_row_coarse, int global_col_coarse, std::vector<double>& data);
+
+    //ParCSRMatrix* strength(double theta = 0.0, int num_variables = 1, int* variables = NULL);
+    //ParCSRMatrix* aggregate();
+    //ParCSRMatrix* fit_candidates(double* B, double* R, int num_candidates, 
+    //        double tol = 1e-10);
+    //int maximal_independent_set(std::vector<int>& local_states,
+    //        std::vector<int>& off_proc_states, int max_iters = -1);
+
+    void mult(ParVector& x, ParVector& b);
+    void tap_mult(ParVector& x, ParVector& b);
+    void mult_T(ParVector& x, ParVector& b);
+    void tap_mult_T(ParVector& x, ParVector& b);
+    ParBSRMatrix* mult(ParBSRMatrix* B);
+    ParBSRMatrix* tap_mult(ParBSRMatrix* B);
+    //ParBSRMatrix* mult_T(ParCSCMatrix* A);
+    ParBSRMatrix* mult_T(ParBSRMatrix* A);
+    //ParBSRMatrix* tap_mult_T(ParCSCMatrix* A);
+    ParBSRMatrix* tap_mult_T(ParBSRMatrix* A);
+    //ParBSRMatrix* add(ParCSRMatrix* A);
+    //ParBSRMatrix* subtract(ParCSRMatrix* B);
+    
+    //void mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, CSRMatrix* recv);
+    //CSRMatrix* mult_T_partial(ParCSCMatrix* A);
+    //CSRMatrix* mult_T_partial(CSCMatrix* A_off);
+    //void mult_T_combine(ParCSCMatrix* A, ParCSRMatrix* C, CSRMatrix* recv_on,
+    //        CSRMatrix* recv_off);
+
+    ParMatrix* transpose();
+
+    int b_rows; // rows in a block
+    int b_cols; // columns in a block
+    int b_size; // nnz per dense block
   };
 
 }

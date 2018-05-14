@@ -119,11 +119,14 @@ void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h)
             hypre_qsort1(diag_j, diag_data, start, end - 1);
         }
 
-        start = offd_i[i];
-        end = offd_i[i+1];
-        if (end - start)
+        if (offd_cols)
         {
-            hypre_qsort1(offd_j, offd_data, start, end - 1);
+            start = offd_i[i];
+            end = offd_i[i+1];
+            if (end - start)
+            {
+                hypre_qsort1(offd_j, offd_data, start, end - 1);
+            }
         }
     }
 

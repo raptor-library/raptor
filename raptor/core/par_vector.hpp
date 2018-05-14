@@ -138,7 +138,7 @@ namespace raptor
         ***** alpha : data_t
         *****    Constant value to multiply each element of vector by
         **************************************************************/
-        void axpy(ParVector* y, data_t alpha);
+        void axpy(ParVector& y, data_t alpha);
 
         /**************************************************************
         *****   Vector Scale
@@ -163,6 +163,8 @@ namespace raptor
         *****    Determines which p-norm to calculate
         **************************************************************/
         data_t norm(index_t p);
+
+        data_t inner_product(ParVector& x);        
 
         const data_t& operator[](const int index) const
         {

@@ -14,17 +14,19 @@
 #include "gallery/external/hypre_wrapper.hpp"
 #include "multilevel/par_multilevel.hpp"
 #include "multilevel/multilevel.hpp"
+#include "_hypre_utilities.h"
 
 using namespace raptor;
 
-void form_hypre_weights(std::vector<double>& weights, int n_rows)
+void form_hypre_weights(double** weight_ptr, int n_rows)
 {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    double* weights = NULL;
 
     if (n_rows)
     {
-        weights.resize(n_rows);
+        weights = new double[n_rows];
         int seed = 2747 + rank;
         int a = 16807;
         int m = 2147483647;
@@ -40,6 +42,7 @@ void form_hypre_weights(std::vector<double>& weights, int n_rows)
             weights[i] = ((double)(seed) / m);
         }
     }
+    *weight_ptr = weights;
 }
 
 int main(int argc, char* argv[])
@@ -90,8 +93,8 @@ TEST(TestHypre, TestsInRuge_Stuben)
 
     // Convert system to Hypre format 
     HYPRE_IJMatrix A_h_ij = convert(A);
-    HYPRE_IJVector x_h_ij = convert(&x);
-    HYPRE_IJVector b_h_ij = convert(&b);
+    HYPRE_IJVector x_h_ij = convert(x);
+    HYPRE_IJVector b_h_ij = convert(b);
     hypre_ParCSRMatrix* A_h;
     HYPRE_IJMatrixGetObject(A_h_ij, (void**) &A_h);
     hypre_ParVector* x_h;
@@ -121,7 +124,9 @@ TEST(TestHypre, TestsInRuge_Stuben)
     HYPRE_BoomerAMGSolve(solver_data, A_h, b_h, x_h);
 
     // Setup Raptor Hierarchy
-    ParMultilevel* ml = new ParMultilevel(A, strong_threshold, CLJP, Classical, SOR);
+    ParMultilevel* ml = new ParMultilevel(strong_threshold, CLJP, Classical, SOR);
+    form_hypre_weights(&ml->weights, A->local_num_rows);
+    ml->setup(A);
 
     // Solve Raptor Hierarchy
     ml->solve(x, b);

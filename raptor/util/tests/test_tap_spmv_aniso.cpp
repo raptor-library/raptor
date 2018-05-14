@@ -31,7 +31,7 @@ TEST(TAPAnisoSpMVTest, TestsInUtil)
     double* stencil = diffusion_stencil_2d(eps, theta);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
     setenv("PPN", "4", 1);
-    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
+    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, A->on_proc_column_map);
 
     ParVector x(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
@@ -97,6 +97,74 @@ TEST(TAPAnisoSpMVTest, TestsInUtil)
         ASSERT_NEAR(x[i], b_val, 1e-06);
     }
     fclose(f);
+
+
+    // TEST SAME WITH SIMPLE TAP COMM
+    delete A->tap_comm;
+    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, A->on_proc_column_map, false);
+
+    x.set_const_value(1.0);
+    A->tap_mult(x, b);
+    f = fopen("../../../../test_data/aniso_ones_b.txt", "r");
+    for (int i = 0; i < A->partition->first_local_row; i++)
+    {
+        fscanf(f, "%lg\n", &b_val);
+    }
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        fscanf(f, "%lg\n", &b_val);
+        ASSERT_NEAR(b[i], b_val, 1e-06);
+    }
+    fclose(f);
+
+    b.set_const_value(1.0);
+    A->tap_mult_T(b, x);
+    f = fopen("../../../../test_data/aniso_ones_b_T.txt", "r");
+    for (int i = 0; i < A->partition->first_local_col; i++)
+    {
+        fscanf(f, "%lg\n", &b_val);
+    }
+    for (int i = 0; i < A->on_proc_num_cols; i++)
+    {
+        fscanf(f, "%lg\n", &b_val);
+        ASSERT_NEAR(x[i], b_val, 1e-06);
+    }
+    fclose(f);
+
+    for (int i = 0; i < A->on_proc_num_cols; i++)
+    {
+        x[i] = A->partition->first_local_col + i;
+    }
+    A->tap_mult(x, b);
+    f = fopen("../../../../test_data/aniso_inc_b.txt", "r");
+    for (int i = 0; i < A->partition->first_local_row; i++)
+    {
+        fscanf(f, "%lg\n", &b_val);
+    }
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        fscanf(f, "%lg\n", &b_val);
+        ASSERT_NEAR(b[i], b_val, 1e-06);
+    }
+    fclose(f);
+
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        b[i] = A->partition->first_local_row + i;
+    }
+    A->tap_mult_T(b, x);
+    f = fopen("../../../../test_data/aniso_inc_b_T.txt", "r");
+    for (int i = 0; i < A->partition->first_local_col; i++)
+    {
+        fscanf(f, "%lg\n", &b_val);
+    }
+    for (int i = 0; i < A->on_proc_num_cols; i++)
+    {
+        fscanf(f, "%lg\n", &b_val);
+        ASSERT_NEAR(x[i], b_val, 1e-06);
+    }
+    fclose(f);
+
 
     delete A;
     delete[] stencil;

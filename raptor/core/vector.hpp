@@ -191,6 +191,8 @@ public:
         return num_values;
     }
 
+    data_t inner_product(Vector& x);
+
     std::vector<data_t> values;
     index_t num_values;
 };
