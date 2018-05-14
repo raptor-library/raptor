@@ -55,7 +55,7 @@ if (WITH_MPI)
     add_test(ParRandomSpMVTest_4 mpirun -n 4 ./test_par_spmv_random)
     add_test(ParRandomSpMVTest_8 mpirun -n 8 ./test_par_spmv_random)
     add_test(ParRandomSpMVTest_16 mpirun -n 16 ./test_par_spmv_random)
-
+    
     add_executable(test_tap_spmv_laplacian test_tap_spmv_laplacian.cpp)
     target_link_libraries(test_tap_spmv_laplacian raptor ${MPI_LIBRARIES} googletest pthread )
     add_test(TAPLaplacianSpMVTest_2 mpirun -n 2 ./test_tap_spmv_laplacian)

@@ -54,9 +54,6 @@ int main(int argc, char* argv[])
 
         if (color && 1 < second_comm_size) MPI_Bcast(&part_global1, 1, MPI_INT, 0, second_comm);
 
-        //if (!color) MPI_Comm_free(&first_comm);
-        //else MPI_Comm_free(&second_comm);
-
         part_global2 = x.global_n - part_global1;
     }
     else{
