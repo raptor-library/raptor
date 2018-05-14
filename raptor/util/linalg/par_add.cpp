@@ -144,6 +144,8 @@ ParCSRMatrix* ParCSRMatrix::subtract(ParCSRMatrix* B)
 {
     ParCSRMatrix* C = new ParCSRMatrix(partition, global_num_rows, global_num_cols, 
             local_num_rows, on_proc_num_cols, 0);
+    C->on_proc_column_map = get_on_proc_column_map();
+    C->local_row_map = get_local_row_map();
 
     int start, end;
 
@@ -191,10 +193,10 @@ ParCSRMatrix* ParCSRMatrix::subtract(ParCSRMatrix* B)
     C->on_proc->remove_duplicates();
     C->on_proc->move_diag();
 
+    C->finalize();
+   
     C->off_proc->sort();
     C->off_proc->remove_duplicates();
-
-    C->finalize();
 
     C->local_nnz = C->on_proc->nnz + C->off_proc->nnz;
 

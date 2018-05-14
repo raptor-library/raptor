@@ -7,11 +7,6 @@
 
 using namespace raptor;
 
-void jacobi(Level* l, int num_sweeps, double omega)
-{
-    jacobi(l->A, l->b, l->x, l->tmp, num_sweeps, omega);
-}
-
 void jacobi(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps, 
         double omega)
 {
@@ -47,11 +42,6 @@ void jacobi(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps,
     }
 }
 
-void sor(Level* l, int num_sweeps, double omega)
-{
-    sor(l->A, l->b, l->x, l->tmp, num_sweeps, omega);
-}
-
 void sor(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps,
         double omega)
 {
@@ -77,11 +67,6 @@ void sor(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps,
             x[i] = diag_inv*x[i] + (1 - omega) * orig_x;
         }
     }
-}
-
-void ssor(Level* l, int num_sweeps, double omega)
-{
-    ssor(l->A, l->b, l->x, l->tmp, num_sweeps, omega);
 }
 
 void ssor(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps,

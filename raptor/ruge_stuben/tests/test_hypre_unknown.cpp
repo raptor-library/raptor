@@ -111,7 +111,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     // Create strength with unknown approach
     var = create_unknown_variables(A->local_num_rows, 
             A->partition->first_local_row, num_variables);
-    S = A->strength(0.25, num_variables, var);
+    S = A->strength(Classical, 0.25, num_variables, var);
     hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, num_variables, var, &S_hyp);
     compareS(S, S_hyp);
 
@@ -182,7 +182,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     num_variables = 2;
     var = create_unknown_variables(A->local_num_rows, 
             A->partition->first_local_row, num_variables);
-    S = A->strength(0.25, num_variables, var);
+    S = A->strength(Classical, 0.25, num_variables, var);
     hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, num_variables, var, &S_hyp);
     compareS(S, S_hyp);
 

@@ -70,9 +70,8 @@ TEST(TestParAggregate, TestsInAggregation)
     fclose(f);
 
     aligned_vector<int> aggregates;
-    aligned_vector<int> off_proc_aggregates;
     int n_aggs = aggregate(A, S, states, off_proc_states, aggregates, 
-            off_proc_aggregates, weights.data());
+            weights.data());
 
     // Aggregates returns global indices of original global rows
     // Gather list of all aggregates, in order, holding original global cols

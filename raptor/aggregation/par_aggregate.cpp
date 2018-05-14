@@ -4,7 +4,7 @@
 
 int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
         aligned_vector<int>& off_proc_states, aligned_vector<int>& aggregates,
-        aligned_vector<int>& off_proc_aggregates, double* rand_vals)
+        double* rand_vals)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -22,6 +22,7 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
     int ctr, max_agg, j;
     double max_val, val;
 
+    aligned_vector<int> off_proc_aggregates;
     aligned_vector<double> r;
     aligned_vector<double> off_proc_r;
 
@@ -29,12 +30,12 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
     if (S->local_num_rows)
     {
         aggregates.resize(S->local_num_rows, -1);
-        r.resize(S->local_num_rows);
+        r.resize(S->local_num_rows, 0);
     }
     if (S->off_proc_num_cols)
     {
         off_proc_aggregates.resize(S->off_proc_num_cols, -1);
-        off_proc_r.resize(S->off_proc_num_cols);
+        off_proc_r.resize(S->off_proc_num_cols, 0);
     }
 
     if (rand_vals)
@@ -43,16 +44,9 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
         {
             r[i] = rand_vals[i];
         }
+        aligned_vector<double>& rands = S->comm->communicate(r);
+        std::copy(rands.begin(), rands.end(), off_proc_r.begin());
     }
-    else
-    {
-        for (int i = 0; i < S->local_num_rows; i++)
-        {
-            r[i] = ((double)(rand()) / RAND_MAX);
-        }
-    }
-    aligned_vector<double>& rands = S->comm->communicate(r);
-    std::copy(rands.begin(), rands.end(), off_proc_r.begin());
 
     if (S->off_proc_num_cols)
     {
@@ -76,6 +70,7 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
             n_aggs++;
         }
     }
+
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
         if (off_proc_states[i] > 0)
@@ -150,7 +145,6 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
         for (j = start; j < end; j++)
         {
             col = S->off_proc->idx2[j];
-            ctr = A->off_proc->idx1[i];
             global_col = S->off_proc_column_map[col];
             while (A->off_proc_column_map[A->off_proc->idx2[ctr]] != global_col)
                 ctr++;
@@ -170,10 +164,6 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
         if (aggregates[i] < 0)
             aggregates[i] = - (aggregates[i] + 1);
     }
-
-    // Communicate aggregates (global rows)
-    recvbuf = S->comm->communicate(aggregates);
-    std::copy(recvbuf.begin(), recvbuf.end(), off_proc_aggregates.begin());
 
     return n_aggs;
 }

@@ -16,6 +16,7 @@
 #include "gallery/diffusion.hpp"
 #include "gallery/par_matrix_IO.hpp"
 #include "multilevel/par_multilevel.hpp"
+#include "ruge_stuben/par_ruge_stuben_solver.hpp"
 #include "tests/hypre_compare.hpp"
 #include "gallery/external/hypre_wrapper.hpp"
 
@@ -212,7 +213,7 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(strong_threshold, CLJP, Classical, SOR);
+    ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
     ml->setup(A);
     raptor_setup = MPI_Wtime() - t0;
     delete ml;
@@ -221,7 +222,7 @@ int main(int argc, char *argv[])
     // Setup TAP Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(strong_threshold, CLJP, Classical, SOR);
+    ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
     ml->tap_amg = 3;
     ml->setup(A);
     raptor_tap_setup = MPI_Wtime() - t0;
@@ -235,7 +236,7 @@ int main(int argc, char *argv[])
     ml->store_residuals = true;
     ml->solve(x, b);
     raptor_solve = MPI_Wtime() - t0;
-    aligned_vector<int> res;
+    aligned_vector<double> res;
     std::copy(ml->residuals.begin(), ml->residuals.end(), 
         std::back_inserter(res));
     ml->residuals.clear();
@@ -311,7 +312,7 @@ int main(int argc, char *argv[])
             Pl->tap_comm = new TAPComm(Pl->partition, 
                     Pl->off_proc_column_map, Pl->on_proc_column_map);
 
-        ParCSRMatrix* Sl = Al->strength(strong_threshold);
+        ParCSRMatrix* Sl = Al->strength(Classical, strong_threshold);
 
         int n_times = 100;
         if (rank == 0) printf("Level %d\n", i);

@@ -70,4 +70,42 @@ TEST(TestAggregate, TestsInAggregation)
     delete S;
     delete A;
 
+
+
+    const char* A1_fn = "../../../../test_data/sas_A1.pm";
+    const char* S1_fn = "../../../../test_data/sas_S1.pm";
+    const char* mis1_fn = "../../../../test_data/sas_mis1.txt";
+    const char* agg1_fn = "../../../../test_data/sas_agg1.txt";
+
+    A = readMatrix(A1_fn);
+    S = readMatrix(S1_fn);
+
+    python_states.resize(S->n_rows);
+    f = fopen(mis1_fn, "r");
+    for (int i = 0; i < S->n_rows; i++)
+    {
+        fscanf(f, "%d\n", &python_states[i]);
+    }
+    fclose(f);
+
+    python_aggs.resize(S->n_rows);
+    f = fopen(agg1_fn, "r");
+    for (int i = 0; i < S->n_rows; i++)
+    {
+        fscanf(f, "%d\n", &python_aggs[i]);
+    }
+    fclose(f);
+
+
+    n_aggs =  aggregate(A, S, python_states, aggregates, weights.data());
+
+    for (int i = 0; i < S->n_rows; i++)
+    {
+        ASSERT_EQ(aggregates[i], python_aggs[i]);
+    }
+
+    delete S;
+    delete A;
+
+
 } // end of TEST(TestSplitting, TestsInRuge_Stuben) //

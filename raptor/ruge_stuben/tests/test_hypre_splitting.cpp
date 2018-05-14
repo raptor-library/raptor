@@ -71,7 +71,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     Aij = convert(A);
     HYPRE_IJMatrixGetObject(Aij, (void**) &A_hyp);
     compare(A, A_hyp);
-    S_rap = A->strength(0.25);
+    S_rap = A->strength(Classical, 0.25);
     hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, 1, NULL, &S_hyp);
     
     // Ruge
@@ -165,7 +165,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     Aij = convert(A);
     HYPRE_IJMatrixGetObject(Aij, (void**) &A_hyp);
     compare(A, A_hyp);
-    S_rap = A->strength(0.25);
+    S_rap = A->strength(Classical, 0.25);
     hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, 1, NULL, &S_hyp);
     
     // Ruge

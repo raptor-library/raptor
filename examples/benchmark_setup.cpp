@@ -15,7 +15,7 @@
 #include "gallery/laplacian27pt.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/par_matrix_IO.hpp"
-#include "multilevel/par_multilevel.hpp"
+#include "ruge_stuben/par_ruge_stuben_solver.hpp"
 
 #define eager_cutoff 8000
 #define short_cutoff 496
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(strong_threshold, RS, Direct, SOR);
+    ml = new ParRugeStubenSolver(strong_threshold);
     ml->setup(A);
     raptor_setup = MPI_Wtime() - t0;
     clear_cache(cache_array);

@@ -558,7 +558,8 @@ namespace raptor
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
 
-    ParCSRMatrix* strength(double theta = 0.0, int num_variables = 1, int* variables = NULL);
+    ParCSRMatrix* strength(strength_t strength_type, double theta = 0.0, 
+            int num_variables = 1, int* variables = NULL);
     ParCSRMatrix* aggregate();
     ParCSRMatrix* fit_candidates(double* B, double* R, int num_candidates, 
             double tol = 1e-10);

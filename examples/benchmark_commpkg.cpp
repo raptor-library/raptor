@@ -17,7 +17,7 @@
 #include "gallery/diffusion.hpp"
 #include "gallery/par_matrix_IO.hpp"
 #include "gallery/par_random.hpp"
-#include "multilevel/par_multilevel.hpp"
+#include "ruge_stuben/par_ruge_stuben_solver.hpp"
 
 #ifdef USING_MFEM
   #include "gallery/external/mfem_wrapper.hpp"
@@ -671,7 +671,7 @@ int main(int argc, char *argv[])
         A->mult(x, b);
     }
 
-    ParMultilevel* ml = new ParMultilevel(0.0, HMIS, Extended, SOR);
+    ParMultilevel* ml = new ParRugeStubenSolver(0.0, HMIS, Extended, Classical, SOR);
     ml->num_variables = num_variables;
     ml->setup(A);
 

@@ -32,7 +32,7 @@ TEST(StrengthTest, TestsIntests)
 
     A = readMatrix(A0_fn);
     S = readMatrix(S0_fn);
-    S_rap = A->strength(0.25);
+    S_rap = A->strength(Classical, 0.25);
     compare_pattern(S, S_rap);
     delete A;
     delete S;
@@ -40,7 +40,7 @@ TEST(StrengthTest, TestsIntests)
 
     A = readMatrix(A1_fn);
     S = readMatrix(S1_fn);
-    S_rap = A->strength(0.25);
+    S_rap = A->strength(Classical, 0.25);
     compare_pattern(S, S_rap);
     delete A;
     delete S;

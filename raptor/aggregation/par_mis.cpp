@@ -718,11 +718,11 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         iterate++;
     }
 
-    for (std::vector<int>::iterator it = states.begin(); it != states.end(); ++it)
+    for (aligned_vector<int>::iterator it = states.begin(); it != states.end(); ++it)
     {
         (*it)--;
     }
-    for (std::vector<int>::iterator it = off_proc_states.begin(); 
+    for (aligned_vector<int>::iterator it = off_proc_states.begin(); 
             it != off_proc_states.end(); ++it)
     {
         (*it)--;

@@ -89,7 +89,7 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
         ParCSRMatrix* Al = A_array[level];
 
         // Create Strength of Connection Matrix
-        ParCSRMatrix* Sl = Al->strength(0.25);
+        ParCSRMatrix* Sl = Al->strength(Classical, 0.25);
         hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, 1, NULL, &S_hyp);
         compareS(Sl, S_hyp);
 

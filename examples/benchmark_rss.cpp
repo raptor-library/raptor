@@ -15,7 +15,7 @@
 #include "gallery/laplacian27pt.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/par_matrix_IO.hpp"
-#include "multilevel/par_multilevel.hpp"
+#include "ruge_stuben/par_ruge_stuben_solver.hpp"
 #include "tests/hypre_compare.hpp"
 #include "gallery/external/hypre_wrapper.hpp"
 #include "krylov/par_cg.hpp"
@@ -204,7 +204,7 @@ int main(int argc, char *argv[])
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
     
-    ParMultilevel* ml = new ParMultilevel(strong_threshold, HMIS, Extended, SOR);
+    ParMultilevel* ml = new ParRugeStubenSolver(strong_threshold, HMIS, Extended, Classical, SOR);
     ml->num_variables = num_variables;
     ml->setup(A);
     raptor_setup = MPI_Wtime() - t0;

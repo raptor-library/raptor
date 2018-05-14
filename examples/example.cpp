@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 
     // Anisotropic diffusion
     coarsen_t coarsen_type = CLJP;
-    interp_t interp_type = Classical;
+    interp_t interp_type = ModClassical;
     relax_t relax_type = SOR;
     double eps = 0.001;
     double theta = M_PI/8.0;
@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);
     time_base = MPI_Wtime();
-    ml = new ParMultilevel(strong_threshold, coarsen_type, interp_type, relax_type);
+    ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, relax_type);
     ml->setup(A);
     time_setup = MPI_Wtime() - time_base;
 

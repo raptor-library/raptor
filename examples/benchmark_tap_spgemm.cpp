@@ -16,6 +16,7 @@
 #include "gallery/diffusion.hpp"
 #include "gallery/par_matrix_IO.hpp"
 #include "multilevel/par_multilevel.hpp"
+#include "ruge_stuben/par_ruge_stuben_solver.hpp"
 
 #ifdef USING_MFEM
 #include "gallery/external/mfem_wrapper.hpp"
@@ -229,7 +230,7 @@ int main(int argc, char *argv[])
     int num_variables = 1;
     relax_t relax_type = SOR;
     coarsen_t coarsen_type = CLJP;
-    interp_t interp_type = Classical;
+    interp_t interp_type = ModClassical;
     double strong_threshold = 0.25;
 
     aligned_vector<double> residuals;
@@ -347,7 +348,7 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(strong_threshold, coarsen_type, interp_type, relax_type);
+    ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, relax_type);
     ml->num_variables = num_variables;
     ml->setup(A);
     raptor_setup = MPI_Wtime() - t0;

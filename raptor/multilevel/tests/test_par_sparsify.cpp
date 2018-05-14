@@ -52,7 +52,7 @@ TEST(ParSparsifyTest, TestsInMultilevel)
     const char* A1_hgal_fn = "../../../../test_data/rss_A1_hgal.pm";
 
     A = readParMatrix(A0_fn);
-    S = A->strength(0.25);
+    S = A->strength(Classical, 0.25);
 
     f = fopen(weight_fn, "r");
     weights.resize(S->local_num_rows);

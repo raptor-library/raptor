@@ -115,7 +115,9 @@ namespace raptor
     void gauss_seidel(Vector& x, Vector& b);
     void SOR(Vector& x, Vector& b, double omega = .667);
 
-    Matrix* strength(double theta = 0.0);
+    Matrix* strength(strength_t strength_type = Classical, double theta = 0.0, 
+            int num_variables = 1, int* variables = NULL);
+
     Matrix* aggregate();
 
     void mult(Vector& x, Vector& b)
@@ -832,7 +834,8 @@ namespace raptor
     CSRMatrix* add(CSRMatrix* A);
     CSRMatrix* subtract(CSRMatrix* A);
 
-    CSRMatrix* strength(double theta = 0.0);
+    CSRMatrix* strength(strength_t strength_type = Classical,
+            double theta = 0.0, int num_variables = 1, int* variables = NULL);
     CSRMatrix* aggregate();
     CSRMatrix* fit_candidates(data_t* B, data_t* R, int num_candidates, 
             double tol = 1e-10);

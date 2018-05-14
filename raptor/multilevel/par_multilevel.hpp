@@ -77,28 +77,24 @@ namespace raptor
     {
         public:
 
-            ParMultilevel(double _strong_threshold = 0.0, 
-                    coarsen_t _coarsen_type = Falgout, 
-                    interp_t _interp_type = Direct,
-                    relax_t _relax_type = SOR) // which level to start tap_amg (-1 == no TAP)
+            ParMultilevel(double _strong_threshold, 
+                    strength_t _strength_type,
+                    relax_t _relax_type) // which level to start tap_amg (-1 == no TAP)
             {
                 strong_threshold = _strong_threshold;
-                coarsen_type = _coarsen_type;
-                interp_type = _interp_type;
+                strength_type = _strength_type;
                 relax_type = _relax_type;
                 num_smooth_sweeps = 1;
                 relax_weight = 1.0;
                 max_coarse = 50;
                 max_levels = 25;
-                num_variables = 1;
                 tap_amg = -1;
                 weights = NULL;
-                variables = NULL;
                 store_residuals = true;
                 sparsify_tol = 0.0;
             }
 
-            ~ParMultilevel()
+            virtual ~ParMultilevel()
             {
                 if (levels[num_levels-1]->A->local_num_rows)
                 {
@@ -110,8 +106,10 @@ namespace raptor
                     delete *it;
                 }
             }
+            
+            virtual void setup(ParCSRMatrix* Af) = 0;
 
-            void setup(ParCSRMatrix* Af)
+            void setup_helper(ParCSRMatrix* Af)
             {
                 double t0;
                 int rank, num_procs;
@@ -148,11 +146,6 @@ namespace raptor
                     form_rand_weights(Af->local_num_rows, Af->partition->first_local_row);
                 }
 
-                if (num_variables > 1 && variables == NULL) 
-                {
-                    form_variable_list(Af, num_variables);
-                }
-
                 // Add coarse levels to hierarchy 
                 while (levels[last_level]->A->global_num_rows > max_coarse && 
                         (max_levels == -1 || (int) levels.size() < max_levels))
@@ -181,7 +174,6 @@ namespace raptor
                 }
 
                 num_levels = levels.size();
-                delete[] variables;
                 delete[] weights;
 
                 // Duplicate coarsest level across all processes that hold any
@@ -191,17 +183,6 @@ namespace raptor
                 setup_times.push_back(MPI_Wtime() - t0);
             }
 
-            void form_variable_list(const ParCSRMatrix* A, const int num_variables)
-            {
-                if (A->local_num_rows == 0 || num_variables <= 1) return;
-                
-                variables = new int[A->local_num_rows];
-                int var_dist = A->global_num_rows / num_variables;
-                for (int i = 0; i < A->local_num_rows; i++)
-                {
-                    variables[i] = A->local_row_map[i] % num_variables;
-                }
-            }
 
             void form_rand_weights(int local_n, int first_n)
             {
@@ -215,150 +196,9 @@ namespace raptor
                 }
             }
                 
-            void extend_hierarchy()
-            {
-                int level_ctr = levels.size() - 1;
-                bool tap_level = tap_amg >= 0 && tap_amg <= level_ctr;
+            virtual void extend_hierarchy() = 0;
 
-                ParCSRMatrix* A = levels[level_ctr]->A;
-                ParCSRMatrix* S;
-                ParCSRMatrix* P;
-                ParCSRMatrix* AP;
-                ParCSCMatrix* P_csc;
-
-                aligned_vector<int> states;
-                aligned_vector<int> off_proc_states;
-
-                // Form strength of connection
-                strength_times[level_ctr] -= MPI_Wtime();
-                S = A->strength(strong_threshold, num_variables, variables);
-                strength_times[level_ctr] += MPI_Wtime();
-
-                // Form CF Splitting
-                coarsen_times[level_ctr] -= MPI_Wtime();
-                switch (coarsen_type)
-                {
-                    case RS:
-                        if (level_ctr < 3) split_rs(S, states, off_proc_states, tap_level);
-                        else split_falgout(S, states, off_proc_states, tap_level);
-                        break;
-                    case CLJP:
-                        split_cljp(S, states, off_proc_states, tap_level, weights);
-                        break;
-                    case Falgout:
-                        split_falgout(S, states, off_proc_states, tap_level, weights);
-                        break;
-                    case PMIS:
-                        split_pmis(S, states, off_proc_states, tap_level, weights);
-                        break;
-                    case HMIS:
-			            split_hmis(S, states, off_proc_states, tap_level, weights);
-                        break;
-                }
-                coarsen_times[level_ctr] += MPI_Wtime();
-
-                // Form modified classical interpolation
-                interp_times[level_ctr] -= MPI_Wtime();
-                switch (interp_type)
-                {
-                    case Direct:
-                        P = direct_interpolation(A, S, states, off_proc_states);
-                        break;
-                    case Classical:
-                        P = mod_classical_interpolation(A, S, states, off_proc_states, 
-                                false, num_variables, variables);
-                        break;
-                    case Extended:
-                        P = extended_interpolation(A, S, states, off_proc_states, tap_level, num_variables, variables);
-                        break;
-                }
-                interp_times[level_ctr] += MPI_Wtime();
-                levels[level_ctr]->P = P;
-
-                if (num_variables > 1)
-                {
-                    int ctr = 0;
-                    for (int i = 0; i < A->local_num_rows; i++)
-                    {
-                        if (states[i] == 1)
-                        {
-                            variables[ctr++] = variables[i];
-                        }
-                    }
-                }
-
-                // Form coarse grid operator
-                levels.push_back(new ParLevel());
-
-                if (tap_level)
-                {
-                    AP = A->tap_mult(levels[level_ctr]->P);
-                    P_csc = new ParCSCMatrix(levels[level_ctr]->P);
-                    A = AP->tap_mult_T(P_csc);
-                }
-                else
-                {
-                    AP = A->mult(levels[level_ctr]->P);
-                    P_csc = new ParCSCMatrix(levels[level_ctr]->P);
-                    A = AP->mult_T(P_csc);
-                }
-
-                level_ctr++;
-                levels[level_ctr]->A = A;
-                A->comm = new ParComm(A->partition, A->off_proc_column_map,
-                        A->on_proc_column_map);
-                levels[level_ctr]->x.resize(A->global_num_rows, A->local_num_rows,
-                        A->partition->first_local_row);
-                levels[level_ctr]->b.resize(A->global_num_rows, A->local_num_rows,
-                        A->partition->first_local_row);
-                levels[level_ctr]->tmp.resize(A->global_num_rows, A->local_num_rows,
-                        A->partition->first_local_row);
-                levels[level_ctr]->P = NULL;
-
-                if (tap_amg >= 0 && tap_amg <= level_ctr)
-                {
-                    levels[level_ctr]->A->tap_comm = new TAPComm(
-                            levels[level_ctr]->A->partition,
-                            levels[level_ctr]->A->off_proc_column_map,
-                            levels[level_ctr]->A->on_proc_column_map);
-                }
-
-                if (sparsify_tol > 0.0)
-                {
-                    levels[level_ctr-1]->AP = AP;
-                    
-                    // Create and store injection
-                    ParCSRMatrix* I = new ParCSRMatrix(P->partition, P->global_num_rows,
-                            P->global_num_cols, P->local_num_rows, P->on_proc_num_cols, 0);
-
-                    I->on_proc->idx1[0] = 0;
-                    I->off_proc->idx1[0] = 0;
-                    int ctr = 0;
-                    for (int i = 0; i < A->local_num_rows; i++)
-                    {
-                        if (states[i])
-                        {
-                            I->on_proc->idx2.push_back(ctr++);
-                            I->on_proc->vals.push_back(1.0);
-                        }
-                        I->on_proc->idx1[i+1] = I->on_proc->idx2.size();
-                        I->off_proc->idx1[i+1] = I->off_proc->idx2.size();
-                    }
-                    I->on_proc->nnz = I->on_proc->idx2.size();
-                    I->off_proc->nnz = I->off_proc->idx2.size();
-                    I->finalize();
-                    levels[level_ctr-1]->I = I;
-                }
-                else
-                {
-                    delete AP;
-                }
-
-                delete P_csc;
-                delete S;
-            }
-
-             void duplicate_coarse()
+            void duplicate_coarse()
             {
                 int rank, num_procs;
                 MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -641,15 +481,13 @@ namespace raptor
                 return residuals;
             }
 
-            coarsen_t coarsen_type;
-            interp_t interp_type;
+            strength_t strength_type;
             relax_t relax_type;
 
             int num_smooth_sweeps;
             int max_coarse;
             int max_levels;
             int tap_amg;
-            int num_variables;
 
             double strong_threshold;
             double relax_weight;
@@ -657,13 +495,13 @@ namespace raptor
 
             bool store_residuals;
 
-            int* variables;
             double* weights;
             aligned_vector<double> residuals;
 
             std::vector<ParLevel*> levels;
             aligned_vector<int> LU_permute;
             int num_levels;
+            int num_variables;
             
             aligned_vector<double> spmv_times;
             aligned_vector<double> spmv_comm_times;

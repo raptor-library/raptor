@@ -114,7 +114,7 @@ void ParMatrix::finalize(bool create_comm)
     off_proc->sort();
 
     // Assume nonzeros in each on_proc column
-    if (on_proc_num_cols)
+    if (on_proc_num_cols > on_proc_column_map.size())
     {
         on_proc_column_map.resize(on_proc_num_cols);
         for (int i = 0; i < on_proc_num_cols; i++)
@@ -123,7 +123,7 @@ void ParMatrix::finalize(bool create_comm)
         }
     }
 
-    if (local_num_rows)
+    if (local_num_rows > local_row_map.size())
     {
         local_row_map.resize(local_num_rows);
         for (int i = 0; i < local_num_rows; i++)
@@ -146,7 +146,7 @@ void ParMatrix::finalize(bool create_comm)
     local_nnz = on_proc->nnz + off_proc->nnz;
 
     if (create_comm)
-        comm = new ParComm(partition, off_proc_column_map);
+        comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
     else
         comm = new ParComm(partition);
 }

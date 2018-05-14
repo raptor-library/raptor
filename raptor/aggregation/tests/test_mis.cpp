@@ -56,5 +56,28 @@ TEST(TestMIS, TestsInAggregation)
 
     delete S;
 
+    const char* S1_fn = "../../../../test_data/sas_S1.pm";
+    const char* mis1_fn = "../../../../test_data/sas_mis1.txt";
+
+    S = readMatrix(S1_fn);
+    python_states.resize(S->n_rows);
+    f = fopen(mis1_fn, "r");
+    for (int i = 0; i < S->n_rows; i++)
+    {
+        fscanf(f, "%d\n", &python_states[i]);
+    }
+    fclose(f);
+    
+    states.clear();
+    mis2(S, states, weights.data());
+
+    for (int i = 0; i < S->n_rows; i++)
+    {
+        ASSERT_EQ(states[i], python_states[i]);
+    }
+
+    delete S;
+
+
 } // end of TEST(TestSplitting, TestsInRuge_Stuben) //
 

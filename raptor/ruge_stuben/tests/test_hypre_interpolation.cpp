@@ -75,7 +75,7 @@ TEST(TestHypreInterpolation, TestsInRuge_Stuben)
     form_hypre_weights(&weights, A->local_num_rows);
     Aij = convert(A);
     HYPRE_IJMatrixGetObject(Aij, (void**) &A_hyp);
-    S = A->strength(0.25);
+    S = A->strength(Classical, 0.25);
     hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, 1, NULL, &S_hyp);
     split_pmis(S, states, off_proc_states, false, weights);
     hypre_BoomerAMGCoarsenPMIS(S_hyp, A_hyp, 0, 0, &states_hypre);
@@ -111,7 +111,7 @@ TEST(TestHypreInterpolation, TestsInRuge_Stuben)
     form_hypre_weights(&weights, A->local_num_rows);
     Aij = convert(A);
     HYPRE_IJMatrixGetObject(Aij, (void**) &A_hyp);
-    S = A->strength(0.25);
+    S = A->strength(Classical, 0.25);
     hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, 1, NULL, &S_hyp);
     split_pmis(S, states, off_proc_states, false, weights);
     hypre_BoomerAMGCoarsenPMIS(S_hyp, A_hyp, 0, 0, &states_hypre);

@@ -40,7 +40,7 @@ TEST(ParStrengthTest, TestsInTests)
 
     A = readParMatrix(A0_fn);
     S = readParMatrix(S0_fn);
-    S_rap = A->strength(0.25);
+    S_rap = A->strength(Classical, 0.25);
     compare_pattern(S, S_rap);
     delete A;
     delete S;
@@ -48,7 +48,7 @@ TEST(ParStrengthTest, TestsInTests)
 
     A = readParMatrix(A1_fn);
     S = readParMatrix(S1_fn);
-    S_rap = A->strength(0.25);
+    S_rap = A->strength(Classical, 0.25);
     compare_pattern(S, S_rap);
     delete A;
     delete S;

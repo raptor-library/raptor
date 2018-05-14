@@ -60,9 +60,8 @@ TEST(TestParCandidates, TestsInAggregation)
 
     mis2(S, states, off_proc_states, weights.data());
     aligned_vector<int> aggregates;
-    aligned_vector<int> off_proc_aggregates;
     int n_aggs = aggregate(A, S, states, off_proc_states, aggregates, 
-            off_proc_aggregates, weights.data());
+            weights.data());
 
     std::vector<int> proc_aggs(num_procs);
     int first_col = 0;

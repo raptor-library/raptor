@@ -47,7 +47,7 @@ TEST(TestRugeStuben, TestsInRuge_Stuben)
 
     // TEST LEVEL 0
     A = readMatrix(A0_fn);
-    S = A->strength(0.25);
+    S = A->strength(Classical, 0.25);
     split_cljp(S, splitting, weights.data());
     P = direct_interpolation(A, S, splitting);
     AP = A->mult(P);
@@ -65,7 +65,7 @@ TEST(TestRugeStuben, TestsInRuge_Stuben)
     // TEST LEVEL 1
     A = Ac_rap;
     Ac_rap = NULL;
-    S = A->strength(0.25);
+    S = A->strength(Classical, 0.25);
     split_cljp(S, splitting, weights.data());
     P = direct_interpolation(A, S, splitting);
     AP = A->mult(P);

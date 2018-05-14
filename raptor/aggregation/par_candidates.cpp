@@ -189,6 +189,7 @@ ParCSRMatrix* fit_candidates(ParCSRMatrix* A,
     }
     AggOp_on->nnz = AggOp_on->idx2.size();
     AggOp_off->nnz = AggOp_off->idx2.size();
+    delete[] on_proc_partition_to_col;
 
     // Initialize CSC Matrix for tentative interpolation
     int num_cols = n_aggs;
@@ -325,6 +326,8 @@ ParCSRMatrix* fit_candidates(ParCSRMatrix* A,
     update_off_proc(T_csc->comm, recv_mat, (CSCMatrix*) T_csc->off_proc);
 
     ParCSRMatrix* T = new ParCSRMatrix(T_csc);
+
+    delete recv_mat;
     delete T_csc;
 
     return T;

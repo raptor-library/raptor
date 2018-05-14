@@ -52,7 +52,7 @@ TEST(TestCandidates, TestsInAggregation)
     }
     fclose(f);
     aligned_vector<int> aggregates;
-    int n_aggs =  aggregate(A, S, python_states, aggregates, weights.data());
+    int n_aggs = aggregate(A, S, python_states, aggregates, weights.data());
 
     CSRMatrix* T_py = readMatrix(T0_fn);
 
@@ -70,6 +70,41 @@ TEST(TestCandidates, TestsInAggregation)
     delete T;
     delete S;
     delete A;
+
+
+    const char* A1_fn = "../../../../test_data/sas_A1.pm";
+    const char* S1_fn = "../../../../test_data/sas_S1.pm";
+    const char* mis1_fn = "../../../../test_data/sas_mis1.txt";
+    const char* T1_fn = "../../../../test_data/sas_T1.pm";
+
+    A = readMatrix(A1_fn);
+    S = readMatrix(S1_fn);
+
+    python_states.resize(S->n_rows);
+    f = fopen(mis1_fn, "r");
+    for (int i = 0; i < S->n_rows; i++)
+    {
+        fscanf(f, "%d\n", &python_states[i]);
+    }
+    fclose(f);
+    n_aggs = aggregate(A, S, python_states, aggregates, weights.data());
+
+    T_py = readMatrix(T1_fn);
+
+    B.resize(A->n_rows, 1.0);
+    num_candidates = 1;
+
+    T = fit_candidates(n_aggs, aggregates, B, R, 
+            num_candidates, 1e-10);
+
+    compare(T, T_py);
+
+    delete T_py;
+    delete T;
+    delete S;
+    delete A;
+
+
 
 } // end of TEST(TestSplitting, TestsInRuge_Stuben) //
 

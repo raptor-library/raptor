@@ -12,6 +12,7 @@
 #include "gallery/laplacian27pt.hpp"
 #include "tests/hypre_compare.hpp"
 #include "gallery/external/hypre_wrapper.hpp"
+#include "ruge_stuben/par_ruge_stuben_solver.hpp"
 #include "multilevel/par_multilevel.hpp"
 #include "multilevel/multilevel.hpp"
 #include "_hypre_utilities.h"
@@ -124,7 +125,8 @@ TEST(TestHypre, TestsInRuge_Stuben)
     HYPRE_BoomerAMGSolve(solver_data, A_h, b_h, x_h);
 
     // Setup Raptor Hierarchy
-    ParMultilevel* ml = new ParMultilevel(strong_threshold, CLJP, Classical, SOR);
+    ParMultilevel* ml = new ParRugeStubenSolver(strong_threshold, CLJP, 
+            ModClassical, Classical, SOR);
     form_hypre_weights(&ml->weights, A->local_num_rows);
     ml->setup(A);
 

@@ -7,6 +7,7 @@ if (WITH_MPI)
         aggregation/par_aggregate.hpp
         aggregation/par_candidates.hpp
         aggregation/par_prolongation.hpp
+        aggregation/par_smoothed_aggregation_solver.hpp
         )
     set(par_aggregation_SOURCES
         aggregation/par_mis.cpp
@@ -27,6 +28,7 @@ set(aggregation_HEADERS
     aggregation/aggregate.hpp
     aggregation/candidates.hpp
     aggregation/prolongation.hpp
+    aggregation/smoothed_aggregation_solver.hpp
     ${par_aggregation_HEADERS}
     PARENT_SCOPE)
 set(aggregation_SOURCES 

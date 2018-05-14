@@ -14,6 +14,10 @@ add_executable(test_prolongation test_prolongation.cpp)
 target_link_libraries(test_prolongation raptor googletest pthread )
 add_test(TestProlongation ./test_prolongation)
 
+add_executable(test_smoothed_aggregation test_smoothed_aggregation.cpp)
+target_link_libraries(test_smoothed_aggregation raptor googletest pthread )
+add_test(TestSmoothedAggregation ./test_smoothed_aggregation)
+
 if (WITH_MPI)
     add_executable(test_par_mis test_par_mis.cpp)
     target_link_libraries(test_par_mis raptor googletest pthread )
@@ -38,6 +42,12 @@ if (WITH_MPI)
     add_test(TestParProlongation mpirun -n 1 ./test_par_prolongation)
     add_test(TestParProlongation mpirun -n 4 ./test_par_prolongation)
     add_test(TestParProlongation mpirun -n 16 ./test_par_prolongation)
+
+    add_executable(test_par_smoothed_aggregation test_par_smoothed_aggregation.cpp)
+    target_link_libraries(test_par_smoothed_aggregation raptor googletest pthread )
+    add_test(TestParSmoothedAggregation mpirun -n 1 ./test_par_smoothed_aggregation)
+    add_test(TestParSmoothedAggregation mpirun -n 4 ./test_par_smoothed_aggregation)
+    add_test(TestParSmoothedAggregation mpirun -n 16 ./test_par_smoothed_aggregation)
 endif()
 
 
