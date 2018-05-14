@@ -32,8 +32,6 @@ int main(int argc, char* argv[])
     ParVector b;
 
     double t0, tfinal;
-    double sa_setup_time, sa_solve_time;
-    double rs_setup_time, rs_solve_time;
 
     if (argc > 1)
     {
@@ -150,32 +148,50 @@ int main(int argc, char* argv[])
 
 
     // Ruge-Stuben AMG
+    if (rank == 0) printf("Ruge Stuben Solver: \n");
+    MPI_Barrier(MPI_COMM_WORLD);
     ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, SOR);
     ml->num_variables = num_variables;
     ml->track_times = true;
+    t0 = MPI_Wtime();
     ml->setup(A);
-    if (rank == 0) printf("Ruge Stuben Solver: \n");
+    tfinal = MPI_Wtime() - t0;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Total Setup Time: %e\n", t0);
     ml->print_hierarchy();
     ml->print_setup_times();
 
+    MPI_Barrier(MPI_COMM_WORLD);
     ParVector rss_sol = ParVector(x);
+    t0 = MPI_Wtime();
     iter = ml->solve(rss_sol, b);
+    tfinal = MPI_Wtime() - t0;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Total Solve Time: %e\n", t0);
     ml->print_residuals(iter);
     ml->print_solve_times();
     delete ml;
 
     // Smoothed Aggregation AMG
+    if (rank == 0) printf("\n\nSmoothed Aggregation Solver:\n");
     ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation, 
             Symmetric, SOR);
     ml->num_variables = num_variables;
     ml->track_times = true;
+    t0 = MPI_Wtime();
     ml->setup(A);
-    if (rank == 0) printf("Smoothed Aggregation Solver:\n");
+    tfinal = MPI_Wtime() - t0;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Total Setup Time: %e\n", t0);
     ml->print_hierarchy();
     ml->print_setup_times();
 
     ParVector sas_sol = ParVector(x);
+    t0 = MPI_Wtime();
     iter = ml->solve(sas_sol, b);
+    tfinal = MPI_Wtime() - t0;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Total Solve Time: %e\n", t0);
     ml->print_residuals(iter);
     ml->print_solve_times();
     delete ml;

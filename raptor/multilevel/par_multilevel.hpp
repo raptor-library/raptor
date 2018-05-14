@@ -184,9 +184,9 @@ namespace raptor
 
                 // Duplicate coarsest level across all processes that hold any
                 // rows of A_c
-                if (setup_times) setup_times[0].push_back(-MPI_Wtime());
+                if (setup_times) setup_times[0][num_levels - 1] -= MPI_Wtime();
                 duplicate_coarse();
-                if (setup_times) setup_times[0][last_level] += MPI_Wtime();
+                if (setup_times) setup_times[0][num_levels - 1] += MPI_Wtime();
             }
 
 
