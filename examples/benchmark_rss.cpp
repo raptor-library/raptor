@@ -255,16 +255,6 @@ int main(int argc, char *argv[])
     MPI_Reduce(&raptor_tap_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Raptor TAP Solve Time: %e\n", t0);
       
-    int n0, s0;
-    MPI_Reduce(&ml->setup_comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&ml->setup_comm_n, &n0, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&ml->setup_comm_s, &s0, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    if (rank == 0) printf("Setup Comm Time: %e, Comm N: %d, Comm S: %d\n", t0, n0, s0);
-    MPI_Reduce(&ml->solve_comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&ml->solve_comm_n, &n0, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&ml->solve_comm_s, &s0, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    if (rank == 0) printf("Solve Comm Time: %e, Comm N: %d, Comm S: %d\n", t0, n0, s0);
-
     // Delete raptor hierarchy
     delete ml;
 

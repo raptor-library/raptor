@@ -149,8 +149,11 @@ int main(int argc, char *argv[])
 
     MPI_Reduce(&raptor_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Raptor Setup Time: %e\n", t0);
+    ml->print_setup_times();
+
     MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Raptor Solve Time: %e\n", t0);
+    ml->print_solve_times();
 
     for (int i = 0; i < ml->num_levels - 1; i++)
     {
@@ -375,20 +378,6 @@ int main(int argc, char *argv[])
 
 
         model = model_a + model_b;
-
-
-        MPI_Reduce(&ml->setup_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Setup Time %e\n", t0);
-        MPI_Reduce(&ml->strength_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Strength Time %e\n", t0);
-        MPI_Reduce(&ml->coarsen_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Coarsen Time %e\n", t0);
-        MPI_Reduce(&ml->interp_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Interp Time %e\n", t0);
-        MPI_Reduce(&ml->matmat_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("SpGEMM Time %e\n", t0);
-        MPI_Reduce(&ml->matmat_comm_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("SpGEMM Comm Time %e\n", t0);
 
         int n_tests = 10;
         double comm_time = 0;

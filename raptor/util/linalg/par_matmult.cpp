@@ -82,6 +82,14 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSRMatrix* A)
     return C;
 }
 
+ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSRMatrix* A)
+{
+    ParCSCMatrix* Acsc = new ParCSCMatrix(A);
+    ParCSRMatrix* C = this->tap_mult_T(Acsc);
+    delete Acsc;
+    return C;
+}
+
 ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A)
 {
     spgemm_T_data.time -= MPI_Wtime();

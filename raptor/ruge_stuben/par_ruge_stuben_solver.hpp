@@ -30,6 +30,12 @@ namespace raptor
 
         void setup(ParCSRMatrix *Af)
         {
+            if (track_times)
+            {
+                n_setup_times = 6;
+                setup_times = new aligned_vector<double>[n_setup_times];
+            }
+
             if (num_variables > 1 && variables == NULL) 
             {
                 form_variable_list(Af, num_variables);
@@ -58,22 +64,23 @@ namespace raptor
             int level_ctr = levels.size() - 1;
             bool tap_level = tap_amg >= 0 && tap_amg <= level_ctr;
 
+            if (setup_times) setup_times[0][level_ctr] -= MPI_Wtime();
+
             ParCSRMatrix* A = levels[level_ctr]->A;
             ParCSRMatrix* S;
             ParCSRMatrix* P;
             ParCSRMatrix* AP;
-            ParCSCMatrix* P_csc;
 
             aligned_vector<int> states;
             aligned_vector<int> off_proc_states;
 
             // Form strength of connection
-            strength_times[level_ctr] -= MPI_Wtime();
+            if (setup_times) setup_times[1][level_ctr] -= MPI_Wtime();
             S = A->strength(strength_type, strong_threshold, num_variables, variables);
-            strength_times[level_ctr] += MPI_Wtime();
+            if (setup_times) setup_times[1][level_ctr] += MPI_Wtime();
 
             // Form CF Splitting
-            coarsen_times[level_ctr] -= MPI_Wtime();
+            if (setup_times) setup_times[2][level_ctr] -= MPI_Wtime();
             switch (coarsen_type)
             {
                 case RS:
@@ -93,10 +100,10 @@ namespace raptor
                     split_hmis(S, states, off_proc_states, tap_level, weights);
                     break;
             }
-            coarsen_times[level_ctr] += MPI_Wtime();
+            if (setup_times) setup_times[2][level_ctr] += MPI_Wtime();
 
             // Form modified classical interpolation
-            interp_times[level_ctr] -= MPI_Wtime();
+            if (setup_times) setup_times[3][level_ctr] -= MPI_Wtime();
             switch (interp_type)
             {
                 case Direct:
@@ -111,7 +118,7 @@ namespace raptor
                             tap_level, num_variables, variables);
                     break;
             }
-            interp_times[level_ctr] += MPI_Wtime();
+            if (setup_times) setup_times[3][level_ctr] += MPI_Wtime();
             levels[level_ctr]->P = P;
 
             if (num_variables > 1)
@@ -131,15 +138,23 @@ namespace raptor
 
             if (tap_level)
             {
+                if (setup_times) setup_times[4][level_ctr] -= MPI_Wtime();
                 AP = A->tap_mult(levels[level_ctr]->P);
-                P_csc = new ParCSCMatrix(levels[level_ctr]->P);
-                A = AP->tap_mult_T(P_csc);
+                if (setup_times) setup_times[4][level_ctr] += MPI_Wtime();
+
+                if (setup_times) setup_times[5][level_ctr] -= MPI_Wtime();
+                A = AP->tap_mult_T(P);
+                if (setup_times) setup_times[5][level_ctr] += MPI_Wtime();
             }
             else
             {
+                if (setup_times) setup_times[4][level_ctr] -= MPI_Wtime();
                 AP = A->mult(levels[level_ctr]->P);
-                P_csc = new ParCSCMatrix(levels[level_ctr]->P);
-                A = AP->mult_T(P_csc);
+                if (setup_times) setup_times[4][level_ctr] += MPI_Wtime();
+
+                if (setup_times) setup_times[5][level_ctr] -= MPI_Wtime();
+                A = AP->mult_T(P);
+                if (setup_times) setup_times[5][level_ctr] += MPI_Wtime();
             }
 
             level_ctr++;
@@ -193,9 +208,49 @@ namespace raptor
                 delete AP;
             }
 
-            delete P_csc;
             delete S;
+
+            if (setup_times) setup_times[0][level_ctr-1] += MPI_Wtime();
         }    
+
+        void print_setup_times()
+        {
+            if (setup_times == NULL) return;
+
+            int rank;
+            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+            double max_t;
+            for (int i = 0; i < num_levels; i++)
+            {
+                if (rank == 0) printf("Level %d\n", i);
+
+                MPI_Reduce(&setup_times[0][i], &max_t, 1, MPI_DOUBLE, 
+                        MPI_MAX, 0, MPI_COMM_WORLD);
+                if (rank == 0 && max_t > 0) printf("Setup Time: %e\n", max_t);
+
+                MPI_Reduce(&setup_times[1][i], &max_t, 1, MPI_DOUBLE, 
+                        MPI_MAX, 0, MPI_COMM_WORLD);
+                if (rank == 0 && max_t > 0) printf("Strength: %e\n", max_t);
+
+                MPI_Reduce(&setup_times[2][i], &max_t, 1, MPI_DOUBLE, 
+                        MPI_MAX, 0, MPI_COMM_WORLD);
+                if (rank == 0 && max_t > 0) printf("C/F Splitting: %e\n", max_t);
+
+                MPI_Reduce(&setup_times[3][i], &max_t, 1, MPI_DOUBLE, 
+                        MPI_MAX, 0, MPI_COMM_WORLD);
+                if (rank == 0 && max_t > 0) printf("Form Interp: %e\n", max_t);
+
+                MPI_Reduce(&setup_times[4][i], &max_t, 1, MPI_DOUBLE, 
+                        MPI_MAX, 0, MPI_COMM_WORLD);
+                if (rank == 0 && max_t > 0) printf("A*P: %e\n", max_t);
+
+                MPI_Reduce(&setup_times[5][i], &max_t, 1, MPI_DOUBLE, 
+                        MPI_MAX, 0, MPI_COMM_WORLD);
+                if (rank == 0 && max_t > 0) printf("P.T*AP: %e\n", max_t);
+
+            }
+        }
 
         coarsen_t coarsen_type;
         interp_t interp_type;

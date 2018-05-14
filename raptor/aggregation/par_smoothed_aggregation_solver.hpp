@@ -1,7 +1,7 @@
 // Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#ifndef RAPTOR_SMOOTHED_AGGREGATION_SOLVER_HPP
-#define RAPTOR_SMOOTHED_AGGREGATION_SOLVER_HPP
+#ifndef RAPTOR_PAR_SMOOTHED_AGGREGATION_SOLVER_HPP
+#define RAPTOR_PAR_SMOOTHED_AGGREGATION_SOLVER_HPP
 
 #include "multilevel/par_multilevel.hpp"
 #include "aggregation/par_mis.hpp"
@@ -30,11 +30,16 @@ namespace raptor
 
         ~ParSmoothedAggregationSolver()
         {
-
         }
 
         void setup(ParCSRMatrix* Af) 
         {
+            if (track_times)
+            {
+                n_setup_times = 7;
+                setup_times = new aligned_vector<double>[n_setup_times];
+            }
+
             // TODO -- add option for B to be passed as variable
             num_candidates = 1;
             B.resize(Af->local_num_rows);
@@ -51,12 +56,13 @@ namespace raptor
             int level_ctr = levels.size() - 1;
             bool tap_level = tap_amg >= 0 && tap_amg <= level_ctr;
 
+            if (setup_times) setup_times[0][level_ctr] -= MPI_Wtime();
+
             ParCSRMatrix* A = levels[level_ctr]->A;
             ParCSRMatrix* S;
             ParCSRMatrix* T;
             ParCSRMatrix* P;
             ParCSRMatrix* AP;
-            ParCSCMatrix* P_csc;
 
             aligned_vector<int> states;
             aligned_vector<int> off_proc_states;
@@ -65,12 +71,12 @@ namespace raptor
             int n_aggs;
 
             // Form strength of connection
-            strength_times[level_ctr] -= MPI_Wtime();
+            if (setup_times) setup_times[1][level_ctr] -= MPI_Wtime();
             S = A->strength(strength_type, strong_threshold);
-            strength_times[level_ctr] += MPI_Wtime();
+            if (setup_times) setup_times[1][level_ctr] += MPI_Wtime();
 
-            coarsen_times[level_ctr] -= MPI_Wtime();
             // Aggregate Nodes
+            if (setup_times) setup_times[2][level_ctr] -= MPI_Wtime();
             switch (agg_type)
             {
                 case MIS:
@@ -78,20 +84,23 @@ namespace raptor
                     n_aggs = aggregate(A, S, states, off_proc_states, aggregates);
                     break;
             }
-            coarsen_times[level_ctr] += MPI_Wtime();
+            if (setup_times) setup_times[2][level_ctr] += MPI_Wtime();
 
             // Form modified classical interpolation
-            interp_times[level_ctr] -= MPI_Wtime();
+            if (setup_times) setup_times[3][level_ctr] -= MPI_Wtime();
             // Form tentative interpolation
             T = fit_candidates(A, n_aggs, aggregates, B, R, num_candidates, interp_tol);
+            if (setup_times) setup_times[3][level_ctr] += MPI_Wtime();
             
+
+            if (setup_times) setup_times[4][level_ctr] -= MPI_Wtime();
             switch (prolong_type)
             {
                 case JacobiProlongation:
                     P = jacobi_prolongation(A, T, prolong_weight, prolong_smooth_steps);
                     break;
             }
-            interp_times[level_ctr] += MPI_Wtime();
+            if (setup_times) setup_times[4][level_ctr] += MPI_Wtime();
             levels[level_ctr]->P = P;
 
             // Form coarse grid operator
@@ -99,15 +108,24 @@ namespace raptor
 
             if (tap_level)
             {
+                if (setup_times) setup_times[5][level_ctr] -= MPI_Wtime();
                 AP = A->tap_mult(levels[level_ctr]->P);
-                P_csc = new ParCSCMatrix(levels[level_ctr]->P);
-                A = AP->tap_mult_T(P_csc);
+                if (setup_times) setup_times[5][level_ctr] += MPI_Wtime();
+
+
+                if (setup_times) setup_times[6][level_ctr] -= MPI_Wtime();
+                A = AP->tap_mult_T(P);
+                if (setup_times) setup_times[6][level_ctr] += MPI_Wtime();
             }
             else
             {
+                if (setup_times) setup_times[5][level_ctr] -= MPI_Wtime();
                 AP = A->mult(levels[level_ctr]->P);
-                P_csc = new ParCSCMatrix(levels[level_ctr]->P);
-                A = AP->mult_T(P_csc);
+                if (setup_times) setup_times[5][level_ctr] += MPI_Wtime();
+
+                if (setup_times) setup_times[6][level_ctr] -= MPI_Wtime();
+                A = AP->mult_T(P);
+                if (setup_times) setup_times[6][level_ctr] += MPI_Wtime();
             }
 
             level_ctr++;
@@ -163,9 +181,54 @@ namespace raptor
 
             std::copy(R.begin(), R.end(), B.begin());
 
-            delete P_csc;
             delete S;
+
+            if (setup_times) setup_times[0][level_ctr-1] += MPI_Wtime();
         }    
+
+        void print_setup_times()
+        {
+            if (setup_times == NULL) return;
+
+            int rank;
+            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+            double max_t;
+            for (int i = 0; i < num_levels; i++)
+            {
+                if (rank == 0) printf("Level %d\n", i);
+
+                MPI_Reduce(&setup_times[0][i], &max_t, 1, MPI_DOUBLE, 
+                        MPI_MAX, 0, MPI_COMM_WORLD);
+                if (rank == 0 && max_t > 0) printf("Setup Time: %e\n", max_t);
+
+                MPI_Reduce(&setup_times[1][i], &max_t, 1, MPI_DOUBLE, 
+                        MPI_MAX, 0, MPI_COMM_WORLD);
+                if (rank == 0 && max_t > 0) printf("Strength: %e\n", max_t);
+
+                MPI_Reduce(&setup_times[2][i], &max_t, 1, MPI_DOUBLE, 
+                        MPI_MAX, 0, MPI_COMM_WORLD);
+                if (rank == 0 && max_t > 0) printf("Aggregate: %e\n", max_t);
+
+                MPI_Reduce(&setup_times[3][i], &max_t, 1, MPI_DOUBLE, 
+                        MPI_MAX, 0, MPI_COMM_WORLD);
+                if (rank == 0 && max_t > 0) printf("Tent Interp: %e\n", max_t);
+
+                MPI_Reduce(&setup_times[4][i], &max_t, 1, MPI_DOUBLE, 
+                        MPI_MAX, 0, MPI_COMM_WORLD);
+                if (rank == 0 && max_t > 0) printf("Prolongate: %e\n", max_t);
+
+                MPI_Reduce(&setup_times[5][i], &max_t, 1, MPI_DOUBLE, 
+                        MPI_MAX, 0, MPI_COMM_WORLD);
+                if (rank == 0 && max_t > 0) printf("A*P: %e\n", max_t);
+
+                MPI_Reduce(&setup_times[6][i], &max_t, 1, MPI_DOUBLE, 
+                        MPI_MAX, 0, MPI_COMM_WORLD);
+                if (rank == 0 && max_t > 0) printf("P.T*AP: %e\n", max_t);
+
+            }
+        }
+
 
         agg_t agg_type;
         prolong_t prolong_type;

@@ -91,7 +91,12 @@ namespace raptor
                 tap_amg = -1;
                 weights = NULL;
                 store_residuals = true;
+                track_times = false;
+                setup_times = NULL;
+                solve_times = NULL;
                 sparsify_tol = 0.0;
+                n_setup_times = 0;
+                n_solve_times = 0;
             }
 
             virtual ~ParMultilevel()
@@ -105,6 +110,8 @@ namespace raptor
                 {
                     delete *it;
                 }
+                delete[] setup_times;
+                delete[] solve_times;
             }
             
             virtual void setup(ParCSRMatrix* Af) = 0;
@@ -135,11 +142,11 @@ namespace raptor
                     levels[0]->A->tap_comm = new TAPComm(Af->partition,
                             Af->off_proc_column_map, Af->on_proc_column_map);
                 }
-                strength_times.push_back(0);
-                coarsen_times.push_back(0);
-                interp_times.push_back(0);
-                matmat_times.push_back(0);
-                matmat_comm_times.push_back(0);
+
+                for (int i = 0; i < n_setup_times; i++)
+                {
+                    setup_times[i].push_back(0.0);
+                }
 
                 if (weights == NULL)
                 {
@@ -153,11 +160,10 @@ namespace raptor
                     extend_hierarchy();
                     last_level++;
 
-                    strength_times.push_back(0);
-                    coarsen_times.push_back(0);
-                    interp_times.push_back(0);
-                    matmat_times.push_back(0);
-                    matmat_comm_times.push_back(0);
+                    for (int i = 0; i < n_setup_times; i++)
+                    {
+                        setup_times[i].push_back(0.0);
+                    }
                 }
 
                 if (sparsify_tol > 0.0)
@@ -178,9 +184,9 @@ namespace raptor
 
                 // Duplicate coarsest level across all processes that hold any
                 // rows of A_c
+                if (setup_times) setup_times[0].push_back(-MPI_Wtime());
                 duplicate_coarse();
-
-                setup_times.push_back(MPI_Wtime() - t0);
+                if (setup_times) setup_times[0][last_level] += MPI_Wtime();
             }
 
 
@@ -313,6 +319,8 @@ namespace raptor
                 ParCSRMatrix* P = levels[level]->P;
                 ParVector& tmp = levels[level]->tmp;
 
+                solve_times[0][level] -= MPI_Wtime();
+
                 if (level == num_levels - 1)
                 {
                     if (A->local_num_rows)
@@ -342,6 +350,7 @@ namespace raptor
                     levels[level+1]->x.set_const_value(0.0);
                     
                     // Relax
+                    if (solve_times) solve_times[1][level] -= MPI_Wtime();
                     switch (relax_type)
                     {
                         case Jacobi:
@@ -354,19 +363,28 @@ namespace raptor
                             tap_ssor(A, x, b, tmp, num_smooth_sweeps, relax_weight);
                             break;
                     }
+                    if (solve_times) solve_times[1][level] += MPI_Wtime();
 
 
+                    if (solve_times) solve_times[2][level] -= MPI_Wtime();
                     A->tap_residual(x, b, tmp);
+                    if (solve_times) solve_times[2][level] += MPI_Wtime();
+
+                    if (solve_times) solve_times[3][level] -= MPI_Wtime();
                     P->tap_mult_T(tmp, levels[level+1]->b);
+                    if (solve_times) solve_times[3][level] += MPI_Wtime();
 
                     cycle(levels[level+1]->x, levels[level+1]->b, level+1);
 
+                    if (solve_times) solve_times[4][level] -= MPI_Wtime();
                     P->tap_mult(levels[level+1]->x, tmp);
                     for (int i = 0; i < A->local_num_rows; i++)
                     {
                         x.local[i] += tmp.local[i];
                     }
+                    if (solve_times) solve_times[4][level] += MPI_Wtime();
 
+                    if (solve_times) solve_times[1][level] -= MPI_Wtime();
                     switch (relax_type)
                     {
                         case Jacobi:
@@ -379,6 +397,7 @@ namespace raptor
                             tap_ssor(A, x, b, tmp, num_smooth_sweeps, relax_weight);
                             break;
                     }
+                    if (solve_times) solve_times[1][level] += MPI_Wtime();
 
                 }
                 else // Standard AMG
@@ -386,6 +405,7 @@ namespace raptor
                     levels[level+1]->x.set_const_value(0.0);
                     
                     // Relax
+                    if (solve_times) solve_times[1][level] -= MPI_Wtime();
                     switch (relax_type)
                     {
                         case Jacobi:
@@ -398,18 +418,31 @@ namespace raptor
                             ssor(A, x, b, tmp, num_smooth_sweeps, relax_weight);
                             break;
                     }
+                    if (solve_times) solve_times[1][level] += MPI_Wtime();
 
+
+                    if (solve_times) solve_times[2][level] -= MPI_Wtime();
                     A->residual(x, b, tmp);
+                    if (solve_times) solve_times[2][level] += MPI_Wtime();
+
+
+                    if (solve_times) solve_times[3][level] -= MPI_Wtime();
                     P->mult_T(tmp, levels[level+1]->b);
+                    if (solve_times) solve_times[3][level] += MPI_Wtime();
 
                     cycle(levels[level+1]->x, levels[level+1]->b, level+1);
 
+
+                    if (solve_times) solve_times[4][level] -= MPI_Wtime();
                     P->mult(levels[level+1]->x, tmp);
                     for (int i = 0; i < A->local_num_rows; i++)
                     {
                         x.local[i] += tmp.local[i];
                     }
+                    if (solve_times) solve_times[4][level] += MPI_Wtime();
 
+
+                    if (solve_times) solve_times[1][level] -= MPI_Wtime();
                     switch (relax_type)
                     {
                         case Jacobi:
@@ -422,7 +455,10 @@ namespace raptor
                             ssor(A, x, b, tmp, num_smooth_sweeps, relax_weight);
                             break;
                     }
+                    if (solve_times) solve_times[1][level] += MPI_Wtime();
                 }
+
+                solve_times[0][level] += MPI_Wtime();
             }
 
             int solve(ParVector& sol, ParVector& rhs, int num_iterations = 100)
@@ -434,6 +470,20 @@ namespace raptor
                 if (store_residuals)
                 {
                     residuals.resize(num_iterations + 1);
+                }
+                if (track_times)
+                {
+                    int n_solve_times = 5;
+                    if (solve_times == NULL)
+                        solve_times = new aligned_vector<double>[n_solve_times];
+                    for (int i = 0; i < n_solve_times; i++)
+                    {
+                        solve_times[i].resize(num_levels);
+                        for (int j = 0; j < num_levels; j++)
+                        {
+                            solve_times[i][j] = 0.0;
+                        }
+                    }
                 }
 
                 // Iterate until convergence or max iterations
@@ -476,6 +526,81 @@ namespace raptor
                 return iter;
             }
 
+            void print_hierarchy()
+            {
+                int rank;
+                MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+                if (rank == 0)
+                {
+                    printf("Num Levels = %d\n", num_levels);
+	                printf("A\tNRow\tNCol\tNNZ\n");
+                }
+
+                for (int i = 0; i < num_levels; i++)
+                {
+                    ParCSRMatrix* Al = levels[i]->A;
+	                long lcl_nnz = Al->local_nnz;
+	                long nnz;
+	                MPI_Reduce(&lcl_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+	                if (rank == 0)
+	                {
+                        printf("%d\t%d\t%d\t%lu\n", i, 
+                                Al->global_num_rows, Al->global_num_cols, nnz);
+                    }
+                }
+            }
+
+            void print_residuals(int iter)
+            {
+                int rank;
+                MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+                if (rank == 0) 
+                {
+                    for (int i = 0; i < iter + 1; i++)
+                    {
+                        printf("Res[%d] = %e\n", i, residuals[i]);
+                    }
+                }
+            }
+
+            virtual void print_setup_times() = 0;
+
+            void print_solve_times()
+            {
+                if (solve_times == NULL) return;
+
+                int rank;
+                MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+                double max_t;
+                for (int i = 0; i < num_levels; i++)
+                {
+                    if (rank == 0) printf("Level %d\n", i);
+
+                    MPI_Reduce(&solve_times[0][i], &max_t, 1, MPI_DOUBLE, 
+                            MPI_MAX, 0, MPI_COMM_WORLD);
+                    if (rank == 0 && max_t > 0) printf("Solve Time: %e\n", max_t);
+
+                    MPI_Reduce(&solve_times[1][i], &max_t, 1, MPI_DOUBLE, 
+                            MPI_MAX, 0, MPI_COMM_WORLD);
+                    if (rank == 0 && max_t > 0) printf("Relax: %e\n", max_t);
+
+                    MPI_Reduce(&solve_times[2][i], &max_t, 1, MPI_DOUBLE, 
+                            MPI_MAX, 0, MPI_COMM_WORLD);
+                    if (rank == 0 && max_t > 0) printf("Residual: %e\n", max_t);
+
+                    MPI_Reduce(&solve_times[3][i], &max_t, 1, MPI_DOUBLE, 
+                            MPI_MAX, 0, MPI_COMM_WORLD);
+                    if (rank == 0 && max_t > 0) printf("Restrict: %e\n", max_t);
+
+                    MPI_Reduce(&solve_times[4][i], &max_t, 1, MPI_DOUBLE, 
+                            MPI_MAX, 0, MPI_COMM_WORLD);
+                    if (rank == 0 && max_t > 0) printf("Interpolate: %e\n", max_t);
+
+                }
+            }
+
             aligned_vector<double>& get_residuals()
             {
                 return residuals;
@@ -488,12 +613,14 @@ namespace raptor
             int max_coarse;
             int max_levels;
             int tap_amg;
+            int n_setup_times, n_solve_times;
 
             double strong_threshold;
             double relax_weight;
             double sparsify_tol;
 
             bool store_residuals;
+            bool track_times;
 
             double* weights;
             aligned_vector<double> residuals;
@@ -503,21 +630,10 @@ namespace raptor
             int num_levels;
             int num_variables;
             
-            aligned_vector<double> spmv_times;
-            aligned_vector<double> spmv_comm_times;
-            aligned_vector<double> setup_times;
-            aligned_vector<double> strength_times;
-            aligned_vector<double> coarsen_times;
-            aligned_vector<double> interp_times;
-            aligned_vector<double> matmat_times;
-            aligned_vector<double> matmat_comm_times;
-            
+            aligned_vector<double>* setup_times;
+            aligned_vector<double>* solve_times;            
             double setup_comm_t;
             double solve_comm_t;
-            int setup_comm_n;
-            int setup_comm_s;
-            int solve_comm_n;
-            int solve_comm_s;
 
             int coarse_n;
             aligned_vector<double> A_coarse;
