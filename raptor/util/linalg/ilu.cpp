@@ -31,7 +31,7 @@ Matrix* COOMatrix::ilu_symbolic(int lof)
 	return NULL;
 }
 
-std::vector<double>& COOMatrix::ilu_numeric(Matrix* levls)
+std::vector<double> COOMatrix::ilu_numeric(Matrix* levls)
 {
 	printf("Function not implemented for COO type\n");
 	std::vector<double> emp;
@@ -75,7 +75,9 @@ Matrix* CSRMatrix::ilu_k(int lof)
 
 Matrix* CSRMatrix::ilu_symbolic(int lof)
 {
+	printf("Begin levls phase \n");
 	Matrix* levels = this->ilu_levels();
+	printf("Begin sparsity phase \n");
 	Matrix* sparsity = this->ilu_sparsity(levels, lof);
 	return sparsity;
 }
@@ -135,7 +137,7 @@ Matrix* CSRMatrix::ilu_sparsity(Matrix* levls, int lof)
 	return sparsity; 
 }
 
-std::vector<double>& CSRMatrix::ilu_numeric(Matrix* levls){
+std::vector<double> CSRMatrix::ilu_numeric(Matrix* levls){
 
 	int m = n_rows;
 	int n = n_cols;
@@ -248,7 +250,7 @@ std::vector<double>& CSRMatrix::ilu_numeric(Matrix* levls){
 
 Matrix* CSRMatrix::ilu_levels()
 {
-	//printf("Begin ilu levels \n");
+	printf("Begin ilu levels \n");
 	Matrix * levls = new CSRMatrix(n_rows,n_cols);
 
 	//initialize vectors for final levels matrix
@@ -301,7 +303,6 @@ Matrix* CSRMatrix::ilu_levels()
 		std::vector<int> current_row_levls(n_rows);
 		std::fill(current_row_levls.begin(), current_row_levls.end(), 100);
 		//get row i
-		//printf("row i = %d\n",row_i);
 
 		int start_ri = idx1[row_i];
 		int end_ri = idx1[row_i+1];
@@ -331,10 +332,11 @@ Matrix* CSRMatrix::ilu_levels()
 			int start_rk = levls->idx1[k];
 			int end_rk = levls->idx1[k+1]; 
 			std::vector<int> row_k_levls(n_rows);
-			std::fill(row_k_levls.begin(), current_row_levls.end(), 100);
+			std::fill(row_k_levls.begin(), row_k_levls.end(), 100);
 	
-			for(int t =start_rk;t<end_rk;t++)
-				row_k_levls[levls->idx2[t]] = levls->vals[t];
+			for(int t =start_rk;t<end_rk;t++){
+				row_k_levls[levls->idx2[t]] =  levls->vals[t];
+			}
 
 			for(int j = k+1; k<n_rows; k++)
 				current_row_levls[j] = min(current_row_levls[j], current_row_levls[k]+row_k_levls[j]);
@@ -379,7 +381,7 @@ Matrix* CSCMatrix::ilu_symbolic(int lof)
 	return NULL;
 }
 
-std::vector<double>& CSCMatrix::ilu_numeric(Matrix* levls)
+std::vector<double> CSCMatrix::ilu_numeric(Matrix* levls)
 {
 	printf("Function not implemented \n");
 	std::vector<double> emp;
@@ -784,7 +786,7 @@ Matrix* BSRMatrix::ilu_symbolic(int lof)
 	return NULL;
 }
 
-std::vector<double>& BSRMatrix::ilu_numeric(Matrix* levls)
+std::vector<double> BSRMatrix::ilu_numeric(Matrix* levls)
 {
 	printf("Function not implemented \n");
 	std::vector<double> emp;
