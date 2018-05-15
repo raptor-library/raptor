@@ -64,19 +64,21 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
     // Label aggregates as global column
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        if (states[i] > 0)
+        if (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] <= 1 
+                   && S->off_proc->idx1[i+1] == S->off_proc->idx1[i])
+        {
+            aggregates[i] = - A->partition->global_num_rows;
+        }
+        else if (states[i] > 0)
         {
             aggregates[i] = S->on_proc_column_map[i];
             n_aggs++;
         }
     }
-
+    aligned_vector<int>& init_aggs = S->comm->communicate(aggregates);
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
-        if (off_proc_states[i] > 0)
-        { 
-            off_proc_aggregates[i] = S->off_proc_column_map[i];
-        }
+        off_proc_aggregates[i] = init_aggs[i];
     }
 
     // Pass 1 : add each node to neighboring aggregate
@@ -90,7 +92,7 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
         {
             col = S->on_proc->idx2[j];
 
-            if (states[col] > 0)
+            if (states[col] > 0 && aggregates[col] >= 0)
             {
                 aggregates[i] = aggregates[col]; // global col
                 break;
@@ -103,7 +105,7 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
             for (j = start; j < end; j++)
             {
                 col = S->off_proc->idx2[j];
-                if (off_proc_states[col] > 0)
+                if (off_proc_states[col] > 0 && aggregates[col] >= 0)
                 {
                     aggregates[i] = off_proc_aggregates[col]; // global col
                     break;
@@ -125,7 +127,7 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
         end = S->on_proc->idx1[i+1];
         ctr = A->on_proc->idx1[i];
         max_val = 0.0;
-        max_agg = - A->partition->global_num_rows; 
+        max_agg = -A->partition->global_num_rows; 
         for (j = start; j < end; j++)
         {
             col = S->on_proc->idx2[j];
@@ -155,13 +157,18 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
                 max_agg = off_proc_aggregates[col];
             }
         }
-
-        aggregates[i] = - (max_agg + 1);
+        
+        if (max_agg < 0)
+            aggregates[i] = max_agg;
+        else
+            aggregates[i] = - (max_agg + 1);
     }
 
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        if (aggregates[i] < 0)
+        if (aggregates[i] <= -A->partition->global_num_rows)
+            aggregates[i] = -1;
+        else if (aggregates[i] < 0)
             aggregates[i] = - (aggregates[i] + 1);
     }
 

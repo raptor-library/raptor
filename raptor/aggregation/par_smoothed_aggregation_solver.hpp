@@ -181,6 +181,7 @@ namespace raptor
 
             std::copy(R.begin(), R.end(), B.begin());
 
+            delete T;
             delete S;
 
             if (setup_times) setup_times[0][level_ctr-1] += MPI_Wtime();
@@ -244,6 +245,7 @@ namespace raptor
    
 
 #endif
+
 
 
 

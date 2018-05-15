@@ -319,7 +319,7 @@ namespace raptor
                 ParCSRMatrix* P = levels[level]->P;
                 ParVector& tmp = levels[level]->tmp;
 
-                solve_times[0][level] -= MPI_Wtime();
+                if (solve_times) solve_times[0][level] -= MPI_Wtime();
 
                 if (level == num_levels - 1)
                 {
@@ -458,7 +458,7 @@ namespace raptor
                     if (solve_times) solve_times[1][level] += MPI_Wtime();
                 }
 
-                solve_times[0][level] += MPI_Wtime();
+                if (solve_times) solve_times[0][level] += MPI_Wtime();
             }
 
             int solve(ParVector& sol, ParVector& rhs, int num_iterations = 100)
@@ -473,7 +473,7 @@ namespace raptor
                 }
                 if (track_times)
                 {
-                    int n_solve_times = 5;
+                    n_solve_times = 5;
                     if (solve_times == NULL)
                         solve_times = new aligned_vector<double>[n_solve_times];
                     for (int i = 0; i < n_solve_times; i++)

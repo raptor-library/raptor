@@ -110,7 +110,6 @@ int main(int argc, char* argv[])
                 A = mfem_grad_div(x, b, mesh_file, order, seq_refines, par_refines);
                 break;
             case 2:
-                strong_threshold = 0.5;
                 A = mfem_linear_elasticity(x, b, &num_variables, mesh_file, order, 
                         seq_refines, par_refines);
                 break;

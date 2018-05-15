@@ -193,10 +193,10 @@ ParCSRMatrix* ParCSRMatrix::subtract(ParCSRMatrix* B)
     C->on_proc->remove_duplicates();
     C->on_proc->move_diag();
 
-    C->finalize();
-   
     C->off_proc->sort();
     C->off_proc->remove_duplicates();
+
+    C->finalize();
 
     C->local_nnz = C->on_proc->nnz + C->off_proc->nnz;
 
