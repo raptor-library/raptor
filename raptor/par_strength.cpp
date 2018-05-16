@@ -342,10 +342,11 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta)
     int col;
     double val;
     double row_scale;
-    double eps;
+    double threshold;
     double diag;
 
-    aligned_vector<double> diags(A->local_num_rows);
+    aligned_vector<double> row_scales;
+    if (A->local_num_rows) row_scales.resize(A->local_num_rows, 0);
 
     ParCSRMatrix* S = new ParCSRMatrix(A->partition, A->global_num_rows, A->global_num_cols,
             A->local_num_rows, A->on_proc_num_cols, A->off_proc_num_cols);
@@ -370,66 +371,143 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta)
         S->off_proc->idx2.reserve(A->off_proc->nnz);
     }
 
-    for (int i = 0; i < A->local_num_rows; i++)
-    {
-        row_start_on = A->on_proc->idx1[i];
-        row_end_on = A->on_proc->idx1[i+1];
-
-        if (row_end_on > row_start_on && A->on_proc->idx2[row_start_on] == i)
-        {
-            diags[i] = fabs(A->on_proc->vals[row_start_on]);
-        }
-    }
-    aligned_vector<double>& off_proc_diags = A->comm->communicate(diags);
-
     S->on_proc->idx1[0] = 0;
     S->off_proc->idx1[0] = 0;
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        eps = theta * theta * diags[i];
-
         row_start_on = A->on_proc->idx1[i];
         row_end_on = A->on_proc->idx1[i+1];
         row_start_off = A->off_proc->idx1[i];
         row_end_off = A->off_proc->idx1[i+1];
-        
-        // Always add the diagonal
-        if (row_end_on > row_start_on && A->on_proc->idx2[row_start_on] == i)
+        if (row_end_on - row_start_on || row_end_off - row_start_off)
         {
-            S->on_proc->vals.push_back(A->on_proc->vals[row_start_on]);
-            row_start_on++;
-        }
-        else
-        {
-            S->on_proc->vals.push_back(0.0);
-        }
-        S->on_proc->idx2.push_back(i);
-
-        // On Process Block
-        for (int j = row_start_on; j < row_end_on; j++)
-        {
-            col = A->on_proc->idx2[j];
-            val = A->on_proc->vals[j];
-            if (val * val >= eps * diags[col])
+            if (A->on_proc->idx2[row_start_on] == i)
             {
-                S->on_proc->idx2.push_back(col);
-                S->on_proc->vals.push_back(val);
+                diag = A->on_proc->vals[row_start_on];
+                row_start_on++;
+            }
+            else
+            {
+                diag = 0.0;
+            }
+
+            // Find value with max magnitude in row
+            if (diag < 0.0)
+            {
+                row_scale = -RAND_MAX; 
+                for (int j = row_start_on; j < row_end_on; j++)
+                {
+                    val = A->on_proc->vals[j];
+                    if (val > row_scale)
+                    {
+                        row_scale = val;
+                    }
+                }    
+                for (int j = row_start_off; j < row_end_off; j++)
+                {
+                    val = A->off_proc->vals[j];
+                    if (val > row_scale)
+                    {
+                        row_scale = val;
+                    }
+                } 
+            }
+            else
+            {
+                row_scale = RAND_MAX;
+                for (int j = row_start_on; j < row_end_on; j++)
+                {
+                    val = A->on_proc->vals[j];
+                    if (val < row_scale)
+                    {
+                        row_scale = val;
+                    }
+                }    
+                for (int j = row_start_off; j < row_end_off; j++)
+                {
+                    val = A->off_proc->vals[j];
+                    if (val < row_scale)
+                    {
+                        row_scale = val;
+                    }
+                } 
+            }
+
+            // Multiply row max magnitude by theta
+            row_scales[i] = row_scale * theta;
+        }
+    }
+
+    aligned_vector<double>& off_proc_row_scales = A->comm->communicate(row_scales);
+    
+    S->on_proc->idx1[0] = 0;
+    S->off_proc->idx1[0] = 0;
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        row_start_on = A->on_proc->idx1[i];
+        row_end_on = A->on_proc->idx1[i+1];
+        row_start_off = A->off_proc->idx1[i];
+        row_end_off = A->off_proc->idx1[i+1];
+        if (row_end_on - row_start_on || row_end_off - row_start_off)
+        {
+            if (A->on_proc->idx2[row_start_on] == i) row_start_on++;
+
+            threshold = row_scales[i];
+
+            // Always add diagonal
+            S->on_proc->idx2.push_back(i);
+
+            // Add all off-diagonal entries to strength
+            // if magnitude greater than equal to 
+            // row_max * theta
+            if (diag < 0)
+            {
+                for (int j = row_start_on; j < row_end_on; j++)
+                {
+                    val = A->on_proc->vals[j];
+                    col = A->on_proc->idx2[j];
+                    if (val > threshold || val > row_scales[col])
+                    {
+                        S->on_proc->idx2.push_back(col);
+                    }
+                }
+                for (int j = row_start_off; j < row_end_off; j++)
+                {
+                    val = A->off_proc->vals[j];
+                    col = A->off_proc->idx2[j];
+                    if (val > threshold || val > off_proc_row_scales[col])
+                    {
+                        col = A->off_proc->idx2[j];
+                        S->off_proc->idx2.push_back(col);
+                        col_exists[col] = true;
+                    }
+                }
+            }
+            else
+            {
+                for (int j = row_start_on; j < row_end_on; j++)
+                {
+                    val = A->on_proc->vals[j];
+                    col = A->on_proc->idx2[j];
+                    if (val < threshold || val < row_scales[col])
+                    {
+                        S->on_proc->idx2.push_back(col);
+                    }
+                }
+                for (int j = row_start_off; j < row_end_off; j++)
+                {
+                    val = A->off_proc->vals[j];
+                    col = A->off_proc->idx2[j];
+                    if (val < threshold || val < off_proc_row_scales[col])
+                    {
+                        col = A->off_proc->idx2[j];
+                        S->off_proc->idx2.push_back(col);
+                        col_exists[col] = true;
+                    }
+                }
             }
         }
         S->on_proc->idx1[i+1] = S->on_proc->idx2.size();
-        
-        // Off Process Block
-        for (int j = row_start_off; j < row_end_off; j++)
-        {
-            col = A->off_proc->idx2[j];
-            val = A->off_proc->vals[j];
-            if (val * val >= eps * off_proc_diags[col])
-            {
-                S->off_proc->idx2.push_back(col);
-                S->off_proc->vals.push_back(val);
-                col_exists[col] = true;
-            }
-        }
         S->off_proc->idx1[i+1] = S->off_proc->idx2.size();
     }
     S->on_proc->nnz = S->on_proc->idx2.size();
