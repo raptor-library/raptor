@@ -178,7 +178,17 @@ void ParMatrix::finalize(bool create_comm, int b_cols)
 
     // If BSR matrix - correct the off_proc_column_map
     // to include all global columns within block
-    if (b_cols) expand_off_proc(b_cols);
+    if (b_cols)
+    {
+        expand_off_proc(b_cols);
+        if (rank == 0)
+	{
+	    for (int i = 0; i < off_proc_column_map.size(); i++)
+	    {
+                off_proc_column_map[i] += on_proc_num_cols;
+            }
+        }
+    }
 
     if (create_comm){
         comm = new ParComm(partition, off_proc_column_map);
