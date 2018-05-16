@@ -66,10 +66,30 @@ int main(int argc, char* argv[]){
 
 	//CSRMatrix* levls_csr = new CSRMatrix(levls);
 	
-	Matrix* factors = A->ilu_levels();
+	CSRMatrix* factors = A->ilu_levels();
 	
 	printf("After ilu k funtion returns\n");	
 	//printf("ILU factors: \n");
 	//factors->print();
+
+	std::vector<int> factors_rowptr = factors->idx1;
+	std::vector<int> factors_cols = factors->idx2;
+	std::vector<double> factors_data = factors->vals;
+
+	printf("factors csr rowptr = ");
+	for (auto i: factors_rowptr)
+		printf("%d ",i);
+	printf("\n");
+
+	printf("factors csr cols = ");
+	for (auto i: factors_cols)
+		printf("%d ",i);
+	printf("\n");
+
+	printf("factors csr data = ");
+	for (auto i: factors_data)
+		printf("%f ", i);
+	printf("\n");
+
 
 }

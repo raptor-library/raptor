@@ -35,7 +35,7 @@ int main(int argc, char** argv){
 
 	A_bsr->print();
 
-	Matrix* factors = A_bsr->ilu_levels();
+	BSRMatrix* factors = A_bsr->ilu_levels();
 	
 	factors->print();
 

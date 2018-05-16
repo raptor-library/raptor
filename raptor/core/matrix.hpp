@@ -228,10 +228,10 @@ namespace raptor
     void RAP(const CSCMatrix& P, CSRMatrix* Ac);
 
 	virtual Matrix* ilu_k(int lof) = 0;
-	virtual Matrix* ilu_levels() = 0;
-	virtual Matrix* ilu_sparsity(Matrix* levls, int lof) = 0;
-	virtual Matrix* ilu_symbolic(int lof) = 0;
-	virtual std::vector<double> ilu_numeric(Matrix* levls) = 0;
+	//virtual Matrix* ilu_levels() = 0;
+	//virtual Matrix* ilu_sparsity(Matrix* levls, int lof) = 0;
+	//virtual Matrix* ilu_symbolic(int lof) = 0;
+	//virtual std::vector<double> ilu_numeric(Matrix* levls) = 0;
 
     Matrix* subtract(Matrix* B);
 
@@ -549,10 +549,10 @@ namespace raptor
     void mult_append_neg_T(Vector& x, Vector& b);
 
 	Matrix* ilu_k(int lof);
-	Matrix* ilu_levels();
-	Matrix* ilu_sparsity(Matrix* levls, int lof);
-	Matrix* ilu_symbolic(int lof);
-	std::vector<double> ilu_numeric(Matrix* levls);
+	//Matrix* ilu_levels();
+	//Matrix* ilu_sparsity(Matrix* levls, int lof);
+	//Matrix* ilu_symbolic(int lof);
+	//std::vector<double> ilu_numeric(Matrix* levls);
 
 
 
@@ -880,10 +880,10 @@ namespace raptor
             double tol = 1e-10);
 
 	Matrix* ilu_k(int lof);
-	Matrix* ilu_levels();
-	Matrix* ilu_sparsity(Matrix* levls, int lof);
-	Matrix* ilu_symbolic(int lof);
-	std::vector<double> ilu_numeric(Matrix* levls);
+	CSRMatrix* ilu_levels();
+	CSRMatrix* ilu_sparsity(CSRMatrix* levls, int lof);
+	CSRMatrix* ilu_symbolic(int lof);
+	std::vector<double> ilu_numeric(CSRMatrix* levls);
     
 	void add_block(int row, int col, std::vector<double>& values);
 
@@ -1202,10 +1202,10 @@ namespace raptor
     }
 	
 	Matrix* ilu_k(int lof);
-	Matrix* ilu_levels();
-	Matrix* ilu_sparsity(Matrix* levls, int lof);
-	Matrix* ilu_symbolic(int lof);
-	std::vector<double> ilu_numeric(Matrix* levls);
+	//Matrix* ilu_levels();
+	//Matrix* ilu_sparsity(Matrix* levls, int lof);
+	//Matrix* ilu_symbolic(int lof);
+	//std::vector<double> ilu_numeric(Matrix* levls);
 
   };
 
@@ -1752,10 +1752,10 @@ namespace raptor
     int b_size;
 
 	Matrix* ilu_k(int lof);
-	Matrix* ilu_levels();
-	Matrix* ilu_sparsity(Matrix* levls, int lof);
-	Matrix* ilu_symbolic(int lof);
-	std::vector<double> ilu_numeric(Matrix* levls);
+	BSRMatrix* ilu_levels();
+	BSRMatrix* ilu_sparsity(BSRMatrix* levls, int lof);
+	BSRMatrix* ilu_symbolic(int lof);
+	std::vector<double> ilu_numeric(BSRMatrix* levls);
 
 
 };
