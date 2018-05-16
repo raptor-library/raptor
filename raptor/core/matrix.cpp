@@ -872,6 +872,7 @@ void BSRMatrix::copy_helper(const COOMatrix* A)
 
     aligned_vector<double> A_dense = A->to_dense();
 
+
     double block_dense[n_rows*n_cols];
 
     int block_ind, glob_i, glob_j;
