@@ -62,6 +62,7 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
     }
 
     // Label aggregates as global column
+    MPI_Barrier(MPI_COMM_WORLD);
     for (int i = 0; i < S->local_num_rows; i++)
     {
         if (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] <= 1 
@@ -105,7 +106,7 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
             for (j = start; j < end; j++)
             {
                 col = S->off_proc->idx2[j];
-                if (off_proc_states[col] > 0 && aggregates[col] >= 0)
+                if (off_proc_states[col] > 0 && off_proc_aggregates[col] >= 0)
                 {
                     aggregates[i] = off_proc_aggregates[col]; // global col
                     break;
@@ -118,10 +119,15 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
     aligned_vector<int>& recvbuf = S->comm->communicate(aggregates);
     std::copy(recvbuf.begin(), recvbuf.end(), off_proc_aggregates.begin());
 
+
     // Pass 2 : add remaining aggregate to that of strongest neighbor
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        if (aggregates[i] >= 0) continue;
+        if (aggregates[i] >= 0 || 
+                aggregates[i] <= -A->partition->global_num_rows) 
+        {
+            continue;
+        }
 
         start = S->on_proc->idx1[i];
         end = S->on_proc->idx1[i+1];
@@ -158,10 +164,7 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
             }
         }
         
-        if (max_agg < 0)
-            aggregates[i] = max_agg;
-        else
-            aggregates[i] = - (max_agg + 1);
+        aggregates[i] = - (max_agg + 1);
     }
 
     for (int i = 0; i < S->local_num_rows; i++)

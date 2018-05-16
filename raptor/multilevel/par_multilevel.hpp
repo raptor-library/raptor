@@ -97,6 +97,8 @@ namespace raptor
                 sparsify_tol = 0.0;
                 n_setup_times = 0;
                 n_solve_times = 0;
+                solve_tol = 1e-07;
+                max_iterations = 100;
             }
 
             virtual ~ParMultilevel()
@@ -461,7 +463,7 @@ namespace raptor
                 if (solve_times) solve_times[0][level] += MPI_Wtime();
             }
 
-            int solve(ParVector& sol, ParVector& rhs, int num_iterations = 100)
+            int solve(ParVector& sol, ParVector& rhs)
             {
                 double b_norm = rhs.norm(2);
                 double r_norm;
@@ -469,7 +471,7 @@ namespace raptor
 
                 if (store_residuals)
                 {
-                    residuals.resize(num_iterations + 1);
+                    residuals.resize(max_iterations + 1);
                 }
                 if (track_times)
                 {
@@ -502,7 +504,7 @@ namespace raptor
                     residuals[iter] = r_norm;
                 }
 
-                while (r_norm > 1e-07 && iter < num_iterations)
+                while (r_norm > solve_tol && iter < max_iterations)
                 {
                     cycle(sol, rhs, 0);
 
@@ -614,10 +616,12 @@ namespace raptor
             int max_levels;
             int tap_amg;
             int n_setup_times, n_solve_times;
+            int max_iterations;
 
             double strong_threshold;
             double relax_weight;
             double sparsify_tol;
+            double solve_tol;
 
             bool store_residuals;
             bool track_times;

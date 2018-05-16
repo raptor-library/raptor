@@ -110,6 +110,7 @@ int main(int argc, char* argv[])
                 A = mfem_grad_div(x, b, mesh_file, order, seq_refines, par_refines);
                 break;
             case 2:
+                strong_threshold = 0.5;
                 A = mfem_linear_elasticity(x, b, &num_variables, mesh_file, order, 
                         seq_refines, par_refines);
                 break;
@@ -145,11 +146,14 @@ int main(int argc, char* argv[])
         x.set_const_value(0.0);
     }
 
+    strong_threshold = 0.25;
 
     // Ruge-Stuben AMG
     if (rank == 0) printf("Ruge Stuben Solver: \n");
     MPI_Barrier(MPI_COMM_WORLD);
     ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, SOR);
+    ml->max_iterations = 1000;
+    ml->solve_tol = 1e-05;
     ml->num_variables = num_variables;
     ml->track_times = true;
     t0 = MPI_Wtime();
@@ -175,7 +179,8 @@ int main(int argc, char* argv[])
     if (rank == 0) printf("\n\nSmoothed Aggregation Solver:\n");
     ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation, 
             Symmetric, SOR);
-    ml->num_variables = num_variables;
+    ml->max_iterations = 1000;
+    ml->solve_tol = 1e-05;
     ml->track_times = true;
     t0 = MPI_Wtime();
     ml->setup(A);
