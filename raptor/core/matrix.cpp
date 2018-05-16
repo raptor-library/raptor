@@ -864,7 +864,6 @@ void BSRMatrix::copy(const COOMatrix* A)
 
     std::vector<double> A_dense = A->to_dense();
 
-    //double block_dense[n_rows*n_cols] = {0.0};
     double block_dense[n_rows*n_cols];
 
     int block_ind, glob_i, glob_j;
@@ -897,7 +896,6 @@ void BSRMatrix::copy(const CSRMatrix* A)
     n_cols = A->n_cols;
 
     std::vector<double> A_dense = A->to_dense();
-    //double block_dense[n_rows*n_cols] = {0.0};
     double block_dense[n_rows*n_cols];
 
     int block_ind, glob_i, glob_j;
