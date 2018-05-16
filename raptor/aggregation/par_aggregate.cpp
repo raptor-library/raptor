@@ -62,7 +62,6 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
     }
 
     // Label aggregates as global column
-    MPI_Barrier(MPI_COMM_WORLD);
     for (int i = 0; i < S->local_num_rows; i++)
     {
         if (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] <= 1 
