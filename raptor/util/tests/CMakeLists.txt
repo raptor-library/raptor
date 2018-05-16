@@ -30,6 +30,10 @@ add_executable(test_ilu test_ilu.cpp)
 target_link_libraries(test_ilu raptor)
 add_test(ILUtest ./test_ilu)
 
+add_executable(test_ilu_bsr test_ilu_bsr.cpp)
+target_link_libraries(test_ilu_bsr raptor)
+add_test(IlUBSRtest ./test_ilu_bsr)
+
 if (WITH_MPI)
     add_executable(test_par_add test_par_add.cpp)
     target_link_libraries(test_par_add raptor ${MPI_LIBRARIES} googletest pthread )
