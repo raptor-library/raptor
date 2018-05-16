@@ -421,6 +421,9 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
     }
 
     // Form column-wise local matrices of A
+    printf("A->on_proc %d, %d, %d, offproc %d, %d, %d\n", A->on_proc->n_rows,
+            A->on_proc->n_cols, A->on_proc->nnz, A->off_proc->n_rows, A->off_proc->n_cols,
+            A->off_proc->nnz);
     CSCMatrix* A_on_csc = new CSCMatrix((CSRMatrix*) A->on_proc);
     CSCMatrix* A_off_csc = new CSCMatrix((CSRMatrix*) A->off_proc);
     

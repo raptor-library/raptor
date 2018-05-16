@@ -388,7 +388,8 @@ void CSRMatrix::copy(const COOMatrix* A)
     if (nnz)
     {
         idx2.resize(nnz);
-        vals.resize(nnz);
+        if (A->vals.size())
+            vals.resize(nnz);
     }
 
     // Calculate indptr
@@ -412,10 +413,13 @@ void CSRMatrix::copy(const COOMatrix* A)
     {
         int row = A->idx1[i];
         int col = A->idx2[i];
-        double val = A->vals[i];
         int index = idx1[row] + ctr[row]++;
         idx2[index] = col;
-        vals[index] = val;
+        if (A->vals.size())
+        {
+            double val = A->vals[i];
+            vals[index] = val;
+        }
     }
 }
 void CSRMatrix::copy(const CSRMatrix* A)
@@ -454,7 +458,8 @@ void CSRMatrix::copy(const CSCMatrix* A)
     // Resize vectors to appropriate dimensions
     idx1.resize(A->n_rows + 1);
     idx2.resize(A->nnz);
-    vals.resize(A->nnz);
+    if (A->vals.size())
+        vals.resize(A->nnz);
 
     // Create indptr, summing number times row appears in CSC
     for (int i = 0; i <= A->n_rows; i++) idx1[i] = 0;
@@ -478,7 +483,10 @@ void CSRMatrix::copy(const CSCMatrix* A)
             int row = A->idx2[j];
             int idx = idx1[row] + ctr[row]++;
             idx2[idx] = i;
-            vals[idx] = A->vals[j];
+            if (A->vals.size())
+            {
+                vals[idx] = A->vals[j];
+            }
         }
     }
 }
@@ -740,7 +748,8 @@ void CSCMatrix::copy(const COOMatrix* A)
     if (nnz)
     {
         idx2.resize(nnz);
-        vals.resize(nnz);
+        if (A->vals.size())
+            vals.resize(nnz);
     }
 
     // Calculate indptr
@@ -767,10 +776,13 @@ void CSCMatrix::copy(const COOMatrix* A)
     {
         int row = A->idx1[i];
         int col = A->idx2[i];
-        double val = A->vals[i];
         int index = idx1[col] + ctr[col]++;
         idx2[index] = row;
-        vals[index] = val;
+        if (A->vals.size())
+        {
+            double val = A->vals[i];
+            vals[index] = val;
+        }
     }        
 }
 void CSCMatrix::copy(const CSRMatrix* A)
@@ -784,7 +796,8 @@ void CSCMatrix::copy(const CSRMatrix* A)
     if (A->nnz)
     {
         idx2.resize(A->nnz);
-        vals.resize(A->nnz);
+        if (A->vals.size())
+            vals.resize(A->nnz);
     }
 
     // Create indptr, summing number times col appears in CSR
@@ -814,7 +827,10 @@ void CSCMatrix::copy(const CSRMatrix* A)
                 int col = A->idx2[j];
                 int idx = idx1[col] + ctr[col]++;
                 idx2[idx] = i;
-                vals[idx] = A->vals[j];
+                if (A->vals.size())
+                {
+                    vals[idx] = A->vals[j];
+                }
             }
         }
     }
