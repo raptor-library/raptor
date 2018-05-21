@@ -1011,13 +1011,13 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     if (S->comm)
     {
         P->comm = new ParComm(P->partition, P->off_proc_column_map,
-                P->on_proc_column_map);
+                P->on_proc_column_map, 9243, MPI_COMM_WORLD, comm_t);
     }
 
     if (S->tap_comm)
     {
         P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map,
-                P->on_proc_column_map);
+                P->on_proc_column_map, true, MPI_COMM_WORLD, comm_t);
     }
     
     delete A_recv_on;
@@ -1544,13 +1544,14 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     if (S->comm)
     {
-        P->comm = new ParComm(S->comm, on_proc_col_to_new, off_proc_col_to_new);
+        P->comm = new ParComm(S->comm, on_proc_col_to_new, off_proc_col_to_new,
+                comm_t);
     }
 
     if (S->tap_comm)
     {
         P->tap_comm = new TAPComm(S->tap_comm, on_proc_col_to_new,
-                off_proc_col_to_new);
+                off_proc_col_to_new, comm_t);
     }
 
     delete recv_on;
@@ -1562,7 +1563,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
 ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const aligned_vector<int>& states,
-        const aligned_vector<int>& off_proc_states)
+        const aligned_vector<int>& off_proc_states, data_t* comm_t)
 {
     int start, end, col;
     int global_num_cols;
@@ -1851,13 +1852,14 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
 
     if (S->comm)
     {
-        P->comm = new ParComm(S->comm, on_proc_col_to_new, off_proc_col_to_new);
+        P->comm = new ParComm(S->comm, on_proc_col_to_new, off_proc_col_to_new,
+                comm_t);
     }
 
     if (S->tap_comm)
     {
         S->tap_comm = new TAPComm(S->tap_comm, on_proc_col_to_new,
-                off_proc_col_to_new);
+                off_proc_col_to_new, comm_t);
     }
 
     return P;

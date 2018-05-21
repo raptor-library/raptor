@@ -10,7 +10,8 @@ using namespace raptor;
 
 ParCSRMatrix* direct_interpolation(ParCSRMatrix* A, 
         ParCSRMatrix* S, const aligned_vector<int>& states,
-        const aligned_vector<int>& off_proc_states);
+        const aligned_vector<int>& off_proc_states,
+        data_t* comm_t = NULL);
 
 ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const aligned_vector<int>& states,

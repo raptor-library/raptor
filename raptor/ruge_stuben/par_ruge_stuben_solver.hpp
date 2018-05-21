@@ -70,7 +70,7 @@ namespace raptor
             double* coarsen_time = NULL;
             double* interp_time = NULL;
             double* AP_time = NULL;
-            double* PTAP_time;
+            double* PTAP_time = NULL;
             if (setup_times) 
             {
                 setup_times[0][level_ctr] -= MPI_Wtime();
@@ -135,7 +135,7 @@ namespace raptor
             switch (interp_type)
             {
                 case Direct:
-                    P = direct_interpolation(A, S, states, off_proc_states);
+                    P = direct_interpolation(A, S, states, off_proc_states, interp_time);
                     break;
                 case ModClassical:
                     P = mod_classical_interpolation(A, S, states, off_proc_states, 
@@ -191,7 +191,7 @@ namespace raptor
                         levels[level_ctr]->A->partition,
                         levels[level_ctr]->A->off_proc_column_map,
                         levels[level_ctr]->A->on_proc_column_map,
-                        true, P->comm->mpi_comm, total_time);
+                        true, MPI_COMM_WORLD, total_time);
             }
 
             delete AP;
