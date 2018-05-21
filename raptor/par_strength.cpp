@@ -5,8 +5,8 @@
 
 using namespace raptor;
 
-ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, int num_variables,
-        int* variables)
+ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, int num_variables,
+        int* variables, data_t* comm_t)
 {
     int row_start_on, row_end_on;
     int row_start_off, row_end_off;
@@ -16,14 +16,23 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, int num_variable
     double threshold;
     double diag;
 
+    CommPkg* comm = A->comm;
+    if (tap_amg)
+    {
+        comm = A->tap_comm;
+    }
+
     ParCSRMatrix* S = new ParCSRMatrix(A->partition, A->global_num_rows, A->global_num_cols,
             A->local_num_rows, A->on_proc_num_cols, A->off_proc_num_cols);
     
     int* off_variables;
     if (num_variables > 1)
     {
-        A->comm->communicate(variables);
-        off_variables = A->comm->recv_data->int_buffer.data();
+        if (comm_t) *comm_t -= MPI_Wtime();
+        aligned_vector<int>& recvbuf = comm->communicate(variables);
+        if (comm_t) *comm_t += MPI_Wtime();
+
+        off_variables = recvbuf.data();
     }
 
     aligned_vector<bool> col_exists;
@@ -323,19 +332,22 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, int num_variable
     // TODO... but is it?
     if (A->comm)
     {
-        S->comm = new ParComm((ParComm*) A->comm, orig_to_S);
+        S->comm = new ParComm((ParComm*) A->comm, orig_to_S, comm_t);
     }
 
     if (A->tap_comm)
     {
-        //S->tap_comm = new TAPComm((TAPComm*) tap_comm, orig_to_S);
+        S->tap_comm = new TAPComm(S->partition, S->off_proc_column_map, S->on_proc_column_map, 
+                true, MPI_COMM_WORLD, comm_t);
+        //S->tap_comm = new TAPComm((TAPComm*) A->tap_comm, orig_to_S);
     }
 
     return S;
 
 }
 
-ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta)
+// TODO -- currently this assumes all diags are same sign...
+ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, data_t* comm_t)
 {
     int row_start_on, row_end_on;
     int row_start_off, row_end_off;
@@ -345,8 +357,19 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta)
     double threshold;
     double diag;
 
+    CommPkg* comm = A->comm;
+    if (tap_amg)
+    {
+        comm = A->tap_comm;
+    }
+
+    aligned_vector<int> neg_diags;
     aligned_vector<double> row_scales;
-    if (A->local_num_rows) row_scales.resize(A->local_num_rows, 0);
+    if (A->local_num_rows) 
+    {
+        row_scales.resize(A->local_num_rows, 0);
+        neg_diags.resize(A->local_num_rows);
+    }
 
     ParCSRMatrix* S = new ParCSRMatrix(A->partition, A->global_num_rows, A->global_num_cols,
             A->local_num_rows, A->on_proc_num_cols, A->off_proc_num_cols);
@@ -371,8 +394,6 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta)
         S->off_proc->idx2.reserve(A->off_proc->nnz);
     }
 
-    S->on_proc->idx1[0] = 0;
-    S->off_proc->idx1[0] = 0;
     for (int i = 0; i < A->local_num_rows; i++)
     {
         row_start_on = A->on_proc->idx1[i];
@@ -394,6 +415,7 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta)
             // Find value with max magnitude in row
             if (diag < 0.0)
             {
+                neg_diags[i] = 1;
                 row_scale = -RAND_MAX; 
                 for (int j = row_start_on; j < row_end_on; j++)
                 {
@@ -414,6 +436,7 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta)
             }
             else
             {
+                neg_diags[i] = 0;
                 row_scale = RAND_MAX;
                 for (int j = row_start_on; j < row_end_on; j++)
                 {
@@ -438,7 +461,10 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta)
         }
     }
 
-    aligned_vector<double>& off_proc_row_scales = A->comm->communicate(row_scales);
+    if (comm_t) *comm_t -= MPI_Wtime();
+    aligned_vector<double>& off_proc_row_scales = comm->communicate(row_scales);
+    aligned_vector<int>& off_proc_neg_diags = comm->communicate(neg_diags);
+    if (comm_t) *comm_t += MPI_Wtime();
     
     S->on_proc->idx1[0] = 0;
     S->off_proc->idx1[0] = 0;
@@ -450,8 +476,7 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta)
         row_end_off = A->off_proc->idx1[i+1];
         if (row_end_on - row_start_on || row_end_off - row_start_off)
         {
-            if (A->on_proc->idx2[row_start_on] == i) row_start_on++;
-
+            bool neg_diag = neg_diags[i];           
             threshold = row_scales[i];
 
             // Always add diagonal
@@ -460,52 +485,29 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta)
             // Add all off-diagonal entries to strength
             // if magnitude greater than equal to 
             // row_max * theta
-            if (diag < 0)
+            for (int j = row_start_on; j < row_end_on; j++)
             {
-                for (int j = row_start_on; j < row_end_on; j++)
+                val = A->on_proc->vals[j];
+                col = A->on_proc->idx2[j];
+                if ((neg_diag && val > threshold) || (!neg_diag && val < threshold) 
+                        || (neg_diags[col] && val > row_scales[col])
+                        || (!neg_diags[col] && val < row_scales[col]))
                 {
-                    val = A->on_proc->vals[j];
-                    col = A->on_proc->idx2[j];
-                    if (val > threshold || val > row_scales[col])
-                    {
-                        S->on_proc->idx2.push_back(col);
-                    }
-                }
-                for (int j = row_start_off; j < row_end_off; j++)
-                {
-                    val = A->off_proc->vals[j];
-                    col = A->off_proc->idx2[j];
-                    if (val > threshold || val > off_proc_row_scales[col])
-                    {
-                        col = A->off_proc->idx2[j];
-                        S->off_proc->idx2.push_back(col);
-                        col_exists[col] = true;
-                    }
+                    S->on_proc->idx2.push_back(col);
                 }
             }
-            else
+            for (int j = row_start_off; j < row_end_off; j++)
             {
-                for (int j = row_start_on; j < row_end_on; j++)
+                val = A->off_proc->vals[j];
+                col = A->off_proc->idx2[j];
+                if ((neg_diag && val > threshold) || (!neg_diag && val < threshold)
+                        || (off_proc_neg_diags[col] && val > off_proc_row_scales[col])
+                        || (!off_proc_neg_diags[col] && val < off_proc_row_scales[col]))
                 {
-                    val = A->on_proc->vals[j];
-                    col = A->on_proc->idx2[j];
-                    if (val < threshold || val < row_scales[col])
-                    {
-                        S->on_proc->idx2.push_back(col);
-                    }
+                    S->off_proc->idx2.push_back(col);
+                    col_exists[col] = true;
                 }
-                for (int j = row_start_off; j < row_end_off; j++)
-                {
-                    val = A->off_proc->vals[j];
-                    col = A->off_proc->idx2[j];
-                    if (val < threshold || val < off_proc_row_scales[col])
-                    {
-                        col = A->off_proc->idx2[j];
-                        S->off_proc->idx2.push_back(col);
-                        col_exists[col] = true;
-                    }
-                }
-            }
+            }                    
         }
         S->on_proc->idx1[i+1] = S->on_proc->idx2.size();
         S->off_proc->idx1[i+1] = S->off_proc->idx2.size();
@@ -543,12 +545,14 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta)
     // TODO... but is it?
     if (A->comm)
     {
-        S->comm = new ParComm((ParComm*) A->comm, orig_to_S);
+        S->comm = new ParComm((ParComm*) A->comm, orig_to_S, comm_t);
     }
 
     if (A->tap_comm)
     {
-        //S->tap_comm = new TAPComm((TAPComm*) tap_comm, orig_to_S);
+        S->tap_comm = new TAPComm(S->partition, S->off_proc_column_map, S->on_proc_column_map,
+                true, MPI_COMM_WORLD, comm_t);
+        //S->tap_comm = new TAPComm((TAPComm*) A->tap_comm, orig_to_S);
     }
 
     return S;
@@ -558,14 +562,15 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta)
 // Assumes ParCSRMatrix is previously sorted
 // TODO -- have ParCSRMatrix bool sorted (and sort if not previously)
 ParCSRMatrix* ParCSRMatrix::strength(strength_t strength_type,
-        double theta, int num_variables, int* variables)
+        double theta, bool tap_amg, int num_variables, int* variables,
+        data_t* comm_t)
 {
     switch (strength_type)
     {
         case Classical:
-            return classical_strength(this, theta, num_variables, variables);
+            return classical_strength(this, theta, tap_amg, num_variables, variables, comm_t);
         case Symmetric:
-            return symmetric_strength(this, theta);
+            return symmetric_strength(this, theta, tap_amg, comm_t);
     }
 }
 

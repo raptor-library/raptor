@@ -9,7 +9,7 @@
 
 using namespace raptor;
 
-ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, double omega = 4.0/3, 
-        int num_smooth_steps = 1);
+ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, bool tap_comm = false,
+        double omega = 4.0/3, int num_smooth_steps = 1, data_t* comm_t = NULL);
 #endif
 

@@ -64,7 +64,7 @@ TEST(TestParMIS, TestsInAggregation)
     }
     fclose(f);
 
-    mis2(S, states, off_proc_states, weights.data());
+    mis2(S, states, off_proc_states, false, weights.data());
 
     for (int i = 0; i < S->local_num_rows; i++)
     {

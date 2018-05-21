@@ -417,7 +417,7 @@ int main(int argc, char *argv[])
         clear_cache(cache_array);
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        tap_sor(Al, xl, bl, tmpl, n_times, 1.0);
+        sor(Al, xl, bl, tmpl, n_times, 1.0, true);
         raptor_solve = (MPI_Wtime() - t0) / n_times;
         MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank == 0) printf("TAP SOR Time: %e\n", t0);

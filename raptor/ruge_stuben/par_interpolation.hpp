@@ -15,12 +15,14 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
 ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const aligned_vector<int>& states,
         const aligned_vector<int>& off_proc_states,
-        bool tap_amg = false, int num_variables = 1, int* variables = NULL);
+        bool tap_amg = false, int num_variables = 1, int* variables = NULL,
+        data_t* comm_t = NULL);
 
 ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const aligned_vector<int>& states,
         const aligned_vector<int>& off_proc_states,
-        bool tap_amg = false, int num_variables = 1, int* variables = NULL);
+        bool tap_amg = false, int num_variables = 1, int* variables = NULL,
+        data_t* comm_t = NULL);
 
 #endif
 

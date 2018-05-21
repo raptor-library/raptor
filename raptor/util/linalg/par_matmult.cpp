@@ -4,9 +4,13 @@
 
 using namespace raptor;
 
-ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B)
+ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap, data_t* comm_t)
 {
-    spgemm_data.time -= MPI_Wtime();
+    if (tap)
+    {
+        return this->tap_mult(B, comm_t);
+    }
+
     // Check that communication package has been initialized
     if (comm == NULL)
     {
@@ -27,21 +31,19 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B)
     }
 
     // Communicate data and multiply
-    spgemm_data.comm_time -= MPI_Wtime();
+    if (comm_t) *comm_t -= MPI_Wtime();
     CSRMatrix* recv_mat = comm->communicate(B);
-    spgemm_data.comm_time += MPI_Wtime();
+    if (comm_t) *comm_t += MPI_Wtime();
 
     mult_helper(B, C, recv_mat);
     delete recv_mat;
 
-    spgemm_data.time += MPI_Wtime();
     // Return matrix containing product
     return C;
 }
 
-ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B)
+ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B, data_t* comm_t)
 {
-    spgemm_data.tap_time -= MPI_Wtime();
     // Check that communication package has been initialized
     if (tap_comm == NULL)
     {
@@ -62,39 +64,39 @@ ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B)
     }
 
     // Communicate data and multiply
-    spgemm_data.tap_comm_time -= MPI_Wtime();
+    if (comm_t) *comm_t -= MPI_Wtime();
     CSRMatrix* recv_mat = tap_comm->communicate(B);
-    spgemm_data.tap_comm_time += MPI_Wtime();
+    if (comm_t) *comm_t += MPI_Wtime();
 
     mult_helper(B, C, recv_mat);
     delete recv_mat;
 
-    spgemm_data.tap_time += MPI_Wtime();
     // Return matrix containing product
     return C;
 }
 
-ParCSRMatrix* ParCSRMatrix::mult_T(ParCSRMatrix* A)
+ParCSRMatrix* ParCSRMatrix::mult_T(ParCSRMatrix* A, bool tap, data_t* comm_t)
 {
     ParCSCMatrix* Acsc = new ParCSCMatrix(A);
-    ParCSRMatrix* C = this->mult_T(Acsc);
+    ParCSRMatrix* C = this->mult_T(Acsc, tap, comm_t);
     delete Acsc;
     return C;
 }
 
-ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSRMatrix* A)
+ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSRMatrix* A, data_t* comm_t)
 {
     ParCSCMatrix* Acsc = new ParCSCMatrix(A);
-    ParCSRMatrix* C = this->tap_mult_T(Acsc);
+    ParCSRMatrix* C = this->tap_mult_T(Acsc, comm_t);
     delete Acsc;
     return C;
 }
 
-ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A)
+ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap, data_t* comm_t)
 {
-    spgemm_T_data.time -= MPI_Wtime();
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (tap)
+    {
+        return this->tap_mult_T(A, comm_t);
+    }
 
     int start, end;
     int row, col, idx;
@@ -119,10 +121,10 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A)
 
     CSRMatrix* Ctmp = mult_T_partial(A);
 
-    spgemm_T_data.comm_time -= MPI_Wtime();
+    if (comm_t) *comm_t -= MPI_Wtime();
     CSRMatrix* recv_mat = A->comm->communicate_T(Ctmp->idx1, Ctmp->idx2, 
             Ctmp->vals, A->on_proc_num_cols);
-    spgemm_T_data.comm_time += MPI_Wtime();
+    if (comm_t) *comm_t += MPI_Wtime();
 
     // Split recv_mat into on and off proc portions
     CSRMatrix* recv_on = new CSRMatrix(A->on_proc_num_cols, -1);
@@ -160,17 +162,12 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A)
     delete recv_on;
     delete recv_off;
 
-    spgemm_T_data.time += MPI_Wtime();
     // Return matrix containing product
     return C;
 }
 
-ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A)
+ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A, data_t* comm_t)
 {
-    spgemm_T_data.tap_time -= MPI_Wtime();
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
     int start, end;
     int row, col, idx;
 
@@ -195,10 +192,10 @@ ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A)
 
     CSRMatrix* Ctmp = mult_T_partial(A);
 
-    spgemm_T_data.tap_comm_time -= MPI_Wtime();
+    if (comm_t) *comm_t -= MPI_Wtime();
     CSRMatrix* recv_mat = A->tap_comm->communicate_T(Ctmp->idx1, Ctmp->idx2, 
             Ctmp->vals, A->on_proc_num_cols);
-    spgemm_T_data.tap_comm_time += MPI_Wtime();
+    if (comm_t) *comm_t += MPI_Wtime();
 
 
     // Split recv_mat into on and off proc portions
@@ -237,12 +234,11 @@ ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A)
     delete recv_on;
     delete recv_off;
 
-    spgemm_T_data.tap_time += MPI_Wtime();
     // Return matrix containing product
     return C;
 }
 
-ParMatrix* ParMatrix::mult(ParCSRMatrix* B)
+ParMatrix* ParMatrix::mult(ParCSRMatrix* B, bool tap, data_t* comm)
 {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);

@@ -9,152 +9,56 @@
 #define S_NEW -3
 #define NS_NEW -4
 
-void comm_states(const ParCSRMatrix* A, const aligned_vector<int>& states,
-        aligned_vector<int>& recv_indices, aligned_vector<int>& off_proc_states)
+void comm_states(const ParCSRMatrix* A, CommPkg* comm, 
+        const aligned_vector<int>& states, aligned_vector<int>& recv_indices, 
+        aligned_vector<int>& off_proc_states, bool first_pass = false)
 {
-    int ctr, prev_ctr;
-    int n_sends, n_recvs;
-    int start, end;
-    int proc, idx, size;
-    int tag = 2943;
-
-    ctr = 0;
-    prev_ctr = 0;
-    n_sends = 0;
-    for (int i = 0; i < A->comm->send_data->num_msgs; i++)
+    if (first_pass)
     {
-        proc = A->comm->send_data->procs[i];
-        start = A->comm->send_data->indptr[i];
-        end = A->comm->send_data->indptr[i+1];
-        for (int j = start; j < end; j++)
-        {
-            idx = A->comm->send_data->indices[j];
-            if (states[idx] <= U)
-            {
-                A->comm->send_data->int_buffer[ctr++] = states[idx];
-            }
-        }
-        size = ctr - prev_ctr;
-        if (size)
-        {
-            MPI_Isend(&(A->comm->send_data->int_buffer[prev_ctr]), size, MPI_INT, proc,
-                    tag, MPI_COMM_WORLD, &(A->comm->send_data->requests[n_sends++]));
-            prev_ctr = ctr;
-        }
+        aligned_vector<int>& recvbuf = comm->communicate(states);
+        std::copy(recvbuf.begin(), recvbuf.end(), off_proc_states.begin());
     }
-
-    ctr = 0;
-    prev_ctr = 0;
-    n_recvs = 0;
-    for (int i = 0; i < A->comm->recv_data->num_msgs; i++)
+    else
     {
-        proc = A->comm->recv_data->procs[i];
-        start = A->comm->recv_data->indptr[i];
-        end = A->comm->recv_data->indptr[i+1];
-        for (int j = start; j < end; j++)
+        ParComm* pc = (ParComm*)(comm);
+        std::function<bool(int)> compare_func = [](const int a)
         {
-            if (off_proc_states[j] <= U)
-            {
-                recv_indices[ctr++] = j;
-            }
-        }
-        size = ctr - prev_ctr;
-        if (size)
+            return a <= U;
+        };
+        aligned_vector<int>& recvbuf = pc->conditional_comm(states, states, 
+                off_proc_states, compare_func);
+        int off_proc_num_cols = off_proc_states.size();
+        for (int i = 0; i < off_proc_num_cols; i++)
         {
-            MPI_Irecv(&(A->comm->recv_data->int_buffer[prev_ctr]), size, MPI_INT,
-                    proc, tag, MPI_COMM_WORLD, &(A->comm->recv_data->requests[n_recvs++]));
-            prev_ctr = ctr;
+            if (off_proc_states[i] <= U)
+                off_proc_states[i] = recvbuf[i];
         }
-    }
-    if (n_sends)
-    {
-        MPI_Waitall(n_sends, A->comm->send_data->requests.data(), MPI_STATUSES_IGNORE);
-    }
-    if (n_recvs)
-    {
-        MPI_Waitall(n_recvs, A->comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
-    }
-
-    for (int i = 0; i < ctr; i++)
-    {
-        idx = recv_indices[i];
-        off_proc_states[idx] = A->comm->recv_data->int_buffer[i];
     }
 }
 
-void comm_off_proc_states(const ParCSRMatrix* A, const aligned_vector<int>& off_proc_states,
-        aligned_vector<int>& recv_indices, aligned_vector<int>& states)
+void comm_off_proc_states(const ParCSRMatrix* A, CommPkg* comm,
+        const aligned_vector<int>& off_proc_states, aligned_vector<int>& recv_indices, 
+        aligned_vector<int>& states, bool first_pass = false)
 {
-    int ctr, prev_ctr;
-    int n_sends, n_recvs;
-    int start, end;
-    int proc, idx, size;
-    int tag = 720583;
+    std::function<int(int,int)> result_func = [](const int a, const int b)
+    {
+        if (b == S_TMP) return S_TMP;
+        else return a;
+    };
 
-    ctr = 0;
-    prev_ctr = 0;
-    n_recvs = 0;
-    for (int i = 0; i < A->comm->recv_data->num_msgs; i++)
+    if (first_pass)
     {
-        proc = A->comm->recv_data->procs[i];
-        start = A->comm->recv_data->indptr[i];
-        end = A->comm->recv_data->indptr[i+1];
-        for (int j = start; j < end; j++)
-        {
-            if (off_proc_states[j] <= U)
-            {
-                A->comm->recv_data->int_buffer[ctr++] = off_proc_states[j];
-            }
-        }
-        size = ctr - prev_ctr;
-        if (size)
-        {
-            MPI_Isend(&(A->comm->recv_data->int_buffer[prev_ctr]), size, MPI_INT, proc,
-                    tag, MPI_COMM_WORLD, &(A->comm->recv_data->requests[n_recvs++]));
-            prev_ctr = ctr;
-        }
+        comm->communicate_T(off_proc_states, states, result_func);
     }
-
-    ctr = 0;
-    prev_ctr = 0;
-    n_sends = 0;
-    for (int i = 0; i < A->comm->send_data->num_msgs; i++)
+    else
     {
-        proc = A->comm->send_data->procs[i];
-        start = A->comm->send_data->indptr[i];
-        end = A->comm->send_data->indptr[i+1];
-        for (int j = start; j < end; j++)
+        ParComm* pc = (ParComm*)(comm);
+        std::function<bool(int)> compare_func = [](const int a)
         {
-            idx = A->comm->send_data->indices[j];
-            if (states[idx] <= U)
-            {
-                recv_indices[ctr++] = idx;
-            }
-        }
-        size = ctr - prev_ctr;
-        if (size)
-        {
-            MPI_Irecv(&(A->comm->send_data->int_buffer[prev_ctr]), size, MPI_INT,
-                    proc, tag, MPI_COMM_WORLD, &(A->comm->send_data->requests[n_sends++]));
-            prev_ctr = ctr;
-        }
-    }
-    if (n_sends)
-    {
-        MPI_Waitall(n_sends, A->comm->send_data->requests.data(), MPI_STATUSES_IGNORE);
-    }
-    if (n_recvs)
-    {
-        MPI_Waitall(n_recvs, A->comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
-    }
-
-    for (int i = 0; i < ctr; i++)
-    {
-        if (A->comm->send_data->int_buffer[i] == S_TMP)
-        {
-            idx = recv_indices[i];
-            states[idx] = S_TMP;
-        }
+            return a <= U;
+        };
+        pc->conditional_comm_T(off_proc_states, states, off_proc_states, compare_func,
+                states, result_func);
     }
 }
 
@@ -243,60 +147,69 @@ void comm_finished(const ParCSRMatrix* A,
 }
 
 void comm_coarse_dist1(const ParCSRMatrix* A, 
+        CommPkg* comm,
         aligned_vector<int>& active_sends,
         aligned_vector<int>& active_recvs,
-        aligned_vector<int>& C)
+        aligned_vector<int>& C,
+        bool first_pass = false)
 {
     int n_sends, n_recvs;
     int start, end;
     int proc, idx, size;
     int tag = 935921;
 
-    n_sends = 0;
-    for (int i = 0; i < A->comm->send_data->num_msgs; i++)
+    if (first_pass)
     {
-        proc = A->comm->send_data->procs[i];
-        start = A->comm->send_data->indptr[i];
-        end = A->comm->send_data->indptr[i+1];
-        for (int j = start; j < end; j++)
-        {
-            idx = A->comm->send_data->indices[j];
-            A->comm->send_data->int_buffer[j] = C[idx];
-        }
-        if (active_sends[i])
-        {
-            MPI_Isend(&(A->comm->send_data->int_buffer[start]), end - start, MPI_INT, proc,
-                    tag, MPI_COMM_WORLD, &(A->comm->send_data->requests[n_sends++]));
-        }
+        comm->communicate(C);
     }
-
-    n_recvs = 0;
-    for (int i = 0; i < A->comm->recv_data->num_msgs; i++)
+    else
     {
-        proc = A->comm->recv_data->procs[i];
-        start = A->comm->recv_data->indptr[i];
-        end = A->comm->recv_data->indptr[i+1];
-        if (active_recvs[i])
+        n_sends = 0;
+        for (int i = 0; i < A->comm->send_data->num_msgs; i++)
         {
-            MPI_Irecv(&(A->comm->recv_data->int_buffer[start]), end - start, MPI_INT,
-                    proc, tag, MPI_COMM_WORLD, &(A->comm->recv_data->requests[n_recvs++]));
+            proc = A->comm->send_data->procs[i];
+            start = A->comm->send_data->indptr[i];
+            end = A->comm->send_data->indptr[i+1];
+            for (int j = start; j < end; j++)
+            {
+                idx = A->comm->send_data->indices[j];
+                A->comm->send_data->int_buffer[j] = C[idx];
+            }
+            if (active_sends[i])
+            {
+                MPI_Isend(&(A->comm->send_data->int_buffer[start]), end - start, MPI_INT, proc,
+                        tag, MPI_COMM_WORLD, &(A->comm->send_data->requests[n_sends++]));
+            }
         }
-    }
 
-    if (n_sends)
-    {
-        MPI_Waitall(n_sends, A->comm->send_data->requests.data(), MPI_STATUSES_IGNORE);
-    }
+        n_recvs = 0;
+        for (int i = 0; i < A->comm->recv_data->num_msgs; i++)
+        {
+            proc = A->comm->recv_data->procs[i];
+            start = A->comm->recv_data->indptr[i];
+            end = A->comm->recv_data->indptr[i+1];
+            if (active_recvs[i])
+            {
+                MPI_Irecv(&(A->comm->recv_data->int_buffer[start]), end - start, MPI_INT,
+                        proc, tag, MPI_COMM_WORLD, &(A->comm->recv_data->requests[n_recvs++]));
+            }
+        }
 
-    if (n_recvs)
-    {
-        MPI_Waitall(n_recvs, A->comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
+        if (n_sends)
+        {
+            MPI_Waitall(n_sends, A->comm->send_data->requests.data(), MPI_STATUSES_IGNORE);
+        }
+
+        if (n_recvs)
+        {
+            MPI_Waitall(n_recvs, A->comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
+        }
     }
 }
 
 int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         aligned_vector<int>& off_proc_states, 
-        double* rand_vals)
+        bool tap_comm, double* rand_vals, data_t* comm_t)
 {
     // Get MPI Information
     int rank, num_procs;
@@ -311,6 +224,12 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
     int ctr, v, w, u;
     int head, length;
     bool found;
+
+    CommPkg* comm = A->comm;
+    if (tap_comm) 
+    {
+        comm = A->tap_comm;
+    }
 
     aligned_vector<int> recv_indices;
     if (A->comm->recv_data->size_msgs || A->comm->send_data->size_msgs)
@@ -368,10 +287,14 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         std::fill(off_proc_states.begin(), off_proc_states.end(), U);
         off_proc_r.resize(A->off_proc_num_cols);
         off_assigned.resize(A->off_proc_num_cols, 0);
-        A->comm->communicate(r);
+
+        if (comm_t) *comm_t -= MPI_Wtime();
+        aligned_vector<double>& recvbuf = comm->communicate(r);
+        if (comm_t) *comm_t += MPI_Wtime();
+
         for (int i = 0; i < A->off_proc_num_cols; i++)
         {
-            off_proc_r[i] = A->comm->recv_data->buffer[i];
+            off_proc_r[i] = recvbuf[i];
         }
     }
     if (A->comm->send_data->num_msgs)
@@ -421,9 +344,6 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
     }
 
     // Form column-wise local matrices of A
-    printf("A->on_proc %d, %d, %d, offproc %d, %d, %d\n", A->on_proc->n_rows,
-            A->on_proc->n_cols, A->on_proc->nnz, A->off_proc->n_rows, A->off_proc->n_cols,
-            A->off_proc->nnz);
     CSCMatrix* A_on_csc = new CSCMatrix((CSRMatrix*) A->on_proc);
     CSCMatrix* A_off_csc = new CSCMatrix((CSRMatrix*) A->off_proc);
     
@@ -434,6 +354,7 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
     int total_remaining;
     int set_size, total_set_size;
     int row_val;
+    bool first_pass = true;
     while (remaining || off_remaining)
     {
         for (int i = 0; i < remaining; i++)
@@ -469,8 +390,9 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         }
 
         // Communicate new (temporary) states
-        comm_states(A, states, recv_indices, off_proc_states);
-        
+        if (comm_t) *comm_t -= MPI_Wtime();
+        comm_states(A, comm, states, recv_indices, off_proc_states, first_pass);
+        if (comm_t) *comm_t += MPI_Wtime();
 
         // Find max temp state random in each row
         for (int i = 0; i < A->local_num_rows; i++)
@@ -561,8 +483,10 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         // Finding max (if any proc has state[v] == S_TMP, state[v] should
         // be S_TMP. Else (all procs have state[v] == S_NEW), state[v] is S_NEW 
         // aka new coarse point)
-        comm_off_proc_states(A, off_proc_states, recv_indices, states);
-        comm_states(A, states, recv_indices, off_proc_states);
+        if (comm_t) *comm_t -= MPI_Wtime();
+        comm_off_proc_states(A, comm, off_proc_states, recv_indices, states, first_pass);
+        comm_states(A, comm, states, recv_indices, off_proc_states, first_pass);
+        if (comm_t) *comm_t += MPI_Wtime();
 
         // Update states connecting to (dist1 or dist2) any
         // new coarse points (with state == S_NEW)
@@ -611,7 +535,11 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
 
         // Communicate updated states (if states[v] == NS_NEW, there exists 
         // and idx in row v such that states[idx] is new coarse)
-        comm_coarse_dist1(A, active_sends, active_recvs, C);
+        if (comm_t) *comm_t -= MPI_Wtime();
+        comm_coarse_dist1(A, comm, active_sends, active_recvs, C, first_pass);
+        if (comm_t) *comm_t += MPI_Wtime();
+
+        aligned_vector<int>& recv_C = comm->get_int_recv_buffer();
 
         for (int i = 0; i < remaining; i++)
         {
@@ -650,7 +578,7 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
                         found = true;
                         break;
                     }
-                    if (A->comm->recv_data->int_buffer[w] == S)
+                    if (recv_C[w] == S)
                     {
                         found = true;
                         break;
@@ -671,7 +599,9 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         }
 
         // Communicate final updated states of iteration
-        comm_states(A, states, recv_indices, off_proc_states);
+        if (comm_t) *comm_t -= MPI_Wtime();
+        comm_states(A, comm, states, recv_indices, off_proc_states, first_pass);
+        if (comm_t) *comm_t += MPI_Wtime();
 
         // Update states
         ctr = 0;
@@ -716,7 +646,12 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         }
         off_remaining = ctr;
 
+        first_pass = false;
+        comm = A->comm;
+
+        if (comm_t) *comm_t -= MPI_Wtime();
         comm_finished(A, active_sends, active_recvs, remaining + off_remaining);
+        if (comm_t) *comm_t += MPI_Wtime();
 
         iterate++;
     }

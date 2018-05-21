@@ -22,11 +22,13 @@ int main(int argc, char** argv)
     return temp;
 } // end of main() //
 
-TEST(TestParAggregate, TestsInAggregation)
+TEST(TestTAPAggregate, TestsInAggregation)
 { 
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+    setenv("PPN", "4", 1);
 
     FILE* f;
     aligned_vector<int> states;
@@ -42,6 +44,7 @@ TEST(TestParAggregate, TestsInAggregation)
 
     A = readParMatrix(A0_fn);
     S = readParMatrix(S0_fn);
+    S->tap_comm = new TAPComm(S->partition, S->off_proc_column_map, S->on_proc_column_map);
 
     aligned_vector<double> weights(S->local_num_rows);
     f = fopen(weights_fn, "r");
@@ -71,7 +74,7 @@ TEST(TestParAggregate, TestsInAggregation)
 
     aligned_vector<int> aggregates;
     int n_aggs = aggregate(A, S, states, off_proc_states, aggregates, 
-            false, weights.data());
+            true, weights.data());
 
     // Aggregates returns global indices of original global rows
     // Gather list of all aggregates, in order, holding original global cols
@@ -106,6 +109,8 @@ TEST(TestParAggregate, TestsInAggregation)
         ASSERT_EQ(total_agg_list[py_aggregates[i]], global_col);
     }
     
+    setenv("PPN", "16", 1);
+
     delete A;
     delete S;
 

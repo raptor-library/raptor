@@ -4,8 +4,8 @@
 #include "aggregation/par_prolongation.hpp"
 
 // Assuming weighting = local (not getting approx spectral radius)
-ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, double omega, 
-        int num_smooth_steps)
+ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, bool tap_comm,
+        double omega, int num_smooth_steps, data_t* comm_t)
 {
     ParCSRMatrix* AP_tmp;
     ParCSRMatrix* P_tmp;
@@ -56,12 +56,45 @@ ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, double omega
     // P = P - (scaled_A*P)
     for (int i = 0; i < num_smooth_steps; i++)
     {
-        AP_tmp = scaled_A->mult(P);
+        if (comm_t) *comm_t -= MPI_Wtime();
+        if (tap_comm)
+        {
+            if (P->tap_comm == NULL)
+            {
+                P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map,
+                        P->on_proc_column_map, true, MPI_COMM_WORLD, comm_t);
+            }
+            AP_tmp = scaled_A->tap_mult(P);
+        }
+        else
+        {
+            if (P->comm == NULL)
+            {
+                P->comm = new ParComm(P->partition, P->off_proc_column_map,
+                        P->on_proc_column_map, 9283, MPI_COMM_WORLD, comm_t);
+            }
+
+            AP_tmp = scaled_A->mult(P);
+        }
+        if (comm_t) *comm_t += MPI_Wtime();
+
         P_tmp = P->subtract(AP_tmp);
         delete AP_tmp;
         delete P;
         P = P_tmp;
         P_tmp = NULL;
+    }
+
+    if (A->comm)
+    {
+        P->comm = new ParComm(P->partition, P->off_proc_column_map, 
+                P->on_proc_column_map, 9283, MPI_COMM_WORLD, comm_t);
+    }
+
+    if (A->tap_comm)
+    {
+        P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map, 
+                P->on_proc_column_map, true, MPI_COMM_WORLD, comm_t);
     }
 
     delete scaled_A;

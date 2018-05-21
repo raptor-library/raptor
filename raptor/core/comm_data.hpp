@@ -31,9 +31,6 @@ public:
         num_msgs = 0;
         size_msgs = 0;
         indptr.push_back(0);
-
-        vector_data = (OpData) {0, 0};
-        matrix_data = (OpData) {0, 0};
     }
 
     CommData(CommData* data)
@@ -80,9 +77,6 @@ public:
             buffer.resize(size_msgs);
             int_buffer.resize(size_msgs);
         }
-
-        vector_data = (OpData) {0, 0};
-        matrix_data = (OpData) {0, 0};
     }
 
     /**************************************************************
@@ -131,33 +125,6 @@ public:
         }
     }
 
-    void reset_data()
-    {
-        vector_data.num_msgs = 0;
-        vector_data.size_msgs = 0;
-        matrix_data.num_msgs = 0;
-        matrix_data.size_msgs = 0;
-    }
-
-    void print_data(bool vec)
-    {
-        int n, s;
-        if (vec)
-        {
-            MPI_Reduce(&(vector_data.num_msgs), &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-            MPI_Reduce(&(vector_data.size_msgs), &s, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        }
-        else
-        {
-            MPI_Reduce(&(matrix_data.num_msgs), &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-            MPI_Reduce(&(matrix_data.size_msgs), &s, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        }
-        int rank;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        if (rank == 0)
-            printf("Num Msgs: %d, Size Msgs: %d\n", n, s);
-    }
-
     template<typename T>
     aligned_vector<T>& get_buffer();
 
@@ -170,15 +137,6 @@ public:
     aligned_vector<MPI_Request> requests;
     aligned_vector<double> buffer;
     aligned_vector<int> int_buffer;
-
-    struct OpData
-    {
-        int num_msgs;
-        int size_msgs;
-    };
-
-    OpData vector_data;
-    OpData matrix_data;
 
 };
 }

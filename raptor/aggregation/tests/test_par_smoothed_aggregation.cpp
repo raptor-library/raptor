@@ -86,7 +86,7 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     // Strength of connection
     S = A->strength(Symmetric, 0.25);
     S_py = readParMatrix(S0_fn);
-    compare(S, S_py);
+    compare_pattern(S, S_py);
     delete S_py;
 
     // Test MIS 2
@@ -100,7 +100,7 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
         fscanf(f, "%d\n", &py_states[i]);
     }
     fclose(f);
-    mis2(S, states, off_proc_states, weights.data());
+    mis2(S, states, off_proc_states, false, weights.data());
     for (int i = 0; i < S->local_num_rows; i++)
     {
         ASSERT_EQ(states[i], py_states[i]);
@@ -118,7 +118,7 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     }
     fclose(f);
     int n_aggs = aggregate(A, S, states, off_proc_states, 
-            aggs, weights.data());
+            aggs, false, weights.data());
 
     // Aggregates returns global indices of original global rows
     // Gather list of all aggregates, in order, holding original global cols
@@ -168,7 +168,7 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     if (A->local_num_rows)
         B.resize(A->local_num_rows, 1.0);
     int num_candidates = 1;
-    T = fit_candidates(A, n_aggs, aggs, B, R, num_candidates, 1e-10);
+    T = fit_candidates(A, n_aggs, aggs, B, R, num_candidates, false, 1e-10);
     compare(T, T_py); 
     delete T_py;
 
@@ -215,7 +215,7 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     // Strength of connection
     S_py = readParMatrix(S1_fn, n_aggs, n_aggs, first_col, first_col);
     S = A->strength(Symmetric, 0.25);
-    compare(S, S_py);
+    compare_pattern(S, S_py);
     delete S_py;
 
     // MIS2
@@ -229,7 +229,7 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
         fscanf(f, "%d\n", &py_states[i]);
     }
     fclose(f);
-    mis2(S, states, off_proc_states, weights.data());
+    mis2(S, states, off_proc_states, false, weights.data());
     for (int i = 0; i < n_aggs; i++)
     {
         ASSERT_EQ(states[i], py_states[i]);
@@ -248,7 +248,7 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     fclose(f);
     aggs.clear();
     n_aggs = aggregate(A, S, states, off_proc_states, 
-            aggs, weights.data());
+            aggs, false, weights.data());
 
     // Aggregates returns global indices of original global rows
     // Gather list of all aggregates, in order, holding original global cols
@@ -290,7 +290,7 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
             old_first_col, first_col);
     if (A->local_num_rows)
         B.resize(A->local_num_rows, 1.0);
-    T = fit_candidates(A, n_aggs, aggs, B, R, num_candidates, 1e-10);
+    T = fit_candidates(A, n_aggs, aggs, B, R, num_candidates, false, 1e-10);
     compare(T, T_py); 
     delete T_py;
 
@@ -305,7 +305,6 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     delete T;
     delete S;
     delete A;
-
 
 } // end of TEST(TestParSplitting, TestsInRuge_Stuben) //
 

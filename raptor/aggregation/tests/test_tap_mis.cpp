@@ -7,9 +7,7 @@
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "gallery/par_matrix_IO.hpp"
-#include "aggregation/par_aggregate.hpp"
-#include "aggregation/par_candidates.hpp"
-#include "tests/par_compare.hpp"
+#include "aggregation/par_mis.hpp"
 #include <iostream>
 #include <fstream>
 
@@ -24,30 +22,30 @@ int main(int argc, char** argv)
     return temp;
 } // end of main() //
 
-TEST(TestParCandidates, TestsInAggregation)
+TEST(TestTAPMIS, TestsInAggregation)
 { 
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
+    setenv("PPN", "4", 1);
+
     FILE* f;
     aligned_vector<int> states;
     aligned_vector<int> off_proc_states;
 
-    ParCSRMatrix* A;
     ParCSRMatrix* S;
 
-    const char* A0_fn = "../../../../test_data/sas_A0.pm";
     const char* S0_fn = "../../../../test_data/sas_S0.pm";
     const char* mis0_fn = "../../../../test_data/sas_mis0.txt";
-    const char* T0_fn = "../../../../test_data/sas_T0.pm";
     const char* weights_fn = "../../../../test_data/weights.txt";
 
-    A = readParMatrix(A0_fn);
     S = readParMatrix(S0_fn);
+    S->tap_comm = new TAPComm(S->partition, S->off_proc_column_map,
+            S->on_proc_column_map);
 
-    aligned_vector<double> weights(S->local_num_rows);
     f = fopen(weights_fn, "r");
+    aligned_vector<double> weights(S->local_num_rows);
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
         fscanf(f, "%lf\n", &weights[0]);
@@ -58,40 +56,30 @@ TEST(TestParCandidates, TestsInAggregation)
     }
     fclose(f);
 
-    mis2(S, states, off_proc_states, false, weights.data());
-    aligned_vector<int> aggregates;
-    int n_aggs = aggregate(A, S, states, off_proc_states, aggregates, 
-            false, weights.data());
-
-    std::vector<int> proc_aggs(num_procs);
-    int first_col = 0;
-    MPI_Allgather(&n_aggs, 1, MPI_INT, proc_aggs.data(), 1, MPI_INT, MPI_COMM_WORLD);
-    for (int i = 0; i < rank; i++)
+    aligned_vector<int> python_states(S->local_num_rows);
+    f = fopen(mis0_fn, "r");
+    for (int i = 0; i < S->partition->first_local_row; i++)
     {
-        first_col += proc_aggs[i];
+        fscanf(f, "%d\n", &python_states[0]);
+    }
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+        fscanf(f, "%d\n", &python_states[i]);
+    }
+    fclose(f);
+
+    mis2(S, states, off_proc_states, true, weights.data());
+
+    for (int i = 0; i < S->local_num_rows; i++)
+    {
+        ASSERT_EQ(states[i], python_states[i]);
     }
 
-    ParCSRMatrix* T_py = readParMatrix(T0_fn, A->local_num_rows, n_aggs, 
-            A->partition->first_local_row, first_col);
-
-    aligned_vector<double> B;
-    aligned_vector<double> R;
-    if (A->local_num_rows)
-        B.resize(A->local_num_rows, 1.0);
-    int num_candidates = 1;
-    ParCSRMatrix* T = fit_candidates(A, n_aggs, aggregates, B, R, num_candidates, false, 1e-10);
-
-    compare(T, T_py); 
-
-    delete T;
-    delete T_py;
-    delete A;
+    setenv("PPN", "16", 1);    
+    
     delete S;
 
 } // end of TEST(TestParSplitting, TestsInRuge_Stuben) //
-
-
-
 
 
 

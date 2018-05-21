@@ -4,7 +4,7 @@
 
 int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
         aligned_vector<int>& off_proc_states, aligned_vector<int>& aggregates,
-        double* rand_vals)
+        bool tap_comm, double* rand_vals, data_t* comm_t)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -12,6 +12,11 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
 
     if (S->local_num_rows == 0)
         return 0;
+
+    S->sort();
+    S->on_proc->move_diag();
+    A->sort();
+    A->on_proc->move_diag();
 
     // Initialize Variables
     aligned_vector<int> off_proc_S_to_A;
@@ -26,6 +31,11 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
     aligned_vector<double> r;
     aligned_vector<double> off_proc_r;
 
+    CommPkg* comm = S->comm;
+    if (tap_comm)
+    {
+        comm = S->tap_comm;
+    }
 
     if (S->local_num_rows)
     {
@@ -44,7 +54,11 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
         {
             r[i] = rand_vals[i];
         }
-        aligned_vector<double>& rands = S->comm->communicate(r);
+
+        if (comm_t) *comm_t -= MPI_Wtime();
+        aligned_vector<double>& rands = comm->communicate(r);
+        if (comm_t) *comm_t += MPI_Wtime();
+
         std::copy(rands.begin(), rands.end(), off_proc_r.begin());
     }
 
@@ -75,7 +89,11 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
             n_aggs++;
         }
     }
-    aligned_vector<int>& init_aggs = S->comm->communicate(aggregates);
+
+    if (comm_t) *comm_t -= MPI_Wtime();
+    aligned_vector<int>& init_aggs = comm->communicate(aggregates);
+    if (comm_t) *comm_t += MPI_Wtime();
+
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
         off_proc_aggregates[i] = init_aggs[i];
@@ -115,55 +133,54 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
     }
 
     // Communicate aggregates (global rows)
-    aligned_vector<int>& recvbuf = S->comm->communicate(aggregates);
-    std::copy(recvbuf.begin(), recvbuf.end(), off_proc_aggregates.begin());
+    if (comm_t) *comm_t -= MPI_Wtime();
+    aligned_vector<int>& recvbuf = comm->communicate(aggregates);
+    if (comm_t) *comm_t += MPI_Wtime();
 
+    std::copy(recvbuf.begin(), recvbuf.end(), off_proc_aggregates.begin());
 
     // Pass 2 : add remaining aggregate to that of strongest neighbor
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        if (aggregates[i] >= 0 || 
-                aggregates[i] <= -A->partition->global_num_rows) 
+        if (aggregates[i] == -1) 
         {
-            continue;
-        }
-
-        start = S->on_proc->idx1[i];
-        end = S->on_proc->idx1[i+1];
-        ctr = A->on_proc->idx1[i];
-        max_val = 0.0;
-        max_agg = -A->partition->global_num_rows; 
-        for (j = start; j < end; j++)
-        {
-            col = S->on_proc->idx2[j];
-            while (A->on_proc->idx2[ctr] != col)
-                ctr++;
-            val = fabs(A->on_proc->vals[ctr]) + r[col];
-            if (val > max_val && aggregates[col] >= 0)
+            start = S->on_proc->idx1[i];
+            end = S->on_proc->idx1[i+1];
+            ctr = A->on_proc->idx1[i];
+            max_val = 0.0;
+            max_agg = -A->partition->global_num_rows; 
+            for (j = start; j < end; j++)
             {
-                max_val = val;
-                max_agg = aggregates[col];
+                col = S->on_proc->idx2[j];
+                while (A->on_proc->idx2[ctr] != col)
+                    ctr++;
+                val = fabs(A->on_proc->vals[ctr]) + r[col];
+                if (val > max_val && aggregates[col] >= 0)
+                {
+                    max_val = val;
+                    max_agg = aggregates[col];
+                }
             }
-        }
 
-        start = S->off_proc->idx1[i];
-        end = S->off_proc->idx1[i+1];
-        ctr = A->off_proc->idx1[i];
-        for (j = start; j < end; j++)
-        {
-            col = S->off_proc->idx2[j];
-            global_col = S->off_proc_column_map[col];
-            while (A->off_proc_column_map[A->off_proc->idx2[ctr]] != global_col)
-                ctr++;
-            val = fabs(A->off_proc->vals[ctr]) + off_proc_r[col];
-            if (val > max_val && off_proc_aggregates[col] >= 0)
+            start = S->off_proc->idx1[i];
+            end = S->off_proc->idx1[i+1];
+            ctr = A->off_proc->idx1[i];
+            for (j = start; j < end; j++)
             {
-                max_val = val;
-                max_agg = off_proc_aggregates[col];
+                col = S->off_proc->idx2[j];
+                global_col = S->off_proc_column_map[col];
+                while (A->off_proc_column_map[A->off_proc->idx2[ctr]] != global_col)
+                    ctr++;
+                val = fabs(A->off_proc->vals[ctr]) + off_proc_r[col];
+                if (val > max_val && off_proc_aggregates[col] >= 0)
+                {
+                    max_val = val;
+                    max_agg = off_proc_aggregates[col];
+                }
             }
+            
+            aggregates[i] = - (max_agg + 1);
         }
-        
-        aggregates[i] = - (max_agg + 1);
     }
 
     for (int i = 0; i < S->local_num_rows; i++)

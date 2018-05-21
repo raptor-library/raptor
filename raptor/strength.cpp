@@ -188,8 +188,17 @@ CSRMatrix* symmetric_strength(CSRMatrix* A, double theta)
 {
     int start, end, col;
     double val;
-    double eps;
-    aligned_vector<double> diags(A->n_rows, 0);
+    double row_scale;
+    double threshold;
+    double diag;
+
+    aligned_vector<int> neg_diags;
+    aligned_vector<double> row_scales;
+    if (A->n_rows)
+    {
+        neg_diags.resize(A->n_rows);
+        row_scales.resize(A->n_rows);
+    }
 
     if (!A->sorted)
     {
@@ -204,41 +213,87 @@ CSRMatrix* symmetric_strength(CSRMatrix* A, double theta)
 
     for (int i = 0; i < A->n_rows; i++)
     {
+        // Always add the diagonal 
         start = A->idx1[i];
         end = A->idx1[i+1];
-        if (end - start && A->idx2[start] == i)
-            diags[i] = fabs(A->vals[start]);
+        if (end - start)
+        {
+            if (A->idx2[start] == i)
+            {
+                diag = A->vals[start];
+                start++;
+            }
+            else
+            {
+                diag = 0.0;
+            }
+
+            if (diag < 0.0) // find max off-diag value in row
+            {
+                neg_diags[i] = 1;
+                row_scale = -RAND_MAX;
+                for (int j = start; j < end; j++)
+                {
+                    val = A->vals[j];
+                    if (val > row_scale)
+                    {
+                        row_scale = val;
+                    }
+                }
+            }
+            else // find min off-diag value in row
+            {
+                neg_diags[i] = 0;
+                row_scale = RAND_MAX;
+                for (int j = start; j < end; j++)
+                {
+                    val = A->vals[j];
+                    if (val < row_scale)
+                    {
+                        row_scale = val;
+                    }
+                }
+            }
+
+
+            // Multiply row magnitude by theta
+            threshold = row_scale*theta;
+            row_scales[i] = threshold;
+        }
     }
 
     S->idx1[0] = 0;
     for (int i = 0; i < A->n_rows; i++)
     {
-        eps = theta * theta * diags[i];
-
         // Always add the diagonal 
         start = A->idx1[i];
         end = A->idx1[i+1];
-
-        if (end - start && A->idx2[start] == i)
+        if (end - start)
         {
-            S->vals.push_back(A->vals[start]);
-            start++;
-        }
-        else
-        {
-            S->vals.push_back(0.0);
-        }
-        S->idx2.push_back(i);
-             
-        // Add off-diagonals greater than threshold
-        for (int j = start; j < end; j++)
-        {
-            col = A->idx2[j];
-            val = A->vals[j];
-            if (val*val >= eps * diags[col])
+            if (A->idx2[start] == i)
             {
-                S->idx2.push_back(col);
-                S->vals.push_back(val);
+                diag = A->vals[start];
+                start++;
+            }
+            int neg_diag = neg_diags[i];
+            threshold = row_scales[i];
+
+            // Always add diagonal
+            S->idx2.push_back(i);
+            S->vals.push_back(diag);
+
+            // Add off-diagonals greater than threshold
+            for (int j = start; j < end; j++)
+            {
+                val = A->vals[j];
+                col = A->idx2[j];
+                if ((neg_diag && val > threshold) || (!neg_diag && val < threshold)
+                        || (neg_diags[col] && val > row_scales[col]) 
+                        || (!neg_diags[col] && val < row_scales[col]))
+                {
+                    S->idx2.push_back(col);
+                    S->vals.push_back(val);
+                }
             }
         }
         S->idx1[i+1] = S->idx2.size();
@@ -246,6 +301,7 @@ CSRMatrix* symmetric_strength(CSRMatrix* A, double theta)
     S->nnz = S->idx2.size();
 
     return S;
+
 
 }
 

@@ -22,9 +22,14 @@ using namespace raptor;
  ***** b : ParVector*
  *****    Parallel vector result is returned in
  **************************************************************/
-void ParMatrix::mult(ParVector& x, ParVector& b)
+void ParMatrix::mult(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
 {
-    spmv_data.time -= MPI_Wtime();
+    if (tap)
+    {
+        this->tap_mult(x, b, comm_t);
+        return;
+    }
+
     // Check that communication package has been initialized
     if (comm == NULL)
     {
@@ -43,9 +48,9 @@ void ParMatrix::mult(ParVector& x, ParVector& b)
     }
 
     // Wait for Isends and Irecvs to complete
-    spmv_data.comm_time -= MPI_Wtime();
+    if (comm_t) *comm_t -= MPI_Wtime();
     aligned_vector<double>& x_tmp = comm->complete_comm<double>();
-    spmv_data.comm_time += MPI_Wtime();
+    if (comm_t) *comm_t += MPI_Wtime();
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -53,12 +58,10 @@ void ParMatrix::mult(ParVector& x, ParVector& b)
     {
         off_proc->mult_append(x_tmp, b.local);
     }
-    spmv_data.time += MPI_Wtime();
 }
 
-void ParMatrix::tap_mult(ParVector& x, ParVector& b)
+void ParMatrix::tap_mult(ParVector& x, ParVector& b, data_t* comm_t)
 {
-    spmv_data.tap_time -= MPI_Wtime();
     // Check that communication package has been initialized
     if (tap_comm == NULL)
     {
@@ -77,9 +80,9 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b)
     }
 
     // Wait for Isends and Irecvs to complete
-    spmv_data.tap_comm_time -= MPI_Wtime();
+    if (comm_t) *comm_t -= MPI_Wtime();
     aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>();
-    spmv_data.tap_comm_time += MPI_Wtime();
+    if (comm_t) *comm_t += MPI_Wtime();
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -87,12 +90,16 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b)
     {
         off_proc->mult_append(x_tmp, b.local);
     }
-    spmv_data.tap_time += MPI_Wtime();
 }
 
-void ParMatrix::mult_T(ParVector& x, ParVector& b)
+void ParMatrix::mult_T(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
 {
-    spmv_T_data.time -= MPI_Wtime();
+    if (tap)
+    {
+        this->tap_mult_T(x, b, comm_t);
+        return;
+    }
+
     // Check that communication package has been initialized
     if (comm == NULL)
     {
@@ -110,9 +117,9 @@ void ParMatrix::mult_T(ParVector& x, ParVector& b)
         on_proc->mult_T(x.local, b.local);
     }
 
-    spmv_T_data.comm_time -= MPI_Wtime();
+    if (comm_t) *comm_t -= MPI_Wtime();
     comm->complete_comm_T<double>();
-    spmv_T_data.comm_time += MPI_Wtime();
+    if (comm_t) *comm_t += MPI_Wtime();
 
     // Append b.local (add recvd values)
     aligned_vector<double>& b_tmp = comm->send_data->buffer;
@@ -120,12 +127,10 @@ void ParMatrix::mult_T(ParVector& x, ParVector& b)
     {
         b.local[comm->send_data->indices[i]] += b_tmp[i];
     }
-    spmv_T_data.time += MPI_Wtime();
 }
 
-void ParMatrix::tap_mult_T(ParVector& x, ParVector& b)
+void ParMatrix::tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t)
 {
-    spmv_T_data.tap_time -= MPI_Wtime();
     // Check that communication package has been initialized
     if (tap_comm == NULL)
     {
@@ -143,9 +148,9 @@ void ParMatrix::tap_mult_T(ParVector& x, ParVector& b)
         on_proc->mult_T(x.local, b.local);
     }
 
-    spmv_T_data.tap_comm_time -= MPI_Wtime();
+    if (comm_t) *comm_t -= MPI_Wtime();
     tap_comm->complete_comm_T<double>();
-    spmv_T_data.tap_comm_time += MPI_Wtime();
+    if (comm_t) *comm_t += MPI_Wtime();
 
     // Append b.local (add recvd values)
     aligned_vector<double>& L_tmp = tap_comm->local_L_par_comm->send_data->buffer;
@@ -168,12 +173,17 @@ void ParMatrix::tap_mult_T(ParVector& x, ParVector& b)
     {
         b.local[final_comm->send_data->indices[i]] += final_tmp[i];
     }
-    spmv_T_data.tap_time += MPI_Wtime();
 }
 
-void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r)
+void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap,
+        data_t* comm_t)
 {
-    spmv_data.time -= MPI_Wtime();
+    if (tap) 
+    {
+        this->tap_residual(x, b, r, comm_t);
+        return;
+    }
+
     // Check that communication package has been initialized
     if (comm == NULL)
     {
@@ -194,9 +204,9 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r)
     }
 
     // Wait for Isends and Irecvs to complete
-    spmv_data.comm_time -= MPI_Wtime();
+    if (comm_t) *comm_t -= MPI_Wtime();
     aligned_vector<double>& x_tmp = comm->complete_comm<double>();
-    spmv_data.comm_time += MPI_Wtime();
+    if (comm_t) *comm_t += MPI_Wtime();
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -204,12 +214,11 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r)
     {
         off_proc->mult_append_neg(x_tmp, r.local);
     }
-    spmv_data.time += MPI_Wtime();
 }
 
-void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r)
+void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r, 
+        data_t* comm_t)
 {
-    spmv_data.tap_time -= MPI_Wtime();
     // Check that communication package has been initialized
     if (tap_comm == NULL)
     {
@@ -230,9 +239,9 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r)
     }
 
     // Wait for Isends and Irecvs to complete
-    spmv_data.tap_comm_time -= MPI_Wtime();
+    if (comm_t) *comm_t -= MPI_Wtime();
     aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>();
-    spmv_data.tap_comm_time += MPI_Wtime();
+    if (comm_t) *comm_t += MPI_Wtime();
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -240,7 +249,6 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r)
     {
         off_proc->mult_append_neg(x_tmp, r.local);
     }
-    spmv_data.tap_time += MPI_Wtime();
 }
 
 void ParCSRMatrix::print_mult(const aligned_vector<int>& proc_distances,
@@ -664,63 +672,75 @@ void ParCSRMatrix::print_mult_T(const aligned_vector<int>& proc_distances,
 }
 
 
-void ParCOOMatrix::mult(ParVector& x, ParVector& b)
+void ParCOOMatrix::mult(ParVector& x, ParVector& b, bool tap,
+        data_t* comm_t)
 {
-    ParMatrix::mult(x, b);
+    ParMatrix::mult(x, b, tap, comm_t);
 }
 
-void ParCSRMatrix::mult(ParVector& x, ParVector& b)
+void ParCSRMatrix::mult(ParVector& x, ParVector& b, bool tap,
+        data_t* comm_t)
 {
-    ParMatrix::mult(x, b);
+    ParMatrix::mult(x, b, tap, comm_t);
 }
 
-void ParCSCMatrix::mult(ParVector& x, ParVector& b)
+void ParCSCMatrix::mult(ParVector& x, ParVector& b, bool tap,
+        data_t* comm_t)
 {
-    ParMatrix::mult(x, b);
+    ParMatrix::mult(x, b, tap, comm_t);
 }
 
-void ParCOOMatrix::tap_mult(ParVector& x, ParVector& b)
+void ParCOOMatrix::tap_mult(ParVector& x, ParVector& b, 
+        data_t* comm_t)
 {
-    ParMatrix::tap_mult(x, b);
+    ParMatrix::tap_mult(x, b, comm_t);
 }
 
-void ParCSRMatrix::tap_mult(ParVector& x, ParVector& b)
+void ParCSRMatrix::tap_mult(ParVector& x, ParVector& b,
+        data_t* comm_t)
 {
-    ParMatrix::tap_mult(x, b);
+    ParMatrix::tap_mult(x, b, comm_t);
 }
 
-void ParCSCMatrix::tap_mult(ParVector& x, ParVector& b)
+void ParCSCMatrix::tap_mult(ParVector& x, ParVector& b, 
+        data_t* comm_t)
 {
-    ParMatrix::tap_mult(x, b);
+    ParMatrix::tap_mult(x, b, comm_t);
 }
 
-void ParCOOMatrix::mult_T(ParVector& x, ParVector& b)
+void ParCOOMatrix::mult_T(ParVector& x, ParVector& b, bool tap,
+        data_t* comm_t)
 {
-    ParMatrix::mult_T(x, b);
+    ParMatrix::mult_T(x, b, tap, comm_t);
 }
 
-void ParCSRMatrix::mult_T(ParVector& x, ParVector& b)
+void ParCSRMatrix::mult_T(ParVector& x, ParVector& b, bool tap,
+        data_t* comm_t)
 {
-    ParMatrix::mult_T(x, b);
+    ParMatrix::mult_T(x, b, tap, comm_t);
 }
 
-void ParCSCMatrix::mult_T(ParVector& x, ParVector& b)
+void ParCSCMatrix::mult_T(ParVector& x, ParVector& b, bool tap,
+        data_t* comm_t)
 {
-    ParMatrix::mult_T(x, b);
+    ParMatrix::mult_T(x, b, tap, comm_t);
 }
 
-void ParCOOMatrix::tap_mult_T(ParVector& x, ParVector& b)
+void ParCOOMatrix::tap_mult_T(ParVector& x, ParVector& b,
+        data_t* comm_t)
 {
-    ParMatrix::tap_mult_T(x, b);
+    ParMatrix::tap_mult_T(x, b, comm_t);
 }
 
-void ParCSRMatrix::tap_mult_T(ParVector& x, ParVector& b)
+void ParCSRMatrix::tap_mult_T(ParVector& x, ParVector& b,
+        data_t* comm_t)
 {
-    ParMatrix::tap_mult_T(x, b);
+    ParMatrix::tap_mult_T(x, b, comm_t);
 }
 
-void ParCSCMatrix::tap_mult_T(ParVector& x, ParVector& b)
+void ParCSCMatrix::tap_mult_T(ParVector& x, ParVector& b,
+        data_t* comm_t)
 {
-    ParMatrix::tap_mult_T(x, b);
+    ParMatrix::tap_mult_T(x, b, comm_t);
 }
 

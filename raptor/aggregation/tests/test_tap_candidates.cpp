@@ -24,11 +24,13 @@ int main(int argc, char** argv)
     return temp;
 } // end of main() //
 
-TEST(TestParCandidates, TestsInAggregation)
+TEST(TestTAPCandidates, TestsInAggregation)
 { 
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+    setenv("PPN", "4", 1);
 
     FILE* f;
     aligned_vector<int> states;
@@ -45,6 +47,7 @@ TEST(TestParCandidates, TestsInAggregation)
 
     A = readParMatrix(A0_fn);
     S = readParMatrix(S0_fn);
+    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, A->on_proc_column_map);
 
     aligned_vector<double> weights(S->local_num_rows);
     f = fopen(weights_fn, "r");
@@ -79,9 +82,11 @@ TEST(TestParCandidates, TestsInAggregation)
     if (A->local_num_rows)
         B.resize(A->local_num_rows, 1.0);
     int num_candidates = 1;
-    ParCSRMatrix* T = fit_candidates(A, n_aggs, aggregates, B, R, num_candidates, false, 1e-10);
+    ParCSRMatrix* T = fit_candidates(A, n_aggs, aggregates, B, R, num_candidates, true, 1e-10);
 
     compare(T, T_py); 
+
+    setenv("PPN", "16", 1);
 
     delete T;
     delete T_py;
@@ -89,6 +94,7 @@ TEST(TestParCandidates, TestsInAggregation)
     delete S;
 
 } // end of TEST(TestParSplitting, TestsInRuge_Stuben) //
+
 
 
 

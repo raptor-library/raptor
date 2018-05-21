@@ -99,13 +99,8 @@ void SOR_backward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
 }
 
 void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, CommPkg* comm)
+        int num_sweeps, double omega, CommPkg* comm, data_t* comm_t)
 {
-    if (!comm)
-    {
-        comm = A->comm;
-    }
-
     A->on_proc->sort();
     A->off_proc->sort();
     A->on_proc->move_diag();
@@ -115,7 +110,9 @@ void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
+        if (comm_t) *comm_t -= MPI_Wtime();
         comm->communicate(x);
+        if (comm_t) *comm_t += MPI_Wtime();
         aligned_vector<double>& dist_x = comm->get_recv_buffer<double>();
         for (int i = 0; i < A->local_num_rows; i++)
         {
@@ -152,40 +149,34 @@ void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 }
 
 void sor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, CommPkg* comm)
+        int num_sweeps, double omega, CommPkg* comm, data_t* comm_t)
 {
-    if (!comm)
-    {
-        comm = A->comm;
-    }
-
     A->on_proc->sort();
     A->off_proc->sort();
     A->on_proc->move_diag();
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
+        if (comm_t) *comm_t -= MPI_Wtime();
         comm->communicate(x);
+        if (comm_t) *comm_t += MPI_Wtime();
         SOR_forward(A, x, b, comm->get_recv_buffer<double>(), omega);
     }
 }
 
 
 void ssor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, CommPkg* comm)
+        int num_sweeps, double omega, CommPkg* comm, data_t* comm_t)
 {
-    if (!comm)
-    {
-        comm = A->comm;
-    }
-
     A->on_proc->sort();
     A->off_proc->sort();
     A->on_proc->move_diag();
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
+        if (comm_t) *comm_t -= MPI_Wtime();
         comm->communicate(x);
+        if (comm_t) *comm_t += MPI_Wtime();
         SOR_forward(A, x, b, comm->get_recv_buffer<double>(), omega);
         SOR_backward(A, x, b, comm->get_recv_buffer<double>(), omega);
     }
@@ -204,34 +195,79 @@ void ssor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
  *****    Number of relaxation sweeps to perform
  **************************************************************/
 void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega)
+        int num_sweeps, double omega, bool tap, data_t* comm_t)
 {
-    jacobi_helper(A, x, b, tmp, num_sweeps, omega, A->comm);
+    CommPkg* comm;
+    if (tap)
+    {
+        if (!A->tap_comm) 
+        {
+            A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
+                    A->on_proc_column_map);
+        }
+        comm = A->tap_comm;
+    }
+    else
+    {
+        if (!A->comm) 
+        {
+            A->comm = new ParComm(A->partition, A->off_proc_column_map,
+                    A->on_proc_column_map);
+        }
+        comm = A->comm;
+    }
+
+    jacobi_helper(A, x, b, tmp, num_sweeps, omega, comm, comm_t);
 }
 void sor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega)
+        int num_sweeps, double omega, bool tap, data_t* comm_t)
 {
-    sor_helper(A, x, b, tmp, num_sweeps, omega, A->comm);
+    CommPkg* comm;
+    if (tap)
+    {
+        if (!A->tap_comm) 
+        {
+            A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
+                    A->on_proc_column_map);
+        }
+        comm = A->tap_comm;
+    }
+    else
+    {
+        if (!A->comm) 
+        {
+            A->comm = new ParComm(A->partition, A->off_proc_column_map,
+                    A->on_proc_column_map);
+        }
+        comm = A->comm;
+    }
+
+    sor_helper(A, x, b, tmp, num_sweeps, omega, comm, comm_t);
 }
 void ssor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega)
+        int num_sweeps, double omega, bool tap, data_t* comm_t)
 {
-    ssor_helper(A, x, b, tmp, num_sweeps, omega, A->comm);
-}
-void tap_jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega)
-{
-    jacobi_helper(A, x, b, tmp, num_sweeps, omega, A->tap_comm);
-}
-void tap_sor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega)
-{
-    sor_helper(A, x, b, tmp, num_sweeps, omega, A->tap_comm);
-}
-void tap_ssor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega)
-{
-    ssor_helper(A, x, b, tmp, num_sweeps, omega, A->tap_comm);
+    CommPkg* comm;
+    if (tap)
+    {
+        if (!A->tap_comm) 
+        {
+            A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
+                    A->on_proc_column_map);
+        }
+        comm = A->tap_comm;
+    }
+    else
+    {
+        if (!A->comm) 
+        {
+            A->comm = new ParComm(A->partition, A->off_proc_column_map,
+                    A->on_proc_column_map);
+        }
+        comm = A->comm;
+    }
+
+    ssor_helper(A, x, b, tmp, num_sweeps, omega, comm, comm_t);
 }
 
 

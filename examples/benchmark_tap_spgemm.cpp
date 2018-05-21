@@ -49,157 +49,73 @@ void print_tap_times(double time, double time_comm, const char* name)
     if (rank == 0) printf("%s TAP Comm Time: %e\n", name, t0);
 }
 
-void time_spgemm(ParCSRMatrix* A, ParCSRMatrix* P)
+void time_spgemm(ParCSRMatrix* A, ParCSRMatrix* P, bool tap)
 {
     if (!A->comm) A->comm = new ParComm(A->partition, 
             A->off_proc_column_map, A->on_proc_column_map);
 
-    double time, time_comm;
     int n_tests = 10;
     int cache_len = 10000;
     aligned_vector<double> cache_array(cache_len);
 
-    A->spgemm_data.time = 0;
-    A->spgemm_data.comm_time = 0;
-    A->comm->reset_comm_data();
-    
-    // Initial matmult (grab comm data)
-    {
-        clear_cache(cache_array);
+    double comm_t = 0;
+    double t0, tfinal;
 
-        MPI_Barrier(MPI_COMM_WORLD);
-        ParCSRMatrix* C = A->mult(P);
-        delete C;
-   
-        A->comm->print_comm_data(false);
-    }
+    t0 = MPI_Wtime();
     for (int i = 1; i < n_tests; i++)
     {
         clear_cache(cache_array);
         MPI_Barrier(MPI_COMM_WORLD);
-        ParCSRMatrix* C = A->mult(P);
+        ParCSRMatrix* C = A->mult(P, tap, &comm_t);
         delete C;
     }
-    time = A->spgemm_data.time / n_tests;
-    time_comm = A->spgemm_data.comm_time / n_tests;
+    tfinal = (MPI_Wtime() - t0) / n_tests;
+    comm_t /= n_tests;
 
-    print_times(time, time_comm, "SpGEMM");
+    if (tap)
+    {
+        print_tap_times(tfinal, comm_t, "SpGEMM");
+    }
+    else
+    {
+        print_times(tfinal, comm_t, "SpGEMM");
+        //A->print_mult(P);
+    }
 }
 
-void time_tap_spgemm(ParCSRMatrix* A, ParCSRMatrix* P)
-{
-    double time, time_comm;
-    int n_tests = 10;
-    int cache_len = 10000;
-    aligned_vector<double> cache_array(cache_len);
-
-    if (A->tap_comm) delete A->tap_comm;
-    A->tap_comm = new TAPComm(A->partition, 
-            A->off_proc_column_map, A->on_proc_column_map);
-
-    // Time TAP SpGEMM on Level i
-    A->spgemm_data.tap_time = 0;
-    A->spgemm_data.tap_comm_time = 0;
-    A->tap_comm->reset_comm_data();
-
-    // Initial matmult (grab comm data)
-    {
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-
-        ParCSRMatrix* C = A->tap_mult(P);
-        delete C;
-     
-        A->tap_comm->print_comm_data(false);
-    }
-    for (int i = 1; i < n_tests; i++)
-    {
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        ParCSRMatrix* C = A->tap_mult(P);
-        delete C;
-    }
-    time = A->spgemm_data.tap_time / n_tests;
-    time_comm = A->spgemm_data.tap_comm_time / n_tests;
-
-    print_tap_times(time, time_comm, "SpGEMM");
-
-    delete A->tap_comm;
-    A->tap_comm = NULL;
-}
-
-void time_spgemm_T(ParCSRMatrix* A, ParCSCMatrix* P)
+void time_spgemm_T(ParCSRMatrix* A, ParCSCMatrix* P, bool tap)
 {
     if (!P->comm) P->comm = new ParComm(P->partition, 
             P->off_proc_column_map, P->on_proc_column_map);
 
-    double time, time_comm;
     int n_tests = 10;
     int cache_len = 10000;
     aligned_vector<double> cache_array(cache_len);
 
     // Time SpGEMM on Level i
-    A->spgemm_T_data.time = 0;
-    A->spgemm_T_data.comm_time = 0;
-    P->comm->reset_comm_T_data();
-    {
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        ParCSRMatrix* C = A->mult_T(P);
-        delete C;
+    double t0, tfinal;
+    double comm_t = 0;
 
-        P->comm->print_comm_T_data(false);
-
-    }
+    t0 = MPI_Wtime();
     for (int i = 1; i < n_tests; i++)
     {
         clear_cache(cache_array);
         MPI_Barrier(MPI_COMM_WORLD);
-        ParCSRMatrix* C = A->mult_T(P);
+        ParCSRMatrix* C = A->mult_T(P, tap, &comm_t);
         delete C;
     }
-    time = A->spgemm_T_data.time / n_tests;
-    time_comm = A->spgemm_T_data.comm_time / n_tests;
-    print_times(time, time_comm, "Transpose SpGEMM");
-}
+    tfinal = (MPI_Wtime() - t0) / n_tests;
+    comm_t /= n_tests;
 
-void time_tap_spgemm_T(ParCSRMatrix* A, ParCSCMatrix* P)
-{
-    if (P->tap_comm) delete P->tap_comm;
-    P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map, 
-            P->on_proc_column_map);
-
-    double time, time_comm;
-    int n_tests = 10;
-    int cache_len = 10000;
-    aligned_vector<double> cache_array(cache_len);
-
-    // Time TAP SpGEMM on Level i
-    A->spgemm_T_data.tap_time = 0;
-    A->spgemm_T_data.tap_comm_time = 0;
-    P->tap_comm->reset_comm_T_data();
+    if (tap)
     {
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        ParCSRMatrix* C = A->tap_mult_T(P);
-        delete C;
-    
-        P->tap_comm->print_comm_T_data(false);
+        print_tap_times(tfinal, comm_t, "Transpose SpGEMM");
     }
-    for (int i = 1; i < n_tests; i++)
+    else
     {
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        ParCSRMatrix* C = A->tap_mult_T(P);
-        delete C;
+        print_times(tfinal, comm_t, "Transpose SpGEMM");
+        //A->print_mult_T(P);
     }
-    time = A->spgemm_T_data.tap_time / n_tests;
-    time_comm = A->spgemm_T_data.tap_comm_time / n_tests;
-
-    print_tap_times(time, time_comm, "Transpose SpGEMM");
-
-    delete P->tap_comm;
-    P->tap_comm = NULL;
 }
 
 int main(int argc, char *argv[])
@@ -371,22 +287,22 @@ int main(int argc, char *argv[])
             printf("P %d x %d, %d nnz\n", Pl->global_num_rows, Pl->global_num_cols, P_nnz);
         }
         if (rank == 0) printf("A*P:\n");
-        time_spgemm(Al, Pl);
+        time_spgemm(Al, Pl, false);
         
         if (rank == 0) printf("\nTAP A*P:\n");
-        time_tap_spgemm(Al, Pl);
+        time_spgemm(Al, Pl, true);
 
         if (rank == 0) printf("\nSimple TAP A*P:\n");
-        time_tap_spgemm(Al, Pl);
+        time_spgemm(Al, Pl, true);
 
         if (rank == 0) printf("\nP.T*AP:\n");
-        time_spgemm_T(AP, Pl_csc);
+        time_spgemm_T(AP, Pl_csc, false);
 
         if (rank == 0) printf("\nTAP P.T*AP:\n");
-        time_tap_spgemm_T(AP, Pl_csc);
+        time_spgemm_T(AP, Pl_csc, true);
 
         if (rank == 0) printf("\nSimple TAP P.T*AP:\n");
-        time_tap_spgemm_T(AP, Pl_csc);
+        time_spgemm_T(AP, Pl_csc, true);
 
         delete Pl_csc;
         delete AP;
@@ -402,22 +318,22 @@ int main(int argc, char *argv[])
         }
 
         if (rank == 0) printf("A*P:\n");
-        time_spgemm(Al, P_new);
+        time_spgemm(Al, P_new, false);
         
         if (rank == 0) printf("\nTAP A*P:\n");
-        time_tap_spgemm(Al, P_new);
+        time_spgemm(Al, P_new, true);
 
         if (rank == 0) printf("\nSimple TAP A*P:\n");
-        time_tap_spgemm(Al, P_new);
+        time_spgemm(Al, P_new, true);
 
         if (rank == 0) printf("\nP.T*AP:\n");
-        time_spgemm_T(AP_new, P_new_csc);
+        time_spgemm_T(AP_new, P_new_csc, false);
 
         if (rank == 0) printf("\nTAP P.T*AP:\n");
-        time_tap_spgemm_T(AP_new, P_new_csc);        
+        time_spgemm_T(AP_new, P_new_csc, true);        
 
         if (rank == 0) printf("\nSimple TAP P.T*AP:\n");
-        time_tap_spgemm_T(AP_new, P_new_csc);
+        time_spgemm_T(AP_new, P_new_csc, true);
 
         delete P_new;
         delete P_new_csc;

@@ -87,11 +87,6 @@ namespace raptor
 
         comm = NULL;
         tap_comm = NULL;
-
-        spgemm_data = (OpData) {0.0, 0.0, 0.0, 0.0};
-        spgemm_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
-        spmv_data = (OpData) {0.0, 0.0, 0.0, 0.0};;
-        spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
     }
 
     ParMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows, 
@@ -107,11 +102,6 @@ namespace raptor
 
         comm = NULL;
         tap_comm = NULL;
-
-        spgemm_data = (OpData) {0.0, 0.0, 0.0, 0.0};
-        spgemm_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
-        spmv_data = (OpData) {0.0, 0.0, 0.0, 0.0};;
-        spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
     }
 
     ParMatrix(index_t glob_rows,
@@ -126,11 +116,6 @@ namespace raptor
 
         comm = NULL;
         tap_comm = NULL;
-
-        spgemm_data = (OpData) {0.0, 0.0, 0.0, 0.0};
-        spgemm_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
-        spmv_data = (OpData) {0.0, 0.0, 0.0, 0.0};;
-        spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
     }
 
     ParMatrix(index_t glob_rows, 
@@ -151,11 +136,6 @@ namespace raptor
 
         comm = NULL;
         tap_comm = NULL;
-
-        spgemm_data = (OpData) {0.0, 0.0, 0.0, 0.0};
-        spgemm_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
-        spmv_data = (OpData) {0.0, 0.0, 0.0, 0.0};;
-        spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
     }
        
     ParMatrix()
@@ -173,11 +153,6 @@ namespace raptor
         off_proc = NULL;
 
         partition = NULL;
-
-        spgemm_data = (OpData) {0.0, 0.0, 0.0, 0.0};
-        spgemm_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
-        spmv_data = (OpData) {0.0, 0.0, 0.0, 0.0};;
-        spmv_T_data = (OpData) {0.0, 0.0, 0.0, 0.0};
     }
 
     virtual ~ParMatrix()
@@ -249,18 +224,19 @@ namespace raptor
     int* map_partition_to_local();
     void condense_off_proc();
 
-    void residual(ParVector& x, ParVector& b, ParVector& r);
-    void tap_residual(ParVector& x, ParVector& b, ParVector& r);
-    void mult(ParVector& x, ParVector& b);
-    void tap_mult(ParVector& x, ParVector& b);
-    void mult_T(ParVector& x, ParVector& b);
-    void tap_mult_T(ParVector& x, ParVector& b);
-    ParMatrix* mult(ParCSRMatrix* B);
-    ParMatrix* tap_mult(ParCSRMatrix* B);
-    ParMatrix* mult_T(ParCSCMatrix* B);
-    ParMatrix* mult_T(ParCSRMatrix* B);
-    ParMatrix* tap_mult_T(ParCSCMatrix* B);
-    ParMatrix* tap_mult_T(ParCSRMatrix* B);
+    void residual(ParVector& x, ParVector& b, ParVector& r, bool tap = false, 
+            data_t* comm_t = NULL);
+    void tap_residual(ParVector& x, ParVector& b, ParVector& r, data_t* comm_t = NULL);
+    void mult(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void tap_mult(ParVector& x, ParVector& b, data_t* comm_t = NULL);
+    void mult_T(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t = NULL);
+    ParMatrix* mult(ParCSRMatrix* B, bool tap = false, data_t* comm_t = NULL);
+    ParMatrix* tap_mult(ParCSRMatrix* B, data_t* comm_t = NULL);
+    ParMatrix* mult_T(ParCSCMatrix* B, bool tap = false, data_t* comm_t = NULL);
+    ParMatrix* mult_T(ParCSRMatrix* B, bool tap = false, data_t* comm_t = NULL);
+    ParMatrix* tap_mult_T(ParCSCMatrix* B, data_t* comm_t = NULL);
+    ParMatrix* tap_mult_T(ParCSRMatrix* B, data_t* comm_t = NULL);
     ParMatrix* add(ParCSRMatrix* A);
     ParMatrix* subtract(ParCSRMatrix* A);
 
@@ -320,20 +296,6 @@ namespace raptor
     Partition* partition;
     ParComm* comm;
     TAPComm* tap_comm;
-
-    struct OpData
-    {
-        double comm_time;
-        double tap_comm_time;
-        double time;
-        double tap_time;
-    };
-
-    OpData spgemm_data;
-    OpData spgemm_T_data;
-    OpData spmv_data;
-    OpData spmv_T_data;
-
   };
 
   class ParCOOMatrix : public ParMatrix
@@ -422,10 +384,10 @@ namespace raptor
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
-    void mult(ParVector& x, ParVector& b);
-    void tap_mult(ParVector& x, ParVector& b);
-    void mult_T(ParVector& x, ParVector& b);
-    void tap_mult_T(ParVector& x, ParVector& b);
+    void mult(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void tap_mult(ParVector& x, ParVector& b, data_t* comm_t = NULL);
+    void mult_T(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t = NULL);
 
     ParMatrix* transpose();
   };
@@ -559,23 +521,24 @@ namespace raptor
     void copy(ParCOOMatrix* A);
 
     ParCSRMatrix* strength(strength_t strength_type, double theta = 0.0, 
-            int num_variables = 1, int* variables = NULL);
+            bool tap_amg = false, int num_variables = 1, int* variables = NULL,
+            data_t* comm_t = NULL);
     ParCSRMatrix* aggregate();
     ParCSRMatrix* fit_candidates(double* B, double* R, int num_candidates, 
             double tol = 1e-10);
     int maximal_independent_set(aligned_vector<int>& local_states,
             aligned_vector<int>& off_proc_states, int max_iters = -1);
 
-    void mult(ParVector& x, ParVector& b);
-    void tap_mult(ParVector& x, ParVector& b);
-    void mult_T(ParVector& x, ParVector& b);
-    void tap_mult_T(ParVector& x, ParVector& b);
-    ParCSRMatrix* mult(ParCSRMatrix* B);
-    ParCSRMatrix* tap_mult(ParCSRMatrix* B);
-    ParCSRMatrix* mult_T(ParCSCMatrix* A);
-    ParCSRMatrix* mult_T(ParCSRMatrix* A);
-    ParCSRMatrix* tap_mult_T(ParCSCMatrix* A);
-    ParCSRMatrix* tap_mult_T(ParCSRMatrix* A);
+    void mult(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void tap_mult(ParVector& x, ParVector& b, data_t* comm_t = NULL);
+    void mult_T(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t = NULL);
+    ParCSRMatrix* mult(ParCSRMatrix* B, bool tap = false, data_t* comm_t = NULL);
+    ParCSRMatrix* tap_mult(ParCSRMatrix* B, data_t* comm_t = NULL);
+    ParCSRMatrix* mult_T(ParCSCMatrix* A, bool tap = false, data_t* comm_t = NULL);
+    ParCSRMatrix* mult_T(ParCSRMatrix* A, bool tap = false, data_t* comm_t = NULL);
+    ParCSRMatrix* tap_mult_T(ParCSCMatrix* A, data_t* comm_t = NULL);
+    ParCSRMatrix* tap_mult_T(ParCSRMatrix* A, data_t* comm_t = NULL);
     ParCSRMatrix* add(ParCSRMatrix* A);
     ParCSRMatrix* subtract(ParCSRMatrix* B);
 
@@ -676,10 +639,10 @@ namespace raptor
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
 
-    void mult(ParVector& x, ParVector& b);
-    void tap_mult(ParVector& x, ParVector& b);
-    void mult_T(ParVector& x, ParVector& b);
-    void tap_mult_T(ParVector& x, ParVector& b);
+    void mult(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void tap_mult(ParVector& x, ParVector& b, data_t* comm_t = NULL);
+    void mult_T(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t = NULL);
 
     ParMatrix* transpose();
   };

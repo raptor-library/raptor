@@ -212,7 +212,7 @@ void communicate(ParCSRMatrix* A, const aligned_vector<int>& states,
 ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const aligned_vector<int>& states,
         const aligned_vector<int>& off_proc_states, 
-        bool tap_interp, int num_variables, int* variables)
+        bool tap_interp, int num_variables, int* variables, data_t* comm_t)
 {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -258,7 +258,10 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     if (A->off_proc_num_cols) off_variables.resize(A->off_proc_num_cols);
     if (num_variables > 1)
     {
+        if (comm_t) *comm_t -= MPI_Wtime();
         comm->communicate(variables);
+        if (comm_t) *comm_t += MPI_Wtime();
+        
         for (int i = 0; i < A->off_proc_num_cols; i++)
         {
             off_variables[i] = comm->get_int_recv_buffer()[i];
@@ -268,11 +271,15 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     // Gather off_proc_states_A
     aligned_vector<int> off_proc_states_A;
     if (A->off_proc_num_cols) off_proc_states_A.resize(A->off_proc_num_cols);
+
+    if (comm_t) *comm_t -= MPI_Wtime();
     aligned_vector<int>& recvbuf = comm->communicate(states);
+    if (comm_t) *comm_t += MPI_Wtime();
     for (int i = 0; i < A->off_proc_num_cols; i++)
     {
         off_proc_states_A[i] = recvbuf[i];
     } 
+
     // Map off proc cols S to A
     aligned_vector<int> off_proc_S_to_A;
     if (S->off_proc_num_cols) off_proc_S_to_A.resize(S->off_proc_num_cols);
@@ -287,7 +294,9 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     }
 
     // Communicate parallel matrix A (Costly!)
+    if (comm_t) *comm_t -= MPI_Wtime();
     communicate(A, S, states, off_proc_states_A, comm, &recv_on, &recv_off);
+    if (comm_t) *comm_t += MPI_Wtime();
 
     // Change on_proc_cols to local
     recv_on->n_cols = A->on_proc_num_cols;
@@ -1023,7 +1032,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
 ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const aligned_vector<int>& states,
         const aligned_vector<int>& off_proc_states, 
-        bool tap_interp, int num_variables, int* variables)
+        bool tap_interp, int num_variables, int* variables, data_t* comm_t)
 {
     int start, end;
     int start_k, end_k;
@@ -1054,7 +1063,10 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     if (num_variables > 1)
     {
+        if (comm_t) *comm_t -= MPI_Wtime();
         comm->communicate(variables);
+        if (comm_t) *comm_t += MPI_Wtime();
+
         for (int i = 0; i < A->off_proc_num_cols; i++)
         {
             off_variables[i] = comm->get_int_recv_buffer()[i];
@@ -1109,7 +1121,10 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     // Need off_proc_states_A
     aligned_vector<int> off_proc_states_A;
     if (A->off_proc_num_cols) off_proc_states_A.resize(A->off_proc_num_cols);
+
+    if (comm_t) *comm_t -= MPI_Wtime();
     aligned_vector<int>& recvbuf = comm->communicate(states);
+    if (comm_t) *comm_t += MPI_Wtime();
     for (int i = 0; i < A->off_proc_num_cols; i++)
     {
         off_proc_states_A[i] = recvbuf[i];
@@ -1129,7 +1144,9 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     }
 
     // Communicate parallel matrix A (Costly!)
+    if (comm_t) *comm_t -= MPI_Wtime();
     communicate(A, states, off_proc_states_A, comm, &recv_on, &recv_off);
+    if (comm_t) *comm_t += MPI_Wtime();
 
     // Change on_proc_cols to local
     recv_on->n_cols = A->on_proc_num_cols;

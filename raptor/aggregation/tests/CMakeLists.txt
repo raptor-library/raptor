@@ -25,11 +25,19 @@ if (WITH_MPI)
     add_test(TestParMIS mpirun -n 4 ./test_par_mis)
     add_test(TestParMIS mpirun -n 16 ./test_par_mis)
 
+    add_executable(test_tap_mis test_tap_mis.cpp)
+    target_link_libraries(test_tap_mis raptor googletest pthread )
+    add_test(TestTAPMIS mpirun -n 16 ./test_tap_mis)
+
     add_executable(test_par_aggregate test_par_aggregate.cpp)
     target_link_libraries(test_par_aggregate raptor googletest pthread )
     add_test(TestParAggregate mpirun -n 1 ./test_par_aggregate)
     add_test(TestParAggregate mpirun -n 4 ./test_par_aggregate)
     add_test(TestParAggregate mpirun -n 16 ./test_par_aggregate)
+
+    add_executable(test_tap_aggregate test_tap_aggregate.cpp)
+    target_link_libraries(test_tap_aggregate raptor googletest pthread )
+    add_test(TestTAPAggregate mpirun -n 16 ./test_tap_aggregate)
 
     add_executable(test_par_candidates test_par_candidates.cpp)
     target_link_libraries(test_par_candidates raptor googletest pthread )
@@ -37,11 +45,19 @@ if (WITH_MPI)
     add_test(TestParCandidates mpirun -n 4 ./test_par_candidates)
     add_test(TestParCandidates mpirun -n 16 ./test_par_candidates)
 
+    add_executable(test_tap_candidates test_tap_candidates.cpp)
+    target_link_libraries(test_tap_candidates raptor googletest pthread )
+    add_test(TestTAPCandidates mpirun -n 16 ./test_tap_candidates)
+
     add_executable(test_par_prolongation test_par_prolongation.cpp)
     target_link_libraries(test_par_prolongation raptor googletest pthread )
     add_test(TestParProlongation mpirun -n 1 ./test_par_prolongation)
     add_test(TestParProlongation mpirun -n 4 ./test_par_prolongation)
     add_test(TestParProlongation mpirun -n 16 ./test_par_prolongation)
+
+    add_executable(test_tap_prolongation test_tap_prolongation.cpp)
+    target_link_libraries(test_tap_prolongation raptor googletest pthread )
+    add_test(TestTAPProlongation mpirun -n 16 ./test_tap_prolongation)
 
     add_executable(test_par_smoothed_aggregation test_par_smoothed_aggregation.cpp)
     target_link_libraries(test_par_smoothed_aggregation raptor googletest pthread )
