@@ -95,6 +95,7 @@ namespace raptor
                 setup_times = NULL;
                 solve_times = NULL;
                 setup_comm_times = NULL;
+                setup_mat_comm_times = NULL;
                 solve_comm_times = NULL;
                 sparsify_tol = 0.0;
                 n_setup_times = 0;
@@ -117,6 +118,7 @@ namespace raptor
                 delete[] setup_times;
                 delete[] solve_times;
                 delete[] setup_comm_times;
+                delete[] setup_mat_comm_times;
                 delete[] solve_comm_times;
             }
             
@@ -153,6 +155,7 @@ namespace raptor
                 {
                     setup_times[i].push_back(0.0);
                     setup_comm_times[i].push_back(0.0);
+                    setup_mat_comm_times[i].push_back(0.0);
                 }
 
                 if (weights == NULL)
@@ -171,6 +174,7 @@ namespace raptor
                     {
                         setup_times[i].push_back(0.0);
                         setup_comm_times[i].push_back(0.0);
+                        setup_mat_comm_times[i].push_back(0.0);
                     }
                 }
 
@@ -632,6 +636,7 @@ namespace raptor
             aligned_vector<double>* setup_times;
             aligned_vector<double>* solve_times;            
             aligned_vector<double>* setup_comm_times;
+            aligned_vector<double>* setup_mat_comm_times;
             aligned_vector<double>* solve_comm_times;
             double setup_comm_t;
             double solve_comm_t;

@@ -14,7 +14,8 @@ void reset_boundaries(ParCSRMatrix* S, aligned_vector<int>& states);
 
 void cljp_main_loop(ParCSRMatrix* S, aligned_vector<int>& states,
         aligned_vector<int>& off_proc_states, bool tap_comm = false,
-        double* rand_vals = NULL, data_t* comm_t = NULL);
+        double* rand_vals = NULL, data_t* comm_t = NULL, 
+        data_t* comm_mat_t = NULL);
 void pmis_main_loop(ParCSRMatrix* S, aligned_vector<int>& states,
         aligned_vector<int>& off_proc_states, bool tap_comm = false,
         double* rand_vals = NULL, data_t* comm_t = NULL);
@@ -25,11 +26,13 @@ void split_rs(ParCSRMatrix* S, aligned_vector<int>& states,
 
 void split_cljp(ParCSRMatrix* S, aligned_vector<int>& states, 
         aligned_vector<int>& off_proc_states, bool tap_cf = false, 
-        double* rand_vals = NULL, data_t* comm_t = NULL);
+        double* rand_vals = NULL, data_t* comm_t = NULL, 
+        data_t* comm_mat_t = NULL);
 
 void split_falgout(ParCSRMatrix* S, aligned_vector<int>& states, 
         aligned_vector<int>& off_proc_states, bool tap_cf = false, 
-        double* rand_vals = NULL, data_t* comm_t = NULL);
+        double* rand_vals = NULL, data_t* comm_t = NULL,
+        data_t* comm_mat_t = NULL);
 
 void split_pmis(ParCSRMatrix* S, aligned_vector<int>& states,
         aligned_vector<int>& off_proc_states, bool tap_cf = false, 

@@ -33,7 +33,7 @@ void split_rs(ParCSRMatrix* S, aligned_vector<int>& states,
 
 void split_cljp(ParCSRMatrix* S, aligned_vector<int>& states, 
         aligned_vector<int>& off_proc_states, bool tap_cf, 
-        double* rand_vals, data_t* comm_t)
+        double* rand_vals, data_t* comm_t, data_t* comm_mat_t)
 {
     
     S->on_proc->move_diag();
@@ -46,12 +46,13 @@ void split_cljp(ParCSRMatrix* S, aligned_vector<int>& states,
     /**********************************************
      * CLJP Main Loop
      **********************************************/
-    cljp_main_loop(S, states, off_proc_states, tap_cf, rand_vals, comm_t);
+    cljp_main_loop(S, states, off_proc_states, tap_cf, 
+            rand_vals, comm_t, comm_mat_t);
 }
 
 void split_falgout(ParCSRMatrix* S, aligned_vector<int>& states, 
         aligned_vector<int>& off_proc_states, bool tap_cf, 
-        double* rand_vals, data_t* comm_t)
+        double* rand_vals, data_t* comm_t, data_t* comm_mat_t)
 {
     S->on_proc->move_diag();
 
@@ -70,7 +71,8 @@ void split_falgout(ParCSRMatrix* S, aligned_vector<int>& states,
     /**********************************************
      * CLJP Main Loop
      **********************************************/
-    cljp_main_loop(S, states, off_proc_states, tap_cf, rand_vals, comm_t);
+    cljp_main_loop(S, states, off_proc_states, tap_cf, 
+            rand_vals, comm_t, comm_mat_t);
 }
 
 void split_pmis(ParCSRMatrix* S, aligned_vector<int>& states,
@@ -1396,7 +1398,7 @@ void cljp_main_loop(ParCSRMatrix* S,
         aligned_vector<int>& states,
         aligned_vector<int>& off_proc_states,
         bool tap_comm, double* rand_vals,
-        data_t* comm_t)
+        data_t* comm_t, data_t* comm_mat_t)
 {
     /**********************************************
      * Declare and Initialize Variables
@@ -1579,10 +1581,10 @@ void cljp_main_loop(ParCSRMatrix* S,
 
         // Find new coarse influenced by each off_proc col
         // TODO -- Add first pass option
-        if (comm_t) *comm_t -= MPI_Wtime();
+        if (comm_mat_t) *comm_mat_t -= MPI_Wtime();
         find_off_proc_new_coarse(S, comm, global_to_local, states, off_proc_states, 
                 part_to_col, off_proc_col_ptr, off_proc_col_coarse, first_pass);
-        if (comm_t) *comm_t += MPI_Wtime();
+        if (comm_mat_t) *comm_mat_t += MPI_Wtime();
 
         // Update Weights
         for (int i = 0; i < S->off_proc_num_cols; i++)

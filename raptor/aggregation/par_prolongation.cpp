@@ -5,7 +5,7 @@
 
 // Assuming weighting = local (not getting approx spectral radius)
 ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, bool tap_comm,
-        double omega, int num_smooth_steps, data_t* comm_t)
+        double omega, int num_smooth_steps, data_t* comm_t, data_t* comm_mat_t)
 {
     ParCSRMatrix* AP_tmp;
     ParCSRMatrix* P_tmp;
@@ -56,7 +56,6 @@ ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, bool tap_com
     // P = P - (scaled_A*P)
     for (int i = 0; i < num_smooth_steps; i++)
     {
-        if (comm_t) *comm_t -= MPI_Wtime();
         if (tap_comm)
         {
             if (P->tap_comm == NULL)
@@ -64,7 +63,9 @@ ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, bool tap_com
                 P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map,
                         P->on_proc_column_map, true, MPI_COMM_WORLD, comm_t);
             }
+            if (comm_mat_t) *comm_mat_t -= MPI_Wtime();
             AP_tmp = scaled_A->tap_mult(P);
+            if (comm_mat_t) *comm_mat_t += MPI_Wtime();
         }
         else
         {
@@ -74,9 +75,10 @@ ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, bool tap_com
                         P->on_proc_column_map, 9283, MPI_COMM_WORLD, comm_t);
             }
 
+            if (comm_mat_t) *comm_mat_t -= MPI_Wtime();
             AP_tmp = scaled_A->mult(P);
+            if (comm_mat_t) *comm_mat_t += MPI_Wtime();
         }
-        if (comm_t) *comm_t += MPI_Wtime();
 
         P_tmp = P->subtract(AP_tmp);
         delete AP_tmp;

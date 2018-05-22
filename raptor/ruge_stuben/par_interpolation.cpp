@@ -212,7 +212,8 @@ void communicate(ParCSRMatrix* A, const aligned_vector<int>& states,
 ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const aligned_vector<int>& states,
         const aligned_vector<int>& off_proc_states, 
-        bool tap_interp, int num_variables, int* variables, data_t* comm_t)
+        bool tap_interp, int num_variables, int* variables, 
+        data_t* comm_t, data_t* comm_mat_t)
 {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -294,9 +295,9 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     }
 
     // Communicate parallel matrix A (Costly!)
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_mat_t) *comm_mat_t -= MPI_Wtime();
     communicate(A, S, states, off_proc_states_A, comm, &recv_on, &recv_off);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_mat_t) *comm_mat_t += MPI_Wtime();
 
     // Change on_proc_cols to local
     recv_on->n_cols = A->on_proc_num_cols;
@@ -1032,7 +1033,8 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
 ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const aligned_vector<int>& states,
         const aligned_vector<int>& off_proc_states, 
-        bool tap_interp, int num_variables, int* variables, data_t* comm_t)
+        bool tap_interp, int num_variables, int* variables, 
+        data_t* comm_t, data_t* comm_mat_t)
 {
     int start, end;
     int start_k, end_k;
@@ -1144,9 +1146,9 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     }
 
     // Communicate parallel matrix A (Costly!)
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_mat_t) *comm_mat_t -= MPI_Wtime();
     communicate(A, states, off_proc_states_A, comm, &recv_on, &recv_off);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_mat_t) *comm_mat_t += MPI_Wtime();
 
     // Change on_proc_cols to local
     recv_on->n_cols = A->on_proc_num_cols;
