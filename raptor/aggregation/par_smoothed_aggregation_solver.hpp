@@ -101,7 +101,7 @@ namespace raptor
                 case MIS:
                     mis2(S, states, off_proc_states, tap_level, weights, agg_time);
                     n_aggs = aggregate(A, S, states, off_proc_states, 
-                            aggregates, tap_level, agg_time);
+                            aggregates, tap_level, NULL, agg_time);
                     break;
             }
             if (setup_times) setup_times[2][level_ctr] += MPI_Wtime();

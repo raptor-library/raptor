@@ -545,7 +545,8 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, da
     // TODO... but is it?
     if (A->comm)
     {
-        S->comm = new ParComm((ParComm*) A->comm, orig_to_S, comm_t);
+        //S->comm = new ParComm((ParComm*) A->comm, orig_to_S, comm_t);
+        S->comm = new ParComm(S->partition, S->off_proc_column_map, S->on_proc_column_map);
     }
 
     if (A->tap_comm)
