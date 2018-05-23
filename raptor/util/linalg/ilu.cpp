@@ -473,7 +473,7 @@ BSRMatrix* BSRMatrix::ilu_levels()
 	*/
 	
 	//begin ILU process
-	for(int row_i = 1; row_i < n_rows;row_i++){
+	for(int row_i = 1; row_i < n_rows/b_rows;row_i++){
 		std::vector<int> current_row_levls(n_cols*b_rows);
 		std::fill(current_row_levls.begin(), current_row_levls.end(), 100);
 		//get row i
