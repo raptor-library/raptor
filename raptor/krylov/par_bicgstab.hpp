@@ -4,16 +4,18 @@
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
-#include "multilevel/par_multilevel.hpp"
 #include <vector>
 
 using namespace raptor;
 
-void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, 
-            aligned_vector<double>& res, double tol = 1e-06, int max_iter = -1);
+void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol = 1e-05, int max_iter = -1);
 
-int PBiCGStab(ParCSRMatrix* A, ParMultilevel* ml, ParVector& x,
-            ParVector& b, aligned_vector<double>& res, double tol = 1e-06, 
-            int max_iter = -1, int precond_iter = 1);
+void SeqInner_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol = 1e-05, int max_iter = -1);
+
+void SeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol = 1e-05, int max_iter = -1);
+
+void SeqInnerSeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol = 1e-05, int max_iter = -1);
+
+void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol = 1e-05, int max_iter = -1);
 
 #endif

@@ -690,7 +690,13 @@ void ParCSCMatrix::mult(ParVector& x, ParVector& b, bool tap,
     ParMatrix::mult(x, b, tap, comm_t);
 }
 
-void ParCOOMatrix::tap_mult(ParVector& x, ParVector& b, 
+void ParBSRMatrix::mult(ParVector& x, ParVector& b, bool tap,
+        data_t* comm_t)
+{
+    ParMatrix::mult(x, b);
+}
+
+void ParCOOMatrix::tap_mult(ParVector& x, ParVector& b,
         data_t* comm_t)
 {
     ParMatrix::tap_mult(x, b, comm_t);
@@ -706,6 +712,12 @@ void ParCSCMatrix::tap_mult(ParVector& x, ParVector& b,
         data_t* comm_t)
 {
     ParMatrix::tap_mult(x, b, comm_t);
+}
+
+void ParBSRMatrix::tap_mult(ParVector& x, ParVector& b,
+        data_t* comm_t)
+{
+    ParMatrix::tap_mult(x, b);
 }
 
 void ParCOOMatrix::mult_T(ParVector& x, ParVector& b, bool tap,
@@ -726,6 +738,12 @@ void ParCSCMatrix::mult_T(ParVector& x, ParVector& b, bool tap,
     ParMatrix::mult_T(x, b, tap, comm_t);
 }
 
+void ParBSRMatrix::mult_T(ParVector& x, ParVector& b, bool tap,
+        data_t* comm_t)
+{
+    ParMatrix::mult_T(x, b);
+}
+
 void ParCOOMatrix::tap_mult_T(ParVector& x, ParVector& b,
         data_t* comm_t)
 {
@@ -744,3 +762,8 @@ void ParCSCMatrix::tap_mult_T(ParVector& x, ParVector& b,
     ParMatrix::tap_mult_T(x, b, comm_t);
 }
 
+void ParBSRMatrix::tap_mult_T(ParVector& x, ParVector& b,
+        data_t* comm_t)
+{
+    ParMatrix::tap_mult_T(x, b);
+}

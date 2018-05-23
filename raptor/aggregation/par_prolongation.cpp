@@ -15,7 +15,7 @@ ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, bool tap_com
     // Get absolute row sum for each row
     int row_start_on, row_end_on;
     int row_start_off, row_end_off;
-    std::vector<double> inv_sums;
+    aligned_vector<double> inv_sums;
     if (A->local_num_rows)
     {
         inv_sums.resize(A->local_num_rows, 0);

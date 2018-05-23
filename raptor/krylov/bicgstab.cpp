@@ -20,7 +20,7 @@ void BiCGStab(CSRMatrix* A, Vector& x, Vector& b, aligned_vector<double>& res, d
 
     if (max_iter <= 0)
     {
-        max_iter = ((int)(1.3*b.size())) + 5;
+        max_iter = x.num_values + 5;
     }
 
     // Fixed Constructors
@@ -55,26 +55,21 @@ void BiCGStab(CSRMatrix* A, Vector& x, Vector& b, aligned_vector<double>& res, d
     iter = 0;
     
     // Main BiCGStab Loop
-    while (norm_r > tol && iter < max_iter)
+    while (true)
     {
-
         // alpha_i = (r_i, rstar_i) / (A*p_i, pstar_i)
         A->mult(p, Ap);
-        Apr_inner = Ap.inner_product(rstar);
         alpha = rrstar_inner / Apr_inner;
-	//alpha = rrstar_inner / Ap.inner_product(rstar);
-        
+	alpha = rrstar_inner / Ap.inner_product(rstar);
+
         // s_{i} = r_i - alpha_i * Ap_i
 	s.copy(r);
 	s.axpy(Ap, -1.0*alpha);
 
 	// omega_i = (As_i, s_i) / (As_i, As_i)
 	A->mult(s, As);
-
 	As_inner = As.inner_product(s);
-
 	AsAs_inner = As.inner_product(As);
-
 	omega = As_inner / AsAs_inner;
 
         // x_{i+1} = x_i + alpha_i * p_i + omega_i * s_i
@@ -95,25 +90,26 @@ void BiCGStab(CSRMatrix* A, Vector& x, Vector& b, aligned_vector<double>& res, d
 	p.axpy(Ap, -1.0*omega);
         p.scale(beta);
         p.axpy(r, 1.0);
-       
         norm_r = r.norm(2);
-
         res.push_back(norm_r);
 
-        iter++;
-    }
+	if (norm_r < tol)
+	{
+            printf("%d Iterations Required to Converge.\n", iter);
+            printf("2 Norm of Residual: %.15f\n\n", norm_r);
+	    return;
 
-    if (iter == max_iter)
-    {
-        printf("Max Iterations Reached.\n");
-        printf("2 Norm of Residual: %lg\n\n", norm_r);
-    }
-    else
-    {
-        printf("%d Iteration required to converge\n", iter);
-        printf("2 Norm of Residual: %lg\n\n", norm_r);
-    }
+       	}
+	
+	if (iter == max_iter)
+	{
+            printf("Max Iterations Reached.\n", iter);
+            printf("2 Norm of Residual: %.15f\n\n", norm_r);
+	    return;
+	}
 
-    return;
+	iter++;
+    }
 }
+
 

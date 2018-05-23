@@ -63,7 +63,7 @@ TEST(TestParCandidates, TestsInAggregation)
     int n_aggs = aggregate(A, S, states, off_proc_states, aggregates, 
             false, weights.data());
 
-    std::vector<int> proc_aggs(num_procs);
+    aligned_vector<int> proc_aggs(num_procs);
     int first_col = 0;
     MPI_Allgather(&n_aggs, 1, MPI_INT, proc_aggs.data(), 1, MPI_INT, MPI_COMM_WORLD);
     for (int i = 0; i < rank; i++)

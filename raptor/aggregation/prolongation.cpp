@@ -14,7 +14,7 @@ CSRMatrix* jacobi_prolongation(CSRMatrix* A, CSRMatrix* T, double omega,
 
     // Get absolute row sum for each row
     int row_start, row_end;
-    std::vector<double> inv_sums(A->n_rows, 0);
+    aligned_vector<double> inv_sums(A->n_rows, 0);
     double row_sum = 0;
     for (int row = 0; row < A->n_rows; row++)
     {

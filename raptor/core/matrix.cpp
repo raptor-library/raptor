@@ -62,6 +62,45 @@ void CSCMatrix::print()
     }
 }
 
+void BSRMatrix::print()
+{
+    int col, start, end;
+
+    for (int i = 0; i < n_rows/b_rows; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            // Call block print function
+	    block_print(i, j, idx2[j]);
+	    printf("----------\n");
+        }
+    }
+}
+
+void BSRMatrix::block_print(int row, int num_blocks_prev, int col)
+{
+    // The upper left corner indices of the matrix
+    int upper_i = row * b_rows;
+    int upper_j = col * b_cols;
+    // The offset to determine where this block starts in the data array
+    int data_offset = num_blocks_prev * b_size;
+
+    int glob_i, glob_j, ind;
+    double val;
+    for (int i=0; i<b_rows; i++)
+    {
+        for (int j=0; j<b_cols; j++)
+	{
+            glob_i = upper_i + i;
+	    glob_j = upper_j + j;
+	    ind = i * b_cols + j + data_offset;
+	    val = vals[ind];
+	    printf("A[%d][%d] = %e\n", glob_i, glob_j, val);
+	}
+    }
+}
 
 
 Matrix* COOMatrix::transpose()
@@ -95,6 +134,12 @@ Matrix* CSCMatrix::transpose()
     delete T_csr;
 
     return T;
+}
+
+Matrix* BSRMatrix::transpose()
+{
+    printf("Currently not implemented.\n");	
+    return NULL;
 }
 
 /**************************************************************
@@ -136,6 +181,10 @@ void COOMatrix::add_value(int row, int col, double value)
     idx2.push_back(col);
     vals.push_back(value);
     nnz++;
+}
+
+void COOMatrix::add_block(int row, int col, aligned_vector<double>& values){
+    printf("Not implemented.\n");
 }
 
 void COOMatrix::copy(const COOMatrix* A)
@@ -209,6 +258,78 @@ void COOMatrix::copy(const CSCMatrix* A)
     }
 }
 
+void COOMatrix::copy(const BSRMatrix* A)
+{
+    n_rows = A->n_rows;
+    n_cols = A->n_cols;
+    nnz = 0;
+
+    idx1.clear();
+    idx2.clear();
+    vals.clear();
+
+    idx1.reserve(A->nnz);
+    idx2.reserve(A->nnz);
+    vals.reserve(A->nnz);
+
+    for (int i = 0; i < n_rows/A->b_rows; i++)
+    {
+        int row_start = A->idx1[i];
+        int row_end = A->idx1[i+1];
+        for (int j = row_start; j < row_end; j++)
+        {
+            // Call block copy function
+	    block_copy(A, i, j, A->idx2[j]);
+        }
+    }
+}
+
+void COOMatrix::block_copy(const BSRMatrix* A, int row, int num_blocks_prev, int col)
+{
+    int upper_i = row * A->b_rows;
+    int upper_j = col * A->b_cols;
+    int data_offset = num_blocks_prev * A->b_size;
+
+    int glob_i, glob_j, ind;
+    double val;
+    for (int i = 0; i < A->b_rows; i++)
+    {
+        for (int j = 0; j < A->b_cols; j++)
+	{
+            glob_i = upper_i + i;
+	    glob_j = upper_j + j;
+	    ind = i * A->b_cols + j + data_offset;
+	    val = A->vals[ind];
+
+	    if (fabs(val) > zero_tol)
+	    {
+	        idx1.push_back(glob_i);
+	        idx2.push_back(glob_j);
+                vals.push_back(val);
+		nnz++;
+	    }
+	}
+    }
+}
+
+/**************************************************************
+*****   COOMatrix to_dense
+**************************************************************
+***** Converts the COOMatrix into a dense matrix
+***** in the form of a flattened vector ordered row-wise
+**************************************************************/
+aligned_vector<double> COOMatrix::to_dense() const
+{
+    aligned_vector<double> dense(n_rows * n_cols);
+    std::fill(dense.begin(), dense.end(), 0.0);
+
+    for (int i = 0; i < nnz; i++)
+    {
+        dense[idx1[i]*n_cols + idx2[i]] = vals[i];
+    }
+
+    return dense;
+}
 
 /**************************************************************
 *****   COOMatrix Sort
@@ -377,6 +498,10 @@ void CSRMatrix::add_value(int row, int col, double value)
     nnz++;
 }
 
+void CSRMatrix::add_block(int row, int col, aligned_vector<double>& values){
+    printf("Not implemented.\n");
+}
+
 void CSRMatrix::copy(const COOMatrix* A)
 {
     n_rows = A->n_rows;
@@ -489,6 +614,31 @@ void CSRMatrix::copy(const CSCMatrix* A)
             }
         }
     }
+}
+void CSRMatrix::copy(const BSRMatrix* A)
+{
+    printf("Currently not implemented\n");
+}
+
+/**************************************************************
+*****   CSRMatrix to_dense
+**************************************************************
+***** Converts the CSRMatrix into a dense matrix
+***** in the form of a flattened vector ordered row-wise
+**************************************************************/
+aligned_vector<double> CSRMatrix::to_dense() const
+{
+    aligned_vector<double> dense(n_rows * n_cols);
+    std::fill(dense.begin(), dense.end(), 0.0);
+
+    for (int i = 0; i < n_rows; i++)
+    {
+        for (int j = idx1[i]; j < idx1[i+1]; j++)
+	{
+            dense[i*n_cols + idx2[j]] = vals[j];
+	}
+    }
+    return dense;
 }
 
 /**************************************************************
@@ -712,6 +862,247 @@ void CSRMatrix::remove_duplicates()
 }
 
 /**************************************************************
+*****  BSRMatrix Copy
+**************************************************************
+**************************************************************/
+void BSRMatrix::copy(const COOMatrix* A)
+{
+    n_rows = A->n_rows;
+    n_cols = A->n_cols;
+
+    aligned_vector<double> A_dense = A->to_dense();
+
+    double block_dense[n_rows*n_cols];
+
+    int block_ind, glob_i, glob_j;
+    for (int k = 0; k < n_rows/b_rows; k++)
+    {
+        for (int w = 0; w < n_cols/b_cols; w++)
+	{
+            for (int i = 0; i < b_rows; i++)
+	    {
+                for (int j = 0; j < b_cols; j++)
+		{
+                    block_ind = k*n_cols/b_cols + w;
+		    glob_i = k * b_rows + i;
+		    glob_j = w * b_cols + j;
+		    block_dense[block_ind * b_size + i * b_cols + j] = A_dense[glob_i * n_cols + glob_j];
+		}
+	    }
+	}
+    }    
+
+    const BSRMatrix* B = new BSRMatrix(n_rows, n_cols, b_rows, b_cols, block_dense);
+    copy(B);
+
+    delete B;
+}
+
+void BSRMatrix::copy(const CSRMatrix* A)
+{
+    n_rows = A->n_rows;
+    n_cols = A->n_cols;
+
+    aligned_vector<double> A_dense = A->to_dense();
+    double block_dense[n_rows*n_cols];
+
+    int block_ind, glob_i, glob_j;
+    for (int k = 0; k < n_rows/b_rows; k++)
+    {
+        for (int w = 0; w < n_cols/b_cols; w++)
+	{
+            for (int i = 0; i < b_rows; i++)
+	    {
+                for (int j = 0; j < b_cols; j++)
+		{
+                    block_ind = k*n_cols/b_cols + w;
+		    glob_i = k * b_rows + i;
+		    glob_j = w * b_cols + j;
+		    block_dense[block_ind * b_size + i * b_cols + j] = A_dense[glob_i * n_cols + glob_j];
+		}
+	    }
+	}
+    }
+
+    const BSRMatrix* B = new BSRMatrix(n_rows, n_cols, b_rows, b_cols, block_dense);
+    copy(B);
+
+    delete B;
+}
+
+void BSRMatrix::copy(const CSCMatrix* A)
+{
+    printf("Currently not implemented\n");
+}
+
+void BSRMatrix::copy(const BSRMatrix* A)
+{
+    n_rows = A->n_rows;
+    n_cols = A->n_cols;
+    b_rows = A->b_rows;
+    b_cols = A->b_cols;
+    b_size = A->b_size;
+    n_blocks = A->n_blocks;
+    nnz = A->nnz;
+
+    idx1.resize(A->idx1.size());
+    idx2.resize(A->idx2.size());
+    vals.resize(A->vals.size());
+
+    std::copy(A->idx1.begin(), A->idx1.end(), idx1.begin());
+    std::copy(A->idx2.begin(), A->idx2.end(), idx2.begin());
+    std::copy(A->vals.begin(), A->vals.end(), vals.begin());
+}
+
+/**************************************************************
+*****   BSRMatrix to_dense
+**************************************************************
+***** Converts the BSRMatrix into a dense matrix
+***** in the form of a flattened vector ordered row-wise
+**************************************************************/
+aligned_vector<double> BSRMatrix::to_dense()
+{
+    aligned_vector<double> dense(n_rows * n_cols);
+    std::fill(dense.begin(), dense.end(), 0.0);
+
+    int start, end;
+    int upper_i, upper_j, data_offset;
+    double val;
+    int glob_i, glob_j, ind;
+    for (int i=0; i<n_rows/b_rows; i++)
+    {
+	start = idx1[i];
+	end = idx1[i+1];
+        for (int j=start; j<end; j++)
+	{
+            upper_i = i * b_rows;
+	    upper_j = idx2[j] * b_cols;
+	    data_offset = j * b_size;
+	    for (int block_i = 0; block_i < b_rows; block_i++)
+	    {
+                for (int block_j = 0; block_j < b_cols; block_j++)
+		{
+                    glob_i = upper_i + block_i;
+		    glob_j = upper_j + block_j;
+		    ind = block_i * b_cols + block_j + data_offset;
+		    val = vals[ind];
+                    dense[glob_i*n_cols + glob_j] = val;
+		}
+	    }
+	}
+    }
+
+    return dense;
+}
+
+/**************************************************************
+*****  BSRMatrix Add Value
+**************************************************************
+**************************************************************/
+void BSRMatrix::add_value(int row, int col, double value)
+{
+    printf("Currently not implemented\n");
+}
+
+/**************************************************************
+*****  BSRMatrix Add Block
+***************************************************************
+***** Inserts nonzero block of values into position (row, col)
+***** of the block-matrix - NOT the global indices.
+***** Values of the non-zero block being added should be row
+***** ordered within the values array.
+*****
+***** Input:
+*****   row:
+*****     row index of non-zero block in matrix - NOT global row
+*****   col:
+*****     col index of non-zero block in matrix - NOT global col
+*****   values:
+*****     vector of block values - ordered row-wise within the block
+**************************************************************/
+void BSRMatrix::add_block(int row, int col, aligned_vector<double>& values)
+{
+    // Only add correct number of elements for block if values is longer than
+    // block size
+    if (values.size() > b_size) values.erase(values.begin()+b_size, values.end());
+
+    // Add zeros to end of values vector if smaller than block size
+    if (values.size() < b_size)
+    {
+        for(int k=values.size(); k<b_size; k++)
+	{
+            values.push_back(0.0);
+	}
+    }
+
+    int start, end, j, data_offset;
+    start = idx1[row];
+    end = idx1[row+1];
+    data_offset = idx1[row] * b_size;
+
+    // Update cols vector and data offset
+    if(idx2.size() < 1)
+    {
+        // First block added
+        idx2.push_back(col);
+	data_offset = 0;
+    }
+    else if(start == end || col > idx2[end-1])
+    {
+        idx2.insert(idx2.begin()+end, col);
+	data_offset += b_size * (end-start);
+    }
+    else if(col < idx2[start]){
+        idx2.insert(idx2.begin()+start, col);
+    }
+    else
+    {
+        while(j < end)
+        {
+            if(col < idx2[j])
+            {
+                idx2.insert(idx2.begin()+j, col);
+		data_offset += b_size * (j-start);
+            }
+	    else j++;
+        }
+    }
+
+    // Update rowptr
+    for(int i=row+1; i<idx1.size(); i++){
+        idx1[i]++;
+    }
+
+    // Update vals array
+    vals.insert(vals.begin()+data_offset, values.begin(), values.end());
+
+    // Update matrix variables
+    nnz += b_size;
+    n_blocks++;
+
+}
+
+/**************************************************************
+*****   BSRMatrix Sort
+**************************************************************
+**************************************************************/
+void BSRMatrix::sort()
+{
+    //printf("Currently not implemented\n");
+    return;
+}
+
+void BSRMatrix::move_diag()
+{
+    printf("Currently not implemented\n");
+}
+
+void BSRMatrix::remove_duplicates()
+{
+    printf("Currently not implemented\n");
+}
+
+/**************************************************************
 *****  CSCMatrix Add Value
 **************************************************************
 ***** Inserts value into the position (row, col) of the matrix.
@@ -735,6 +1126,10 @@ void CSCMatrix::add_value(int row, int col, double value)
     idx2.push_back(row);
     vals.push_back(value);
     nnz++;
+}
+
+void CSCMatrix::add_block(int row, int col, aligned_vector<double>& values){
+    printf("Not implemented.\n");
 }
 
 void CSCMatrix::copy(const COOMatrix* A)
@@ -858,6 +1253,12 @@ void CSCMatrix::copy(const CSCMatrix* A)
             vals[j] = A->vals[j];
         }
     }
+}
+
+void CSCMatrix::copy(const BSRMatrix* A)
+{
+    printf("Currently not implemented");
+    return;
 }
 
 /**************************************************************

@@ -11,7 +11,7 @@ int aggregate(CSRMatrix* A, CSRMatrix* S, aligned_vector<int>& states,
     }
 
     // Set random values
-    std::vector<double> r(A->n_rows, 0);
+    aligned_vector<double> r(A->n_rows, 0);
     if (rand_vals)
     {
         for (int i = 0; i < A->n_rows; i++)

@@ -148,8 +148,8 @@ namespace raptor
     using index_t = int;
     template <typename T>
     using aligned_vector = std::vector<T, AlignAllocator<T, 16>>;
-    enum format_t {CSR, CSC, COO};
     enum strength_t {Classical, Symmetric};
+    enum format_t {BSR, CSR, CSC, COO};
     enum coarsen_t {RS, CLJP, Falgout, PMIS, HMIS};
     enum interp_t {Direct, ModClassical, Extended};
     enum agg_t {MIS};

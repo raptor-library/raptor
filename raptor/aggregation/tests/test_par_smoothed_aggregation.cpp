@@ -122,10 +122,10 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
 
     // Aggregates returns global indices of original global rows
     // Gather list of all aggregates, in order, holding original global cols
-    std::vector<int> agg_sizes(num_procs);
-    std::vector<int> agg_displ(num_procs+1);
-    std::vector<int> agg_list;
-    std::vector<int> total_agg_list;
+    aligned_vector<int> agg_sizes(num_procs);
+    aligned_vector<int> agg_displ(num_procs+1);
+    aligned_vector<int> agg_list;
+    aligned_vector<int> total_agg_list;
     int global_col, local_col;
     MPI_Allgather(&n_aggs, 1, MPI_INT, agg_sizes.data(), 1, MPI_INT, MPI_COMM_WORLD);
     agg_displ[0] = 0;
@@ -153,7 +153,7 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     }
 
     // Test fitting candidates
-    std::vector<int> proc_aggs(num_procs);
+    aligned_vector<int> proc_aggs(num_procs);
     int first_col = 0;
     MPI_Allgather(&n_aggs, 1, MPI_INT, proc_aggs.data(), 1, MPI_INT, MPI_COMM_WORLD);
     for (int i = 0; i < rank; i++)

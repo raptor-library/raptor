@@ -109,6 +109,82 @@ namespace raptor
     }
 
     Partition(index_t _global_num_rows, index_t _global_num_cols,
+            index_t _brows, index_t _bcols, Topology* _topology = NULL)
+    {
+        int rank, num_procs;
+        int avg_num_blocks, global_num_row_blocks, global_num_col_blocks;
+        int extra;
+
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+        global_num_rows = _global_num_rows;
+        global_num_cols = _global_num_cols;
+
+        // Partition rows across processes
+	global_num_row_blocks = global_num_rows / _brows;
+        avg_num_blocks = global_num_row_blocks / num_procs;
+        extra = global_num_row_blocks % num_procs;
+        first_local_row = avg_num_blocks * rank * _brows;
+        local_num_rows = avg_num_blocks * _brows;
+        if (extra > rank)
+        {
+            first_local_row += rank * _brows;
+            local_num_rows += _brows;
+        }
+        else
+        {
+            first_local_row += extra * _brows;
+        }
+
+        // Partition cols across processes
+	// local_num_cols = number of cols in on_proc matrix
+        if (global_num_row_blocks < num_procs)
+        {
+            num_procs = global_num_row_blocks;
+        }
+
+	global_num_col_blocks = global_num_cols / _bcols;
+        avg_num_blocks = global_num_col_blocks / num_procs;
+        extra = global_num_col_blocks % num_procs;
+        if (local_num_rows)
+        {
+            first_local_col = avg_num_blocks * rank * _bcols;
+            local_num_cols = avg_num_blocks * _bcols;
+            if (extra > rank)
+            {
+                first_local_col += rank * _bcols;
+                local_num_cols += _bcols;
+            }
+            else
+            {
+                first_local_col += extra * _bcols;
+            }
+        }
+        else
+        {
+            local_num_cols = 0;
+        }
+
+        last_local_row = first_local_row + local_num_rows - 1;
+        last_local_col = first_local_col + local_num_cols - 1;
+
+        num_shared = 0;
+
+        create_assumed_partition();
+
+        if (_topology == NULL)
+        {
+            topology = new Topology();
+        }
+        else
+        {
+            topology = _topology;
+            topology->num_shared++;
+        }
+    }
+
+    Partition(index_t _global_num_rows, index_t _global_num_cols,
             int _local_num_rows, int _local_num_cols,
             index_t _first_local_row, index_t _first_local_col,
             Topology* _topology = NULL)

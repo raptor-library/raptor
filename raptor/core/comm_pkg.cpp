@@ -216,8 +216,8 @@ CSRMatrix* communication_helper(const aligned_vector<int>& rowptr,
     CSRMatrix* recv_mat = new CSRMatrix(recv_comm->size_msgs, -1);
 
     // Only sending and recving a single buffer
-    std::vector<PairData> send_buffer;
-    std::vector<PairData> recv_buffer;
+    aligned_vector<PairData> send_buffer;
+    aligned_vector<PairData> recv_buffer;
     aligned_vector<int> send_ptr(send_comm->num_msgs+1);
     send_ptr[0] = 0;
 
@@ -389,8 +389,8 @@ CSRMatrix* communication_helper(const aligned_vector<int>& rowptr,
     CSRMatrix* recv_mat = new CSRMatrix(recv_comm->size_msgs, -1);
 
     // Only sending and recving a single buffer
-    std::vector<int> send_buffer;
-    std::vector<int> recv_buffer;
+    aligned_vector<int> send_buffer;
+    aligned_vector<int> recv_buffer;
     aligned_vector<int> send_ptr(send_comm->num_msgs+1);
 
     // Send pair_data for each row using MPI_DOUBLE_INT

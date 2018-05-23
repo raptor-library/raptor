@@ -1351,3 +1351,28 @@ void ParCSRMatrix::print_mult_T(ParCSCMatrix* A, const aligned_vector<int>& proc
 
     delete Ctmp;
 }
+
+
+ParBSRMatrix* ParBSRMatrix::mult(ParBSRMatrix* B, bool tap, data_t* comm_t)
+{
+    // NOT IMPLEMENTED
+    return NULL;
+}
+
+ParBSRMatrix* ParBSRMatrix::tap_mult(ParBSRMatrix* B, data_t* comm_t)
+{
+    // NOT IMPLEMENTED
+    return NULL;
+}
+
+ParBSRMatrix* ParBSRMatrix::mult_T(ParBSRMatrix* B, bool tap, data_t* comm_t)
+{
+    // NOT IMPLEMENTED
+    return NULL;
+}
+
+ParBSRMatrix* ParBSRMatrix::tap_mult_T(ParBSRMatrix* B, data_t* comm_t)
+{
+    // NOT IMPLEMENTED
+    return NULL;
+}
