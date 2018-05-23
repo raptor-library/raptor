@@ -338,7 +338,6 @@ namespace raptor
                 double* interp_t = NULL;
                 if (solve_times) 
                 {
-                    solve_times[0][level] -= MPI_Wtime();
                     relax_t = &solve_comm_times[1][level];
                     resid_t = &solve_comm_times[2][level];
                     restrict_t = &solve_comm_times[3][level];
@@ -348,6 +347,8 @@ namespace raptor
 
                 if (level == num_levels - 1)
                 {
+                    if (solve_times) solve_times[0][level] -= MPI_Wtime();
+
                     if (A->local_num_rows)
                     {
                         int active_rank;
@@ -369,9 +370,13 @@ namespace raptor
                             x.local[i] = b_data[i + coarse_displs[active_rank]];
                         }
                     }
+
+                    if (solve_times) solve_times[0][level] += MPI_Wtime();
                 }
                 else
                 {
+                    if (solve_times) solve_times[0][level] -= MPI_Wtime();
+
                     levels[level+1]->x.set_const_value(0.0);
                     
                     // Relax
@@ -402,7 +407,15 @@ namespace raptor
                     P->mult_T(tmp, levels[level+1]->b, tap_level, restrict_t);
                     if (solve_times) solve_times[3][level] += MPI_Wtime();
 
+                    if (solve_times) solve_times[0][level] += MPI_Wtime();
+
+
+
                     cycle(levels[level+1]->x, levels[level+1]->b, level+1);
+
+
+
+                    if (solve_times) solve_times[0][level] -= MPI_Wtime();
 
                     if (solve_times) solve_times[4][level] -= MPI_Wtime();
                     P->mult(levels[level+1]->x, tmp, tap_level, interp_t);
