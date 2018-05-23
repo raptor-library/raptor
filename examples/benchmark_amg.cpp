@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
 
     int n = 5;
     int system = 0;
-    double strong_threshold = 0.0;
+    double strong_threshold = 0.25;
     int iter;
     int num_variables = 1;
 
@@ -146,7 +146,6 @@ int main(int argc, char* argv[])
         x.set_const_value(0.0);
     }
 
-    strong_threshold = 0.25;
 
     // Ruge-Stuben AMG
     if (rank == 0) printf("Ruge Stuben Solver: \n");
