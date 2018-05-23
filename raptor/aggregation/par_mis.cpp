@@ -355,7 +355,7 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
     int set_size, total_set_size;
     int row_val;
     bool first_pass = true;
-    while (remaining || off_remaining)
+    while (remaining || off_remaining || first_pass)
     {
         for (int i = 0; i < remaining; i++)
         {

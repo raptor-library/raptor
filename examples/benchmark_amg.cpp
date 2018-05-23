@@ -23,8 +23,8 @@ int main(int argc, char* argv[])
     int iter;
     int num_variables = 1;
 
-    coarsen_t coarsen_type = Falgout;
-    interp_t interp_type = ModClassical;
+    coarsen_t coarsen_type = HMIS;
+    interp_t interp_type = Extended;
 
     ParMultilevel* ml;
     ParCSRMatrix* A;
@@ -55,6 +55,9 @@ int main(int argc, char* argv[])
         }
         else if (system == 1)
         {
+            coarsen_type = Falgout;
+            interp_type = ModClassical;
+
             dim = 2;
             grid.resize(dim, n);
             double eps = 0.001;

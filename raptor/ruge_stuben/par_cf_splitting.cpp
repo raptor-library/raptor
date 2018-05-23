@@ -1331,7 +1331,7 @@ void pmis_main_loop(ParCSRMatrix* S,
             weights, off_proc_weights, first_pass);
     if (comm_t) *comm_t += MPI_Wtime();
 
-    while (num_remaining || num_remaining_off)
+    while (num_remaining || num_remaining_off || first_pass)
     {
         // Find max unassigned weight in each row / column
         if (comm_t) *comm_t -= MPI_Wtime();
@@ -1545,7 +1545,7 @@ void cljp_main_loop(ParCSRMatrix* S,
      * select independent set and update weights
      * accordingly (select new C/F points)
      **********************************************/
-    while (remaining || off_remaining)
+    while (remaining || off_remaining || first_pass)
     {
         /**********************************************
         * For each local row i, find max weight in 

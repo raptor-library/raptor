@@ -1386,282 +1386,151 @@ namespace raptor
             }
         }
 
-        TAPComm(TAPComm* tap_comm, const aligned_vector<int>& on_proc_col_to_new,
-                const aligned_vector<int>& off_proc_col_to_new, bool communicate = false) 
-            : CommPkg(tap_comm->topology)
+        TAPComm(TAPComm* tap_comm, const aligned_vector<int>& off_proc_col_to_new, 
+                data_t* comm_t = NULL) : CommPkg(tap_comm->topology)
         {
-            bool comm_proc;
-            int proc, start, end;
-            int idx, new_idx;
-            
-            int new_idx_L;
-            int new_idx_R;
+            int idx;
 
-            if (tap_comm->local_S_par_comm)
-            {
-                local_S_par_comm = new ParComm(tap_comm->topology,
-                        tap_comm->local_S_par_comm->key, tap_comm->local_S_par_comm->mpi_comm);
-            }
+            local_L_par_comm = new ParComm(tap_comm->local_L_par_comm, off_proc_col_to_new, 
+                    comm_t);
+            local_R_par_comm = new ParComm(tap_comm->local_R_par_comm, off_proc_col_to_new,
+                    comm_t);
 
-            local_L_par_comm = new ParComm(tap_comm->topology, 
-                    tap_comm->local_L_par_comm->key, tap_comm->local_L_par_comm->mpi_comm);
-            local_R_par_comm = new ParComm(tap_comm->topology,
-                    tap_comm->local_R_par_comm->key, tap_comm->local_R_par_comm->mpi_comm);
-            global_par_comm = new ParComm(tap_comm->topology,
-                    tap_comm->global_par_comm->key, tap_comm->global_par_comm->mpi_comm);
-            
-            // Communicate the col_to_new lists to other local procs
-            tap_comm->local_S_par_comm->communicate(on_proc_col_to_new);
-            tap_comm->local_R_par_comm->communicate_T(off_proc_col_to_new);
-
-            // Form col_to_new for S_recv, R_send, and global_recv
-            aligned_vector<int>& S_recv_col_to_new 
-                = tap_comm->local_S_par_comm->recv_data->int_buffer;
-            aligned_vector<int>& R_send_col_to_new = 
-                tap_comm->local_R_par_comm->send_data->int_buffer;
-            aligned_vector<int> global_recv_col_to_new;
-            if (tap_comm->global_par_comm->recv_data->size_msgs)
-            {
-                global_recv_col_to_new.resize(tap_comm->global_par_comm->recv_data->size_msgs);
-            }
+            // Update local_R send indices
+            aligned_vector<int> R_send_to_new(tap_comm->local_R_par_comm->send_data->size_msgs);
+            aligned_vector<int> G_off_proc_to_new(tap_comm->global_par_comm->recv_data->size_msgs);
             for (int i = 0; i < tap_comm->local_R_par_comm->send_data->size_msgs; i++)
             {
                 idx = tap_comm->local_R_par_comm->send_data->indices[i];
-                global_recv_col_to_new[idx] = R_send_col_to_new[i];
+                G_off_proc_to_new[idx] = tap_comm->local_R_par_comm->send_data->int_buffer[i];
+            }
+            idx = 0;
+            for (int i = 0; i < tap_comm->global_par_comm->recv_data->size_msgs; i++)
+            {
+                if (G_off_proc_to_new[i] != -1)
+                {
+                    G_off_proc_to_new[i] = idx++;
+                }
+            }
+            for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
+            {
+                idx = local_R_par_comm->send_data->indices[i];
+                local_R_par_comm->send_data->indices[i] = G_off_proc_to_new[idx];
             }
 
-            // Update local_L_par_comm
-            for (int i = 0; i < tap_comm->local_L_par_comm->send_data->num_msgs; i++)
+            global_par_comm = new ParComm(tap_comm->global_par_comm, G_off_proc_to_new, comm_t);
+
+            // Update global send indices
+            if (tap_comm->local_S_par_comm)
             {
-                comm_proc = false;
-                start = tap_comm->local_L_par_comm->send_data->indptr[i];
-                end = tap_comm->local_L_par_comm->send_data->indptr[i+1];
-                for (int j = start; j < end; j++)
+                aligned_vector<int> G_send_to_new(tap_comm->global_par_comm->send_data->size_msgs);
+                aligned_vector<int> S_off_proc_to_new(
+                        tap_comm->local_S_par_comm->recv_data->size_msgs);
+                for (int i = 0; i < tap_comm->global_par_comm->send_data->size_msgs; i++)
                 {
-                    idx = tap_comm->local_L_par_comm->send_data->indices[j];
-                    new_idx = on_proc_col_to_new[idx];
-                    if (new_idx != -1)
+                    idx = tap_comm->global_par_comm->send_data->indices[i];
+                    S_off_proc_to_new[idx] = tap_comm->global_par_comm->send_data->int_buffer[i];
+                }
+                idx = 0;
+                for (int i = 0; i < tap_comm->local_S_par_comm->recv_data->size_msgs; i++)
+                {
+                    if (S_off_proc_to_new[i] != -1)
                     {
-                        comm_proc = true;
-                        local_L_par_comm->send_data->indices.push_back(new_idx);
+                        S_off_proc_to_new[i] = idx++;
                     }
                 }
-                if (comm_proc)
+                for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
                 {
-                    proc = tap_comm->local_L_par_comm->send_data->procs[i];
-                    local_L_par_comm->send_data->procs.push_back(proc);
-                    local_L_par_comm->send_data->indptr.push_back(
-                            local_L_par_comm->send_data->indices.size());
+                    idx = global_par_comm->send_data->indices[i];
+                    global_par_comm->send_data->indices[i] = S_off_proc_to_new[idx];
                 }
+
+                local_S_par_comm = new ParComm(tap_comm->local_S_par_comm, 
+                        S_off_proc_to_new, comm_t);
             }
-            local_L_par_comm->send_data->num_msgs = local_L_par_comm->send_data->procs.size();
-            local_L_par_comm->send_data->size_msgs = local_L_par_comm->send_data->indices.size();
-            local_L_par_comm->send_data->finalize();
 
-            for (int i = 0; i < tap_comm->local_L_par_comm->recv_data->num_msgs; i++)
-            {
-                comm_proc = false;
-                start = tap_comm->local_L_par_comm->recv_data->indptr[i];
-                end = tap_comm->local_L_par_comm->recv_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    idx = tap_comm->local_L_par_comm->recv_data->indices[j];
-                    new_idx = off_proc_col_to_new[idx];
-                    if (new_idx != -1)
-                    {
-                        comm_proc = true;
-                        local_L_par_comm->recv_data->indices.push_back(new_idx);
-                    }
-                }
-                if (comm_proc)
-                {
-                    proc = tap_comm->local_L_par_comm->recv_data->procs[i];
-                    local_L_par_comm->recv_data->procs.push_back(proc);
-                    local_L_par_comm->recv_data->indptr.push_back(
-                            local_L_par_comm->recv_data->indices.size());
-                }
-            }
-            local_L_par_comm->recv_data->num_msgs = local_L_par_comm->recv_data->procs.size();
-            local_L_par_comm->recv_data->size_msgs = local_L_par_comm->recv_data->indices.size();
-            local_L_par_comm->recv_data->finalize();
-
-
-
-            // Update local_S_par_comm
-            for (int i = 0; i < tap_comm->local_S_par_comm->send_data->num_msgs; i++)
-            {
-                comm_proc = false;
-                start = tap_comm->local_S_par_comm->send_data->indptr[i];
-                end = tap_comm->local_S_par_comm->send_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    idx = tap_comm->local_S_par_comm->send_data->indices[j];
-                    new_idx = on_proc_col_to_new[idx];
-                    if (new_idx != -1)
-                    {
-                        comm_proc = true;
-                        local_S_par_comm->send_data->indices.push_back(new_idx);
-                    }
-                }
-                if (comm_proc)
-                {
-                    proc = tap_comm->local_S_par_comm->send_data->procs[i];
-                    local_S_par_comm->send_data->procs.push_back(proc);
-                    local_S_par_comm->send_data->indptr.push_back(
-                            local_S_par_comm->send_data->indices.size());
-                }
-            }
-            local_S_par_comm->send_data->num_msgs = local_S_par_comm->send_data->procs.size();
-            local_S_par_comm->send_data->size_msgs = local_S_par_comm->send_data->indices.size();
-            local_S_par_comm->send_data->finalize();
-
-            local_S_par_comm->recv_data->size_msgs = 0;
-            for (int i = 0; i < tap_comm->local_S_par_comm->recv_data->num_msgs; i++)
-            {
-                comm_proc = false;
-                start = tap_comm->local_S_par_comm->recv_data->indptr[i];
-                end = tap_comm->local_S_par_comm->recv_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    new_idx = S_recv_col_to_new[j];
-                    if (new_idx != -1)
-                    {
-                        comm_proc = true;
-                        local_S_par_comm->recv_data->size_msgs++;
-                    }
-                }
-                if (comm_proc)
-                {
-                    proc = tap_comm->local_S_par_comm->recv_data->procs[i];
-                    local_S_par_comm->recv_data->procs.push_back(proc);
-                    local_S_par_comm->recv_data->indptr.push_back(
-                            local_S_par_comm->recv_data->size_msgs);
-                }
-            }
-            local_S_par_comm->recv_data->num_msgs = local_S_par_comm->recv_data->procs.size();
-            local_S_par_comm->recv_data->finalize();
-
-
-            // Update local_R_par_comm
-            for (int i = 0; i < tap_comm->local_R_par_comm->recv_data->num_msgs; i++)
-            {
-                comm_proc = false;
-                start = tap_comm->local_R_par_comm->recv_data->indptr[i];
-                end = tap_comm->local_R_par_comm->recv_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    idx = tap_comm->local_R_par_comm->recv_data->indices[j];
-                    new_idx = off_proc_col_to_new[idx];
-                    if (new_idx != -1)
-                    {
-                        comm_proc = true;
-                        local_R_par_comm->recv_data->indices.push_back(new_idx);
-                    }
-                }
-                if (comm_proc)
-                {
-                    proc = tap_comm->local_R_par_comm->recv_data->procs[i];
-                    local_R_par_comm->recv_data->procs.push_back(proc);
-                    local_R_par_comm->recv_data->indptr.push_back(
-                            local_R_par_comm->recv_data->indices.size());
-                }
-            }
-            local_R_par_comm->recv_data->num_msgs = local_R_par_comm->recv_data->procs.size();
-            local_R_par_comm->recv_data->size_msgs = local_R_par_comm->recv_data->indices.size();
-            local_R_par_comm->recv_data->finalize();
-
-            for (int i = 0; i < tap_comm->local_R_par_comm->send_data->num_msgs; i++)
-            {
-                comm_proc = false;
-                start = tap_comm->local_R_par_comm->send_data->indptr[i];
-                end = tap_comm->local_R_par_comm->send_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    idx = tap_comm->local_R_par_comm->send_data->indices[j];
-                    new_idx = R_send_col_to_new[idx];
-                    if (new_idx != -1)
-                    {
-                        comm_proc = true;
-                        local_R_par_comm->send_data->indices.push_back(new_idx);
-                    }
-                }
-                if (comm_proc)
-                {
-                    proc = tap_comm->local_R_par_comm->send_data->procs[i];
-                    local_R_par_comm->send_data->procs.push_back(proc);
-                    local_R_par_comm->send_data->indptr.push_back(
-                            local_R_par_comm->send_data->indices.size());
-                }
-            }
-            local_R_par_comm->send_data->num_msgs = local_R_par_comm->send_data->procs.size();
-            local_R_par_comm->send_data->size_msgs = local_R_par_comm->send_data->indices.size();
-            local_R_par_comm->send_data->finalize();
-
-
-
-            // Update global par comm
-            for (int i = 0; i < tap_comm->global_par_comm->send_data->num_msgs; i++)
-            {
-                comm_proc = false;
-                start = tap_comm->global_par_comm->send_data->indptr[i];
-                end = tap_comm->global_par_comm->send_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    idx = tap_comm->global_par_comm->send_data->indices[j];
-                    new_idx = S_recv_col_to_new[idx];
-                    if (new_idx != -1)
-                    {
-                        comm_proc = true;
-                        global_par_comm->send_data->indices.push_back(new_idx);
-                    }
-                }
-                if (comm_proc)
-                {
-                    proc = tap_comm->global_par_comm->send_data->procs[i];
-                    global_par_comm->send_data->procs.push_back(proc);
-                    global_par_comm->send_data->indptr.push_back(
-                            global_par_comm->send_data->indices.size());
-                }
-            }
-            global_par_comm->send_data->num_msgs = global_par_comm->send_data->procs.size();
-            global_par_comm->send_data->size_msgs = global_par_comm->send_data->indices.size();
-            global_par_comm->send_data->finalize();
-
-
-            global_par_comm->recv_data->size_msgs = 0;
-            for (int i = 0; i < tap_comm->global_par_comm->recv_data->num_msgs; i++)
-            {
-                comm_proc = false;
-                start = tap_comm->global_par_comm->recv_data->indptr[i];
-                end = tap_comm->global_par_comm->recv_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    new_idx = global_recv_col_to_new[j];
-                    if (new_idx != -1)
-                    {
-                        comm_proc = true;
-                        global_par_comm->recv_data->size_msgs++;
-                    }
-                }
-                if (comm_proc)
-                {
-                    proc = tap_comm->global_par_comm->recv_data->procs[i];
-                    global_par_comm->recv_data->procs.push_back(proc);
-                    global_par_comm->recv_data->indptr.push_back(
-                            global_par_comm->recv_data->size_msgs);
-                }
-            }
-            global_par_comm->recv_data->num_msgs = global_par_comm->recv_data->procs.size();
-            global_par_comm->recv_data->finalize();
-
-            
+            // Determine size of final recvs (should be equal to 
+            // number of off_proc cols)
             int recv_size = local_R_par_comm->recv_data->size_msgs +
                 local_L_par_comm->recv_data->size_msgs;
             if (recv_size)
             {
+                // Want a single recv buffer local_R and local_L par_comms
                 recv_buffer.resize(recv_size);
                 int_recv_buffer.resize(recv_size);
+
+                // Map local_R recvs to original off_proc_column_map
+                int ctr = 0;
+                if (local_R_par_comm->recv_data->size_msgs)
+                {
+                    for (int i = 0; i < tap_comm->local_R_par_comm->recv_data->size_msgs; i++)
+                    {
+                        idx = tap_comm->local_R_par_comm->recv_data->indices[i];
+                        if (off_proc_col_to_new[idx] != -1)
+                        {
+                            local_R_par_comm->recv_data->indices[ctr++] =
+                                off_proc_col_to_new[idx];
+                        }
+                    }
+                }
+
+
+                // Map local_L recvs to original off_proc_column_map
+                ctr = 0;
+                if (local_L_par_comm->recv_data->size_msgs)
+                {
+                    for (int i = 0; i < tap_comm->local_L_par_comm->recv_data->size_msgs; i++)
+                    {
+                        idx = tap_comm->local_L_par_comm->recv_data->indices[i];
+                        if (off_proc_col_to_new[idx] != -1)
+                        {
+                            local_L_par_comm->recv_data->indices[ctr++] =
+                                off_proc_col_to_new[idx];
+                        }
+                    }
+                }
             }
+        }
+
+        TAPComm(TAPComm* tap_comm, const aligned_vector<int>& on_proc_col_to_new,
+                const aligned_vector<int>& off_proc_col_to_new, 
+                data_t* comm_t = NULL) : CommPkg(tap_comm->topology)
+        {
+            int idx;
+
+            local_L_par_comm = new ParComm(tap_comm->local_L_par_comm, on_proc_col_to_new,
+                    off_proc_col_to_new, comm_t);
+
+            local_R_par_comm = new ParComm(tap_comm->local_R_par_comm, off_proc_col_to_new,
+                    comm_t);
+
+            aligned_vector<int> G_off_proc_to_new(tap_comm->global_par_comm->recv_data->size_msgs);
+            for (int i = 0; i < tap_comm->local_R_par_comm->send_data->size_msgs; i++)
+            {
+                idx = tap_comm->local_R_par_comm->send_data->indices[i];
+                G_off_proc_to_new[idx] = tap_comm->local_R_par_comm->send_data->int_buffer[i];
+            }
+
+            if (tap_comm->local_S_par_comm)
+            {
+                global_par_comm = new ParComm(tap_comm->global_par_comm, G_off_proc_to_new, comm_t);
+
+                aligned_vector<int> S_off_proc_to_new(
+                        tap_comm->local_S_par_comm->recv_data->size_msgs);
+                for (int i = 0; i < tap_comm->global_par_comm->send_data->size_msgs; i++)
+                {
+                    idx = tap_comm->global_par_comm->send_data->indices[i];
+                    S_off_proc_to_new[idx] = tap_comm->global_par_comm->send_data->int_buffer[i];
+                }
+                local_S_par_comm = new ParComm(tap_comm->local_S_par_comm, on_proc_col_to_new,
+                        S_off_proc_to_new, comm_t);
+            }
+            else
+            {
+                global_par_comm = new ParComm(tap_comm->global_par_comm, 
+                        on_proc_col_to_new, G_off_proc_to_new, comm_t);
+            }
+
         }
 
         /**************************************************************

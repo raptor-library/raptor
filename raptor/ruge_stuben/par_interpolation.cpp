@@ -1018,7 +1018,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     if (S->tap_comm)
     {
         P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map,
-                P->on_proc_column_map, true, MPI_COMM_WORLD, comm_t);
+                P->on_proc_column_map);
     }
     
     delete A_recv_on;
@@ -1552,8 +1552,9 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     if (S->tap_comm)
     {
-        P->tap_comm = new TAPComm(S->tap_comm, on_proc_col_to_new,
-                off_proc_col_to_new, comm_t);
+        //P->tap_comm = new TAPComm(S->tap_comm, on_proc_col_to_new,
+        //        off_proc_col_to_new);
+        P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map, P->on_proc_column_map);
     }
 
     delete recv_on;
@@ -1860,8 +1861,8 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
 
     if (S->tap_comm)
     {
-        S->tap_comm = new TAPComm(S->tap_comm, on_proc_col_to_new,
-                off_proc_col_to_new, comm_t);
+        P->tap_comm = new TAPComm(S->tap_comm, on_proc_col_to_new,
+                off_proc_col_to_new);
     }
 
     return P;
