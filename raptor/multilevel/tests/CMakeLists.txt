@@ -7,4 +7,5 @@ if (WITH_MPI)
     target_link_libraries(test_par_amg raptor ${MPI_LIBRARIES} googletest pthread )
     add_test(ParAMGTest_1 mpirun -n 1 ./test_par_amg)
     add_test(ParAMGTest_2 mpirun -n 2 ./test_par_amg)
+
 endif()

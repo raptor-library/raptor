@@ -168,7 +168,6 @@ namespace raptor
     int num_nodes;
 
     MPI_Comm local_comm;
-    MPI_Comm topology_comm;
   };
 }
 

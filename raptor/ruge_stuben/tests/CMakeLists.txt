@@ -17,8 +17,7 @@ add_test(TestRugeStuben ./test_ruge_stuben)
 if (WITH_MPI)
     add_executable(test_par_rap test_par_rap.cpp)
     target_link_libraries(test_par_rap raptor ${MPI_LIBRARIES} googletest pthread )
-    add_test(TestParRAP_1 mpirun -n 1 ./test_par_rap)
-    add_test(TestParRAP_2 mpirun -n 2 ./test_par_rap)
+    add_test(TestParRAP mpirun -n 16 ./test_par_rap)
 
     add_executable(test_tap_rap test_tap_rap.cpp)
     target_link_libraries(test_tap_rap raptor ${MPI_LIBRARIES} googletest pthread )
@@ -26,13 +25,15 @@ if (WITH_MPI)
 
     add_executable(test_par_splitting test_par_splitting.cpp)
     target_link_libraries(test_par_splitting raptor ${MPI_LIBRARIES} googletest pthread )
-    add_test(TestParSplitting_1 mpirun -n 1 ./test_par_splitting)
-    add_test(TestParSplitting_2 mpirun -n 2 ./test_par_splitting)
+    add_test(TestParSplitting mpirun -n 16 ./test_par_splitting)
+
+    add_executable(test_tap_splitting test_tap_splitting.cpp)
+    target_link_libraries(test_tap_splitting raptor ${MPI_LIBRARIES} googletest pthread )
+    add_test(TestTAPSplitting mpirun -n 16 ./test_tap_splitting)
 
     add_executable(test_par_interpolation test_par_interpolation.cpp)
     target_link_libraries(test_par_interpolation raptor ${MPI_LIBRARIES} googletest pthread )
-    add_test(TestParInterpolation_1 mpirun -n 1 ./test_par_interpolation)
-    add_test(TestParInterpolation_2 mpirun -n 2 ./test_par_interpolation)
+    add_test(TestParInterpolation mpirun -n 16 ./test_par_interpolation)
 
     add_executable(test_tap_interpolation test_tap_interpolation.cpp)
     target_link_libraries(test_tap_interpolation raptor ${MPI_LIBRARIES} googletest pthread )
@@ -40,8 +41,11 @@ if (WITH_MPI)
 
     add_executable(test_par_ruge_stuben test_par_ruge_stuben.cpp)
     target_link_libraries(test_par_ruge_stuben raptor ${MPI_LIBRARIES} googletest pthread )
-    add_test(TestParRugeStuben_1 mpirun -n 1 ./test_par_ruge_stuben)
-    add_test(TestParRugeStuben_2 mpirun -n 2 ./test_par_ruge_stuben)
+    add_test(TestParRugeStuben mpirun -n 16 ./test_par_ruge_stuben)
+
+    add_executable(test_tap_ruge_stuben test_tap_ruge_stuben.cpp)
+    target_link_libraries(test_tap_ruge_stuben raptor ${MPI_LIBRARIES} googletest pthread )
+    add_test(TestTAPRugeStuben mpirun -n 16 ./test_tap_ruge_stuben)
 endif()
 
 if (WITH_HYPRE)
@@ -49,6 +53,31 @@ if (WITH_HYPRE)
     target_link_libraries(test_hypre raptor ${MPI_LIBRARIES} googletest pthread)
     add_test(TestHypre_1 mpirun -n 1 ./test_hypre)
     add_test(TestHypre_2 mpirun -n 2 ./test_hypre)
+
+    add_executable(test_hypre_agg test_hypre_agg.cpp)
+    target_link_libraries(test_hypre_agg raptor ${MPI_LIBRARIES} googletest pthread)
+    add_test(TestHypreAgg_1 mpirun -n 1 ./test_hypre_agg)
+    add_test(TestHypreAgg_2 mpirun -n 2 ./test_hypre_agg)
+
+    add_executable(test_hypre_strength test_hypre_strength.cpp)
+    target_link_libraries(test_hypre_strength raptor ${MPI_LIBRARIES} googletest pthread)
+    add_test(TestHypreStr_1 mpirun -n 1 ./test_hypre_strength)
+    add_test(TestHypreStr_2 mpirun -n 2 ./test_hypre_strength)
+
+    add_executable(test_hypre_splitting test_hypre_splitting.cpp)
+    target_link_libraries(test_hypre_splitting raptor ${MPI_LIBRARIES} googletest pthread)
+    add_test(TestHypreSplit_1 mpirun -n 1 ./test_hypre_splitting)
+    add_test(TestHypreSplit_2 mpirun -n 2 ./test_hypre_splitting)
+
+    add_executable(test_hypre_interpolation test_hypre_interpolation.cpp)
+    target_link_libraries(test_hypre_interpolation raptor ${MPI_LIBRARIES} googletest pthread)
+    add_test(TestHypreInterp_1 mpirun -n 1 ./test_hypre_interpolation)
+    add_test(TestHypreInterp_2 mpirun -n 2 ./test_hypre_interpolation)
+
+    add_executable(test_hypre_unknown test_hypre_unknown.cpp)
+    target_link_libraries(test_hypre_unknown raptor ${MPI_LIBRARIES} googletest pthread)
+    add_test(TestHypreUnknown_1 mpirun -n 1 ./test_hypre_unknown)
+    add_test(TestHypreUnknown_2 mpirun -n 2 ./test_hypre_unknown)
 endif()
 
 

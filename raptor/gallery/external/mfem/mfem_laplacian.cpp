@@ -2,6 +2,7 @@
 
 using namespace mfem;
 
+// Create MFEM Laplacian System and convert to RAPtor format
 raptor::ParCSRMatrix* mfem_laplacian(raptor::ParVector& x_raptor, 
         raptor::ParVector& b_raptor, const char* mesh_file, 
         const int order, const int seq_n_refines, const int par_n_refines,

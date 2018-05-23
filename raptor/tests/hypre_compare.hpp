@@ -6,7 +6,7 @@
 #include "gallery/external/hypre_wrapper.hpp"
 
 void compare_dimensions(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h,
-        std::vector<int>& new_off_proc_map)
+        aligned_vector<int>& new_off_proc_map)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -23,8 +23,8 @@ void compare_dimensions(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h,
     HYPRE_Int global_cols = hypre_ParCSRMatrixGlobalNumCols(A_h);
 
     int first_row, first_col;
-    std::vector<int> proc_sizes(num_procs+1);
-    std::vector<int> new_on_proc_col_map;
+    aligned_vector<int> proc_sizes(num_procs+1);
+    aligned_vector<int> new_on_proc_col_map;
 
     // Gather raptor proc sizes, and create array of global col
     // indices (corresponding to hypre's)
@@ -85,7 +85,7 @@ void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h)
     int start, end;
     int ctrA, endA;
 
-    std::vector<int> new_off_proc_map;
+    aligned_vector<int> new_off_proc_map;
     compare_dimensions(A, A_h, new_off_proc_map);
 
     // Declare Hypre Variable/s
@@ -119,11 +119,14 @@ void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h)
             hypre_qsort1(diag_j, diag_data, start, end - 1);
         }
 
-        start = offd_i[i];
-        end = offd_i[i+1];
-        if (end - start)
+        if (offd_cols)
         {
-            hypre_qsort1(offd_j, offd_data, start, end - 1);
+            start = offd_i[i];
+            end = offd_i[i+1];
+            if (end - start)
+            {
+                hypre_qsort1(offd_j, offd_data, start, end - 1);
+            }
         }
     }
 
@@ -177,7 +180,7 @@ void compareS(ParCSRMatrix* S, hypre_ParCSRMatrix* S_h)
     int start, end;
     int ctrA, endA;
 
-    std::vector<int> new_off_proc_map;
+    aligned_vector<int> new_off_proc_map;
     compare_dimensions(S, S_h, new_off_proc_map);
 
     // Declare Hypre Variables

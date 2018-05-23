@@ -27,7 +27,7 @@
  *****    Vector of distant x-values recvd from other processes
  **************************************************************/
 void SOR_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
-        const std::vector<double>& dist_x, double omega)
+        const aligned_vector<double>& dist_x, double omega)
 {
     int start, end, col;
     double diag;
@@ -63,7 +63,7 @@ void SOR_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
 }
 
 void SOR_backward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
-        const std::vector<double>& dist_x, double omega)
+        const aligned_vector<double>& dist_x, double omega)
 {
     int start, end, col;
     double diag;
@@ -98,33 +98,8 @@ void SOR_backward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
     }
 }
 
-/**************************************************************
- *****  Relaxation Method 
- **************************************************************
- ***** Performs jacobi along the diagonal block of the matrix
- *****
- ***** Parameters
- ***** -------------
- ***** l: Level*
- *****    Level in hierarchy to be relaxed
- ***** num_sweeps : int
- *****    Number of relaxation sweeps to perform
- **************************************************************/
-void jacobi(ParLevel* l, int num_sweeps, double omega)
-{
-    jacobi(l->A, l->x, l->b, l->tmp, num_sweeps, omega);
-}
-void sor(ParLevel* l, int num_sweeps, double omega)
-{
-    sor(l->A, l->x, l->b, l->tmp, num_sweeps, omega);
-}
-void ssor(ParLevel* l, int num_sweeps, double omega)
-{
-    ssor(l->A, l->x, l->b, l->tmp, num_sweeps, omega);
-}
-
-void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega)
+void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
+        int num_sweeps, double omega, CommPkg* comm, data_t* comm_t)
 {
     A->on_proc->sort();
     A->off_proc->sort();
@@ -135,8 +110,10 @@ void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
-        A->comm->communicate(x);
-        std::vector<double>& dist_x = A->comm->get_recv_buffer<double>();
+        if (comm_t) *comm_t -= MPI_Wtime();
+        comm->communicate(x);
+        if (comm_t) *comm_t += MPI_Wtime();
+        aligned_vector<double>& dist_x = comm->get_recv_buffer<double>();
         for (int i = 0; i < A->local_num_rows; i++)
         {
             tmp[i] = x[i];
@@ -171,40 +148,131 @@ void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     }
 }
 
+void sor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
+        int num_sweeps, double omega, CommPkg* comm, data_t* comm_t)
+{
+    A->on_proc->sort();
+    A->off_proc->sort();
+    A->on_proc->move_diag();
+
+    for (int iter = 0; iter < num_sweeps; iter++)
+    {
+        if (comm_t) *comm_t -= MPI_Wtime();
+        comm->communicate(x);
+        if (comm_t) *comm_t += MPI_Wtime();
+        SOR_forward(A, x, b, comm->get_recv_buffer<double>(), omega);
+    }
+}
+
+
+void ssor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
+        int num_sweeps, double omega, CommPkg* comm, data_t* comm_t)
+{
+    A->on_proc->sort();
+    A->off_proc->sort();
+    A->on_proc->move_diag();
+
+    for (int iter = 0; iter < num_sweeps; iter++)
+    {
+        if (comm_t) *comm_t -= MPI_Wtime();
+        comm->communicate(x);
+        if (comm_t) *comm_t += MPI_Wtime();
+        SOR_forward(A, x, b, comm->get_recv_buffer<double>(), omega);
+        SOR_backward(A, x, b, comm->get_recv_buffer<double>(), omega);
+    }
+}
+
+/**************************************************************
+ *****  Relaxation Method 
+ **************************************************************
+ ***** Performs jacobi along the diagonal block of the matrix
+ *****
+ ***** Parameters
+ ***** -------------
+ ***** l: Level*
+ *****    Level in hierarchy to be relaxed
+ ***** num_sweeps : int
+ *****    Number of relaxation sweeps to perform
+ **************************************************************/
+void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
+        int num_sweeps, double omega, bool tap, data_t* comm_t)
+{
+    CommPkg* comm;
+    if (tap)
+    {
+        if (!A->tap_comm) 
+        {
+            A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
+                    A->on_proc_column_map);
+        }
+        comm = A->tap_comm;
+    }
+    else
+    {
+        if (!A->comm) 
+        {
+            A->comm = new ParComm(A->partition, A->off_proc_column_map,
+                    A->on_proc_column_map);
+        }
+        comm = A->comm;
+    }
+
+    jacobi_helper(A, x, b, tmp, num_sweeps, omega, comm, comm_t);
+}
 void sor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega)
+        int num_sweeps, double omega, bool tap, data_t* comm_t)
 {
-    A->on_proc->sort();
-    A->off_proc->sort();
-    A->on_proc->move_diag();
-  
-    
-    
-
-    for (int iter = 0; iter < num_sweeps; iter++)
+    CommPkg* comm;
+    if (tap)
     {
-        A->comm->communicate(x);
-        SOR_forward(A, x, b, A->comm->get_recv_buffer<double>(), omega);
+        if (!A->tap_comm) 
+        {
+            A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
+                    A->on_proc_column_map);
+        }
+        comm = A->tap_comm;
     }
+    else
+    {
+        if (!A->comm) 
+        {
+            A->comm = new ParComm(A->partition, A->off_proc_column_map,
+                    A->on_proc_column_map);
+        }
+        comm = A->comm;
+    }
+
+    sor_helper(A, x, b, tmp, num_sweeps, omega, comm, comm_t);
 }
-
-
 void ssor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega)
+        int num_sweeps, double omega, bool tap, data_t* comm_t)
 {
-    A->on_proc->sort();
-    A->off_proc->sort();
-    A->on_proc->move_diag();
-  
-    
-    
-
-    for (int iter = 0; iter < num_sweeps; iter++)
+    CommPkg* comm;
+    if (tap)
     {
-        A->comm->communicate(x);
-        SOR_forward(A, x, b, A->comm->get_recv_buffer<double>(), omega);
-        SOR_backward(A, x, b, A->comm->get_recv_buffer<double>(), omega);
+        if (!A->tap_comm) 
+        {
+            A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
+                    A->on_proc_column_map);
+        }
+        comm = A->tap_comm;
     }
+    else
+    {
+        if (!A->comm) 
+        {
+            A->comm = new ParComm(A->partition, A->off_proc_column_map,
+                    A->on_proc_column_map);
+        }
+        comm = A->comm;
+    }
+
+    ssor_helper(A, x, b, tmp, num_sweeps, omega, comm, comm_t);
 }
+
+
+
+
+
 
 

@@ -11,6 +11,11 @@ target_link_libraries(test_spmv_random raptor googletest pthread )
 add_test(RandomSpMVTest ./test_spmv_random)
 
 if (WITH_MPI)
+    add_executable(test_par_add test_par_add.cpp)
+    target_link_libraries(test_par_add raptor ${MPI_LIBRARIES} googletest pthread )
+    add_test(ParAddTest_1 mpirun -n 1 ./test_par_add)
+    add_test(ParAddTest_16 mpirun -n 16 ./test_par_add)
+
     add_executable(test_par_spmv_laplacian test_par_spmv_laplacian.cpp)
     target_link_libraries(test_par_spmv_laplacian raptor ${MPI_LIBRARIES} googletest pthread )
     add_test(ParLaplacianSpMVTest_1 mpirun -n 1 ./test_par_spmv_laplacian)

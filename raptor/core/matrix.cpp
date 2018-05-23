@@ -62,6 +62,41 @@ void CSCMatrix::print()
     }
 }
 
+
+
+Matrix* COOMatrix::transpose()
+{
+    Matrix* T = new COOMatrix(n_rows, n_cols, idx2, idx1, vals);
+
+    return T;
+}
+
+Matrix* CSRMatrix::transpose()
+{
+    // Create CSC Matrix... rowptr is now colptr
+    CSCMatrix* T_csc = new CSCMatrix(n_rows, n_cols, idx1, idx2, vals); 
+
+    // Convert back to CSR to tranpose
+    Matrix* T = new CSRMatrix(T_csc);
+
+    delete T_csc;
+
+    return T;
+}
+
+Matrix* CSCMatrix::transpose()
+{
+    // Create CSR Matrix... colptr is now rowptr
+    CSRMatrix* T_csr = new CSRMatrix(n_rows, n_cols, idx1, idx2, vals); 
+
+    // Convert back to CSC to tranpose
+    Matrix* T = new CSCMatrix(T_csr);
+
+    delete T_csr;
+
+    return T;
+}
+
 /**************************************************************
 *****   Matrix Resize
 **************************************************************
@@ -192,8 +227,8 @@ void COOMatrix::sort()
 
     int k, prev_k;
 
-    std::vector<int> permutation(nnz);
-    std::vector<bool> done(nnz, false);
+    aligned_vector<int> permutation(nnz);
+    aligned_vector<bool> done(nnz, false);
 
     // Create permutation vector p
     std::iota(permutation.begin(), permutation.end(), 0);
@@ -353,7 +388,8 @@ void CSRMatrix::copy(const COOMatrix* A)
     if (nnz)
     {
         idx2.resize(nnz);
-        vals.resize(nnz);
+        if (A->vals.size())
+            vals.resize(nnz);
     }
 
     // Calculate indptr
@@ -368,7 +404,7 @@ void CSRMatrix::copy(const COOMatrix* A)
     }
 
     // Add indices and data
-    std::vector<int> ctr;
+    aligned_vector<int> ctr;
     if (n_rows)
     {
     	ctr.resize(n_rows, 0);
@@ -377,10 +413,13 @@ void CSRMatrix::copy(const COOMatrix* A)
     {
         int row = A->idx1[i];
         int col = A->idx2[i];
-        double val = A->vals[i];
         int index = idx1[row] + ctr[row]++;
         idx2[index] = col;
-        vals[index] = val;
+        if (A->vals.size())
+        {
+            double val = A->vals[i];
+            vals[index] = val;
+        }
     }
 }
 void CSRMatrix::copy(const CSRMatrix* A)
@@ -419,7 +458,8 @@ void CSRMatrix::copy(const CSCMatrix* A)
     // Resize vectors to appropriate dimensions
     idx1.resize(A->n_rows + 1);
     idx2.resize(A->nnz);
-    vals.resize(A->nnz);
+    if (A->vals.size())
+        vals.resize(A->nnz);
 
     // Create indptr, summing number times row appears in CSC
     for (int i = 0; i <= A->n_rows; i++) idx1[i] = 0;
@@ -433,7 +473,7 @@ void CSRMatrix::copy(const CSCMatrix* A)
     }
 
     // Add values to indices and data
-    std::vector<int> ctr(n_rows, 0);
+    aligned_vector<int> ctr(n_rows, 0);
     for (int i = 0; i < A->n_cols; i++)
     {
         int col_start = A->idx1[i];
@@ -443,7 +483,10 @@ void CSRMatrix::copy(const CSCMatrix* A)
             int row = A->idx2[j];
             int idx = idx1[row] + ctr[row]++;
             idx2[idx] = i;
-            vals[idx] = A->vals[j];
+            if (A->vals.size())
+            {
+                vals[idx] = A->vals[j];
+            }
         }
     }
 }
@@ -466,8 +509,8 @@ void CSRMatrix::sort()
         return;
     }
 
-    std::vector<int> permutation;
-    std::vector<bool> done;
+    aligned_vector<int> permutation;
+    aligned_vector<bool> done;
 
     // Sort the columns of each row (and data accordingly) and remove
     // duplicates (summing values together)
@@ -644,15 +687,28 @@ void CSRMatrix::remove_duplicates()
             }
             else
             {
+                if (fabs(vals[ctr - 1 + new_start]) < zero_tol)
+                {
+                    ctr--;
+                }
+
                 idx2[ctr + new_start] = col;
                 vals[ctr + new_start] = val;
                 ctr++;
                 prev_col = col;
             }
         }
+        if (fabs(vals[ctr - 1 + new_start]) < zero_tol)
+        {
+            ctr--;
+        }
+
         orig_start = orig_end;
         idx1[row+1] = idx1[row] + ctr;
     }
+    nnz = idx1[n_rows];
+    idx2.resize(nnz);
+    vals.resize(nnz);
 }
 
 /**************************************************************
@@ -692,7 +748,8 @@ void CSCMatrix::copy(const COOMatrix* A)
     if (nnz)
     {
         idx2.resize(nnz);
-        vals.resize(nnz);
+        if (A->vals.size())
+            vals.resize(nnz);
     }
 
     // Calculate indptr
@@ -710,7 +767,7 @@ void CSCMatrix::copy(const COOMatrix* A)
     }
 
     // Add indices and data
-    std::vector<int> ctr;
+    aligned_vector<int> ctr;
     if (n_cols)
     {
         ctr.resize(n_cols, 0);
@@ -719,10 +776,13 @@ void CSCMatrix::copy(const COOMatrix* A)
     {
         int row = A->idx1[i];
         int col = A->idx2[i];
-        double val = A->vals[i];
         int index = idx1[col] + ctr[col]++;
         idx2[index] = row;
-        vals[index] = val;
+        if (A->vals.size())
+        {
+            double val = A->vals[i];
+            vals[index] = val;
+        }
     }        
 }
 void CSCMatrix::copy(const CSRMatrix* A)
@@ -736,7 +796,8 @@ void CSCMatrix::copy(const CSRMatrix* A)
     if (A->nnz)
     {
         idx2.resize(A->nnz);
-        vals.resize(A->nnz);
+        if (A->vals.size())
+            vals.resize(A->nnz);
     }
 
     // Create indptr, summing number times col appears in CSR
@@ -756,7 +817,7 @@ void CSCMatrix::copy(const CSRMatrix* A)
     // Add values to indices and data
     if (A->n_cols)
     {
-        std::vector<int> ctr(A->n_cols, 0);
+        aligned_vector<int> ctr(A->n_cols, 0);
         for (int i = 0; i < A->n_rows; i++)
         {
             int row_start = A->idx1[i];
@@ -766,7 +827,10 @@ void CSCMatrix::copy(const CSRMatrix* A)
                 int col = A->idx2[j];
                 int idx = idx1[col] + ctr[col]++;
                 idx2[idx] = i;
-                vals[idx] = A->vals[j];
+                if (A->vals.size())
+                {
+                    vals[idx] = A->vals[j];
+                }
             }
         }
     }
@@ -808,8 +872,8 @@ void CSCMatrix::sort()
     int start, end, col_size;
     int prev_k, k;
 
-    std::vector<int> permutation;
-    std::vector<bool> done;
+    aligned_vector<int> permutation;
+    aligned_vector<bool> done;
 
     if (sorted || nnz == 0)
     {

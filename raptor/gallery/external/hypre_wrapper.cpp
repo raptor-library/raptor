@@ -4,12 +4,12 @@
 
 #include "hypre_wrapper.hpp"
 
-HYPRE_IJVector convert(raptor::ParVector* x_rap, MPI_Comm comm_mat)
+HYPRE_IJVector convert(raptor::ParVector& x_rap, MPI_Comm comm_mat)
 {
     HYPRE_IJVector x;
 
-    HYPRE_Int first_local = x_rap->first_local;
-    HYPRE_Int local_n = x_rap->local_n;
+    HYPRE_Int first_local = x_rap.first_local;
+    HYPRE_Int local_n = x_rap.local_n;
     HYPRE_Int last_local = first_local + local_n - 1;
 
     HYPRE_IJVectorCreate(comm_mat, first_local, last_local, &x);
@@ -21,7 +21,7 @@ HYPRE_IJVector convert(raptor::ParVector* x_rap, MPI_Comm comm_mat)
     {
         rows[i] = i+first_local;
     }
-    HYPRE_Real* x_data = x_rap->local.data();
+    HYPRE_Real* x_data = x_rap.local.data();
     HYPRE_IJVectorSetValues(x, local_n, rows, x_data);
 
     HYPRE_IJVectorAssemble(x);
@@ -45,8 +45,8 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, MPI_Comm comm_mat)
     MPI_Comm_rank(comm_mat, &rank);
     MPI_Comm_size(comm_mat, &num_procs);
 
-    std::vector<int> row_sizes(num_procs);
-    std::vector<int> col_sizes(num_procs);
+    aligned_vector<int> row_sizes(num_procs);
+    aligned_vector<int> col_sizes(num_procs);
     MPI_Allgather(&(A_rap->local_num_rows), 1, MPI_INT, row_sizes.data(), 1, MPI_INT,
             MPI_COMM_WORLD);
     MPI_Allgather(&(A_rap->on_proc_num_cols), 1, MPI_INT, col_sizes.data(), 1, MPI_INT,
@@ -183,7 +183,8 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
                                 HYPRE_Int interp_type,
                                 HYPRE_Int p_max_elmts,
                                 HYPRE_Int agg_num_levels,
-                                HYPRE_Real strong_threshold)
+                                HYPRE_Real strong_threshold,
+                                HYPRE_Int num_functions)
 {
     // Create AMG solver struct
     HYPRE_Solver amg_data;
@@ -198,8 +199,9 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
     HYPRE_BoomerAMGSetStrongThreshold(amg_data, strong_threshold);
     HYPRE_BoomerAMGSetMaxCoarseSize(amg_data, 50);
     HYPRE_BoomerAMGSetRelaxType(amg_data, 3);
+    HYPRE_BoomerAMGSetNumFunctions(amg_data, num_functions);
 
-    HYPRE_BoomerAMGSetPrintLevel(amg_data, 3);
+    HYPRE_BoomerAMGSetPrintLevel(amg_data, 2);
     HYPRE_BoomerAMGSetMaxIter(amg_data, 100);
 
     // Setup AMG
@@ -208,3 +210,92 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
     return amg_data;
 }
 
+HYPRE_Solver hypre_create_GMRES(hypre_ParCSRMatrix* A,
+                                hypre_ParVector* b,
+                                hypre_ParVector* x, HYPRE_Solver* precond_ptr,
+                                HYPRE_Int coarsen_type,
+                                HYPRE_Int interp_type,
+                                HYPRE_Int p_max_elmts,
+                                HYPRE_Int agg_num_levels,
+                                HYPRE_Real strong_threshold,
+                                HYPRE_Int num_functions)
+{
+    // Create AMG solver struct
+    HYPRE_Solver gmres_data;
+    HYPRE_ParCSRGMRESCreate(MPI_COMM_WORLD, &gmres_data);
+    HYPRE_Solver amg_data;
+    HYPRE_BoomerAMGCreate(&amg_data);
+
+    // Set Boomer AMG Parameters
+    HYPRE_BoomerAMGSetMaxRowSum(amg_data, 1);
+    HYPRE_BoomerAMGSetCoarsenType(amg_data, coarsen_type);
+    HYPRE_BoomerAMGSetInterpType(amg_data, interp_type);
+    HYPRE_BoomerAMGSetPMaxElmts(amg_data, p_max_elmts);
+    HYPRE_BoomerAMGSetAggNumLevels(amg_data, agg_num_levels);
+    HYPRE_BoomerAMGSetStrongThreshold(amg_data, strong_threshold);
+    HYPRE_BoomerAMGSetMaxCoarseSize(amg_data, 50);
+    HYPRE_BoomerAMGSetRelaxType(amg_data, 3);
+    HYPRE_BoomerAMGSetNumFunctions(amg_data, num_functions);
+
+    HYPRE_BoomerAMGSetPrintLevel(amg_data, 0);
+    HYPRE_BoomerAMGSetMaxIter(amg_data, 1);
+
+    // Set GMRES Parameters
+    HYPRE_GMRESSetMaxIter(gmres_data, 100);
+    HYPRE_GMRESSetTol(gmres_data, 1e-6);
+    HYPRE_GMRESSetPrintLevel(gmres_data, 2);
+
+    // Setup AMG
+    HYPRE_ParCSRGMRESSetPrecond(gmres_data, HYPRE_BoomerAMGSolve,
+            HYPRE_BoomerAMGSetup, amg_data);
+
+    HYPRE_ParCSRGMRESSetup(gmres_data, A, b, x);
+
+    *precond_ptr = amg_data;
+    return gmres_data;
+}
+
+HYPRE_Solver hypre_create_BiCGSTAB(hypre_ParCSRMatrix* A,
+                                hypre_ParVector* b,
+                                hypre_ParVector* x, HYPRE_Solver* precond_ptr,
+                                HYPRE_Int coarsen_type,
+                                HYPRE_Int interp_type,
+                                HYPRE_Int p_max_elmts,
+                                HYPRE_Int agg_num_levels,
+                                HYPRE_Real strong_threshold,
+                                HYPRE_Int num_functions)
+{
+    // Create AMG solver struct
+    HYPRE_Solver bicgstab_data;
+    HYPRE_ParCSRBiCGSTABCreate(MPI_COMM_WORLD, &bicgstab_data);
+    HYPRE_Solver amg_data;
+    HYPRE_BoomerAMGCreate(&amg_data);
+
+    // Set Boomer AMG Parameters
+    HYPRE_BoomerAMGSetMaxRowSum(amg_data, 1);
+    HYPRE_BoomerAMGSetCoarsenType(amg_data, coarsen_type);
+    HYPRE_BoomerAMGSetInterpType(amg_data, interp_type);
+    HYPRE_BoomerAMGSetPMaxElmts(amg_data, p_max_elmts);
+    HYPRE_BoomerAMGSetAggNumLevels(amg_data, agg_num_levels);
+    HYPRE_BoomerAMGSetStrongThreshold(amg_data, strong_threshold);
+    HYPRE_BoomerAMGSetMaxCoarseSize(amg_data, 50);
+    HYPRE_BoomerAMGSetRelaxType(amg_data, 3);
+    HYPRE_BoomerAMGSetNumFunctions(amg_data, num_functions);
+
+    HYPRE_BoomerAMGSetPrintLevel(amg_data, 0);
+    HYPRE_BoomerAMGSetMaxIter(amg_data, 1);
+
+    // Set GMRES Parameters
+    HYPRE_BiCGSTABSetMaxIter(bicgstab_data, 100);
+    HYPRE_BiCGSTABSetTol(bicgstab_data, 1e-6);
+    HYPRE_BiCGSTABSetPrintLevel(bicgstab_data, 2);
+
+    // Setup AMG
+    HYPRE_ParCSRBiCGSTABSetPrecond(bicgstab_data, HYPRE_BoomerAMGSolve,
+            HYPRE_BoomerAMGSetup, amg_data);
+
+    HYPRE_ParCSRBiCGSTABSetup(bicgstab_data, A, b, x);
+
+    *precond_ptr = amg_data;
+    return bicgstab_data;
+}

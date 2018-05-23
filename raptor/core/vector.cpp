@@ -40,12 +40,12 @@ void Vector::set_rand_values()
 /**************************************************************
 *****   Vector AXPY
 **************************************************************
-***** Multiplies the vector by a constant, alpha, and then
-***** sums each element with corresponding entry of Y
+***** Multiplies the vector x by a constant, alpha, and then
+***** sums each element with corresponding local entry 
 *****
 ***** Parameters
 ***** -------------
-***** y : Vector&
+***** x : Vector&
 *****    Vector to be summed with
 ***** alpha : data_t
 *****    Constant value to multiply each element of vector by
@@ -150,4 +150,18 @@ data_t& Vector::operator[](const int index)
 {
     return values[index];
 }
+
+
+data_t Vector::inner_product(Vector& x)
+{
+    data_t result = 0.0;
+
+    for (int i = 0; i < num_values; i++)
+    {
+        result += values[i] * x[i];
+    }
+
+    return result;
+}
+
 

@@ -14,7 +14,7 @@
 
 using namespace raptor;
 
-HYPRE_IJVector convert(raptor::ParVector* x_rap,
+HYPRE_IJVector convert(raptor::ParVector& x_rap,
                        MPI_Comm comm_mat = MPI_COMM_WORLD);
 HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap,
                        MPI_Comm comm_mat = MPI_COMM_WORLD);
@@ -31,7 +31,26 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
                                 int interp_type = 0,
                                 int p_max_elmts = 0,
                                 int agg_num_levels = 0,
-                                double strong_threshold = 0.25);
+                                double strong_threshold = 0.25,
+                                int num_functions = 1);
+HYPRE_Solver hypre_create_GMRES(hypre_ParCSRMatrix* A,
+                                hypre_ParVector* x,
+                                hypre_ParVector* b, HYPRE_Solver* precond_data,
+                                int coarsen_type = 6,
+                                int interp_type = 0,
+                                int p_max_elmts = 0,
+                                int agg_num_levels = 0,
+                                double strong_threshold = 0.25,
+                                int num_functions = 1);
+HYPRE_Solver hypre_create_BiCGSTAB(hypre_ParCSRMatrix* A,
+                                hypre_ParVector* x,
+                                hypre_ParVector* b, HYPRE_Solver* precond_data,
+                                int coarsen_type = 6,
+                                int interp_type = 0,
+                                int p_max_elmts = 0,
+                                int agg_num_levels = 0,
+                                double strong_threshold = 0.25,
+                                int num_functions = 1);
 //raptor::Hierarchy* create_wrapped_hierarchy(raptor::ParMatrix* A_rap,
 //                                raptor::ParVector* x_rap,
 //                                raptor::ParVector* b_rap,

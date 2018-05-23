@@ -5,6 +5,8 @@
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "multilevel/par_multilevel.hpp"
+#include "ruge_stuben/par_ruge_stuben_solver.hpp"
+#include "aggregation/par_smoothed_aggregation_solver.hpp"
 #include "gallery/par_matrix_IO.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/laplacian27pt.hpp"
@@ -44,11 +46,7 @@ TEST(ParAMGTest, TestsInMultilevel)
     ParVector x;
     ParVector b;
 
-    double strong_threshold = 0.25;
-
-
-
-
+    double strong_threshold = 0.0;
 
     double* stencil = laplace_stencil_27pt();
     A = par_stencil_grid(stencil, grid, dim);
@@ -56,11 +54,24 @@ TEST(ParAMGTest, TestsInMultilevel)
 
     x.resize(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     b.resize(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    
+    ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
+    ml->setup(A);
+    ml->print_hierarchy();
+
     x.set_const_value(1.0);
     A->mult(x, b);
     x.set_const_value(0.0);
-    
-    ml = new ParMultilevel(A, strong_threshold, CLJP, Classical, SOR, 1, 1.0, 50, -1);
+    int iter = ml->solve(x, b);
+    ml->print_residuals(iter);
+
+    delete ml;
+
+
+
+    // Test Smoothed Aggregation Solver
+    ml = new ParSmoothedAggregationSolver(strong_threshold);
+    ml->setup(A);
 
     if (rank == 0)
     {
@@ -95,13 +106,22 @@ TEST(ParAMGTest, TestsInMultilevel)
 	    }
     }
     
+    x.set_const_value(1.0);
+    A->mult(x, b);
+    x.set_const_value(0.0);
+    iter = ml->solve(x, b);
     if (rank == 0)
     {
         printf("\nSolve Phase Relative Residuals:\n");
     }
-    ml->solve(x, b);
+    aligned_vector<double>& sa_res = ml->get_residuals();
+    if (rank == 0) for (int i = 0; i < iter; i++)
+    {
+        printf("Res[%d] = %e\n", i, sa_res[i]);
+    }
 
     delete ml;
+
     delete A;
 
 } // end of TEST(ParAMGTest, TestsInMultilevel) //

@@ -46,12 +46,12 @@ int main(int argc, char *argv[])
     int cache_len = 10000;
     int num_tests = 2;
 
-    std::vector<double> cache_array(cache_len);
+    aligned_vector<double> cache_array(cache_len);
 
     if (system < 2)
     {
         double* stencil = NULL;
-        std::vector<int> grid;
+        aligned_vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);
@@ -83,25 +83,39 @@ int main(int argc, char *argv[])
         delete[] stencil;
     }
 #ifdef USING_MFEM
-    else if (system == 2)
+    if (system < 2)
     {
-        char* mesh_file = argv[2];
-        int order = 2;
-        int seq_refines = 1;
-        int par_refines = 1;
-        if (argc > 3)
+        double* stencil = NULL;
+        aligned_vector<int> grid;
+        if (argc > 2)
         {
-            order = atoi(argv[3]);
-            if (argc > 4)
+            n = atoi(argv[2]);
+        }
+
+        if (system == 0)
+        {
+            dim = 3;
+            grid.resize(dim, n);
+            stencil = laplace_stencil_27pt();
+        }
+        else if (system == 1)
+        {
+            dim = 2;
+            grid.resize(dim, n);
+            double eps = 0.001;
+            double theta = M_PI/4.0;
+            if (argc > 3)
             {
-                seq_refines = atoi(argv[4]);
-                if (argc > 5)
+                eps = atof(argv[3]);
+                if (argc > 4)
                 {
-                    par_refines = atoi(argv[5]);
+                    theta = atof(argv[4]);
                 }
             }
+            stencil = diffusion_stencil_2d(eps, theta);
         }
-        A = mfem_linear_elasticity(x, b, mesh_file, order);
+        A = par_stencil_grid(stencil, grid.data(), dim);
+        delete[] stencil;
     }
 #endif
     else if (system == 3)

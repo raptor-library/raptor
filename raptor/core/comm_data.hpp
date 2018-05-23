@@ -108,18 +108,8 @@ public:
             int msg_size)
     {
         int last_ptr = indptr[num_msgs];
-        int idx_start = 0;
-        if (size_msgs)
-        {
-            idx_start = indices[size_msgs-1] + 1;
-        }
         procs.push_back(proc);
         indptr.push_back(last_ptr + msg_size);
-
-        for (int i = 0; i < msg_size; i++)
-        {
-            indices.push_back(idx_start + i);
-        }
 
         num_msgs++;
         size_msgs += msg_size;
@@ -136,16 +126,18 @@ public:
     }
 
     template<typename T>
-    std::vector<T>& get_buffer();
+    aligned_vector<T>& get_buffer();
 
     int num_msgs;
     int size_msgs;
-    std::vector<int> procs;
-    std::vector<int> indptr;
-    std::vector<int> indices;
-    std::vector<MPI_Request> requests;
-    std::vector<double> buffer;
-    std::vector<int> int_buffer;
+    aligned_vector<int> procs;
+    aligned_vector<int> indptr;
+    aligned_vector<int> indices;
+    aligned_vector<int> indptr_T;
+    aligned_vector<MPI_Request> requests;
+    aligned_vector<double> buffer;
+    aligned_vector<int> int_buffer;
+
 };
 }
 #endif

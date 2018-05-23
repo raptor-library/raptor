@@ -4,8 +4,8 @@ using namespace raptor;
 
 CSRMatrix* CSRMatrix::mult(const CSRMatrix* B)
 {
-    std::vector<int> next(n_cols, -1);
-    std::vector<double> sums(n_cols, 0);
+    aligned_vector<int> next(n_cols, -1);
+    aligned_vector<double> sums(n_cols, 0);
 
     CSRMatrix* C = new CSRMatrix(n_rows, B->n_cols);
     C->idx2.reserve(1.5*nnz);
@@ -61,8 +61,8 @@ CSRMatrix* CSRMatrix::mult_T(const CSCMatrix* A)
     C->idx2.reserve(1.5*nnz);
     C->vals.reserve(1.5*nnz);
 
-    std::vector<int> next(A->n_rows, -1); 
-    std::vector<double> sums(A->n_rows, 0);
+    aligned_vector<int> next(A->n_rows, -1); 
+    aligned_vector<double> sums(A->n_rows, 0);
 
     C->idx1[0] = 0;
     for (int i = 0; i < A->n_cols; i++)

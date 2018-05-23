@@ -41,7 +41,7 @@
  *****    Matrix storing local off-diagonal block
  ***** offd_num_cols : index_t
  *****    Number of columns in the off-diagonal matrix
- ***** offd_column_map : std::vector<index_t>
+ ***** offd_column_map : aligned_vector<int>
  *****    Maps local columns of offd Matrix to global
  ***** comm : ParComm*
  *****    Parallel communicator for matrix
@@ -224,24 +224,21 @@ namespace raptor
     int* map_partition_to_local();
     void condense_off_proc();
 
-    void residual(ParVector& x, ParVector& b, ParVector& r);
-    void tap_residual(ParVector& x, ParVector& b, ParVector& r);
-    void mult(ParVector& x, ParVector& b);
-    void tap_mult(ParVector& x, ParVector& b);
-    void mult_T(ParVector& x, ParVector& b);
-    void tap_mult_T(ParVector& x, ParVector& b);
-    ParMatrix* mult(ParCSRMatrix* B);
-    ParMatrix* tap_mult(ParCSRMatrix* B);
-    ParMatrix* mult_T(ParCSCMatrix* B);
-    ParMatrix* tap_mult_T(ParCSCMatrix* B);
-
-    ParCSRMatrix* RAP(ParCSRMatrix* P)
-    {
-        int rank;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        if (rank == 0) printf("Not impelemented for this matrix type");
-        return NULL;
-    }
+    void residual(ParVector& x, ParVector& b, ParVector& r, bool tap = false, 
+            data_t* comm_t = NULL);
+    void tap_residual(ParVector& x, ParVector& b, ParVector& r, data_t* comm_t = NULL);
+    void mult(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void tap_mult(ParVector& x, ParVector& b, data_t* comm_t = NULL);
+    void mult_T(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t = NULL);
+    ParMatrix* mult(ParCSRMatrix* B, bool tap = false, data_t* comm_t = NULL);
+    ParMatrix* tap_mult(ParCSRMatrix* B, data_t* comm_t = NULL);
+    ParMatrix* mult_T(ParCSCMatrix* B, bool tap = false, data_t* comm_t = NULL);
+    ParMatrix* mult_T(ParCSRMatrix* B, bool tap = false, data_t* comm_t = NULL);
+    ParMatrix* tap_mult_T(ParCSCMatrix* B, data_t* comm_t = NULL);
+    ParMatrix* tap_mult_T(ParCSRMatrix* B, data_t* comm_t = NULL);
+    ParMatrix* add(ParCSRMatrix* A);
+    ParMatrix* subtract(ParCSRMatrix* A);
 
     void sort()
     {
@@ -249,17 +246,19 @@ namespace raptor
         off_proc->sort();
     }
 
-    std::vector<index_t>& get_off_proc_column_map()
+    virtual ParMatrix* transpose() = 0;
+
+    aligned_vector<int>& get_off_proc_column_map()
     {
         return off_proc_column_map;
     }
 
-    std::vector<index_t>& get_on_proc_column_map()
+    aligned_vector<int>& get_on_proc_column_map()
     {
         return on_proc_column_map;
     }
 
-    std::vector<index_t>& get_local_row_map()
+    aligned_vector<int>& get_local_row_map()
     {
         return local_row_map;
     }
@@ -287,9 +286,9 @@ namespace raptor
     // It will be condensed to only store columns with 
     // nonzeros, and these must be mapped to 
     // global column indices
-    std::vector<index_t> off_proc_column_map; // Maps off_proc local to global
-    std::vector<index_t> on_proc_column_map; // Maps on_proc local to global
-    std::vector<index_t> local_row_map; // Maps local rows to global
+    aligned_vector<int> off_proc_column_map; // Maps off_proc local to global
+    aligned_vector<int> on_proc_column_map; // Maps on_proc local to global
+    aligned_vector<int> local_row_map; // Maps local rows to global
 
     // Parallel communication package indicating which 
     // processes hold vector values associated with off_proc,
@@ -297,8 +296,6 @@ namespace raptor
     Partition* partition;
     ParComm* comm;
     TAPComm* tap_comm;
-
-
   };
 
   class ParCOOMatrix : public ParMatrix
@@ -387,10 +384,12 @@ namespace raptor
     void copy(ParCSRMatrix* A);
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
-    void mult(ParVector& x, ParVector& b);
-    void tap_mult(ParVector& x, ParVector& b);
-    void mult_T(ParVector& x, ParVector& b);
-    void tap_mult_T(ParVector& x, ParVector& b);
+    void mult(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void tap_mult(ParVector& x, ParVector& b, data_t* comm_t = NULL);
+    void mult_T(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t = NULL);
+
+    ParMatrix* transpose();
   };
 
   class ParCSRMatrix : public ParMatrix
@@ -431,6 +430,17 @@ namespace raptor
         off_proc = new CSRMatrix(partition->local_num_rows, partition->global_num_cols, 
                 nnz_per_row);
     }
+
+    ParCSRMatrix(Partition* part, Matrix* _on_proc, Matrix* _off_proc) : ParMatrix(part)
+    {
+        on_proc = _on_proc;
+        off_proc = _off_proc;
+        on_proc_num_cols = on_proc->n_cols;
+        off_proc_num_cols = off_proc->n_cols;
+        local_num_rows = on_proc->n_rows;
+        finalize();
+    }
+
 
     ParCSRMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows,
             int on_proc_cols, int off_proc_cols, int nnz_per_row = 5) : ParMatrix(part, 
@@ -510,31 +520,44 @@ namespace raptor
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
 
-    ParCSRMatrix* strength(double theta = 0.0);
+    ParCSRMatrix* strength(strength_t strength_type, double theta = 0.0, 
+            bool tap_amg = false, int num_variables = 1, int* variables = NULL,
+            data_t* comm_t = NULL);
     ParCSRMatrix* aggregate();
     ParCSRMatrix* fit_candidates(double* B, double* R, int num_candidates, 
             double tol = 1e-10);
-    int maximal_independent_set(std::vector<int>& local_states,
-            std::vector<int>& off_proc_states, int max_iters = -1);
+    int maximal_independent_set(aligned_vector<int>& local_states,
+            aligned_vector<int>& off_proc_states, int max_iters = -1);
 
-    void mult(ParVector& x, ParVector& b);
-    void tap_mult(ParVector& x, ParVector& b);
-    void mult_T(ParVector& x, ParVector& b);
-    void tap_mult_T(ParVector& x, ParVector& b);
-    ParCSRMatrix* mult(ParCSRMatrix* B);
-    ParCSRMatrix* tap_mult(ParCSRMatrix* B);
-    ParCSRMatrix* mult_T(ParCSCMatrix* A);
-    ParCSRMatrix* tap_mult_T(ParCSCMatrix* A);
-
-    ParCSRMatrix* RAP(ParCSRMatrix* P);
-
+    void mult(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void tap_mult(ParVector& x, ParVector& b, data_t* comm_t = NULL);
+    void mult_T(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t = NULL);
+    ParCSRMatrix* mult(ParCSRMatrix* B, bool tap = false, data_t* comm_t = NULL);
+    ParCSRMatrix* tap_mult(ParCSRMatrix* B, data_t* comm_t = NULL);
+    ParCSRMatrix* mult_T(ParCSCMatrix* A, bool tap = false, data_t* comm_t = NULL);
+    ParCSRMatrix* mult_T(ParCSRMatrix* A, bool tap = false, data_t* comm_t = NULL);
+    ParCSRMatrix* tap_mult_T(ParCSCMatrix* A, data_t* comm_t = NULL);
+    ParCSRMatrix* tap_mult_T(ParCSRMatrix* A, data_t* comm_t = NULL);
+    ParCSRMatrix* add(ParCSRMatrix* A);
     ParCSRMatrix* subtract(ParCSRMatrix* B);
+
+    void print_mult(ParCSRMatrix* B, const aligned_vector<int>& proc_distances, 
+                const aligned_vector<int>& worst_proc_distances);
+    void print_mult_T(ParCSCMatrix* A, const aligned_vector<int>& proc_distances,
+                const aligned_vector<int>& worst_proc_distances);
+    void print_mult(const aligned_vector<int>& proc_distances,
+                const aligned_vector<int>& worst_proc_distances);
+    void print_mult_T(const aligned_vector<int>& proc_distances,
+                const aligned_vector<int>& worst_proc_distances);
     
     void mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, CSRMatrix* recv);
     CSRMatrix* mult_T_partial(ParCSCMatrix* A);
     CSRMatrix* mult_T_partial(CSCMatrix* A_off);
     void mult_T_combine(ParCSCMatrix* A, ParCSRMatrix* C, CSRMatrix* recv_on,
             CSRMatrix* recv_off);
+
+    ParMatrix* transpose();
   };
 
   class ParCSCMatrix : public ParMatrix
@@ -569,6 +592,16 @@ namespace raptor
         off_proc = new CSCMatrix(partition->local_num_rows, partition->global_num_cols, 
                 nnz_per_row);
     }
+
+    ParCSCMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows,
+            int on_proc_cols, int off_proc_cols, int nnz_per_row = 5) : ParMatrix(part, 
+                glob_rows, glob_cols, local_rows, on_proc_cols)
+    {
+        off_proc_num_cols = off_proc_cols;
+        on_proc = new CSCMatrix(local_num_rows, on_proc_cols, nnz_per_row);
+        off_proc = new CSCMatrix(local_num_rows, off_proc_num_cols, nnz_per_row);
+    }
+
 
     ParCSCMatrix(Partition* part, 
             int nnz_per_row = 5) : ParMatrix(part)
@@ -606,11 +639,12 @@ namespace raptor
     void copy(ParCSCMatrix* A);
     void copy(ParCOOMatrix* A);
 
-    void mult(ParVector& x, ParVector& b);
-    void tap_mult(ParVector& x, ParVector& b);
-    void mult_T(ParVector& x, ParVector& b);
-    void tap_mult_T(ParVector& x, ParVector& b);
+    void mult(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void tap_mult(ParVector& x, ParVector& b, data_t* comm_t = NULL);
+    void mult_T(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t = NULL);
 
+    ParMatrix* transpose();
   };
 
 }

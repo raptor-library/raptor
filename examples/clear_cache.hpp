@@ -7,8 +7,11 @@
 #include <time.h>
 #include <math.h>
 #include <vector>
+#include "core/types.hpp"
 
-void clear_cache(std::vector<double>& cache_list)
+using namespace raptor;
+
+void clear_cache(aligned_vector<double>& cache_list)
 {
     srand(time(NULL));
     for (size_t i = 0; i < cache_list.size(); i++)

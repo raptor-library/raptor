@@ -12,8 +12,8 @@
 //
 // Attributes
 // -------------
-// values : std::vector<data_t>
-//    std::vector of vector values
+// values : aligned_vector<double>
+//    stl vector of vector values
 // size : index_t
 //    Dimension of vector
 //
@@ -191,7 +191,9 @@ public:
         return num_values;
     }
 
-    std::vector<data_t> values;
+    data_t inner_product(Vector& x);
+
+    aligned_vector<double> values;
     index_t num_values;
 };
 

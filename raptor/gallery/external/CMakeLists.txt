@@ -9,6 +9,10 @@ if (WITH_MFEM)
     set(external_mfem_SOURCES 
         gallery/external/mfem/mfem_linear_elasticity.cpp
         gallery/external/mfem/mfem_laplacian.cpp
+        gallery/external/mfem/mfem_grad_div.cpp
+        gallery/external/mfem/mfem_adaptive_laplacian.cpp
+        gallery/external/mfem/mfem_dg_diffusion.cpp
+        gallery/external/mfem/mfem_dg_elasticity.cpp
        )
 endif()
 
@@ -20,4 +24,3 @@ set(external_gallery_SOURCES
     gallery/external/hypre_wrapper.cpp 
     ${external_mfem_SOURCES}
     PARENT_SCOPE)
-

@@ -18,11 +18,11 @@ using namespace raptor;
 ***** alpha : data_t
 *****    Constant value to multiply each element of vector by
 **************************************************************/
-void ParVector::axpy(ParVector* x, data_t alpha)
+void ParVector::axpy(ParVector& x, data_t alpha)
 {
     if (local_n)
     {
-        local.axpy(x->local, alpha);
+        local.axpy(x.local, alpha);
     }
 }
 
@@ -95,6 +95,29 @@ data_t ParVector::norm(index_t p)
     }
     MPI_Allreduce(MPI_IN_PLACE, &result, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
     return pow(result, 1./p);
+}
+
+
+data_t ParVector::inner_product(ParVector& x)
+{
+    data_t inner_prod = 0.0;
+
+    if (local_n != x.local_n)
+    {
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        printf("Error.  Cannot perform inner product.  Dimensions do not match.\n");
+        exit(-1);
+    }
+
+    if (local_n)
+    {
+        inner_prod = local.inner_product(x.local);
+    }
+
+    MPI_Allreduce(MPI_IN_PLACE, &inner_prod, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
+    
+    return inner_prod;
 }
 
 

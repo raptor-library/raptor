@@ -21,6 +21,7 @@ if (WITH_MPI)
     set(par_linalg_SOURCES
         util/linalg/par_spmv.cpp
         util/linalg/par_matmult.cpp
+        util/linalg/par_add.cpp
         util/linalg/par_relax.cpp
         util/linalg/repartition.cpp
         )
@@ -42,6 +43,7 @@ set(linalg_HEADERS
 set(linalg_SOURCES 
     util/linalg/matmult.cpp
     util/linalg/relax.cpp
+    util/linalg/add.cpp
     ${par_linalg_SOURCES}
     PARENT_SCOPE
     )

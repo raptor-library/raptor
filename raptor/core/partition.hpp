@@ -141,6 +141,19 @@ namespace raptor
         }
     }
 
+    Partition(Topology* _topology = NULL)
+    {
+        if (_topology == NULL)
+        {
+            topology = new Topology();
+        }
+        else
+        {
+            topology = _topology;
+            topology->num_shared++;
+        }
+    }
+
     Partition(Partition* A, Partition* B)
     {
         global_num_rows = A->global_num_rows;
@@ -162,6 +175,19 @@ namespace raptor
 
     ~Partition()
     {
+        num_shared = 0;
+        global_num_rows = 0;
+        global_num_cols = 0;
+        local_num_rows = 0;
+        local_num_cols = 0;
+        first_local_row = 0;
+        first_local_col = 0;
+        last_local_row = 0;
+        last_local_col = 0;
+        assumed_first_col = 0;
+        assumed_last_col = 0;
+        assumed_num_cols = 0;
+
         if (topology->num_shared)
         {
             topology->num_shared--;
@@ -170,6 +196,14 @@ namespace raptor
         {
             delete topology;
         }
+    }
+
+    Partition* transpose()
+    {
+        Partition* part = new Partition(global_num_cols, global_num_rows,
+                local_num_cols, local_num_rows, first_local_col,
+                first_local_row, topology);
+        return part;
     }
 
     void create_assumed_partition()
@@ -183,8 +217,8 @@ namespace raptor
         int ctr, tmp;
         int recvbuf;
         MPI_Status status;
-        std::vector<int> send_buffer;
-        std::vector<MPI_Request> send_requests;
+        aligned_vector<int> send_buffer;
+        aligned_vector<MPI_Request> send_requests;
 
         assumed_num_cols = global_num_cols / num_procs;
         if (global_num_cols % num_procs) assumed_num_cols++;
@@ -268,8 +302,8 @@ namespace raptor
         }
     }
 
-    void form_col_to_proc (const std::vector<int>& off_proc_column_map,
-            std::vector<int>& off_proc_col_to_proc) const
+    void form_col_to_proc (const aligned_vector<int>& off_proc_column_map,
+            aligned_vector<int>& off_proc_col_to_proc) const
     {
         int rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -282,12 +316,12 @@ namespace raptor
         int col, count;
         int finished, msg_avail;
 
-        std::vector<int> send_procs;
-        std::vector<int> send_proc_starts;
-        std::vector<int> sendbuf_procs;
-        std::vector<int> sendbuf_starts;
-        std::vector<int> sendbuf;
-        std::vector<MPI_Request> send_requests;
+        aligned_vector<int> send_procs;
+        aligned_vector<int> send_proc_starts;
+        aligned_vector<int> sendbuf_procs;
+        aligned_vector<int> sendbuf_starts;
+        aligned_vector<int> sendbuf;
+        aligned_vector<MPI_Request> send_requests;
         MPI_Request barrier_request;
         MPI_Status status;
 
@@ -404,7 +438,7 @@ namespace raptor
         sendbuf_starts.push_back(sendbuf.size());
 
         int n_sendbuf = sendbuf_procs.size();
-        std::vector<MPI_Request> sendbuf_requests(n_sendbuf);
+        aligned_vector<MPI_Request> sendbuf_requests(n_sendbuf);
         for (int i = 0; i < n_sendbuf; i++)
         {
             int proc = sendbuf_procs[i];
@@ -441,8 +475,8 @@ namespace raptor
     index_t assumed_first_col;
     index_t assumed_last_col;
     int assumed_num_cols;
-    std::vector<int> assumed_col_ptr;
-    std::vector<int> assumed_col_procs;
+    aligned_vector<int> assumed_col_ptr;
+    aligned_vector<int> assumed_col_procs;
 
     Topology* topology;
 

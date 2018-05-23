@@ -20,11 +20,11 @@
  *****    Number of columns
  ***** nnz : int
  *****    Number of nonzeros
- ***** idx1 : std::vector<int>
+ ***** idx1 : aligned_vector<int>
  *****    List of position indices, specific to type of matrix
- ***** idx2 : std::vector<int>
+ ***** idx2 : aligned_vector<int>
  *****    List of position indices, specific to type of matrix
- ***** vals : std::vector<double>
+ ***** vals : aligned_vector<double>
  *****    List of values in matrix
  *****
  ***** Methods
@@ -115,103 +115,105 @@ namespace raptor
     void gauss_seidel(Vector& x, Vector& b);
     void SOR(Vector& x, Vector& b, double omega = .667);
 
-    Matrix* strength(double theta = 0.0);
+    Matrix* strength(strength_t strength_type = Classical, double theta = 0.0, 
+            int num_variables = 1, int* variables = NULL);
+
     Matrix* aggregate();
 
     void mult(Vector& x, Vector& b)
     {
         mult(x.values, b.values);
     }
-    void mult(std::vector<double>& x, Vector& b)
+    void mult(aligned_vector<double>& x, Vector& b)
     {
         mult(x, b.values);
     }
-    void mult(Vector& x, std::vector<double>& b)
+    void mult(Vector& x, aligned_vector<double>& b)
     {
         mult(x.values, b);
     }
-    virtual void mult(std::vector<double>& x, std::vector<double>& b) = 0;
+    virtual void mult(aligned_vector<double>& x, aligned_vector<double>& b) = 0;
 
     void mult_T(Vector& x, Vector& b)
     {
         mult_T(x.values, b.values);
     }
-    void mult_T(std::vector<double>& x, Vector& b)
+    void mult_T(aligned_vector<double>& x, Vector& b)
     {
         mult_T(x, b.values);
     }
-    void mult_T(Vector& x, std::vector<double>& b)
+    void mult_T(Vector& x, aligned_vector<double>& b)
     {
         mult_T(x.values, b);
     }
-    virtual void mult_T(std::vector<double>& x, std::vector<double>& b) = 0;
+    virtual void mult_T(aligned_vector<double>& x, aligned_vector<double>& b) = 0;
 
     void mult_append(Vector& x, Vector& b)
     {
         mult_append(x.values, b.values);
     }
-    void mult_append(std::vector<double>& x, Vector& b)
+    void mult_append(aligned_vector<double>& x, Vector& b)
     {
         mult_append(x, b.values);
     }
-    void mult_append(Vector& x, std::vector<double>& b)
+    void mult_append(Vector& x, aligned_vector<double>& b)
     {
         mult_append(x.values, b);
     }
-    virtual void mult_append(std::vector<double>& x, std::vector<double>& b) = 0;
+    virtual void mult_append(aligned_vector<double>& x, aligned_vector<double>& b) = 0;
 
     void mult_append_T(Vector& x, Vector& b)
     {
         mult_append_T(x.values, b.values);
     }
-    void mult_append_T(std::vector<double>& x, Vector& b)
+    void mult_append_T(aligned_vector<double>& x, Vector& b)
     {
         mult_append_T(x, b.values);
     }
-    void mult_append_T(Vector& x, std::vector<double>& b)
+    void mult_append_T(Vector& x, aligned_vector<double>& b)
     {
         mult_append_T(x.values, b);
     }
-    virtual void mult_append_T(std::vector<double>& x, std::vector<double>& b) = 0;
+    virtual void mult_append_T(aligned_vector<double>& x, aligned_vector<double>& b) = 0;
 
     void mult_append_neg(Vector& x, Vector& b)
     {
         mult_append_neg(x.values, b.values);
     }
-    void mult_append_neg(std::vector<double>& x, Vector& b)
+    void mult_append_neg(aligned_vector<double>& x, Vector& b)
     {
         mult_append_neg(x, b.values);
     }
-    void mult_append_neg(Vector& x, std::vector<double>& b)
+    void mult_append_neg(Vector& x, aligned_vector<double>& b)
     {
         mult_append_neg(x.values, b);
     }
-    virtual void mult_append_neg(std::vector<double>& x, std::vector<double>& b) = 0;
+    virtual void mult_append_neg(aligned_vector<double>& x, aligned_vector<double>& b) = 0;
 
     void mult_append_neg_T(Vector& x, Vector& b)
     {
         mult_append_neg_T(x.values, b.values);
     }
-    void mult_append_neg_T(std::vector<double>& x, Vector& b)
+    void mult_append_neg_T(aligned_vector<double>& x, Vector& b)
     {
         mult_append_neg_T(x, b.values);
     }
-    void mult_append_neg_T(Vector& x, std::vector<double>& b)
+    void mult_append_neg_T(Vector& x, aligned_vector<double>& b)
     {
         mult_append_neg_T(x.values, b);
     }
-    virtual void mult_append_neg_T(std::vector<double>& x, std::vector<double>& b) = 0;
+    virtual void mult_append_neg_T(aligned_vector<double>& x, aligned_vector<double>& b) = 0;
 
     void residual(const Vector& x, const Vector& b, Vector& r)
     {
         residual(x.values, b.values, r.values);
     }
-    void residual(const std::vector<double>& x, const Vector& b, Vector& r)
+    void residual(const aligned_vector<double>& x, const Vector& b, Vector& r)
     {
         residual(x, b.values, r.values);
     }
-    virtual void residual(const std::vector<double>& x, const std::vector<double>& b,
-            std::vector<double>& r) = 0;
+    virtual void residual(const aligned_vector<double>& x, const aligned_vector<double>& b,
+            aligned_vector<double>& r) = 0;
 
     CSRMatrix* mult(const CSRMatrix* B){ return NULL; }
     CSRMatrix* mult(const CSCMatrix* B){ return NULL; }
@@ -223,28 +225,31 @@ namespace raptor
     void RAP(const CSCMatrix& P, CSCMatrix* Ac);
     void RAP(const CSCMatrix& P, CSRMatrix* Ac);
 
-    Matrix* subtract(Matrix* B);
+    Matrix* add(CSRMatrix* A);
+    Matrix* subtract(CSRMatrix* A);
 
     void resize(int _n_rows, int _n_cols);
 
-    std::vector<int>& index1()
+    virtual Matrix* transpose() = 0;
+
+    aligned_vector<int>& index1()
     {
         return idx1;
     }
 
-    std::vector<int>& index2()
+    aligned_vector<int>& index2()
     {
         return idx2;
     }
     
-    std::vector<double>& values()
+    aligned_vector<double>& values()
     {
         return vals;
     }
 
-    std::vector<int> idx1;
-    std::vector<int> idx2;
-    std::vector<double> vals;
+    aligned_vector<int> idx1;
+    aligned_vector<int> idx2;
+    aligned_vector<double> vals;
 
     int n_rows;
     int n_cols;
@@ -270,13 +275,13 @@ namespace raptor
  ***** add_value(int row, int col, double val)
  *****     Adds val to position (row, col)
  ***** rows()
- *****     Returns std::vector<int>& containing the rows corresponding
+ *****     Returns aligned_vector<int>& containing the rows corresponding
  *****     to each nonzero
  ***** cols()
- *****     Returns std::vector<int>& containing the cols corresponding
+ *****     Returns aligned_vector<int>& containing the cols corresponding
  *****     to each nonzero
  ***** data()
- *****     Returns std::vector<double>& containing the nonzero values
+ *****     Returns aligned_vector<double>& containing the nonzero values
  **************************************************************/
   class COOMatrix : public Matrix
   {
@@ -340,6 +345,19 @@ namespace raptor
         }
     }
 
+    COOMatrix(int _nrows, int _ncols, aligned_vector<int>& rows, aligned_vector<int>& cols, 
+            aligned_vector<double>& data) : Matrix(_nrows, _ncols)
+    {
+        nnz = idx1.size();
+        idx1.resize(nnz);
+        idx2.resize(nnz);
+        vals.resize(nnz);
+
+        std::copy(rows.begin(), rows.end(), idx1.begin());
+        std::copy(cols.begin(), cols.end(), idx2.begin());
+        std::copy(data.begin(), data.end(), vals.begin());
+    }
+
     COOMatrix()
     {
     }
@@ -395,6 +413,8 @@ namespace raptor
 
     }
 
+    Matrix* transpose();
+
     void print();
 
     void copy(const COOMatrix* A);
@@ -436,49 +456,49 @@ namespace raptor
         Matrix::residual(x, b, r);
     }
 
-    void mult(std::vector<double>& x, std::vector<double>& b)
+    void mult(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         for (int i = 0; i < n_rows; i++)
             b[i] = 0.0;
         mult_append(x, b);
     }
-    void mult_T(std::vector<double>& x, std::vector<double>& b)
+    void mult_T(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         for (int i = 0; i < n_cols; i++)
             b[i] = 0.0;
 
         mult_append_T(x, b);
     }
-    void mult_append(std::vector<double>& x, std::vector<double>& b)
+    void mult_append(aligned_vector<double>& x, aligned_vector<double>& b)
     { 
         for (int i = 0; i < nnz; i++)
         {
             b[idx1[i]] += vals[i] * x[idx2[i]];
         }
     }
-    void mult_append_T(std::vector<double>& x, std::vector<double>& b)
+    void mult_append_T(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         for (int i = 0; i < nnz; i++)
         {
             b[idx2[i]] += vals[i] * x[idx1[i]];
         }
     }
-    void mult_append_neg(std::vector<double>& x, std::vector<double>& b)
+    void mult_append_neg(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         for (int i = 0; i < nnz; i++)
         {
             b[idx1[i]] -= vals[i] * x[idx2[i]];
         }
     }
-    void mult_append_neg_T(std::vector<double>& x, std::vector<double>& b)
+    void mult_append_neg_T(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         for (int i = 0; i < nnz; i++)
         {
             b[idx2[i]] -= vals[i] * x[idx1[i]];
         }
     }
-    void residual(const std::vector<double>& x, const std::vector<double>& b, 
-            std::vector<double>& r)
+    void residual(const aligned_vector<double>& x, const aligned_vector<double>& b, 
+            aligned_vector<double>& r)
     {
         for (int i = 0; i < n_rows; i++)
             r[i] = b[i];
@@ -506,17 +526,17 @@ namespace raptor
         return COO;
     }
 
-    std::vector<int>& rows()
+    aligned_vector<int>& rows()
     {
         return idx1;
     }
 
-    std::vector<int>& cols()
+    aligned_vector<int>& cols()
     {
         return idx2;
     }
 
-    std::vector<double>& data()
+    aligned_vector<double>& data()
     {
         return vals;
 
@@ -538,14 +558,14 @@ namespace raptor
  ***** add_value(int row, int col, double val)
  *****     TODO -- add this functionality
  ***** indptr()
- *****     Returns std::vector<int>& row pointer.  The ith element points to
+ *****     Returns aligned_vector<int>& row pointer.  The ith element points to
  *****     the index of indices() corresponding to the first column to lie on 
  *****     row i.
  ***** indices()
- *****     Returns std::vector<int>& containing the cols corresponding
+ *****     Returns aligned_vector<int>& containing the cols corresponding
  *****     to each nonzero
  ***** data()
- *****     Returns std::vector<double>& containing the nonzero values
+ *****     Returns aligned_vector<double>& containing the nonzero values
  **************************************************************/
   class CSRMatrix : public Matrix
   {
@@ -609,6 +629,18 @@ namespace raptor
         }
     }
 
+    CSRMatrix(int _nrows, int _ncols, aligned_vector<int>& rowptr, 
+            aligned_vector<int>& cols, aligned_vector<double>& data) : Matrix(_nrows, _ncols)
+    {
+        nnz = cols.size();
+        idx1.resize(n_rows+1);
+        idx2.resize(nnz);
+        vals.resize(nnz);
+
+        std::copy(rowptr.begin(), rowptr.end(), idx1.begin());
+        std::copy(cols.begin(), cols.end(), idx2.begin());
+        std::copy(data.begin(), data.end(), vals.begin());
+    }
 
     /**************************************************************
     *****   CSRMatrix Class Constructor
@@ -664,6 +696,8 @@ namespace raptor
 
     }
 
+    Matrix* transpose();
+
     void print();
 
     void copy(const COOMatrix* A);
@@ -705,13 +739,13 @@ namespace raptor
         Matrix::residual(x, b, r);
     }
 
-    void mult(std::vector<double>& x, std::vector<double>& b)
+    void mult(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         for (int i = 0; i < n_rows; i++)
             b[i] = 0.0;
         mult_append(x, b);
     }
-    void mult_T(std::vector<double>& x, std::vector<double>& b)
+    void mult_T(aligned_vector<double>& x, aligned_vector<double>& b)
 
     {
         for (int i = 0; i < n_cols; i++)
@@ -719,7 +753,7 @@ namespace raptor
 
         mult_append_T(x, b);    
     }
-    void mult_append(std::vector<double>& x, std::vector<double>& b)
+    void mult_append(aligned_vector<double>& x, aligned_vector<double>& b)
     { 
         int start, end;
         for (int i = 0; i < n_rows; i++)
@@ -732,7 +766,7 @@ namespace raptor
             }
         }
     }
-    void mult_append_T(std::vector<double>& x, std::vector<double>& b)
+    void mult_append_T(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         int start, end;
         for (int i = 0; i < n_rows; i++)
@@ -745,7 +779,7 @@ namespace raptor
             }
         }
     }
-    void mult_append_neg(std::vector<double>& x, std::vector<double>& b)
+    void mult_append_neg(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         int start, end;
         for (int i = 0; i < n_rows; i++)
@@ -758,7 +792,7 @@ namespace raptor
             }
         }
     }
-    void mult_append_neg_T(std::vector<double>& x, std::vector<double>& b)
+    void mult_append_neg_T(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         int start, end;
         for (int i = 0; i < n_rows; i++)
@@ -771,8 +805,8 @@ namespace raptor
             }
         }
     }
-    void residual(const std::vector<double>& x, const std::vector<double>& b, 
-            std::vector<double>& r)
+    void residual(const aligned_vector<double>& x, const aligned_vector<double>& b, 
+            aligned_vector<double>& r)
     {
         for (int i = 0; i < n_rows; i++)
             r[i] = b[i];
@@ -797,9 +831,11 @@ namespace raptor
     CSRMatrix* mult_T(const CSRMatrix* A);
     CSRMatrix* mult_T(const COOMatrix* A);
 
-    CSRMatrix* subtract(CSRMatrix* B);
+    CSRMatrix* add(CSRMatrix* A);
+    CSRMatrix* subtract(CSRMatrix* A);
 
-    CSRMatrix* strength(double theta = 0.0);
+    CSRMatrix* strength(strength_t strength_type = Classical,
+            double theta = 0.0, int num_variables = 1, int* variables = NULL);
     CSRMatrix* aggregate();
     CSRMatrix* fit_candidates(data_t* B, data_t* R, int num_candidates, 
             double tol = 1e-10);
@@ -809,17 +845,17 @@ namespace raptor
         return CSR;
     }
 
-    std::vector<int>& row_ptr()
+    aligned_vector<int>& row_ptr()
     {
         return idx1;
     }
 
-    std::vector<int>& cols()
+    aligned_vector<int>& cols()
     {
         return idx2;
     }
 
-    std::vector<double>& data()
+    aligned_vector<double>& data()
     {
         return vals;
     }
@@ -840,14 +876,14 @@ namespace raptor
  ***** add_value(int row, int col, double val)
  *****     TODO -- add this functionality
  ***** indptr()
- *****     Returns std::vector<int>& column pointer.  The ith element points to
+ *****     Returns aligned_vector<int>& column pointer.  The ith element points to
  *****     the index of indices() corresponding to the first row to lie on 
  *****     column i.
  ***** indices()
- *****     Returns std::vector<int>& containing the rows corresponding
+ *****     Returns aligned_vector<int>& containing the rows corresponding
  *****     to each nonzero
  ***** data()
- *****     Returns std::vector<double>& containing the nonzero values
+ *****     Returns aligned_vector<double>& containing the nonzero values
  **************************************************************/
   class CSCMatrix : public Matrix
   {
@@ -893,6 +929,18 @@ namespace raptor
         }
     }
 
+    CSCMatrix(int _nrows, int _ncols, aligned_vector<int>& colptr, 
+            aligned_vector<int>& rows, aligned_vector<double>& data) : Matrix(_nrows, _ncols)
+    {
+        nnz = rows.size();
+        idx1.resize(n_cols+1);
+        idx2.resize(nnz);
+        vals.resize(nnz);
+
+        std::copy(colptr.begin(), colptr.end(), idx1.begin());
+        std::copy(rows.begin(), rows.end(), idx2.begin());
+        std::copy(data.begin(), data.end(), vals.begin());
+    }
 
     /**************************************************************
     *****   CSCMatrix Class Constructor
@@ -948,6 +996,8 @@ namespace raptor
 
     }
 
+
+    Matrix* transpose();
     void print();
 
     void copy(const COOMatrix* A);
@@ -989,20 +1039,20 @@ namespace raptor
         Matrix::residual(x, b, r);
     }
 
-    void mult(std::vector<double>& x, std::vector<double>& b)
+    void mult(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         for (int i = 0; i < n_rows; i++)
             b[i] = 0.0;
         mult_append(x, b);
     }
-    void mult_T(std::vector<double>& x, std::vector<double>& b)
+    void mult_T(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         for (int i = 0; i < n_cols; i++)
             b[i] = 0.0;
 
         mult_append_T(x, b);
     }
-    void mult_append(std::vector<double>& x, std::vector<double>& b)
+    void mult_append(aligned_vector<double>& x, aligned_vector<double>& b)
     { 
         int start, end;
         for (int i = 0; i < n_cols; i++)
@@ -1015,7 +1065,7 @@ namespace raptor
             }
         }
     }
-    void mult_append_T(std::vector<double>& x, std::vector<double>& b)
+    void mult_append_T(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         int start, end;
         for (int i = 0; i < n_cols; i++)
@@ -1028,7 +1078,7 @@ namespace raptor
             }
         }
     }
-    void mult_append_neg(std::vector<double>& x, std::vector<double>& b)
+    void mult_append_neg(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         int start, end;
         for (int i = 0; i < n_cols; i++)
@@ -1041,7 +1091,7 @@ namespace raptor
             }
         }
     }
-    void mult_append_neg_T(std::vector<double>& x, std::vector<double>& b)
+    void mult_append_neg_T(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         int start, end;
         for (int i = 0; i < n_cols; i++)
@@ -1054,8 +1104,8 @@ namespace raptor
             }
         }
     }
-    void residual(const std::vector<double>& x, const std::vector<double>& b, 
-            std::vector<double>& r)
+    void residual(const aligned_vector<double>& x, const aligned_vector<double>& b, 
+            aligned_vector<double>& r)
     {
         for (int i = 0; i < n_rows; i++)
             r[i] = b[i];
@@ -1086,17 +1136,17 @@ namespace raptor
         return CSC;
     }
 
-    std::vector<int>& col_ptr()
+    aligned_vector<int>& col_ptr()
     {
         return idx1;
     }
 
-    std::vector<int>& rows()
+    aligned_vector<int>& rows()
     {
         return idx2;
     }
 
-    std::vector<double>& data()
+    aligned_vector<double>& data()
     {
         return vals;
     }

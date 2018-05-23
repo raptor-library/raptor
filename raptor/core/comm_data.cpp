@@ -7,16 +7,15 @@ namespace raptor
 {
 
 template<>
-std::vector<double>& CommData::get_buffer<double>()
+aligned_vector<double>& CommData::get_buffer<double>()
 {
     return buffer;
 }
 
 template<>
-std::vector<int>& CommData::get_buffer<int>()
+aligned_vector<int>& CommData::get_buffer<int>()
 {
     return int_buffer;
 }
 
 }
-

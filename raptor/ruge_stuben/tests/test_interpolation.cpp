@@ -28,7 +28,7 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     CSRMatrix* S;
     CSRMatrix* P;
     CSRMatrix* P_rap;
-    std::vector<int> splitting;
+    aligned_vector<int> splitting;
     FILE* f;
 
     const char* A0_fn = "../../../../test_data/rss_A0.pm";
@@ -39,8 +39,10 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     const char* cf1_fn = "../../../../test_data/rss_cf1.txt";
     const char* P0_fn = "../../../../test_data/rss_P0.pm";
     const char* P0_mc_fn = "../../../../test_data/rss_P0_mc.pm";
+    const char* P0_extend = "../../../../test_data/rss_P0_extend.pm";
     const char* P1_fn = "../../../../test_data/rss_P1.pm";
     const char* P1_mc_fn = "../../../../test_data/rss_P1_mc.pm";
+    const char* P1_extend = "../../../../test_data/rss_P1_extend.pm";
 
     // TEST LEVEL 0
     A = readMatrix(A0_fn);
@@ -64,6 +66,13 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     compare(P, P_rap);
     delete P_rap;
     delete P;
+
+    P = readMatrix(P0_extend);
+    P_rap = extended_interpolation(A, S, splitting);
+    compare(P, P_rap);
+    delete P_rap;
+    delete P;
+
     delete S;
     delete A;
 
@@ -91,6 +100,13 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
 
     delete P;
     delete P_rap;
+
+    P = readMatrix(P1_extend);
+    P_rap = extended_interpolation(A, S, splitting);
+    compare(P, P_rap);
+    delete P_rap;
+    delete P;
+
     delete S;
     delete A;
 } // end of TEST(TestInterpolation, TestsInRuge_Stuben) //
