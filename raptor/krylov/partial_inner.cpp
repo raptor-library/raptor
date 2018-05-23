@@ -149,7 +149,7 @@ data_t sequential_norm(ParVector &x, index_t p){
 
 
 // ***************** THIS NEEDS TO BE UPDATED **************************
-data_t half_inner_striped(ParVector &x, ParVector &y, int half, int part_global){
+/*data_t half_inner_striped(ParVector &x, ParVector &y, int half, int part_global){
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
@@ -170,7 +170,7 @@ data_t half_inner_striped(ParVector &x, ParVector &y, int half, int part_global)
     MPI_Allreduce(MPI_IN_PLACE, &inner_prod, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
 
     return 2 * inner_prod;
-}
+}*/
 
 /*void half_inner_approx(ParVector &x, ParVector &y){
     int rank;

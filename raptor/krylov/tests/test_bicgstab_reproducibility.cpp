@@ -38,6 +38,7 @@ int main(int argc, char* argv[])
     x.set_const_value(0.0);
     SeqInnerSeqNorm_BiCGStab(A, x, b, residuals4);
 
+    printf("PyAMG SeqIn SeqNorm SeqBoth\n");
     // Just testing the first 10 residuals
     if(rank == 0){
         FILE* f = fopen("../../../../test_data/bicgstab_res.txt", "r");

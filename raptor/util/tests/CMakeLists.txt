@@ -22,18 +22,6 @@ add_executable(test_bsr_spmv_random test_bsr_spmv_random.cpp)
 target_link_libraries(test_bsr_spmv_random raptor googletest pthread )
 add_test(RandomBSRSpMVTest ./test_bsr_spmv_random)
 
-add_executable(test_par_bsr_spmv test_par_bsr_spmv.cpp)
-target_link_libraries(test_par_bsr_spmv raptor ${MPI_LIBRARIES} googletest pthread )
-add_test(ParBSRSpMVTest ./test_par_bsr_spmv)
-
-add_executable(test_ilu test_ilu.cpp)
-target_link_libraries(test_ilu raptor)
-add_test(ILUtest ./test_ilu)
-
-add_executable(test_ilu_bsr test_ilu_bsr.cpp)
-target_link_libraries(test_ilu_bsr raptor)
-add_test(IlUBSRtest ./test_ilu_bsr)
-
 if (WITH_MPI)
     add_executable(test_par_add test_par_add.cpp)
     target_link_libraries(test_par_add raptor ${MPI_LIBRARIES} googletest pthread )
@@ -63,7 +51,7 @@ if (WITH_MPI)
     add_test(ParRandomSpMVTest_4 mpirun -n 4 ./test_par_spmv_random)
     add_test(ParRandomSpMVTest_8 mpirun -n 8 ./test_par_spmv_random)
     add_test(ParRandomSpMVTest_16 mpirun -n 16 ./test_par_spmv_random)
-
+    
     add_executable(test_tap_spmv_laplacian test_tap_spmv_laplacian.cpp)
     target_link_libraries(test_tap_spmv_laplacian raptor ${MPI_LIBRARIES} googletest pthread )
     add_test(TAPLaplacianSpMVTest_2 mpirun -n 2 ./test_tap_spmv_laplacian)
@@ -83,6 +71,13 @@ if (WITH_MPI)
     add_test(TAPRandomSpMVTest_2 mpirun -n 2 ./test_tap_spmv_random)
     add_test(TAPRandomSpMVTest_4 mpirun -n 4 ./test_tap_spmv_random)
     add_test(TAPRandomSpMVTest_8 mpirun -n 8 ./test_tap_spmv_random)
+
+    add_executable(test_par_bsr_spmv test_par_bsr_spmv.cpp)
+    target_link_libraries(test_par_bsr_spmv raptor ${MPI_LIBRARIES} googletest pthread )
+    add_test(ParBSRSpMVTest_1 mpirun -n 1 ./test_par_bsr_spmv)
+    add_test(ParBSRSpMVTest_2 mpirun -n 2 ./test_par_bsr_spmv)
+    add_test(ParBSRSpMVTest_3 mpirun -n 3 ./test_par_bsr_spmv)
+    add_test(ParBSRSpMVTest_6 mpirun -n 6 ./test_par_bsr_spmv)
 
     if (WITH_PTSCOTCH)
         add_executable(test_repartition test_repartition.cpp)

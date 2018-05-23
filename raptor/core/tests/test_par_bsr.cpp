@@ -115,7 +115,8 @@ TEST(ParBSRMatrixTest, TestsInCore)
 			int glob_j = upper_j + bj;
                         int ind = bi * block_cols + bj + data_offset;
 			double val = A_par_bsr->on_proc->vals[ind];
-			ASSERT_NEAR(A_dense[glob_i*12+glob_j], val, zero_tol);
+			int glob_ind = glob_i*12+glob_j;
+			ASSERT_NEAR(A_dense[glob_ind], val, zero_tol);
 		    }
 		}
 	    }
@@ -134,6 +135,7 @@ TEST(ParBSRMatrixTest, TestsInCore)
                         int glob_i = upper_i + bi;
 			int glob_j = upper_j + bj;
                         int ind = bi * block_cols + bj + data_offset;
+			int glob_ind = glob_i*12+glob_j;
 			double val = A_par_bsr->off_proc->vals[ind];
 			ASSERT_NEAR(A_dense[glob_i*12+glob_j], val, zero_tol);
 		    }

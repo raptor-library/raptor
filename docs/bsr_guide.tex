@@ -1,0 +1,572 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{geometry}
+\usepackage{mathtools}
+%\geometry{margin=1.0in}
+\usepackage{tabularx,ragged2e,booktabs,caption}
+\usepackage{algorithm}
+\usepackage{algorithmicx}
+\usepackage{algpseudocode}
+\usepackage{comment}
+\usepackage{listings}
+
+\newcommand{\bbm}{\begin{bmatrix}}
+\newcommand{\ebm}{\end{bmatrix}}
+\newcommand\tab[1][1cm]{\hspace*{#1}}
+
+\title{Raptor BSR Guide}
+
+\begin{document}
+\maketitle
+
+\section*{General Format}
+
+\begin{itemize}
+    \item Assume a matrix of size $m \times n$ and blocks of
+          size $bm \times bn$ \\ 
+          where $m \text{ mod } bm = 0  $ and $n \text{ mod } bn = 0$
+    \item Defined by 3 arrays
+    \begin{itemize}
+        \item \textbf{row\_ptr}: 
+        \begin{itemize}
+            \item size: $\frac{m}{bm} + 1$
+            \item position i contains the starting index of the ith block row in the cols array
+            (block row referring to the block matrix - right matrix in example)
+        \end{itemize}
+        \item \textbf{cols}: 
+        \begin{itemize}
+            \item size: number of non-zero blocks
+            \item position i contains the column index of the ith block within the block matrix
+            (right matrix in example)
+        \end{itemize}
+        \item \textbf{values}:
+        \begin{itemize}
+            \item size: number of non-zero blocks * number of elements within
+                        a block
+            \item contains the non-zero entries for the blocks in the order listed in cols, \\
+            there is a new block every $bm \times bn$ entries, \\
+            each block is stored in a flattened row-major order
+        \end{itemize}
+    \end{itemize}
+    
+    \item Example
+    \begin{equation*}
+        \setcounter{MaxMatrixCols}{15}
+        \bbm 
+        1 & 0 & 6 & 7 & * & * & * & * & 1 & 0 & * & * \\
+        2 & 1 & 8 & 2 & * & * & * & * & 0 & 1 & * & * \\
+        * & * & 1 & 4 & * & * & 2 & 0 & * & * & * & * \\
+        * & * & 5 & 1 & * & * & 0 & 0 & * & * & * & * \\
+        * & * & 4 & 3 & 7 & 2 & * & * & * & * & 3 & 0 \\
+        * & * & 0 & 0 & 0 & 0 & * & * & * & * & 1 & 0 \\
+        * & * & 1 & 0 & * & * & 1 & 0 & 6 & 7 & * & * \\
+        * & * & 0 & 1 & * & * & 2 & 1 & 8 & 2 & * & * \\
+        2 & 0 & * & * & * & * & * & * & 1 & 4 & * & * \\
+        0 & 0 & * & * & * & * & * & * & 5 & 1 & * & * \\
+        * & * & * & * & 3 & 0 & * & * & 4 & 3 & 7 & 2 \\
+        * & * & * & * & 1 & 0 & * & * & 0 & 0 & 0 & 0
+        \ebm \rightarrow 
+        \bbm
+        A & B & * & * & C & * \\
+        * & D & * & E & * & * \\
+        * & F & G & * & * & H \\
+        * & I & * & J & K & * \\
+        L & * & * & * & M & * \\
+        * & * & N & * & O & P
+        \ebm
+    \end{equation*}
+    \begin{itemize}
+        \item Assuming 2 x 2 non-zero blocks
+        \item row\_ptr = \{ 0, 3, 5, 8, 11, 13, 16 \}
+        \item cols = \{ 0, 1, 4, 1, 3, 1, 2, 5, 1, 3, 4, 0, 4, 2, 4, 5 \}
+        \item values = \{ 1, 0, 2, 1, 6, 7, 8, 2, 1, 0, 0, 1,
+                          1, 4, 5, 1, 2, 0, 0, 0, 4, 3, 0, 0, 
+                          7, 2, 0, 0, \\
+                \tab \tab 3, 0, 1, 0, 1, 0, 0, 1, 1, 0, 2, 1,
+                          6, 7, 8, 2, 2, 0, 0, 0, 1, 4, 5, 1,
+                          3, 0, 1, 0, \\
+                \tab \tab 4, 3, 0, 0, 7, 2, 0, 0\}
+    \end{itemize}
+\end{itemize}
+
+\section*{BSRMatrix Class}
+
+\subsection*{Attributes}
+    \begin{itemize}
+        \item \textbf{n\_rows} : int \\
+            \tab    number of rows in matrix
+        \item \textbf{n\_cols} : int \\
+            \tab    number of columns in matrix
+        \item \textbf{b\_rows} : int \\
+            \tab    number of rows in a block
+        \item \textbf{b\_cols} : int \\
+            \tab    number of columns in a block
+        \item \textbf{n\_blocks} : int \\
+            \tab    number of non-zero blocks in matrix
+        \item \textbf{b\_size} : int \\
+            \tab    number of elements in a block
+        \item \textbf{nnz} : int \\
+            \tab    total number of non-zeros in the matrix
+        \item \textbf{idx1} : std::vector \textless int \textgreater \\
+            \tab    refers to row\_ptr array given in General Format
+        \item \textbf{idx2} : std::vector \textless int \textgreater \\
+            \tab    refers to cols array given in General Format
+        \item \textbf{vals} : std::vector \textless double \textgreater \\
+            \tab    refers to data array given in General Format
+    \end{itemize}
+
+\subsection*{Constructors (found in matrix.hpp)}
+    \begin{itemize}
+        \item \textbf{BSRMatrix(int \_nrows, int \_ncols, int \_brows, int \_bcols, \\
+                \tab int \_nblocks=0, int \_nnz=0) : Matrix(\_nrows, \_ncols)}
+                
+                    Creates an empty BSRMatrix with \_nrows rows and \_ncols columns. \\   
+                    Each block is \_brows rows by \_bcols columns. \\
+                    If \_brows does not divide \_nrows evenly or \_bcols does not
+                    divide \_ncols evenly, it will throw an error.
+                        
+        \item \textbf{BSRMatrix(int \_nrows, int \_ncols, int \_brows, int \_bcols, \\ 
+                \tab double *\_data) : Matrix(\_nrows, \_ncols)}
+                
+                    Creates a BSRMatrix from the dense array \_data. \\
+                    \_data is in block order where each block is flattened in row-wise
+                    order. \\
+                    This is used for testing.
+                        
+        \item \textbf{BSRMatrix(int \_nrows, int \_ncols, int \_brows, int \_bcols, \\
+                \tab std::vector \textless int \textgreater\& rowptr, 
+                     std::vector \textless int \textgreater\& cols, \\
+                \tab std::vector \textless double \textgreater\& data) : 
+                     Matrix(\_nrows, \_ncols)}
+                     
+                    Creates a BSRMatrix with the given rowptr, cols, and data array as the
+                    idx1, idx2, and vals arrays.
+        
+        \item \textbf{BSRMatrix(const COOMatrix* A, int \_brows, int \_bcols)}
+        
+                    Creates a BSRMatrix from a COOMatrix* with blocks of size
+                    \_brows by \_bcols.
+        
+        \item \textbf{BSRMatrix(const CSRMatrix* A, int \_brows, int \_bcols)}
+        
+                    Creates a BSRMatrix from a CSRMatrix* with blocks of size
+                    \_brows by \_bcols.
+    \end{itemize}
+    
+\subsection*{Methods (found in matrix.hpp and matrix.cpp)}
+    \begin{itemize}
+        \item \textbf{print()}
+        
+            Prints the non-zero blocks of the matrix in block order.
+        
+        \item \textbf{block\_print(int row, int num\_blocks\_prev, int col)}
+        
+            Helper function for print(). It prints a given block. \\
+            row : the row of the block in the block matrix \\
+            col : the column of the block in the block matrix \\
+            num\_blocks\_prev : the number of blocks previously printed - used to \\
+                \tab calculate the offset for where this block is in the vals array
+        
+        \item \textbf{to\_dense()}
+        
+            returns : std::vector \textless double \textgreater \\
+            Converts the block matrix to a dense array. \\
+            This is used for testing.
+        
+        \item \textbf{add\_block(int row, int col, 
+            std::vector \textless double \textgreater\& values)}
+        
+            Adds the block given in values to the BSRMatrix at position (row, col)
+            in the block matrix. Blocks do not need to be added in any order.\\
+            row : the row of the block in the block matrix \\
+            col : the column of the block in the block matrix \\
+            values : the data for the block given in row-major order
+        
+        \item \textbf{copy(const COOMatrix* A)}
+        
+            Copies the given COOMatrix*. 
+        
+        \item \textbf{copy(const CSRMatrix* A)}
+        
+            Copies the given CSRMatrix*.
+        
+        \item \textbf{copy(const BSRMatrix* A)}
+        
+            Copies the given BSRMatrix*.
+        
+        \item \textbf{mult(std::vector \textless double \textgreater\& x, 
+                std::vector \textless double \textgreater\& b)}
+                
+            Performs standard multiplicaion of the BSRMatrix with x and stores
+            the solution in b.
+        
+        \item \textbf{mult\_T(std::vector \textless double \textgreater\& x, 
+                std::vector \textless double \textgreater\& b)}
+            
+            Performs standard multiplication of the transpose of the BSRMatrix
+            with x and stores the solution in b.
+                
+        \item \textbf{mult\_append(std::vector \textless double \textgreater\& x, 
+                std::vector \textless double \textgreater\& b)}
+                
+            Helper function for mult().
+                
+        \item \textbf{block\_mult( int row, int num\_blocks\_prev, int col, \\
+            \tab std::vector \textless double \textgreater\& x, 
+                 std::vector \textless double \textgreater\& b)}
+            
+            Block helper function for mult() that performs multiplication on the
+            block at (row, col) in the block matrix with x and stores the solution in b.
+                
+        \item \textbf{mult\_append\_T(std::vector \textless double \textgreater\& x, 
+                std::vector \textless double \textgreater\& b)}
+                
+            Helper function for mult\_T().
+                
+        \item \textbf{block\_mult\_T( int row, int num\_blocks\_prev, int col,  \\
+            \tab std::vector \textless double \textgreater\& x, 
+                 std::vector \textless double \textgreater\& b)}
+                 
+            Block helper function for mult\_T() that performs transpose multiplication
+            on the block at (row, col) in the block matrix with x and stores the
+            solution in b.
+                
+        \item \textbf{mult\_append\_neg(std::vector \textless double \textgreater\& x, 
+                std::vector \textless double \textgreater\& b)}
+                
+            Helper function to subtract BSRMatrix times x from b.
+                
+        \item \textbf{block\_mult\_neg( int row, int num\_blocks\_prev, int col \\
+            \tab std::vector \textless double \textgreater\& x, 
+                 std::vector \textless double \textgreater\& b)}
+                
+            Block helper function for mult\_append\_neg() that multiplies the block
+            at (row, col) in the block matrix by x and subtracts the result from b.
+                
+        \item \textbf{mult\_append\_neg\_T(std::vector \textless double \textgreater\& x, 
+                std::vector \textless double \textgreater\& b)}
+                
+            Helper function that subtracts the transpose of the BSRMatrix times x
+            from b.
+                
+        \item \textbf{block\_mult\_neg\_T( int row, int num\_blocks\_prev, int col, \\
+            \tab std::vector \textless double \textgreater\& x, 
+                 std::vector \textless double \textgreater\& b)}
+                
+            Block helper function for mult\_neg\_T().
+                
+        \item \textbf{residual(const std::vector \textless double \textgreater\& x, 
+                const std::vector \textless double \textgreater\& b, \\
+                \tab std::vector \textless double \textgreater\& r)}
+        
+            Calculates the residual of the BSRMatrix times x and b, then stores the
+            solution in r.
+        
+        \item \textbf{block\_res( int row, int num\_blocks\_prev, int col, \\
+            \tab const std::vector \textless double \textgreater\& x, 
+                 std::vector \textless double \textgreater\& r)}
+                
+            Block helper function for residual() that calculates the residual on the 
+            block at (row, col) in the block matrix. Stores the solution in r.
+                
+        \item \textbf{format()}
+        
+            Returns 'BSR' as the format
+        
+        \item \textbf{row\_ptr()}
+        
+            Returns a reference to idx1 - std::vector \textless int \textgreater\&
+        
+        \item \textbf{cols()}
+        
+            Returns a reference to idx2 - std::vector \textless int \textgreater\&
+        
+        \item \textbf{data()}
+        
+            Returns a reference to vals - std::vector \textless double \textgreater\&
+        
+        \item \textbf{block\_rows()}
+            
+            Returns b\_rows - number of rows in block - int.
+        
+        \item \textbf{block\_cols()}
+        
+            Returns b\_cols - number of columns in block - int.
+        
+        \item \textbf{block\_size()}
+        
+            Returns b\_size - number of values in a non-zero block - int.
+        
+        \item \textbf{num\_blocks()}
+        
+            Returns n\_blocks - the number of non-zero blocks in the matrix - int.
+    \end{itemize}
+
+\subsection*{Test Files}
+\begin{itemize}
+    \item raptor/raptor/core/tests/test\_bsr\_matrix.cpp
+    \item raptor/raptor/util/tests/test\_bsr\_spmv\_aniso.cpp
+    \item raptor/raptor/util/tests/test\_bsr\_spmv\_laplacian.cpp
+    \item raptor/raptor/util/tests/test\_bsr\_spmv\_random.cpp
+\end{itemize}
+
+\subsection*{Usage Example}
+
+Create the following matrix with 2x2 blocks 2 different ways:
+
+\begin{equation*}
+    \bbm 1 & 0 & 6 & 7 & * & * \\
+         2 & 1 & 8 & 2 & * & * \\
+         * & * & 1 & 4 & * & * \\
+         * & * & 5 & 1 & * & * \\
+         * & * & 4 & 3 & 7 & 2 \\
+         * & * & 0 & 0 & 0 & 0 \ebm
+\end{equation*}
+
+\begin{lstlisting}[language=C,label=lst:bsr_mat1,caption=Creating a BSRMatrix]
+std::vector<int> row_ptr = {0, 2, 3, 5};
+std::vector<int> cols = {0, 1, 1, 1, 2};
+std::vector<double> vals = {1., 0., 2., 1., 6., 7., 8., 2., 1., 4.,
+                            5., 1., 4., 3., 0., 0., 7., 2., 0., 0.}
+                            
+BSRMatrix A(6, 6, 2, 2, row_ptr, cols, vals);
+\end{lstlisting}
+
+\begin{lstlisting}[language=C,label=lst:bsr_mat1,caption=Creating a BSRMatrix]
+BSRMatrix A(6, 6, 2, 2);
+
+std::vector<double> block1 = {1., 0., 2., 1.};
+std::vector<double> block2 = {6., 7., 8., 2.};
+std::vector<double> block3 = {1., 4., 5., 1.};
+std::vector<double> block4 = {4., 3., 0., 0.};
+std::vector<double> block5 = {7., 2., 0., 0.};
+A.add_block(0, 0, block1);
+A.add_block(0, 1, block2);
+A.add_block(1, 1, block3);
+A.add_block(2, 1, block4);
+A.add_block(2, 2, block5);
+\end{lstlisting}
+
+Mutiplication with the above BSRMatrix:
+
+\begin{lstlisting}[language=C,label=lst:bsr_mat1,caption=Multiplication with a BSRMatrix]
+Vector x(A->n_rows);
+Vector b(A->n_rows);
+
+x.set_const_value(1.0);
+A.mult(x, b); // The solution to A * x = b is now stored in b
+
+\end{lstlisting}
+
+\section*{ParBSRMatrix Class}
+
+\subsection*{Attributes}
+\begin{itemize}
+    \item \textbf{global\_num\_rows} : index\_t \\
+        \tab    global number of rows in the matrix
+        
+    \item \textbf{global\_num\_cols} : index\_t \\
+        \tab    global number of columns in the matrix
+        
+    \item \textbf{local\_nnz} : int \\
+        \tab    number of non-zeros on the process
+        
+    \item \textbf{local\_num\_rows} : int \\
+        \tab    number of rows of the global matrix stored on the process
+        
+    \item \textbf{on\_proc\_num\_cols} : int \\
+        \tab    number of columns in the on\_proc matrix
+        
+    \item \textbf{off\_proc\_num\_cols} : int \\
+        \tab    number of columns in the off\_proc matrix
+        
+    \item \textbf{comm} : ParComm* \\
+        \tab    parallel communicator for communicating off\_proc
+        
+    \item \textbf{tap\_comm} : ParComm* \\
+        \tab    parallel communicator for topology aware communication
+        
+    \item \textbf{b\_rows} : int \\
+        \tab    number of rows in a block
+        
+    \item \textbf{b\_cols} : int \\
+        \tab    number of columns in a block
+        
+    \item \textbf{b\_size} : int \\
+        \tab    number of elements in a block
+        
+    \item \textbf{on\_proc} : BSRMatrix* \\
+        \tab    diagonal matrix for on process computation
+        
+    \item \textbf{off\_proc} : BSRMatrix* \\
+        \tab    matrix containing all off-diagonal columns for off process \\
+        \tab    communication and computation
+\end{itemize}
+
+\subsection*{Constructors}
+\begin{itemize}
+    \item \textbf{ParBSRMatrix() : ParMatrix()}
+    
+        Creates an empty ParBSRMatrix.
+    
+    \item \textbf{ParBSRMatrix(index\_t glob\_rows, index\_t glob\_cols, 
+                    int \_brows, int \_bcols, int blocks\_per\_row=5) :
+                    ParMatrix(glob\_rows, glob\_cols, \_brows, \_bcols)}
+                    
+        Creates an empty ParBSRMatrix with glob\_rows and glob\_cols for
+        rows and columns. The blocks are of size \_brows by \_bcols.
+                    
+        * RECOMMENDED CONSTRUCTOR
+                    
+    \item \textbf{ParBSRMatrix(Partition* part, int \_brows, int \_bcols, 
+                    int blocks\_per\_row = 5) : ParMatrix(part)}
+                    
+        Creates a ParBSRMatrix with the given partition and blocks of size
+        \_brows by \_bcols. - not tested
+                    
+    \item \textbf{ParBSRMatrix(Partition* part, BSRMatrix* \_on\_proc, 
+                    BSRMatrix* \_off\_proc) : ParMatrix(part)}
+                    
+        Creates a ParBSRMatrix with the given partition and on and off
+        process matrices. - not tested
+                    
+    \item \textbf{ParBSRMatrix*(Partition* part, index\_t glob\_rows, index\_t glob\_cols,
+                    int local\_rows, int \_brows, int \_bcols, int on\_proc\_cols,
+                    int off\_proc\_cols, int blocks\_per\_row = 5) : 
+                    ParMatrix(part, glob\_rows, glob\_cols, local\_rows, on\_proc\_cols)}
+                    
+        Creates a ParBSRMatrix with the given partition, global rows and global columns,
+        local rows, blocks of size \_brows by \_bcols, and the given number of
+        on and off process columns. - not tested
+\end{itemize}
+
+\subsection*{Methods}
+\begin{itemize}
+    \item \textbf{add\_block(int global\_coarse\_row, int global\_col\_coarse,
+                    std::vector \textless double \textgreater \& data)}
+                    
+        Adds the block at (global\_coarse\_row, global\_col\_coarse) to the appropriate
+        process and inserts data into the on or off process matrix accordingly. 
+        
+        global\_row\_coarse : the row of the block in the global block matrix \\
+        global\_col\_coarse : the column of the block in the global block matrix \\
+        data : the data for the block given in row-major order
+                    
+    \item \textbf{mult(ParVector\& x, ParVector\& b)}
+    
+        Multiplies the ParBSRMatrix by x and stores the result in b.
+    
+    \item \textbf{tap\_mult(ParVector\& x, ParVector\& b)}
+    
+        Topology aware multiplication - has not been tested.
+    
+    \item \textbf{mult\_T(ParVector\& x, ParVector\& b)}
+    
+        Multiplication by transpose of ParBSRMatrix - has not been tested.
+    
+    \item \textbf{tap\_mult\_T(ParVector\& x, ParVector\& b)}
+    
+        Topology aware transpose multiplication - has not been tested.
+\end{itemize}
+
+\subsection*{Updates}
+\begin{itemize}
+    \item \textbf{ParMatrix(index\_t glob\_rows, index\_t glob\_cols, int \_brows, int\_bcols)}
+    
+    * in par\_matrix.hpp
+    
+    Creates a ParMatrix corresponding to a ParBSRMatrix. This constructor makes sure to
+    call the appropriate Partition() constructor so that the blocks do not get
+    split across processes.
+    
+    \item \textbf{Partition(index\_t \_global\_num\_rows, index\_t \_global\_num\_cols,
+                    index\_t \_brows, index\_t \_bcols, Topology* \_topology = NULL)}
+                    
+    * in partition.hpp
+    
+    Partitions the matrix such that the blocks do not get split across processes.
+    
+    \item \textbf{finalize(bool create\_comm, int b\_cols = 0)}
+    
+    * in par\_matrix.cpp
+    
+    Creates the communicators for a given ParMatrix based on the off process column map.
+    If b\_cols is not zero, then the matrix is a ParBSRMatrix, meaning that
+    expand\_off\_proc() should be called.
+    
+    This method MUST be called after creating a ParBSRMatrix to ensure that the
+    communicators are created correctly.
+    
+    \item \textbf{expand\_off\_proc(int b\_cols)}
+    
+    * in par\_matrix.cpp
+    
+    The condense\_off\_proc() method condenses the off process column map to only include
+    the columns with non-zero entries. Because of the storage format of the
+    BSRMatrix, this condenses the off process column map to include the block
+    columns from the block matrix - this function corrects that. It expands the 
+    off process column map to include all of the global columns that correspond
+    to a given non-zero block.
+\end{itemize}
+
+\subsection*{Test Files}
+\begin{itemize}
+    \item raptor/raptor/core/tests/test\_par\_bsr.cpp
+    \item raptor/raptor/util/tests/test\_par\_bsr\_spmv.cpp
+\end{itemize}
+
+\subsection*{Usage Example}
+
+To create a ParBSRMatrix for the matrix given in the original example: 
+
+\begin{lstlisting}[language=C,label=lst:bsr_mat1,caption=Creating a ParBSRMatrix]
+// Create an empty ParBSRMatrix
+ParBSRMatrix* A = new ParBSRMatrix(12, 12, 2, 2);
+
+// Then add each block - they do not need to be added in any particular order
+std::vector<std::vector<double>> blocks1 = {{1,0,2,1}, {6,7,8,2}, {1,4,5,1}, 
+                                           {4,3,0,0}, {7,2,0,0}};
+std::vector<std::vector<double>> blocks2 = {{1,0,0,1}, {2,0,0,0}, {3,0,1,0}};
+
+A->add_block(0, 0, blocks1[0]);
+A->add_block(3, 3, blocks1[0]);
+A->add_block(0, 1, blocks1[1]);
+A->add_block(3, 4, blocks1[1]);
+A->add_block(1, 1, blocks1[2]);
+A->add_block(4, 4, blocks1[2]);
+A->add_block(2, 1, blocks1[3]);
+A->add_block(5, 4, blocks1[3]);
+A->add_block(2, 2, blocks1[4]);
+A->add_block(5, 5, blocks1[4]);
+
+A->add_block(0, 4, blocks2[0]);
+A->add_block(3, 1, blocks2[0]);
+A->add_block(1, 3, blocks2[1]);
+A->add_block(4, 0, blocks2[1]);
+A->add_block(2, 5, blocks2[2]);
+A->add_block(5, 2, blocks2[2]);
+
+// Call finalize to create on and off process maps
+// and to create communicators
+// You MUST include true and number of columns in a block
+// to ensure that the communicators are created correctly
+A->finalize(true, 2);
+
+\end{lstlisting}
+
+Multiplication with the ParBSRMatrix* given above:
+
+\begin{lstlisting}[language=C,label=lst:bsr_mat1,caption=Creating a BSRMatrix]
+ParVector x(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
+ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+
+x.set_const_value(1.0);
+A->mult(x, b); // The solution to A * x = b is now stored in b
+
+\end{lstlisting}
+
+\end{document}

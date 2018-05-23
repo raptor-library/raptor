@@ -80,7 +80,7 @@ TEST(AnisoBSRSpMVTest, TestsInUtil)
     } 
     fclose(f);
 
-    delete stencil;
+    delete[] stencil;
     delete A_sten;
     delete B_sten;
 } // end of TEST(AnisoSpMVTest, TestsInUtil) //

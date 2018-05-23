@@ -26,14 +26,13 @@ int main(int argc, char* argv[])
 
     FILE* f = fopen("../../../../test_data/bicgstab_res.txt", "r");
     double res;
-    for (int i = 0; i < residuals.size(); i++)
+    for (int i = 0; i < 30; i++)
     {
         fscanf(f, "%lf\n", &res);
+	assert(fabs(res-residuals[i]) < 1e-06);
 	//printf("%lf %lf %lf\n", res, residuals[i], fabs(res-residuals[i]));
-        //assert(fabs(res - residuals[i]) < 1e-06);
     }
     fclose(f);
-
     delete[] stencil;
     delete A;
 

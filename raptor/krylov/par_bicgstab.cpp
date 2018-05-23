@@ -26,7 +26,7 @@ void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& 
     // Same max iterations definition as pyAMG
     if (max_iter <= 0)
     {
-        max_iter = ((int)(1.3*b.global_n)) + 2;
+        max_iter = x.global_n + 5;
     }
 
     // Fixed Constructors
@@ -54,8 +54,9 @@ void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& 
         tol = tol * norm_r;
     }
 
+    iter = 0;
     // Main BiCGStab Loop
-    while (norm_r > tol && iter < max_iter)
+    while (true)
     {
         // alpha_i = (r_i, r*) / (Ap_i, r*)
         A->mult(p, Ap);
@@ -94,24 +95,28 @@ void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& 
         norm_r = r.norm(2);
 	res.push_back(norm_r);
 
+        if (norm_r < tol)
+	{
+	    if (rank == 0)
+	    {
+                printf("%d Iterations required to converge\n", iter);
+		printf("2 Norm of Residual: %lg\n\n", norm_r);
+	    }
+	    return;
+        }
+
+	if (iter == max_iter)
+	{
+            if (rank == 0)
+	    {
+                printf("Max Iterations Reached.\n");
+		printf("2 Norm of Residual: %lg\n\n", norm_r);
+	    }
+	    return;
+	}
+
         iter++;
     }
-
-    if (rank == 0)
-    {
-        if (iter == max_iter)
-        {
-            printf("Max Iterations Reached.\n");
-            printf("2 Norm of Residual: %lg\n\n", norm_r);
-        }
-        else
-        {
-            printf("%d Iteration required to converge\n", iter);
-            printf("2 Norm of Residual: %lg\n\n", norm_r);
-        }
-    }
-
-    return;
 }
 
 void SeqInner_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, double tol, int max_iter)
