@@ -39,6 +39,7 @@ public:
         size_msgs = data->size_msgs;
         int n_procs = data->procs.size();
         int n_indptr = data->indptr.size();
+        int n_indptr_T = data->indptr_T.size();
         int n_indices = data->indices.size();
         if (n_procs)
         {
@@ -55,6 +56,15 @@ public:
             for (int i = 0; i < n_indptr; i++)
             {
                 indptr[i] = data->indptr[i];
+            }
+        }
+
+        if (n_indptr_T)
+        {
+            indptr_T.resize(n_indptr_T);
+            for (int i = 0; i < n_indptr_T; i++)
+            {
+                indptr_T[i] = data->indptr_T[i];
             }
         }
 

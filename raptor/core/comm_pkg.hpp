@@ -811,6 +811,8 @@ namespace raptor
                 MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUS_IGNORE);
             }
 
+            key++;
+
             return get_recv_buffer<T>();
         }
 
@@ -987,6 +989,8 @@ namespace raptor
             {
                 MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUSES_IGNORE);
             }
+
+            key++;
         }
 
         // Conditional communication

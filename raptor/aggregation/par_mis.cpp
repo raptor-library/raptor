@@ -287,15 +287,14 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         std::fill(off_proc_states.begin(), off_proc_states.end(), U);
         off_proc_r.resize(A->off_proc_num_cols);
         off_assigned.resize(A->off_proc_num_cols, 0);
+    }
+    if (comm_t) *comm_t -= MPI_Wtime();
+    aligned_vector<double>& recvbuf = comm->communicate(r);
+    if (comm_t) *comm_t += MPI_Wtime();
 
-        if (comm_t) *comm_t -= MPI_Wtime();
-        aligned_vector<double>& recvbuf = comm->communicate(r);
-        if (comm_t) *comm_t += MPI_Wtime();
-
-        for (int i = 0; i < A->off_proc_num_cols; i++)
-        {
-            off_proc_r[i] = recvbuf[i];
-        }
+    for (int i = 0; i < A->off_proc_num_cols; i++)
+    {
+        off_proc_r[i] = recvbuf[i];
     }
     if (A->comm->send_data->num_msgs)
     {
@@ -537,9 +536,9 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         // and idx in row v such that states[idx] is new coarse)
         if (comm_t) *comm_t -= MPI_Wtime();
         comm_coarse_dist1(A, comm, active_sends, active_recvs, C, first_pass);
+        aligned_vector<int>& recv_C = comm->get_int_recv_buffer();
         if (comm_t) *comm_t += MPI_Wtime();
 
-        aligned_vector<int>& recv_C = comm->get_int_recv_buffer();
 
         for (int i = 0; i < remaining; i++)
         {

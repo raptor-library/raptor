@@ -539,15 +539,19 @@ CSRMatrix* communication_helper(const aligned_vector<int>& rowptr,
 CSRMatrix* ParComm::communicate(const aligned_vector<int>& rowptr, 
         const aligned_vector<int>& col_indices, const aligned_vector<double>& values)
 {
-    return communication_helper(rowptr, col_indices, values,
+    CSRMatrix* recv_mat = communication_helper(rowptr, col_indices, values,
             send_data, recv_data, key, mpi_comm);
+    key++;
+    return recv_mat;
 }
 
 CSRMatrix* ParComm::communicate(const aligned_vector<int>& rowptr, 
         const aligned_vector<int>& col_indices)
 {
-    return communication_helper(rowptr, col_indices, send_data, 
+    CSRMatrix* recv_mat = communication_helper(rowptr, col_indices, send_data, 
             recv_data, key, mpi_comm);
+    key++;
+    return recv_mat;
 }
 
 CSRMatrix* ParComm::communicate_T(const aligned_vector<int>& rowptr, 
@@ -760,15 +764,18 @@ CSRMatrix* TAPComm::communicate_T(const aligned_vector<int>& rowptr,
             values, local_L_par_comm->recv_data, 
             local_L_par_comm->send_data, local_L_par_comm->key,
             local_L_par_comm->mpi_comm);
+    local_L_par_comm->key++;
 
     CSRMatrix* R_mat = communication_helper(rowptr, col_indices, 
             values, local_R_par_comm->recv_data, 
             local_R_par_comm->send_data, local_R_par_comm->key,
             local_R_par_comm->mpi_comm);
+    local_R_par_comm->key++;
 
     CSRMatrix* G_mat = communication_helper(R_mat->idx1, R_mat->idx2,
             R_mat->vals, global_par_comm->recv_data, global_par_comm->send_data,
             global_par_comm->key, global_par_comm->mpi_comm);
+    global_par_comm->key++;
     delete R_mat;
 
     CSRMatrix* final_mat;
@@ -778,6 +785,7 @@ CSRMatrix* TAPComm::communicate_T(const aligned_vector<int>& rowptr,
         final_mat = communication_helper(G_mat->idx1, G_mat->idx2,
                 G_mat->vals, local_S_par_comm->recv_data, local_S_par_comm->send_data, 
                 local_S_par_comm->key, local_S_par_comm->mpi_comm);
+        local_S_par_comm->key++;
         delete G_mat;
         final_comm = local_S_par_comm;
     }
