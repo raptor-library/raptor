@@ -1329,6 +1329,45 @@ namespace raptor
         TAPComm(TAPComm* tap_comm, const aligned_vector<int>& off_proc_col_to_new, 
                 data_t* comm_t = NULL) : CommPkg(tap_comm->topology)
         {
+            init_off_proc_new(tap_comm, off_proc_col_to_new, comm_t);
+        }
+
+        TAPComm(TAPComm* tap_comm, const aligned_vector<int>& on_proc_col_to_new,
+                const aligned_vector<int>& off_proc_col_to_new, 
+                data_t* comm_t = NULL) : CommPkg(tap_comm->topology)
+        {
+            int idx;
+
+            init_off_proc_new(tap_comm, off_proc_col_to_new, comm_t);
+
+            for (int i = 0; i < local_L_par_comm->send_data->size_msgs; i++)
+            {
+                idx = local_L_par_comm->send_data->indices[i];
+                local_L_par_comm->send_data->indices[i] = on_proc_col_to_new[idx];
+            }
+
+            if (local_S_par_comm)
+            {
+                for (int i = 0; i < local_S_par_comm->send_data->size_msgs; i++)
+                {
+                    idx = local_S_par_comm->send_data->indices[i];
+                    local_S_par_comm->send_data->indices[i] = on_proc_col_to_new[idx];
+                }
+            }
+            else
+            {
+                for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
+                {
+                    idx = global_par_comm->send_data->indices[i];
+                    global_par_comm->send_data->indices[i] = on_proc_col_to_new[idx];
+                }
+            }
+        }
+
+
+        void init_off_proc_new(TAPComm* tap_comm, const aligned_vector<int>& off_proc_col_to_new,
+                data_t* comm_t = NULL)
+        {
             int idx;
 
             local_L_par_comm = new ParComm(tap_comm->local_L_par_comm, off_proc_col_to_new, 
@@ -1336,8 +1375,7 @@ namespace raptor
             local_R_par_comm = new ParComm(tap_comm->local_R_par_comm, off_proc_col_to_new,
                     comm_t);
 
-            // Update local_R send indices
-            aligned_vector<int> R_send_to_new(tap_comm->local_R_par_comm->send_data->size_msgs);
+            // Create global par comm / update R send indices
             aligned_vector<int> G_off_proc_to_new(tap_comm->global_par_comm->recv_data->size_msgs);
             for (int i = 0; i < tap_comm->local_R_par_comm->send_data->size_msgs; i++)
             {
@@ -1357,13 +1395,11 @@ namespace raptor
                 idx = local_R_par_comm->send_data->indices[i];
                 local_R_par_comm->send_data->indices[i] = G_off_proc_to_new[idx];
             }
-
             global_par_comm = new ParComm(tap_comm->global_par_comm, G_off_proc_to_new, comm_t);
 
-            // Update global send indices
+            // create local S / update global send indices
             if (tap_comm->local_S_par_comm)
             {
-                aligned_vector<int> G_send_to_new(tap_comm->global_par_comm->send_data->size_msgs);
                 aligned_vector<int> S_off_proc_to_new(
                         tap_comm->local_S_par_comm->recv_data->size_msgs);
                 for (int i = 0; i < tap_comm->global_par_comm->send_data->size_msgs; i++)
@@ -1408,8 +1444,8 @@ namespace raptor
                         idx = tap_comm->local_R_par_comm->recv_data->indices[i];
                         if (off_proc_col_to_new[idx] != -1)
                         {
-                            local_R_par_comm->recv_data->indices[ctr++] =
-                                off_proc_col_to_new[idx];
+                            local_R_par_comm->recv_data->indices.
+                                push_back(off_proc_col_to_new[idx]);
                         }
                     }
                 }
@@ -1424,53 +1460,14 @@ namespace raptor
                         idx = tap_comm->local_L_par_comm->recv_data->indices[i];
                         if (off_proc_col_to_new[idx] != -1)
                         {
-                            local_L_par_comm->recv_data->indices[ctr++] =
-                                off_proc_col_to_new[idx];
+                            local_L_par_comm->recv_data->indices.
+                                push_back(off_proc_col_to_new[idx]);
                         }
                     }
                 }
             }
-        }
 
-        TAPComm(TAPComm* tap_comm, const aligned_vector<int>& on_proc_col_to_new,
-                const aligned_vector<int>& off_proc_col_to_new, 
-                data_t* comm_t = NULL) : CommPkg(tap_comm->topology)
-        {
-            int idx;
-
-            local_L_par_comm = new ParComm(tap_comm->local_L_par_comm, on_proc_col_to_new,
-                    off_proc_col_to_new, comm_t);
-
-            local_R_par_comm = new ParComm(tap_comm->local_R_par_comm, off_proc_col_to_new,
-                    comm_t);
-
-            aligned_vector<int> G_off_proc_to_new(tap_comm->global_par_comm->recv_data->size_msgs);
-            for (int i = 0; i < tap_comm->local_R_par_comm->send_data->size_msgs; i++)
-            {
-                idx = tap_comm->local_R_par_comm->send_data->indices[i];
-                G_off_proc_to_new[idx] = tap_comm->local_R_par_comm->send_data->int_buffer[i];
-            }
-
-            if (tap_comm->local_S_par_comm)
-            {
-                global_par_comm = new ParComm(tap_comm->global_par_comm, G_off_proc_to_new, comm_t);
-
-                aligned_vector<int> S_off_proc_to_new(
-                        tap_comm->local_S_par_comm->recv_data->size_msgs);
-                for (int i = 0; i < tap_comm->global_par_comm->send_data->size_msgs; i++)
-                {
-                    idx = tap_comm->global_par_comm->send_data->indices[i];
-                    S_off_proc_to_new[idx] = tap_comm->global_par_comm->send_data->int_buffer[i];
-                }
-                local_S_par_comm = new ParComm(tap_comm->local_S_par_comm, on_proc_col_to_new,
-                        S_off_proc_to_new, comm_t);
-            }
-            else
-            {
-                global_par_comm = new ParComm(tap_comm->global_par_comm, 
-                        on_proc_col_to_new, G_off_proc_to_new, comm_t);
-            }
-
+            adjust_send_indices(0);
         }
 
         /**************************************************************

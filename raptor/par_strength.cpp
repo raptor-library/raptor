@@ -337,9 +337,7 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
 
     if (A->tap_comm)
     {
-        S->tap_comm = new TAPComm(S->partition, S->off_proc_column_map, S->on_proc_column_map, 
-                true, MPI_COMM_WORLD, comm_t);
-        //S->tap_comm = new TAPComm((TAPComm*) A->tap_comm, orig_to_S);
+        S->tap_comm = new TAPComm((TAPComm*) A->tap_comm, orig_to_S, comm_t);
     }
 
     return S;
@@ -551,9 +549,7 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, da
 
     if (A->tap_comm)
     {
-        S->tap_comm = new TAPComm(S->partition, S->off_proc_column_map, S->on_proc_column_map,
-                true, MPI_COMM_WORLD, comm_t);
-        //S->tap_comm = new TAPComm((TAPComm*) A->tap_comm, orig_to_S);
+        S->tap_comm = new TAPComm((TAPComm*) A->tap_comm, orig_to_S, comm_t);
     }
 
     return S;

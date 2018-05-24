@@ -58,10 +58,12 @@ ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, bool tap_com
     {
         if (tap_comm)
         {
-            if (P->tap_comm == NULL)
+            if (scaled_A->tap_comm == NULL)
             {
-                P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map,
-                        P->on_proc_column_map, true, MPI_COMM_WORLD, comm_t);
+                scaled_A->tap_comm = new TAPComm(scaled_A->partition, 
+                        scaled_A->off_proc_column_map,
+                        scaled_A->on_proc_column_map, 
+                        true, MPI_COMM_WORLD, comm_t);
             }
             if (comm_mat_t) *comm_mat_t -= MPI_Wtime();
             AP_tmp = scaled_A->tap_mult(P);
@@ -71,8 +73,10 @@ ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, bool tap_com
         {
             if (P->comm == NULL)
             {
-                P->comm = new ParComm(P->partition, P->off_proc_column_map,
-                        P->on_proc_column_map, 9283, MPI_COMM_WORLD, comm_t);
+                scaled_A->comm = new ParComm(scaled_A->partition, 
+                        scaled_A->off_proc_column_map,
+                        scaled_A->on_proc_column_map, 
+                        9283, MPI_COMM_WORLD, comm_t);
             }
 
             if (comm_mat_t) *comm_mat_t -= MPI_Wtime();
