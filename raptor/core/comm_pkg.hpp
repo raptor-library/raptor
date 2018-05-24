@@ -443,6 +443,49 @@ namespace raptor
             }
             key = comm->key;
 
+            init_off_proc_new(comm, off_proc_col_to_new, comm_t);
+        }
+        
+        ParComm(ParComm* comm, const aligned_vector<int>& on_proc_col_to_new,
+                const aligned_vector<int>& off_proc_col_to_new, data_t* comm_t = NULL) 
+            : CommPkg(comm->topology)
+        {
+            mpi_comm = comm->mpi_comm;
+            bool comm_proc;
+            int proc, start, end;
+            int idx, new_idx;
+
+            send_data = new CommData();
+            recv_data = new CommData();
+
+            if (comm == NULL)
+            {
+                key = 0;
+                return;
+            }
+            key = comm->key;
+      
+            init_off_proc_new(comm, off_proc_col_to_new, comm_t);
+
+            for (int i = 0; i < send_data->size_msgs; i++)
+            {
+                idx = send_data->indices[i];
+                new_idx = on_proc_col_to_new[idx];
+                if (new_idx != -1)
+                {
+                    send_data->indices[i] = new_idx;
+                }
+            }
+        }
+
+
+        void init_off_proc_new(ParComm* comm, const aligned_vector<int>& off_proc_col_to_new,
+                data_t* comm_t = NULL)
+        {
+            bool comm_proc;
+            int proc, start, end;
+            int idx, new_idx;
+
             if (comm_t) *comm_t -= MPI_Wtime();
             comm->communicate_T(off_proc_col_to_new);
             if (comm_t) *comm_t += MPI_Wtime();
@@ -524,112 +567,6 @@ namespace raptor
             send_data->num_msgs = send_data->procs.size();
             send_data->size_msgs = send_data->indices.size();
             send_data->finalize();
-        }
-
-        ParComm(ParComm* comm, const aligned_vector<int>& on_proc_col_to_new,
-                const aligned_vector<int>& off_proc_col_to_new, data_t* comm_t = NULL) 
-            : CommPkg(comm->topology)
-        {
-            mpi_comm = comm->mpi_comm;
-            bool comm_proc;
-            int proc, start, end;
-            int idx, new_idx;
-
-            send_data = new CommData();
-            recv_data = new CommData();
-
-            if (comm == NULL)
-            {
-                key = 0;
-                return;
-            }
-            key = comm->key;
-
-            if (comm_t) *comm_t -= MPI_Wtime();
-            comm->communicate_T(off_proc_col_to_new);
-            if (comm_t) *comm_t += MPI_Wtime();
-
-            recv_data->size_msgs = 0;
-            if (comm->recv_data->indices.size())
-            {
-                for (int i = 0; i < comm->recv_data->num_msgs; i++)
-                {
-                    comm_proc = false;
-                    proc = comm->recv_data->procs[i];
-                    start = comm->recv_data->indptr[i];
-                    end = comm->recv_data->indptr[i+1];
-                    for (int j = start; j < end; j++)
-                    {
-                        idx = comm->recv_data->indices[j];
-                        new_idx = off_proc_col_to_new[idx];
-                        if (new_idx != -1)
-                        {
-                            comm_proc = true;
-                            recv_data->size_msgs++;
-                        }
-                    }
-                    if (comm_proc)
-                    {
-                        recv_data->procs.push_back(proc);
-                        recv_data->indptr.push_back(recv_data->size_msgs);
-                    }
-                }
-            }
-            else
-            {
-                for (int i = 0; i < comm->recv_data->num_msgs; i++)
-                {
-                    comm_proc = false;
-                    proc = comm->recv_data->procs[i];
-                    start = comm->recv_data->indptr[i];
-                    end = comm->recv_data->indptr[i+1];
-                    for (int j = start; j < end; j++)
-                    {
-                        idx = j;
-                        new_idx = off_proc_col_to_new[idx];
-                        if (new_idx != -1)
-                        {
-                            comm_proc = true;
-                            recv_data->size_msgs++;
-                        }
-                    }
-                    if (comm_proc)
-                    {
-                        recv_data->procs.push_back(proc);
-                        recv_data->indptr.push_back(recv_data->size_msgs);
-                    }
-                }
-            }
-
-            recv_data->num_msgs = recv_data->procs.size();
-            recv_data->finalize();
-
-            for (int i = 0; i < comm->send_data->num_msgs; i++)
-            {
-                comm_proc = false;
-                proc = comm->send_data->procs[i];
-                start = comm->send_data->indptr[i];
-                end = comm->send_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    idx = comm->send_data->indices[j];
-                    new_idx = on_proc_col_to_new[idx];
-                    if (new_idx != -1 && comm->send_data->int_buffer[j] != -1)
-                    {
-                        comm_proc = true;
-                        send_data->indices.push_back(new_idx);
-                    }
-                }
-                if (comm_proc)
-                {
-                    send_data->procs.push_back(proc);
-                    send_data->indptr.push_back(send_data->indices.size());
-                }
-            }
-            send_data->num_msgs = send_data->procs.size();
-            send_data->size_msgs = send_data->indices.size();
-            send_data->finalize();
-
         }
 
         /**************************************************************
@@ -989,7 +926,6 @@ namespace raptor
             {
                 MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUSES_IGNORE);
             }
-
             key++;
         }
 
@@ -1926,7 +1862,6 @@ namespace raptor
             complete_T<T>();
             int idx;
             aligned_vector<T>& L_sendbuf = local_L_par_comm->send_data->get_buffer<T>();
-
 
             if (result_func)
             {
