@@ -446,7 +446,6 @@ namespace raptor
 
                 if (solve_times)
                 {
-                    solve_times[0][level] += MPI_Wtime();
                     solve_comm_times[0][level] = *relax_t + *resid_t + *restrict_t + *interp_t;
                 }
             }
