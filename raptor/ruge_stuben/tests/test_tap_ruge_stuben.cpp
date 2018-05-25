@@ -67,25 +67,6 @@ TEST(TestTAPRugeStuben, TestsInRuge_Stuben)
     A = readParMatrix(A0_fn);
     A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
     S = A->strength(Classical, 0.25);
-    TAPComm* tmp = new TAPComm(S->partition, S->off_proc_column_map);
-    ParComm* SlS = S->tap_comm->global_par_comm;
-    ParComm* tmpS = tmp->global_par_comm;
-    ASSERT_EQ(SlS->send_data->num_msgs, tmpS->send_data->num_msgs);
-    ASSERT_EQ(SlS->send_data->size_msgs, tmpS->send_data->size_msgs);
-    ASSERT_EQ(SlS->recv_data->num_msgs, tmpS->recv_data->num_msgs);
-    ASSERT_EQ(SlS->recv_data->size_msgs, tmpS->recv_data->size_msgs);
-    for (int i = 0; i < SlS->send_data->num_msgs; i++)
-    {
-        ASSERT_EQ(SlS->send_data->indptr[i+1], tmpS->send_data->indptr[i+1]);
-    }
-    for (int i = 0; i < SlS->recv_data->num_msgs; i++)
-    {
-        ASSERT_EQ(SlS->recv_data->indptr[i+1], tmpS->recv_data->indptr[i+1]);
-        for (int j = tmpS->recv_data->indptr[i]; j < tmpS->recv_data->indptr[i+1]; j++)
-        {
-            ASSERT_EQ(SlS->recv_data->indptr_T[j+1], tmpS->recv_data->indptr_T[j+1]);
-        }
-    }
     MPI_Allgather(&A->local_num_rows, 1, MPI_INT, proc_sizes.data(),
             1, MPI_INT, MPI_COMM_WORLD);
     first_row = 0;
