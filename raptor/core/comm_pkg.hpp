@@ -482,16 +482,54 @@ namespace raptor
         void init_off_proc_new(ParComm* comm, const aligned_vector<int>& off_proc_col_to_new,
                 data_t* comm_t = NULL)
         {
-            bool comm_proc;
+            bool comm_proc, comm_idx;
             int proc, start, end;
-            int idx, new_idx;
+            int idx, new_idx, ctr;
+            int idx_start, idx_end;
 
             if (comm_t) *comm_t -= MPI_Wtime();
             comm->communicate_T(off_proc_col_to_new);
             if (comm_t) *comm_t += MPI_Wtime();
 
-            recv_data->size_msgs = 0;
-            if (comm->recv_data->indices.size())
+            if (comm->recv_data->indptr_T.size())
+            {
+                recv_data->indptr_T.push_back(0);
+                for (int i = 0; i < comm->recv_data->num_msgs; i++)
+                {
+                    comm_proc = false;
+                    proc = comm->recv_data->procs[i];
+                    start = comm->recv_data->indptr[i];
+                    end = comm->recv_data->indptr[i+1];
+                    for (int j = start; j < end; j++)
+                    {
+                        comm_idx = false;
+                        idx_start = comm->recv_data->indptr_T[j];
+                        idx_end = comm->recv_data->indptr_T[j+1];
+                        for (int k = idx_start; k < idx_end; k++)
+                        {
+                            idx = comm->recv_data->indices[k];
+                            new_idx = off_proc_col_to_new[idx];
+                            if (new_idx != -1)
+                            {
+                                comm_proc = true;
+                                comm_idx = true;
+                                recv_data->indices.push_back(new_idx);
+                            }
+                        }
+                        if (comm_idx)
+                        {
+                            recv_data->indptr_T.push_back(recv_data->indices.size());
+                        }
+                    }
+                    if (comm_proc)
+                    {
+                        recv_data->procs.push_back(proc);
+                        recv_data->indptr.push_back(recv_data->indptr_T.size() - 1);
+                    }
+                }
+                recv_data->size_msgs = recv_data->indptr_T.size() - 1;
+            }
+            else if (comm->recv_data->indices.size())
             {
                 for (int i = 0; i < comm->recv_data->num_msgs; i++)
                 {
@@ -506,18 +544,20 @@ namespace raptor
                         if (new_idx != -1)
                         {
                             comm_proc = true;
-                            recv_data->size_msgs++;
+                            recv_data->indices.push_back(new_idx);
                         }
                     }
                     if (comm_proc)
                     {
                         recv_data->procs.push_back(proc);
-                        recv_data->indptr.push_back(recv_data->size_msgs);
+                        recv_data->indptr.push_back(recv_data->indices.size());
                     }
                 }
+                recv_data->size_msgs = recv_data->indices.size();
             }
             else
             {
+                recv_data->size_msgs = 0;
                 for (int i = 0; i < comm->recv_data->num_msgs; i++)
                 {
                     comm_proc = false;
@@ -1368,7 +1408,7 @@ namespace raptor
         void init_off_proc_new(TAPComm* tap_comm, const aligned_vector<int>& off_proc_col_to_new,
                 data_t* comm_t = NULL)
         {
-            int idx;
+            int idx, ctr;
 
             local_L_par_comm = new ParComm(tap_comm->local_L_par_comm, off_proc_col_to_new, 
                     comm_t);
@@ -1395,7 +1435,16 @@ namespace raptor
                 idx = local_R_par_comm->send_data->indices[i];
                 local_R_par_comm->send_data->indices[i] = G_off_proc_to_new[idx];
             }
-            global_par_comm = new ParComm(tap_comm->global_par_comm, G_off_proc_to_new, comm_t);
+
+            ctr = 0;
+            for (int i = 0; i < tap_comm->local_R_par_comm->send_data->size_msgs; i++)
+            {
+                idx = tap_comm->local_R_par_comm->send_data->int_buffer[i];
+                if (idx != -1)
+                    tap_comm->local_R_par_comm->send_data->int_buffer[i] = ctr++;
+            }
+            global_par_comm = new ParComm(tap_comm->global_par_comm, 
+                    tap_comm->local_R_par_comm->send_data->int_buffer, comm_t);
 
             // create local S / update global send indices
             if (tap_comm->local_S_par_comm)
@@ -1421,8 +1470,15 @@ namespace raptor
                     global_par_comm->send_data->indices[i] = S_off_proc_to_new[idx];
                 }
 
-                local_S_par_comm = new ParComm(tap_comm->local_S_par_comm, 
-                        S_off_proc_to_new, comm_t);
+                ctr = 0;
+                for (int i = 0; i < tap_comm->global_par_comm->send_data->size_msgs; i++)
+                {
+                    idx = tap_comm->global_par_comm->send_data->int_buffer[i];
+                    if (idx != -1)
+                        tap_comm->global_par_comm->send_data->int_buffer[i] = ctr++;
+                }
+                local_S_par_comm = new ParComm(tap_comm->local_S_par_comm,
+                        tap_comm->global_par_comm->send_data->int_buffer, comm_t);
             }
 
             // Determine size of final recvs (should be equal to 
@@ -1434,40 +1490,7 @@ namespace raptor
                 // Want a single recv buffer local_R and local_L par_comms
                 recv_buffer.resize(recv_size);
                 int_recv_buffer.resize(recv_size);
-
-                // Map local_R recvs to original off_proc_column_map
-                int ctr = 0;
-                if (local_R_par_comm->recv_data->size_msgs)
-                {
-                    for (int i = 0; i < tap_comm->local_R_par_comm->recv_data->size_msgs; i++)
-                    {
-                        idx = tap_comm->local_R_par_comm->recv_data->indices[i];
-                        if (off_proc_col_to_new[idx] != -1)
-                        {
-                            local_R_par_comm->recv_data->indices.
-                                push_back(off_proc_col_to_new[idx]);
-                        }
-                    }
-                }
-
-
-                // Map local_L recvs to original off_proc_column_map
-                ctr = 0;
-                if (local_L_par_comm->recv_data->size_msgs)
-                {
-                    for (int i = 0; i < tap_comm->local_L_par_comm->recv_data->size_msgs; i++)
-                    {
-                        idx = tap_comm->local_L_par_comm->recv_data->indices[i];
-                        if (off_proc_col_to_new[idx] != -1)
-                        {
-                            local_L_par_comm->recv_data->indices.
-                                push_back(off_proc_col_to_new[idx]);
-                        }
-                    }
-                }
-            }
-
-            adjust_send_indices(0);
+            }        
         }
 
         /**************************************************************
