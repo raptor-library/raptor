@@ -1409,6 +1409,7 @@ namespace raptor
                 data_t* comm_t = NULL)
         {
             int idx, ctr;
+            int start, end;
 
             local_L_par_comm = new ParComm(tap_comm->local_L_par_comm, off_proc_col_to_new, 
                     comm_t);
@@ -1416,66 +1417,67 @@ namespace raptor
                     comm_t);
 
             // Create global par comm / update R send indices
-            aligned_vector<int> G_off_proc_to_new(tap_comm->global_par_comm->recv_data->size_msgs);
-            for (int i = 0; i < tap_comm->local_R_par_comm->send_data->size_msgs; i++)
-            {
-                idx = tap_comm->local_R_par_comm->send_data->indices[i];
-                G_off_proc_to_new[idx] = tap_comm->local_R_par_comm->send_data->int_buffer[i];
-            }
-            idx = 0;
+            aligned_vector<int> G_to_new(tap_comm->global_par_comm->recv_data->size_msgs, -1);
+            ctr = 0;
             for (int i = 0; i < tap_comm->global_par_comm->recv_data->size_msgs; i++)
             {
-                if (G_off_proc_to_new[i] != -1)
+                start = tap_comm->global_par_comm->recv_data->indptr_T[i];
+                end = tap_comm->global_par_comm->recv_data->indptr_T[i+1];
+                for (int j = start; j < end; j++)
                 {
-                    G_off_proc_to_new[i] = idx++;
+                    idx = tap_comm->global_par_comm->recv_data->indices[j];
+                    if (tap_comm->local_R_par_comm->send_data->int_buffer[idx] != -1)
+                    {
+                        G_to_new[i] = ctr++;
+                        break;
+                    }
                 }
             }
-            for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
+            for (aligned_vector<int>::iterator it = local_R_par_comm->send_data->indices.begin();
+                    it != local_R_par_comm->send_data->indices.end(); ++it)
             {
-                idx = local_R_par_comm->send_data->indices[i];
-                local_R_par_comm->send_data->indices[i] = G_off_proc_to_new[idx];
+                *it = G_to_new[*it];
             }
-
-            ctr = 0;
-            for (int i = 0; i < tap_comm->local_R_par_comm->send_data->size_msgs; i++)
+            idx = 0;
+            for (aligned_vector<int>::iterator it = tap_comm->local_R_par_comm->send_data->int_buffer.begin();
+                    it != tap_comm->local_R_par_comm->send_data->int_buffer.end(); ++it)
             {
-                idx = tap_comm->local_R_par_comm->send_data->int_buffer[i];
-                if (idx != -1)
-                    tap_comm->local_R_par_comm->send_data->int_buffer[i] = ctr++;
+                if (*it != -1) *it = idx++;
             }
             global_par_comm = new ParComm(tap_comm->global_par_comm, 
                     tap_comm->local_R_par_comm->send_data->int_buffer, comm_t);
 
+
+
             // create local S / update global send indices
             if (tap_comm->local_S_par_comm)
             {
-                aligned_vector<int> S_off_proc_to_new(
-                        tap_comm->local_S_par_comm->recv_data->size_msgs);
-                for (int i = 0; i < tap_comm->global_par_comm->send_data->size_msgs; i++)
-                {
-                    idx = tap_comm->global_par_comm->send_data->indices[i];
-                    S_off_proc_to_new[idx] = tap_comm->global_par_comm->send_data->int_buffer[i];
-                }
-                idx = 0;
+                aligned_vector<int> S_to_new(tap_comm->local_S_par_comm->recv_data->size_msgs, -1);
+                ctr = 0;
                 for (int i = 0; i < tap_comm->local_S_par_comm->recv_data->size_msgs; i++)
                 {
-                    if (S_off_proc_to_new[i] != -1)
+                    start = tap_comm->local_S_par_comm->recv_data->indptr_T[i];
+                    end = tap_comm->local_S_par_comm->recv_data->indptr_T[i+1];
+                    for (int j = start; j < end; j++)
                     {
-                        S_off_proc_to_new[i] = idx++;
+                        idx = tap_comm->local_S_par_comm->recv_data->indices[j];
+                        if (tap_comm->global_par_comm->send_data->int_buffer[idx] != -1)
+                        {
+                            S_to_new[i] = ctr++;
+                            break;
+                        }
                     }
                 }
-                for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
+                for (aligned_vector<int>::iterator it = global_par_comm->send_data->indices.begin();
+                        it != global_par_comm->send_data->indices.end(); ++it)
                 {
-                    idx = global_par_comm->send_data->indices[i];
-                    global_par_comm->send_data->indices[i] = S_off_proc_to_new[idx];
+                    *it = S_to_new[*it];
                 }
-
-                ctr = 0;
-                for (int i = 0; i < tap_comm->global_par_comm->send_data->size_msgs; i++)
+                idx = 0;
+                for (aligned_vector<int>::iterator it = tap_comm->global_par_comm->send_data->int_buffer.begin();
+                        it != tap_comm->global_par_comm->send_data->int_buffer.end(); ++it)
                 {
-                    idx = tap_comm->global_par_comm->send_data->int_buffer[i];
-                    if (idx != -1)
-                        tap_comm->global_par_comm->send_data->int_buffer[i] = ctr++;
+                    if (*it != -1) *it = idx++;
                 }
                 local_S_par_comm = new ParComm(tap_comm->local_S_par_comm,
                         tap_comm->global_par_comm->send_data->int_buffer, comm_t);
