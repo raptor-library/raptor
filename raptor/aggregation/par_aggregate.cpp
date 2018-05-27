@@ -10,9 +10,6 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    if (S->local_num_rows == 0)
-        return 0;
-
     S->sort();
     S->on_proc->move_diag();
     A->sort();
@@ -54,13 +51,11 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
         {
             r[i] = rand_vals[i];
         }
-
-        if (comm_t) *comm_t -= MPI_Wtime();
-        aligned_vector<double>& rands = comm->communicate(r);
-        if (comm_t) *comm_t += MPI_Wtime();
-
-        std::copy(rands.begin(), rands.end(), off_proc_r.begin());
     }
+    if (comm_t) *comm_t -= MPI_Wtime();
+    aligned_vector<double>& rands = comm->communicate(r);
+    std::copy(rands.begin(), rands.end(), off_proc_r.begin());
+    if (comm_t) *comm_t += MPI_Wtime();
 
     if (S->off_proc_num_cols)
     {
