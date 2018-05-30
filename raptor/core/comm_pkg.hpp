@@ -123,59 +123,74 @@ namespace raptor
         template<typename T, typename U>
         void communicate_T(const aligned_vector<T>& values, aligned_vector<U>& result,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>)
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {  
-            communicate_T(values.data(), result, result_func, init_result_func);
+            communicate_T(values.data(), result, result_func, 
+                    init_result_func, init_result_func_val);
         }
         template<typename T>
         void communicate_T(const aligned_vector<T>& values,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>)
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {  
-            communicate_T(values.data(), init_result_func);
+            communicate_T(values.data(), init_result_func,
+                    init_result_func_val);
         }
         template<typename T>
         void init_comm_T(const aligned_vector<T>& values,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>)
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            init_comm_T(values.data(), init_result_func);
+            init_comm_T(values.data(), init_result_func, init_result_func_val);
         }
         template<typename T> void init_comm_T(const T* values,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>);
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
+                T init_result_func_val = 0);
         template<typename T, typename U> void complete_comm_T(aligned_vector<U>& result,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>);
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
+                T init_result_func_val = 0);
         template<typename T> void complete_comm_T(
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>);
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0);
         template<typename T, typename U> void communicate_T(const T* values, 
                 aligned_vector<U>& result, 
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>);
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
+                T init_result_func_val = 0);
         template<typename T> void communicate_T(const T* values,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>);
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0);
         virtual void init_double_comm_T(const double* values,
                 std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>) = 0;
+                    &sum_func<double, double>, 
+                    double init_result_func_val = 0) = 0;
         virtual void init_int_comm_T(const int* values,
-                std::function<int(int, int)> init_result_func = &sum_func<int, int>) = 0;
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0) = 0;
         virtual void complete_double_comm_T(aligned_vector<double>& result,
                 std::function<double(double, double)> result_func = &sum_func<double, double>,
                 std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>) = 0;
+                    &sum_func<double, double>, double init_result_func_val = 0) = 0;
         virtual void complete_double_comm_T(aligned_vector<int>& result,
                 std::function<int(int, double)> result_func = &sum_func<double, int>,
                 std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>) = 0;
+                    &sum_func<double, double>, double init_result_func_val = 0) = 0;
         virtual void complete_int_comm_T(aligned_vector<int>& result,
                 std::function<int(int, int)> result_func = &sum_func<int, int>,
-                std::function<int(int, int)> init_result_func = &sum_func<int, int>) = 0;
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0) = 0;
         virtual void complete_int_comm_T(aligned_vector<double>& result,
                 std::function<double(double, int)> result_func = &sum_func<int, double>,
-                std::function<int(int, int)> init_result_func = &sum_func<int, int>) = 0;
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0) = 0;
         virtual void complete_double_comm_T(
                 std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>) = 0;
+                    &sum_func<double, double>, double init_result_func_val = 0) = 0;
         virtual void complete_int_comm_T(
-                std::function<int(int, int)> init_result_func = &sum_func<int, int>) = 0;
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0) = 0;
 
         // Helper methods
         template <typename T> aligned_vector<T>& get_recv_buffer();
@@ -508,8 +523,13 @@ namespace raptor
             int idx, new_idx, ctr;
             int idx_start, idx_end;
 
+            std::function<int(int, int)> compare_func = [](const int a, const int b)
+            {
+                if (b >= 0) return b;
+                else return a;
+            };
             if (comm_t) *comm_t -= MPI_Wtime();
-            comm->communicate_T(off_proc_col_to_new);
+            comm->communicate_T(off_proc_col_to_new, compare_func, -1);
             if (comm_t) *comm_t += MPI_Wtime();
 
             if (comm->recv_data->indptr_T.size())
@@ -628,6 +648,8 @@ namespace raptor
             send_data->num_msgs = send_data->procs.size();
             send_data->size_msgs = send_data->indices.size();
             send_data->finalize();
+
+            
         }
 
         /**************************************************************
@@ -817,90 +839,105 @@ namespace raptor
         // Transpose Communication
         void init_double_comm_T(const double* values,
                 std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>)
+                    &sum_func<double, double>, 
+                    double init_result_func_val = 0)
         {
-            initialize_T(values, init_result_func);
+            initialize_T(values, init_result_func, init_result_func_val);
         }
         void init_int_comm_T(const int* values,
                 std::function<int(int, int)> init_result_func = 
-                    &sum_func<int, int>)
+                    &sum_func<int, int>, 
+                    int init_result_func_val = 0)
         {
-            initialize_T(values, init_result_func);
+            initialize_T(values, init_result_func, init_result_func_val);
         }
         void complete_double_comm_T(aligned_vector<double>& result,
                 std::function<double(double, double)> result_func = &sum_func<double, double>,
                 std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>)
+                    &sum_func<double, double>,
+                    double init_result_func_val = 0)
         {
-            complete_T<double>(result, result_func, init_result_func);
+            complete_T<double>(result, result_func, init_result_func, init_result_func_val);
         }
         void complete_double_comm_T(aligned_vector<int>& result,
                 std::function<int(int, double)> result_func = &sum_func<double, int>,
                 std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>)
+                    &sum_func<double, double>,
+                    double init_result_func_val = 0)
         {
-            complete_T<double>(result, result_func, init_result_func);
+            complete_T<double>(result, result_func, init_result_func, init_result_func_val);
         }
         void complete_int_comm_T(aligned_vector<double>& result,
                 std::function<double(double, int)> result_func = &sum_func<int, double>,
-                std::function<int(int, int)> init_result_func = &sum_func<int, int>)
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0)
         {
-            complete_T<int>(result, result_func, init_result_func);
+            complete_T<int>(result, result_func, init_result_func, init_result_func_val);
         }
         void complete_int_comm_T(aligned_vector<int>& result,
                 std::function<int(int, int)> result_func = &sum_func<int, int>,
-                std::function<int(int, int)> init_result_func = &sum_func<int, int>)
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0)
         {
-            complete_T<int>(result, result_func, init_result_func);
+            complete_T<int>(result, result_func, init_result_func, init_result_func_val);
         }
         void complete_double_comm_T(std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>)
+                    &sum_func<double, double>,
+                    double init_result_func_val = 0)
         {
-            complete_T<double>(init_result_func);
+            complete_T<double>(init_result_func, init_result_func_val);
         }
         void complete_int_comm_T(
-                std::function<int(int, int)> init_result_func = &sum_func<int, int>)
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0)
         {
-            complete_T<int>(init_result_func);
+            complete_T<int>(init_result_func, init_result_func_val);
         }
         template<typename T, typename U>
         void communicate_T(const aligned_vector<T>& values, aligned_vector<U>& result,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>)
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
+                T init_result_func_val = 0)
         {
             CommPkg::communicate_T(values.data(), result, result_func,
-                    init_result_func);
+                    init_result_func, init_result_func_val);
         }
         template<typename T, typename U>
         void communicate_T(const T* values, aligned_vector<U>& result,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>)
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
             CommPkg::communicate_T(values, result, result_func,
-                    init_result_func);
+                    init_result_func, init_result_func_val);
         }
         template<typename T>
         void communicate_T(const aligned_vector<T>& values,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>)
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values.data(), init_result_func);
+            CommPkg::communicate_T(values.data(), init_result_func,
+                    init_result_func_val);
         }
         template<typename T>
         void communicate_T(const T* values,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>)
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values, init_result_func);
+            CommPkg::communicate_T(values, init_result_func, init_result_func_val);
         }
 
         template<typename T>
         void initialize_T(const T* values,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>)
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
+                T init_result_func_val = 0)
         {
             int start, end;
             int proc, idx;
             aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
             aligned_vector<T>& recvbuf = recv_data->get_buffer<T>();
             MPI_Datatype type = get_type(sendbuf);
+int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
             if (recv_data->indptr_T.size())
             {
@@ -915,7 +952,7 @@ namespace raptor
                     {
                         idx_start = recv_data->indptr_T[j];
                         idx_end = recv_data->indptr_T[j+1];
-                        val = 0;
+                        val = init_result_func_val;
                         for (int k = idx_start; k < idx_end; k++)
                         {
                             val = init_result_func(val, values[recv_data->indices[k]]);
@@ -971,33 +1008,24 @@ namespace raptor
         template<typename T, typename U>
         void complete_T(aligned_vector<U>& result, 
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>)
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            complete_T<T>(init_result_func);
+            complete_T<T>(init_result_func, init_result_func_val);
 
             int idx;
             aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
 
-            if (result_func)
+            for (int i = 0; i < send_data->size_msgs; i++)
             {
-                for (int i = 0; i < send_data->size_msgs; i++)
-                {
-                    idx = send_data->indices[i];
-                    result[idx]  = result_func(result[idx], sendbuf[i]);
-                }
-            }
-            else
-            {
-                for (int i = 0; i < send_data->size_msgs; i++)
-                {
-                    idx = send_data->indices[i];
-                    result[idx] += sendbuf[i];
-                }
+                idx = send_data->indices[i];
+                result[idx]  = result_func(result[idx], sendbuf[i]);
             }
         }
 
         template<typename T>
-        void complete_T(std::function<T(T, T)> init_result_func = &sum_func<T, T>)
+        void complete_T(std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
             if (send_data->num_msgs)
             {
@@ -1481,14 +1509,15 @@ namespace raptor
                 *it = G_to_new[*it];
             }
             idx = 0;
-            for (aligned_vector<int>::iterator it = tap_comm->local_R_par_comm->send_data->int_buffer.begin();
+            for (aligned_vector<int>::iterator it = 
+                    tap_comm->local_R_par_comm->send_data->int_buffer.begin();
                     it != tap_comm->local_R_par_comm->send_data->int_buffer.end(); ++it)
             {
                 if (*it != -1) *it = idx++;
             }
+
             global_par_comm = new ParComm(tap_comm->global_par_comm, 
                     tap_comm->local_R_par_comm->send_data->int_buffer, comm_t);
-
 
 
             // create local S / update global send indices
@@ -1516,11 +1545,13 @@ namespace raptor
                     *it = S_to_new[*it];
                 }
                 idx = 0;
-                for (aligned_vector<int>::iterator it = tap_comm->global_par_comm->send_data->int_buffer.begin();
+                for (aligned_vector<int>::iterator it = 
+                        tap_comm->global_par_comm->send_data->int_buffer.begin();
                         it != tap_comm->global_par_comm->send_data->int_buffer.end(); ++it)
                 {
                     if (*it != -1) *it = idx++;
                 }
+
                 local_S_par_comm = new ParComm(tap_comm->local_S_par_comm,
                         tap_comm->global_par_comm->send_data->int_buffer, comm_t);
             }
@@ -1845,103 +1876,119 @@ namespace raptor
         // Transpose Communication
         void init_double_comm_T(const double* values,
                 std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>)
+                    &sum_func<double, double>,
+                    double init_result_func_val = 0)
         {
-            initialize_T(values, init_result_func);
+            initialize_T(values, init_result_func, init_result_func_val);
         }
         void init_int_comm_T(const int* values,
-                std::function<int(int, int)> init_result_func = &sum_func<int, int>)
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0)
         {
-            initialize_T(values, init_result_func);
+            initialize_T(values, init_result_func, init_result_func_val);
         }
         void complete_double_comm_T(aligned_vector<double>& result,
                 std::function<double(double, double)> result_func = &sum_func<double, double>,
                 std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>)
+                    &sum_func<double, double>,
+                    double init_result_func_val = 0)
         {
-            complete_T<double>(result, result_func, init_result_func);
+            complete_T<double>(result, result_func, init_result_func, init_result_func_val);
         }        
         void complete_double_comm_T(aligned_vector<int>& result,
                 std::function<int(int, double)> result_func = &sum_func<double, int>,
                 std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>)
+                    &sum_func<double, double>,
+                    double init_result_func_val = 0)
         {
-            complete_T<double>(result, result_func, init_result_func);
+            complete_T<double>(result, result_func, init_result_func, init_result_func_val);
         }
         void complete_int_comm_T(aligned_vector<double>& result,
                 std::function<double(double, int)> result_func = &sum_func<int, double>,
-                std::function<int(int, int)> init_result_func = &sum_func<int, int>)
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0)
         {
-            complete_T<int>(result, result_func, init_result_func);
+            complete_T<int>(result, result_func, init_result_func, init_result_func_val);
         }
         void complete_int_comm_T(aligned_vector<int>& result,
                 std::function<int(int, int)> result_func = &sum_func<int, int>,
-                std::function<int(int, int)> init_result_func = &sum_func<int, int>)
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0)
         {
-            complete_T<int>(result, result_func, init_result_func);
+            complete_T<int>(result, result_func, init_result_func, init_result_func_val);
         }
 
         void complete_double_comm_T(std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>)
+                    &sum_func<double, double>,
+                    double init_result_func_val = 0)
         {
-            complete_T<double>(init_result_func);
+            complete_T<double>(init_result_func, init_result_func_val);
         }
         void complete_int_comm_T(std::function<int(int, int)> init_result_func = 
-                    &sum_func<int, int>)
+                    &sum_func<int, int>,
+                    int init_result_func_val = 0)
         {
-            complete_T<int>(init_result_func);
+            complete_T<int>(init_result_func, init_result_func_val);
         }
 
         template<typename T, typename U>
         void communicate_T(const aligned_vector<T>& values, aligned_vector<U>& result,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>)
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values.data(), result, result_func, init_result_func);
+            CommPkg::communicate_T(values.data(), result, result_func, init_result_func,
+                    init_result_func_val);
         }
         template<typename T, typename U>
         void communicate_T(const T* values, aligned_vector<U>& result,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>)
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values, result, result_func, init_result_func);
+            CommPkg::communicate_T(values, result, result_func, init_result_func,
+                    init_result_func_val);
         }
         template<typename T>
         void communicate_T(const aligned_vector<T>& values,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>)
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values.data(), init_result_func);
+            CommPkg::communicate_T(values.data(), init_result_func, init_result_func_val);
         }
         template<typename T>
         void communicate_T(const T* values,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>)
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values, init_result_func);
+            CommPkg::communicate_T(values, init_result_func, init_result_func_val);
         }
 
         template<typename T>
         void initialize_T(const T* values,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>)
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
             int idx;
 
             // Messages with origin and final destination on node
-            local_L_par_comm->communicate_T(values, init_result_func);
+            local_L_par_comm->communicate_T(values, init_result_func, init_result_func_val);
 
             // Initial redistribution among node
-            local_R_par_comm->communicate_T(values, init_result_func);
+            local_R_par_comm->communicate_T(values, init_result_func, init_result_func_val);
 
             // Begin inter-node communication 
             aligned_vector<T>& R_sendbuf = local_R_par_comm->send_data->get_buffer<T>();
-            global_par_comm->init_comm_T(R_sendbuf, init_result_func);
+            global_par_comm->init_comm_T(R_sendbuf, init_result_func, init_result_func_val);
         }
 
         template<typename T, typename U>
         void complete_T(aligned_vector<U>& result, 
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>)
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            complete_T<T>(init_result_func);
+            complete_T<T>(init_result_func, init_result_func_val);
             int idx;
             aligned_vector<T>& L_sendbuf = local_L_par_comm->send_data->get_buffer<T>();
 
@@ -1971,15 +2018,17 @@ namespace raptor
             }
         }
         template<typename T>
-        void complete_T(std::function<T(T, T)> init_result_func = &sum_func<T, T>)
+        void complete_T(std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
             // Complete inter-node communication
-            global_par_comm->complete_comm_T<T>(init_result_func);
+            global_par_comm->complete_comm_T<T>(init_result_func, init_result_func_val);
     
             if (local_S_par_comm)
             {
                 aligned_vector<T>& G_sendbuf = global_par_comm->send_data->get_buffer<T>();
-                local_S_par_comm->communicate_T(G_sendbuf, init_result_func);
+                local_S_par_comm->communicate_T(G_sendbuf, init_result_func,
+                        init_result_func_val);
             }
         }
 
