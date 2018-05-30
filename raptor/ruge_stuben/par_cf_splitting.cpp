@@ -389,7 +389,7 @@ void find_max_off_weights(CommPkg* comm,
 
     if (first_pass)
     {
-        comm->communicate_T(send_weights, max_weights, result_max);
+        comm->communicate_T(send_weights, max_weights, result_max, result_max);
     }
     else
     {
@@ -1185,7 +1185,7 @@ void combine_weight_updates(CommPkg* comm,
         };
     if (first_pass)
     {
-        comm->communicate_T(off_proc_weight_updates, weights, result_func);
+        comm->communicate_T(off_proc_weight_updates, weights);
     }
     else
     {

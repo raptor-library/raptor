@@ -55,92 +55,105 @@ namespace raptor
     template<>
     void CommPkg::communicate_T(const double* values,
             aligned_vector<double>& result, 
-            std::function<double(double, double)> result_func)
+            std::function<double(double, double)> result_func,
+            std::function<double(double, double)> init_result_func)
     {
-        init_double_comm_T(values);
-        complete_double_comm_T(result, result_func);
+        init_double_comm_T(values, init_result_func);
+        complete_double_comm_T(result, result_func, init_result_func);
     }
     template<>
     void CommPkg::communicate_T(const double* values,
             aligned_vector<int>& result, 
-            std::function<int(int, double)> result_func)
+            std::function<int(int, double)> result_func,
+            std::function<double(double, double)> init_result_func)
     {
-        init_double_comm_T(values);
-        complete_double_comm_T(result, result_func);
+        init_double_comm_T(values, init_result_func);
+        complete_double_comm_T(result, result_func, init_result_func);
     }
     template<>
     void CommPkg::communicate_T(const int* values,
             aligned_vector<int>& result, 
-            std::function<int(int, int)> result_func)
+            std::function<int(int, int)> result_func,
+            std::function<int(int, int)> init_result_func)
     {
-        init_int_comm_T(values);
-        complete_int_comm_T(result, result_func);
+        init_int_comm_T(values, init_result_func);
+        complete_int_comm_T(result, result_func, init_result_func);
     }
     template<>
     void CommPkg::communicate_T(const int* values,
             aligned_vector<double>& result, 
-            std::function<double(double, int)> result_func)
+            std::function<double(double, int)> result_func,
+            std::function<int(int, int)> init_result_func)
     {
-        init_int_comm_T(values);
-        complete_int_comm_T(result, result_func);
+        init_int_comm_T(values, init_result_func);
+        complete_int_comm_T(result, result_func, init_result_func);
     }
     template<>
-    void CommPkg::communicate_T<double>(const double* values)
+    void CommPkg::communicate_T<double>(const double* values,
+            std::function<double(double, double)> init_result_func)
     {
-        init_double_comm_T(values);
-        complete_double_comm_T();
+        init_double_comm_T(values, init_result_func);
+        complete_double_comm_T(init_result_func);
     }
     template<>
-    void CommPkg::communicate_T<int>(const int* values)
+    void CommPkg::communicate_T<int>(const int* values,
+            std::function<int(int, int)> init_result_func)
     {
-        init_int_comm_T(values);
-        complete_int_comm_T();
+        init_int_comm_T(values, init_result_func);
+        complete_int_comm_T(init_result_func);
     }
 
     template<>
-    void CommPkg::init_comm_T<double>(const double* values)
+    void CommPkg::init_comm_T<double>(const double* values,
+            std::function<double(double, double)> init_result_func)
     {
-        init_double_comm_T(values);
+        init_double_comm_T(values, init_result_func);
     }
     template<>
-    void CommPkg::init_comm_T<int>(const int* values)
+    void CommPkg::init_comm_T<int>(const int* values,
+            std::function<int(int, int)> init_result_func)
     {
-        init_int_comm_T(values);
+        init_int_comm_T(values, init_result_func);
     }
 
     template<>
     void CommPkg::complete_comm_T<double, double>(aligned_vector<double>& result,
-            std::function<double(double, double)> result_func)
+            std::function<double(double, double)> result_func,
+            std::function<double(double, double)> init_result_func)
     {
-        complete_double_comm_T(result, result_func);
+        complete_double_comm_T(result, result_func, init_result_func);
     }
     template<>
     void CommPkg::complete_comm_T<double, int>(aligned_vector<int>& result,
-            std::function<int(int, double)> result_func)
+            std::function<int(int, double)> result_func,
+            std::function<double(double, double)> init_result_func)
     {
-        complete_double_comm_T(result, result_func);
+        complete_double_comm_T(result, result_func, init_result_func);
     }
     template<>
     void CommPkg::complete_comm_T<int, int>(aligned_vector<int>& result,
-            std::function<int(int, int)> result_func)
+            std::function<int(int, int)> result_func,
+            std::function<int(int, int)> init_result_func)
     {
-        complete_int_comm_T(result, result_func);
+        complete_int_comm_T(result, result_func, init_result_func);
     }
     template<>
     void CommPkg::complete_comm_T<int, double>(aligned_vector<double>& result,
-            std::function<double(double, int)> result_func)
+            std::function<double(double, int)> result_func,
+            std::function<int(int, int)> init_result_func)
     {
-        complete_int_comm_T(result, result_func);
+        complete_int_comm_T(result, result_func, init_result_func);
     }
     template<>
-    void CommPkg::complete_comm_T<double>()
+    void CommPkg::complete_comm_T<double>(
+            std::function<double(double, double)> init_result_func)
     {
-        complete_double_comm_T();
+        complete_double_comm_T(init_result_func);
     }
     template<>
-    void CommPkg::complete_comm_T<int>()
+    void CommPkg::complete_comm_T<int>(std::function<int(int, int)> init_result_func)
     {
-        complete_int_comm_T();
+        complete_int_comm_T(init_result_func);
     }
 }
 

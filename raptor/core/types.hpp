@@ -156,6 +156,26 @@ namespace raptor
     enum prolong_t {JacobiProlongation};
     enum relax_t {Jacobi, SOR, SSOR};
 
+    template<typename T, typename U> 
+    U sum_func(const U& a, const T&b)
+    {
+        return a + b;
+    }
+
+    template<typename T, typename U>
+    U max_func(const U& a, const T&b)
+    {
+        if (a > b)
+        {
+            return a;
+        }
+        else
+        {
+            return b;
+        }
+    }
+
+
 }
 
 #endif
