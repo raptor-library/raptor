@@ -101,7 +101,9 @@ ParCSRMatrix* ParCSRMatrix::add(ParCSRMatrix* B)
     C->on_proc_column_map.resize(on_proc_column_map.size());
     std::copy(on_proc_column_map.begin(), on_proc_column_map.end(),
             C->on_proc_column_map.begin());
-    C->local_row_map = C->get_on_proc_column_map();
+    C->local_row_map.resize(local_row_map.size());
+    std::copy(local_row_map.begin(), local_row_map.end(),
+            C->local_row_map.begin());
 
     C->on_proc->sort();
     C->on_proc->remove_duplicates();
@@ -128,6 +130,7 @@ ParCSRMatrix* ParCSRMatrix::add(ParCSRMatrix* B)
         }
         C->off_proc_num_cols = ctr;
         C->off_proc->n_cols = ctr;
+        C->off_proc_column_map.resize(ctr);
 
         for (aligned_vector<int>::iterator it = C->off_proc->idx2.begin();
                 it != C->off_proc->idx2.end(); ++it)
@@ -226,9 +229,9 @@ ParCSRMatrix* ParCSRMatrix::subtract(ParCSRMatrix* B)
     C->off_proc->nnz = C->off_proc->idx2.size();
 
     C->on_proc_column_map.resize(on_proc_column_map.size());
-    std::copy(on_proc_column_map.begin(), on_proc_column_map.end(),
-            C->on_proc_column_map.begin());
-    C->local_row_map = C->get_on_proc_column_map();
+    std::copy(on_proc_column_map.begin(), on_proc_column_map.end(), C->on_proc_column_map.begin());
+    C->local_row_map.resize(local_row_map.size());
+    std::copy(local_row_map.begin(), local_row_map.end(), C->local_row_map.begin());
 
     C->on_proc->sort();
     C->on_proc->remove_duplicates();
@@ -255,6 +258,7 @@ ParCSRMatrix* ParCSRMatrix::subtract(ParCSRMatrix* B)
         }
         C->off_proc_num_cols = ctr;
         C->off_proc->n_cols = ctr;
+        C->off_proc_column_map.resize(ctr);
 
         for (aligned_vector<int>::iterator it = C->off_proc->idx2.begin();
                 it != C->off_proc->idx2.end(); ++it)
