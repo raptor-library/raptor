@@ -639,10 +639,186 @@ BSRMatrix* BSRMatrix::ilu_symbolic(int lof)
 
 std::vector<double> BSRMatrix::ilu_numeric(BSRMatrix* levls)
 {
-	printf("Function not implemented \n");
-	std::vector<double> emp;
-	return emp;
+	int m = n_rows;
+	int n = n_cols;
+	
+	//update data in levls matrix to have the matrix entries of A
+	std::vector<double> factors_data = this->fill_factors(levls);
+	
+	//get the diagonals
+	std::vector<double> diag_vec = this->get_diag(levls, factors_data);
+	
+	for(int row_i = 1; row_i < n/b_rows; row_i++){
+		std::vector<int> current_row_levls(m*b_rows);
+		std::fill(current_row_levls.begin(), current_row_levls.end(), 0);
+		std::vector<double> current_row_factors(m*b_rows);
+		std::fill(current_row_factors.begin(), current_row_factors.end(), 0.0);
+		
+		int start_ri = levls->idx1[row_i];
+		int end_ri = levls->idx1[row_i+1];
+		
+		for(int jj = start_ri; jj<end_ri; jj++){
+			int col = levls->idx2[jj];
+			for(int ii = 0; ii<b_size; ii++){
+				current_row_levls[col*b_size+ii] = levls->vals[jj*b_size+ii];
+				current_row_factors[col*b_size+ii] = factors_data[jj*b_size+ii];	
+			}
+		}
+		for(int k = 0; k < row_i; k++){
+			if(current_row_levls[k*b_size] != 0){
+				//compute inverse of diagonal block
+				std::vector<double> inv_diag_b = this->inv_diag_block(diag_vec, k);
+
+				//multiply inverse by block to get multiplier
+				std::vector<double> current_row_fac_b(b_size);
+				for(int ii = 0; ii< b_size; ii++)
+					current_row_fac_b[ii] = current_row_factors[k*b_size+ii];
+
+				std::vector<double> mult_b = this->mult_b(inv_diag_b,current_row_fac_b);
+
+				//update in data array
+				for(int ii=0; ii<b_size; ii++)
+					current_row_factors[k*b_size+ii] = mult_b[ii];
+			}//end if 
+
+			//get row k
+			int start_rk = levls->idx1[k];
+			int end_rk = levls->idx1[k+1];
+			
+			std::vector<double>row_k_factors(m*b_rows);
+			std::fill(row_k_factors.begin(), row_k_factors.end(), 0.0);
+			
+			for(int jj=start_rk; jj<end_rk; jj++){
+				int col = levls->idx2[jj];
+				for(int ii = 0; ii<b_size; ii++)
+					row_k_factors[col*b_size+ii] = factors_data[jj*b_size+ii];
+			}
+			
+			for(int j = k+1; j< n_rows/b_rows; j++){
+				if(current_row_levls[j*b_size] != 0){
+					std::vector<double> current_row_fac_k(b_size);
+					std::vector<double> row_k_fac_b(b_size);
+					std::fill(current_row_fac_k.begin(), current_row_fac_k.end(), 0.0);
+					std::fill(row_k_fac_b.begin(), row_k_fac_b.end(), 0.0);
+					
+					for(int ii=0; ii<b_size; ii++){
+						current_row_fac_k[ii] = current_row_factors[k*b_size+ii];
+						row_k_fac_b[ii] = row_k_factors[j*b_size+ii];
+					}//end for
+
+					std::vector<double> temp = this->mult_b(current_row_fac_k, row_k_fac_b); 
+					
+					for(int ii=0; ii<b_rows;ii++){
+						for(int jj=0; jj<b_cols; jj++)
+							current_row_factors[j*b_size+ii*b_rows+jj] = current_row_factors[j*b_size+ii*b_rows+jj] - temp[ii*b_rows+jj];
+					}
+
+					//if it's a diagonal block, update in diag_vec
+					if(j==row_i){
+						for(int ii=0; ii<b_size; ii++)
+							diag_vec[j*b_size+ii] = current_row_factors[j*b_size+ii];
+					}//end if
+				}//end if
+			}//end j loop
+		}//end k loop
+
+		for(int jj = start_ri; jj<end_ri; jj++){
+			int col = levls->idx2[jj];
+			for(int ii=0; ii<b_size; ii++)
+				factors_data[jj*b_size+ii] = current_row_factors[col*b_size+ii];
+		}
+	}//end i loop
+
+	return factors_data;
 }
 
 
+std::vector<double> BSRMatrix::get_diag(BSRMatrix* levls, std::vector<double> data)
+{
+	std::vector<double> diag_vec(n_rows/b_rows * b_size);
+	std::fill(diag_vec.begin(), diag_vec.end(), 0.0);
 
+	for(int row = 0; row<n_rows/b_rows;row++){
+		int start_i = levls->idx1[row];
+		int end_i = levls->idx1[row+1];
+		for(int j = start_i; j < end_i; j++){
+			int col = levls->idx2[j];
+			if(row == col){
+				for(int ii = 0; ii < b_size; ii++)
+					diag_vec[row*b_size + ii] = data[j*b_size + ii];
+			}
+		}
+	}
+	return diag_vec;
+}
+
+std::vector<double> BSRMatrix::fill_factors(BSRMatrix* levls){
+	std::vector<double> factors_data(levls->nnz);
+	std::fill(factors_data.begin(), factors_data.end(), 0.0);
+
+	int index_i = 0;
+	for(int i = 0; i < levls->nnz; i++){
+		if(levls->vals[i] == 1){
+			factors_data[i] = vals[index_i];
+			index_i++;
+		}
+		else
+			factors_data[i] = 0.0;
+	}
+}
+
+std::vector<double> BSRMatrix::inv_diag_block(std::vector<double> diag_vec, int k){
+	//Compute inverse of diagonal block A[k,k]
+
+	//extract diagonal block
+	std::vector<double> diag_b(b_size);
+	std::fill(diag_b.begin(), diag_b.end(), 0.0);
+	double inv_det;
+
+	for(int ii=0; ii< b_size; ii++)
+		diag_b[ii] = diag_vec[k*b_size + ii];
+
+	//Find inverse of diagonal block
+	std::vector<double> inv_diag_b(b_size);
+	std::fill(inv_diag_b.begin(), inv_diag_b.end(), 0.0);
+
+	if(b_rows == 2){
+		inv_det = 1.0/(diag_b[0]*diag_b[3]-diag_b[1]*diag_b[2]);
+		inv_diag_b[0] = inv_det * diag_b[3];
+		inv_diag_b[1] = -inv_det * diag_b[1];
+		inv_diag_b[2] = -inv_det * diag_b[2];
+		inv_diag_b[3] = inv_det * diag_b[0];
+	}
+	else if(b_rows == 3){
+		inv_det = 1.0/( diag_b[0]*(diag_b[4]*diag_b[8] - diag_b[5]*diag_b[7]) - diag_b[1]*(diag_b[3]*diag_b[8] - diag_b[5]*diag_b[6]) + diag_b[2]*(diag_b[3]*diag_b[7] - diag_b[4]*diag_b[6]) );  
+		
+		inv_diag_b[0] = inv_det*(diag_b[4]*diag_b[8] - diag_b[5]*diag_b[7]);
+		inv_diag_b[1] = inv_det*(diag_b[2]*diag_b[7] - diag_b[1]*diag_b[8]);
+		inv_diag_b[2] = inv_det*(diag_b[1]*diag_b[5] - diag_b[2]*diag_b[4]);
+
+		inv_diag_b[3] = inv_det*(diag_b[5]*diag_b[6] - diag_b[3]*diag_b[8]);
+		inv_diag_b[4] = inv_det*(diag_b[0]*diag_b[8] - diag_b[2]*diag_b[6]);
+		inv_diag_b[5] = inv_det*(diag_b[2]*diag_b[3] - diag_b[0]*diag_b[5]);
+
+		inv_diag_b[6] = inv_det*(diag_b[3]*diag_b[7] - diag_b[4]*diag_b[6]);
+		inv_diag_b[7] = inv_det*(diag_b[1]*diag_b[6] - diag_b[0]*diag_b[7]);
+		inv_diag_b[8] = inv_det*(diag_b[0]*diag_b[4] - diag_b[1]*diag_b[3]);
+	}
+
+	return inv_diag_b;
+}
+
+std::vector<double> BSRMatrix::mult_b(std::vector<double> block_a, std::vector<double> block_b)
+{
+	std::vector<double> mult(b_size);
+	std::fill(mult.begin(), mult.end(), 0.0);
+
+	for(int ii = 0 ; ii< b_rows; ii++){
+		for(int jj = 0; jj<b_cols; jj++){
+			for(int kk = 0; kk<b_cols; kk++)
+				mult[ii*b_rows+jj] = mult[ii*b_rows+jj] + block_a[ii*b_rows+kk]*block_b[kk*b_rows+jj];	
+		}
+	}
+
+	return mult;
+}
