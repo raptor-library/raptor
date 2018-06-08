@@ -122,13 +122,13 @@ void ParMatrix::expand_off_proc(int b_cols)
 
     for(int i=0; i<off_proc_column_map.size(); i++)
     {
-	start = off_proc_column_map[i] * b_cols;
-	if (start >= partition->first_local_col && rank!= 0) start += partition->local_num_cols;
-	end = start + b_cols;
+    start = off_proc_column_map[i] * b_cols;
+    if (start >= partition->first_local_col && rank!= 0) start += partition->local_num_cols;
+    end = start + b_cols;
         for(int j=start; j<end; j++)
-	{
+    {
             new_map.push_back(j);
-	}
+    }
     }
 
     off_proc_column_map.clear();
@@ -182,9 +182,9 @@ void ParMatrix::finalize(bool create_comm, int b_cols)
     {
         expand_off_proc(b_cols);
         if (rank == 0)
-	{
-	    for (int i = 0; i < off_proc_column_map.size(); i++)
-	    {
+    {
+        for (int i = 0; i < off_proc_column_map.size(); i++)
+        {
                 off_proc_column_map[i] += on_proc_num_cols;
             }
         }
@@ -211,11 +211,6 @@ int* ParMatrix::map_partition_to_local()
 
 void ParMatrix::copy(ParCOOMatrix* A)
 {
-    if (A->off_proc_num_cols != (int) A->off_proc_column_map.size())
-    {
-        A->finalize();
-    }
-
     partition = A->partition;
     partition->num_shared++;
 
@@ -255,11 +250,6 @@ void ParMatrix::copy(ParCOOMatrix* A)
 
 void ParMatrix::copy(ParCSRMatrix* A)
 {
-    if (A->off_proc_num_cols != (int) A->off_proc_column_map.size())
-    {
-        A->finalize();
-    }
-
     partition = A->partition;
     partition->num_shared++;
 
@@ -299,11 +289,6 @@ void ParMatrix::copy(ParCSRMatrix* A)
 
 void ParMatrix::copy(ParCSCMatrix* A)
 {
-    if (A->off_proc_num_cols != (int) A->off_proc_column_map.size())
-    {
-        A->finalize();
-    }
-
     partition = A->partition;
     partition->num_shared++;
 
@@ -343,11 +328,6 @@ void ParMatrix::copy(ParCSCMatrix* A)
 
 void ParMatrix::copy(ParBSRMatrix* A)
 {
-    if (A->off_proc_num_cols != (int) A->off_proc_column_map.size())
-    {
-        A->finalize();
-    }
-
     partition = A->partition;
     partition->num_shared++;
 
@@ -617,7 +597,7 @@ void ParBSRMatrix::add_block(int global_row_coarse, int global_col_coarse, align
     if(num_procs <= 1)
     {
         on_proc->add_block(global_row_coarse, global_col_coarse, data);
-	local_nnz += b_size;
+    local_nnz += b_size;
     }
     else
     {
@@ -638,20 +618,20 @@ void ParBSRMatrix::add_block(int global_row_coarse, int global_col_coarse, align
             if (first_col >= partition->first_local_col &&
                 last_col <= partition->last_local_col)
             {
-	        local_block_col = global_col_coarse % (partition->local_num_cols / b_cols);
+            local_block_col = global_col_coarse % (partition->local_num_cols / b_cols);
                 on_proc->add_block(local_block_row, local_block_col, data);
-	    }
-	    else
-	    {
+        }
+        else
+        {
                 // Check to see if block is before on_proc columns or after to 
-	        // determine whether local_block_col changes or stays the same
+            // determine whether local_block_col changes or stays the same
                 if (last_col < partition->last_local_col) local_block_col = global_col_coarse;
                 else local_block_col = global_col_coarse - (partition->local_num_cols / b_cols);
                 off_proc->add_block(local_block_row, local_block_col, data);
-	    }
+        }
 
-	    // Update local nnz
-	    local_nnz += b_size;
+        // Update local nnz
+        local_nnz += b_size;
         }
     }
 }
