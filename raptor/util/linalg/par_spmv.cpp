@@ -38,7 +38,9 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
 
     // Initialize Isends and Irecvs to communicate
     // values of x
+    if (comm_t) *comm_t -= MPI_Wtime();
     comm->init_comm(x);
+    if (comm_t) *comm_t += MPI_Wtime();
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
@@ -70,7 +72,9 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b, data_t* comm_t)
 
     // Initialize Isends and Irecvs to communicate
     // values of x
+    if (comm_t) *comm_t -= MPI_Wtime();
     tap_comm->init_comm(x);
+    if (comm_t) *comm_t += MPI_Wtime();
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
@@ -110,7 +114,9 @@ void ParMatrix::mult_T(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
 
     off_proc->mult_T(x.local, x_tmp);
 
+    if (comm_t) *comm_t -= MPI_Wtime();
     comm->init_comm_T(x_tmp);
+    if (comm_t) *comm_t += MPI_Wtime();
 
     if (local_num_rows)
     {
@@ -141,7 +147,9 @@ void ParMatrix::tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t)
 
     off_proc->mult_T(x.local, x_tmp);
 
+    if (comm_t) *comm_t -= MPI_Wtime();
     tap_comm->init_comm_T(x_tmp);
+    if (comm_t) *comm_t += MPI_Wtime();
 
     if (local_num_rows)
     {
@@ -192,7 +200,9 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap,
 
     // Initialize Isends and Irecvs to communicate
     // values of x
+    if (comm_t) *comm_t -= MPI_Wtime();
     comm->init_comm(x);
+    if (comm_t) *comm_t += MPI_Wtime();
 
     r.copy(b);
 
@@ -227,7 +237,9 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r,
 
     // Initialize Isends and Irecvs to communicate
     // values of x
+    if (comm_t) *comm_t -= MPI_Wtime();
     tap_comm->init_comm(x);
+    if (comm_t) *comm_t += MPI_Wtime();
 
     r.copy(b);
 
