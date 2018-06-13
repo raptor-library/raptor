@@ -56,8 +56,8 @@ Matrix* CSRMatrix::ilu_k(int lof)
 
 	factors->idx1.resize(sparsity->n_rows+1);
 	if(factors_nnz_dense){
-		factors->idx2.reserve(sparsity->nnz);
-		factors->vals.reserve(sparsity->nnz);
+		factors->idx2.resize(sparsity->nnz);
+		factors->vals.resize(sparsity->nnz);
 	}
 
 	for(int i = 0; i < sparsity->n_rows+1;i++){
@@ -392,7 +392,12 @@ Matrix* BSRMatrix::ilu_k(int lof)
 	printf("Begin ilu numeric phase \n");
 	std::vector<double> factors_data = this->ilu_numeric(sparsity);
 	printf("After numeric ilu phase completed\n");
-	
+
+	//for testing without numeric phase	
+	//std::vector<double> factors_data(b_size* sparsity->n_blocks);
+	//std::fill(factors_data.begin(), factors_data.end(), 1.0);
+
+
 	Matrix* factors = new BSRMatrix(sparsity->n_rows,sparsity->n_cols,sparsity->b_rows,sparsity->b_cols);
 	factors->nnz = sparsity->nnz;
 	
@@ -400,8 +405,8 @@ Matrix* BSRMatrix::ilu_k(int lof)
 
 	factors->idx1.resize(sparsity->n_rows/sparsity->b_rows+1);
 	if(factors_nb_dense){
-		factors->idx2.reserve(sparsity->n_blocks);
-		factors->vals.reserve(b_size * sparsity->n_blocks);
+		factors->idx2.resize(sparsity->n_blocks);
+		factors->vals.resize(b_size * sparsity->n_blocks);
 	}
 
 	for(int i = 0; i < sparsity->n_rows/sparsity->b_rows+1;i++)

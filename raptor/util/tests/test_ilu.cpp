@@ -65,12 +65,13 @@ int main(int argc, char* argv[]){
 	//levls->sort();
 
 	//CSRMatrix* levls_csr = new CSRMatrix(levls);
-	
-	CSRMatrix* factors = A->ilu_levels();
+	int lof = 0;
+	 	
+	Matrix* factors = A->ilu_k(lof);
 	
 	printf("After ilu k funtion returns\n");	
 	//printf("ILU factors: \n");
-	//factors->print();
+	factors->print();
 
 	std::vector<int> factors_rowptr = factors->idx1;
 	std::vector<int> factors_cols = factors->idx2;
