@@ -514,15 +514,6 @@ void compare_data(const CommData* data, const aligned_vector<int>& send_procs,
     }
 }
 
-void clear_data(aligned_vector<int>& send_procs, aligned_vector<int>& send_indptr,
-        aligned_vector<int>& send_indices, aligned_vector<MPI_Request>& send_requests)
-{
-    send_procs.clear();
-    send_indptr.clear();
-    send_indices.clear();
-    send_requests.clear();
-}
-
 int main(int argc, char *argv[])
 {
 
@@ -739,14 +730,21 @@ int main(int argc, char *argv[])
                 send_procs, send_indptr, send_indices, send_requests);
         compare_data(Al->comm->send_data, send_procs, send_indptr, 
                 send_indices, proc_pos);
-        clear_data(send_procs, send_indptr, send_indices, proc_pos);
+	send_procs.clear();
+	send_indptr.clear();
+	send_indices.clear();
+	proc_pos.clear();
+
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
         for (int test = 0; test < n_tests; test++)
         {
             setup_comm_dynamic(recv_procs, recv_indptr, recv_indices, recv_requests,
                     send_procs, send_indptr, send_indices, send_requests);
-            clear_data(send_procs, send_indptr, send_indices, proc_pos);
+	    send_procs.clear();
+	    send_indptr.clear();
+	    send_indices.clear();
+	    proc_pos.clear();
         }
         tfinal = (MPI_Wtime() - t0) / n_tests;
         MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
@@ -758,7 +756,10 @@ int main(int argc, char *argv[])
                 send_procs, send_indptr, send_indices, send_requests);
         compare_data(Al->comm->send_data, send_procs, send_indptr, 
                 send_indices, proc_pos);
-        clear_data(send_procs, send_indptr, send_indices, proc_pos);
+	send_procs.clear();
+	send_indptr.clear();
+	send_indices.clear();
+	proc_pos.clear();
 
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
@@ -767,7 +768,10 @@ int main(int argc, char *argv[])
             setup_comm_allreduce(recv_procs, recv_indptr, 
                     recv_indices, recv_requests,
                     send_procs, send_indptr, send_indices, send_requests);
-            clear_data(send_procs, send_indptr, send_indices, proc_pos);            
+	    send_procs.clear();
+	    send_indptr.clear();
+	    send_indices.clear();
+	    proc_pos.clear();
         }
         tfinal = (MPI_Wtime() - t0) / n_tests;
         MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
@@ -779,7 +783,11 @@ int main(int argc, char *argv[])
                 send_procs, send_indptr, send_indices, send_requests);
         compare_data(Al->comm->send_data, send_procs, send_indptr, 
                 send_indices, proc_pos);
-        clear_data(send_procs, send_indptr, send_indices, proc_pos);
+	send_procs.clear();
+	send_indptr.clear();
+	send_indices.clear();
+	proc_pos.clear();
+
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
         for (int test = 0; test < n_tests; test++)
@@ -787,7 +795,10 @@ int main(int argc, char *argv[])
             setup_comm_exxonmobil(recv_procs, recv_indptr, 
                     recv_indices, recv_requests,
                     send_procs, send_indptr, send_indices, send_requests);
-            clear_data(send_procs, send_indptr, send_indices, proc_pos);
+	    send_procs.clear();
+	    send_indptr.clear();
+	    send_indices.clear();
+	    proc_pos.clear();
         }
         tfinal = (MPI_Wtime() - t0) / n_tests;
         MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
