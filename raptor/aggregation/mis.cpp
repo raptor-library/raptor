@@ -2,7 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "aggregation/mis.hpp"
 
-void mis2(const CSRMatrix* A, aligned_vector<int>& states,
+void mis2(CSRMatrix* A, aligned_vector<int>& states,
         double* rand_vals)
 {
     int start, end, col;
@@ -66,7 +66,8 @@ void mis2(const CSRMatrix* A, aligned_vector<int>& states,
     D->nnz = D->idx2.size();
 
     // Create column-wise A
-    CSCMatrix* A_csc = new CSCMatrix(A);
+    //CSCMatrix* A_csc = new CSCMatrix(A);
+    CSCMatrix* A_csc = A->to_CSC();
 
     // Main MIS2 Loop
     remaining = A->n_rows;

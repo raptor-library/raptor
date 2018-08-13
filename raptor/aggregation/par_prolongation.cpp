@@ -9,8 +9,8 @@ ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, bool tap_com
 {
     ParCSRMatrix* AP_tmp;
     ParCSRMatrix* P_tmp;
-    ParCSRMatrix* P = new ParCSRMatrix(T);
-    ParCSRMatrix* scaled_A = new ParCSRMatrix(A);
+    ParCSRMatrix* P = T->copy();
+    ParCSRMatrix* scaled_A = A->copy();
 
     // Get absolute row sum for each row
     int row_start_on, row_end_on;

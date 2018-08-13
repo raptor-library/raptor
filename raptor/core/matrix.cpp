@@ -116,7 +116,7 @@ Matrix* CSRMatrix::transpose()
     CSCMatrix* T_csc = new CSCMatrix(n_rows, n_cols, idx1, idx2, vals); 
 
     // Convert back to CSR to tranpose
-    Matrix* T = new CSRMatrix(T_csc);
+    Matrix* T = T_csc->to_CSR();
 
     delete T_csc;
 
@@ -129,7 +129,7 @@ Matrix* CSCMatrix::transpose()
     CSRMatrix* T_csr = new CSRMatrix(n_rows, n_cols, idx1, idx2, vals); 
 
     // Convert back to CSC to tranpose
-    Matrix* T = new CSCMatrix(T_csr);
+    Matrix* T = T_csr->to_CSC();
 
     delete T_csr;
 
@@ -187,7 +187,7 @@ void COOMatrix::add_block(int row, int col, aligned_vector<double>& values){
     printf("Not implemented.\n");
 }
 
-void COOMatrix::copy(const COOMatrix* A)
+void COOMatrix::copy_helper(const COOMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -207,7 +207,7 @@ void COOMatrix::copy(const COOMatrix* A)
         vals.push_back(A->vals[i]);
     }
 }
-void COOMatrix::copy(const CSRMatrix* A)
+void COOMatrix::copy_helper(const CSRMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -232,7 +232,7 @@ void COOMatrix::copy(const CSRMatrix* A)
         }
     }
 }
-void COOMatrix::copy(const CSCMatrix* A)
+void COOMatrix::copy_helper(const CSCMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -258,7 +258,7 @@ void COOMatrix::copy(const CSCMatrix* A)
     }
 }
 
-void COOMatrix::copy(const BSRMatrix* A)
+void COOMatrix::copy_helper(const BSRMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -279,12 +279,12 @@ void COOMatrix::copy(const BSRMatrix* A)
         for (int j = row_start; j < row_end; j++)
         {
             // Call block copy function
-	    block_copy(A, i, j, A->idx2[j]);
+	    block_copy_helper(A, i, j, A->idx2[j]);
         }
     }
 }
 
-void COOMatrix::block_copy(const BSRMatrix* A, int row, int num_blocks_prev, int col)
+void COOMatrix::block_copy_helper(const BSRMatrix* A, int row, int num_blocks_prev, int col)
 {
     int upper_i = row * A->b_rows;
     int upper_j = col * A->b_cols;
@@ -502,7 +502,7 @@ void CSRMatrix::add_block(int row, int col, aligned_vector<double>& values){
     printf("Not implemented.\n");
 }
 
-void CSRMatrix::copy(const COOMatrix* A)
+void CSRMatrix::copy_helper(const COOMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -547,7 +547,7 @@ void CSRMatrix::copy(const COOMatrix* A)
         }
     }
 }
-void CSRMatrix::copy(const CSRMatrix* A)
+void CSRMatrix::copy_helper(const CSRMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -570,7 +570,7 @@ void CSRMatrix::copy(const CSRMatrix* A)
         }
     }
 }
-void CSRMatrix::copy(const CSCMatrix* A)
+void CSRMatrix::copy_helper(const CSCMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -615,7 +615,7 @@ void CSRMatrix::copy(const CSCMatrix* A)
         }
     }
 }
-void CSRMatrix::copy(const BSRMatrix* A)
+void CSRMatrix::copy_helper(const BSRMatrix* A)
 {
     printf("Currently not implemented\n");
 }
@@ -865,7 +865,7 @@ void CSRMatrix::remove_duplicates()
 *****  BSRMatrix Copy
 **************************************************************
 **************************************************************/
-void BSRMatrix::copy(const COOMatrix* A)
+void BSRMatrix::copy_helper(const COOMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -893,12 +893,12 @@ void BSRMatrix::copy(const COOMatrix* A)
     }    
 
     const BSRMatrix* B = new BSRMatrix(n_rows, n_cols, b_rows, b_cols, block_dense);
-    copy(B);
+    copy_helper(B);
 
     delete B;
 }
 
-void BSRMatrix::copy(const CSRMatrix* A)
+void BSRMatrix::copy_helper(const CSRMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -925,17 +925,17 @@ void BSRMatrix::copy(const CSRMatrix* A)
     }
 
     const BSRMatrix* B = new BSRMatrix(n_rows, n_cols, b_rows, b_cols, block_dense);
-    copy(B);
+    copy_helper(B);
 
     delete B;
 }
 
-void BSRMatrix::copy(const CSCMatrix* A)
+void BSRMatrix::copy_helper(const CSCMatrix* A)
 {
     printf("Currently not implemented\n");
 }
 
-void BSRMatrix::copy(const BSRMatrix* A)
+void BSRMatrix::copy_helper(const BSRMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -1132,7 +1132,7 @@ void CSCMatrix::add_block(int row, int col, aligned_vector<double>& values){
     printf("Not implemented.\n");
 }
 
-void CSCMatrix::copy(const COOMatrix* A)
+void CSCMatrix::copy_helper(const COOMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -1180,7 +1180,7 @@ void CSCMatrix::copy(const COOMatrix* A)
         }
     }        
 }
-void CSCMatrix::copy(const CSRMatrix* A)
+void CSCMatrix::copy_helper(const CSRMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -1231,7 +1231,7 @@ void CSCMatrix::copy(const CSRMatrix* A)
     }
 }
 
-void CSCMatrix::copy(const CSCMatrix* A)
+void CSCMatrix::copy_helper(const CSCMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -1255,7 +1255,7 @@ void CSCMatrix::copy(const CSCMatrix* A)
     }
 }
 
-void CSCMatrix::copy(const BSRMatrix* A)
+void CSCMatrix::copy_helper(const BSRMatrix* A)
 {
     printf("Currently not implemented");
     return;
@@ -1421,4 +1421,81 @@ void CSCMatrix::move_diag()
 
     diag_first = true;
 }
+
+
+COOMatrix* COOMatrix::to_COO()
+{
+    return this;
+}
+
+CSRMatrix* COOMatrix::to_CSR()
+{
+    CSRMatrix* A = new CSRMatrix();
+    A->copy_helper(this);
+    return A;
+}
+
+CSCMatrix* COOMatrix::to_CSC()
+{
+    CSCMatrix* A = new CSCMatrix();
+    A->copy_helper(this);
+    return A;
+}
+
+COOMatrix* CSRMatrix::to_COO()
+{
+    COOMatrix* A = new COOMatrix();
+    A->copy_helper(this);
+    return A;
+}
+
+CSRMatrix* CSRMatrix::to_CSR()
+{
+    return this;
+}
+
+CSCMatrix* CSRMatrix::to_CSC()
+{
+    CSCMatrix* A = new CSCMatrix();
+    A->copy_helper(this);
+    return A;
+}
+
+COOMatrix* CSCMatrix::to_COO()
+{
+    COOMatrix* A = new COOMatrix();
+    A->copy_helper(this);
+    return A;
+}
+
+CSRMatrix* CSCMatrix::to_CSR()
+{
+    CSRMatrix* A = new CSRMatrix();
+    A->copy_helper(this);
+    return A;
+}
+
+CSCMatrix* CSCMatrix::to_CSC()
+{
+   return this; 
+}
+
+
+COOMatrix* BSRMatrix::to_COO()
+{
+    COOMatrix* A = new COOMatrix();
+    A->copy_helper(this);
+    return A;
+}
+
+CSRMatrix* BSRMatrix::to_CSR()
+{
+    return NULL;
+}
+
+CSCMatrix* BSRMatrix::to_CSC()
+{
+    return NULL;
+}
+
 

@@ -86,7 +86,7 @@ TEST(TestParRugeStuben, TestsInRuge_Stuben)
         first_row += proc_sizes[i];
     }
     AP = A->mult(P);
-    P_csc = new ParCSCMatrix(P);
+    P_csc = P->to_ParCSC();
     Ac_rap = AP->mult_T(P_csc);
     Ac = readParMatrix(A1_fn, Ac_rap->local_num_rows,
             Ac_rap->on_proc_num_cols, first_row, first_row);
@@ -120,7 +120,7 @@ TEST(TestParRugeStuben, TestsInRuge_Stuben)
         first_row += proc_sizes[i];
     }
     AP = A->mult(P);
-    P_csc = new ParCSCMatrix(P);
+    P_csc = P->to_ParCSC();
     Ac_rap = AP->mult_T(P_csc);
     Ac = readParMatrix(A2_fn, Ac_rap->local_num_rows,
             Ac_rap->on_proc_num_cols, first_row, first_row);

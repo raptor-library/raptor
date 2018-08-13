@@ -9,8 +9,8 @@ CSRMatrix* jacobi_prolongation(CSRMatrix* A, CSRMatrix* T, double omega,
 {
     CSRMatrix* AP_tmp;
     CSRMatrix* P_tmp;
-    CSRMatrix* P = new CSRMatrix(T);
-    CSRMatrix* scaled_A = new CSRMatrix(A);
+    CSRMatrix* P = T->copy();
+    CSRMatrix* scaled_A = A->copy();
 
     // Get absolute row sum for each row
     int row_start, row_end;

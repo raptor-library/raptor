@@ -183,7 +183,7 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
 
     Ac_py = readParMatrix(A1_fn, n_aggs, n_aggs, first_col, first_col);
     ParCSRMatrix* AP = A->mult(P);
-    ParCSCMatrix* P_csc = new ParCSCMatrix(P);
+    ParCSCMatrix* P_csc = P->to_ParCSC();
     Ac = AP->mult_T(P_csc);    
     compare(Ac, Ac_py);
     delete Ac_py;

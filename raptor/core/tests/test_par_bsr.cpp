@@ -42,7 +42,7 @@ TEST(ParBSRMatrixTest, TestsInCore)
 
     // Create matrices for comparison
     BSRMatrix* A_bsr = new BSRMatrix(12, 12, 2, 2, row_ptr, indices, data);
-    COOMatrix* A_coo = new COOMatrix(A_bsr);
+    COOMatrix* A_coo = A_bsr->to_COO();
     ParBSRMatrix* A_par_bsr = new ParBSRMatrix(12, 12, 2, 2);
 
     // Add on_proc blocks

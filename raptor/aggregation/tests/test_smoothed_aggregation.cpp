@@ -122,7 +122,7 @@ TEST(TestCandidates, TestsInAggregation)
     // Compare RAP
     Ac_py = readMatrix(A1_fn);
     CSRMatrix* AP = A->mult(P);
-    CSCMatrix* P_csc = new CSCMatrix(P);
+    CSCMatrix* P_csc = P->to_CSC();
     Ac = AP->mult_T(P_csc);    
     compare(Ac, Ac_py);
     delete Ac_py;

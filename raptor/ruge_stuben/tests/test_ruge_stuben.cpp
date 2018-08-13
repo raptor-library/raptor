@@ -51,7 +51,7 @@ TEST(TestRugeStuben, TestsInRuge_Stuben)
     split_cljp(S, splitting, weights.data());
     P = direct_interpolation(A, S, splitting);
     AP = A->mult(P);
-    P_csc = new CSCMatrix(P);
+    P_csc = P->to_CSC();
     Ac_rap = AP->mult_T(P_csc);
     Ac = readMatrix(A1_fn);
     compare(Ac, Ac_rap);
@@ -69,7 +69,7 @@ TEST(TestRugeStuben, TestsInRuge_Stuben)
     split_cljp(S, splitting, weights.data());
     P = direct_interpolation(A, S, splitting);
     AP = A->mult(P);
-    P_csc = new CSCMatrix(P);
+    P_csc = P->to_CSC();
     Ac_rap = AP->mult_T(P_csc);
     Ac = readMatrix(A2_fn);
     compare(Ac, Ac_rap);

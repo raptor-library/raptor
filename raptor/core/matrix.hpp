@@ -110,10 +110,14 @@ namespace raptor
 
     virtual void print() = 0;
 
-    virtual void copy(const COOMatrix* A) = 0;
-    virtual void copy(const CSRMatrix* A) = 0;
-    virtual void copy(const CSCMatrix* A) = 0;
-    virtual void copy(const BSRMatrix* A) = 0;
+    virtual void copy_helper(const COOMatrix* A) = 0;
+    virtual void copy_helper(const CSRMatrix* A) = 0;
+    virtual void copy_helper(const CSCMatrix* A) = 0;
+    virtual void copy_helper(const BSRMatrix* A) = 0;
+    virtual CSRMatrix* to_CSR() = 0;
+    virtual CSCMatrix* to_CSC() = 0;
+    virtual COOMatrix* to_COO() = 0;
+    virtual Matrix* copy() = 0;
 
     void jacobi(Vector& x, Vector& b, Vector& tmp, double omega = .667);
     void gauss_seidel(Vector& x, Vector& b);
@@ -124,107 +128,65 @@ namespace raptor
 
     Matrix* aggregate();
 
-    void mult(Vector& x, Vector& b)
+    aligned_vector<double>& get_values(Vector& x)
     {
-        mult(x.values, b.values);
+        return x.values;
     }
-    void mult(aligned_vector<double>& x, Vector& b)
+    template<typename T>
+    aligned_vector<T>& get_values(aligned_vector<T>& x)
     {
-        mult(x, b.values);
+        return x;
     }
-    void mult(Vector& x, aligned_vector<double>& b)
-    {
-        mult(x.values, b);
-    }
-    virtual void mult(aligned_vector<double>& x, aligned_vector<double>& b) = 0;
 
-    void mult_T(Vector& x, Vector& b)
+    template <typename T, typename U> void mult(T& x, U& b)
     {
-        mult_T(x.values, b.values);
+        mult_helper(get_values(x), get_values(b));
     }
-    void mult_T(aligned_vector<double>& x, Vector& b)
+    template <typename T, typename U> void mult_T(T& x, U& b)
     {
-        mult_T(x, b.values);
+        mult_T_helper(get_values(x), get_values(b));
     }
-    void mult_T(Vector& x, aligned_vector<double>& b)
+    template <typename T, typename U> void mult_append(T& x, U& b)
     {
-        mult_T(x.values, b);
+        mult_append_helper(get_values(x), get_values(b));
     }
-    virtual void mult_T(aligned_vector<double>& x, aligned_vector<double>& b) = 0;
+    template <typename T, typename U> void mult_append_T(T& x, U& b)
+    {
+        mult_append_T_helper(get_values(x), get_values(b));
+    }
+    template <typename T, typename U> void mult_append_neg(T& x, U& b)
+    {
+        mult_append_neg_helper(get_values(x), get_values(b));
+    }
+    template <typename T, typename U> void mult_append_neg_T(T& x, U& b)
+    {
+        mult_append_neg_T_helper(get_values(x), get_values(b));
+    }
+    template <typename T, typename U, typename V> void residual(T& x, U& b, V& r)
+    {
+        residual_helper(get_values(x), get_values(b), get_values(r));
+    }
 
-    void mult_append(Vector& x, Vector& b)
-    {
-        mult_append(x.values, b.values);
-    }
-    void mult_append(aligned_vector<double>& x, Vector& b)
-    {
-        mult_append(x, b.values);
-    }
-    void mult_append(Vector& x, aligned_vector<double>& b)
-    {
-        mult_append(x.values, b);
-    }
-    virtual void mult_append(aligned_vector<double>& x, aligned_vector<double>& b) = 0;
-
-    void mult_append_T(Vector& x, Vector& b)
-    {
-        mult_append_T(x.values, b.values);
-    }
-    void mult_append_T(aligned_vector<double>& x, Vector& b)
-    {
-        mult_append_T(x, b.values);
-    }
-    void mult_append_T(Vector& x, aligned_vector<double>& b)
-    {
-        mult_append_T(x.values, b);
-    }
-    virtual void mult_append_T(aligned_vector<double>& x, aligned_vector<double>& b) = 0;
-
-    void mult_append_neg(Vector& x, Vector& b)
-    {
-        mult_append_neg(x.values, b.values);
-    }
-    void mult_append_neg(aligned_vector<double>& x, Vector& b)
-    {
-        mult_append_neg(x, b.values);
-    }
-    void mult_append_neg(Vector& x, aligned_vector<double>& b)
-    {
-        mult_append_neg(x.values, b);
-    }
-    virtual void mult_append_neg(aligned_vector<double>& x, aligned_vector<double>& b) = 0;
-
-    void mult_append_neg_T(Vector& x, Vector& b)
-    {
-        mult_append_neg_T(x.values, b.values);
-    }
-    void mult_append_neg_T(aligned_vector<double>& x, Vector& b)
-    {
-        mult_append_neg_T(x, b.values);
-    }
-    void mult_append_neg_T(Vector& x, aligned_vector<double>& b)
-    {
-        mult_append_neg_T(x.values, b);
-    }
-    virtual void mult_append_neg_T(aligned_vector<double>& x, aligned_vector<double>& b) = 0;
-
-    void residual(const Vector& x, const Vector& b, Vector& r)
-    {
-        residual(x.values, b.values, r.values);
-    }
-    void residual(const aligned_vector<double>& x, const Vector& b, Vector& r)
-    {
-        residual(x, b.values, r.values);
-    }
-    virtual void residual(const aligned_vector<double>& x, const aligned_vector<double>& b,
+    virtual void mult_helper(aligned_vector<double>& x, aligned_vector<double>& b) = 0;
+    virtual void mult_T_helper(aligned_vector<double>& x, aligned_vector<double>& b) = 0;
+    virtual void mult_append_helper(aligned_vector<double>& x, aligned_vector<double>& b) = 0;
+    virtual void mult_append_T_helper(aligned_vector<double>& x, aligned_vector<double>& b) = 0;
+    virtual void mult_append_neg_helper(aligned_vector<double>& x, aligned_vector<double>& b) = 0;
+    virtual void mult_append_neg_T_helper(aligned_vector<double>& x, aligned_vector<double>& b) = 0;
+    virtual void residual_helper(const aligned_vector<double>& x, const aligned_vector<double>& b,
             aligned_vector<double>& r) = 0;
 
-    CSRMatrix* mult(const CSRMatrix* B){ return NULL; }
-    CSRMatrix* mult(const CSCMatrix* B){ return NULL; }
-    CSRMatrix* mult(const COOMatrix* B){ return NULL; }
-    CSRMatrix* mult_T(const CSRMatrix* A){ return NULL; }
-    CSRMatrix* mult_T(const CSCMatrix* A){ return NULL; }
-    CSRMatrix* mult_T(const COOMatrix* A){ return NULL; }
+    CSRMatrix* mult(const CSRMatrix* B)
+    {
+        return spgemm(B);
+    }
+    CSRMatrix* mult_T(const CSCMatrix* A)
+    {
+        return spgemm_T(A);
+    }
+
+    virtual CSRMatrix* spgemm(const CSRMatrix* B) = 0;
+    virtual CSRMatrix* spgemm_T(const CSCMatrix* A) = 0;
 
     void RAP(const CSCMatrix& P, CSCMatrix* Ac);
     void RAP(const CSCMatrix& P, CSRMatrix* Ac);
@@ -372,21 +334,6 @@ namespace raptor
     /**************************************************************
     *****   COOMatrix Class Constructor
     **************************************************************
-    ***** Constructs a COOMatrix from a CSRMatrix
-    *****
-    ***** Parameters
-    ***** -------------
-    ***** A : const CSRMatrix*
-    *****    CSRMatrix A, from which to copy data
-    **************************************************************/
-    explicit COOMatrix(const CSRMatrix* A)
-    {
-        copy(A);
-    }
-
-    /**************************************************************
-    *****   COOMatrix Class Constructor
-    **************************************************************
     ***** Copies matrix, constructing new COOMatrix from 
     ***** another COOMatrix
     *****
@@ -395,40 +342,10 @@ namespace raptor
     ***** A : const COOMatrix*
     *****    COOMatrix A, from which to copy data
     **************************************************************/
-    explicit COOMatrix(const COOMatrix* A)
-    {
-        copy(A);
-    }
-
-    /**************************************************************
-    *****   COOMatrix Class Constructor
-    **************************************************************
-    ***** Constructs a COOMatrix from a CSCMatrix
-    *****
-    ***** Parameters
-    ***** -------------
-    ***** A : const CSCMatrix*
-    *****    CSCMatrix A, from which to copy data
-    **************************************************************/
-    explicit COOMatrix(const CSCMatrix* A)
-    {
-        copy(A);
-    }
-
-    /**************************************************************
-    *****   COOMatrix Class Constructor
-    **************************************************************
-    ***** Constructs a COOMatrix from a BSRMatrix
-    *****
-    ***** Parameters
-    ***** -------------
-    ***** A : const BSRMatrix*
-    *****    BSRMatrix A, from which to copy data
-    **************************************************************/
-    explicit COOMatrix(const BSRMatrix* A)
-    {
-        copy(A);
-    }
+    //explicit COOMatrix(const COOMatrix* A)
+    //{
+    //    copy_helper(A);
+    //}
 
     ~COOMatrix()
     {
@@ -439,11 +356,11 @@ namespace raptor
 
     void print();
 
-    void copy(const COOMatrix* A);
-    void copy(const CSRMatrix* A);
-    void copy(const CSCMatrix* A);
-    void copy(const BSRMatrix* A);
-    void block_copy(const BSRMatrix* A, int row, int num_blocks_prev, int col);
+    void copy_helper(const COOMatrix* A);
+    void copy_helper(const CSRMatrix* A);
+    void copy_helper(const CSCMatrix* A);
+    void copy_helper(const BSRMatrix* A);
+    void block_copy_helper(const BSRMatrix* A, int row, int num_blocks_prev, int col);
 
     aligned_vector<double> to_dense() const;
 
@@ -452,78 +369,48 @@ namespace raptor
     void move_diag();
     void remove_duplicates();
 
-    template <typename T, typename U> void mult(T& x, U& b)
-    { 
-        Matrix::mult(x, b);
-    }
-    template <typename T, typename U> void mult_T(T& x, U& b)
-    { 
-        Matrix::mult_T(x, b);
-    }
-    template <typename T, typename U> void mult_append(T& x, U& b)
-    { 
-        Matrix::mult_append(x, b);
-    }
-    template <typename T, typename U> void mult_append_T(T& x, U& b)
-    { 
-        Matrix::mult_append_T(x, b);
-    }
-    template <typename T, typename U> void mult_append_neg(T& x, U& b)
-    { 
-        Matrix::mult_append_neg(x, b);
-    }
-    template <typename T, typename U> void mult_append_neg_T(T& x, U& b)
-    { 
-        Matrix::mult_append_neg_T(x, b);
-    }
-    template <typename T, typename U, typename V> 
-    void residual(const T& x, const U& b, V& r)
-    { 
-        Matrix::residual(x, b, r);
-    }
-
-    void mult(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         for (int i = 0; i < n_rows; i++)
             b[i] = 0.0;
-        mult_append(x, b);
+        mult_append_helper(x, b);
     }
-    void mult_T(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_T_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         for (int i = 0; i < n_cols; i++)
             b[i] = 0.0;
 
-        mult_append_T(x, b);
+        mult_append_T_helper(x, b);
     }
-    void mult_append(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_append_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     { 
         for (int i = 0; i < nnz; i++)
         {
             b[idx1[i]] += vals[i] * x[idx2[i]];
         }
     }
-    void mult_append_T(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_append_T_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         for (int i = 0; i < nnz; i++)
         {
             b[idx2[i]] += vals[i] * x[idx1[i]];
         }
     }
-    void mult_append_neg(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_append_neg_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         for (int i = 0; i < nnz; i++)
         {
             b[idx1[i]] -= vals[i] * x[idx2[i]];
         }
     }
-    void mult_append_neg_T(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_append_neg_T_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         for (int i = 0; i < nnz; i++)
         {
             b[idx2[i]] -= vals[i] * x[idx1[i]];
         }
     }
-    void residual(const aligned_vector<double>& x, const aligned_vector<double>& b,
+    void residual_helper(const aligned_vector<double>& x, const aligned_vector<double>& b,
             aligned_vector<double>& r)
     {
         for (int i = 0; i < n_rows; i++)
@@ -535,17 +422,25 @@ namespace raptor
         }
     }
 
-    CSRMatrix* mult(const CSRMatrix* B);
-    CSRMatrix* mult(const CSCMatrix* B);
-    CSRMatrix* mult(const COOMatrix* B);
-    CSRMatrix* mult_T(const CSRMatrix* A);
-    CSRMatrix* mult_T(const CSCMatrix* A);
-    CSRMatrix* mult_T(const COOMatrix* A);
+    CSRMatrix* spgemm(const CSRMatrix* B)
+    {
+        return NULL;
+    }
+    CSRMatrix* spgemm_T(const CSCMatrix* A)
+    {
+        return NULL;
+    }
 
-    void mult_append(Vector& x, Vector& b);
-    void mult_append_neg(Vector& x, Vector& b);
-    void mult_append_T(Vector& x, Vector& b);
-    void mult_append_neg_T(Vector& x, Vector& b);
+    COOMatrix* to_COO();
+    CSRMatrix* to_CSR();
+    CSCMatrix* to_CSC();
+
+    COOMatrix* copy()
+    {
+        COOMatrix* A = new COOMatrix();
+        A->copy_helper(this);
+        return A;
+    }
 
     void add_block(int row, int col, aligned_vector<double>& values);
 
@@ -673,36 +568,6 @@ namespace raptor
     /**************************************************************
     *****   CSRMatrix Class Constructor
     **************************************************************
-    ***** Constructs a CSRMatrix from a COOMatrix
-    *****
-    ***** Parameters
-    ***** -------------
-    ***** A : const COOMatrix*
-    *****    COOMatrix A, from which to copy data
-    **************************************************************/
-    explicit CSRMatrix(const COOMatrix* A) 
-    {
-        copy(A);
-    }
-
-    /**************************************************************
-    *****   CSRMatrix Class Constructor
-    **************************************************************
-    ***** Constructs a CSRMatrix from a CSCMatrix
-    *****
-    ***** Parameters
-    ***** -------------
-    ***** A : const CSCMatrix*
-    *****    CSCMatrix A, from which to copy data
-    **************************************************************/
-    explicit CSRMatrix(const CSCMatrix* A)
-    {
-        copy(A);
-    }
-
-    /**************************************************************
-    *****   CSRMatrix Class Constructor
-    **************************************************************
     ***** Constructs a CSRMatrix from a CSRMatrix
     *****
     ***** Parameters
@@ -710,10 +575,10 @@ namespace raptor
     ***** A : const CSRMatrix*
     *****    CSRMatrix A, from which to copy data
     **************************************************************/
-    explicit CSRMatrix(const CSRMatrix* A) 
-    {
-        copy(A);
-    }
+    //explicit CSRMatrix(const CSRMatrix* A) 
+    //{
+    //    copy_helper(A);
+    //}
 
     CSRMatrix()
     {
@@ -728,10 +593,10 @@ namespace raptor
 
     void print();
 
-    void copy(const COOMatrix* A);
-    void copy(const CSRMatrix* A);
-    void copy(const CSCMatrix* A);
-    void copy(const BSRMatrix* A);
+    void copy_helper(const COOMatrix* A);
+    void copy_helper(const CSRMatrix* A);
+    void copy_helper(const CSCMatrix* A);
+    void copy_helper(const BSRMatrix* A);
 
     // Converts matrix to a dense flattened vector
     aligned_vector<double> to_dense() const;
@@ -741,51 +606,21 @@ namespace raptor
     void move_diag();
     void remove_duplicates();
 
-    template <typename T, typename U> void mult(T& x, U& b)
-    { 
-        Matrix::mult(x, b);
-    }
-    template <typename T, typename U> void mult_T(T& x, U& b)
-    { 
-        Matrix::mult_T(x, b);
-    }
-    template <typename T, typename U> void mult_append(T& x, U& b)
-    { 
-        Matrix::mult_append(x, b);
-    }
-    template <typename T, typename U> void mult_append_T(T& x, U& b)
-    { 
-        Matrix::mult_append_T(x, b);
-    }
-    template <typename T, typename U> void mult_append_neg(T& x, U& b)
-    { 
-        Matrix::mult_append_neg(x, b);
-    }
-    template <typename T, typename U> void mult_append_neg_T(T& x, U& b)
-    { 
-        Matrix::mult_append_neg_T(x, b);
-    }
-    template <typename T, typename U, typename V> 
-    void residual(const T& x, const U& b, V& r)
-    { 
-        Matrix::residual(x, b, r);
-    }
-
-    void mult(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         for (int i = 0; i < n_rows; i++)
             b[i] = 0.0;
-        mult_append(x, b);
+        mult_append_helper(x, b);
     }
-    void mult_T(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_T_helper(aligned_vector<double>& x, aligned_vector<double>& b)
 
     {
         for (int i = 0; i < n_cols; i++)
             b[i] = 0.0;
 
-        mult_append_T(x, b);    
+        mult_append_T_helper(x, b);    
     }
-    void mult_append(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_append_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     { 
         int start, end;
         for (int i = 0; i < n_rows; i++)
@@ -798,7 +633,7 @@ namespace raptor
             }
         }
     }
-    void mult_append_T(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_append_T_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         int start, end;
         for (int i = 0; i < n_rows; i++)
@@ -811,7 +646,7 @@ namespace raptor
             }
         }
     }
-    void mult_append_neg(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_append_neg_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         int start, end;
         for (int i = 0; i < n_rows; i++)
@@ -824,7 +659,7 @@ namespace raptor
             }
         }
     }
-    void mult_append_neg_T(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_append_neg_T_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         int start, end;
         for (int i = 0; i < n_rows; i++)
@@ -837,7 +672,7 @@ namespace raptor
             }
         }
     }
-    void residual(const aligned_vector<double>& x, const aligned_vector<double>& b, 
+    void residual_helper(const aligned_vector<double>& x, const aligned_vector<double>& b, 
             aligned_vector<double>& r)
     {
         for (int i = 0; i < n_rows; i++)
@@ -855,13 +690,8 @@ namespace raptor
         }
     }
 
-
-    CSRMatrix* mult(const CSRMatrix* B);
-    CSRMatrix* mult(const CSCMatrix* B);
-    CSRMatrix* mult(const COOMatrix* B);
-    CSRMatrix* mult_T(const CSCMatrix* A);
-    CSRMatrix* mult_T(const CSRMatrix* A);
-    CSRMatrix* mult_T(const COOMatrix* A);
+    CSRMatrix* spgemm(const CSRMatrix* B);
+    CSRMatrix* spgemm_T(const CSCMatrix* A);
 
     CSRMatrix* add(CSRMatrix* A);
     CSRMatrix* subtract(CSRMatrix* A);
@@ -873,6 +703,16 @@ namespace raptor
             double tol = 1e-10);
 
     void add_block(int row, int col, aligned_vector<double>& values);
+
+    COOMatrix* to_COO();
+    CSRMatrix* to_CSR();
+    CSCMatrix* to_CSC();
+    CSRMatrix* copy()
+    {
+        CSRMatrix* A = new CSRMatrix();
+        A->copy_helper(this);
+        return A;
+    }
 
     format_t format()
     {
@@ -979,36 +819,6 @@ namespace raptor
     /**************************************************************
     *****   CSCMatrix Class Constructor
     **************************************************************
-    ***** Constructs a CSCMatrix from a COOMatrix
-    *****
-    ***** Parameters
-    ***** -------------
-    ***** A : const COOMatrix*
-    *****    COOMatrix A, from which to copy data
-    **************************************************************/
-    explicit CSCMatrix(const COOMatrix* A) 
-    {
-        copy(A);
-    }
-
-    /**************************************************************
-    *****   CSCMatrix Class Constructor
-    **************************************************************
-    ***** Constructs a CSCMatrix from a CSRMatrix
-    *****
-    ***** Parameters
-    ***** -------------
-    ***** A : const CSRMatrix*
-    *****    CSRMatrix A, from which to copy data
-    **************************************************************/
-    explicit CSCMatrix(const CSRMatrix* A) 
-    {
-        copy(A);
-    }
-
-    /**************************************************************
-    *****   CSCMatrix Class Constructor
-    **************************************************************
     ***** Constructs a CSCMatrix from a CSCMatrix
     *****
     ***** Parameters
@@ -1016,10 +826,10 @@ namespace raptor
     ***** A : const CSCMatrix*
     *****    CSCMatrix A, from which to copy data
     **************************************************************/
-    explicit CSCMatrix(const CSCMatrix* A) 
-    {
-        copy(A);
-    }
+    //explicit CSCMatrix(const CSCMatrix* A) 
+    //{
+    //    copy_helper(A);
+    //}
 
     CSCMatrix()
     {
@@ -1034,60 +844,30 @@ namespace raptor
     Matrix* transpose();
     void print();
 
-    void copy(const COOMatrix* A);
-    void copy(const CSRMatrix* A);
-    void copy(const CSCMatrix* A);
-    void copy(const BSRMatrix* A);
+    void copy_helper(const COOMatrix* A);
+    void copy_helper(const CSRMatrix* A);
+    void copy_helper(const CSCMatrix* A);
+    void copy_helper(const BSRMatrix* A);
 
     void sort();
     void move_diag();
     void remove_duplicates();
     void add_value(int row, int col, double value);
 
-    template <typename T, typename U> void mult(T& x, U& b)
-    { 
-        Matrix::mult(x, b);
-    }
-    template <typename T, typename U> void mult_T(T& x, U& b)
-    { 
-        Matrix::mult_T(x, b);
-    }
-    template <typename T, typename U> void mult_append(T& x, U& b)
-    { 
-        Matrix::mult_append(x, b);
-    }
-    template <typename T, typename U> void mult_append_T(T& x, U& b)
-    { 
-        Matrix::mult_append_T(x, b);
-    }
-    template <typename T, typename U> void mult_append_neg(T& x, U& b)
-    { 
-        Matrix::mult_append_neg(x, b);
-    }
-    template <typename T, typename U> void mult_append_neg_T(T& x, U& b)
-    { 
-        Matrix::mult_append_neg_T(x, b);
-    }
-    template <typename T, typename U, typename V> 
-    void residual(const T& x, const U& b, V& r)
-    { 
-        Matrix::residual(x, b, r);
-    }
-
-    void mult(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         for (int i = 0; i < n_rows; i++)
             b[i] = 0.0;
-        mult_append(x, b);
+        mult_append_helper(x, b);
     }
-    void mult_T(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_T_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         for (int i = 0; i < n_cols; i++)
             b[i] = 0.0;
 
-        mult_append_T(x, b);
+        mult_append_T_helper(x, b);
     }
-    void mult_append(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_append_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     { 
         int start, end;
         for (int i = 0; i < n_cols; i++)
@@ -1100,7 +880,7 @@ namespace raptor
             }
         }
     }
-    void mult_append_T(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_append_T_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         int start, end;
         for (int i = 0; i < n_cols; i++)
@@ -1113,7 +893,7 @@ namespace raptor
             }
         }
     }
-    void mult_append_neg(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_append_neg_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         int start, end;
         for (int i = 0; i < n_cols; i++)
@@ -1126,7 +906,7 @@ namespace raptor
             }
         }
     }
-    void mult_append_neg_T(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_append_neg_T_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         int start, end;
         for (int i = 0; i < n_cols; i++)
@@ -1139,7 +919,7 @@ namespace raptor
             }
         }
     }
-    void residual(const aligned_vector<double>& x, const aligned_vector<double>& b, 
+    void residual_helper(const aligned_vector<double>& x, const aligned_vector<double>& b, 
             aligned_vector<double>& r)
     {
         for (int i = 0; i < n_rows; i++)
@@ -1157,16 +937,28 @@ namespace raptor
         }
     }
 
-    CSRMatrix* mult(const CSRMatrix* B);
-    CSRMatrix* mult(const CSCMatrix* B);
-    CSRMatrix* mult(const COOMatrix* B);
-    CSRMatrix* mult_T(const CSRMatrix* A);
-    CSRMatrix* mult_T(const CSCMatrix* A);
-    CSRMatrix* mult_T(const COOMatrix* A);
+    CSRMatrix* spgemm(const CSRMatrix* B)
+    {
+        return NULL;
+    }
+    CSRMatrix* spgemm_T(const CSCMatrix* A)
+    {
+        return NULL;
+    }
 
     void add_block(int row, int col, aligned_vector<double>& values);
 
     void jacobi(Vector& x, Vector& b, Vector& tmp, double omega = .667);    
+
+    COOMatrix* to_COO();
+    CSRMatrix* to_CSR();
+    CSCMatrix* to_CSC();
+    CSCMatrix* copy()
+    {
+        CSCMatrix* A = new CSCMatrix();
+        A->copy_helper(this);
+        return A;
+    }
 
     format_t format()
     {
@@ -1261,26 +1053,26 @@ namespace raptor
             int _nblocks=0, int _nnz = 0): Matrix(_nrows, _ncols)
     {
         if (_nrows % _brows != 0 || _ncols % _bcols != 0)
-	{
+        {
             printf("Matrix dimensions must be divisible by block dimensions.\n");
-	    exit(-1);
-	}
+            exit(-1);
+        }
 
-	n_rows = _nrows;
-	n_cols = _ncols;
-	b_rows = _brows;
-	b_cols = _bcols;
-	b_size = b_rows * b_cols;
+        n_rows = _nrows;
+        n_cols = _ncols;
+        b_rows = _brows;
+        b_cols = _bcols;
+        b_size = b_rows * b_cols;
 
-	if (_nblocks)
-	{
-	    n_blocks = _nblocks;
-	}
-	else if (_brows != 0 && _bcols != 0)
-	{
-	    // Assume dense number of blocks
+        if (_nblocks)
+        {
+            n_blocks = _nblocks;
+        }
+        else if (_brows != 0 && _bcols != 0)
+        {
+            // Assume dense number of blocks
             n_blocks = _nrows/_brows * _ncols/_bcols;
-	}
+        }
 
         idx1.resize(n_rows/b_rows + 1);
         idx2.reserve(n_blocks);
@@ -1293,19 +1085,19 @@ namespace raptor
     BSRMatrix(int _nrows, int _ncols, int _brows, int _bcols, double* _data) : Matrix(_nrows, _ncols)
     {
         if (_nrows % _brows != 0 || _ncols % _bcols != 0)
-	{
+        {
             printf("Matrix dimensions must be divisible by block dimensions.\n");
-	    exit(-1);
-	}
+            exit(-1);
+        }
 
-	// Assumes dense data array given
-	n_rows = _nrows;
-	n_cols = _ncols;
-	b_rows = _brows;
-	b_cols = _bcols;
-	b_size = b_rows * b_cols;
-	n_blocks = 0;
-	nnz = 0;
+        // Assumes dense data array given
+        n_rows = _nrows;
+        n_cols = _ncols;
+        b_rows = _brows;
+        b_cols = _bcols;
+        b_size = b_rows * b_cols;
+        n_blocks = 0;
+        nnz = 0;
 
         int nnz_dense = n_rows*n_cols;
 
@@ -1313,38 +1105,38 @@ namespace raptor
         //idx2.reserve(n_blocks);
         //vals.reserve(nnz_dense);
 
-	aligned_vector<double> test;
-	double val;
-	int data_offset = 0;
-	idx1[0] = 0;
-	for (int i=0; i<n_rows/b_rows; i++)
-	{
+        aligned_vector<double> test;
+        double val;
+        int data_offset = 0;
+        idx1[0] = 0;
+        for (int i=0; i<n_rows/b_rows; i++)
+        {
             for (int j=0; j<n_cols/b_cols; j++)
-	    {
-		// 1. Push block data to test vector & check if it's a 0 block
+            {
+                // 1. Push block data to test vector & check if it's a 0 block
                 for (int k=data_offset; k<data_offset+b_size; k++){
-		    val = _data[k];
-		    if (fabs(val) > zero_tol){
-		         test.push_back(val);
-	            }
-		}
+                    val = _data[k];
+                    if (fabs(val) > zero_tol){
+                         test.push_back(val);
+                    }
+                }
 
-		// 2. If not all 0 then add block
-		if (test.size() > 0)
-		{
-		    for (int k=data_offset; k<data_offset+b_size; k++){
-			val = _data[k];
-		        vals.push_back(val);
-			nnz++;
-		    }
-		    n_blocks++;
-		    idx2.push_back(j);
-		}
+                // 2. If not all 0 then add block
+                if (test.size() > 0)
+                {
+                    for (int k=data_offset; k<data_offset+b_size; k++){
+                        val = _data[k];
+                        vals.push_back(val);
+                        nnz++;
+                    }
+                    n_blocks++;
+                    idx2.push_back(j);
+                }
                 data_offset += b_size;
-		test.clear();
-	    }
-	    idx1[i+1] = idx2.size();
-	}
+                test.clear();
+            }
+            idx1[i+1] = idx2.size();
+        }
 
     }
 
@@ -1352,21 +1144,21 @@ namespace raptor
     // and rowptr, cols, and data vectors given
     BSRMatrix(int _nrows, int _ncols, int _brows, int _bcols, 
             aligned_vector<int>& rowptr, aligned_vector<int>& cols, 
-	    aligned_vector<double>& data) : Matrix(_nrows, _ncols)
+            aligned_vector<double>& data) : Matrix(_nrows, _ncols)
     {
         if (_nrows % _brows != 0 || _ncols % _bcols != 0)
-	{
+        {
             printf("Matrix dimensions must be divisible by block dimensions.\n");
-	    exit(-1);
-	}
+            exit(-1);
+        }
 
         nnz = data.size();
-	n_rows = _nrows;
-	n_cols = _ncols;
-	b_rows = _brows;
-	b_cols = _bcols;
-	n_blocks = cols.size();
-	b_size = nnz/n_blocks;
+        n_rows = _nrows;
+        n_cols = _ncols;
+        b_rows = _brows;
+        b_cols = _bcols;
+        n_blocks = cols.size();
+        b_size = nnz/n_blocks;
         idx1.resize(n_rows/b_rows + 1);
         idx2.resize(n_blocks);
         vals.resize(nnz);
@@ -1388,27 +1180,12 @@ namespace raptor
     **************************************************************/
     explicit BSRMatrix(const COOMatrix* A, int _brows, int _bcols) 
     {
-	b_rows = _brows;
-	b_cols = _bcols;
-	b_size = b_rows * b_cols;
+        b_rows = _brows;
+        b_cols = _bcols;
+        b_size = b_rows * b_cols;
 
-	copy(A);
+        copy_helper(A);
     }
-
-    /**************************************************************
-    *****   BSRMatrix Class Constructor
-    **************************************************************
-    ***** Constructs a BSRMatrix from a CSCMatrix
-    *****
-    ***** Parameters
-    ***** -------------
-    ***** A : const CSCMatrix*
-    *****    CSCMatrix A, from which to copy data
-    **************************************************************/
-    /*explicit BSRMatrix(const CSCMatrix* A)
-    {
-        copy(A);
-    }*/
 
     /**************************************************************
     *****   BSRMatrix Class Constructor
@@ -1423,10 +1200,10 @@ namespace raptor
     explicit BSRMatrix(const CSRMatrix* A, int _brows, int _bcols) 
     {
         b_rows = _brows;
-	b_cols = _bcols;
-	b_size = b_rows * b_cols;
+        b_cols = _bcols;
+        b_size = b_rows * b_cols;
 
-        copy(A);
+        copy_helper(A);
     }
 
     BSRMatrix()
@@ -1444,10 +1221,10 @@ namespace raptor
     void block_print(int row, int num_blocks_prev, int col);
     aligned_vector<double> to_dense();
 
-    void copy(const COOMatrix* A);
-    void copy(const CSRMatrix* A);
-    void copy(const CSCMatrix* A);
-    void copy(const BSRMatrix* A);
+    void copy_helper(const COOMatrix* A);
+    void copy_helper(const CSRMatrix* A);
+    void copy_helper(const CSCMatrix* A);
+    void copy_helper(const BSRMatrix* A);
 
     void add_value(int row, int col, double value);
     void add_block(int row, int col, aligned_vector<double>& values);
@@ -1455,90 +1232,60 @@ namespace raptor
     void move_diag();
     void remove_duplicates();
 
-    template <typename T, typename U> void mult(T& x, U& b)
-    { 
-        Matrix::mult(x, b);
-    }
-    template <typename T, typename U> void mult_T(T& x, U& b)
-    { 
-        Matrix::mult_T(x, b);
-    }
-    template <typename T, typename U> void mult_append(T& x, U& b)
-    { 
-        Matrix::mult_append(x, b);
-    }
-    template <typename T, typename U> void mult_append_T(T& x, U& b)
-    { 
-        Matrix::mult_append_T(x, b);
-    }
-    template <typename T, typename U> void mult_append_neg(T& x, U& b)
-    { 
-        Matrix::mult_append_neg(x, b);
-    }
-    template <typename T, typename U> void mult_append_neg_T(T& x, U& b)
-    { 
-        Matrix::mult_append_neg_T(x, b);
-    }
-    template <typename T, typename U, typename V> 
-    void residual(const T& x, const U& b, V& r)
-    { 
-        Matrix::residual(x, b, r);
-    }
-
     // STANDARD MULTIPLICATION
-    void mult(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         for (int i = 0; i < n_rows; i++)
             b[i] = 0.0;
-        mult_append(x, b);
+        mult_append_helper(x, b);
     }
 
     // TRANSPOSE MULTIPLICATION
-    void mult_T(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_T_helper(aligned_vector<double>& x, aligned_vector<double>& b)
 
     {
         for (int i = 0; i < n_cols; i++)
             b[i] = 0.0;
 
-        mult_append_T(x, b);    
+        mult_append_T_helper(x, b);    
     }
 
     // STANDARD MULTIPLICATION HELPER
-    void mult_append(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_append_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     { 
         int start, end;
-	int rowsOfBlocks = n_rows/b_rows;
+        int rowsOfBlocks = n_rows/b_rows;
         for (int i = 0; i < rowsOfBlocks; i++)
         {
             start = idx1[i];
             end = idx1[i+1];
             for (int j = start; j < end; j++)
             {
-		// Dense multiplication on block
-                block_mult(i, j, idx2[j], x, b);
+                // Dense multiplication on block
+                block_mult_helper(i, j, idx2[j], x, b);
             }
         }
     }
 
-    void block_mult(int row, int num_blocks_prev, int col,
-		    aligned_vector<double>& x, aligned_vector<double>& b)
+    void block_mult_helper(int row, int num_blocks_prev, int col,
+                    aligned_vector<double>& x, aligned_vector<double>& b)
     {
         int upper_i = row * b_rows;
-	int upper_j = col * b_cols;
-	int data_offset = num_blocks_prev * b_size;
+        int upper_j = col * b_cols;
+        int data_offset = num_blocks_prev * b_size;
 
-	int glob_i, glob_j, ind;
-	for(int i=0; i<b_rows; i++){
+        int glob_i, glob_j, ind;
+        for(int i=0; i<b_rows; i++){
             for(int j=0; j<b_cols; j++){
-		glob_i = upper_i + i;
-		glob_j = upper_j + j;
-		ind = i * b_cols + j + data_offset;
-		b[glob_i] += vals[ind] * x[glob_j];
-	    }
-	}
+                glob_i = upper_i + i;
+                glob_j = upper_j + j;
+                ind = i * b_cols + j + data_offset;
+                b[glob_i] += vals[ind] * x[glob_j];
+            }
+        }
     }
 
-    void mult_append_T(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_append_T_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         int start, end;
         for (int i = 0; i < n_rows/b_rows; i++)
@@ -1548,30 +1295,30 @@ namespace raptor
             for (int j = start; j < end; j++)
             {
                 // Dense transpose multiplication on block
-                block_mult_T(i, j, idx2[j], x, b);
+                block_mult_T_helper(i, j, idx2[j], x, b);
             }
         }
     }
 
-    void block_mult_T(int row, int num_blocks_prev, int col,
-		    aligned_vector<double>& x, aligned_vector<double>& b)
+    void block_mult_T_helper(int row, int num_blocks_prev, int col,
+                    aligned_vector<double>& x, aligned_vector<double>& b)
     {
         int upper_i = row * b_rows;
-	int upper_j = col * b_cols;
-	int data_offset = num_blocks_prev * b_size;
+        int upper_j = col * b_cols;
+        int data_offset = num_blocks_prev * b_size;
 
-	int glob_i, glob_j, ind;
-	for(int i=0; i<b_rows; i++){
+        int glob_i, glob_j, ind;
+        for(int i=0; i<b_rows; i++){
             for(int j=0; j<b_cols; j++){
-		glob_i = upper_i + i;
-		glob_j = upper_j + j;
-		ind = i * b_cols + j + data_offset;
-		b[glob_j] += vals[ind] * x[glob_i];
-	    }
-	}
+                glob_i = upper_i + i;
+                glob_j = upper_j + j;
+                ind = i * b_cols + j + data_offset;
+                b[glob_j] += vals[ind] * x[glob_i];
+            }
+        }
     }
 
-    void mult_append_neg(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_append_neg_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         int start, end;
         for (int i = 0; i < n_rows/b_rows; i++)
@@ -1581,30 +1328,30 @@ namespace raptor
             for (int j = start; j < end; j++)
             {
                 // Dense negative multiplication on block
-                block_mult_neg(i, j, idx2[j], x, b);
+                block_mult_neg_helper(i, j, idx2[j], x, b);
             }
         }
     }
 
-    void block_mult_neg(int row, int num_blocks_prev, int col,
-		    aligned_vector<double>& x, aligned_vector<double>& b)
+    void block_mult_neg_helper(int row, int num_blocks_prev, int col,
+                    aligned_vector<double>& x, aligned_vector<double>& b)
     {
         int upper_i = row * b_rows;
-	int upper_j = col * b_cols;
-	int data_offset = num_blocks_prev * b_size;
+        int upper_j = col * b_cols;
+        int data_offset = num_blocks_prev * b_size;
 
-	int glob_i, glob_j, ind;
-	for(int i=0; i<b_rows; i++){
+        int glob_i, glob_j, ind;
+        for(int i=0; i<b_rows; i++){
             for(int j=0; j<b_cols; j++){
-		glob_i = upper_i + i;
-		glob_j = upper_j + j;
-		ind = i * b_cols + j + data_offset;
-		b[glob_i] -= vals[ind] * x[glob_j];
-	    }
-	}
+                glob_i = upper_i + i;
+                glob_j = upper_j + j;
+                ind = i * b_cols + j + data_offset;
+                b[glob_i] -= vals[ind] * x[glob_j];
+            }
+        }
     }
 
-    void mult_append_neg_T(aligned_vector<double>& x, aligned_vector<double>& b)
+    void mult_append_neg_T_helper(aligned_vector<double>& x, aligned_vector<double>& b)
     {
         int start, end;
         for (int i = 0; i < n_rows/b_rows; i++)
@@ -1613,30 +1360,30 @@ namespace raptor
             end = idx1[i+1];
             for (int j = start; j < end; j++)
             {
-                block_mult_neg_T(i, j, idx2[j], x, b);
+                block_mult_neg_T_helper(i, j, idx2[j], x, b);
             }
         }
     }
 
-    void block_mult_neg_T(int row, int num_blocks_prev, int col,
-		    aligned_vector<double>& x, aligned_vector<double>& b)
+    void block_mult_neg_T_helper(int row, int num_blocks_prev, int col,
+                    aligned_vector<double>& x, aligned_vector<double>& b)
     {
         int upper_i = row * b_rows;
-	int upper_j = col * b_cols;
-	int data_offset = num_blocks_prev * b_size;
+        int upper_j = col * b_cols;
+        int data_offset = num_blocks_prev * b_size;
 
-	int glob_i, glob_j, ind;
-	for(int i=0; i<b_rows; i++){
+        int glob_i, glob_j, ind;
+        for(int i=0; i<b_rows; i++){
             for(int j=0; j<b_cols; j++){
-		glob_i = upper_i + i;
-		glob_j = upper_j + j;
-		ind = i * b_cols + j + data_offset;
-		b[glob_j] -= vals[ind] * x[glob_i];
-	    }
-	}
+                glob_i = upper_i + i;
+                glob_j = upper_j + j;
+                ind = i * b_cols + j + data_offset;
+                b[glob_j] -= vals[ind] * x[glob_i];
+            }
+        }
     }
 
-    void residual(const aligned_vector<double>& x, const aligned_vector<double>& b, 
+    void residual_helper(const aligned_vector<double>& x, const aligned_vector<double>& b, 
             aligned_vector<double>& r)
     {
         for (int i = 0; i < n_rows; i++)
@@ -1649,43 +1396,47 @@ namespace raptor
             end = idx1[i+1];
             for (int j = start; j < end; j++)
             {
-                block_res(i, j, idx2[j], x, r);
+                block_res_helper(i, j, idx2[j], x, r);
             }
         }
     }
 
-    void block_res(int row, int num_blocks_prev, int col,
-		    const aligned_vector<double>& x, aligned_vector<double>& r)
+    void block_res_helper(int row, int num_blocks_prev, int col,
+                    const aligned_vector<double>& x, aligned_vector<double>& r)
     {
         int upper_i = row * b_rows;
-	int upper_j = col * b_cols;
-	int data_offset = num_blocks_prev * b_size;
+        int upper_j = col * b_cols;
+        int data_offset = num_blocks_prev * b_size;
 
-	int glob_i, glob_j, ind;
-	for(int i=0; i<b_rows; i++){
+        int glob_i, glob_j, ind;
+        for(int i=0; i<b_rows; i++){
             for(int j=0; j<b_cols; j++){
-		glob_i = upper_i + i;
-		glob_j = upper_j + j;
-		ind = i * b_cols + j + data_offset;
-		r[glob_i] -= vals[ind] * x[glob_j];
-	    }
-	}
+                glob_i = upper_i + i;
+                glob_j = upper_j + j;
+                ind = i * b_cols + j + data_offset;
+                r[glob_i] -= vals[ind] * x[glob_j];
+            }
+        }
     }
 
+    CSRMatrix* spgemm(const CSRMatrix* B)
+    {
+        return NULL;
+    }
+    CSRMatrix* spgemm_T(const CSCMatrix* A)
+    {
+        return NULL;
+    }
 
-    //CSRMatrix* mult(const CSRMatrix* B);
-    //CSRMatrix* mult(const CSCMatrix* B);
-    //CSRMatrix* mult(const COOMatrix* B);
-    //CSRMatrix* mult_T(const CSCMatrix* A);
-    //CSRMatrix* mult_T(const CSRMatrix* A);
-    //CSRMatrix* mult_T(const COOMatrix* A);
-
-    //CSRMatrix* subtract(CSRMatrix* B);
-
-    //CSRMatrix* strength(double theta = 0.0);
-    //CSRMatrix* aggregate();
-    //CSRMatrix* fit_candidates(data_t* B, data_t* R, int num_candidates, 
-      //      double tol = 1e-10);
+    COOMatrix* to_COO();
+    CSRMatrix* to_CSR();
+    CSCMatrix* to_CSC();
+    BSRMatrix* copy()
+    {
+        BSRMatrix* A = new BSRMatrix();
+        A->copy_helper(this);
+        return A;
+    }
 
     format_t format()
     {

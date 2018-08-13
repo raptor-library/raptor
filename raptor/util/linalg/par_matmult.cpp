@@ -77,7 +77,7 @@ ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B, data_t* comm_t)
 
 ParCSRMatrix* ParCSRMatrix::mult_T(ParCSRMatrix* A, bool tap, data_t* comm_t)
 {
-    ParCSCMatrix* Acsc = new ParCSCMatrix(A);
+    ParCSCMatrix* Acsc = A->to_ParCSC();
     ParCSRMatrix* C = this->mult_T(Acsc, tap, comm_t);
     delete Acsc;
     return C;
@@ -85,7 +85,7 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSRMatrix* A, bool tap, data_t* comm_t)
 
 ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSRMatrix* A, data_t* comm_t)
 {
-    ParCSCMatrix* Acsc = new ParCSCMatrix(A);
+    ParCSCMatrix* Acsc = A->to_ParCSC();
     ParCSRMatrix* C = this->tap_mult_T(Acsc, comm_t);
     delete Acsc;
     return C;

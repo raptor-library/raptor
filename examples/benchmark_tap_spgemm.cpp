@@ -274,7 +274,7 @@ int main(int argc, char *argv[])
     {
         ParCSRMatrix* Al = ml->levels[i]->A;
         ParCSRMatrix* Pl = ml->levels[i]->P;
-        ParCSCMatrix* Pl_csc = new ParCSCMatrix(Pl);
+        ParCSCMatrix* Pl_csc = Pl->to_ParCSC();
         ParCSRMatrix* AP = Al->mult(Pl);
 
         int A_nnz, P_nnz;
@@ -310,7 +310,7 @@ int main(int argc, char *argv[])
         if (rank == 0) printf("Now testing P_new...\n");
         ParCSRMatrix* P_new = Al->mult(Pl);
         ParCSRMatrix* AP_new = Al->mult(P_new);
-        ParCSCMatrix* P_new_csc = new ParCSCMatrix(P_new);
+        ParCSCMatrix* P_new_csc = P_new->to_ParCSC();
         MPI_Reduce(&P_new->local_nnz, &P_nnz, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
         if (rank == 0)
         {

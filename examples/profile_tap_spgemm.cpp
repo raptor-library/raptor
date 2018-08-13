@@ -181,13 +181,12 @@ int main(int argc, char *argv[])
     {
         ParCSRMatrix* Al = ml->levels[i]->A;
         ParCSRMatrix* Pl = ml->levels[i]->P;
-        ParCSCMatrix* Pl_csc = new ParCSCMatrix(Pl);
+        ParCSCMatrix* Pl_csc = Pl->to_ParCSC();
         ParCSRMatrix* AP = Al->mult(Pl);
 
         if (rank == 0) printf("Level %d\n", i);
 
         if (rank == 0) printf("A*P:\n");
-//        Al->print_mult(Pl);
         int active = 1;
         int sum_active;
         if (Al->local_num_rows == 0) active = 0;
@@ -195,7 +194,6 @@ int main(int argc, char *argv[])
         if (rank == 0) printf("Num Active Processes: %d\n", sum_active); 
 
         if (rank == 0) printf("\nP.T*AP:\n");
-//        AP->print_mult_T(Pl_csc);
         active = 1;
         if (AP->local_num_rows == 0) active = 0;
         MPI_Reduce(&active, &sum_active, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);

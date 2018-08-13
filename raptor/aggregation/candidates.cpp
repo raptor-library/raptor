@@ -22,7 +22,7 @@ CSRMatrix* fit_candidates(const int n_aggs, const aligned_vector<int>& aggregate
         AggOp->idx1[i+1] = i+1;
     }
     AggOp->nnz = n_rows;
-    CSCMatrix* AggOp_csc = new CSCMatrix(AggOp);
+    CSCMatrix* AggOp_csc = AggOp->to_CSC();
     delete AggOp;
 
     // Initialize CSC matrix for tentative interpolation
@@ -132,7 +132,7 @@ CSRMatrix* fit_candidates(const int n_aggs, const aligned_vector<int>& aggregate
         }
     }
 
-    CSRMatrix* T = new CSRMatrix(T_csc);
+    CSRMatrix* T = T_csc->to_CSR();
     delete T_csc;
 
     return T;

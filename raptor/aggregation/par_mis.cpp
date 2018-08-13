@@ -343,8 +343,8 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
     }
 
     // Form column-wise local matrices of A
-    CSCMatrix* A_on_csc = new CSCMatrix((CSRMatrix*) A->on_proc);
-    CSCMatrix* A_off_csc = new CSCMatrix((CSRMatrix*) A->off_proc);
+    CSCMatrix* A_on_csc = A->on_proc->to_CSC();
+    CSCMatrix* A_off_csc = A->off_proc->to_CSC();
     
     // Find DistS_TMP Maximal Independent Set -- Main Loop
     remaining = A->local_num_rows;

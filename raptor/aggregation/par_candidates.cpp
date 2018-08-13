@@ -107,8 +107,8 @@ ParCSRMatrix* fit_candidates(ParCSRMatrix* A,
     AggOp_off->n_cols = off_proc_num_cols;
 
     // Convert AggOp matrices to CSC
-    CSCMatrix* AggOp_on_csc = new CSCMatrix(AggOp_on);
-    CSCMatrix* AggOp_off_csc = new CSCMatrix(AggOp_off);
+    CSCMatrix* AggOp_on_csc = AggOp_on->to_CSC();
+    CSCMatrix* AggOp_off_csc = AggOp_off->to_CSC();
     delete AggOp_on;
     delete AggOp_off;
 
@@ -207,7 +207,7 @@ ParCSRMatrix* fit_candidates(ParCSRMatrix* A,
         }
     }
 
-    ParCSRMatrix* T = new ParCSRMatrix(T_csc);
+    ParCSRMatrix* T = T_csc->to_ParCSR();
     delete T_csc;
 
     return T;

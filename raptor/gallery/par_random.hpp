@@ -30,7 +30,7 @@ ParCSRMatrix* par_random(int global_rows, int global_cols, int nnz_per_row)
     }
     A_coo->finalize();
 
-    ParCSRMatrix* A = new ParCSRMatrix(A_coo);
+    ParCSRMatrix* A = A_coo->to_ParCSR();
     delete A_coo;
 
     return A;

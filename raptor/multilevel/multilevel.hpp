@@ -68,7 +68,7 @@ namespace raptor
                 }
 
                 levels.push_back(new Level());
-                levels[0]->A = new CSRMatrix(Af);
+                levels[0]->A = Af->copy();
                 levels[0]->A->sort();
                 levels[0]->x.resize(Af->n_rows);
                 levels[0]->b.resize(Af->n_rows);

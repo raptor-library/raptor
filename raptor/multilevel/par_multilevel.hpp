@@ -136,7 +136,7 @@ namespace raptor
 
                 // Add original, fine level to hierarchy
                 levels.push_back(new ParLevel());
-                levels[0]->A = new ParCSRMatrix(Af);
+                levels[0]->A = Af->copy();
                 levels[0]->A->sort();
                 levels[0]->A->on_proc->move_diag();
                 levels[0]->x.resize(Af->global_num_rows, Af->local_num_rows,

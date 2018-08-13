@@ -209,7 +209,74 @@ int* ParMatrix::map_partition_to_local()
     return on_proc_partition_to_col;
 }
 
-void ParMatrix::copy(ParCOOMatrix* A)
+
+
+ParCOOMatrix* ParCOOMatrix::to_ParCOO()
+{
+    return this;
+}
+ParCSRMatrix* ParCOOMatrix::to_ParCSR()
+{
+    ParCSRMatrix* A = new ParCSRMatrix();
+    A->copy_helper(this);
+    return A;
+}
+ParCSCMatrix* ParCOOMatrix::to_ParCSC()
+{
+    ParCSCMatrix* A = new ParCSCMatrix();
+    A->copy_helper(this);
+    return A;
+}
+ParCOOMatrix* ParCSRMatrix::to_ParCOO()
+{
+    ParCOOMatrix* A = new ParCOOMatrix();
+    A->copy_helper(this);
+    return A;
+}
+ParCSRMatrix* ParCSRMatrix::to_ParCSR()
+{
+    return this; 
+}
+ParCSCMatrix* ParCSRMatrix::to_ParCSC()
+{
+    ParCSCMatrix* A = new ParCSCMatrix();
+    A->copy_helper(this);
+    return A;
+}
+ParCOOMatrix* ParCSCMatrix::to_ParCOO()
+{
+    ParCOOMatrix* A = new ParCOOMatrix();
+    A->copy_helper(this);
+    return A;
+}
+ParCSRMatrix* ParCSCMatrix::to_ParCSR()
+{
+    ParCSRMatrix* A = new ParCSRMatrix();
+    A->copy_helper(this);
+    return A;
+}
+ParCSCMatrix* ParCSCMatrix::to_ParCSC()
+{
+    return this;
+}
+ParCOOMatrix* ParBSRMatrix::to_ParCOO()
+{
+    return NULL;
+}
+ParCSRMatrix* ParBSRMatrix::to_ParCSR()
+{
+    return NULL;
+}
+ParCSCMatrix* ParBSRMatrix::to_ParCSC()
+{
+    return NULL;
+}
+
+
+
+
+
+void ParMatrix::copy_helper(ParCOOMatrix* A)
 {
     partition = A->partition;
     partition->num_shared++;
@@ -248,7 +315,7 @@ void ParMatrix::copy(ParCOOMatrix* A)
     }
 }
 
-void ParMatrix::copy(ParCSRMatrix* A)
+void ParMatrix::copy_helper(ParCSRMatrix* A)
 {
     partition = A->partition;
     partition->num_shared++;
@@ -287,7 +354,7 @@ void ParMatrix::copy(ParCSRMatrix* A)
     }
 }
 
-void ParMatrix::copy(ParCSCMatrix* A)
+void ParMatrix::copy_helper(ParCSCMatrix* A)
 {
     partition = A->partition;
     partition->num_shared++;
@@ -326,7 +393,7 @@ void ParMatrix::copy(ParCSCMatrix* A)
     }
 }
 
-void ParMatrix::copy(ParBSRMatrix* A)
+void ParMatrix::copy_helper(ParBSRMatrix* A)
 {
     partition = A->partition;
     partition->num_shared++;
@@ -365,7 +432,7 @@ void ParMatrix::copy(ParBSRMatrix* A)
     }
 }
 
-void ParCOOMatrix::copy(ParCSRMatrix* A)
+void ParCOOMatrix::copy_helper(ParCSRMatrix* A)
 {
     if (on_proc)
     {   
@@ -376,13 +443,13 @@ void ParCOOMatrix::copy(ParCSRMatrix* A)
         delete off_proc;
     }
 
-    on_proc = new COOMatrix((CSRMatrix*) A->on_proc);
-    off_proc = new COOMatrix((CSRMatrix*) A->off_proc);
+    on_proc = A->on_proc->to_COO();
+    off_proc = A->off_proc->to_COO();
 
-    ParMatrix::copy(A);
+    ParMatrix::copy_helper(A);
 }
 
-void ParCOOMatrix::copy(ParCSCMatrix* A)
+void ParCOOMatrix::copy_helper(ParCSCMatrix* A)
 {
     if (on_proc)
     {   
@@ -393,13 +460,13 @@ void ParCOOMatrix::copy(ParCSCMatrix* A)
         delete off_proc;
     }
 
-    on_proc = new COOMatrix((CSCMatrix*) A->on_proc);
-    off_proc = new COOMatrix((CSCMatrix*) A->off_proc);
+    on_proc = A->on_proc->to_COO();
+    off_proc = A->off_proc->to_COO();
 
-    ParMatrix::copy(A);
+    ParMatrix::copy_helper(A);
 }
 
-void ParCOOMatrix::copy(ParCOOMatrix* A)
+void ParCOOMatrix::copy_helper(ParCOOMatrix* A)
 {
     if (on_proc)
     {   
@@ -410,13 +477,13 @@ void ParCOOMatrix::copy(ParCOOMatrix* A)
         delete off_proc;
     }
 
-    on_proc = new COOMatrix((COOMatrix*) A->on_proc);
-    off_proc = new COOMatrix((COOMatrix*) A->off_proc);
+    on_proc = A->on_proc->copy();
+    off_proc = A->off_proc->copy();
 
-    ParMatrix::copy(A);
+    ParMatrix::copy_helper(A);
 }
 
-void ParCOOMatrix::copy(ParBSRMatrix* A)
+void ParCOOMatrix::copy_helper(ParBSRMatrix* A)
 {
     if (on_proc)
     {
@@ -427,45 +494,13 @@ void ParCOOMatrix::copy(ParBSRMatrix* A)
         delete off_proc;
     }
 
-    on_proc = new COOMatrix((COOMatrix*) A->on_proc);
-    off_proc = new COOMatrix((COOMatrix*) A->off_proc);
+    on_proc = A->on_proc->to_COO();
+    off_proc = A->off_proc->to_COO();
 
-    ParMatrix::copy(A);
+    ParMatrix::copy_helper(A);
 }
 
-void ParCSRMatrix::copy(ParCSRMatrix* A)
-{
-    if (on_proc)
-    {   
-        delete on_proc;
-    }
-    if (off_proc)
-    {
-        delete off_proc;
-    }
-    on_proc = new CSRMatrix((CSRMatrix*) A->on_proc);
-    off_proc = new CSRMatrix((CSRMatrix*) A->off_proc);
-
-    ParMatrix::copy(A);
-}
-
-void ParCSRMatrix::copy(ParCSCMatrix* A)
-{
-    if (on_proc)
-    {   
-        delete on_proc;
-    }
-    if (off_proc)
-    {
-        delete off_proc;
-    }
-    on_proc = new CSRMatrix((CSCMatrix*) A->on_proc);
-    off_proc = new CSRMatrix((CSCMatrix*) A->off_proc);
-
-    ParMatrix::copy(A);
-}
-
-void ParCSRMatrix::copy(ParCOOMatrix* A)
+void ParCSRMatrix::copy_helper(ParCSRMatrix* A)
 {
     if (on_proc)
     {   
@@ -476,18 +511,52 @@ void ParCSRMatrix::copy(ParCOOMatrix* A)
         delete off_proc;
     }
 
-    on_proc = new CSRMatrix((COOMatrix*) A->on_proc);
-    off_proc = new CSRMatrix((COOMatrix*) A->off_proc);
+    on_proc = A->on_proc->copy();
+    off_proc = A->off_proc->copy();
 
-    ParMatrix::copy(A);
+    ParMatrix::copy_helper(A);
 }
 
-void ParCSRMatrix::copy(ParBSRMatrix* A)
+void ParCSRMatrix::copy_helper(ParCSCMatrix* A)
+{
+    if (on_proc)
+    {   
+        delete on_proc;
+    }
+    if (off_proc)
+    {
+        delete off_proc;
+    }
+
+    on_proc = A->on_proc->to_CSR();
+    off_proc = A->off_proc->to_CSR();
+
+    ParMatrix::copy_helper(A);
+}
+
+void ParCSRMatrix::copy_helper(ParCOOMatrix* A)
+{
+    if (on_proc)
+    {   
+        delete on_proc;
+    }
+    if (off_proc)
+    {
+        delete off_proc;
+    }
+
+    on_proc = A->on_proc->to_CSR();
+    off_proc = A->off_proc->to_CSR();
+
+    ParMatrix::copy_helper(A);
+}
+
+void ParCSRMatrix::copy_helper(ParBSRMatrix* A)
 {
     printf("Currently not implemented\n");
 }
 
-void ParCSCMatrix::copy(ParCSRMatrix* A)
+void ParCSCMatrix::copy_helper(ParCSRMatrix* A)
 {
     if (on_proc)
     {   
@@ -498,13 +567,13 @@ void ParCSCMatrix::copy(ParCSRMatrix* A)
         delete off_proc;
     }
 
-    on_proc = new CSCMatrix((CSRMatrix*) A->on_proc);
-    off_proc = new CSCMatrix((CSRMatrix*) A->off_proc);
+    on_proc = A->on_proc->to_CSC();
+    off_proc = A->off_proc->to_CSC();
 
-    ParMatrix::copy(A);
+    ParMatrix::copy_helper(A);
 }
 
-void ParCSCMatrix::copy(ParCSCMatrix* A)
+void ParCSCMatrix::copy_helper(ParCSCMatrix* A)
 {
     if (on_proc)
     {   
@@ -515,13 +584,13 @@ void ParCSCMatrix::copy(ParCSCMatrix* A)
         delete off_proc;
     }
 
-    on_proc = new CSCMatrix((CSCMatrix*) A->on_proc);
-    off_proc = new CSCMatrix((CSCMatrix*) A->off_proc);
+    on_proc = A->on_proc->copy();
+    off_proc = A->off_proc->copy();
 
-    ParMatrix::copy(A);
+    ParMatrix::copy_helper(A);
 }
 
-void ParCSCMatrix::copy(ParCOOMatrix* A)
+void ParCSCMatrix::copy_helper(ParCOOMatrix* A)
 {
     if (on_proc)
     {   
@@ -532,33 +601,33 @@ void ParCSCMatrix::copy(ParCOOMatrix* A)
         delete off_proc;
     }
 
-    on_proc = new CSCMatrix((COOMatrix*) A->on_proc);
-    off_proc = new CSCMatrix((COOMatrix*) A->off_proc);
+    on_proc = A->on_proc->to_CSC();
+    off_proc = A->off_proc->to_CSC();
 
-    ParMatrix::copy(A);
+    ParMatrix::copy_helper(A);
 }
 
-void ParCSCMatrix::copy(ParBSRMatrix* A)
+void ParCSCMatrix::copy_helper(ParBSRMatrix* A)
 {
     printf("Currently not implemented\n");
 }
 
-void ParBSRMatrix::copy(ParCSRMatrix* A)
+void ParBSRMatrix::copy_helper(ParCSRMatrix* A)
 {
     printf("Currently not implemented.\n");
 }
 
-void ParBSRMatrix::copy(ParCSCMatrix* A)
+void ParBSRMatrix::copy_helper(ParCSCMatrix* A)
 {
     printf("Currently not implemented.\n");
 }
 
-void ParBSRMatrix::copy(ParCOOMatrix* A)
+void ParBSRMatrix::copy_helper(ParCOOMatrix* A)
 {
     printf("Currently not implemented.\n");
 }
 
-void ParBSRMatrix::copy(ParBSRMatrix* A)
+void ParBSRMatrix::copy_helper(ParBSRMatrix* A)
 {
     printf("Currently not implemented\n");
 }
@@ -672,7 +741,7 @@ ParMatrix* ParCSRMatrix::transpose()
     on_proc_T = on_proc->transpose();
 
     // Allocate vectors for sending off_proc matrix
-    send_mat = new CSCMatrix((CSRMatrix*) off_proc);
+    send_mat = off_proc->to_CSC();
     recv_mat = new CSCMatrix(local_num_rows, comm->send_data->size_msgs);
 
     // Add off_proc cols of matrix to send buffer
