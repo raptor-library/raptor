@@ -11,48 +11,76 @@ using namespace raptor;
 ***** Print the nonzeros in the matrix, as well as the row
 ***** and column according to each nonzero
 **************************************************************/
-void COOMatrix::print()
+template <typename T>
+void print_helper(const COOMatrix* A, const aligned_vector<T>& vals)
 {
     int row, col;
     double val;
 
-    for (int i = 0; i < nnz; i++)
+    printf("A->nnz %d\n", A->nnz);
+    for (int i = 0; i < A->nnz; i++)
     {
-        row = idx1[i];
-        col = idx2[i];
-        val_print(row, col, vals[i]);
+        row = A->idx1[i];
+        col = A->idx2[i];
+        A->val_print(row, col, vals[i]);
     }
 }
-
-void CSRMatrix::print()
+template <typename T>
+void print_helper(const CSRMatrix* A, const aligned_vector<T>& vals)
 {
     int col, start, end;
 
-    for (int row = 0; row < n_rows; row++)
+    for (int row = 0; row < A->n_rows; row++)
     {
-        start = idx1[row];
-        end = idx1[row+1];
+        start = A->idx1[row];
+        end = A->idx1[row+1];
         for (int j = start; j < end; j++)
         {
-            col = idx2[j];
-            val_print(row, col, vals[j]);
+            col = A->idx2[j];
+            A->val_print(row, col, vals[j]);
         }
     }
 }
-void CSCMatrix::print()
+template <typename T>
+void print_helper(const CSCMatrix* A, const aligned_vector<T>& vals)
 {
     int row, start, end;
 
-    for (int col = 0; col < n_cols; col++)
+    for (int col = 0; col < A->n_cols; col++)
     {
-        start = idx1[col];
-        end = idx1[col+1];
+        start = A->idx1[col];
+        end = A->idx1[col+1];
         for (int j = start; j < end; j++)
         {
-            row = idx2[j];
-            val_print(row, col, vals[j]);
+            row = A->idx2[j];
+            A->val_print(row, col, vals[j]);
         }
     }
+}
+void COOMatrix::print()
+{
+    print_helper(this, vals);
+}
+void CSRMatrix::print()
+{
+    print_helper(this, vals);
+}
+void CSCMatrix::print()
+{
+    print_helper(this, vals);
+}
+void BCOOMatrix::print()
+{
+    printf("Printing...\n");
+    print_helper(this, vals);
+}
+void BSRMatrix::print()
+{
+    print_helper(this, vals);
+}
+void BSCMatrix::print()
+{
+    print_helper(this, vals);
 }
 
 /**************************************************************
@@ -132,216 +160,187 @@ void Matrix::resize(int _n_rows, int _n_cols)
 ***** -------------
 ***** Matrix* A : original matrix to copy (of some type)
 **************************************************************/
-void COOMatrix::copy_helper(const COOMatrix* A)
+template <typename T>
+void COO_to_COO(const COOMatrix* A, COOMatrix* B, aligned_vector<T>& A_vals,
+        aligned_vector<T>& B_vals)
 {
-    n_rows = A->n_rows;
-    n_cols = A->n_cols;
-    nnz = A->nnz;
+    B->n_rows = A->n_rows;
+    B->n_cols = A->n_cols;
+    B->nnz = A->nnz;
 
-    idx1.clear();
-    idx2.clear();
-    vals.clear();
+    B->idx1.clear();
+    B->idx2.clear();
+    B_vals.clear();
 
-    idx1.reserve(A->nnz);
-    idx2.reserve(A->nnz);
-    vals.reserve(A->nnz);
+    B->idx1.reserve(A->nnz);
+    B->idx2.reserve(A->nnz);
+    B_vals.reserve(A->nnz);
     for (int i = 0; i < A->nnz; i++)
     {
-        idx1.push_back(A->idx1[i]);
-        idx2.push_back(A->idx2[i]);
-        vals.push_back(copy_val(A->vals[i]));
+        B->idx1.push_back(A->idx1[i]);
+        B->idx2.push_back(A->idx2[i]);
+        B_vals.push_back(B->copy_val(A_vals[i]));
     }
 }
-void BCOOMatrix::copy_helper(const BCOOMatrix* A)
+template <typename T>
+void CSR_to_COO(const CSRMatrix* A, COOMatrix* B, aligned_vector<T>& A_vals,
+        aligned_vector<T>& B_vals)
 {
-    b_rows = A->b_rows;
-    b_cols = A->b_cols;
-    b_size = A->b_size;
+    B->n_rows = A->n_rows;
+    B->n_cols = A->n_cols;
+    B->nnz = A->nnz;
 
-    COOMatrix::copy_helper(A);             
-} 
+    B->idx1.clear();
+    B->idx2.clear();
+    B_vals.clear();
 
-void COOMatrix::copy_helper(const CSRMatrix* A)
-{
-    n_rows = A->n_rows;
-    n_cols = A->n_cols;
-    nnz = A->nnz;
-
-    idx1.clear();
-    idx2.clear();
-    vals.clear();
-
-    idx1.reserve(A->nnz);
-    idx2.reserve(A->nnz);
-    vals.reserve(A->nnz);
+    B->idx1.reserve(A->nnz);
+    B->idx2.reserve(A->nnz);
+    B_vals.reserve(A->nnz);
     for (int i = 0; i < A->n_rows; i++)
     {
         int row_start = A->idx1[i];
         int row_end = A->idx1[i+1];
         for (int j = row_start; j < row_end; j++)
         {
-            idx1.push_back(i);
-            idx2.push_back(A->idx2[j]);
-            vals.push_back(copy_val(A->vals[j]));
+            B->idx1.push_back(i);
+            B->idx2.push_back(A->idx2[j]);
+            B_vals.push_back(B->copy_val(A_vals[j]));
         }
     }
 }
-void BCOOMatrix::copy_helper(const BSRMatrix* A)
+template <typename T>
+void CSC_to_COO(const CSCMatrix* A, COOMatrix* B, aligned_vector<T>& A_vals,
+        aligned_vector<T>& B_vals)
 {
-    b_rows = A->b_rows;
-    b_cols = A->b_cols;
-    b_size = A->b_size;
+    B->n_rows = A->n_rows;
+    B->n_cols = A->n_cols;
+    B->nnz = A->nnz;
 
-    COOMatrix::copy_helper(A);             
-} 
-void COOMatrix::copy_helper(const CSCMatrix* A)
-{
-    n_rows = A->n_rows;
-    n_cols = A->n_cols;
-    nnz = A->nnz;
+    B->idx1.clear();
+    B->idx2.clear();
+    B_vals.clear();
 
-    idx1.clear();
-    idx2.clear();
-    vals.clear();
-
-    idx1.reserve(A->nnz);
-    idx2.reserve(A->nnz);
-    vals.reserve(A->nnz);
+    B->idx1.reserve(A->nnz);
+    B->idx2.reserve(A->nnz);
+    B_vals.reserve(A->nnz);
     for (int i = 0; i < A->n_cols; i++)
     {
         int col_start = A->idx1[i];
         int col_end = A->idx1[i+1];
         for (int j = col_start; j < col_end; j++)
         {
-            idx1.push_back(A->idx2[j]);
-            idx2.push_back(i);
-            vals.push_back(copy_val(A->vals[j]));
+            B->idx1.push_back(A->idx2[j]);
+            B->idx2.push_back(i);
+            B_vals.push_back(B->copy_val(A_vals[j]));
         }
     }
+
 }
-void BCOOMatrix::copy_helper(const BSCMatrix* A)
+template <typename T>
+void COO_to_CSR(const COOMatrix* A, CSRMatrix* B, aligned_vector<T>& A_vals,
+        aligned_vector<T>& B_vals)
 {
-    b_rows = A->b_rows;
-    b_cols = A->b_cols;
-    b_size = A->b_size;
+    B->n_rows = A->n_rows;
+    B->n_cols = A->n_cols;
+    B->nnz = A->nnz;
 
-    COOMatrix::copy_helper(A);             
-} 
-
-void CSRMatrix::copy_helper(const COOMatrix* A)
-{
-    n_rows = A->n_rows;
-    n_cols = A->n_cols;
-    nnz = A->nnz;
-
-    idx1.resize(n_rows + 1);
-    std::fill(idx1.begin(), idx1.end(), 0);
-    if (nnz)
+    B->idx1.resize(B->n_rows + 1);
+    std::fill(B->idx1.begin(), B->idx1.end(), 0);
+    if (B->nnz)
     {
-        idx2.resize(nnz);
-        if (A->vals.size())
-            vals.resize(nnz);
+        B->idx2.resize(B->nnz);
+        if (A->data_size())
+            B_vals.resize(B->nnz);
     }
 
     // Calculate indptr
-    for (int i = 0; i < nnz; i++)
+    for (int i = 0; i < B->nnz; i++)
     {
         int row = A->idx1[i];
-        idx1[row+1]++;
+        B->idx1[row+1]++;
     }
-    for (int i = 0; i < n_rows; i++)
+    for (int i = 0; i < B->n_rows; i++)
     {
-        idx1[i+1] += idx1[i];
+        B->idx1[i+1] += B->idx1[i];
     }
 
     // Add indices and data
     aligned_vector<int> ctr;
-    if (n_rows)
+    if (B->n_rows)
     {
-            ctr.resize(n_rows, 0);
+            ctr.resize(B->n_rows, 0);
     }
-    for (int i = 0; i < nnz; i++)
+    for (int i = 0; i < B->nnz; i++)
     {
         int row = A->idx1[i];
         int col = A->idx2[i];
-        int index = idx1[row] + ctr[row]++;
-        idx2[index] = col;
-        if (A->vals.size()) // Checking that matrix has values (not S)
+        int index = B->idx1[row] + ctr[row]++;
+        B->idx2[index] = col;
+        if (A->data_size()) // Checking that matrix has values (not S)
         {
-            vals[index] = copy_val(A->vals[i]);
+            B_vals[index] = B->copy_val(A_vals[i]);
         }
     }
+
 }
-void BSRMatrix::copy_helper(const BCOOMatrix* A)
+template <typename T>
+void CSR_to_CSR(const CSRMatrix* A, CSRMatrix* B, aligned_vector<T>& A_vals,
+        aligned_vector<T>& B_vals)
 {
-    b_rows = A->b_rows;
-    b_cols = A->b_cols;
-    b_size = A->b_size;
+    B->n_rows = A->n_rows;
+    B->n_cols = A->n_cols;
+    B->nnz = A->nnz;
 
-    CSRMatrix::copy_helper(A);
-}
+    B->idx1.resize(A->n_rows + 1);
+    B->idx2.resize(A->nnz);
+    B_vals.resize(A->nnz);
 
-void CSRMatrix::copy_helper(const CSRMatrix* A)
-{
-    n_rows = A->n_rows;
-    n_cols = A->n_cols;
-    nnz = A->nnz;
-
-    idx1.resize(A->n_rows + 1);
-    idx2.resize(A->nnz);
-    vals.resize(A->nnz);
-
-    idx1[0] = 0;
+    B->idx1[0] = 0;
     for (int i = 0; i < A->n_rows; i++)
     {
-        idx1[i+1] = A->idx1[i+1];
-        int row_start = idx1[i];
-        int row_end = idx1[i+1];
+        B->idx1[i+1] = A->idx1[i+1];
+        int row_start = B->idx1[i];
+        int row_end = B->idx1[i+1];
         for (int j = row_start; j < row_end; j++)
         {
-            idx2[j] = A->idx2[j];
-            vals[j] = copy_val(A->vals[j]);
+            B->idx2[j] = A->idx2[j];
+            B_vals[j] = B->copy_val(A_vals[j]);
         }
     }
+
 }
-void BSRMatrix::copy_helper(const BSRMatrix* A)
+template <typename T>
+void CSC_to_CSR(const CSCMatrix* A, CSRMatrix* B, aligned_vector<T>& A_vals,
+        aligned_vector<T>& B_vals)
 {
-    b_rows = A->b_rows;
-    b_cols = A->b_cols;
-    b_size = A->b_size;
+    B->n_rows = A->n_rows;
+    B->n_cols = A->n_cols;
+    B->nnz = A->nnz;
 
-    CSRMatrix::copy_helper(A);    
-} 
-
-void CSRMatrix::copy_helper(const CSCMatrix* A)
-{
-    n_rows = A->n_rows;
-    n_cols = A->n_cols;
-    nnz = A->nnz;
-
-    idx1.clear();
-    idx2.clear();
-    vals.clear();
+    B->idx1.clear();
+    B->idx2.clear();
+    B_vals.clear();
 
     // Resize vectors to appropriate dimensions
-    idx1.resize(A->n_rows + 1);
-    idx2.resize(A->nnz);
-    if (A->vals.size())
-        vals.resize(A->nnz);
+    B->idx1.resize(A->n_rows + 1);
+    B->idx2.resize(A->nnz);
+    if (A->data_size())
+        B_vals.resize(A->nnz);
 
     // Create indptr, summing number times row appears in CSC
-    for (int i = 0; i <= A->n_rows; i++) idx1[i] = 0;
+    for (int i = 0; i <= A->n_rows; i++) B->idx1[i] = 0;
     for (int i = 0; i < A->nnz; i++)
     {
-        idx1[A->idx2[i] + 1]++;
+        B->idx1[A->idx2[i] + 1]++;
     }
     for (int i = 1; i <= A->n_rows; i++)
     {
-        idx1[i] += idx1[i-1];
+        B->idx1[i] += B->idx1[i-1];
     }
 
     // Add values to indices and data
-    aligned_vector<int> ctr(n_rows, 0);
+    aligned_vector<int> ctr(B->n_rows, 0);
     for (int i = 0; i < A->n_cols; i++)
     {
         int col_start = A->idx1[i];
@@ -349,107 +348,94 @@ void CSRMatrix::copy_helper(const CSCMatrix* A)
         for (int j = col_start; j < col_end; j++)
         {
             int row = A->idx2[j];
-            int idx = idx1[row] + ctr[row]++;
-            idx2[idx] = i;
-            if (A->vals.size())
+            int idx = B->idx1[row] + ctr[row]++;
+            B->idx2[idx] = i;
+            if (A->data_size())
             {
-                vals[idx] = copy_val(A->vals[j]);
+                B_vals[idx] = B->copy_val(A_vals[j]);
             }
         }
     }
+
 }
-void BSRMatrix::copy_helper(const BSCMatrix* A)
+template <typename T>
+void COO_to_CSC(const COOMatrix* A, CSCMatrix* B, aligned_vector<T>& A_vals,
+        aligned_vector<T>& B_vals)
 {
-    b_rows = A->b_rows;
-    b_cols = A->b_cols;
-    b_size = A->b_size;
+    B->n_rows = A->n_rows;
+    B->n_cols = A->n_cols;
+    B->nnz = A->nnz;
 
-    CSRMatrix::copy_helper(A);
-}
-
-
-void CSCMatrix::copy_helper(const COOMatrix* A)
-{
-    n_rows = A->n_rows;
-    n_cols = A->n_cols;
-    nnz = A->nnz;
-
-    idx1.resize(n_cols + 1);
-    std::fill(idx1.begin(), idx1.end(), 0);
-    if (nnz)
+    B->idx1.resize(B->n_cols + 1);
+    std::fill(B->idx1.begin(), B->idx1.end(), 0);
+    if (B->nnz)
     {
-        idx2.resize(nnz);
-        if (A->vals.size())
-            vals.resize(nnz);
+        B->idx2.resize(B->nnz);
+        if (A->data_size())
+            B_vals.resize(B->nnz);
     }
 
     // Calculate indptr
-    for (int i = 0; i < nnz; i++)
+    for (int i = 0; i < B->nnz; i++)
     {
         int col = A->idx1[i];
-        idx1[col+1]++;
+        B->idx1[col+1]++;
     }
-    for (int i = 0; i < n_cols; i++)
+    for (int i = 0; i < B->n_cols; i++)
     {
-        idx1[i+1] += idx1[i];
+        B->idx1[i+1] += B->idx1[i];
     }
 
     // Add indices and data
     aligned_vector<int> ctr;
-    if (n_cols)
+    if (B->n_cols)
     {
-        ctr.resize(n_cols, 0);
+        ctr.resize(B->n_cols, 0);
     }
-    for (int i = 0; i < nnz; i++)
+    for (int i = 0; i < B->nnz; i++)
     {
         int col = A->idx1[i];
         int row = A->idx2[i];
-        int index = idx1[col] + ctr[col]++;
-        idx2[index] = row;
-        if (A->vals.size()) // Checking that matrix has values (not S)
+        int index = B->idx1[col] + ctr[col]++;
+        B->idx2[index] = row;
+        if (A->data_size()) // Checking that matrix has values (not S)
         {
-            vals[index] = copy_val(A->vals[i]);
+            B_vals[index] = B->copy_val(A_vals[i]);
         }
     }
+
 }
-void BSCMatrix::copy_helper(const BCOOMatrix* A)
+template <typename T>
+void CSR_to_CSC(const CSRMatrix* A, CSCMatrix* B, aligned_vector<T>& A_vals,
+        aligned_vector<T>& B_vals)
 {
-    b_rows = A->b_rows;
-    b_cols = A->b_cols;
-    b_size = A->b_size;
+    B->n_rows = A->n_rows;
+    B->n_cols = A->n_cols;
+    B->nnz = A->nnz;
 
-    CSCMatrix::copy_helper(A);
-}
-
-void CSCMatrix::copy_helper(const CSRMatrix* A)
-{
-    n_rows = A->n_rows;
-    n_cols = A->n_cols;
-    nnz = A->nnz;
-
-    idx1.clear();
-    idx2.clear();
-    vals.clear();
+    B->idx1.clear();
+    B->idx2.clear();
+    B_vals.clear();
 
     // Resize vectors to appropriate dimensions
-    idx1.resize(A->n_cols + 1);
-    idx2.resize(A->nnz);
-    if (A->vals.size())
-        vals.resize(A->nnz);
+    B->idx1.resize(A->n_cols + 1);
+    B->idx2.resize(A->nnz);
+    if (A->data_size())
+        B_vals.resize(A->nnz);
 
     // Create indptr, summing number times row appears in CSC
-    for (int i = 0; i <= A->n_cols; i++) idx1[i] = 0;
+    for (int i = 0; i <= A->n_cols; i++) B->idx1[i] = 0;
     for (int i = 0; i < A->nnz; i++)
     {
-        idx1[A->idx2[i] + 1]++;
+        B->idx1[A->idx2[i] + 1]++;
     }
     for (int i = 1; i <= A->n_cols; i++)
     {
-        idx1[i] += idx1[i-1];
+        B->idx1[i] += B->idx1[i-1];
     }
 
     // Add values to indices and data
-    aligned_vector<int> ctr(n_cols, 0);
+    aligned_vector<int> ctr(B->n_cols, 0);
     for (int i = 0; i < A->n_rows; i++)
     {
         int row_start = A->idx1[i];
@@ -457,68 +443,41 @@ void CSCMatrix::copy_helper(const CSRMatrix* A)
         for (int j = row_start; j < row_end; j++)
         {
             int col = A->idx2[j];
-            int idx = idx1[col] + ctr[col]++;
-            idx2[idx] = i;
-            if (A->vals.size())
+            int idx = B->idx1[col] + ctr[col]++;
+            B->idx2[idx] = i;
+            if (A->data_size())
             {
-                vals[idx] = copy_val(A->vals[j]);
+                B_vals[idx] = B->copy_val(A_vals[j]);
             }
         }
     }
+
 }
-
-void BSCMatrix::copy_helper(const BSRMatrix* A)
+template <typename T>
+void CSC_to_CSC(const CSCMatrix* A, CSCMatrix* B, aligned_vector<T>& A_vals,
+        aligned_vector<T>& B_vals)
 {
-    b_rows = A->b_rows;
-    b_cols = A->b_cols;
-    b_size = A->b_size;
+    B->n_rows = A->n_rows;
+    B->n_cols = A->n_cols;
+    B->nnz = A->nnz;
 
-    CSCMatrix::copy_helper(A);
-}
+    B->idx1.resize(A->n_cols + 1);
+    B->idx2.resize(A->nnz);
+    B->vals.resize(A->nnz);
 
-void CSCMatrix::copy_helper(const CSCMatrix* A)
-{
-    n_rows = A->n_rows;
-    n_cols = A->n_cols;
-    nnz = A->nnz;
-
-    idx1.resize(A->n_cols + 1);
-    idx2.resize(A->nnz);
-    vals.resize(A->nnz);
-
-    idx1[0] = 0;
+    B->idx1[0] = 0;
     for (int i = 0; i < A->n_cols; i++)
     {
         int col_start = A->idx1[i];
         int col_end = A->idx1[i+1];
-        idx1[i+1] = col_end;
+        B->idx1[i+1] = col_end;
         for (int j = col_start; j < col_end; j++)
         {
-            idx2[j] = A->idx2[j];
-            vals[j] = A->vals[j];
+            B->idx2[j] = A->idx2[j];
+            B_vals[j] = B->copy_val(A_vals[j]);
         }
     }
 }
-void BSCMatrix::copy_helper(const BSCMatrix* A)
-{
-    b_rows = A->b_rows;
-    b_cols = A->b_cols;
-    b_size = A->b_size;
-
-    CSCMatrix::copy_helper(A);
-
-    for (int i = 0; i < A->nnz; i++)
-    {
-        double* new_ptr = new double[b_size];
-        double* val_ptr = vals[i];
-        for (int j = 0; j < b_size; j++)
-        {
-            new_ptr[j] = val_ptr[j];
-        }
-        vals[i] = new_ptr;
-    }                
-} 
-
 
 
 /**************************************************************
@@ -526,32 +485,33 @@ void BSCMatrix::copy_helper(const BSCMatrix* A)
 **************************************************************
 ***** Sorts the sparse matrix by row and column
 **************************************************************/
-void COOMatrix::sort()
+template <typename T>
+void sort_helper(COOMatrix* A, aligned_vector<T>& vals)
 {
-    if (sorted || nnz == 0)
+    if (A->sorted || A->nnz == 0)
     {
-        sorted = true;
+        A->sorted = true;
         return;
     }
 
     int k, prev_k;
 
-    aligned_vector<int> permutation(nnz);
-    aligned_vector<bool> done(nnz, false);
+    aligned_vector<int> permutation(A->nnz);
+    aligned_vector<bool> done(A->nnz, false);
 
     // Create permutation vector p
     std::iota(permutation.begin(), permutation.end(), 0);
     std::sort(permutation.begin(), permutation.end(),
         [&](int i, int j){ 
-            if (idx1[i] == idx1[j])
-                return idx2[i] < idx2[j];
+            if (A->idx1[i] == A->idx1[j])
+                return A->idx2[i] < A->idx2[j];
             else
-                return idx1[i] < idx1[j];
+                return A->idx1[i] < A->idx1[j];
         });
 
     // Permute all vectors (rows, cols, data) 
     // according to p
-    for (int i = 0; i < nnz; i++)
+    for (int i = 0; i < A->nnz; i++)
     {
         if (done[i]) continue;
 
@@ -560,8 +520,8 @@ void COOMatrix::sort()
         k = permutation[i];
         while (i != k)
         {
-            std::swap(idx1[prev_k], idx1[k]);
-            std::swap(idx2[prev_k], idx2[k]);
+            std::swap(A->idx1[prev_k], A->idx1[k]);
+            std::swap(A->idx2[prev_k], A->idx2[k]);
             std::swap(vals[prev_k], vals[k]);
             done[k] = true;
             prev_k = k;
@@ -569,18 +529,20 @@ void COOMatrix::sort()
         }
     }
 
-    sorted = true;
-    diag_first = false;
+    A->sorted = true;
+    A->diag_first = false;
+
 }
 
-void CSRMatrix::sort()
+template <typename T>
+void sort_helper(CSRMatrix* A, aligned_vector<T>& vals)
 {
     int start, end, row_size;
     int k, prev_k;
 
-    if (sorted || nnz == 0)
+    if (A->sorted || A->nnz == 0)
     {
-        sorted = true;
+        A->sorted = true;
         return;
     }
 
@@ -589,10 +551,10 @@ void CSRMatrix::sort()
 
     // Sort the columns of each row (and data accordingly) and remove
     // duplicates (summing values together)
-    for (int row = 0; row < n_rows; row++)
+    for (int row = 0; row < A->n_rows; row++)
     {
-        start = idx1[row];
-        end = idx1[row+1];
+        start = A->idx1[row];
+        end = A->idx1[row+1];
         row_size = end - start;
         if (row_size == 0) 
         {
@@ -605,7 +567,7 @@ void CSRMatrix::sort()
         std::sort(permutation.begin(), permutation.end(),
                 [&](int i, int j)
                 { 
-                    return idx2[i+start] < idx2[j+start];
+                    return A->idx2[i+start] < A->idx2[j+start];
                 });
 
 
@@ -615,7 +577,7 @@ void CSRMatrix::sort()
         {
             done[i] = false;
         }
-        if (vals.size())
+        if (A->data_size())
         {
             for (int i = 0; i < row_size; i++)
             {
@@ -626,7 +588,7 @@ void CSRMatrix::sort()
                 k = permutation[i];
                 while (i != k)
                 {
-                    std::swap(idx2[prev_k + start], idx2[k + start]);
+                    std::swap(A->idx2[prev_k + start], A->idx2[k + start]);
                     std::swap(vals[prev_k + start], vals[k + start]);
                     done[k] = true;
                     prev_k = k;
@@ -645,7 +607,7 @@ void CSRMatrix::sort()
                 k = permutation[i];
                 while (i != k)
                 {
-                    std::swap(idx2[prev_k + start], idx2[k + start]);
+                    std::swap(A->idx2[prev_k + start], A->idx2[k + start]);
                     done[k] = true;
                     prev_k = k;
                     k = permutation[k];
@@ -654,18 +616,19 @@ void CSRMatrix::sort()
         }
     }
 
-    sorted = true;
-    diag_first = false;
+    A->sorted = true;
+    A->diag_first = false;
 }
 
-void CSCMatrix::sort()
+template <typename T>
+void sort_helper(CSCMatrix* A, aligned_vector<T>& vals)
 {
     int start, end, col_size;
     int k, prev_k;
 
-    if (sorted || nnz == 0)
+    if (A->sorted || A->nnz == 0)
     {
-        sorted = true;
+        A->sorted = true;
         return;
     }
 
@@ -674,10 +637,10 @@ void CSCMatrix::sort()
 
     // Sort the columns of each col (and data accordingly) and remove
     // duplicates (summing values together)
-    for (int col = 0; col < n_cols; col++)
+    for (int col = 0; col < A->n_cols; col++)
     {
-        start = idx1[col];
-        end = idx1[col+1];
+        start = A->idx1[col];
+        end = A->idx1[col+1];
         col_size = end - start;
         if (col_size == 0) 
         {
@@ -690,7 +653,7 @@ void CSCMatrix::sort()
         std::sort(permutation.begin(), permutation.end(),
                 [&](int i, int j)
                 { 
-                    return idx2[i+start] < idx2[j+start];
+                    return A->idx2[i+start] < A->idx2[j+start];
                 });
 
 
@@ -700,7 +663,7 @@ void CSCMatrix::sort()
         {
             done[i] = false;
         }
-        if (vals.size())
+        if (A->data_size())
         {
             for (int i = 0; i < col_size; i++)
             {
@@ -711,7 +674,7 @@ void CSCMatrix::sort()
                 k = permutation[i];
                 while (i != k)
                 {
-                    std::swap(idx2[prev_k + start], idx2[k + start]);
+                    std::swap(A->idx2[prev_k + start], A->idx2[k + start]);
                     std::swap(vals[prev_k + start], vals[k + start]);
                     done[k] = true;
                     prev_k = k;
@@ -730,7 +693,7 @@ void CSCMatrix::sort()
                 k = permutation[i];
                 while (i != k)
                 {
-                    std::swap(idx2[prev_k + start], idx2[k + start]);
+                    std::swap(A->idx2[prev_k + start], A->idx2[k + start]);
                     done[k] = true;
                     prev_k = k;
                     k = permutation[k];
@@ -739,10 +702,34 @@ void CSCMatrix::sort()
         }
     }
 
-    sorted = true;
-    diag_first = false;
+    A->sorted = true;
+    A->diag_first = false;
 }
 
+void COOMatrix::sort()
+{
+    sort_helper(this, vals);
+}
+void BCOOMatrix::sort()
+{
+    sort_helper(this, vals);
+}
+void CSRMatrix::sort()
+{
+    sort_helper(this, vals);
+}
+void BSRMatrix::sort()
+{
+    sort_helper(this, vals);
+}
+void CSCMatrix::sort()
+{
+    sort_helper(this, vals);
+}
+void BSCMatrix::sort()
+{
+    sort_helper(this, vals);
+}
 
 
 /**************************************************************
@@ -751,16 +738,17 @@ void CSCMatrix::sort()
 ***** Moves the diagonal element to the front of each row
 ***** If matrix is not sorted, sorts before moving
 **************************************************************/
-void COOMatrix::move_diag()
+template <typename T>
+void move_diag_helper(COOMatrix* A, aligned_vector<T>& vals)
 {
-    if (diag_first || nnz == 0)
+    if (A->diag_first || A->nnz == 0)
     {
         return;
     }
 
-    if (!sorted)
+    if (!A->sorted)
     {
-        sort();
+        A->sort();
     }
 
     int row_start, prev_row;
@@ -769,10 +757,10 @@ void COOMatrix::move_diag()
     // Move diagonal entry to first in row
     row_start = 0;
     prev_row = 0;
-    for (int i = 0; i < nnz; i++)
+    for (int i = 0; i < A->nnz; i++)
     {
-        row = idx1[i];
-        col = idx2[i];
+        row = A->idx1[i];
+        col = A->idx2[i];
         if (row != prev_row)
         {
             prev_row = row;
@@ -783,46 +771,47 @@ void COOMatrix::move_diag()
             auto tmp = vals[i];
             for (int j = i; j > row_start; j--)
             {
-                idx2[j] = idx2[j-1];
+                A->idx2[j] = A->idx2[j-1];
                 vals[j] = vals[j-1];
             }
-            idx2[row_start] = row;
+            A->idx2[row_start] = row;
             vals[row_start] = tmp;
         }
     }
 
-    diag_first = true;
+    A->diag_first = true;
 }
 
-void CSRMatrix::move_diag()
+template <typename T>
+void move_diag_helper(CSRMatrix* A, aligned_vector<T>& vals)
 {
     int start, end;
     int col;
 
-    if (diag_first || nnz == 0)
+    if (A->diag_first || A->nnz == 0)
     {
         return;
     }
 
     // Move diagonal values to beginning of each row
-    if (vals.size())
+    if (A->data_size())
     {
-        for (int i = 0; i < n_rows; i++)
+        for (int i = 0; i < A->n_rows; i++)
         {
-            start = idx1[i];
-            end = idx1[i+1];
+            start = A->idx1[i];
+            end = A->idx1[i+1];
             for (int j = start; j < end; j++)
             {
-                col = idx2[j];
+                col = A->idx2[j];
                 if (col == i)
                 {
                     auto tmp = vals[j];
                     for (int k = j; k > start; k--)
                     {
-                        idx2[k] = idx2[k-1];
+                        A->idx2[k] = A->idx2[k-1];
                         vals[k] = vals[k-1];
                     }
-                    idx2[start] = i;
+                    A->idx2[start] = i;
                     vals[start] = tmp;
                     break;
                 }
@@ -831,57 +820,58 @@ void CSRMatrix::move_diag()
     }
     else
     {
-        for (int i = 0; i < n_rows; i++)
+        for (int i = 0; i < A->n_rows; i++)
         {
-            start = idx1[i];
-            end = idx1[i+1];
+            start = A->idx1[i];
+            end = A->idx1[i+1];
             for (int j = start; j < end; j++)
             {
-                col = idx2[j];
+                col = A->idx2[j];
                 if (col == i)
                 {
                     for (int k = j; k > start; k--)
                     {
-                        idx2[k] = idx2[k-1];
+                        A->idx2[k] = A->idx2[k-1];
                     }
-                    idx2[start] = i;
+                    A->idx2[start] = i;
                     break;
                 }
             }
         }
     }
-    diag_first = true;
+    A->diag_first = true;
 }
 
-void CSCMatrix::move_diag()
+template <typename T>
+void move_diag_helper(CSCMatrix* A, aligned_vector<T>& vals)
 {
     int start, end;
     int row;
 
-    if (diag_first || nnz == 0)
+    if (A->diag_first || A->nnz == 0)
     {
         return;
     }
 
     // Move diagonal values to beginning of each row
-    if (vals.size())
+    if (A->data_size())
     {
-        for (int i = 0; i < n_cols; i++)
+        for (int i = 0; i < A->n_cols; i++)
         {
-            start = idx1[i];
-            end = idx1[i+1];
+            start = A->idx1[i];
+            end = A->idx1[i+1];
             for (int j = start; j < end; j++)
             {
-                row = idx2[j];
+                row = A->idx2[j];
                 if (row == i)
                 {
                     auto tmp = vals[j];
                     for (int k = j; k > start; k--)
                     {
-                        idx2[k] = idx2[k-1];
+                        A->idx2[k] = A->idx2[k-1];
                         vals[k] = vals[k-1];
                     }
-                    idx2[start] = i;
+                    A->idx2[start] = i;
                     vals[start] = tmp;
                     break;
                 }
@@ -890,29 +880,52 @@ void CSCMatrix::move_diag()
     }
     else
     {
-        for (int i = 0; i < n_cols; i++)
+        for (int i = 0; i < A->n_cols; i++)
         {
-            start = idx1[i];
-            end = idx1[i+1];
+            start = A->idx1[i];
+            end = A->idx1[i+1];
             for (int j = start; j < end; j++)
             {
-                row = idx2[j];
+                row = A->idx2[j];
                 if (row == i)
                 {
                     for (int k = j; k > start; k--)
                     {
-                        idx2[k] = idx2[k-1];
+                        A->idx2[k] = A->idx2[k-1];
                     }
-                    idx2[start] = i;
+                    A->idx2[start] = i;
                     break;
                 }
             }
         }
     }
-    diag_first = true;
+    A->diag_first = true;
 }
 
-
+void COOMatrix::move_diag()
+{
+    move_diag_helper(this, vals);
+}
+void BCOOMatrix::move_diag()
+{
+    move_diag_helper(this, vals);
+}
+void CSRMatrix::move_diag()
+{
+    move_diag_helper(this, vals);
+}
+void BSRMatrix::move_diag()
+{
+    move_diag_helper(this, vals);
+}
+void CSCMatrix::move_diag()
+{
+    move_diag_helper(this, vals);
+}
+void BSCMatrix::move_diag()
+{
+    move_diag_helper(this, vals);
+}
 
 /**************************************************************
 *****   Matrix Removes Duplicates
@@ -920,35 +933,36 @@ void CSCMatrix::move_diag()
 ***** Goes thorugh each sorted row, and removes duplicate
 ***** entries, summing associated values
 **************************************************************/
-void COOMatrix::remove_duplicates()
+template <typename T>
+void remove_duplicates_helper(COOMatrix* A, aligned_vector<T>& vals)
 {
-    if (!sorted)
+    if (!A->sorted)
     {
-        sort();
-        diag_first = false;
+        A->sort();
+        A->diag_first = false;
     }
 
     int prev_row, prev_col, ctr;
     int row, col;
 
     // Remove duplicates (sum together)
-    prev_row = idx1[0];
-    prev_col = idx2[0];
+    prev_row = A->idx1[0];
+    prev_col = A->idx2[0];
     ctr = 1;
-    for (int i = 1; i < nnz; i++)
+    for (int i = 1; i < A->nnz; i++)
     {
-        row = idx1[i];
-        col = idx2[i];
+        row = A->idx1[i];
+        col = A->idx2[i];
         if (row == prev_row && col == prev_col)
         {
-            append_vals(&vals[ctr - 1], vals[i]);
+            A->append_vals(&vals[ctr - 1], &vals[i]);
         }
         else
         { 
             if (ctr != i)
             {
-                idx1[ctr] = row;
-                idx2[ctr] = col;
+                A->idx1[ctr] = row;
+                A->idx2[ctr] = col;
                 vals[ctr] = vals[i];
             }
             ctr++;
@@ -958,137 +972,164 @@ void COOMatrix::remove_duplicates()
         }
     }
 
-    nnz = ctr;
+    A->nnz = ctr;
 }
 
-void CSRMatrix::remove_duplicates()
+template <typename T>
+void remove_duplicates_helper(CSRMatrix* A, aligned_vector<T>& vals)
 {
     int orig_start, orig_end;
     int new_start;
     int col, prev_col;
     int ctr, row_size;
 
-    if (!sorted)
+    if (!A->sorted)
     {
-        sort();
-        diag_first = false;
+        A->sort();
+        A->diag_first = false;
     }
 
-    orig_start = idx1[0];
-    for (int row = 0; row < n_rows; row++)
+    orig_start = A->idx1[0];
+    for (int row = 0; row < A->n_rows; row++)
     {
-        new_start = idx1[row];
-        orig_end = idx1[row+1];
+        new_start = A->idx1[row];
+        orig_end = A->idx1[row+1];
         row_size = orig_end - orig_start;
         if (row_size == 0) 
         {
             orig_start = orig_end;
-            idx1[row+1] = idx1[row];
+            A->idx1[row+1] = A->idx1[row];
             continue;
         }
 
         // Remove Duplicates
-        col = idx2[orig_start];
-        idx2[new_start] = col;
+        col = A->idx2[orig_start];
+        A->idx2[new_start] = col;
         vals[new_start] = vals[orig_start];
         prev_col = col;
         ctr = 1;
         for (int j = orig_start + 1; j < orig_end; j++)
         {
-            col = idx2[j];
+            col = A->idx2[j];
             if (col == prev_col)
             {
-                append_vals(&vals[ctr - 1 + new_start], vals[j]);
+                A->append_vals(&vals[ctr - 1 + new_start], &vals[j]);
             }
             else
             {
-                if (abs_val(vals[ctr - 1 + new_start]) < zero_tol)
+                if (A->abs_val(vals[ctr - 1 + new_start]) < zero_tol)
                 {
                     ctr--;
                 }
 
-                idx2[ctr + new_start] = col;
+                A->idx2[ctr + new_start] = col;
                 vals[ctr + new_start] = vals[j];
                 ctr++;
                 prev_col = col;
             }
         }
-        if (abs_val(vals[ctr - 1 + new_start]) < zero_tol)
+        if (A->abs_val(vals[ctr - 1 + new_start]) < zero_tol)
         {
             ctr--;
         }
 
         orig_start = orig_end;
-        idx1[row+1] = idx1[row] + ctr;
+        A->idx1[row+1] = A->idx1[row] + ctr;
     }
-    nnz = idx1[n_rows];
-    idx2.resize(nnz);
-    vals.resize(nnz);
+    A->nnz = A->idx1[A->n_rows];
+    A->idx2.resize(A->nnz);
+    vals.resize(A->nnz);
 }
 
-void CSCMatrix::remove_duplicates()
+template <typename T>
+void remove_duplicates_helper(CSCMatrix* A, aligned_vector<T>& vals)
 {
     int orig_start, orig_end;
     int new_start;
     int row, prev_row;
     int ctr, col_size;
 
-    if (!sorted)
+    if (!A->sorted)
     {
-        sort();
-        diag_first = false;
+        A->sort();
+        A->diag_first = false;
     }
 
-    orig_start = idx1[0];
-    for (int col = 0; col < n_cols; col++)
+    orig_start = A->idx1[0];
+    for (int col = 0; col < A->n_cols; col++)
     {
-        new_start = idx1[col];
-        orig_end = idx1[col+1];
+        new_start = A->idx1[col];
+        orig_end = A->idx1[col+1];
         col_size = orig_end - orig_start;
         if (col_size == 0) 
         {
             orig_start = orig_end;
-            idx1[col+1] = idx1[col];
+            A->idx1[col+1] = A->idx1[col];
             continue;
         }
 
         // Remove Duplicates
-        row = idx2[orig_start];
-        idx2[new_start] = row;
+        row = A->idx2[orig_start];
+        A->idx2[new_start] = row;
         vals[new_start] = vals[orig_start];
         prev_row = row;
         ctr = 1;
         for (int j = orig_start + 1; j < orig_end; j++)
         {
-            row = idx2[j];
+            row = A->idx2[j];
             if (row == prev_row)
             {
-                append_vals(&vals[ctr - 1 + new_start], vals[j]);
+                A->append_vals(&vals[ctr - 1 + new_start], &vals[j]);
             }
             else
             {
-                if (abs_val(vals[ctr - 1 + new_start]) < zero_tol)
+                if (A->abs_val(vals[ctr - 1 + new_start]) < zero_tol)
                 {
                     ctr--;
                 }
 
-                idx2[ctr + new_start] = row;
+                A->idx2[ctr + new_start] = row;
                 vals[ctr + new_start] = vals[j];
                 ctr++;
                 prev_row = row;
             }
         }
-        if (abs_val(vals[ctr - 1 + new_start]) < zero_tol)
+        if (A->abs_val(vals[ctr - 1 + new_start]) < zero_tol)
         {
             ctr--;
         }
 
         orig_start = orig_end;
-        idx1[row+1] = idx1[row] + ctr;
+        A->idx1[col+1] = A->idx1[col] + ctr;
     }
-    nnz = idx1[n_cols];
-    idx2.resize(nnz);
-    vals.resize(nnz);
+    A->nnz = A->idx1[A->n_cols];
+    A->idx2.resize(A->nnz);
+    vals.resize(A->nnz);
+}
+
+void COOMatrix::remove_duplicates()
+{
+    remove_duplicates_helper(this, vals);
+}
+void BCOOMatrix::remove_duplicates()
+{
+    remove_duplicates_helper(this, vals);
+}
+void CSRMatrix::remove_duplicates()
+{
+    remove_duplicates_helper(this, vals);
+}
+void BSRMatrix::remove_duplicates()
+{
+    remove_duplicates_helper(this, vals);
+}
+void CSCMatrix::remove_duplicates()
+{
+    remove_duplicates_helper(this, vals);
+}
+void BSCMatrix::remove_duplicates()
+{
+    remove_duplicates_helper(this, vals);
 }
 
 /**************************************************************
@@ -1110,39 +1151,48 @@ COOMatrix* BCOOMatrix::to_COO()
 CSRMatrix* COOMatrix::to_CSR()
 {
     CSRMatrix* A = new CSRMatrix();
-    A->copy_helper(this);
+    COO_to_CSR(this, A, vals, A->vals);
     return A;
 }
 CSRMatrix* BCOOMatrix::to_CSR()
 {
     BSRMatrix* A = new BSRMatrix();
-    A->copy_helper(this);
+    A->b_rows = b_rows;
+    A->b_cols = b_cols;
+    A->b_size = b_size;
+    COO_to_CSR(this, A, vals, A->vals);
     return A;
 }
 
 CSCMatrix* COOMatrix::to_CSC()
 {
     CSCMatrix* A = new CSCMatrix();
-    A->copy_helper(this);
+    COO_to_CSC(this, A, vals, A->vals);
     return A;
 }
 CSCMatrix* BCOOMatrix::to_CSC()
 {
     BSCMatrix* A = new BSCMatrix();
-    A->copy_helper(this);
+    A->b_rows = b_rows;
+    A->b_cols = b_cols;
+    A->b_size = b_size;
+    COO_to_CSC(this, A, vals, A->vals);
     return A;
 }
 
 COOMatrix* CSRMatrix::to_COO()
 {
     COOMatrix* A = new COOMatrix();
-    A->copy_helper(this);
+    CSR_to_COO(this, A, vals, A->vals);
     return A;
 }
 COOMatrix* BSRMatrix::to_COO()
 {
     BCOOMatrix* A = new BCOOMatrix();
-    A->copy_helper(this);
+    A->b_rows = b_rows;
+    A->b_cols = b_cols;
+    A->b_size = b_size;
+    CSR_to_COO(this, A, vals, A->vals);
     return A;
 }
 
@@ -1158,39 +1208,48 @@ CSRMatrix* BSRMatrix::to_CSR()
 CSCMatrix* CSRMatrix::to_CSC()
 {
     CSCMatrix* A = new CSCMatrix();
-    A->copy_helper(this);
+    CSR_to_CSC(this, A, vals, A->vals);
     return A;
 }
 CSCMatrix* BSRMatrix::to_CSC()
 {
     BSCMatrix* A = new BSCMatrix();
-    A->copy_helper(this);
+    A->b_rows = b_rows;
+    A->b_cols = b_cols;
+    A->b_size = b_size;
+    CSR_to_CSC(this, A, vals, A->vals);
     return A;
 }
 
 COOMatrix* CSCMatrix::to_COO()
 {
     COOMatrix* A = new COOMatrix();
-    A->copy_helper(this);
+    CSC_to_COO(this, A, vals, A->vals);
     return A;
 }
 COOMatrix* BSCMatrix::to_COO()
 {
     BCOOMatrix* A = new BCOOMatrix();
-    A->copy_helper(this);
+    A->b_rows = b_rows;
+    A->b_cols = b_cols;
+    A->b_size = b_size;
+    CSC_to_COO(this, A, vals, A->vals);
     return A;
 }
 
 CSRMatrix* CSCMatrix::to_CSR()
 {
     CSRMatrix* A = new CSRMatrix();
-    A->copy_helper(this);
+    CSC_to_CSR(this, A, vals, A->vals);
     return A;
 }
 CSRMatrix* BSCMatrix::to_CSR()
 {
     BSRMatrix* A = new BSRMatrix();
-    A->copy_helper(this);
+    A->b_rows = b_rows;
+    A->b_cols = b_cols;
+    A->b_size = b_size;
+    CSC_to_CSR(this, A, vals, A->vals);
     return A;
 }
 CSCMatrix* CSCMatrix::to_CSC()
@@ -1200,6 +1259,52 @@ CSCMatrix* CSCMatrix::to_CSC()
 CSCMatrix* BSCMatrix::to_CSC()
 {
     return this;
+}
+
+COOMatrix* COOMatrix::copy()
+{
+    COOMatrix* A = new COOMatrix();
+    COO_to_COO(this, A, vals, A->vals);
+    return A;
+}
+BCOOMatrix* BCOOMatrix::copy()
+{
+    BCOOMatrix* A = new BCOOMatrix();
+    A->b_rows = b_rows;
+    A->b_cols = b_cols;
+    A->b_size = b_size;
+    COO_to_COO(this, A, vals, A->vals);
+    return A;
+}
+CSRMatrix* CSRMatrix::copy()
+{
+    CSRMatrix* A = new CSRMatrix();
+    CSR_to_CSR(this, A, vals, A->vals);
+    return A;
+}
+BSRMatrix* BSRMatrix::copy()
+{
+    BSRMatrix* A = new BSRMatrix();
+    A->b_rows = b_rows;
+    A->b_cols = b_cols;
+    A->b_size = b_size;
+    CSR_to_CSR(this, A, vals, A->vals);
+    return A;
+}
+CSCMatrix* CSCMatrix::copy()
+{
+    CSCMatrix* A = new CSCMatrix();
+    CSC_to_CSC(this, A, vals, A->vals);
+    return A;
+}
+BSCMatrix* BSCMatrix::copy()
+{
+    BSCMatrix* A = new BSCMatrix();
+    A->b_rows = b_rows;
+    A->b_cols = b_cols;
+    A->b_size = b_size;
+    CSC_to_CSC(this, A, vals, A->vals);
+    return A;
 }
 
 

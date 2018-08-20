@@ -77,6 +77,9 @@ namespace raptor
         nnz = 0;
         sorted = false;
         diag_first = false;
+        b_rows = 1;
+        b_cols = 1;
+        b_size = 1;
     }
 
     /**************************************************************
@@ -96,6 +99,9 @@ namespace raptor
         nnz = 0;
         sorted = false;
         diag_first = false;
+        b_rows = 1;
+        b_cols = 1;
+        b_size = 1;
     }
 
     virtual ~Matrix(){}
@@ -129,31 +135,35 @@ namespace raptor
     virtual COOMatrix* to_COO() = 0;
     virtual Matrix* copy() = 0;
 
-    virtual void spmv_append(const aligned_vector<double>& x, aligned_vector<double>& b) = 0;
-    virtual void spmv_append_T(const aligned_vector<double>& x, aligned_vector<double>& b) = 0;
-    virtual void spmv_append_neg(const aligned_vector<double>& x, aligned_vector<double>& b) = 0;
-    virtual void spmv_append_neg_T(const aligned_vector<double>& x, aligned_vector<double>& b) = 0;
+    virtual void spmv_append(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const = 0;
+    virtual void spmv_append_T(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const = 0;
+    virtual void spmv_append_neg(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const = 0;
+    virtual void spmv_append_neg_T(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const = 0;
 
-    virtual CSRMatrix* spgemm(const CSRMatrix* B) = 0;
-    virtual CSRMatrix* spgemm_T(const CSCMatrix* A) = 0;
+    virtual CSRMatrix* spgemm(CSRMatrix* B) = 0;
+    virtual CSRMatrix* spgemm_T(CSCMatrix* A) = 0;
     virtual Matrix* transpose() = 0;
 
-    aligned_vector<double>& get_values(Vector& x)
+    aligned_vector<double>& get_values(Vector& x) const
     {
         return x.values;
     }
-    template<typename T> aligned_vector<T>& get_values(aligned_vector<T>& x)
+    template<typename T> aligned_vector<T>& get_values(aligned_vector<T>& x) const
     {
         return x;
     }
     
     // Method for printing the value at one position
     // (either single or block value)
-    void val_print(int row, int col, double val)
+    void val_print(int row, int col, double val) const
     {
         printf("A[%d][%d] = %e\n", row, col, val);
     }
-    void val_print(int row, int col, double* val)
+    void val_print(int row, int col, double* val) const
     {
         for (int i = 0; i < b_rows; i++)
         {
@@ -180,11 +190,11 @@ namespace raptor
 
     // Method for finding the absolute value of 
     // either a single or block value
-    double abs_val(double val)
+    double abs_val(double val) const
     {
         return fabs(val);
     }
-    double abs_val(double* val)
+    double abs_val(double* val) const
     {
         double sum = 0;
         for (int i = 0; i < b_size; i++)
@@ -196,121 +206,157 @@ namespace raptor
 
     // Methods for appending two values
     // (either single or block values)
-    void append_vals(double* val, double addl_val)
+    void append_vals(double* val, double* addl_val) const
     {
-        *val += addl_val;
+        *val += *addl_val;
     }
-    void append_vals(double** val, double* addl_val)
+    void append_vals(double** val, double** addl_val) const
     {
         for (int i = 0; i < b_size; i++)
         {
-            *val[i] += addl_val[i];
+            *val[i] += *addl_val[i];
         }
+        delete[] *addl_val;
+    }
+    void mult_vals(double val, double addl_val, double* sum, 
+            int n_rows, int n_cols, int n_inner) const
+    {
+        *sum += (val * addl_val);
+    }
+    void mult_vals(double* val, double* addl_val, double** sum,
+            int n_rows, int n_cols, int n_inner) const
+    {
+        printf("multiplying vals\n");
+        //for (int i = 0; i < 4; i++) printf("Sum[%d] = %e\n", i, *sum[i]);
+        for (int i = 0; i < n_rows; i++) // Go through b_rows of A
+        { 
+            for (int j = 0; j < n_cols; j++) // Go through b_cols of B
+            {
+                double s = 0;
+                for (int k = 0; k < n_inner; k++) // Go through b_cols of A (== b_rows of B)
+                {
+                    s += val[i*n_inner + k] * addl_val[j*n_inner + k];
+                }
+                //*sum[i*n_cols + j] += s;
+                printf("Sum[%d] += %e\n", i*n_cols+j, s);
+            }
+            printf("i %d\n", i);
+        }
+        printf("Finished multiplying\n");
     }
 
 
-    void append(double* b, const double* x, const double val)
+    void append(int idx1, int idx2, double* b, const double* x, const double val) const
     {
-        *b += val*(*x);
+        b[idx1] += val*x[idx2];
     }
-    void append_T(double* b, const double* x, const double val)
+    void append_T(int idx1, int idx2, double* b, const double* x, const double val) const
     {
-        *b += val*(*x);
+        b[idx2] += val*x[idx1];
     }
-    void append_neg(double* b, const double* x, const double val)
+    void append_neg(int idx1, int idx2, double* b, const double* x, const double val) const
     {
-        *b -= val*(*x);
+        b[idx1] -= val*x[idx2];
     }
-    void append_neg_T(double* b, const double* x, const double val)
+    void append_neg_T(int idx1, int idx2, double* b, const double* x, const double val) const
     {
-        *b -= val*(*x);
+        b[idx2] -= val*x[idx1];
     }
-    void append(double* b, const double* x, const double* val)
+    void append(int idx1, int idx2, double* b, const double* x, const double* val) const
     {
+        int first_row = idx1*b_rows;
+        int first_col = idx2*b_cols;
         for (int row = 0; row < b_rows; row++)
         {
             for (int col = 0; col < b_cols; col++)
             {
-                b[row] += (val[row * b_cols + col] * x[col]);
+                b[first_row + row] += (val[row * b_cols + col] * x[first_col + col]);
             }
         }
     }
-    void append_T(double* b, const double* x, const double* val)
+    void append_T(int idx1, int idx2, double* b, const double* x, const double* val) const
     {
+        int first_row = idx1*b_rows;
+        int first_col = idx2*b_cols;
         for (int row = 0; row < b_rows; row++)
         {
             for (int col = 0; col < b_cols; col++)
             {
-                b[col] += (val[row * b_cols + col] * x[row]);
+                b[first_col + col] += (val[row * b_cols + col] * x[first_row + row]);
             }
         }
     }
-    void append_neg(double* b, const double* x, const double* val)
+    void append_neg(int idx1, int idx2, double* b, const double* x, const double* val) const
     {
+        int first_row = idx1*b_rows;
+        int first_col = idx2*b_cols;
         for (int row = 0; row < b_rows; row++)
         {
             for (int col = 0; col < b_cols; col++)
             {
-                b[row] -= (val[row * b_cols + col] * x[col]);
+                b[first_row + row] -= (val[row * b_cols + col] * x[first_col + col]);
             }
         }
     }
-    void append_neg_T(double* b, const double* x, const double* val)
+    void append_neg_T(int idx1, int idx2, double* b, const double* x, const double* val) const
     {
+        int first_row = idx1*b_rows;
+        int first_col = idx1*b_cols;
         for (int row = 0; row < b_rows; row++)
         {
             for (int col = 0; col < b_cols; col++)
             {
-                b[col] -= (val[row * b_cols + col] * x[row]);
+                b[first_col + col] -= (val[row * b_cols + col] * x[first_row + row]);
             }
         }
     }
 
-    template <typename T, typename U> void mult(T& x, U& b)
+    template <typename T, typename U> void mult(T& x, U& b) const
     {
-        for (int i = 0; i < n_rows; i++)
+        int rows = n_rows * b_rows;
+        for (int i = 0; i < rows; i++)
             b[i] = 0.0;
         spmv_append(get_values(x), get_values(b));
     }
-    template <typename T, typename U> void mult_T(T& x, U& b)
+    template <typename T, typename U> void mult_T(T& x, U& b) const
     {
-        for (int i = 0; i < n_cols; i++)
+        int cols = n_cols * b_cols;
+        for (int i = 0; i < cols; i++)
             b[i] = 0.0;
         spmv_append_T(get_values(x), get_values(b));
     }
-    template <typename T, typename U> void mult_append(T& x, U& b)
+    template <typename T, typename U> void mult_append(T& x, U& b) const
     {
         spmv_append(get_values(x), get_values(b));
     }
-    template <typename T, typename U> void mult_append_T(T& x, U& b)
+    template <typename T, typename U> void mult_append_T(T& x, U& b) const
     {
         spmv_append_T(get_values(x), get_values(b));
     }
-    template <typename T, typename U> void mult_append_neg(T& x, U& b)
+    template <typename T, typename U> void mult_append_neg(T& x, U& b) const
     {
         spmv_append_neg(get_values(x), get_values(b));
     }
-    template <typename T, typename U> void mult_append_neg_T(T& x, U& b)
+    template <typename T, typename U> void mult_append_neg_T(T& x, U& b) const
     {
         spmv_append_neg_T(get_values(x), get_values(b));
     }
-    template <typename T, typename U, typename V> void residual(T& x, U& b, V& r)
+    template <typename T, typename U, typename V> void residual(T& x, U& b, V& r) const
     {
         for (int i = 0; i < n_rows; i++)
             r[i] = b[i];
         spmv_append_neg(get_values(x), get_values(r));
     }
 
-    CSRMatrix* mult(const CSRMatrix* B)
-    {
-        return spgemm(B);
-    }
-    CSRMatrix* mult_T(const CSCMatrix* A)
-    {
-        return spgemm_T(A);
-    }
+    CSRMatrix* mult(CSRMatrix* B);
+    CSRMatrix* mult(CSCMatrix* B);
+    CSRMatrix* mult(COOMatrix* B);
+    CSRMatrix* mult_T(CSCMatrix* A);
+    CSRMatrix* mult_T(CSRMatrix* A);
+    CSRMatrix* mult_T(COOMatrix* A);
 
     virtual void add_value(int row, int col, double value) = 0;
+    virtual void add_value(int row, int col, double* value) = 0;
 
     Matrix* add(CSRMatrix* A);
     Matrix* subtract(CSRMatrix* A);
@@ -319,6 +365,8 @@ namespace raptor
 
     virtual void resize_data(int size) = 0;
     virtual void* get_data() = 0;
+    virtual int data_size() const = 0;
+    virtual void reserve_size(int size) = 0;
 
     aligned_vector<int> idx1;
     aligned_vector<int> idx2;
@@ -445,44 +493,42 @@ namespace raptor
     COOMatrix* transpose();
 
     void print();
-    void copy_helper(const COOMatrix* A);
-    void copy_helper(const CSRMatrix* A);
-    void copy_helper(const CSCMatrix* A);
 
     void sort();
     void move_diag();
     void remove_duplicates();
 
-    void spmv_append(const aligned_vector<double>& x, aligned_vector<double>& b);
-    void spmv_append_T(const aligned_vector<double>& x, aligned_vector<double>& b);
-    void spmv_append_neg(const aligned_vector<double>& x, aligned_vector<double>& b);
-    void spmv_append_neg_T(const aligned_vector<double>& x, aligned_vector<double>& b);
+    void spmv_append(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
+    void spmv_append_T(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
+    void spmv_append_neg(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
+    void spmv_append_neg_T(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
 
-    CSRMatrix* spgemm(const CSRMatrix* B)
-    {
-        return NULL;
-    }
-    CSRMatrix* spgemm_T(const CSCMatrix* A)
-    {
-        return NULL;
-    }
+    CSRMatrix* spgemm(CSRMatrix* B);
+    CSRMatrix* spgemm_T(CSCMatrix* A);
 
     COOMatrix* to_COO();
     CSRMatrix* to_CSR();
     CSCMatrix* to_CSC();
 
-    COOMatrix* copy()
-    {
-        COOMatrix* A = new COOMatrix();
-        A->copy_helper(this);
-        return A;
-    }
+    COOMatrix* copy();
     
     void add_value(int row, int col, double value)
     {
         idx1.push_back(row);
         idx2.push_back(col);
         vals.push_back(value);
+        nnz++;
+    }
+
+    void add_value(int row, int col, double* value)
+    {
+        idx1.push_back(row);
+        idx2.push_back(col);
+        vals.push_back(*value);
         nnz++;
     }
 
@@ -495,13 +541,22 @@ namespace raptor
     {
        return vals.data();
     } 
+    int data_size() const
+    {
+        return vals.size();
+    }
 
     void resize_data(int size)
     {
         vals.resize(size);
     }
 
-
+    void reserve_size(int size)
+    {
+        idx1.reserve(size);
+        idx2.reserve(size);
+        vals.reserve(size);
+    }
 
 };
 
@@ -614,21 +669,21 @@ namespace raptor
 
     void print();
 
-    void copy_helper(const COOMatrix* A);
-    void copy_helper(const CSRMatrix* A);
-    void copy_helper(const CSCMatrix* A);
-
     void sort();
     void move_diag();
     void remove_duplicates();
 
-    void spmv_append(const aligned_vector<double>& x, aligned_vector<double>& b);
-    void spmv_append_T(const aligned_vector<double>& x, aligned_vector<double>& b);
-    void spmv_append_neg(const aligned_vector<double>& x, aligned_vector<double>& b);
-    void spmv_append_neg_T(const aligned_vector<double>& x, aligned_vector<double>& b);
+    void spmv_append(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
+    void spmv_append_T(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
+    void spmv_append_neg(const aligned_vector<double>& x,
+            aligned_vector<double>& b) const;
+    void spmv_append_neg_T(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
 
-    CSRMatrix* spgemm(const CSRMatrix* B);
-    CSRMatrix* spgemm_T(const CSCMatrix* A);
+    CSRMatrix* spgemm(CSRMatrix* B);
+    CSRMatrix* spgemm_T(CSCMatrix* A);
 
     CSRMatrix* add(CSRMatrix* A);
     CSRMatrix* subtract(CSRMatrix* A);
@@ -642,12 +697,7 @@ namespace raptor
     COOMatrix* to_COO();
     CSRMatrix* to_CSR();
     CSCMatrix* to_CSC();
-    CSRMatrix* copy()
-    {
-        CSRMatrix* A = new CSRMatrix();
-        A->copy_helper(this);
-        return A;
-    }
+    CSRMatrix* copy();
 
     format_t format()
     {
@@ -660,14 +710,29 @@ namespace raptor
         vals.push_back(value);
         nnz++;
     }
+    void add_value(int row, int col, double* value)
+    {
+        idx2.push_back(col);
+        vals.push_back(*value);
+        nnz++;
+    }
 
     void* get_data()
     {
        return vals.data();
     } 
+    int data_size() const
+    {
+        return vals.size();
+    }
     void resize_data(int size)
     {
         vals.resize(size);
+    }
+    void reserve_size(int size)
+    {
+        idx2.reserve(size);
+        vals.reserve(size);
     }
 
 };
@@ -767,40 +832,29 @@ namespace raptor
     CSCMatrix* transpose();
     void print();
 
-    void copy_helper(const COOMatrix* A);
-    void copy_helper(const CSRMatrix* A);
-    void copy_helper(const CSCMatrix* A);
-
     void sort();
     void move_diag();
     void remove_duplicates();
 
-    void spmv_append(const aligned_vector<double>& x, aligned_vector<double>& b);
-    void spmv_append_T(const aligned_vector<double>& x, aligned_vector<double>& b);
-    void spmv_append_neg(const aligned_vector<double>& x, aligned_vector<double>& b);
-    void spmv_append_neg_T(const aligned_vector<double>& x, aligned_vector<double>& b);
+    void spmv_append(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
+    void spmv_append_T(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
+    void spmv_append_neg(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
+    void spmv_append_neg_T(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
 
 
-    CSRMatrix* spgemm(const CSRMatrix* B)
-    {
-        return NULL;
-    }
-    CSRMatrix* spgemm_T(const CSCMatrix* A)
-    {
-        return NULL;
-    }
+    CSRMatrix* spgemm(CSRMatrix* B);
+    CSRMatrix* spgemm_T(CSCMatrix* A);
 
     void jacobi(Vector& x, Vector& b, Vector& tmp, double omega = .667);    
 
     COOMatrix* to_COO();
     CSRMatrix* to_CSR();
     CSCMatrix* to_CSC();
-    CSCMatrix* copy()
-    {
-        CSCMatrix* A = new CSCMatrix();
-        A->copy_helper(this);
-        return A;
-    }
+    CSCMatrix* copy();
 
     format_t format()
     {
@@ -813,15 +867,31 @@ namespace raptor
         vals.push_back(value);
         nnz++;
     }
+    void add_value(int row, int col, double* value)
+    {
+        idx2.push_back(row);
+        vals.push_back(*value);
+        nnz++;
+    }
 
     void* get_data()
     {
        return vals.data();
     } 
+    int data_size() const
+    {
+        return vals.size();
+    }
     void resize_data(int size)
     {
         vals.resize(size);
     }
+    void reserve_size(int size)
+    {
+        idx2.reserve(size);
+        vals.reserve(size);
+    }
+
 
   };
 
@@ -833,103 +903,6 @@ namespace raptor
 class BCOOMatrix;
 class BSRMatrix;
 class BSCMatrix;
-
-class BCOOMatrix : public COOMatrix
-{
-  public:
-    BCOOMatrix(int num_block_rows, int num_block_cols, int block_row_size, 
-            int block_col_size, int nnz_per_block_row = 1) 
-        : COOMatrix(num_block_rows, num_block_cols, 0)
-    {
-        b_rows = block_row_size;
-        b_cols = block_col_size;
-        b_size = b_rows * b_cols;
-    }
-
-    BCOOMatrix(int num_block_rows, int num_block_cols,
-            int block_row_size, int block_col_size, double** values) 
-        : COOMatrix(num_block_rows, num_block_cols, 0)
-    {
-        b_rows = block_row_size;
-        b_cols = block_col_size;
-        b_size = b_rows * b_cols;
-        
-        init_from_dense(values); 
-    }
-
-    BCOOMatrix(int num_block_rows, int num_block_cols,
-            int block_row_size, int block_col_size,
-            aligned_vector<int>& rows, aligned_vector<int>& cols, 
-            aligned_vector<double*>& data)
-       : COOMatrix(num_block_rows, num_block_cols, 0) 
-    {
-        b_rows = block_row_size;
-        b_cols = block_col_size;
-        b_size = b_rows * b_cols;
-
-        init_from_lists(rows, cols, data);
-    }
-
-    BCOOMatrix() : COOMatrix()
-    {
-        b_rows = 1;
-        b_cols = 1;
-        b_size = 1;
-    }
-
-    ~BCOOMatrix()
-    {
-        for (int i = 0; i < nnz; i++)
-        {
-            double* val_ptr = vals[i];
-            delete[] val_ptr;
-        }
-    }
-
-    BCOOMatrix* transpose();
-
-    BCOOMatrix* copy()
-    {
-        BCOOMatrix* A = new BCOOMatrix();
-        A->copy_helper(this);
-        return A;
-    }
-    COOMatrix* to_COO();
-    CSRMatrix* to_CSR();
-    CSCMatrix* to_CSC();
-
-    void copy_helper(const BCOOMatrix* A);
-    void copy_helper(const BSRMatrix* A);
-    void copy_helper(const BSCMatrix* A);
-
-    void add_value(int row, int col, double* values)
-    {
-        idx1.push_back(row);
-        idx2.push_back(col);
-        vals.push_back(copy_val(values));
-        nnz++;
-    }
-
-    format_t format()
-    {
-        return BCOO;
-    }
-
-    void* get_data()
-    {
-       return vals.data();
-    } 
-    void resize_data(int size)
-    {
-        vals.resize(size);
-    }
-
-    int b_rows;
-    int b_cols;
-    int b_size;
-
-    aligned_vector<double*> vals;
-};
 
 class BSRMatrix : public CSRMatrix
 {
@@ -977,29 +950,34 @@ class BSRMatrix : public CSRMatrix
 
     ~BSRMatrix()
     {
-        for (int i = 0; i < nnz; i++)
-        {
-            double* val_ptr = vals[i];
-            delete[] val_ptr;
-        }
+        for (aligned_vector<double*>::iterator it = vals.begin();
+                it != vals.end(); ++it)
+            delete[] *it;
     }
 
     BSRMatrix* transpose();
+    void sort();
+    void remove_duplicates();
+    void move_diag();
 
     COOMatrix* to_COO();
     CSRMatrix* to_CSR();
     CSCMatrix* to_CSC();
 
-    BSRMatrix* copy()
-    {
-        BSRMatrix* A = new BSRMatrix();
-        A->copy_helper(this);
-        return A;
-    }
+    void print();
+    BSRMatrix* copy();
 
-    void copy_helper(const BCOOMatrix* A);
-    void copy_helper(const BSRMatrix* A);
-    void copy_helper(const BSCMatrix* A);
+    BSRMatrix* spgemm(CSRMatrix* B);
+    BSRMatrix* spgemm_T(CSCMatrix* A);
+
+    void spmv_append(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
+    void spmv_append_T(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
+    void spmv_append_neg(const aligned_vector<double>& x,
+            aligned_vector<double>& b) const;
+    void spmv_append_neg_T(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
 
     format_t format()
     {
@@ -1013,19 +991,130 @@ class BSRMatrix : public CSRMatrix
         nnz++;
     }
 
-    int b_rows;
-    int b_cols;
-    int b_size;
+    void* get_data()
+    {
+       return vals.data();
+    } 
+    int data_size() const
+    {
+        return vals.size();
+    }
+    void resize_data(int size)
+    {
+        vals.resize(size);
+    }
+    void reserve_size(int size)
+    {
+        idx2.reserve(size);
+        vals.reserve(size);
+    }
+    aligned_vector<double*> vals;
+};
+
+class BCOOMatrix : public COOMatrix
+{
+  public:
+    BCOOMatrix(int num_block_rows, int num_block_cols, int block_row_size, 
+            int block_col_size, int nnz_per_block_row = 1) 
+        : COOMatrix(num_block_rows, num_block_cols, 0)
+    {
+        b_rows = block_row_size;
+        b_cols = block_col_size;
+        b_size = b_rows * b_cols;
+    }
+
+    BCOOMatrix(int num_block_rows, int num_block_cols,
+            int block_row_size, int block_col_size, double** values) 
+        : COOMatrix(num_block_rows, num_block_cols, 0)
+    {
+        b_rows = block_row_size;
+        b_cols = block_col_size;
+        b_size = b_rows * b_cols;
+        
+        init_from_dense(values); 
+    }
+
+    BCOOMatrix(int num_block_rows, int num_block_cols,
+            int block_row_size, int block_col_size,
+            aligned_vector<int>& rows, aligned_vector<int>& cols, 
+            aligned_vector<double*>& data)
+       : COOMatrix(num_block_rows, num_block_cols, 0) 
+    {
+        b_rows = block_row_size;
+        b_cols = block_col_size;
+        b_size = b_rows * b_cols;
+
+        init_from_lists(rows, cols, data);
+    }
+
+    BCOOMatrix() : COOMatrix()
+    {
+        b_rows = 1;
+        b_cols = 1;
+        b_size = 1;
+    }
+
+    ~BCOOMatrix()
+    {
+        for (aligned_vector<double*>::iterator it = vals.begin();
+                it != vals.end(); ++it)
+            delete[] *it;
+    }
+
+    BCOOMatrix* transpose();
+    void sort();
+    void remove_duplicates();
+    void move_diag();
+
+    void print();
+    BCOOMatrix* copy();
+    COOMatrix* to_COO();
+    CSRMatrix* to_CSR();
+    CSCMatrix* to_CSC();
+
+    BSRMatrix* spgemm(CSRMatrix* B);
+    BSRMatrix* spgemm_T(CSCMatrix* A);
+
+    void spmv_append(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
+    void spmv_append_T(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
+    void spmv_append_neg(const aligned_vector<double>& x,
+            aligned_vector<double>& b) const;
+    void spmv_append_neg_T(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
+
+    void add_value(int row, int col, double* values)
+    {
+        idx1.push_back(row);
+        idx2.push_back(col);
+        vals.push_back(copy_val(values));
+        nnz++;
+    }
+
+    format_t format()
+    {
+        return BCOO;
+    }
 
     void* get_data()
     {
        return vals.data();
     } 
+    int data_size() const
+    {
+        return vals.size();
+    }
     void resize_data(int size)
     {
         vals.resize(size);
     }
-
+    void reserve_size(int size)
+    {
+        idx1.reserve(size);
+        idx2.reserve(size);
+        vals.reserve(size);
+    }
     aligned_vector<double*> vals;
 };
 
@@ -1076,38 +1165,39 @@ class BSCMatrix : public CSCMatrix
 
     ~BSCMatrix()
     {
-        for (int i = 0; i < nnz; i++)
-        {
-            double* val_ptr = vals[i];
-            delete[] val_ptr;
-        }
+        for (aligned_vector<double*>::iterator it = vals.begin();
+                it != vals.end(); ++it)
+            delete[] *it;
     }
 
     BSCMatrix* transpose();
+    void sort();
+    void remove_duplicates();
+    void move_diag();
 
     COOMatrix* to_COO();
     CSRMatrix* to_CSR();
     CSCMatrix* to_CSC();
 
-    BSCMatrix* copy()
-    {
-        BSCMatrix* A = new BSCMatrix();
-        A->copy_helper(this);
-        return A;
-    }
+    void print();
+    BSCMatrix* copy();
 
-    void copy_helper(const BCOOMatrix* A);
-    void copy_helper(const BSRMatrix* A);
-    void copy_helper(const BSCMatrix* A);
+    BSRMatrix* spgemm(CSRMatrix* B);
+    BSRMatrix* spgemm_T(CSCMatrix* A);
+
+    void spmv_append(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
+    void spmv_append_T(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
+    void spmv_append_neg(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
+    void spmv_append_neg_T(const aligned_vector<double>& x, 
+            aligned_vector<double>& b) const;
 
     format_t format()
     {
         return BSC;
     }
-
-    int b_rows;
-    int b_cols;
-    int b_size;
 
     void add_value(int row, int col, double* value)
     {
@@ -1124,7 +1214,15 @@ class BSCMatrix : public CSCMatrix
     {
         vals.resize(size);
     }
-
+    int data_size() const
+    {
+        return vals.size();
+    }
+    void reserve_size(int size)
+    {
+        idx2.reserve(size);
+        vals.reserve(size);
+    }
     aligned_vector<double*> vals;
 };
 

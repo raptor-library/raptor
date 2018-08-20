@@ -17,14 +17,7 @@ int main(int argc, char** argv)
 
 TEST(BSRMatrixTest, TestsInCore)
 {
-/*    aligned_vector<int> row_ptr = {0,2,3,5};
-    aligned_vector<int> cols = {0,1,1,1,2};
-    aligned_vector<double> vals = {1.0, 0.0, 2.0, 1.0, 6.0, 7.0, 8.0, 2.0, 1.0, 4.0, 5.0, 1.0,
-                                4.0, 3.0, 0.0, 0.0, 7.0, 2.0, 0.0, 0.0};
-
-    aligned_vector<double[4]> blocks = {{1.0, 0.0, 2.0, 1.0}, {6.0, 7.0, 8.0, 2.0},
-	    		{1.0, 4.0, 5.0, 1.0}, {4.0, 3.0, 0.0, 0.0}, {7.0, 2.0, 0.0, 0.0}};
-
+/*    
     aligned_vector<aligned_vector<int>> indx = {{0,0}, {0,1}, {1,1}, {2,1}, {2,2}};
 
     int rows_in_block = 2;
