@@ -1,8 +1,5 @@
 #include "core/matrix.hpp"
 
-// Currently assuming both matrices have blocks of same dimensions
-// Which means only square blocks will work for this
-
 using namespace raptor;
 aligned_vector<double>& form_new(const CSRMatrix* A, const CSRMatrix* B, 
         CSRMatrix** C_ptr, aligned_vector<double>& A_vals)
@@ -14,7 +11,6 @@ aligned_vector<double>& form_new(const CSRMatrix* A, const CSRMatrix* B,
 aligned_vector<double*>& form_new(const CSRMatrix* A, const CSRMatrix* B, 
         CSRMatrix** C_ptr, aligned_vector<double*>& A_vals)
 {
-    printf("Creating new BSRMatrix\n");
     BSRMatrix* C = new BSRMatrix(A->n_rows, B->n_cols, 
             A->b_rows, B->b_cols);
     *C_ptr = C;
@@ -42,14 +38,12 @@ void init_sums(aligned_vector<double>& sums, int size, int b_size)
 }
 void init_sums(aligned_vector<double*>& sums, int size, int b_size)
 {
-    printf("Size %d, Bsize %d\n", size, b_size);
-    printf("Sums.size() %d\n", sums.size());
-    //for (int i = 0; i < size; i++)
-    //{
-    //    sums.push_back(new double[b_size]);
-    //    for (int j = 0; j < b_size; j++)
-    //        sums[i][j] = 0.0;
-    //}
+    for (int i = 0; i < size; i++)
+    {
+        sums.push_back(new double[b_size]);
+        for (int j = 0; j < b_size; j++)
+            sums[i][j] = 0.0;
+    }
 }
 
 void zero_sum(double* sum, int b_size)
@@ -58,8 +52,9 @@ void zero_sum(double* sum, int b_size)
 }
 void zero_sum(double** sum, int b_size)
 {
+    (*sum) = new double[b_size];
     for (int i = 0; i < b_size; i++)
-        *sum[i] = 0;
+        (*sum)[i] = 0;
 }
 
 void finalize_sums(aligned_vector<double>& sums)
@@ -85,7 +80,6 @@ CSRMatrix* spgemm_helper(const CSRMatrix* A, const CSRMatrix* B,
     aligned_vector<T>& C_vals = form_new(A, B, &C, A_vals);
     C->reserve_size(1.5*A->nnz);
 
-    printf("multiplying...\n");
     C->idx1[0] = 0;
     for (int i = 0; i < A->n_rows; i++)
     {
@@ -102,7 +96,6 @@ CSRMatrix* spgemm_helper(const CSRMatrix* A, const CSRMatrix* B,
             for (int k = row_start_B; k < row_end_B; k++)
             {
                 int col_B = B->idx2[k];
-                printf("A->bsize %d, B %d\n", A->b_size, B->b_size);
                 A->mult_vals(val_A, B_vals[k], &sums[col_B],
                         A->b_rows, B->b_cols, A->b_cols);
                 if (next[col_B] == -1)
@@ -115,6 +108,7 @@ CSRMatrix* spgemm_helper(const CSRMatrix* A, const CSRMatrix* B,
         }
         for (int j = 0; j < length; j++)
         {
+            double val = A->abs_val(sums[head]);
             if (A->abs_val(sums[head]) > zero_tol)
             {
                 C->idx2.push_back(head);
@@ -162,8 +156,8 @@ CSRMatrix* spgemm_T_helper(const CSCMatrix* A, const CSRMatrix* B,
             for (int k = row_start; k < row_end; k++)
             {
                 int col = B->idx2[k];
-                A->mult_vals(val_AT, B_vals[k], &sums[col],
-                        A->b_rows, B->b_cols, A->b_cols);
+                A->mult_T_vals(val_AT, B_vals[k], &sums[col],
+                        A->b_cols, B->b_cols, A->b_rows);
                 if (next[col] == -1)
                 {
                     next[col] = head;

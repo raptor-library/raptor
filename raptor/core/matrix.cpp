@@ -17,7 +17,6 @@ void print_helper(const COOMatrix* A, const aligned_vector<T>& vals)
     int row, col;
     double val;
 
-    printf("A->nnz %d\n", A->nnz);
     for (int i = 0; i < A->nnz; i++)
     {
         row = A->idx1[i];
@@ -71,7 +70,6 @@ void CSCMatrix::print()
 }
 void BCOOMatrix::print()
 {
-    printf("Printing...\n");
     print_helper(this, vals);
 }
 void BSRMatrix::print()

@@ -7,6 +7,30 @@
 #include "core/vector.hpp"
 using namespace raptor;
 
+void compare_vals(CSRMatrix* A, BSRMatrix* B)
+{
+    A->sort();
+    B->sort();
+    int ctr = 0;
+    for (int i = 0; i < B->n_rows; i++)
+    {
+        for (int k = 0; k < B->b_rows; k++)
+        {
+            for (int j = B->idx1[i]; j < B->idx1[i+1]; j++)
+            {
+                int b_col = B->idx2[j];
+                double* val = B->vals[j];
+                for (int l = 0; l < B->b_cols; l++)
+                {
+                    if (fabs(val[k*B->b_cols + l]) > zero_tol)
+                        ASSERT_NEAR(val[k*B->b_cols + l], A->vals[ctr++], 1e-10);
+
+                }
+            }
+        }
+    }
+
+}
 
 int main(int argc, char** argv)
 {
@@ -137,11 +161,17 @@ TEST(BlockMatrixTest, TestsInCore)
         ASSERT_NEAR(b[i], tmp[i], 1e-10);
 
 
-//    CSRMatrix* C_csr = A_csr->mult((CSRMatrix*)A_csr);
-    printf("Multiplying BSR*BSR\n");
+    CSRMatrix* C_csr = A_csr->mult((CSRMatrix*)A_csr);
     CSRMatrix* C_bsr = A_bsr->mult((BSRMatrix*)A_bsr);
-//    double* csr_data = (double*) C_csr->get_data();
-//    double** bsr_data = (double**) C_bsr->get_data();
+    ASSERT_EQ(C_csr->n_rows, C_bsr->n_rows * C_bsr->b_rows);
+    ASSERT_EQ(C_csr->n_cols, C_bsr->n_cols * C_bsr->b_cols);
+    compare_vals(C_csr, (BSRMatrix*) C_bsr);
+
+    CSRMatrix* D_csr = A_csr->mult_T((CSCMatrix*)A_csc);
+    CSRMatrix* D_bsr = A_bsr->mult_T((BSCMatrix*)A_bsc);
+    ASSERT_EQ(D_csr->n_rows, D_bsr->n_rows * D_bsr->b_rows);
+    ASSERT_EQ(D_csr->n_cols, D_bsr->n_cols * D_bsr->b_cols);
+    compare_vals(D_csr, (BSRMatrix*) D_bsr);
 
     delete A_bsr;
     delete A_csr;
@@ -149,6 +179,9 @@ TEST(BlockMatrixTest, TestsInCore)
     delete A_csc;
     delete A_bcoo;
     delete A_coo;
+
+    delete C_csr;
+    delete C_bsr;
 
     for (aligned_vector<double*>::iterator it = block_vals.begin();
             it != block_vals.end(); ++it)

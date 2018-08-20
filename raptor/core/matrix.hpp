@@ -174,11 +174,11 @@ namespace raptor
         }
     }
 
-    double copy_val(double val)
+    double copy_val(double val) const
     {
         return val;
     }
-    double* copy_val(double* val)
+    double* copy_val(double* val) const
     {
         double* new_val = new double[b_size];
         for (int i = 0; i < b_size; i++)
@@ -226,8 +226,6 @@ namespace raptor
     void mult_vals(double* val, double* addl_val, double** sum,
             int n_rows, int n_cols, int n_inner) const
     {
-        printf("multiplying vals\n");
-        //for (int i = 0; i < 4; i++) printf("Sum[%d] = %e\n", i, *sum[i]);
         for (int i = 0; i < n_rows; i++) // Go through b_rows of A
         { 
             for (int j = 0; j < n_cols; j++) // Go through b_cols of B
@@ -235,14 +233,32 @@ namespace raptor
                 double s = 0;
                 for (int k = 0; k < n_inner; k++) // Go through b_cols of A (== b_rows of B)
                 {
-                    s += val[i*n_inner + k] * addl_val[j*n_inner + k];
+                    s += val[i*n_inner + k] * addl_val[k*n_inner + j];
                 }
-                //*sum[i*n_cols + j] += s;
-                printf("Sum[%d] += %e\n", i*n_cols+j, s);
+                (*sum)[i*n_cols + j] += s;
             }
-            printf("i %d\n", i);
         }
-        printf("Finished multiplying\n");
+    }
+    void mult_T_vals(double val, double addl_val, double* sum,
+            int n_rows, int n_cols, int n_inner) const
+    {
+        *sum += (val * addl_val);
+    }
+    void mult_T_vals(double* val, double* addl_val, double** sum,
+            int n_rows, int n_cols, int n_inner) const
+    {
+        for (int i = 0; i < n_rows; i++) // Go through b_rows of A
+        { 
+            for (int j = 0; j < n_cols; j++) // Go through b_cols of B
+            {
+                double s = 0;
+                for (int k = 0; k < n_inner; k++) // Go through b_cols of A (== b_rows of B)
+                {
+                    s += val[k*n_inner + i] * addl_val[k*n_inner + j];
+                }
+                (*sum)[i*n_cols + j] += s;
+            }
+        }
     }
 
 
