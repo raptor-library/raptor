@@ -18,177 +18,193 @@ namespace raptor
     }
 
     template<>
-    aligned_vector<double>& CommPkg::communicate<double>(const double* values)
+    aligned_vector<double>& CommPkg::communicate<double>(const double* values,
+            const int block_size)
     {
-        init_double_comm(values);
-        return complete_double_comm();
+        init_double_comm(values, block_size);
+        return complete_double_comm(block_size);
     }
     template<>
-    aligned_vector<int>& CommPkg::communicate<int>(const int* values)
+    aligned_vector<int>& CommPkg::communicate<int>(const int* values,
+            const int block_size)
     {
-        init_int_comm(values);
-        return complete_int_comm();
-    }
-
-    template<>
-    void CommPkg::init_comm<double>(const double* values)
-    {
-        init_double_comm(values);
-    }
-    template<>
-    void CommPkg::init_comm<int>(const int* values)
-    {
-        init_int_comm(values);
+        init_int_comm(values, block_size);
+        return complete_int_comm(block_size);
     }
 
     template<>
-    aligned_vector<double>& CommPkg::complete_comm<double>()
+    void CommPkg::init_comm<double>(const double* values,
+            const int block_size)
     {
-        return complete_double_comm();
+        init_double_comm(values, block_size);
     }
     template<>
-    aligned_vector<int>& CommPkg::complete_comm<int>()
+    void CommPkg::init_comm<int>(const int* values, const int block_size)
     {
-        return complete_int_comm();
+        init_int_comm(values, block_size);
+    }
+
+    template<>
+    aligned_vector<double>& CommPkg::complete_comm<double>(const int block_size)
+    {
+        return complete_double_comm(block_size);
+    }
+    template<>
+    aligned_vector<int>& CommPkg::complete_comm<int>(const int block_size)
+    {
+        return complete_int_comm(block_size);
     }
 
     template<>
     void CommPkg::communicate_T(const double* values,
             aligned_vector<double>& result, 
+            const int block_size,
             std::function<double(double, double)> result_func,
             std::function<double(double, double)> init_result_func,
             double init_result_func_val)
     {
-        init_double_comm_T(values, init_result_func, init_result_func_val);
-        complete_double_comm_T(result, result_func, init_result_func, init_result_func_val);
+        init_double_comm_T(values, block_size, init_result_func, init_result_func_val);
+        complete_double_comm_T(result, block_size, result_func, init_result_func, init_result_func_val);
     }
     template<>
     void CommPkg::communicate_T(const double* values,
             aligned_vector<int>& result, 
+            const int block_size,
             std::function<int(int, double)> result_func,
             std::function<double(double, double)> init_result_func,
             double init_result_func_val)
     {
-        init_double_comm_T(values, init_result_func, init_result_func_val);
-        complete_double_comm_T(result, result_func, init_result_func, init_result_func_val);
+        init_double_comm_T(values, block_size, init_result_func, init_result_func_val);
+        complete_double_comm_T(result, block_size, result_func, init_result_func, init_result_func_val);
     }
     template<>
     void CommPkg::communicate_T(const int* values,
             aligned_vector<int>& result, 
+            const int block_size,
             std::function<int(int, int)> result_func,
             std::function<int(int, int)> init_result_func,
             int init_result_func_val)
     {
-        init_int_comm_T(values, init_result_func, init_result_func_val);
-        complete_int_comm_T(result, result_func, init_result_func, init_result_func_val);
+        init_int_comm_T(values, block_size, init_result_func, init_result_func_val);
+        complete_int_comm_T(result, block_size, result_func, init_result_func, init_result_func_val);
     }
     template<>
     void CommPkg::communicate_T(const int* values,
             aligned_vector<double>& result, 
+            const int block_size,
             std::function<double(double, int)> result_func,
             std::function<int(int, int)> init_result_func, 
             int init_result_func_val)
     {
-        init_int_comm_T(values, init_result_func, init_result_func_val);
-        complete_int_comm_T(result, result_func, init_result_func, init_result_func_val);
+        init_int_comm_T(values, block_size, init_result_func, init_result_func_val);
+        complete_int_comm_T(result, block_size, result_func, init_result_func, init_result_func_val);
     }
     template<>
     void CommPkg::communicate_T<double>(const double* values,
+            const int block_size,
             std::function<double(double, double)> init_result_func,
             double init_result_func_val)
     {
-        init_double_comm_T(values, init_result_func, init_result_func_val);
-        complete_double_comm_T(init_result_func, init_result_func_val);
+        init_double_comm_T(values, block_size, init_result_func, init_result_func_val);
+        complete_double_comm_T(block_size, init_result_func, init_result_func_val);
     }
     template<>
     void CommPkg::communicate_T<int>(const int* values,
+            const int block_size,
             std::function<int(int, int)> init_result_func,
             int init_result_func_val)
     {
-        init_int_comm_T(values, init_result_func, init_result_func_val);
-        complete_int_comm_T(init_result_func, init_result_func_val);
+        init_int_comm_T(values, block_size, init_result_func, init_result_func_val);
+        complete_int_comm_T(block_size, init_result_func, init_result_func_val);
     }
 
     template<>
     void CommPkg::init_comm_T<double>(const double* values,
+            const int block_size,
             std::function<double(double, double)> init_result_func,
             double init_result_func_val)
     {
-        init_double_comm_T(values, init_result_func, init_result_func_val);
+        init_double_comm_T(values, block_size, init_result_func, init_result_func_val);
     }
     template<>
     void CommPkg::init_comm_T<int>(const int* values,
+            const int block_size,
             std::function<int(int, int)> init_result_func,
             int init_result_func_val)
     {
-        init_int_comm_T(values, init_result_func, init_result_func_val);
+        init_int_comm_T(values, block_size, init_result_func, init_result_func_val);
     }
 
     template<>
     void CommPkg::complete_comm_T<double, double>(aligned_vector<double>& result,
+            const int block_size,
             std::function<double(double, double)> result_func,
             std::function<double(double, double)> init_result_func,
             double init_result_func_val)
     {
-        complete_double_comm_T(result, result_func, init_result_func, init_result_func_val);
+        complete_double_comm_T(result, block_size, result_func, init_result_func, init_result_func_val);
     }
     template<>
     void CommPkg::complete_comm_T<double, int>(aligned_vector<int>& result,
+            const int block_size,
             std::function<int(int, double)> result_func,
             std::function<double(double, double)> init_result_func,
             double init_result_func_val)
     {
-        complete_double_comm_T(result, result_func, init_result_func, init_result_func_val);
+        complete_double_comm_T(result, block_size, result_func, init_result_func, init_result_func_val);
     }
     template<>
     void CommPkg::complete_comm_T<int, int>(aligned_vector<int>& result,
+            const int block_size,
             std::function<int(int, int)> result_func,
             std::function<int(int, int)> init_result_func,
             int init_result_func_val)
     {
-        complete_int_comm_T(result, result_func, init_result_func, init_result_func_val);
+        complete_int_comm_T(result, block_size, result_func, init_result_func, init_result_func_val);
     }
     template<>
     void CommPkg::complete_comm_T<int, double>(aligned_vector<double>& result,
+            const int block_size,
             std::function<double(double, int)> result_func,
             std::function<int(int, int)> init_result_func,
             int init_result_func_val)
     {
-        complete_int_comm_T(result, result_func, init_result_func, init_result_func_val);
+        complete_int_comm_T(result, block_size, result_func, init_result_func, init_result_func_val);
     }
     template<>
-    void CommPkg::complete_comm_T<double>(
+    void CommPkg::complete_comm_T<double>(const int block_size,
             std::function<double(double, double)> init_result_func,
             double init_result_func_val)
     {
-        complete_double_comm_T(init_result_func, init_result_func_val);
+        complete_double_comm_T(block_size, init_result_func, init_result_func_val);
     }
     template<>
-    void CommPkg::complete_comm_T<int>(std::function<int(int, int)> init_result_func,
+    void CommPkg::complete_comm_T<int>(const int block_size,
+            std::function<int(int, int)> init_result_func,
             int init_result_func_val)
     {
-        complete_int_comm_T(init_result_func, init_result_func_val);
+        complete_int_comm_T(block_size, init_result_func, init_result_func_val);
     }
 }
 
 
 using namespace raptor;
 
-aligned_vector<double>& CommPkg::communicate(ParVector& v)
+aligned_vector<double>& CommPkg::communicate(ParVector& v, const int block_size)
 {
-    init_double_comm(v.local.data());
-    return complete_double_comm();
+    init_double_comm(v.local.data(), block_size);
+    return complete_double_comm(block_size);
 }
 
-void CommPkg::init_comm(ParVector& v)
+void CommPkg::init_comm(ParVector& v, const int block_size)
 {
-    init_double_comm(v.local.data());
+    init_double_comm(v.local.data(), block_size);
 }
 
-CSRMatrix* CommPkg::communicate(ParCSRMatrix* A)
+CSRMatrix* CommPkg::communicate(ParCSRMatrix* A, const int block_size)
 {
     int start, end;
-    int ctr;
+    int ctr, idx;
     int global_col;
 
     int nnz = A->on_proc->nnz + A->off_proc->nnz;
@@ -198,7 +214,7 @@ CSRMatrix* CommPkg::communicate(ParCSRMatrix* A)
     if (nnz)
     {
         col_indices.resize(nnz);
-        values.resize(nnz);
+        values.resize(nnz * block_size);
     }
 
     ctr = 0;
@@ -210,8 +226,12 @@ CSRMatrix* CommPkg::communicate(ParCSRMatrix* A)
         for (int j = start; j < end; j++)
         {
             global_col = A->on_proc_column_map[A->on_proc->idx2[j]];
-            col_indices[ctr] = global_col;
-            values[ctr++] = A->on_proc->vals[j];
+            idx = ctr * block_size;
+            for (int k = 0; k < block_size; k++)
+            {
+                values[idx + k] = A->on_proc->get_val(j, k);
+            }
+            col_indices[ctr++] = global_col;
         }
 
         start = A->off_proc->idx1[i];
@@ -219,17 +239,25 @@ CSRMatrix* CommPkg::communicate(ParCSRMatrix* A)
         for (int j = start; j < end; j++)
         {
             global_col = A->off_proc_column_map[A->off_proc->idx2[j]];
-            col_indices[ctr] = global_col;
-            values[ctr++] = A->off_proc->vals[j];
+            idx = ctr * block_size;
+            for (int k = 0; k < block_size; k++)
+            {
+                values[idx + k] = A->off_proc->get_val(j, k);
+            }
+            col_indices[ctr++] = global_col;
         }
         rowptr[i+1] = ctr;
     }
     return communicate(rowptr, col_indices, values);
 }
 
+// TODO -- Cannot send with MPI_DOUBLE_INT for block_size > 1
+// 
+// USE MPI_BYTE!!
 CSRMatrix* communication_helper(const aligned_vector<int>& rowptr,
         const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
-        CommData* send_comm, CommData* recv_comm, int key, MPI_Comm mpi_comm)
+        CommData* send_comm, CommData* recv_comm, int key, MPI_Comm mpi_comm, 
+        const int block_size)
 {
     int start, end, proc;
     int ctr, prev_ctr, size;
@@ -400,9 +428,11 @@ CSRMatrix* communication_helper(const aligned_vector<int>& rowptr,
 }    
 
 
+// TODO - Cannot send with MPI_DOUBLE_INT if block_size > 1
+// But I could just send MPI_Byte, right?
 CSRMatrix* communication_helper(const aligned_vector<int>& rowptr,
         const aligned_vector<int>& col_indices, CommData* send_comm, 
-        CommData* recv_comm, int key, MPI_Comm mpi_comm)
+        CommData* recv_comm, int key, MPI_Comm mpi_comm, const int block_size)
 {
     int start, end, proc;
     int ctr, prev_ctr, size;
@@ -564,26 +594,27 @@ CSRMatrix* communication_helper(const aligned_vector<int>& rowptr,
 
 
 CSRMatrix* ParComm::communicate(const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices, const aligned_vector<double>& values)
+        const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
+        const int block_size)
 {
     CSRMatrix* recv_mat = communication_helper(rowptr, col_indices, values,
-            send_data, recv_data, key, mpi_comm);
+            send_data, recv_data, key, mpi_comm, block_size);
     key++;
     return recv_mat;
 }
 
 CSRMatrix* ParComm::communicate(const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices)
+        const aligned_vector<int>& col_indices, const int block_size)
 {
     CSRMatrix* recv_mat = communication_helper(rowptr, col_indices, send_data, 
-            recv_data, key, mpi_comm);
+            recv_data, key, mpi_comm, block_size);
     key++;
     return recv_mat;
 }
 
 CSRMatrix* ParComm::communicate_T(const aligned_vector<int>& rowptr, 
         const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
-        const int n_result_rows)
+        const int n_result_rows, const int block_size)
 {
     int idx, ptr;
     int start, end;
@@ -592,7 +623,7 @@ CSRMatrix* ParComm::communicate_T(const aligned_vector<int>& rowptr,
     if (n_result_rows) row_sizes.resize(n_result_rows, 0);
 
     CSRMatrix* recv_mat_T = communication_helper(rowptr, col_indices, values,
-            recv_data, send_data, key, mpi_comm);
+            recv_data, send_data, key, mpi_comm, block_size);
 
 
     CSRMatrix* recv_mat = new CSRMatrix(n_result_rows, -1);
@@ -636,7 +667,8 @@ CSRMatrix* ParComm::communicate_T(const aligned_vector<int>& rowptr,
 }
 
 CSRMatrix* ParComm::communicate_T(const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices, const int n_result_rows)
+        const aligned_vector<int>& col_indices, const int n_result_rows,
+        const int block_size)
 {
     int idx, ptr;
     int start, end;
@@ -645,7 +677,7 @@ CSRMatrix* ParComm::communicate_T(const aligned_vector<int>& rowptr,
     if (n_result_rows) row_sizes.resize(n_result_rows, 0);
 
     CSRMatrix* recv_mat_T = communication_helper(rowptr, col_indices, 
-            recv_data, send_data, key, mpi_comm);
+            recv_data, send_data, key, mpi_comm, block_size);
 
 
     CSRMatrix* recv_mat = new CSRMatrix(n_result_rows, -1);
@@ -689,7 +721,8 @@ CSRMatrix* ParComm::communicate_T(const aligned_vector<int>& rowptr,
 
     
 CSRMatrix* TAPComm::communicate(const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices, const aligned_vector<double>& values)
+        const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
+        const int block_size)
 {   
     int ctr, idx, row;
     int start, end;
@@ -779,7 +812,7 @@ CSRMatrix* TAPComm::communicate(const aligned_vector<int>& rowptr,
 
 CSRMatrix* TAPComm::communicate_T(const aligned_vector<int>& rowptr, 
         const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
-        const int n_result_rows)
+        const int n_result_rows, const int block_size)
 {   
     int n_rows = rowptr.size() - 1;
     int idx, ptr;
@@ -790,18 +823,18 @@ CSRMatrix* TAPComm::communicate_T(const aligned_vector<int>& rowptr,
     CSRMatrix* L_mat = communication_helper(rowptr, col_indices, 
             values, local_L_par_comm->recv_data, 
             local_L_par_comm->send_data, local_L_par_comm->key,
-            local_L_par_comm->mpi_comm);
+            local_L_par_comm->mpi_comm, block_size);
     local_L_par_comm->key++;
 
     CSRMatrix* R_mat = communication_helper(rowptr, col_indices, 
             values, local_R_par_comm->recv_data, 
             local_R_par_comm->send_data, local_R_par_comm->key,
-            local_R_par_comm->mpi_comm);
+            local_R_par_comm->mpi_comm, block_size);
     local_R_par_comm->key++;
 
     CSRMatrix* G_mat = communication_helper(R_mat->idx1, R_mat->idx2,
             R_mat->vals, global_par_comm->recv_data, global_par_comm->send_data,
-            global_par_comm->key, global_par_comm->mpi_comm);
+            global_par_comm->key, global_par_comm->mpi_comm, block_size);
     global_par_comm->key++;
     delete R_mat;
 
@@ -811,7 +844,7 @@ CSRMatrix* TAPComm::communicate_T(const aligned_vector<int>& rowptr,
     {
         final_mat = communication_helper(G_mat->idx1, G_mat->idx2,
                 G_mat->vals, local_S_par_comm->recv_data, local_S_par_comm->send_data, 
-                local_S_par_comm->key, local_S_par_comm->mpi_comm);
+                local_S_par_comm->key, local_S_par_comm->mpi_comm, block_size);
         local_S_par_comm->key++;
         delete G_mat;
         final_comm = local_S_par_comm;
@@ -886,7 +919,7 @@ CSRMatrix* TAPComm::communicate_T(const aligned_vector<int>& rowptr,
 
 
 CSRMatrix* TAPComm::communicate(const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices)
+        const aligned_vector<int>& col_indices, const int block_size)
 {   
     int ctr, idx, row;
     int start, end;
@@ -969,7 +1002,8 @@ CSRMatrix* TAPComm::communicate(const aligned_vector<int>& rowptr,
 }
 
 CSRMatrix* TAPComm::communicate_T(const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices, const int n_result_rows)
+        const aligned_vector<int>& col_indices, const int n_result_rows,
+        const int block_size)
 {   
     int n_rows = rowptr.size() - 1;
     int idx, ptr;
@@ -980,16 +1014,16 @@ CSRMatrix* TAPComm::communicate_T(const aligned_vector<int>& rowptr,
     CSRMatrix* L_mat = communication_helper(rowptr, col_indices, 
             local_L_par_comm->recv_data, 
             local_L_par_comm->send_data, local_L_par_comm->key,
-            local_L_par_comm->mpi_comm);
+            local_L_par_comm->mpi_comm, block_size);
 
     CSRMatrix* R_mat = communication_helper(rowptr, col_indices, 
             local_R_par_comm->recv_data, 
             local_R_par_comm->send_data, local_R_par_comm->key,
-            local_R_par_comm->mpi_comm);
+            local_R_par_comm->mpi_comm, block_size);
 
     CSRMatrix* G_mat = communication_helper(R_mat->idx1, R_mat->idx2,
             global_par_comm->recv_data, global_par_comm->send_data,
-            global_par_comm->key, global_par_comm->mpi_comm);
+            global_par_comm->key, global_par_comm->mpi_comm, block_size);
     delete R_mat;
 
     CSRMatrix* final_mat;
@@ -998,7 +1032,7 @@ CSRMatrix* TAPComm::communicate_T(const aligned_vector<int>& rowptr,
     {
         final_mat = communication_helper(G_mat->idx1, G_mat->idx2,
                 local_S_par_comm->recv_data, local_S_par_comm->send_data, 
-                local_S_par_comm->key, local_S_par_comm->mpi_comm);
+                local_S_par_comm->key, local_S_par_comm->mpi_comm, block_size);
         delete G_mat;
         final_comm = local_S_par_comm;
     }

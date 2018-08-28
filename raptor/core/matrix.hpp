@@ -294,11 +294,13 @@ namespace raptor
     {
         int first_row = idx1*b_rows;
         int first_col = idx2*b_cols;
+
         for (int row = 0; row < b_rows; row++)
         {
+            double x_val = x[first_row + row];
             for (int col = 0; col < b_cols; col++)
             {
-                b[first_col + col] += (val[row * b_cols + col] * x[first_row + row]);
+                b[first_col + col] += (val[row * b_cols + col] * x_val);
             }
         }
     }
@@ -383,6 +385,7 @@ namespace raptor
     virtual void* get_data() = 0;
     virtual int data_size() const = 0;
     virtual void reserve_size(int size) = 0;
+    virtual double get_val(const int j, const int k) = 0;
 
     aligned_vector<int> idx1;
     aligned_vector<int> idx2;
@@ -573,7 +576,11 @@ namespace raptor
         idx2.reserve(size);
         vals.reserve(size);
     }
-
+    
+    double get_val(const int j, const int k)
+    {
+        return vals[j];
+    }
 };
 
 
@@ -751,6 +758,11 @@ namespace raptor
         vals.reserve(size);
     }
 
+    double get_val(const int j, const int k)
+    {
+        return vals[j];
+    }
+
 };
 
 /**************************************************************
@@ -908,6 +920,10 @@ namespace raptor
         vals.reserve(size);
     }
 
+    double get_val(const int j, const int k)
+    {
+        return vals[j];
+    }
 
   };
 
@@ -1024,6 +1040,12 @@ class BSRMatrix : public CSRMatrix
         idx2.reserve(size);
         vals.reserve(size);
     }
+
+    double get_val(const int j, const int k)
+    {
+        return vals[j][k];
+    }
+
     aligned_vector<double*> vals;
 };
 
@@ -1131,6 +1153,12 @@ class BCOOMatrix : public COOMatrix
         idx2.reserve(size);
         vals.reserve(size);
     }
+
+    double get_val(const int j, const int k)
+    {
+        return vals[j][k];
+    }
+
     aligned_vector<double*> vals;
 };
 
@@ -1239,6 +1267,12 @@ class BSCMatrix : public CSCMatrix
         idx2.reserve(size);
         vals.reserve(size);
     }
+
+    double get_val(const int j, const int k)
+    {
+        return vals[j][k];
+    }
+
     aligned_vector<double*> vals;
 };
 

@@ -48,7 +48,8 @@ void comm_off_proc_states(const ParCSRMatrix* A, CommPkg* comm,
 
     if (first_pass)
     {
-        comm->communicate_T(off_proc_states, states, result_func, result_func);
+        comm->communicate_T(off_proc_states, states, A->off_proc->b_cols,
+                result_func, result_func);
     }
     else
     {

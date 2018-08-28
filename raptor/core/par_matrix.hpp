@@ -534,6 +534,8 @@ namespace raptor
         return A;
     }
 
+    ParBSRMatrix* to_ParBSR(const int block_row_size, const int block_col_size);
+
     void copy_helper(ParCSRMatrix* A);
     void copy_helper(ParCSCMatrix* A);
     void copy_helper(ParCOOMatrix* A);

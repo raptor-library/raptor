@@ -350,7 +350,8 @@ void find_max_off_weights(CommPkg* comm,
         const aligned_vector<int>& off_proc_states,
         const aligned_vector<double>& weights,
         aligned_vector<double>& max_weights,
-        bool first_pass = false)
+        bool first_pass = false,
+        const int block_size = 1)
 {
     int start, end, idx;
     double max_weight;
@@ -389,7 +390,7 @@ void find_max_off_weights(CommPkg* comm,
 
     if (first_pass)
     {
-        comm->communicate_T(send_weights, max_weights, result_max, result_max);
+        comm->communicate_T(send_weights, max_weights, block_size, result_max, result_max);
     }
     else
     {

@@ -76,119 +76,134 @@ namespace raptor
 
         // Matrix Communication
         virtual CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices, const aligned_vector<double>& values) = 0;
+                const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
+                const int block_size = 1) = 0;
         virtual CSRMatrix* communicate_T(const aligned_vector<int>& rowptr,
                 const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
-                const int n_result_rows) = 0;
+                const int n_result_rows, const int block_size = 1) = 0;
         virtual CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices) = 0;
+                const aligned_vector<int>& col_indices, const int block_size = 1) = 0;
         virtual CSRMatrix* communicate_T(const aligned_vector<int>& rowptr,
-                const aligned_vector<int>& col_indices, const int n_result_rows) = 0;
+                const aligned_vector<int>& col_indices, const int n_result_rows,
+                const int block_size = 1) = 0;
 
-        CSRMatrix* communicate(ParCSRMatrix* A);
-        CSRMatrix* communicate(CSRMatrix* A)
+        CSRMatrix* communicate(ParCSRMatrix* A, const int block_size = 1);
+        CSRMatrix* communicate(CSRMatrix* A, const int block_size = 1)
         {
-            return communicate(A->idx1, A->idx2, A->vals);
+            return communicate(A->idx1, A->idx2, A->vals, block_size);
         }
-        CSRMatrix* communicate_T(CSRMatrix* A)
+        CSRMatrix* communicate_T(CSRMatrix* A, const int block_size = 1)
         {
             return communicate_T(A->idx1, A->idx2, A->vals,
-                    A->n_rows);
+                    A->n_rows, block_size);
         }
 
         // Vector Communication
-        aligned_vector<double>& communicate(ParVector& v);
-        void init_comm(ParVector& v);
+        aligned_vector<double>& communicate(ParVector& v, const int block_size = 1);
+        void init_comm(ParVector& v, const int block_size = 1);
 
         // Standard Communication
         template<typename T>
-        aligned_vector<T>& communicate(const aligned_vector<T>& values)
+        aligned_vector<T>& communicate(const aligned_vector<T>& values, const int block_size = 1)
         {  
-            return communicate(values.data());
+            return communicate(values.data(), block_size);
         }
         template<typename T>
-        void init_comm(const aligned_vector<T>& values)
+        void init_comm(const aligned_vector<T>& values, const int block_size = 1)
         {
-            init_comm(values.data());
+            init_comm(values.data(), block_size);
         }
-        template<typename T> void init_comm(const T* values);
-        template<typename T> aligned_vector<T>& complete_comm();
-        template<typename T> aligned_vector<T>& communicate(const T* values);
-        virtual void init_double_comm(const double* values) = 0;
-        virtual void init_int_comm(const int* values) = 0;
-        virtual aligned_vector<double>& complete_double_comm() = 0;
-        virtual aligned_vector<int>& complete_int_comm() = 0;
+        template<typename T> void init_comm(const T* values, const int block_size = 1);
+        template<typename T> aligned_vector<T>& complete_comm(const int block_size = 1);
+        template<typename T> aligned_vector<T>& communicate(const T* values, const int block_size = 1);
+        virtual void init_double_comm(const double* values, const int block_size) = 0;
+        virtual void init_int_comm(const int* values, const int block_size) = 0;
+        virtual aligned_vector<double>& complete_double_comm(const int block_size) = 0;
+        virtual aligned_vector<int>& complete_int_comm(const int block_size) = 0;
 
         // Transpose Communication
         template<typename T, typename U>
         void communicate_T(const aligned_vector<T>& values, aligned_vector<U>& result,
+                const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {  
-            communicate_T(values.data(), result, result_func, 
+            communicate_T(values.data(), result, block_size, result_func, 
                     init_result_func, init_result_func_val);
         }
         template<typename T>
         void communicate_T(const aligned_vector<T>& values,
+                const int block_size = 1, 
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {  
-            communicate_T(values.data(), init_result_func,
+            communicate_T(values.data(), block_size, init_result_func,
                     init_result_func_val);
         }
         template<typename T>
         void init_comm_T(const aligned_vector<T>& values,
+                const int block_size = 1, 
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
-            init_comm_T(values.data(), init_result_func, init_result_func_val);
+            init_comm_T(values.data(), block_size, init_result_func, init_result_func_val);
         }
         template<typename T> void init_comm_T(const T* values,
+                const int block_size = 1, 
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
                 T init_result_func_val = 0);
         template<typename T, typename U> void complete_comm_T(aligned_vector<U>& result,
+                const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
                 T init_result_func_val = 0);
         template<typename T> void complete_comm_T(
+                const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0);
         template<typename T, typename U> void communicate_T(const T* values, 
-                aligned_vector<U>& result, 
+                aligned_vector<U>& result, const int block_size = 1, 
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
                 T init_result_func_val = 0);
         template<typename T> void communicate_T(const T* values,
+                const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0);
         virtual void init_double_comm_T(const double* values,
+                const int block_size,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>, 
                     double init_result_func_val = 0) = 0;
         virtual void init_int_comm_T(const int* values,
+                const int block_size,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
                 int init_result_func_val = 0) = 0;
         virtual void complete_double_comm_T(aligned_vector<double>& result,
+                const int block_size,
                 std::function<double(double, double)> result_func = &sum_func<double, double>,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>, double init_result_func_val = 0) = 0;
         virtual void complete_double_comm_T(aligned_vector<int>& result,
+                const int block_size,
                 std::function<int(int, double)> result_func = &sum_func<double, int>,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>, double init_result_func_val = 0) = 0;
         virtual void complete_int_comm_T(aligned_vector<int>& result,
+                const int block_size,
                 std::function<int(int, int)> result_func = &sum_func<int, int>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
                 int init_result_func_val = 0) = 0;
         virtual void complete_int_comm_T(aligned_vector<double>& result,
+                const int block_size,
                 std::function<double(double, int)> result_func = &sum_func<int, double>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
                 int init_result_func_val = 0) = 0;
-        virtual void complete_double_comm_T(
+        virtual void complete_double_comm_T(const int block_size,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>, double init_result_func_val = 0) = 0;
-        virtual void complete_int_comm_T(
+        virtual void complete_int_comm_T(const int block_size,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
                 int init_result_func_val = 0) = 0;
 
@@ -529,7 +544,7 @@ namespace raptor
                 else return a;
             };
             if (comm_t) *comm_t -= MPI_Wtime();
-            comm->communicate_T(off_proc_col_to_new, compare_func, -1);
+            comm->communicate_T(off_proc_col_to_new, 1, compare_func, -1);
             if (comm_t) *comm_t += MPI_Wtime();
 
             if (comm->recv_data->indptr_T.size())
@@ -759,41 +774,47 @@ namespace raptor
         }
 
         // Standard Communication
-        void init_double_comm(const double* values)
+        void init_double_comm(const double* values, const int block_size = 1)
+        {
+            initialize(values, block_size);
+        }
+        void init_int_comm(const int* values, const int block_size = 1)
         {
             initialize(values);
         }
-        void init_int_comm(const int* values)
+        aligned_vector<double>& complete_double_comm(const int block_size = 1)
         {
-            initialize(values);
+            return complete<double>(block_size);
         }
-        aligned_vector<double>& complete_double_comm()
+        aligned_vector<int>& complete_int_comm(const int block_size = 1)
         {
-            return complete<double>();
-        }
-        aligned_vector<int>& complete_int_comm()
-        {
-            return complete<int>();
+            return complete<int>(block_size);
         }
         template<typename T>
-        aligned_vector<T>& communicate(const aligned_vector<T>& values)
+        aligned_vector<T>& communicate(const aligned_vector<T>& values,
+                const int block_size = 1)
         {
-            return CommPkg::communicate(values.data());
+            return CommPkg::communicate(values.data(), block_size);
         }
         template<typename T>
-        aligned_vector<T>& communicate(const T* values)
+        aligned_vector<T>& communicate(const T* values, const int block_size = 1)
         {
-            return CommPkg::communicate(values);
+            return CommPkg::communicate(values, block_size);
         }
 
         template<typename T>
-        void initialize(const T* values)
+        void initialize(const T* values, const int block_size = 1)
         {
             int start, end;
-            int proc;
+            int proc, pos, idx;
 
             aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
             aligned_vector<T>& recvbuf = recv_data->get_buffer<T>();
+            if (sendbuf.size() < send_data->size_msgs * block_size)
+                sendbuf.resize(send_data->size_msgs * block_size);
+            if (recvbuf.size() < recv_data->size_msgs * block_size)
+                recvbuf.resize(recv_data->size_msgs * block_size);
+
             MPI_Datatype type = get_type(sendbuf);
 
             for (int i = 0; i < send_data->num_msgs; i++)
@@ -803,9 +824,14 @@ namespace raptor
                 end = send_data->indptr[i+1];
                 for (int j = start; j < end; j++)
                 {
-                    sendbuf[j] = values[send_data->indices[j]];
+                    idx = send_data->indices[j] * block_size;
+                    pos = j * block_size;
+                    for (int k = 0; k < block_size; k++)
+                    {
+                        sendbuf[pos + k] = values[idx + k];
+                    }
                 }
-                MPI_Isend(&(sendbuf[start]), end - start, type,
+                MPI_Isend(&(sendbuf[start*block_size]), (end - start)*block_size, type,
                         proc, key, mpi_comm, &(send_data->requests[i]));
             }
             for (int i = 0; i < recv_data->num_msgs; i++)
@@ -813,13 +839,13 @@ namespace raptor
                 proc = recv_data->procs[i];
                 start = recv_data->indptr[i];
                 end = recv_data->indptr[i+1];
-                MPI_Irecv(&(recvbuf[start]), end - start, type,
+                MPI_Irecv(&(recvbuf[start*block_size]), (end - start)*block_size, type,
                         proc, key, mpi_comm, &(recv_data->requests[i]));
             }
         }
 
         template<typename T>
-        aligned_vector<T>& complete()
+        aligned_vector<T>& complete(const int block_size = 1)
         {
             if (send_data->num_msgs)
             {
@@ -838,111 +864,126 @@ namespace raptor
 
         // Transpose Communication
         void init_double_comm_T(const double* values,
+                const int block_size = 1,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>, 
                     double init_result_func_val = 0)
         {
-            initialize_T(values, init_result_func, init_result_func_val);
+            initialize_T(values, block_size, init_result_func, init_result_func_val);
         }
         void init_int_comm_T(const int* values,
+                const int block_size = 1,
                 std::function<int(int, int)> init_result_func = 
                     &sum_func<int, int>, 
                     int init_result_func_val = 0)
         {
-            initialize_T(values, init_result_func, init_result_func_val);
+            initialize_T(values, block_size, init_result_func, init_result_func_val);
         }
         void complete_double_comm_T(aligned_vector<double>& result,
+                const int block_size = 1,
                 std::function<double(double, double)> result_func = &sum_func<double, double>,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>,
                     double init_result_func_val = 0)
         {
-            complete_T<double>(result, result_func, init_result_func, init_result_func_val);
+            complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
         }
         void complete_double_comm_T(aligned_vector<int>& result,
+                const int block_size = 1,
                 std::function<int(int, double)> result_func = &sum_func<double, int>,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>,
                     double init_result_func_val = 0)
         {
-            complete_T<double>(result, result_func, init_result_func, init_result_func_val);
+            complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
         }
         void complete_int_comm_T(aligned_vector<double>& result,
+                const int block_size = 1,
                 std::function<double(double, int)> result_func = &sum_func<int, double>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
                 int init_result_func_val = 0)
         {
-            complete_T<int>(result, result_func, init_result_func, init_result_func_val);
+            complete_T<int>(result, block_size, result_func, init_result_func, init_result_func_val);
         }
         void complete_int_comm_T(aligned_vector<int>& result,
+                const int block_size = 1,
                 std::function<int(int, int)> result_func = &sum_func<int, int>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
                 int init_result_func_val = 0)
         {
-            complete_T<int>(result, result_func, init_result_func, init_result_func_val);
+            complete_T<int>(result, block_size, result_func, init_result_func, init_result_func_val);
         }
-        void complete_double_comm_T(std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>,
-                    double init_result_func_val = 0)
+        void complete_double_comm_T(const int block_size = 1,
+                std::function<double(double, double)> init_result_func =
+                &sum_func<double, double>, 
+                double init_result_func_val = 0)
         {
-            complete_T<double>(init_result_func, init_result_func_val);
+            complete_T<double>(block_size, init_result_func, init_result_func_val);
         }
-        void complete_int_comm_T(
+        void complete_int_comm_T(const int block_size = 1,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
                 int init_result_func_val = 0)
         {
-            complete_T<int>(init_result_func, init_result_func_val);
+            complete_T<int>(block_size, init_result_func, init_result_func_val);
         }
         template<typename T, typename U>
         void communicate_T(const aligned_vector<T>& values, aligned_vector<U>& result,
+                const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
                 T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values.data(), result, result_func,
-                    init_result_func, init_result_func_val);
+            CommPkg::communicate_T(values.data(), result, block_size,
+                    result_func, init_result_func, init_result_func_val);
         }
         template<typename T, typename U>
         void communicate_T(const T* values, aligned_vector<U>& result,
+                const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values, result, result_func,
-                    init_result_func, init_result_func_val);
+            CommPkg::communicate_T(values, result, block_size,
+                    result_func, init_result_func, init_result_func_val);
         }
         template<typename T>
         void communicate_T(const aligned_vector<T>& values,
+                const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values.data(), init_result_func,
+            CommPkg::communicate_T(values.data(), block_size, init_result_func,
                     init_result_func_val);
         }
         template<typename T>
-        void communicate_T(const T* values,
+        void communicate_T(const T* values, const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values, init_result_func, init_result_func_val);
+            CommPkg::communicate_T(values, block_size, init_result_func, init_result_func_val);
         }
 
         template<typename T>
-        void initialize_T(const T* values,
+        void initialize_T(const T* values, const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
                 T init_result_func_val = 0)
         {
             int start, end;
-            int proc, idx;
+            int proc, idx, pos;
+
             aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
             aligned_vector<T>& recvbuf = recv_data->get_buffer<T>();
+            if (sendbuf.size() < send_data->size_msgs * block_size)
+                sendbuf.resize(send_data->size_msgs * block_size);
+            if (recvbuf.size() < recv_data->size_msgs * block_size)
+                recvbuf.resize(recv_data->size_msgs * block_size);
+
             MPI_Datatype type = get_type(sendbuf);
-int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
             if (recv_data->indptr_T.size())
             {
                 int idx_start, idx_end;
-                T val;
+                std::fill(recvbuf.begin(), recvbuf.end(), init_result_func_val);
                 for (int i = 0; i < recv_data->num_msgs; i++)
                 {
                     proc = recv_data->procs[i];
@@ -952,15 +993,19 @@ int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                     {
                         idx_start = recv_data->indptr_T[j];
                         idx_end = recv_data->indptr_T[j+1];
-                        val = init_result_func_val;
+                        pos = j * block_size;
                         for (int k = idx_start; k < idx_end; k++)
                         {
-                            val = init_result_func(val, values[recv_data->indices[k]]);
+                            idx = recv_data->indices[k] * block_size;
+                            for (int l = 0; l < block_size; l++)
+                            {
+                                recvbuf[pos + l] = init_result_func(recvbuf[pos + l], 
+                                        values[idx + l]);
+                            }
                         }
-                        recvbuf[j] = val;
                     }
-                    MPI_Isend(&(recvbuf[start]), end - start, type,
-                            proc, key, mpi_comm, &(recv_data->requests[i]));
+                    MPI_Isend(&(recvbuf[start * block_size]), (end - start) * block_size,
+                            type, proc, key, mpi_comm, &(recv_data->requests[i]));
                 }
             }
             else if (recv_data->indices.size())
@@ -972,11 +1017,15 @@ int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                     end = recv_data->indptr[i+1];
                     for (int j = start; j < end; j++)
                     {
-                        idx = recv_data->indices[j];
-                        recvbuf[j] = values[idx];
+                        idx = recv_data->indices[j] * block_size;
+                        pos = j * block_size;
+                        for (int k = 0; k < block_size; k++)
+                        {
+                            recvbuf[pos + k] = values[idx + k];
+                        }
                     }
-                    MPI_Isend(&(recvbuf[start]), end - start, type,
-                            proc, key, mpi_comm, &(recv_data->requests[i]));
+                    MPI_Isend(&(recvbuf[start * block_size]), (end - start) * block_size,
+                            type, proc, key, mpi_comm, &(recv_data->requests[i]));
                 }
             }
             else
@@ -986,13 +1035,8 @@ int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                     proc = recv_data->procs[i];
                     start = recv_data->indptr[i];
                     end = recv_data->indptr[i+1];
-                    for (int j = start; j < end; j++)
-                    {
-                        idx = j;
-                        recvbuf[j] = values[idx];
-                    }
-                    MPI_Isend(&(recvbuf[start]), end - start, type,
-                            proc, key, mpi_comm, &(recv_data->requests[i]));
+                    MPI_Isend(&(values[start * block_size]), (end - start) * block_size, 
+                            type, proc, key, mpi_comm, &(recv_data->requests[i]));
                 }
             }
             for (int i = 0; i < send_data->num_msgs; i++)
@@ -1000,31 +1044,37 @@ int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                 proc = send_data->procs[i];
                 start = send_data->indptr[i];
                 end = send_data->indptr[i+1];
-                MPI_Irecv(&(sendbuf[start]), end - start, type,
-                        proc, key, mpi_comm, &(send_data->requests[i]));
+                MPI_Irecv(&(sendbuf[start * block_size]), (end - start) * block_size,
+                        type, proc, key, mpi_comm, &(send_data->requests[i]));
             }
         }
 
         template<typename T, typename U>
         void complete_T(aligned_vector<U>& result, 
+                const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
-            complete_T<T>(init_result_func, init_result_func_val);
+            complete_T<T>(block_size, init_result_func, init_result_func_val);
 
-            int idx;
+            int idx, pos;
             aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
 
             for (int i = 0; i < send_data->size_msgs; i++)
             {
-                idx = send_data->indices[i];
-                result[idx]  = result_func(result[idx], sendbuf[i]);
+                idx = send_data->indices[i] * block_size;
+                pos = i * block_size;
+                for (int j = 0; j < block_size; j++)
+                {
+                    result[idx + j]  = result_func(result[idx + j], sendbuf[pos + j]);
+                }
             }
         }
 
         template<typename T>
-        void complete_T(std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+        void complete_T(const int block_size = 1,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
             if (send_data->num_msgs)
@@ -1041,19 +1091,27 @@ int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
         // Conditional communication
         template <typename T>
-        aligned_vector<T>& conditional_comm(const aligned_vector<T>& vals,  
+        aligned_vector<T>& conditional_comm(
+                const aligned_vector<T>& vals,  
                 const aligned_vector<int>& states, 
                 const aligned_vector<int>& off_proc_states,
-                std::function<bool(int)> compare_func)
+                std::function<bool(int)> compare_func,
+                const int block_size = 1)
         {
             int proc, start, end;
             int idx, size;
             int ctr, prev_ctr;
             int n_sends, n_recvs;
             int key = 325493;
+            bool comparison;
 
             aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
             aligned_vector<T>& recvbuf = recv_data->get_buffer<T>();
+            if (sendbuf.size() < send_data->size_msgs * block_size)
+                sendbuf.resize(send_data->size_msgs * block_size);
+            if (recvbuf.size() < recv_data->size_msgs * block_size)
+                recvbuf.resize(recv_data->size_msgs * block_size);
+
             MPI_Datatype type = get_type(sendbuf);
 
             n_sends = 0;
@@ -1066,10 +1124,24 @@ int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                 end = send_data->indptr[i+1];
                 for (int j = start; j < end; j++)
                 {
-                    idx = send_data->indices[j];
-                    if (compare_func(states[idx]))
+                    idx = send_data->indices[j] * block_size;
+                    comparison = false;
+                    for (int k = 0; k < block_size; k++)
                     {
-                        sendbuf[ctr++] = vals[idx];
+                        // If compare true for any idx in block
+                        // Add full block to message
+                        if (compare_func(states[idx + k]))
+                        {
+                            comparison = true;
+                            break;
+                        }
+                    }
+                    if (comparison)
+                    {
+                        for (int l = 0; l < block_size; l++)
+                        {
+                            sendbuf[ctr++] = vals[idx + l];
+                        }
                     }
                 }
                 size = ctr - prev_ctr;
@@ -1092,11 +1164,14 @@ int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                 end = recv_data->indptr[i+1];
                 for (int j = start; j < end; j++)
                 {
-                    idx = j;
-
-                    if (compare_func(off_proc_states[idx]))
+                    idx = j * block_size;
+                    for (int k = 0; k < block_size; k++)
                     {
-                        ctr++;
+                        if (compare_func(off_proc_states[idx + k]))
+                        {
+                            ctr += block_size;
+                            break;
+                        }
                     }
                 }
                 size = ctr - prev_ctr;
@@ -1120,13 +1195,29 @@ int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
             ctr--;
             for (int i = recv_data->size_msgs - 1; i >= 0; i--)
             {
-                if (compare_func(off_proc_states[i]))
+                int idx = i * block_size;
+                comparison = false;
+                for (int j = 0; j < block_size; j++)
                 {
-                    recvbuf[i] = recvbuf[ctr--];
+                    if (compare_func(off_proc_states[idx+j]))
+                    {
+                        comparison = true;
+                        break;
+                    }
+                }
+                if (comparison)
+                {
+                    for (int j = block_size - 1; j >= 0; j--)
+                    {
+                        recvbuf[idx+j] = recvbuf[ctr--];
+                    }
                 }
                 else
                 {
-                    recvbuf[i] = 0.0;
+                    for (int j = block_size - 1; j >= 0; j--)
+                    {
+                        recvbuf[idx+j] = 0.0;
+                    }
                 }
             }
 
@@ -1139,7 +1230,8 @@ int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                 const aligned_vector<int>& off_proc_states,
                 std::function<bool(int)> compare_func,
                 aligned_vector<U>& result, 
-                std::function<U(U, T)> result_func)
+                std::function<U(U, T)> result_func,
+                const int block_size = 1)
         {
             int proc, start, end;
             int idx, size;
@@ -1148,8 +1240,14 @@ int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
             aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
             aligned_vector<T>& recvbuf = recv_data->get_buffer<T>();
+            if (sendbuf.size() < send_data->size_msgs * block_size)
+                sendbuf.resize(send_data->size_msgs * block_size);
+            if (recvbuf.size() < recv_data->size_msgs * block_size)
+                recvbuf.resize(recv_data->size_msgs * block_size);
+
             MPI_Datatype type = get_type(sendbuf);
             int key = 453246;
+            bool comparison;
 
             n_sends = 0;
             ctr = 0;
@@ -1161,9 +1259,24 @@ int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                 end = recv_data->indptr[i+1];
                 for (int j = start; j < end; j++)
                 {
-                    if (compare_func(off_proc_states[j]))
+                    comparison = false;
+                    idx = j * block_size;
+                    for (int k = 0; k < block_size; k++)
                     {
-                        recvbuf[ctr++] = vals[j];
+                        if (compare_func(off_proc_states[idx + k]))
+                        {
+                            comparison = true;
+                            break;
+                        }
+                    }
+                    if (comparison)
+                    {
+                        //std::copy(vals + idx, vals + idx + block_size, recvbuf[ctr]);
+                        //ctr += block_size;
+                        for (int k = 0; k < block_size; k++)
+                        {
+                            recvbuf[ctr++] = vals[idx + k];
+                        }
                     }
                 }
                 size = ctr - prev_ctr;
@@ -1185,10 +1298,14 @@ int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                 end = send_data->indptr[i+1];
                 for (int j = start; j < end; j++)
                 {
-                    idx = send_data->indices[j];
-                    if (compare_func(states[idx]))
+                    idx = send_data->indices[j] * block_size;
+                    for (int k = 0; k < block_size; k++)
                     {
-                        ctr++;
+                        if (compare_func(states[idx + k]))
+                        {
+                            ctr += block_size;
+                            break;
+                        }
                     }
                 }
                 size = ctr - prev_ctr;
@@ -1212,10 +1329,22 @@ int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
             ctr = 0;
             for (int i = 0; i < send_data->size_msgs; i++)
             {
-                idx = send_data->indices[i];
-                if (compare_func(states[idx]))
+                idx = send_data->indices[i] * block_size;
+                comparison = false;
+                for (int j = 0; j < block_size; j++)
                 {
-                    result[idx] = result_func(result[idx], sendbuf[ctr++]);
+                    if (compare_func(states[idx + j]))
+                    {
+                        comparison = true;
+                        break;
+                    }
+                }
+                if (comparison)
+                {
+                    for (int j = 0; j < block_size; j++)
+                    {
+                        result[idx + j] = result_func(result[idx + j], sendbuf[ctr++]);
+                    }
                 }
             }
         }
@@ -1223,36 +1352,38 @@ int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
         // Matrix Communication
         CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices, const aligned_vector<double>& values);
+                const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
+                const int block_size = 1);
         CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
                 const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
-                const int n_result_rows);
+                const int n_result_rows, const int block_size = 1);
         CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices);
+                const aligned_vector<int>& col_indices, const int block_size = 1);
         CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices, const int n_result_rows);
-        CSRMatrix* communicate(ParCSRMatrix* A)
+                const aligned_vector<int>& col_indices, const int n_result_rows,
+                const int block_size = 1);
+        CSRMatrix* communicate(ParCSRMatrix* A, const int block_size = 1)
         {
-            return CommPkg::communicate(A);
+            return CommPkg::communicate(A, block_size);
         }
-        CSRMatrix* communicate(CSRMatrix* A)
+        CSRMatrix* communicate(CSRMatrix* A, const int block_size = 1)
         {
-            return CommPkg::communicate(A);
+            return CommPkg::communicate(A, block_size);
         }
-        CSRMatrix* communicate_T(CSRMatrix* A)
+        CSRMatrix* communicate_T(CSRMatrix* A, const int block_size = 1)
         {
-            return CommPkg::communicate_T(A);
+            return CommPkg::communicate_T(A, block_size);
         }
 
 
         // Vector Communication
-        aligned_vector<double>& communicate(ParVector& v)
+        aligned_vector<double>& communicate(ParVector& v, const int block_size = 1)
         {
-            return CommPkg::communicate(v);
+            return CommPkg::communicate(v, block_size);
         }
-        void init_comm(ParVector& v)
+        void init_comm(ParVector& v, const int block_size = 1)
         {
-            CommPkg::init_comm(v);
+            CommPkg::init_comm(v, block_size);
         }
 
         // Helper Methods
@@ -1791,82 +1922,99 @@ int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                 data_t* comm_t = NULL);
 
         // Class Methods
-        void init_double_comm(const double* values)
+        void init_double_comm(const double* values, const int block_size)
         {
-            initialize(values);
+            initialize(values, block_size);
         }
-        void init_int_comm(const int* values)
+        void init_int_comm(const int* values, const int block_size)
         {
-            initialize(values);
+            initialize(values, block_size);
         }
-        aligned_vector<double>& complete_double_comm()
+        aligned_vector<double>& complete_double_comm(const int block_size)
         {
-            return complete<double>();
+            return complete<double>(block_size);
         }
-        aligned_vector<int>& complete_int_comm()
+        aligned_vector<int>& complete_int_comm(const int block_size)
         {
-            return complete<int>();
+            return complete<int>(block_size);
         }
         
         template<typename T>
-        aligned_vector<T>& communicate(const aligned_vector<T>& values)
+        aligned_vector<T>& communicate(const aligned_vector<T>& values, 
+                const int block_size = 1)
         {
-            return CommPkg::communicate<T>(values.data());
+            return CommPkg::communicate<T>(values.data(), block_size);
         }
         template<typename T>
-        aligned_vector<T>& communicate(const T* values)
+        aligned_vector<T>& communicate(const T* values,
+                const int block_size = 1)
         {
-            return CommPkg::communicate<T>(values);
+            return CommPkg::communicate<T>(values, block_size);
         }
 
         template<typename T>
-        void initialize(const T* values)
+        void initialize(const T* values, const int block_size = 1)
         {
             // Messages with origin and final destination on node
-            local_L_par_comm->communicate<T>(values);
+            local_L_par_comm->communicate<T>(values, block_size);
 
             if (local_S_par_comm)
             {
                 // Initial redistribution among node
-                aligned_vector<T>& S_vals = local_S_par_comm->communicate<T>(values);
+                aligned_vector<T>& S_vals = local_S_par_comm->communicate<T>(values, block_size);
 
                 // Begin inter-node communication 
-                global_par_comm->initialize(S_vals.data());
+                global_par_comm->initialize(S_vals.data(), block_size);
             }
             else
             {
-                global_par_comm->initialize(values);
+                global_par_comm->initialize(values, block_size);
             }
         }
 
         template<typename T>
-        aligned_vector<T>& complete()
+        aligned_vector<T>& complete(const int block_size = 1)
         {
             // Complete inter-node communication
-            aligned_vector<T>& G_vals = global_par_comm->complete<T>();
+            aligned_vector<T>& G_vals = global_par_comm->complete<T>(block_size);
 
             // Redistributing recvd inter-node values
-            local_R_par_comm->communicate<T>(G_vals.data());
+            local_R_par_comm->communicate<T>(G_vals.data(), block_size);
 
             aligned_vector<T>& recvbuf = get_recv_buffer<T>();
             aligned_vector<T>& R_recvbuf = local_R_par_comm->recv_data->get_buffer<T>();
             aligned_vector<T>& L_recvbuf = local_L_par_comm->recv_data->get_buffer<T>();
 
+            if (R_recvbuf.size() < local_R_par_comm->recv_data->size_msgs * block_size)
+                R_recvbuf.resize(local_R_par_comm->recv_data->size_msgs * block_size);
+            if (L_recvbuf.size() < local_L_par_comm->recv_data->size_msgs * block_size)
+                L_recvbuf.resize(local_L_par_comm->recv_data->size_msgs * block_size);
+            if (recvbuf.size() < R_recvbuf.size() + L_recvbuf.size())
+                recvbuf.resize(R_recvbuf.size() + L_recvbuf.size());
+
             // Add values from L_recv and R_recv to appropriate positions in 
             // Vector recv
-            int idx, new_idx;
+            int idx, new_idx, pos;
             int R_recv_size = local_R_par_comm->recv_data->size_msgs;
             int L_recv_size = local_L_par_comm->recv_data->size_msgs;
             for (int i = 0; i < R_recv_size; i++)
             {
-                idx = local_R_par_comm->recv_data->indices[i];
-                recvbuf[idx] = R_recvbuf[i];
+                pos = i * block_size;
+                idx = local_R_par_comm->recv_data->indices[i] * block_size;
+                for (int j = 0; j < block_size; j++)
+                {
+                    recvbuf[idx + j] = R_recvbuf[pos + j];
+                }
             }
 
             for (int i = 0; i < L_recv_size; i++)
             {
-                idx = local_L_par_comm->recv_data->indices[i];
-                recvbuf[idx] = L_recvbuf[i];
+                pos = i * block_size;
+                idx = local_L_par_comm->recv_data->indices[i] * block_size;
+                for (int j = 0; j < block_size; j++)
+                {
+                    recvbuf[idx + j] = L_recvbuf[pos + j];
+                }
             }
 
             return recvbuf;
@@ -1875,127 +2023,142 @@ int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
         // Transpose Communication
         void init_double_comm_T(const double* values,
+                const int block_size,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>,
                     double init_result_func_val = 0)
         {
-            initialize_T(values, init_result_func, init_result_func_val);
+            initialize_T(values, block_size, init_result_func, init_result_func_val);
         }
         void init_int_comm_T(const int* values,
+                const int block_size,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
                 int init_result_func_val = 0)
         {
-            initialize_T(values, init_result_func, init_result_func_val);
+            initialize_T(values, block_size, init_result_func, init_result_func_val);
         }
         void complete_double_comm_T(aligned_vector<double>& result,
+                const int block_size,
                 std::function<double(double, double)> result_func = &sum_func<double, double>,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>,
                     double init_result_func_val = 0)
         {
-            complete_T<double>(result, result_func, init_result_func, init_result_func_val);
+            complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
         }        
         void complete_double_comm_T(aligned_vector<int>& result,
+                const int block_size,
                 std::function<int(int, double)> result_func = &sum_func<double, int>,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>,
                     double init_result_func_val = 0)
         {
-            complete_T<double>(result, result_func, init_result_func, init_result_func_val);
+            complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
         }
         void complete_int_comm_T(aligned_vector<double>& result,
+                const int block_size,
                 std::function<double(double, int)> result_func = &sum_func<int, double>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
                 int init_result_func_val = 0)
         {
-            complete_T<int>(result, result_func, init_result_func, init_result_func_val);
+            complete_T<int>(result, block_size, result_func, init_result_func, init_result_func_val);
         }
         void complete_int_comm_T(aligned_vector<int>& result,
+                const int block_size,
                 std::function<int(int, int)> result_func = &sum_func<int, int>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
                 int init_result_func_val = 0)
         {
-            complete_T<int>(result, result_func, init_result_func, init_result_func_val);
+            complete_T<int>(result, block_size, result_func, init_result_func, init_result_func_val);
         }
 
-        void complete_double_comm_T(std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>,
-                    double init_result_func_val = 0)
+        void complete_double_comm_T(const int block_size,
+                std::function<double(double, double)> init_result_func = 
+                &sum_func<double, double>,
+                double init_result_func_val = 0)
         {
-            complete_T<double>(init_result_func, init_result_func_val);
+            complete_T<double>(block_size, init_result_func, init_result_func_val);
         }
-        void complete_int_comm_T(std::function<int(int, int)> init_result_func = 
+        void complete_int_comm_T(const int block_size,
+                std::function<int(int, int)> init_result_func = 
                     &sum_func<int, int>,
-                    int init_result_func_val = 0)
+                int init_result_func_val = 0)
         {
-            complete_T<int>(init_result_func, init_result_func_val);
+            complete_T<int>(block_size, init_result_func, init_result_func_val);
         }
 
         template<typename T, typename U>
         void communicate_T(const aligned_vector<T>& values, aligned_vector<U>& result,
+                const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values.data(), result, result_func, init_result_func,
+            CommPkg::communicate_T(values.data(), result, block_size, result_func, init_result_func,
                     init_result_func_val);
         }
         template<typename T, typename U>
         void communicate_T(const T* values, aligned_vector<U>& result,
+                const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values, result, result_func, init_result_func,
+            CommPkg::communicate_T(values, result, block_size, result_func, init_result_func,
                     init_result_func_val);
         }
         template<typename T>
         void communicate_T(const aligned_vector<T>& values,
+                const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values.data(), init_result_func, init_result_func_val);
+            CommPkg::communicate_T(values.data(), block_size, init_result_func, init_result_func_val);
         }
         template<typename T>
-        void communicate_T(const T* values,
+        void communicate_T(const T* values, const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values, init_result_func, init_result_func_val);
+            CommPkg::communicate_T(values, block_size, init_result_func, init_result_func_val);
         }
 
         template<typename T>
-        void initialize_T(const T* values,
+        void initialize_T(const T* values, const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
             int idx;
 
             // Messages with origin and final destination on node
-            local_L_par_comm->communicate_T(values, init_result_func, init_result_func_val);
+            local_L_par_comm->communicate_T(values, block_size, init_result_func, init_result_func_val);
 
             // Initial redistribution among node
-            local_R_par_comm->communicate_T(values, init_result_func, init_result_func_val);
+            local_R_par_comm->communicate_T(values, block_size, init_result_func, init_result_func_val);
 
             // Begin inter-node communication 
             aligned_vector<T>& R_sendbuf = local_R_par_comm->send_data->get_buffer<T>();
-            global_par_comm->init_comm_T(R_sendbuf, init_result_func, init_result_func_val);
+            global_par_comm->init_comm_T(R_sendbuf, block_size, init_result_func, init_result_func_val);
         }
 
         template<typename T, typename U>
-        void complete_T(aligned_vector<U>& result, 
+        void complete_T(aligned_vector<U>& result, const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
-            complete_T<T>(init_result_func, init_result_func_val);
-            int idx;
+            complete_T<T>(block_size, init_result_func, init_result_func_val);
+            int idx, pos;
             aligned_vector<T>& L_sendbuf = local_L_par_comm->send_data->get_buffer<T>();
 
             for (int i = 0; i < local_L_par_comm->send_data->size_msgs; i++)
             {
-                idx = local_L_par_comm->send_data->indices[i];
-                result[idx] = result_func(result[idx], L_sendbuf[i]);
+                idx = local_L_par_comm->send_data->indices[i] * block_size;
+                pos = i * block_size;
+                for (int j = 0; j < block_size; j++)
+                {
+                    result[idx + j] = result_func(result[idx + j], L_sendbuf[pos + j]);
+                }
             }
 
             if (local_S_par_comm)
@@ -2003,8 +2166,12 @@ int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                 aligned_vector<T>& S_sendbuf = local_S_par_comm->send_data->get_buffer<T>();
                 for (int i = 0; i < local_S_par_comm->send_data->size_msgs; i++)
                 {
-                    idx = local_S_par_comm->send_data->indices[i];
-                    result[idx] = result_func(result[idx], S_sendbuf[i]);
+                    idx = local_S_par_comm->send_data->indices[i] * block_size;
+                    pos = i * block_size;
+                    for (int j = 0; j < block_size; j++)
+                    {
+                        result[idx + j] = result_func(result[idx + j], S_sendbuf[pos + j]);
+                    }
                 }
             }
             else
@@ -2012,22 +2179,27 @@ int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                 aligned_vector<T>& G_sendbuf = global_par_comm->send_data->get_buffer<T>();
                 for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
                 {
-                    idx = global_par_comm->send_data->indices[i];
-                    result[idx] = result_func(result[idx], G_sendbuf[i]);
+                    idx = global_par_comm->send_data->indices[i] * block_size;
+                    pos = i * block_size;
+                    for (int j = 0; j < block_size; j++)
+                    {
+                        result[idx + j] = result_func(result[idx + j], G_sendbuf[pos + j]);
+                    }
                 }
             }
         }
         template<typename T>
-        void complete_T(std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+        void complete_T(const int block_size = 1,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
             // Complete inter-node communication
-            global_par_comm->complete_comm_T<T>(init_result_func, init_result_func_val);
+            global_par_comm->complete_comm_T<T>(block_size, init_result_func, init_result_func_val);
     
             if (local_S_par_comm)
             {
                 aligned_vector<T>& G_sendbuf = global_par_comm->send_data->get_buffer<T>();
-                local_S_par_comm->communicate_T(G_sendbuf, init_result_func,
+                local_S_par_comm->communicate_T(G_sendbuf, block_size, init_result_func,
                         init_result_func_val);
             }
         }
@@ -2035,36 +2207,39 @@ int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
         // Matrix Communication
         CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices, const aligned_vector<double>& values);
+                const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
+                const int block_size = 1);
         CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
                 const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
-                const int n_result_rows);
+                const int n_result_rows, const int block_size = 1);
         CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices);
+                const aligned_vector<int>& col_indices, const int block_size = 1);
         CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices, const int n_result_rows);
-        CSRMatrix* communicate(ParCSRMatrix* A)
+                const aligned_vector<int>& col_indices, const int n_result_rows,
+                const int block_size = 1);
+        CSRMatrix* communicate(ParCSRMatrix* A, const int block_size = 1)
         {
             return CommPkg::communicate(A);
         }
-        CSRMatrix* communicate(CSRMatrix* A)
+        CSRMatrix* communicate(CSRMatrix* A, const int block_size = 1)
         {
             return CommPkg::communicate(A);
         }
-        CSRMatrix* communicate_T(CSRMatrix* A)
+        CSRMatrix* communicate_T(CSRMatrix* A, const int block_size = 1)
         {
             return CommPkg::communicate_T(A);
         }
 
         // Vector Communication        
-        aligned_vector<double>& communicate(ParVector& v)
+        aligned_vector<double>& communicate(ParVector& v,
+                const int block_size = 1)
         {
-            return CommPkg::communicate(v);
+            return CommPkg::communicate(v, block_size);
         }
 
-        void init_comm(ParVector& v)
+        void init_comm(ParVector& v, const int block_size = 1)
         {
-            CommPkg::init_comm(v);
+            CommPkg::init_comm(v, block_size);
         }
 
         // Helper Methods

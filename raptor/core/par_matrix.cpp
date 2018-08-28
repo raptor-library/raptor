@@ -664,3 +664,131 @@ ParCSCMatrix* ParCSCMatrix::transpose()
     return AT;
 }
 
+
+
+// Assumes block_row_size and block_col_size evenly divide local row/col sizes
+ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_col_size)
+{
+    int start, end, col;
+    int prev_row, prev_col;
+    int block_row, block_col;
+    int block_pos, row_pos, col_pos;
+    int global_col, pos;
+    double val;
+
+    int global_block_rows = global_num_rows / block_row_size;
+    int global_block_cols = global_num_cols / block_col_size;
+    ParBSRMatrix* A = new ParBSRMatrix(global_block_rows, global_block_cols,
+            block_row_size, block_col_size);
+
+    // Get local to global mappings for block matrix
+    prev_row = -1;
+    for (aligned_vector<int>::iterator it = local_row_map.begin();
+            it != local_row_map.end(); ++it)
+    {
+        block_row = *it / block_row_size;
+        if (block_row != prev_row)
+        {
+            A->local_row_map.push_back(block_row);
+            prev_row = block_row;
+        }
+    }
+    if (global_num_rows == global_num_cols)
+    {
+        A->on_proc_column_map = A->get_local_row_map();
+    }
+    else
+    {
+        prev_col = -1;        
+        for (aligned_vector<int>::iterator it = on_proc_column_map.begin();
+                it != on_proc_column_map.end(); ++it)
+        {
+            block_col = *it / block_col_size;
+            if (block_col != prev_col)
+            {
+                A->on_proc_column_map.push_back(block_row);
+                prev_col = block_row;
+            }
+        }
+    }
+
+    prev_col = -1;
+    std::map<int, int> global_to_block_local;
+    for (aligned_vector<int>::iterator it = off_proc_column_map.begin();
+            it != off_proc_column_map.end(); ++it)
+    {
+        block_col = *it / block_col_size;
+        if (block_col != prev_col)
+        {
+            global_to_block_local[block_col] = A->off_proc_column_map.size();
+            A->off_proc_column_map.push_back(block_col);
+            prev_col = block_col;
+        }
+    }
+    A->local_num_rows = A->local_row_map.size();
+    A->on_proc_num_cols = A->local_num_rows;
+    A->off_proc_num_cols = A->off_proc_column_map.size();
+    A->off_proc->n_cols = A->off_proc_num_cols;
+
+    BSRMatrix* A_on_proc = (BSRMatrix*) A->on_proc;
+    BSRMatrix* A_off_proc = (BSRMatrix*) A->off_proc;
+
+    A_on_proc->idx1[0] = 0;
+    A_off_proc->idx1[0] = 0;
+    for (int i = 0; i < local_num_rows; i += block_row_size)
+    {
+        std::vector<int> on_proc_pos(A->on_proc_num_cols, -1);
+        std::vector<int> off_proc_pos(A->off_proc_num_cols, -1);
+        for (int row_pos = 0; row_pos < block_row_size; row_pos++)
+        {
+            start = on_proc->idx1[i+row_pos];
+            end = on_proc->idx1[i+row_pos+1];
+            for (int k = start; k < end; k++)
+            {
+                col = on_proc->idx2[k];
+                block_col = col / block_col_size;
+                if (on_proc_pos[block_col] == -1)
+                {
+                    on_proc_pos[block_col] = A_on_proc->idx2.size();
+                    A_on_proc->idx2.push_back(block_col);
+                    A_on_proc->vals.push_back(
+                            new double[A_on_proc->b_size]());
+                }
+                val = on_proc->vals[k];
+                pos = on_proc_pos[block_col];
+                col_pos = col % block_col_size;
+                block_pos = row_pos * block_col_size + col_pos;
+                A_on_proc->vals[pos][block_pos] = val;
+            }
+
+            start = off_proc->idx1[i+row_pos];
+            end = off_proc->idx1[i+row_pos+1];
+            for (int k = start; k < end; k++)
+            {
+                col = off_proc->idx2[k];
+                global_col = off_proc_column_map[col];
+                block_col = global_to_block_local[global_col / block_col_size];
+                if (off_proc_pos[block_col] == -1)
+                {
+                    off_proc_pos[block_col] = A_off_proc->idx2.size();
+                    A_off_proc->idx2.push_back(block_col);
+                    A_off_proc->vals.push_back(
+                            new double[A_off_proc->b_size]());
+                }
+                val = off_proc->vals[k];
+                pos = off_proc_pos[block_col];
+                col_pos = global_col % block_col_size;
+                block_pos = row_pos * block_col_size + col_pos;
+                A_off_proc->vals[pos][block_pos] = val;
+            }
+        }
+        A_on_proc->idx1[i/block_row_size + 1] = A_on_proc->idx2.size();
+        A_off_proc->idx1[i/block_row_size + 1] = A_off_proc->idx2.size();
+    }
+    A_on_proc->nnz = A_on_proc->idx2.size();
+    A_off_proc->nnz = A_off_proc->idx2.size();
+
+    A->comm = new ParComm(A->partition, A->off_proc_column_map);
+
+    return A;
+}
