@@ -135,24 +135,24 @@ namespace raptor
     virtual COOMatrix* to_COO() = 0;
     virtual Matrix* copy() = 0;
 
-    virtual void spmv_append(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const = 0;
-    virtual void spmv_append_T(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const = 0;
-    virtual void spmv_append_neg(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const = 0;
-    virtual void spmv_append_neg_T(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const = 0;
+    virtual void spmv_append(const double* x, double* b) const = 0;
+    virtual void spmv_append_T(const double* x, double* b) const = 0;
+    virtual void spmv_append_neg(const double* x, double* b) const = 0;
+    virtual void spmv_append_neg_T(const double* x, double* b) const = 0;
 
     virtual CSRMatrix* spgemm(CSRMatrix* B) = 0;
     virtual CSRMatrix* spgemm_T(CSCMatrix* A) = 0;
     virtual Matrix* transpose() = 0;
 
-    aligned_vector<double>& get_values(Vector& x) const
+    double* get_values(Vector& x) const
     {
-        return x.values;
+        return x.values.data();
     }
-    template<typename T> aligned_vector<T>& get_values(aligned_vector<T>& x) const
+    template<typename T> T* get_values(aligned_vector<T>& x) const
+    {
+        return x.data();
+    }
+    template<typename T> T* get_values(T* x) const
     {
         return x;
     }
@@ -517,14 +517,10 @@ namespace raptor
     void move_diag();
     void remove_duplicates();
 
-    void spmv_append(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
-    void spmv_append_T(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
-    void spmv_append_neg(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
-    void spmv_append_neg_T(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
+    void spmv_append(const double* x, double* b) const;
+    void spmv_append_T(const double* x, double* b) const;
+    void spmv_append_neg(const double* x, double* b) const;
+    void spmv_append_neg_T(const double* x, double* b) const;
 
     CSRMatrix* spgemm(CSRMatrix* B);
     CSRMatrix* spgemm_T(CSCMatrix* A);
@@ -696,14 +692,10 @@ namespace raptor
     void move_diag();
     void remove_duplicates();
 
-    void spmv_append(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
-    void spmv_append_T(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
-    void spmv_append_neg(const aligned_vector<double>& x,
-            aligned_vector<double>& b) const;
-    void spmv_append_neg_T(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
+    void spmv_append(const double* x, double* b) const;
+    void spmv_append_T(const double* x, double* b) const;
+    void spmv_append_neg(const double* x, double* b) const;
+    void spmv_append_neg_T(const double* x, double* b) const;
 
     CSRMatrix* spgemm(CSRMatrix* B);
     CSRMatrix* spgemm_T(CSCMatrix* A);
@@ -864,14 +856,10 @@ namespace raptor
     void move_diag();
     void remove_duplicates();
 
-    void spmv_append(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
-    void spmv_append_T(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
-    void spmv_append_neg(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
-    void spmv_append_neg_T(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
+    void spmv_append(const double* x, double* b) const;
+    void spmv_append_T(const double* x, double* b) const;
+    void spmv_append_neg(const double* x, double* b) const;
+    void spmv_append_neg_T(const double* x, double* b) const;
 
 
     CSRMatrix* spgemm(CSRMatrix* B);
@@ -1002,14 +990,10 @@ class BSRMatrix : public CSRMatrix
     BSRMatrix* spgemm(CSRMatrix* B);
     BSRMatrix* spgemm_T(CSCMatrix* A);
 
-    void spmv_append(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
-    void spmv_append_T(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
-    void spmv_append_neg(const aligned_vector<double>& x,
-            aligned_vector<double>& b) const;
-    void spmv_append_neg_T(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
+    void spmv_append(const double* x, double* b) const;
+    void spmv_append_T(const double* x, double* b) const;
+    void spmv_append_neg(const double* x, double* b) const;
+    void spmv_append_neg_T(const double* x, double* b) const;
 
     format_t format()
     {
@@ -1113,14 +1097,10 @@ class BCOOMatrix : public COOMatrix
     BSRMatrix* spgemm(CSRMatrix* B);
     BSRMatrix* spgemm_T(CSCMatrix* A);
 
-    void spmv_append(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
-    void spmv_append_T(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
-    void spmv_append_neg(const aligned_vector<double>& x,
-            aligned_vector<double>& b) const;
-    void spmv_append_neg_T(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
+    void spmv_append(const double* x, double* b) const;
+    void spmv_append_T(const double* x, double* b) const;
+    void spmv_append_neg(const double* x, double* b) const;
+    void spmv_append_neg_T(const double* x, double* b) const;
 
     void add_value(int row, int col, double* values)
     {
@@ -1229,14 +1209,10 @@ class BSCMatrix : public CSCMatrix
     BSRMatrix* spgemm(CSRMatrix* B);
     BSRMatrix* spgemm_T(CSCMatrix* A);
 
-    void spmv_append(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
-    void spmv_append_T(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
-    void spmv_append_neg(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
-    void spmv_append_neg_T(const aligned_vector<double>& x, 
-            aligned_vector<double>& b) const;
+    void spmv_append(const double* x, double* b) const;
+    void spmv_append_T(const double* x, double* b) const;
+    void spmv_append_neg(const double* x, double* b) const;
+    void spmv_append_neg_T(const double* x, double* b) const;
 
     format_t format()
     {
