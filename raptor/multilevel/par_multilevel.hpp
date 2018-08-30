@@ -178,19 +178,6 @@ namespace raptor
                     }
                 }
 
-                if (sparsify_tol > 0.0)
-                {
-                    for (int i = 0; i < num_levels-1; i++)
-                    {
-                        ParLevel* l = levels[i];
-                        sparsify(l->A, l->P, l->I, l->AP, levels[i+1]->A, sparsify_tol);
-                        delete l->AP;
-                        delete l->I;
-                        l->AP = NULL;
-                        l->I = NULL;
-                    }
-                }
-
                 num_levels = levels.size();
                 delete[] weights;
 

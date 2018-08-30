@@ -251,353 +251,47 @@ CSRMatrix* CommPkg::communicate(ParCSRMatrix* A, const int block_size)
     return communicate(rowptr, col_indices, values);
 }
 
-// TODO -- Cannot send with MPI_DOUBLE_INT for block_size > 1
-// 
-// USE MPI_BYTE!!
-CSRMatrix* communication_helper(const aligned_vector<int>& rowptr,
-        const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
+// USE MPI_Pack / MPI_Unpack
+CSRMatrix* communication_helper(const int* rowptr,
+        const int* col_indices, const double* values,
         CommData* send_comm, CommData* recv_comm, int key, MPI_Comm mpi_comm, 
         const int block_size)
 {
-    int start, end, proc;
-    int ctr, prev_ctr, size;
-    int row, row_start, row_end;
-    int count, row_count, row_size;
-
-    MPI_Status recv_status;
-
     // Number of rows in recv_mat = size_recvs
     // Don't know number of columns, but does not matter (CSR)
     CSRMatrix* recv_mat = new CSRMatrix(recv_comm->size_msgs, -1);
 
-    // Only sending and recving a single buffer
     aligned_vector<PairData> send_buffer;
-    aligned_vector<PairData> recv_buffer;
-    aligned_vector<int> send_ptr(send_comm->num_msgs+1);
-    send_ptr[0] = 0;
-
-    // Send pair_data for each row using MPI_DOUBLE_INT
-    ctr = 0;
-    if (send_comm->indptr_T.size())
-    {        
-        int size_pos, idx_start, idx_end;
-        for (int i = 0; i < send_comm->num_msgs; i++)
-        {
-            start = send_comm->indptr[i];
-            end = send_comm->indptr[i+1];
-            for (int j = start; j < end; j++)
-            {
-                size_pos = ctr;
-                send_buffer.push_back(PairData());
-                send_buffer[ctr++].index = 0;
-                idx_start = send_comm->indptr_T[j];
-                idx_end = send_comm->indptr_T[j+1];
-                for (int k = idx_start; k < idx_end; k++)
-                {
-                    row = send_comm->indices[k];
-                    row_start = rowptr[row];
-                    row_end = rowptr[row+1];
-		            send_buffer[size_pos].index += (row_end - row_start);
-                    for (int l = row_start; l < row_end; l++)
-                    {
-                        send_buffer.push_back(PairData());
-                        send_buffer[ctr].index = col_indices[l];
-                        send_buffer[ctr++].val = values[l];
-                    }
-                }
-                if (ctr > size_pos + 1)
-                {
-                    std::sort(send_buffer.begin() + size_pos + 1, send_buffer.begin() + ctr, 
-                            [&](const PairData& lhs, const PairData& rhs)
-                            {
-                                return lhs.index < rhs.index;
-                            });
-                    int pos = size_pos + 1;
-                    for (int k = size_pos + 2; k < ctr; k++)
-                    {
-                        if (send_buffer[k].index == send_buffer[pos].index)
-                        {
-                            send_buffer[pos].val += send_buffer[k].val;
-			    send_buffer[size_pos].index--;
-                        }
-                        else
-                        {
-                            pos++;
-                            send_buffer[pos].index = send_buffer[k].index;
-                            send_buffer[pos].val = send_buffer[k].val;
-                        }
-                    }
-		            ctr = pos + 1;
-                    send_buffer.resize(ctr);
-                }
-            }
-            send_ptr[i+1] = send_buffer.size();
-        }
-    }
-    else if (send_comm->indices.size())
-    {
-        for (int i = 0; i < send_comm->num_msgs; i++)
-        {
-            start = send_comm->indptr[i];
-            end = send_comm->indptr[i+1];
-            for (int j = start; j < end; j++)
-            {
-                row = send_comm->indices[j];
-                row_start = rowptr[row];
-                row_end = rowptr[row+1];
-                send_buffer.push_back(PairData());
-                send_buffer[ctr++].index = row_end - row_start;
-                for (int k = row_start; k < row_end; k++)
-                {
-                    send_buffer.push_back(PairData());
-                    send_buffer[ctr].index = col_indices[k];
-                    send_buffer[ctr++].val = values[k];
-                }
-            }
-            send_ptr[i+1] = ctr;
-        }
-    }
-    else
-    {
-        for (int i = 0; i < send_comm->num_msgs; i++)
-        {
-            start = send_comm->indptr[i];
-            end = send_comm->indptr[i+1];
-            for (int j = start; j < end; j++)
-            {
-                row = j;
-                row_start = rowptr[row];
-                row_end = rowptr[row+1];
-                send_buffer.push_back(PairData());
-                send_buffer[ctr++].index = row_end - row_start;
-                for (int k = row_start; k < row_end; k++)
-                {
-                    send_buffer.push_back(PairData());
-                    send_buffer[ctr].index = col_indices[k];
-                    send_buffer[ctr++].val = values[k];
-                }
-            }
-            send_ptr[i+1] = ctr;
-        }
-    }
-
-
-    for (int i = 0; i < send_comm->num_msgs; i++)
-    {
-        proc = send_comm->procs[i];
-        start = send_ptr[i];
-        end = send_ptr[i+1];
-        MPI_Isend(&(send_buffer[start]), end - start, MPI_DOUBLE_INT, proc, 
-                key, mpi_comm, &(send_comm->requests[i]));
-    }
-
-    // Recv pair_data for each row, and add to recv_mat
-    row_count = 0;
-    for (int i = 0; i < recv_comm->num_msgs; i++)
-    {
-        proc = recv_comm->procs[i];
-        start = recv_comm->indptr[i];
-        end = recv_comm->indptr[i+1];
-        size = end - start;
-        MPI_Probe(proc, key, mpi_comm, &recv_status);
-        MPI_Get_count(&recv_status, MPI_DOUBLE_INT, &count);
-        if (count > recv_buffer.size())
-        {
-            recv_buffer.resize(count);
-        }
-        MPI_Recv((&recv_buffer[0]), count, MPI_DOUBLE_INT, proc, key, mpi_comm,
-            &recv_status);
-        ctr = 0;
-        for (int j = 0; j < size; j++)
-        {
-            row_size = recv_buffer[ctr++].index;
-            recv_mat->idx1[row_count+1] = recv_mat->idx1[row_count] + row_size;
-            row_count++;
-            for (int k = 0; k < row_size; k++)
-            {
-                recv_mat->idx2.push_back(recv_buffer[ctr].index);
-                recv_mat->vals.push_back(recv_buffer[ctr++].val);
-            }
-        }
-    }
-    recv_mat->nnz = recv_mat->idx2.size();
-
-    MPI_Waitall(send_comm->num_msgs, send_comm->requests.data(), MPI_STATUSES_IGNORE);
+    send_comm->send(send_buffer, rowptr, col_indices, values,
+            key, mpi_comm, block_size);
+    recv_comm->recv(recv_mat, key, mpi_comm, block_size);
+    send_comm->waitall();
 
     return recv_mat;
 }    
 
-
-// TODO - Cannot send with MPI_DOUBLE_INT if block_size > 1
-// But I could just send MPI_Byte, right?
-CSRMatrix* communication_helper(const aligned_vector<int>& rowptr,
-        const aligned_vector<int>& col_indices, CommData* send_comm, 
+CSRMatrix* communication_helper(const int* rowptr,
+        const int* col_indices, CommData* send_comm, 
         CommData* recv_comm, int key, MPI_Comm mpi_comm, const int block_size)
 {
-    int start, end, proc;
-    int ctr, prev_ctr, size;
-    int row, row_start, row_end;
-    int count, row_count, row_size;
-
-    MPI_Status recv_status;
-
     // Number of rows in recv_mat = size_recvs
     // Don't know number of columns, but does not matter (CSR)
     CSRMatrix* recv_mat = new CSRMatrix(recv_comm->size_msgs, -1);
 
-    // Only sending and recving a single buffer
     aligned_vector<int> send_buffer;
-    aligned_vector<int> recv_buffer;
-    aligned_vector<int> send_ptr(send_comm->num_msgs+1);
-
-    // Send pair_data for each row using MPI_DOUBLE_INT
-    ctr = 0;
-    send_ptr[0] = 0;
-    if (send_comm->indptr_T.size())
-    {        
-        int size_pos, idx_start, idx_end;
-        for (int i = 0; i < send_comm->num_msgs; i++)
-        {
-            start = send_comm->indptr[i];
-            end = send_comm->indptr[i+1];
-            for (int j = start; j < end; j++)
-            {
-                size_pos = ctr;
-                send_buffer.push_back(0);
-                idx_start = send_comm->indptr_T[j];
-                idx_end = send_comm->indptr_T[j+1];
-                for (int k = idx_start; k < idx_end; k++)
-                {
-                    row = send_comm->indices[k];
-                    row_start = rowptr[row];
-                    row_end = rowptr[row+1];
-		            send_buffer[size_pos] += (row_end - row_start);
-                    for (int l = row_start; l < row_end; l++)
-                    {
-                        send_buffer.push_back(col_indices[l]);
-                    }
-                }
-                if (ctr > size_pos + 1)
-                {
-                    std::sort(send_buffer.begin() + size_pos + 1, send_buffer.begin() + ctr, 
-                            [&](const int lhs, const int rhs)
-                            {
-                                return lhs < rhs;
-                            });
-                    int pos = size_pos + 1;
-                    for (int k = size_pos + 2; k < ctr; k++)
-                    {
-                        if (send_buffer[k] == send_buffer[pos])
-                        {
-			                send_buffer[size_pos]--;
-                        }
-                        else
-                        {
-                            pos++;
-                            send_buffer[pos] = send_buffer[k];
-                        }
-                    }
-		            ctr = pos + 1;
-                    send_buffer.resize(ctr);
-                }
-            }
-            send_ptr[i+1] = send_buffer.size();
-        }
-    }
-    else if (send_comm->indices.size())
-    {
-        for (int i = 0; i < send_comm->num_msgs; i++)
-        {
-            start = send_comm->indptr[i];
-            end = send_comm->indptr[i+1];
-            for (int j = start; j < end; j++)
-            {
-                row = send_comm->indices[j];
-                row_start = rowptr[row];
-                row_end = rowptr[row+1];
-                send_buffer.push_back(row_end - row_start);
-                for (int k = row_start; k < row_end; k++)
-                {
-                    send_buffer.push_back(col_indices[k]);
-                }
-            }
-            send_ptr[i+1] = send_buffer.size();
-        }
-    }
-    else
-    {
-        for (int i = 0; i < send_comm->num_msgs; i++)
-        {
-            start = send_comm->indptr[i];
-            end = send_comm->indptr[i+1];
-            for (int j = start; j < end; j++)
-            {
-                row = j;
-                row_start = rowptr[row];
-                row_end = rowptr[row+1];
-                send_buffer.push_back(row_end - row_start);
-                for (int k = row_start; k < row_end; k++)
-                {
-                    send_buffer.push_back(col_indices[k]);
-                }
-            }
-            send_ptr[i+1] = send_buffer.size();
-        }
-    }
-
-    for (int i = 0; i < send_comm->num_msgs; i++)
-    {
-        proc = send_comm->procs[i];
-        start = send_ptr[i];
-        end = send_ptr[i+1];
-        MPI_Isend(&(send_buffer[start]), end - start, MPI_INT, proc, 
-                key, mpi_comm, &(send_comm->requests[i]));
-    }
-
-    // Recv pair_data for each row, and add to recv_mat
-    row_count = 0;
-    recv_mat->idx1[0] = 0;
-    for (int i = 0; i < recv_comm->num_msgs; i++)
-    {
-        proc = recv_comm->procs[i];
-        start = recv_comm->indptr[i];
-        end = recv_comm->indptr[i+1];
-        size = end - start;
-        MPI_Probe(proc, key, mpi_comm, &recv_status);
-        MPI_Get_count(&recv_status, MPI_INT, &count);
-        if (count > recv_buffer.size())
-        {
-            recv_buffer.resize(count);
-        }
-        MPI_Recv((&recv_buffer[0]), count, MPI_INT, proc, key, mpi_comm,
-            &recv_status);
-        ctr = 0;
-        for (int j = 0; j < size; j++)
-        {
-            row_size = recv_buffer[ctr++];
-            recv_mat->idx1[row_count+1] = recv_mat->idx1[row_count] + row_size;
-            row_count++;
-            for (int k = 0; k < row_size; k++)
-            {
-                recv_mat->idx2.push_back(recv_buffer[ctr++]);
-            }
-        }
-    }
-    recv_mat->nnz = recv_mat->idx2.size();
-
-    MPI_Waitall(send_comm->num_msgs, send_comm->requests.data(), MPI_STATUSES_IGNORE);
+    send_comm->send_sparsity(send_buffer, rowptr, col_indices, key, mpi_comm, block_size); 
+    recv_comm->recv_sparsity(recv_mat, key, mpi_comm, block_size);
+    send_comm->waitall();
 
     return recv_mat;
 }  
-
-
 
 
 CSRMatrix* ParComm::communicate(const aligned_vector<int>& rowptr, 
         const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
         const int block_size)
 {
-    CSRMatrix* recv_mat = communication_helper(rowptr, col_indices, values,
+    CSRMatrix* recv_mat = communication_helper(rowptr.data(), col_indices.data(), values.data(),
             send_data, recv_data, key, mpi_comm, block_size);
     key++;
     return recv_mat;
@@ -606,7 +300,7 @@ CSRMatrix* ParComm::communicate(const aligned_vector<int>& rowptr,
 CSRMatrix* ParComm::communicate(const aligned_vector<int>& rowptr, 
         const aligned_vector<int>& col_indices, const int block_size)
 {
-    CSRMatrix* recv_mat = communication_helper(rowptr, col_indices, send_data, 
+    CSRMatrix* recv_mat = communication_helper(rowptr.data(), col_indices.data(), send_data, 
             recv_data, key, mpi_comm, block_size);
     key++;
     return recv_mat;
@@ -622,7 +316,7 @@ CSRMatrix* ParComm::communicate_T(const aligned_vector<int>& rowptr,
     aligned_vector<int> row_sizes;
     if (n_result_rows) row_sizes.resize(n_result_rows, 0);
 
-    CSRMatrix* recv_mat_T = communication_helper(rowptr, col_indices, values,
+    CSRMatrix* recv_mat_T = communication_helper(rowptr.data(), col_indices.data(), values.data(),
             recv_data, send_data, key, mpi_comm, block_size);
 
 
@@ -676,7 +370,7 @@ CSRMatrix* ParComm::communicate_T(const aligned_vector<int>& rowptr,
     aligned_vector<int> row_sizes;
     if (n_result_rows) row_sizes.resize(n_result_rows, 0);
 
-    CSRMatrix* recv_mat_T = communication_helper(rowptr, col_indices, 
+    CSRMatrix* recv_mat_T = communication_helper(rowptr.data(), col_indices.data(), 
             recv_data, send_data, key, mpi_comm, block_size);
 
 
@@ -759,18 +453,21 @@ CSRMatrix* TAPComm::communicate(const aligned_vector<int>& rowptr,
         recv_mat->vals.resize(recv_mat->nnz);
     }
 
+    NonContigData* local_R_recv = (NonContigData*) local_R_par_comm->recv_data;
+    NonContigData* local_L_recv = (NonContigData*) local_L_par_comm->recv_data;
+
     for (int i = 0; i < R_mat->n_rows; i++)
     {
         start = R_mat->idx1[i];
         end = R_mat->idx1[i+1];
-        row = local_R_par_comm->recv_data->indices[i];
+        row = local_R_recv->indices[i];
         row_sizes[row] = end - start;
     }
     for (int i = 0; i < L_mat->n_rows; i++)
     {
         start = L_mat->idx1[i];
         end = L_mat->idx1[i+1];
-        row = local_L_par_comm->recv_data->indices[i];
+        row = local_L_recv->indices[i];
         row_sizes[row] = end - start;
     }
     recv_mat->idx1[0] = 0;
@@ -783,7 +480,7 @@ CSRMatrix* TAPComm::communicate(const aligned_vector<int>& rowptr,
     {
         start = R_mat->idx1[i];
         end = R_mat->idx1[i+1];
-        row = local_R_par_comm->recv_data->indices[i];
+        row = local_R_recv->indices[i];
         for (int j = start; j < end; j++)
         {
             ptr = recv_mat->idx1[row] + row_sizes[row]++;
@@ -795,7 +492,7 @@ CSRMatrix* TAPComm::communicate(const aligned_vector<int>& rowptr,
     {
         start = L_mat->idx1[i];
         end = L_mat->idx1[i+1];
-        row = local_L_par_comm->recv_data->indices[i];
+        row = local_L_recv->indices[i];
         for (int j = start; j < end; j++)
         {
             ptr = recv_mat->idx1[row] + row_sizes[row]++;
@@ -820,20 +517,20 @@ CSRMatrix* TAPComm::communicate_T(const aligned_vector<int>& rowptr,
     int ctr, size;
     int row_start, row_end, row_size;
 
-    CSRMatrix* L_mat = communication_helper(rowptr, col_indices, 
-            values, local_L_par_comm->recv_data, 
+    CSRMatrix* L_mat = communication_helper(rowptr.data(), col_indices.data(), 
+            values.data(), local_L_par_comm->recv_data, 
             local_L_par_comm->send_data, local_L_par_comm->key,
             local_L_par_comm->mpi_comm, block_size);
     local_L_par_comm->key++;
 
-    CSRMatrix* R_mat = communication_helper(rowptr, col_indices, 
-            values, local_R_par_comm->recv_data, 
+    CSRMatrix* R_mat = communication_helper(rowptr.data(), col_indices.data(), 
+            values.data(), local_R_par_comm->recv_data, 
             local_R_par_comm->send_data, local_R_par_comm->key,
             local_R_par_comm->mpi_comm, block_size);
     local_R_par_comm->key++;
 
-    CSRMatrix* G_mat = communication_helper(R_mat->idx1, R_mat->idx2,
-            R_mat->vals, global_par_comm->recv_data, global_par_comm->send_data,
+    CSRMatrix* G_mat = communication_helper(R_mat->idx1.data(), R_mat->idx2.data(),
+            R_mat->vals.data(), global_par_comm->recv_data, global_par_comm->send_data,
             global_par_comm->key, global_par_comm->mpi_comm, block_size);
     global_par_comm->key++;
     delete R_mat;
@@ -842,8 +539,8 @@ CSRMatrix* TAPComm::communicate_T(const aligned_vector<int>& rowptr,
     ParComm* final_comm;
     if (local_S_par_comm)
     {
-        final_mat = communication_helper(G_mat->idx1, G_mat->idx2,
-                G_mat->vals, local_S_par_comm->recv_data, local_S_par_comm->send_data, 
+        final_mat = communication_helper(G_mat->idx1.data(), G_mat->idx2.data(),
+                G_mat->vals.data(), local_S_par_comm->recv_data, local_S_par_comm->send_data, 
                 local_S_par_comm->key, local_S_par_comm->mpi_comm, block_size);
         local_S_par_comm->key++;
         delete G_mat;
@@ -951,19 +648,22 @@ CSRMatrix* TAPComm::communicate(const aligned_vector<int>& rowptr,
     {
         recv_mat->idx2.resize(recv_mat->nnz);
     }
+    
+    NonContigData* local_R_recv = (NonContigData*) local_R_par_comm->recv_data;
+    NonContigData* local_L_recv = (NonContigData*) local_L_par_comm->recv_data;
 
     for (int i = 0; i < R_mat->n_rows; i++)
     {
         start = R_mat->idx1[i];
         end = R_mat->idx1[i+1];
-        row = local_R_par_comm->recv_data->indices[i];
+        row = local_R_recv->indices[i];
         row_sizes[row] = end - start;
     }
     for (int i = 0; i < L_mat->n_rows; i++)
     {
         start = L_mat->idx1[i];
         end = L_mat->idx1[i+1];
-        row = local_L_par_comm->recv_data->indices[i];
+        row = local_L_recv->indices[i];
         row_sizes[row] = end - start;
     }
     recv_mat->idx1[0] = 0;
@@ -976,7 +676,7 @@ CSRMatrix* TAPComm::communicate(const aligned_vector<int>& rowptr,
     {
         start = R_mat->idx1[i];
         end = R_mat->idx1[i+1];
-        row = local_R_par_comm->recv_data->indices[i];
+        row = local_R_recv->indices[i];
         for (int j = start; j < end; j++)
         {
             ptr = recv_mat->idx1[row] + row_sizes[row]++;
@@ -987,7 +687,7 @@ CSRMatrix* TAPComm::communicate(const aligned_vector<int>& rowptr,
     {
         start = L_mat->idx1[i];
         end = L_mat->idx1[i+1];
-        row = local_L_par_comm->recv_data->indices[i];
+        row = local_L_recv->indices[i];
         for (int j = start; j < end; j++)
         {
             ptr = recv_mat->idx1[row] + row_sizes[row]++;
@@ -1011,17 +711,17 @@ CSRMatrix* TAPComm::communicate_T(const aligned_vector<int>& rowptr,
     int ctr, size;
     int row_start, row_end, row_size;
 
-    CSRMatrix* L_mat = communication_helper(rowptr, col_indices, 
+    CSRMatrix* L_mat = communication_helper(rowptr.data(), col_indices.data(), 
             local_L_par_comm->recv_data, 
             local_L_par_comm->send_data, local_L_par_comm->key,
             local_L_par_comm->mpi_comm, block_size);
 
-    CSRMatrix* R_mat = communication_helper(rowptr, col_indices, 
+    CSRMatrix* R_mat = communication_helper(rowptr.data(), col_indices.data(), 
             local_R_par_comm->recv_data, 
             local_R_par_comm->send_data, local_R_par_comm->key,
             local_R_par_comm->mpi_comm, block_size);
 
-    CSRMatrix* G_mat = communication_helper(R_mat->idx1, R_mat->idx2,
+    CSRMatrix* G_mat = communication_helper(R_mat->idx1.data(), R_mat->idx2.data(),
             global_par_comm->recv_data, global_par_comm->send_data,
             global_par_comm->key, global_par_comm->mpi_comm, block_size);
     delete R_mat;
@@ -1030,7 +730,7 @@ CSRMatrix* TAPComm::communicate_T(const aligned_vector<int>& rowptr,
     ParComm* final_comm;
     if (local_S_par_comm)
     {
-        final_mat = communication_helper(G_mat->idx1, G_mat->idx2,
+        final_mat = communication_helper(G_mat->idx1.data(), G_mat->idx2.data(),
                 local_S_par_comm->recv_data, local_S_par_comm->send_data, 
                 local_S_par_comm->key, local_S_par_comm->mpi_comm, block_size);
         delete G_mat;

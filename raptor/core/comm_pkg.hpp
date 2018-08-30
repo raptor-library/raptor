@@ -61,9 +61,6 @@ namespace raptor
             }
         }
 
-        virtual void update(const aligned_vector<int>& off_proc_col_exists,
-                data_t* comm_t = NULL) = 0;
-
         static MPI_Datatype get_type(aligned_vector<int> buffer)
         {
             return MPI_INT;
@@ -269,20 +266,29 @@ namespace raptor
         *****    Tag to be used in MPI Communication (default 0)
         **************************************************************/
         ParComm(Partition* partition, int _key = 0, 
-                MPI_Comm _comm = MPI_COMM_WORLD) : CommPkg(partition)
+                MPI_Comm _comm = MPI_COMM_WORLD,
+                CommData* r_data = NULL) : CommPkg(partition)
         {
             mpi_comm = _comm;
             key = _key;
-            send_data = new CommData();
-            recv_data = new CommData();
+            send_data = new NonContigData();
+            if (r_data)
+                recv_data = r_data;
+            else
+                recv_data = new ContigData();
         }
+
         ParComm(Topology* topology, int _key = 0, 
-                MPI_Comm _comm = MPI_COMM_WORLD) : CommPkg(topology)
+                MPI_Comm _comm = MPI_COMM_WORLD,
+                CommData* r_data = NULL) : CommPkg(topology)
         {
             mpi_comm = _comm;
             key = _key;
-            send_data = new CommData();
-            recv_data = new CommData();
+            send_data = new NonContigData();
+            if (r_data)
+                recv_data = r_data;
+            else
+                recv_data = new ContigData();
         }
 
         /**************************************************************
@@ -301,10 +307,11 @@ namespace raptor
                 const aligned_vector<int>& off_proc_column_map,
                 int _key = 9999,
                 MPI_Comm comm = MPI_COMM_WORLD,
-                data_t* comm_t = NULL) : CommPkg(partition)
+                data_t* comm_t = NULL,
+                CommData* r_data = NULL) : CommPkg(partition)
         {
             mpi_comm = comm;
-            init_par_comm(partition, off_proc_column_map, _key, comm, comm_t);
+            init_par_comm(partition, off_proc_column_map, _key, comm, comm_t, r_data);
         }
 
         ParComm(Partition* partition,
@@ -312,14 +319,15 @@ namespace raptor
                 const aligned_vector<int>& on_proc_column_map,
                 int _key = 9999, 
                 MPI_Comm comm = MPI_COMM_WORLD,
-                data_t* comm_t = NULL) : CommPkg(partition)
+                data_t* comm_t = NULL,
+                CommData* r_data = NULL) : CommPkg(partition)
         {
             mpi_comm = comm;
             int idx;
             int ctr = 0;
             aligned_vector<int> part_col_to_new;
 
-            init_par_comm(partition, off_proc_column_map, _key, comm, comm_t);
+            init_par_comm(partition, off_proc_column_map, _key, comm, comm_t, r_data);
             
             if (partition->local_num_cols)
             {
@@ -342,7 +350,8 @@ namespace raptor
 
         void init_par_comm(Partition* partition,
                 const aligned_vector<int>& off_proc_column_map,
-                int _key, MPI_Comm comm, data_t* comm_t = NULL)
+                int _key, MPI_Comm comm, data_t* comm_t = NULL,
+                CommData* r_data = NULL)
         {
             // Get MPI Information
             int rank, num_procs;
@@ -351,8 +360,13 @@ namespace raptor
 
             // Initialize class variables
             key = _key;
-            send_data = new CommData();
-            recv_data = new CommData();
+
+            send_data = new NonContigData();
+
+            if (r_data)
+                recv_data = r_data;
+            else
+                recv_data = new ContigData();
 
             // Declare communication variables
             int send_start, send_end;
@@ -470,8 +484,8 @@ namespace raptor
         ParComm(ParComm* comm) : CommPkg(comm->topology)
         {
             mpi_comm = comm->mpi_comm;
-            send_data = new CommData(comm->send_data);
-            recv_data = new CommData(comm->recv_data);
+            send_data = comm->send_data->copy();
+            recv_data = comm->recv_data->copy();
             key = comm->key;
         }
 
@@ -483,9 +497,6 @@ namespace raptor
             bool comm_proc;
             int proc, start, end;
             int idx, new_idx;
-
-            send_data = new CommData();
-            recv_data = new CommData();
 
             if (comm == NULL)
             {
@@ -506,16 +517,13 @@ namespace raptor
             int proc, start, end;
             int idx, new_idx;
 
-            send_data = new CommData();
-            recv_data = new CommData();
-
             if (comm == NULL)
             {
                 key = 0;
                 return;
             }
             key = comm->key;
-      
+
             init_off_proc_new(comm, off_proc_col_to_new, comm_t);
 
             for (int i = 0; i < send_data->size_msgs; i++)
@@ -547,99 +555,9 @@ namespace raptor
             comm->communicate_T(off_proc_col_to_new, 1, compare_func, -1);
             if (comm_t) *comm_t += MPI_Wtime();
 
-            if (comm->recv_data->indptr_T.size())
-            {
-                recv_data->indptr_T.push_back(0);
-                for (int i = 0; i < comm->recv_data->num_msgs; i++)
-                {
-                    comm_proc = false;
-                    proc = comm->recv_data->procs[i];
-                    start = comm->recv_data->indptr[i];
-                    end = comm->recv_data->indptr[i+1];
-                    for (int j = start; j < end; j++)
-                    {
-                        comm_idx = false;
-                        idx_start = comm->recv_data->indptr_T[j];
-                        idx_end = comm->recv_data->indptr_T[j+1];
-                        for (int k = idx_start; k < idx_end; k++)
-                        {
-                            idx = comm->recv_data->indices[k];
-                            new_idx = off_proc_col_to_new[idx];
-                            if (new_idx != -1)
-                            {
-                                comm_proc = true;
-                                comm_idx = true;
-                                recv_data->indices.push_back(new_idx);
-                            }
-                        }
-                        if (comm_idx)
-                        {
-                            recv_data->indptr_T.push_back(recv_data->indices.size());
-                        }
-                    }
-                    if (comm_proc)
-                    {
-                        recv_data->procs.push_back(proc);
-                        recv_data->indptr.push_back(recv_data->indptr_T.size() - 1);
-                    }
-                }
-                recv_data->size_msgs = recv_data->indptr_T.size() - 1;
-            }
-            else if (comm->recv_data->indices.size())
-            {
-                for (int i = 0; i < comm->recv_data->num_msgs; i++)
-                {
-                    comm_proc = false;
-                    proc = comm->recv_data->procs[i];
-                    start = comm->recv_data->indptr[i];
-                    end = comm->recv_data->indptr[i+1];
-                    for (int j = start; j < end; j++)
-                    {
-                        idx = comm->recv_data->indices[j];
-                        new_idx = off_proc_col_to_new[idx];
-                        if (new_idx != -1)
-                        {
-                            comm_proc = true;
-                            recv_data->indices.push_back(new_idx);
-                        }
-                    }
-                    if (comm_proc)
-                    {
-                        recv_data->procs.push_back(proc);
-                        recv_data->indptr.push_back(recv_data->indices.size());
-                    }
-                }
-                recv_data->size_msgs = recv_data->indices.size();
-            }
-            else
-            {
-                recv_data->size_msgs = 0;
-                for (int i = 0; i < comm->recv_data->num_msgs; i++)
-                {
-                    comm_proc = false;
-                    proc = comm->recv_data->procs[i];
-                    start = comm->recv_data->indptr[i];
-                    end = comm->recv_data->indptr[i+1];
-                    for (int j = start; j < end; j++)
-                    {
-                        idx = j;
-                        new_idx = off_proc_col_to_new[idx];
-                        if (new_idx != -1)
-                        {
-                            comm_proc = true;
-                            recv_data->size_msgs++;
-                        }
-                    }
-                    if (comm_proc)
-                    {
-                        recv_data->procs.push_back(proc);
-                        recv_data->indptr.push_back(recv_data->size_msgs);
-                    }
-                }
-            }
-            recv_data->num_msgs = recv_data->procs.size();
-            recv_data->finalize();
+            recv_data = comm->recv_data->copy(off_proc_col_to_new);
 
+            send_data = new NonContigData();
             for (int i = 0; i < comm->send_data->num_msgs; i++)
             {
                 comm_proc = false;
@@ -678,101 +596,6 @@ namespace raptor
             delete recv_data;
         }
 
-        void update(const aligned_vector<int>& off_proc_col_exists, 
-                data_t* comm_t = NULL)
-        {
-            int ctr, send_ctr;
-            int start, end;
-            int idx;
-
-            if (comm_t) *comm_t -= MPI_Wtime();
-            communicate_T(off_proc_col_exists);
-            if (comm_t) *comm_t += MPI_Wtime();
-
-            aligned_vector<int>& send_exists = send_data->int_buffer;
-
-            // Update recv_data
-            ctr = 0;
-            send_ctr = 0;
-            start = recv_data->indptr[0];
-            for (int i = 0; i < recv_data->num_msgs; i++)
-            {
-                end = recv_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    if (recv_data->indices.size())
-                    {
-                        idx = recv_data->indices[j];
-                        if (off_proc_col_exists[idx])
-                        {
-                            recv_data->indices[ctr++] = idx;
-                        }
-                    }
-                    else
-                    {
-                        if (off_proc_col_exists[j])
-                        {
-                            ctr++;
-                        }
-                    }
-                }
-                if (ctr > start)
-                {
-                    recv_data->procs[send_ctr] = recv_data->procs[i];
-                    recv_data->indptr[++send_ctr] = ctr;
-                }
-                start = end;
-            }
-            recv_data->num_msgs = send_ctr;
-            recv_data->size_msgs = ctr;
-            
-            recv_data->indptr.resize(recv_data->num_msgs+1);
-            if (recv_data->num_msgs)
-            {
-                recv_data->procs.resize(recv_data->num_msgs);
-                recv_data->requests.resize(recv_data->num_msgs);
-                if (recv_data->indices.size())
-                {
-                    recv_data->indices.resize(recv_data->size_msgs);
-                }
-                recv_data->buffer.resize(recv_data->size_msgs);
-                recv_data->int_buffer.resize(recv_data->size_msgs);
-            }
-
-            // Update send_data
-            ctr = 0;
-            send_ctr = 0;
-            start = send_data->indptr[0];
-            for (int i = 0; i < send_data->num_msgs; i++)
-            {
-                end = send_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    if (send_exists[j])
-                    {
-                        ctr++;
-                    }
-                }
-                if (ctr > start)
-                {
-                    send_data->procs[send_ctr] = send_data->procs[i];
-                    send_data->indptr[++send_ctr] = ctr;
-                }
-                start = end;
-            }
-            send_data->num_msgs = send_ctr;
-            send_data->size_msgs = ctr;
-            send_data->indptr.resize(send_data->num_msgs+1);
-            if (send_data->num_msgs)
-            {
-                send_data->procs.resize(send_data->num_msgs);
-                send_data->requests.resize(send_data->num_msgs);
-                send_data->indices.resize(send_data->size_msgs);
-                send_data->buffer.resize(send_data->size_msgs);
-                send_data->int_buffer.resize(send_data->size_msgs);
-            }
-        }
-
         // Standard Communication
         void init_double_comm(const double* values, const int block_size = 1)
         {
@@ -808,55 +631,15 @@ namespace raptor
             int start, end;
             int proc, pos, idx;
 
-            aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
-            aligned_vector<T>& recvbuf = recv_data->get_buffer<T>();
-            if (sendbuf.size() < send_data->size_msgs * block_size)
-                sendbuf.resize(send_data->size_msgs * block_size);
-            if (recvbuf.size() < recv_data->size_msgs * block_size)
-                recvbuf.resize(recv_data->size_msgs * block_size);
-
-            MPI_Datatype type = get_type(sendbuf);
-
-            for (int i = 0; i < send_data->num_msgs; i++)
-            {
-                proc = send_data->procs[i];
-                start = send_data->indptr[i];
-                end = send_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    idx = send_data->indices[j] * block_size;
-                    pos = j * block_size;
-                    for (int k = 0; k < block_size; k++)
-                    {
-                        sendbuf[pos + k] = values[idx + k];
-                    }
-                }
-                MPI_Isend(&(sendbuf[start*block_size]), (end - start)*block_size, type,
-                        proc, key, mpi_comm, &(send_data->requests[i]));
-            }
-            for (int i = 0; i < recv_data->num_msgs; i++)
-            {
-                proc = recv_data->procs[i];
-                start = recv_data->indptr[i];
-                end = recv_data->indptr[i+1];
-                MPI_Irecv(&(recvbuf[start*block_size]), (end - start)*block_size, type,
-                        proc, key, mpi_comm, &(recv_data->requests[i]));
-            }
+            send_data->send(values, key, mpi_comm, block_size);
+            recv_data->recv<T>(key, mpi_comm, block_size);
         }
 
         template<typename T>
         aligned_vector<T>& complete(const int block_size = 1)
         {
-            if (send_data->num_msgs)
-            {
-                MPI_Waitall(send_data->num_msgs, send_data->requests.data(), MPI_STATUS_IGNORE);
-            }
-
-            if (recv_data->num_msgs)
-            {
-                MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUS_IGNORE);
-            }
-
+            send_data->waitall();
+            recv_data->waitall();
             key++;
 
             return get_recv_buffer<T>();
@@ -971,82 +754,8 @@ namespace raptor
             int start, end;
             int proc, idx, pos;
 
-            aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
-            aligned_vector<T>& recvbuf = recv_data->get_buffer<T>();
-            if (sendbuf.size() < send_data->size_msgs * block_size)
-                sendbuf.resize(send_data->size_msgs * block_size);
-            if (recvbuf.size() < recv_data->size_msgs * block_size)
-                recvbuf.resize(recv_data->size_msgs * block_size);
-
-            MPI_Datatype type = get_type(sendbuf);
-
-            if (recv_data->indptr_T.size())
-            {
-                int idx_start, idx_end;
-                std::fill(recvbuf.begin(), recvbuf.end(), init_result_func_val);
-                for (int i = 0; i < recv_data->num_msgs; i++)
-                {
-                    proc = recv_data->procs[i];
-                    start = recv_data->indptr[i];
-                    end = recv_data->indptr[i+1];
-                    for (int j = start; j < end; j++)
-                    {
-                        idx_start = recv_data->indptr_T[j];
-                        idx_end = recv_data->indptr_T[j+1];
-                        pos = j * block_size;
-                        for (int k = idx_start; k < idx_end; k++)
-                        {
-                            idx = recv_data->indices[k] * block_size;
-                            for (int l = 0; l < block_size; l++)
-                            {
-                                recvbuf[pos + l] = init_result_func(recvbuf[pos + l], 
-                                        values[idx + l]);
-                            }
-                        }
-                    }
-                    MPI_Isend(&(recvbuf[start * block_size]), (end - start) * block_size,
-                            type, proc, key, mpi_comm, &(recv_data->requests[i]));
-                }
-            }
-            else if (recv_data->indices.size())
-            {
-                for (int i = 0; i < recv_data->num_msgs; i++)
-                {
-                    proc = recv_data->procs[i];
-                    start = recv_data->indptr[i];
-                    end = recv_data->indptr[i+1];
-                    for (int j = start; j < end; j++)
-                    {
-                        idx = recv_data->indices[j] * block_size;
-                        pos = j * block_size;
-                        for (int k = 0; k < block_size; k++)
-                        {
-                            recvbuf[pos + k] = values[idx + k];
-                        }
-                    }
-                    MPI_Isend(&(recvbuf[start * block_size]), (end - start) * block_size,
-                            type, proc, key, mpi_comm, &(recv_data->requests[i]));
-                }
-            }
-            else
-            {
-                for (int i = 0; i < recv_data->num_msgs; i++)
-                {
-                    proc = recv_data->procs[i];
-                    start = recv_data->indptr[i];
-                    end = recv_data->indptr[i+1];
-                    MPI_Isend(&(values[start * block_size]), (end - start) * block_size, 
-                            type, proc, key, mpi_comm, &(recv_data->requests[i]));
-                }
-            }
-            for (int i = 0; i < send_data->num_msgs; i++)
-            {
-                proc = send_data->procs[i];
-                start = send_data->indptr[i];
-                end = send_data->indptr[i+1];
-                MPI_Irecv(&(sendbuf[start * block_size]), (end - start) * block_size,
-                        type, proc, key, mpi_comm, &(send_data->requests[i]));
-            }
+            recv_data->send(values, key, mpi_comm, block_size, init_result_func, init_result_func_val);
+            send_data->recv<T>(key, mpi_comm, block_size);
         }
 
         template<typename T, typename U>
@@ -1406,7 +1115,7 @@ namespace raptor
 
 
         int key;
-        CommData* send_data;
+        NonContigData* send_data;
         CommData* recv_data;
         MPI_Comm mpi_comm;
     };
@@ -1449,10 +1158,14 @@ namespace raptor
 
         TAPComm(Partition* partition) : CommPkg(partition)
         {
-            local_S_par_comm = new ParComm(partition, 2345, partition->topology->local_comm);
-            local_R_par_comm = new ParComm(partition, 3456, partition->topology->local_comm);
-            local_L_par_comm = new ParComm(partition, 4567, partition->topology->local_comm);
-            global_par_comm = new ParComm(partition, 5678, MPI_COMM_WORLD);
+            local_S_par_comm = new ParComm(partition, 2345, partition->topology->local_comm,
+                    new DuplicateData());
+            local_R_par_comm = new ParComm(partition, 3456, partition->topology->local_comm,
+                    new NonContigData());
+            local_L_par_comm = new ParComm(partition, 4567, partition->topology->local_comm,
+                    new NonContigData());
+            global_par_comm = new ParComm(partition, 5678, MPI_COMM_WORLD,
+                    new DuplicateData());
         }
 
 
@@ -1612,6 +1325,8 @@ namespace raptor
             int idx, ctr;
             int start, end;
 
+            DuplicateData* global_recv = (DuplicateData*) tap_comm->global_par_comm->recv_data;
+
             local_L_par_comm = new ParComm(tap_comm->local_L_par_comm, off_proc_col_to_new, 
                     comm_t);
             local_R_par_comm = new ParComm(tap_comm->local_R_par_comm, off_proc_col_to_new,
@@ -1620,13 +1335,13 @@ namespace raptor
             // Create global par comm / update R send indices
             aligned_vector<int> G_to_new(tap_comm->global_par_comm->recv_data->size_msgs, -1);
             ctr = 0;
-            for (int i = 0; i < tap_comm->global_par_comm->recv_data->size_msgs; i++)
+            for (int i = 0; i < global_recv->size_msgs; i++)
             {
-                start = tap_comm->global_par_comm->recv_data->indptr_T[i];
-                end = tap_comm->global_par_comm->recv_data->indptr_T[i+1];
+                start = global_recv->indptr_T[i];
+                end = global_recv->indptr_T[i+1];
                 for (int j = start; j < end; j++)
                 {
-                    idx = tap_comm->global_par_comm->recv_data->indices[j];
+                    idx = global_recv->indices[j];
                     if (tap_comm->local_R_par_comm->send_data->int_buffer[idx] != -1)
                     {
                         G_to_new[i] = ctr++;
@@ -1654,15 +1369,16 @@ namespace raptor
             // create local S / update global send indices
             if (tap_comm->local_S_par_comm)
             {
+                DuplicateData* local_S_recv = (DuplicateData*) tap_comm->local_S_par_comm->recv_data;
                 aligned_vector<int> S_to_new(tap_comm->local_S_par_comm->recv_data->size_msgs, -1);
                 ctr = 0;
-                for (int i = 0; i < tap_comm->local_S_par_comm->recv_data->size_msgs; i++)
+                for (int i = 0; i < local_S_recv->size_msgs; i++)
                 {
-                    start = tap_comm->local_S_par_comm->recv_data->indptr_T[i];
-                    end = tap_comm->local_S_par_comm->recv_data->indptr_T[i+1];
+                    start = local_S_recv->indptr_T[i];
+                    end = local_S_recv->indptr_T[i+1];
                     for (int j = start; j < end; j++)
                     {
-                        idx = tap_comm->local_S_par_comm->recv_data->indices[j];
+                        idx = local_S_recv->indices[j];
                         if (tap_comm->global_par_comm->send_data->int_buffer[idx] != -1)
                         {
                             S_to_new[i] = ctr++;
@@ -1722,10 +1438,13 @@ namespace raptor
             MPI_Comm_size(comm, &num_procs);
 
             // Initialize class variables
-            local_S_par_comm = new ParComm(partition, 2345, partition->topology->local_comm);
-            local_R_par_comm = new ParComm(partition, 3456, partition->topology->local_comm);
-            local_L_par_comm = new ParComm(partition, 4567, partition->topology->local_comm);
-            global_par_comm = new ParComm(partition, 5678, comm);
+            local_S_par_comm = new ParComm(partition, 2345, partition->topology->local_comm, 
+                    new DuplicateData());
+            local_R_par_comm = new ParComm(partition, 3456, partition->topology->local_comm,
+                    new NonContigData());
+            local_L_par_comm = new ParComm(partition, 4567, partition->topology->local_comm,
+                    new NonContigData());
+            global_par_comm = new ParComm(partition, 5678, comm, new DuplicateData());
 
             // Initialize Variables
             int idx;
@@ -1774,6 +1493,8 @@ namespace raptor
             // number of off_proc cols)
             recv_size = local_R_par_comm->recv_data->size_msgs +
                 local_L_par_comm->recv_data->size_msgs;
+            NonContigData* local_R_recv = (NonContigData*) local_R_par_comm->recv_data;
+            NonContigData* local_L_recv = (NonContigData*) local_L_par_comm->recv_data;
             if (recv_size)
             {
                 // Want a single recv buffer local_R and local_L par_comms
@@ -1781,23 +1502,23 @@ namespace raptor
                 int_recv_buffer.resize(recv_size);
 
                 // Map local_R recvs to original off_proc_column_map
-                if (local_R_par_comm->recv_data->size_msgs)
+                if (local_R_recv->size_msgs)
                 {
-                    for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
+                    for (int i = 0; i < local_R_recv->size_msgs; i++)
                     {
-                        idx = local_R_par_comm->recv_data->indices[i];
-                        local_R_par_comm->recv_data->indices[i] = off_node_to_off_proc[idx];
+                        idx = local_R_recv->indices[i];
+                        local_R_recv->indices[i] = off_node_to_off_proc[idx];
                     }
                 }
 
 
                 // Map local_L recvs to original off_proc_column_map
-                if (local_L_par_comm->recv_data->size_msgs)
+                if (local_L_recv->size_msgs)
                 {
-                    for (int i = 0; i < local_L_par_comm->recv_data->size_msgs; i++)
+                    for (int i = 0; i < local_L_recv->size_msgs; i++)
                     {
-                        idx = local_L_par_comm->recv_data->indices[i];
-                        local_L_par_comm->recv_data->indices[i] = on_node_to_off_proc[idx];
+                        idx = local_L_recv->indices[i];
+                        local_L_recv->indices[i] = on_node_to_off_proc[idx];
                     }
                 }
             }
@@ -1814,9 +1535,11 @@ namespace raptor
 
             // Initialize class variables
             local_S_par_comm = NULL;
-            local_R_par_comm = new ParComm(partition, 3456, partition->topology->local_comm);
-            local_L_par_comm = new ParComm(partition, 4567, partition->topology->local_comm);
-            global_par_comm = new ParComm(partition, 5678, comm);
+            local_R_par_comm = new ParComm(partition, 3456, partition->topology->local_comm, 
+                    new NonContigData());
+            local_L_par_comm = new ParComm(partition, 4567, partition->topology->local_comm,
+                    new NonContigData());
+            global_par_comm = new ParComm(partition, 5678, comm, new DuplicateData());
 
             // Initialize Variables
             int idx;
@@ -1862,6 +1585,8 @@ namespace raptor
             // number of off_proc cols)
             recv_size = local_R_par_comm->recv_data->size_msgs +
                 local_L_par_comm->recv_data->size_msgs;
+            NonContigData* local_R_recv = (NonContigData*) local_R_par_comm->recv_data;
+            NonContigData* local_L_recv = (NonContigData*) local_L_par_comm->recv_data;
             if (recv_size)
             {
                 // Want a single recv buffer local_R and local_L par_comms
@@ -1869,34 +1594,27 @@ namespace raptor
                 int_recv_buffer.resize(recv_size);
 
                 // Map local_R recvs to original off_proc_column_map
-                if (local_R_par_comm->recv_data->size_msgs)
+                if (local_R_recv->size_msgs)
                 {
-                    for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
+                    for (int i = 0; i < local_R_recv->size_msgs; i++)
                     {
-                        idx = local_R_par_comm->recv_data->indices[i];
-                        local_R_par_comm->recv_data->indices[i] = off_node_to_off_proc[idx];
+                        idx = local_R_recv->indices[i];
+                        local_R_recv->indices[i] = off_node_to_off_proc[idx];
                     }
                 }
 
 
                 // Map local_L recvs to original off_proc_column_map
-                if (local_L_par_comm->recv_data->size_msgs)
+                if (local_L_recv->size_msgs)
                 {
-                    for (int i = 0; i < local_L_par_comm->recv_data->size_msgs; i++)
+                    for (int i = 0; i < local_L_recv->size_msgs; i++)
                     {
-                        idx = local_L_par_comm->recv_data->indices[i];
-                        local_L_par_comm->recv_data->indices[i] = on_node_to_off_proc[idx];
+                        idx = local_L_recv->indices[i];
+                        local_L_recv->indices[i] = on_node_to_off_proc[idx];
                     }
                 }
             }
         }
-
-        void update(const aligned_vector<int>& off_proc_col_exists,
-                data_t* comm_t = NULL)
-        {
-            // TODO
-        }
-
 
         // Helper methods for forming TAPComm:
         void split_off_proc_cols(const aligned_vector<int>& off_proc_column_map,
@@ -1997,10 +1715,12 @@ namespace raptor
             int idx, new_idx, pos;
             int R_recv_size = local_R_par_comm->recv_data->size_msgs;
             int L_recv_size = local_L_par_comm->recv_data->size_msgs;
+            NonContigData* local_R_recv = (NonContigData*) local_R_par_comm->recv_data;
+            NonContigData* local_L_recv = (NonContigData*) local_L_par_comm->recv_data;
             for (int i = 0; i < R_recv_size; i++)
             {
                 pos = i * block_size;
-                idx = local_R_par_comm->recv_data->indices[i] * block_size;
+                idx = local_R_recv->indices[i] * block_size;
                 for (int j = 0; j < block_size; j++)
                 {
                     recvbuf[idx + j] = R_recvbuf[pos + j];
@@ -2010,7 +1730,7 @@ namespace raptor
             for (int i = 0; i < L_recv_size; i++)
             {
                 pos = i * block_size;
-                idx = local_L_par_comm->recv_data->indices[i] * block_size;
+                idx = local_L_recv->indices[i] * block_size;
                 for (int j = 0; j < block_size; j++)
                 {
                     recvbuf[idx + j] = L_recvbuf[pos + j];
