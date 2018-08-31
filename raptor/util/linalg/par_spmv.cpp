@@ -153,7 +153,7 @@ void ParMatrix::tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t)
         tap_comm = new TAPComm(partition, off_proc_column_map, on_proc_column_map);
     }
 
-    aligned_vector<double>& x_tmp = tap_comm->recv_buffer;
+    aligned_vector<double>& x_tmp = tap_comm->get_buffer<double>();
 
     off_proc->mult_T(x.local, x_tmp);
 

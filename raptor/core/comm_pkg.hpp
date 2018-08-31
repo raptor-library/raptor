@@ -61,16 +61,6 @@ namespace raptor
             }
         }
 
-        static MPI_Datatype get_type(aligned_vector<int> buffer)
-        {
-            return MPI_INT;
-        }
-        static MPI_Datatype get_type(aligned_vector<double> buffer)
-        {
-            return MPI_DOUBLE;
-        }
-
-
         // Matrix Communication
         virtual CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
                 const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
@@ -205,12 +195,14 @@ namespace raptor
                 int init_result_func_val = 0) = 0;
 
         // Helper methods
-        template <typename T> aligned_vector<T>& get_recv_buffer();
-        virtual aligned_vector<double>& get_double_recv_buffer() = 0;
-        virtual aligned_vector<int>& get_int_recv_buffer() = 0;
+        template <typename T> aligned_vector<T>& get_buffer();
+        virtual aligned_vector<double>& get_double_buffer() = 0;
+        virtual aligned_vector<int>& get_int_buffer() = 0;
 
         // Class Variables
         Topology* topology;
+        aligned_vector<double> buffer;
+        aligned_vector<int> int_buffer;
     };
 
 
@@ -405,7 +397,20 @@ namespace raptor
 
             // For each process I recv from, send the global column indices
             // for which I must recv corresponding rows 
-            if (recv_data->size_msgs)
+            aligned_vector<int> recv_sizes(num_procs, 0);
+            for (int i = 0; i < recv_data->num_msgs; i++)
+                recv_sizes[recv_data->procs[i]] = 
+                    recv_data->indptr[i+1] - recv_data->indptr[i];
+            MPI_Allreduce(MPI_IN_PLACE, recv_sizes.data(), num_procs, MPI_INT,
+                    MPI_SUM, MPI_COMM_WORLD);
+            recv_data->send(off_proc_column_map.data(), tag, comm);
+            send_data->probe(recv_sizes[rank], tag, comm);
+            recv_data->waitall();
+            for (int i = 0; i < send_data->size_msgs; i++)
+            {
+                send_data->indices[i] -= partition->first_local_col;
+            }
+            /*if (recv_data->size_msgs)
             {
                 tmp_send_buffer.resize(recv_data->size_msgs);
             }
@@ -478,7 +483,7 @@ namespace raptor
             if (send_data->num_msgs)
             {
                 send_data->finalize();
-            }
+            }*/
         }
 
         ParComm(ParComm* comm) : CommPkg(comm->topology)
@@ -642,7 +647,11 @@ namespace raptor
             recv_data->waitall();
             key++;
 
-            return recv_data->get_buffer<T>();
+            // Extract packed data to appropriate buffer
+            aligned_vector<T>& buf = recv_data->get_buffer<T>();
+            recv_data->unpack(buf, mpi_comm, block_size);
+
+            return buf;
         }
 
         // Transpose Communication
@@ -765,6 +774,7 @@ namespace raptor
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
+            // TODO - dont need to copy into sendbuf first (unpack directly here)
             complete_T<T>(block_size, init_result_func, init_result_func_val);
 
             int idx, pos;
@@ -789,6 +799,9 @@ namespace raptor
             send_data->waitall();
             recv_data->waitall();
             key++;
+            
+            aligned_vector<T>& buf = send_data->get_buffer<T>();
+            send_data->unpack(buf, mpi_comm, block_size);
         }
 
         // Conditional communication
@@ -811,8 +824,11 @@ namespace raptor
             send_data->waitall(n_sends);
             recv_data->waitall(n_recvs);
 
-            ctr--;
+            // TODO -- dont have to unpack here first...
             aligned_vector<T>& recvbuf = recv_data->get_buffer<T>();
+            recv_data->unpack(recvbuf, mpi_comm, block_size);
+
+            ctr--;
             for (int i = recv_data->size_msgs - 1; i >= 0; i--)
             {
                 int idx = i * block_size;
@@ -865,8 +881,11 @@ namespace raptor
             recv_data->waitall(n_sends);
             send_data->waitall(n_recvs);
 
-            ctr = 0;
+            // TODO -- dont have to unpack here first...
             aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
+            send_data->unpack(sendbuf, mpi_comm, block_size);
+
+            ctr = 0;
             for (int i = 0; i < send_data->size_msgs; i++)
             {
                 idx = send_data->indices[i] * block_size;
@@ -927,23 +946,14 @@ namespace raptor
         }
 
         // Helper Methods
-        aligned_vector<double>& get_double_recv_buffer()
+        aligned_vector<double>& get_double_buffer()
         {
             return recv_data->buffer;
         }
-        aligned_vector<int>& get_int_recv_buffer()
+        aligned_vector<int>& get_int_buffer()
         {
             return recv_data->int_buffer;
         }
-        aligned_vector<double>& get_double_send_buffer()
-        {
-            return send_data->buffer;
-        }
-        aligned_vector<int>& get_int_send_buffer()
-        {
-            return send_data->int_buffer;
-        }
-
 
         int key;
         NonContigData* send_data;
@@ -977,7 +987,7 @@ namespace raptor
     *****    (fully intra-node communication)
     ***** global_par_comm : ParComm*
     *****    Parallel communication package for sole inter-node step.
-    ***** recv_buffer : Vector
+    ***** buffer : Vector
     *****    Combination of local_L_par_comm and local_R_par_comm
     *****    recv buffers, ordered to match off_proc_column_map
     ***** Partition* partition
@@ -1103,11 +1113,11 @@ namespace raptor
             local_R_par_comm = new ParComm(tap_comm->local_R_par_comm);
             local_L_par_comm = new ParComm(tap_comm->local_L_par_comm);
 
-            int recv_size = tap_comm->recv_buffer.size();
+            recv_size = tap_comm->recv_size;
             if (recv_size)
             {
-                recv_buffer.resize(recv_size);
-                int_recv_buffer.resize(recv_size);
+                buffer.resize(recv_size);
+                int_buffer.resize(recv_size);
             }
         }
 
@@ -1164,6 +1174,12 @@ namespace raptor
                     comm_t);
 
             // Create global par comm / update R send indices
+            // TODO -- dont need to unpack R and G first
+            aligned_vector<int>& local_R_int_buffer = 
+                tap_comm->local_R_par_comm->send_data->get_buffer<int>();
+            aligned_vector<int>& global_int_buffer = 
+                tap_comm->global_par_comm->send_data->get_buffer<int>();
+
             aligned_vector<int> G_to_new(tap_comm->global_par_comm->recv_data->size_msgs, -1);
             ctr = 0;
             for (int i = 0; i < global_recv->size_msgs; i++)
@@ -1173,7 +1189,7 @@ namespace raptor
                 for (int j = start; j < end; j++)
                 {
                     idx = global_recv->indices[j];
-                    if (tap_comm->local_R_par_comm->send_data->int_buffer[idx] != -1)
+                    if (local_R_int_buffer[idx] != -1)
                     {
                         G_to_new[i] = ctr++;
                         break;
@@ -1186,15 +1202,14 @@ namespace raptor
                 *it = G_to_new[*it];
             }
             idx = 0;
-            for (aligned_vector<int>::iterator it = 
-                    tap_comm->local_R_par_comm->send_data->int_buffer.begin();
-                    it != tap_comm->local_R_par_comm->send_data->int_buffer.end(); ++it)
+            for (aligned_vector<int>::iterator it = local_R_int_buffer.begin();
+                    it != local_R_int_buffer.end(); ++it)
             {
                 if (*it != -1) *it = idx++;
             }
 
             global_par_comm = new ParComm(tap_comm->global_par_comm, 
-                    tap_comm->local_R_par_comm->send_data->int_buffer, comm_t);
+                    local_R_int_buffer, comm_t);
 
 
             // create local S / update global send indices
@@ -1210,7 +1225,7 @@ namespace raptor
                     for (int j = start; j < end; j++)
                     {
                         idx = local_S_recv->indices[j];
-                        if (tap_comm->global_par_comm->send_data->int_buffer[idx] != -1)
+                        if (global_int_buffer[idx] != -1)
                         {
                             S_to_new[i] = ctr++;
                             break;
@@ -1223,26 +1238,25 @@ namespace raptor
                     *it = S_to_new[*it];
                 }
                 idx = 0;
-                for (aligned_vector<int>::iterator it = 
-                        tap_comm->global_par_comm->send_data->int_buffer.begin();
-                        it != tap_comm->global_par_comm->send_data->int_buffer.end(); ++it)
+                for (aligned_vector<int>::iterator it = global_int_buffer.begin(); 
+                        it != global_int_buffer.end(); ++it)
                 {
                     if (*it != -1) *it = idx++;
                 }
 
                 local_S_par_comm = new ParComm(tap_comm->local_S_par_comm,
-                        tap_comm->global_par_comm->send_data->int_buffer, comm_t);
+                        global_int_buffer, comm_t);
             }
 
             // Determine size of final recvs (should be equal to 
             // number of off_proc cols)
-            int recv_size = local_R_par_comm->recv_data->size_msgs +
+            recv_size = local_R_par_comm->recv_data->size_msgs +
                 local_L_par_comm->recv_data->size_msgs;
             if (recv_size)
             {
                 // Want a single recv buffer local_R and local_L par_comms
-                recv_buffer.resize(recv_size);
-                int_recv_buffer.resize(recv_size);
+                buffer.resize(recv_size);
+                int_buffer.resize(recv_size);
             }        
         }
 
@@ -1279,7 +1293,6 @@ namespace raptor
 
             // Initialize Variables
             int idx;
-            int recv_size;
             aligned_vector<int> off_proc_col_to_proc;
             aligned_vector<int> on_node_column_map;
             aligned_vector<int> on_node_col_to_proc;
@@ -1329,8 +1342,8 @@ namespace raptor
             if (recv_size)
             {
                 // Want a single recv buffer local_R and local_L par_comms
-                recv_buffer.resize(recv_size);
-                int_recv_buffer.resize(recv_size);
+                buffer.resize(recv_size);
+                int_buffer.resize(recv_size);
 
                 // Map local_R recvs to original off_proc_column_map
                 if (local_R_recv->size_msgs)
@@ -1374,7 +1387,6 @@ namespace raptor
 
             // Initialize Variables
             int idx;
-            int recv_size;
             aligned_vector<int> off_proc_col_to_proc;
             aligned_vector<int> on_node_column_map;
             aligned_vector<int> on_node_col_to_proc;
@@ -1421,8 +1433,8 @@ namespace raptor
             if (recv_size)
             {
                 // Want a single recv buffer local_R and local_L par_comms
-                recv_buffer.resize(recv_size);
-                int_recv_buffer.resize(recv_size);
+                buffer.resize(recv_size);
+                int_buffer.resize(recv_size);
 
                 // Map local_R recvs to original off_proc_column_map
                 if (local_R_recv->size_msgs)
@@ -1530,16 +1542,14 @@ namespace raptor
             // Redistributing recvd inter-node values
             local_R_par_comm->communicate<T>(G_vals.data(), block_size);
 
-            aligned_vector<T>& recvbuf = get_recv_buffer<T>();
+            aligned_vector<T>& recvbuf = get_buffer<T>();
+
+            // TODO Don't need to unpack R_recvbuf and L_recvbuf first...
             aligned_vector<T>& R_recvbuf = local_R_par_comm->recv_data->get_buffer<T>();
             aligned_vector<T>& L_recvbuf = local_L_par_comm->recv_data->get_buffer<T>();
 
-            if (R_recvbuf.size() < local_R_par_comm->recv_data->size_msgs * block_size)
-                R_recvbuf.resize(local_R_par_comm->recv_data->size_msgs * block_size);
-            if (L_recvbuf.size() < local_L_par_comm->recv_data->size_msgs * block_size)
-                L_recvbuf.resize(local_L_par_comm->recv_data->size_msgs * block_size);
-            if (recvbuf.size() < R_recvbuf.size() + L_recvbuf.size())
-                recvbuf.resize(R_recvbuf.size() + L_recvbuf.size());
+            if (recvbuf.size() < recv_size * block_size)
+                recvbuf.resize(recv_size * block_size);
 
             // Add values from L_recv and R_recv to appropriate positions in 
             // Vector recv
@@ -1794,22 +1804,21 @@ namespace raptor
         }
 
         // Helper Methods
-        aligned_vector<double>& get_double_recv_buffer()
+        aligned_vector<double>& get_double_buffer()
         {
-            return recv_buffer;
+            return buffer;
         }
-        aligned_vector<int>& get_int_recv_buffer()
+        aligned_vector<int>& get_int_buffer()
         {
-            return int_recv_buffer;
+            return int_buffer;
         }
 
         // Class Attributes
+        int recv_size;
         ParComm* local_S_par_comm;
         ParComm* local_R_par_comm;
         ParComm* local_L_par_comm;
         ParComm* global_par_comm;
-        aligned_vector<double> recv_buffer;
-        aligned_vector<int> int_recv_buffer;
     };
 }
 #endif

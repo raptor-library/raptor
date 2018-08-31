@@ -7,14 +7,14 @@
 namespace raptor
 {
     template<>
-    aligned_vector<double>& CommPkg::get_recv_buffer<double>()
+    aligned_vector<double>& CommPkg::get_buffer<double>()
     {
-        return get_double_recv_buffer();
+        return get_double_buffer();
     }
     template<>
-    aligned_vector<int>& CommPkg::get_recv_buffer<int>()
+    aligned_vector<int>& CommPkg::get_buffer<int>()
     {
-        return get_int_recv_buffer();
+        return get_int_buffer();
     }
 
     template<>
@@ -265,7 +265,9 @@ CSRMatrix* communication_helper(const int* rowptr,
     send_comm->send(send_buffer, rowptr, col_indices, values,
             key, mpi_comm, block_size);
     recv_comm->recv(recv_mat, key, mpi_comm, block_size);
-    send_comm->waitall();
+    if (send_comm->num_msgs)
+        MPI_Waitall(send_comm->num_msgs, send_comm->requests.data(),
+                MPI_STATUSES_IGNORE);
 
     return recv_mat;
 }    
@@ -281,7 +283,9 @@ CSRMatrix* communication_helper(const int* rowptr,
     aligned_vector<int> send_buffer;
     send_comm->send_sparsity(send_buffer, rowptr, col_indices, key, mpi_comm, block_size); 
     recv_comm->recv_sparsity(recv_mat, key, mpi_comm, block_size);
-    send_comm->waitall();
+    if (send_comm->num_msgs)
+        MPI_Waitall(send_comm->num_msgs, send_comm->requests.data(),
+                MPI_STATUSES_IGNORE);
 
     return recv_mat;
 }  
@@ -444,7 +448,7 @@ CSRMatrix* TAPComm::communicate(const aligned_vector<int>& rowptr,
 
     // Create recv_mat (combination of L_mat and R_mat)
     CSRMatrix* recv_mat = new CSRMatrix(L_mat->n_rows + R_mat->n_rows, -1);
-    aligned_vector<int>& row_sizes = get_recv_buffer<int>();
+    aligned_vector<int>& row_sizes = get_buffer<int>();
     recv_mat->nnz = L_mat->nnz + R_mat->nnz;
     int ptr;
     if (recv_mat->nnz)
@@ -641,7 +645,7 @@ CSRMatrix* TAPComm::communicate(const aligned_vector<int>& rowptr,
 
     // Create recv_mat (combination of L_mat and R_mat)
     CSRMatrix* recv_mat = new CSRMatrix(L_mat->n_rows + R_mat->n_rows, -1);
-    aligned_vector<int>& row_sizes = get_recv_buffer<int>();
+    aligned_vector<int>& row_sizes = get_buffer<int>();
     recv_mat->nnz = L_mat->nnz + R_mat->nnz;
     int ptr;
     if (recv_mat->nnz)

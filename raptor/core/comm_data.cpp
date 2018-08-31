@@ -5,41 +5,20 @@
 
 namespace raptor 
 {
-
-/*template<>
-void CommData::get_buffer<double>(aligned_vector<double>& buffer, 
-        MPI_Comm mpi_comm, const int block_size)
-{
-    int position = 0;
-    int size = size_msgs * block_size;
-    if (size > buffer.size()) buffer.resize(size);
-    MPI_Unpack(pack_buffer.data(), pack_buffer.size(), &position,
-            buffer, size, MPI_DOUBLE, mpi_comm);
-    return buffer;
-}
-
 template<>
-void CommData::get_buffer<int>(aligned_vector<int>& buffer,
-        MPI_Comm mpi_comm, const int block_size)
-{
-    int position = 0;
-    int size = size_msgs * block_size;
-    if (size > buffer.size()) buffer.resize(size);
-    MPI_Unpack(pack_buffer.data(), pack_buffer.size(), &position,
-            buffer, size, MPI_INT, mpi_comm);
-    return buffer;
-}
-
-*/
-template<>
-aligned_vector<double>& CommData::get_buffer<double>()
+aligned_vector<double>& CommData::get_buffer<double>(const int block_size)
 {
     return buffer;
 }
 template<>
-aligned_vector<int>& CommData::get_buffer<int>()
+aligned_vector<int>& CommData::get_buffer<int>(const int block_size)
 {
     return int_buffer;
+}
+template<> 
+aligned_vector<char>& CommData::get_buffer<char>(const int block_size)
+{
+    return pack_buffer;
 }
 
 template<>

@@ -537,7 +537,7 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         // and idx in row v such that states[idx] is new coarse)
         if (comm_t) *comm_t -= MPI_Wtime();
         comm_coarse_dist1(A, comm, active_sends, active_recvs, C, first_pass);
-        aligned_vector<int>& recv_C = comm->get_int_recv_buffer();
+        aligned_vector<int>& recv_C = comm->get_int_buffer();
         if (comm_t) *comm_t += MPI_Wtime();
 
 

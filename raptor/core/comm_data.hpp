@@ -76,6 +76,8 @@ public:
         }
     }
 
+    virtual void probe(int size, int key, MPI_Comm mpi_comm) = 0;
+
     virtual CommData* copy() = 0;
     virtual CommData* copy(const aligned_vector<int>& col_to_new) = 0;
 
@@ -84,7 +86,7 @@ public:
 
 
     template <typename T>
-    aligned_vector<T>& get_buffer();
+    aligned_vector<T>& get_buffer(const int block_size = 1);
 
     template <typename T>
     void send(const T* values, int key, MPI_Comm mpi_comm, const int block_size = 1,
@@ -124,21 +126,22 @@ public:
     template <typename T>
     void recv(int key, MPI_Comm mpi_comm, const int block_size = 1)
     {
-        int proc, start, end;
-
-        aligned_vector<T>& buf = get_buffer<T>();
-        if (buf.size() != size_msgs * block_size)
-            buf.resize(size_msgs * block_size);
-
+        int proc, start, end, size, pos;
+        int flat_size = size_msgs * block_size;
         MPI_Datatype datatype = get_type<T>();
+        MPI_Pack_size(flat_size, datatype, mpi_comm, &size);
+        if (pack_buffer.size() < size) pack_buffer.resize(size);
 
+        pos = 0;
         for (int i = 0; i < num_msgs; i++)
         {
             proc = procs[i];
             start = indptr[i];
             end = indptr[i+1];
-            MPI_Irecv(&(buf[start * block_size]), (end - start) * block_size,
-                    datatype, proc, key, mpi_comm, &(requests[i]));
+            MPI_Pack_size((end - start) * block_size, datatype, mpi_comm, &size);
+            MPI_Irecv(&(pack_buffer[pos]), size, MPI_PACKED, proc, key, 
+                    mpi_comm, &(requests[i]));
+            pos += size;
         }
     }   
 
@@ -155,8 +158,6 @@ public:
             const aligned_vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1) = 0;
-
- 
 
     void recv(CSRMatrix* recv_mat, int key, MPI_Comm mpi_comm, const int block_size = 1)
     {
@@ -250,6 +251,16 @@ public:
         }
     }
 
+    template <typename T>
+    void unpack(aligned_vector<T>& buffer, MPI_Comm mpi_comm, const int block_size = 1)
+    {
+        int position = 0;
+        int flat_size = size_msgs * block_size;
+        if (buffer.size() < flat_size) buffer.resize(flat_size);
+        MPI_Datatype datatype = get_type<T>();
+        MPI_Unpack(pack_buffer.data(), pack_buffer.size(), &position,
+                buffer.data(), flat_size, datatype, mpi_comm);
+    }
 
     int num_msgs;
     int size_msgs;
@@ -326,6 +337,25 @@ public:
 
         num_msgs++;
         size_msgs += msg_size;
+    }
+
+    void probe(int n_recv, int key, MPI_Comm mpi_comm)
+    {
+        int proc, count, size;
+        MPI_Status recv_status;
+
+        size_msgs = 0;
+        indptr[0] = 0;
+        for (int i = 0; i < n_recv; i++)
+        {
+            MPI_Recv(&size, 1, MPI_INT, MPI_ANY_SOURCE, key,
+                    mpi_comm, &recv_status);
+            procs.push_back(recv_status.MPI_SOURCE);
+            size_msgs += size;
+            indptr.push_back(size_msgs);
+        }
+        num_msgs = procs.size();
+        finalize();
     }
 
 
@@ -558,14 +588,14 @@ public:
    {
         int n_recvs, ctr, prev_ctr;
         int proc, start, end;
-        int idx, size;
-
-        aligned_vector<T>& buf = get_buffer<T>();
-        if (buf.size() != size_msgs * block_size)
-            buf.resize(size_msgs * block_size);
+        int idx, size, pos;
+        int flat_size = size_msgs * block_size;
 
         MPI_Datatype datatype = get_type<T>();
+        MPI_Pack_size(flat_size, datatype, mpi_comm, &size);
+        if (pack_buffer.size() < size) pack_buffer.resize(size);
 
+        pos = 0;
         n_recvs = 0;
         ctr = 0;
         prev_ctr = 0;
@@ -586,12 +616,13 @@ public:
                     }
                 }
             }
-            size = ctr - prev_ctr;
-            if (size)
+            if (ctr - prev_ctr)
             {
-                MPI_Irecv(&(buf[prev_ctr]), size, datatype,
-                        proc, key, mpi_comm, &(requests[n_recvs++]));
+                MPI_Pack_size(ctr - prev_ctr, datatype, mpi_comm, &size);
+                MPI_Irecv(&(pack_buffer[pos]), size, MPI_PACKED, proc, key, 
+                        mpi_comm, &(requests[n_recvs++]));
                 prev_ctr = ctr;
+                pos += size;
             }
         }
 
@@ -680,6 +711,30 @@ public:
         size_msgs += msg_size;
     }
 
+    void probe(int size, int key, MPI_Comm mpi_comm)
+    {
+        int proc, count;
+        int size_recvd;
+        MPI_Status recv_status;
+
+        size_msgs = size;
+        indices.resize(size_msgs);
+        indptr[0] = 0;
+        size_recvd = 0;
+        while (size_recvd < size_msgs)
+        {
+            MPI_Probe(MPI_ANY_SOURCE, key, mpi_comm, &recv_status);
+            proc = recv_status.MPI_SOURCE;
+            MPI_Get_count(&recv_status, MPI_INT, &count);
+            MPI_Recv(&(indices[size_recvd]), count, MPI_INT, proc, 
+                    key, mpi_comm, &recv_status);
+            size_recvd += count;
+            procs.push_back(proc);
+            indptr.push_back(size_recvd);
+        }
+        num_msgs = procs.size();
+        finalize();
+    }
 
     void int_send(const int* values, int key, MPI_Comm mpi_comm, const int block_size,
             std::function<int(int, int)> init_result_func,
@@ -914,16 +969,16 @@ public:
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
    {
-        int n_recvs, ctr, prev_ctr;
+         int n_recvs, ctr, prev_ctr;
         int proc, start, end;
-        int idx, size;
-
-        aligned_vector<T>& buf = get_buffer<T>();
-        if (buf.size() != size_msgs * block_size)
-            buf.resize(size_msgs * block_size);
+        int idx, size, pos;
+        int flat_size = size_msgs * block_size;
 
         MPI_Datatype datatype = get_type<T>();
+        MPI_Pack_size(flat_size, datatype, mpi_comm, &size);
+        if (pack_buffer.size() < size) pack_buffer.resize(size);
 
+        pos = 0;
         n_recvs = 0;
         ctr = 0;
         prev_ctr = 0;
@@ -944,18 +999,19 @@ public:
                     }
                 }
             }
-            size = ctr - prev_ctr;
-            if (size)
+            if (ctr - prev_ctr)
             {
-                MPI_Irecv(&(buf[prev_ctr]), size, datatype,
-                        proc, key, mpi_comm, &(requests[n_recvs++]));
+                MPI_Pack_size(ctr - prev_ctr, datatype, mpi_comm, &size);
+                MPI_Irecv(&(pack_buffer[pos]), size, MPI_PACKED, proc, key, 
+                        mpi_comm, &(requests[n_recvs++]));
                 prev_ctr = ctr;
+                pos += size;
             }
         }
 
         *n_recv_ptr = n_recvs;
-        *s_recv_ptr = ctr;
-    }
+        *s_recv_ptr = ctr;    
+   }
 
     aligned_vector<int> indices;
 

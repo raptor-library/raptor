@@ -265,7 +265,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         
         for (int i = 0; i < A->off_proc_num_cols; i++)
         {
-            off_variables[i] = comm->get_int_recv_buffer()[i];
+            off_variables[i] = comm->get_int_buffer()[i];
         }
     }
 
@@ -1071,7 +1071,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
         for (int i = 0; i < A->off_proc_num_cols; i++)
         {
-            off_variables[i] = comm->get_int_recv_buffer()[i];
+            off_variables[i] = comm->get_int_buffer()[i];
         }
     }
 
