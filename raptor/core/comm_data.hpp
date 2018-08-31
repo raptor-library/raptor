@@ -97,6 +97,18 @@ public:
             std::function<double(double, double)> init_result_func,
             double init_result_func_val) = 0;
 
+    template <typename T>
+    void send(const T* values, int key, MPI_Comm mpi_comm,
+            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            int* n_send_ptr, const int block_size = 1);
+    virtual void int_send(const int* values, int key, MPI_Comm mpi_comm,
+            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            int* n_send_ptr, const int block_size) = 0;
+    virtual void double_send(const double* values, int key, MPI_Comm mpi_comm,
+            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            int* n_send_ptr, const int block_size) = 0;
+
+
     virtual void send(aligned_vector<PairData>& send_buffer,
             const int* rowptr, 
             const int* col_indices,
@@ -129,6 +141,22 @@ public:
                     datatype, proc, key, mpi_comm, &(requests[i]));
         }
     }   
+
+    template <typename T>
+    void recv(int key, MPI_Comm mpi_comm, 
+            const aligned_vector<int>& off_proc_states,
+            std::function<bool(int)> compare_func,
+            int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1);
+    virtual void int_recv(int key, MPI_Comm mpi_comm, 
+            const aligned_vector<int>& off_proc_states,
+            std::function<bool(int)> compare_func,
+            int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1) = 0;
+    virtual void double_recv(int key, MPI_Comm mpi_comm, 
+            const aligned_vector<int>& off_proc_states,
+            std::function<bool(int)> compare_func,
+            int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1) = 0;
+
+ 
 
     void recv(CSRMatrix* recv_mat, int key, MPI_Comm mpi_comm, const int block_size = 1)
     {
@@ -214,7 +242,13 @@ public:
             MPI_Waitall(num_msgs, requests.data(), MPI_STATUSES_IGNORE);
         }
     }
-
+    void waitall(int n_msgs)
+    {
+        if (n_msgs)
+        {
+            MPI_Waitall(n_msgs, requests.data(), MPI_STATUSES_IGNORE);
+        }
+    }
 
 
     int num_msgs;
@@ -224,6 +258,7 @@ public:
     aligned_vector<MPI_Request> requests;
     aligned_vector<double> buffer;
     aligned_vector<int> int_buffer;
+    aligned_vector<char> pack_buffer;
 
 };
 
@@ -309,29 +344,105 @@ public:
                 init_result_func_val);
     }
 
+    void int_send(const int* values, int key, MPI_Comm mpi_comm,
+            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            int* n_send_ptr, const int block_size)
+    {
+        send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
+    }
+    void double_send(const double* values, int key, MPI_Comm mpi_comm,
+            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            int* n_send_ptr, const int block_size)
+    {
+        send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
+    }        
+
     template <typename T>
     void send(const T* values, int key, MPI_Comm mpi_comm, const int block_size = 1,
             std::function<T(T, T)> init_result_func = &sum_func<T, T>,
             T init_result_func_val = 0)
     {
-        int start, end;
-        int proc, idx, pos;
-        int idx_start, idx_end;
-
-        aligned_vector<T>& buf = get_buffer<T>();
-        if (buf.size() != size_msgs * block_size)
-            buf.resize(size_msgs * block_size);
-
         MPI_Datatype datatype = get_type<T>();
 
+        int start, end;
+        int proc, idx;
+        int idx_start, idx_end;
+        int flat_size = size_msgs * block_size;
+        int prev_pos, pos, size;
+
+        MPI_Pack_size(flat_size, datatype, mpi_comm, &size);
+        if (pack_buffer.size() < size) pack_buffer.resize(size);
+        char* buf_ptr = pack_buffer.data();
+
+        pos = 0;
+        prev_pos = pos;
         for (int i = 0; i < num_msgs; i++)
         {
             proc = procs[i];
             start = indptr[i];
             end = indptr[i+1];
-            MPI_Isend(&(values[start * block_size]), (end - start) * block_size,
-                    datatype, proc, key, mpi_comm, &(requests[i]));
+            MPI_Pack(&(values[start]), (end - start) * block_size, datatype,
+                    buf_ptr, size, &pos, mpi_comm);
+            MPI_Isend(&(buf_ptr[prev_pos]), pos - prev_pos, MPI_PACKED, proc, 
+                    key, mpi_comm, &(requests[i]));
+            prev_pos = pos;
         }
+    }
+
+
+    template <typename T>
+    void send(const T* values, int key, MPI_Comm mpi_comm,
+            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            int* n_send_ptr, const int block_size = 1)
+    {
+        int n_sends;
+        int proc, start, end;
+        int idx, size;
+        int ctr, prev_ctr;
+        bool comparison;
+        int flat_size = size_msgs * block_size; 
+
+        MPI_Datatype type = get_type<T>();
+
+        aligned_vector<char>& buf = pack_buffer;
+        MPI_Pack_size(flat_size, type, mpi_comm, &size);
+        if (buf.size() < size) buf.resize(size);
+
+        n_sends = 0;
+        ctr = 0;
+        prev_ctr = 0;
+        for (int i = 0; i < num_msgs; i++)
+        {
+            proc = procs[i];
+            start = indptr[i];
+            end = indptr[i+1];
+            for (int j = start; j < end; j++)
+            {
+                comparison = false;
+                idx = j * block_size;
+                for (int k = 0; k < block_size; k++)
+                {
+                    if (compare_func(states[idx + k]))
+                    {
+                        comparison = true;
+                        break;
+                    }
+                }
+                if (comparison)
+                {
+                    MPI_Pack(&(values[idx]), block_size, type, buf.data(), 
+                            buf.size(), &ctr, mpi_comm);
+                }
+            }
+            size = ctr - prev_ctr;
+            if (size)
+            {
+                MPI_Issend(&(buf[prev_ctr]), size, MPI_PACKED, 
+                        proc, key, mpi_comm, &(requests[n_sends++]));
+                prev_ctr = ctr;
+            }
+        }        
+        *n_send_ptr = n_sends;
     }
 
     void send(aligned_vector<PairData>& send_buffer,
@@ -422,6 +533,71 @@ public:
     }
 
 
+    void int_recv(int key, MPI_Comm mpi_comm, 
+            const aligned_vector<int>& off_proc_states,
+            std::function<bool(int)> compare_func,
+            int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
+    {
+        cond_recv<int>(key, mpi_comm, off_proc_states, compare_func, s_recv_ptr,
+                n_recv_ptr, block_size);
+    }
+    void double_recv(int key, MPI_Comm mpi_comm, 
+            const aligned_vector<int>& off_proc_states,
+            std::function<bool(int)> compare_func,
+            int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
+    {
+        cond_recv<double>(key, mpi_comm, off_proc_states, compare_func, s_recv_ptr,
+                n_recv_ptr, block_size);
+    }
+
+    template <typename T>
+    void cond_recv(int key, MPI_Comm mpi_comm, 
+            const aligned_vector<int>& off_proc_states,
+            std::function<bool(int)> compare_func,
+            int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
+   {
+        int n_recvs, ctr, prev_ctr;
+        int proc, start, end;
+        int idx, size;
+
+        aligned_vector<T>& buf = get_buffer<T>();
+        if (buf.size() != size_msgs * block_size)
+            buf.resize(size_msgs * block_size);
+
+        MPI_Datatype datatype = get_type<T>();
+
+        n_recvs = 0;
+        ctr = 0;
+        prev_ctr = 0;
+        for (int i = 0; i < num_msgs; i++)
+        {
+            proc = procs[i];
+            start = indptr[i];
+            end = indptr[i+1];
+            for (int j = start; j < end; j++)
+            {
+                idx = j * block_size;
+                for (int k = 0; k < block_size; k++)
+                {
+                    if (compare_func(off_proc_states[idx + k]))
+                    {
+                        ctr += block_size;
+                        break;
+                    }
+                }
+            }
+            size = ctr - prev_ctr;
+            if (size)
+            {
+                MPI_Irecv(&(buf[prev_ctr]), size, datatype,
+                        proc, key, mpi_comm, &(requests[n_recvs++]));
+                prev_ctr = ctr;
+            }
+        }
+
+        *n_recv_ptr = n_recvs;
+        *s_recv_ptr = ctr;
+    }
 
 }; 
 
@@ -519,22 +695,38 @@ public:
         send(values, key, mpi_comm, block_size, init_result_func,
                 init_result_func_val);
     }
+    void int_send(const int* values, int key, MPI_Comm mpi_comm,
+            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            int* n_send_ptr, const int block_size)
+    {
+        send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
+    }
+    void double_send(const double* values, int key, MPI_Comm mpi_comm,
+            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            int* n_send_ptr, const int block_size)
+    {
+        send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
+    }     
 
     template <typename T>
     void send(const T* values, int key, MPI_Comm mpi_comm, const int block_size = 1,
             std::function<T(T, T)> init_result_func = &sum_func<T, T>,
             T init_result_func_val = 0)
     {
-        int start, end;
-        int proc, idx, pos;
-        int idx_start, idx_end;
-
-        aligned_vector<T>& buf = get_buffer<T>();
-        if (buf.size() != size_msgs * block_size)
-            buf.resize(size_msgs * block_size);
-
         MPI_Datatype datatype = get_type<T>();
 
+        int start, end;
+        int proc, idx;
+        int idx_start, idx_end;
+        int flat_size = size_msgs * block_size;
+        int prev_pos, pos, size;
+
+        MPI_Pack_size(flat_size, datatype, mpi_comm, &size);
+        if (pack_buffer.size() < size) pack_buffer.resize(size);
+        char* buf_ptr = pack_buffer.data();
+
+        pos = 0;
+        prev_pos = pos;
         for (int i = 0; i < num_msgs; i++)
         {
             proc = procs[i];
@@ -543,17 +735,72 @@ public:
             for (int j = start; j < end; j++)
             {
                 idx = indices[j] * block_size;
-                pos = j * block_size;
-                for (int k = 0; k < block_size; k++)
-                {
-                    buf[pos + k] = values[idx + k];
-                }
+                MPI_Pack(&(values[idx]), block_size, datatype, buf_ptr,
+                        size, &pos, mpi_comm);
             }
-            MPI_Isend(&(buf[start * block_size]), (end - start) * block_size,
-                    datatype, proc, key, mpi_comm, &(requests[i]));
+            MPI_Isend(&(buf_ptr[prev_pos]), pos - prev_pos, MPI_PACKED, proc, 
+                    key, mpi_comm, &(requests[i]));
+            prev_pos = pos;
         }
     }
 
+    template <typename T>
+    void send(const T* values, int key, MPI_Comm mpi_comm,
+            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            int* n_send_ptr, const int block_size = 1)
+    {
+        int n_sends;
+        int proc, start, end;
+        int idx, size;
+        int ctr, prev_ctr;
+        bool comparison;
+        int flat_size = size_msgs * block_size; 
+
+        aligned_vector<char>& sendbuf = pack_buffer;
+        MPI_Datatype type = get_type<T>();
+
+        MPI_Pack_size(flat_size, type, mpi_comm, &size);
+        if (sendbuf.size() < size) sendbuf.resize(size);
+        char* buf_ptr = sendbuf.data();
+
+        n_sends = 0;
+        ctr = 0;
+        prev_ctr = 0;
+        for (int i = 0; i < num_msgs; i++)
+        {
+            proc = procs[i];
+            start = indptr[i];
+            end = indptr[i+1];
+            for (int j = start; j < end; j++)
+            {
+                idx = indices[j] * block_size;
+                comparison = false;
+                for (int k = 0; k < block_size; k++)
+                {
+                    // If compare true for any idx in block
+                    // Add full block to message
+                    if (compare_func(states[idx + k]))
+                    {
+                        comparison = true;
+                        break;
+                    }
+                }
+                if (comparison)
+                {
+                    MPI_Pack(&(values[idx]), block_size, type, buf_ptr,
+                            size, &ctr, mpi_comm);
+                }
+            }
+            if (ctr - prev_ctr)
+            {
+                MPI_Isend(&(buf_ptr[prev_ctr]), ctr - prev_ctr, MPI_PACKED, 
+                        proc, key, mpi_comm, &(requests[n_sends++]));
+                prev_ctr = ctr;
+            }
+        }
+
+        *n_send_ptr = n_sends;
+    }
     void send(aligned_vector<PairData>& send_buffer,
             const int* rowptr, 
             const int* col_indices,
@@ -641,6 +888,73 @@ public:
             MPI_Isend(&(send_buffer[start]), end - start, MPI_INT, proc, 
                     key, mpi_comm, &(requests[i]));
         }
+    }
+
+
+    void int_recv(int key, MPI_Comm mpi_comm, 
+            const aligned_vector<int>& off_proc_states,
+            std::function<bool(int)> compare_func,
+            int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
+    {
+        cond_recv<int>(key, mpi_comm, off_proc_states, compare_func, s_recv_ptr,
+                n_recv_ptr, block_size);
+    }
+    void double_recv(int key, MPI_Comm mpi_comm, 
+            const aligned_vector<int>& off_proc_states,
+            std::function<bool(int)> compare_func,
+            int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
+    {
+        cond_recv<double>(key, mpi_comm, off_proc_states, compare_func, s_recv_ptr,
+                n_recv_ptr, block_size);
+    }
+
+    template <typename T>
+    void cond_recv(int key, MPI_Comm mpi_comm, 
+            const aligned_vector<int>& off_proc_states,
+            std::function<bool(int)> compare_func,
+            int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
+   {
+        int n_recvs, ctr, prev_ctr;
+        int proc, start, end;
+        int idx, size;
+
+        aligned_vector<T>& buf = get_buffer<T>();
+        if (buf.size() != size_msgs * block_size)
+            buf.resize(size_msgs * block_size);
+
+        MPI_Datatype datatype = get_type<T>();
+
+        n_recvs = 0;
+        ctr = 0;
+        prev_ctr = 0;
+        for (int i = 0; i < num_msgs; i++)
+        {
+            proc = procs[i];
+            start = indptr[i];
+            end = indptr[i+1];
+            for (int j = start; j < end; j++)
+            {
+                idx = indices[j] * block_size;
+                for (int k = 0; k < block_size; k++)
+                {
+                    if (compare_func(off_proc_states[idx + k]))
+                    {
+                        ctr += block_size;
+                        break;
+                    }
+                }
+            }
+            size = ctr - prev_ctr;
+            if (size)
+            {
+                MPI_Irecv(&(buf[prev_ctr]), size, datatype,
+                        proc, key, mpi_comm, &(requests[n_recvs++]));
+                prev_ctr = ctr;
+            }
+        }
+
+        *n_recv_ptr = n_recvs;
+        *s_recv_ptr = ctr;
     }
 
     aligned_vector<int> indices;
@@ -732,23 +1046,40 @@ public:
         send(values, key, mpi_comm, block_size, init_result_func,
                 init_result_func_val);
     }
+    void int_send(const double* values, int key, MPI_Comm mpi_comm,
+            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            int* n_send_ptr, const int block_size)
+    {
+        send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
+    }
+    void double_send(const double* values, int key, MPI_Comm mpi_comm,
+            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            int* n_send_ptr, const int block_size)
+    {
+        send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
+    }     
 
     template <typename T>
     void send(const T* values, int key, MPI_Comm mpi_comm, const int block_size = 1,
             std::function<T(T, T)> init_result_func = &sum_func<T, T>,
             T init_result_func_val = 0)
     {
-        int start, end;
-        int proc, idx, pos;
-        int idx_start, idx_end;
-
-        aligned_vector<T>& buf = get_buffer<T>();
-        if (buf.size() != size_msgs * block_size)
-            buf.resize(size_msgs * block_size);
-
         MPI_Datatype datatype = get_type<T>();
 
-        std::fill(buf.begin(), buf.end(), init_result_func_val);
+        int start, end;
+        int proc, idx;
+        int idx_start, idx_end;
+        int flat_size = size_msgs * block_size;
+        int prev_pos, pos, size;
+
+        MPI_Pack_size(flat_size, datatype, mpi_comm, &size);
+        if (pack_buffer.size() < size) pack_buffer.resize(size);
+        char* buf_ptr = pack_buffer.data();
+
+        aligned_vector<T> tmp(block_size);
+
+        pos = 0;
+        prev_pos = pos;
         for (int i = 0; i < num_msgs; i++)
         {
             proc = procs[i];
@@ -758,22 +1089,31 @@ public:
             {
                 idx_start = indptr_T[j];
                 idx_end = indptr_T[j+1];
-                pos = j * block_size;
+                std::fill(tmp.begin(), tmp.end(), init_result_func_val);
                 for (int k = idx_start; k < idx_end; k++)
                 {
                     idx = indices[k] * block_size;
                     for (int l = 0; l < block_size; l++)
                     {
-                        buf[pos + l] = init_result_func(buf[pos + l],
-                                values[idx + l]);
+                        tmp[l] = init_result_func(tmp[l], values[idx+l]);
                     }
                 }
+                MPI_Pack(&(tmp[0]), block_size, datatype, buf_ptr, size, 
+                    &pos, mpi_comm);
             }
-            MPI_Isend(&(buf[start * block_size]), (end - start) * block_size,
-                    datatype, proc, key, mpi_comm, &(requests[i]));
+            MPI_Isend(&(buf_ptr[prev_pos]), pos - prev_pos, MPI_PACKED, proc, 
+                    key, mpi_comm, &(requests[i]));
+            prev_pos = pos;
         }
     }
 
+    template <typename T>
+    void send(const T* values, int key, MPI_Comm mpi_comm,
+            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            int* n_send_ptr, const int block_size = 1)
+    {
+
+    }
 
     void send(aligned_vector<PairData>& send_buffer,
             const int* rowptr, 

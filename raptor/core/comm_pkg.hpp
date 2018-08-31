@@ -642,7 +642,7 @@ namespace raptor
             recv_data->waitall();
             key++;
 
-            return get_recv_buffer<T>();
+            return recv_data->get_buffer<T>();
         }
 
         // Transpose Communication
@@ -786,15 +786,8 @@ namespace raptor
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
-            if (send_data->num_msgs)
-            {
-                MPI_Waitall(send_data->num_msgs, send_data->requests.data(), MPI_STATUSES_IGNORE);
-            }
-
-            if (recv_data->num_msgs)
-            {
-                MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUSES_IGNORE);
-            }
+            send_data->waitall();
+            recv_data->waitall();
             key++;
         }
 
@@ -807,101 +800,19 @@ namespace raptor
                 std::function<bool(int)> compare_func,
                 const int block_size = 1)
         {
-            int proc, start, end;
-            int idx, size;
-            int ctr, prev_ctr;
-            int n_sends, n_recvs;
+            int ctr, n_sends, n_recvs;
             int key = 325493;
             bool comparison;
-
-            aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
-            aligned_vector<T>& recvbuf = recv_data->get_buffer<T>();
-            if (sendbuf.size() < send_data->size_msgs * block_size)
-                sendbuf.resize(send_data->size_msgs * block_size);
-            if (recvbuf.size() < recv_data->size_msgs * block_size)
-                recvbuf.resize(recv_data->size_msgs * block_size);
-
-            MPI_Datatype type = get_type(sendbuf);
-
-            n_sends = 0;
-            ctr = 0;
-            prev_ctr = 0;
-            for (int i = 0; i < send_data->num_msgs; i++)
-            {
-                proc = send_data->procs[i];
-                start = send_data->indptr[i];
-                end = send_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    idx = send_data->indices[j] * block_size;
-                    comparison = false;
-                    for (int k = 0; k < block_size; k++)
-                    {
-                        // If compare true for any idx in block
-                        // Add full block to message
-                        if (compare_func(states[idx + k]))
-                        {
-                            comparison = true;
-                            break;
-                        }
-                    }
-                    if (comparison)
-                    {
-                        for (int l = 0; l < block_size; l++)
-                        {
-                            sendbuf[ctr++] = vals[idx + l];
-                        }
-                    }
-                }
-                size = ctr - prev_ctr;
-                if (size)
-                {
-                    MPI_Isend(&(sendbuf[prev_ctr]), size, type, 
-                            proc, key, mpi_comm, &(send_data->requests[n_sends++]));
-                    prev_ctr = ctr;
-                }
-            }
             
+            send_data->send(vals.data(), key, mpi_comm, states, compare_func, &n_sends, block_size);
+            recv_data->recv<T>(key, mpi_comm, off_proc_states, 
+                    compare_func, &ctr, &n_recvs, block_size);
 
-            n_recvs = 0;
-            ctr = 0;
-            prev_ctr = 0;
-            for (int i = 0; i < recv_data->num_msgs; i++)
-            {
-                proc = recv_data->procs[i];
-                start = recv_data->indptr[i];
-                end = recv_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    idx = j * block_size;
-                    for (int k = 0; k < block_size; k++)
-                    {
-                        if (compare_func(off_proc_states[idx + k]))
-                        {
-                            ctr += block_size;
-                            break;
-                        }
-                    }
-                }
-                size = ctr - prev_ctr;
-                if (size)
-                {
-                    MPI_Irecv(&(recvbuf[prev_ctr]), size, type,
-                            proc, key, mpi_comm, &(recv_data->requests[n_recvs++]));
-                    prev_ctr = ctr;
-                }
-            }
-
-            if (n_sends)
-            {
-                MPI_Waitall(n_sends, send_data->requests.data(), MPI_STATUSES_IGNORE);
-            }
-            if (n_recvs)
-            {
-                MPI_Waitall(n_recvs, recv_data->requests.data(), MPI_STATUSES_IGNORE);
-            }
+            send_data->waitall(n_sends);
+            recv_data->waitall(n_recvs);
 
             ctr--;
+            aligned_vector<T>& recvbuf = recv_data->get_buffer<T>();
             for (int i = recv_data->size_msgs - 1; i >= 0; i--)
             {
                 int idx = i * block_size;
@@ -942,100 +853,20 @@ namespace raptor
                 std::function<U(U, T)> result_func,
                 const int block_size = 1)
         {
-            int proc, start, end;
-            int idx, size;
-            int ctr, prev_ctr;
+            int idx, ctr;
             int n_sends, n_recvs;
-
-            aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
-            aligned_vector<T>& recvbuf = recv_data->get_buffer<T>();
-            if (sendbuf.size() < send_data->size_msgs * block_size)
-                sendbuf.resize(send_data->size_msgs * block_size);
-            if (recvbuf.size() < recv_data->size_msgs * block_size)
-                recvbuf.resize(recv_data->size_msgs * block_size);
-
-            MPI_Datatype type = get_type(sendbuf);
             int key = 453246;
             bool comparison;
 
-            n_sends = 0;
-            ctr = 0;
-            prev_ctr = 0;
-            for (int i = 0; i < recv_data->num_msgs; i++)
-            {
-                proc = recv_data->procs[i];
-                start = recv_data->indptr[i];
-                end = recv_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    comparison = false;
-                    idx = j * block_size;
-                    for (int k = 0; k < block_size; k++)
-                    {
-                        if (compare_func(off_proc_states[idx + k]))
-                        {
-                            comparison = true;
-                            break;
-                        }
-                    }
-                    if (comparison)
-                    {
-                        //std::copy(vals + idx, vals + idx + block_size, recvbuf[ctr]);
-                        //ctr += block_size;
-                        for (int k = 0; k < block_size; k++)
-                        {
-                            recvbuf[ctr++] = vals[idx + k];
-                        }
-                    }
-                }
-                size = ctr - prev_ctr;
-                if (size)
-                {
-                    MPI_Issend(&(recvbuf[prev_ctr]), size, type, 
-                            proc, key, mpi_comm, &(recv_data->requests[n_sends++]));
-                    prev_ctr = ctr;
-                }
-            }
-
-            n_recvs = 0;
-            ctr = 0;
-            prev_ctr = 0;
-            for (int i = 0; i < send_data->num_msgs; i++)
-            {
-                proc = send_data->procs[i];
-                start = send_data->indptr[i];
-                end = send_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    idx = send_data->indices[j] * block_size;
-                    for (int k = 0; k < block_size; k++)
-                    {
-                        if (compare_func(states[idx + k]))
-                        {
-                            ctr += block_size;
-                            break;
-                        }
-                    }
-                }
-                size = ctr - prev_ctr;
-                if (size)
-                {
-                    MPI_Irecv(&(sendbuf[prev_ctr]), size, type,
-                            proc, key, mpi_comm, &(send_data->requests[n_recvs++]));
-                    prev_ctr = ctr;
-                }
-            }
-
-            if (n_sends)
-            {
-                MPI_Waitall(n_sends, recv_data->requests.data(), MPI_STATUSES_IGNORE);
-            }
-            if (n_recvs)
-            {
-                MPI_Waitall(n_recvs, send_data->requests.data(), MPI_STATUSES_IGNORE);
-            }
+            recv_data->send(vals.data(), key, mpi_comm, off_proc_states, compare_func,
+                    &n_sends, block_size);
+            send_data->recv<T>(key, mpi_comm, states, compare_func, &ctr, &n_recvs, block_size);
+            
+            recv_data->waitall(n_sends);
+            send_data->waitall(n_recvs);
 
             ctr = 0;
+            aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
             for (int i = 0; i < send_data->size_msgs; i++)
             {
                 idx = send_data->indices[i] * block_size;
