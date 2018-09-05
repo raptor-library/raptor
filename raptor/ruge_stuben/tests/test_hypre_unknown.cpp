@@ -150,12 +150,14 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     compare(P, P_hyp);
 
     ParCSRMatrix* APtmp = A->mult(P);
-    ParCSCMatrix* Pcsc = new ParCSCMatrix(P);
+//    ParCSCMatrix* Pcsc = new ParCSCMatrix(P);
+    ParCSCMatrix* Pcsc = P->to_ParCSC(); //new ParCSCMatrix(P);
     ParCSRMatrix* Ac = APtmp->mult_T(Pcsc);
     delete APtmp;
     delete Pcsc;
     hypre_ParCSRMatrix* A_H;
-    hypre_BoomerAMGBuildCoarseOperatorKT(P_hyp, A_hyp, P_hyp, false, &A_H);
+//    hypre_BoomerAMGBuildCoarseOperatorKT(P_hyp, A_hyp, P_hyp, false, &A_H);
+    hypre_BoomerAMGBuildCoarseOperator(P_hyp, A_hyp, P_hyp,  &A_H);
     compare(Ac, A_H);
 
 

@@ -5,11 +5,11 @@ pkg_check_modules(METIS QUIET metis)
 
 find_path(METIS_INCLUDE_DIR metis.h
           HINTS ${PC_METIS_INCLUDEDIR} ${PC_METIS_INCLUDE_DIRS}
-			${METIS_DIR}/include)
+          $ENV{METIS_DIR}/Lib)
 
-find_library(METIS_LIBRARY NAMES metis
+find_library(METIS_LIBRARY NAMES libmetis.a
              HINTS ${PC_METIS_LIBDIR} ${PC_METIS_LIBRARY_DIRS}
-				${METIS_DIR}/libmetis ${METIS_DIR}/lib)
+             $ENV{METIS_DIR})
 
 set(METIS_LIBRARIES ${METIS_LIBRARY} )
 set(METIS_INCLUDE_DIRS ${METIS_INCLUDE_DIR} )
