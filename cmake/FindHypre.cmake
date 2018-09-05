@@ -4,11 +4,13 @@ find_package(PkgConfig)
 pkg_check_modules(HYPRE QUIET hypre)
 
 find_path(HYPRE_INCLUDE_DIR HYPRE.h
-          HINTS ${PC_HYPRE_INCLUDEDIR} ${PC_HYPRE_INCLUDE_DIRS} 
+          HINTS ${PC_HYPRE_INCLUDEDIR} ${PC_HYPRE_INCLUDE_DIRS}
+          ${HYPRE_DIR}/include ${HYPRE_DIR}/src/hypre/include
           $ENV{HYPRE_DIR}/include $ENV{HYPRE_DIR}/src/hypre/include)
 
 find_library(HYPRE_LIBRARY NAMES HYPRE
-             HINTS ${PC_HYPRE_LIBDIR} ${PC_HYPRE_LIBRARY_DIRS} 
+             HINTS ${PC_HYPRE_LIBDIR} ${PC_HYPRE_LIBRARY_DIRS}
+             ${HYPRE_DIR}/lib ${HYPRE_DIR}/src/hypre/lib
              $ENV{HYPRE_DIR}/lib $ENV{HYPRE_DIR}/src/hypre/lib)
 
 set(HYPRE_LIBRARIES ${HYPRE_LIBRARY} )

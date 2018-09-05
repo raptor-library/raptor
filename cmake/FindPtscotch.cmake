@@ -5,39 +5,39 @@ pkg_check_modules(PTSCOTCH QUIET ptscotch)
 
 find_path(PTSCOTCH_INCLUDE_DIR ptscotch.h
             HINTS ${PC_PTSCOTCH_INCLUDEDIR} ${PC_PTSCOTCH_INCLUDE_DIRS} 
-            $ENV{PTSCOTCH_DIR}/include)
+            ${PTSCOTCH_DIR}/include $ENV{PTSCOTCH_DIR}/include)
 
 find_library(PTSCOTCH_LIBRARY NAMES ptscotch
             HINTS ${PC_PTSCOTCH_LIBDIR} ${PC_PTSCOTCH_LIBRARY_DIRS} 
-            $ENV{PTSCOTCH_DIR}/lib)
+            ${PTSCOTCH_DIR}/lib $ENV{PTSCOTCH_DIR}/lib)
 
 find_library(PTSCOTCH_ERR_LIBRARY NAMES ptscotcherr
             HINTS ${PC_PTSCOTCH_LIBDIR} ${PC_PTSCOTCH_LIBRARY_DIRS} 
-            $ENV{PTSCOTCH_DIR}/lib)
+            ${PTSCOTCH_DIR}/lib $ENV{PTSCOTCH_DIR}/lib)
 
 find_library(PTSCOTCH_ERR_EXIT_LIBRARY NAMES ptscotcherrexit
             HINTS ${PC_PTSCOTCH_LIBDIR} ${PC_PTSCOTCH_LIBRARY_DIRS}
-            $ENV{PTSCOTCH_DIR}/lib)
+            ${PTSCOTCH_DIR}/lib $ENV{PTSCOTCH_DIR}/lib)
 
 find_library(PTSCOTCH_PARMETIS_LIBRARY NAMES ptscotchparmetis
             HINTS ${PC_PTSCOTCH_LIBDIR} ${PC_PTSCOTCH_LIBRARY_DIRS}
-            $ENV{PTSCOTCH_DIR}/lib)
+            ${PTSCOTCH_DIR}/lib $ENV{PTSCOTCH_DIR}/lib)
 
 find_library(SCOTCH_LIBRARY NAMES scotch
             HINTS ${PC_PTSCOTCH_LIBDIR} ${PC_PTSCOTCH_LIBRARY_DIRS} 
-            $ENV{PTSCOTCH_DIR}/lib)
+            ${PTSCOTCH_DIR}/lib $ENV{PTSCOTCH_DIR}/lib)
 
 find_library(SCOTCH_ERR_LIBRARY NAMES scotcherr
             HINTS ${PC_PTSCOTCH_LIBDIR} ${PC_PTSCOTCH_LIBRARY_DIRS} 
-            $ENV{PTSCOTCH_DIR}/lib)
+            ${PTSCOTCH_DIR}/lib $ENV{PTSCOTCH_DIR}/lib)
 
 find_library(SCOTCH_ERR_EXIT_LIBRARY NAMES scotcherrexit
             HINTS ${PC_PTSCOTCH_LIBDIR} ${PC_PTSCOTCH_LIBRARY_DIRS}
-            $ENV{PTSCOTCH_DIR}/lib)
+            ${PTSCOTCH_DIR}/lib $ENV{PTSCOTCH_DIR}/lib)
 
 find_library(SCOTCH_METIS_LIBRARY NAMES scotchmetis
             HINTS ${PC_PTSCOTCH_LIBDIR} ${PC_PTSCOTCH_LIBRARY_DIRS}
-            $ENV{PTSCOTCH_DIR}/lib)
+            ${PTSCOTCH_DIR}/lib $ENV{PTSCOTCH_DIR}/lib)
 
 set(PTSCOTCH_LIBRARIES ${PTSCOTCH_LIBRARY} ${PTSCOTCH_ERR_LIBRARY}
     ${PTSCOTCH_ERR_EXIT_LIBRARY} ${PTSCOTCH_PARMETIS_LIBRARY}
