@@ -5,13 +5,15 @@
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
 #include "multilevel/par_multilevel.hpp"
+#include "aggregation/par_smoothed_aggregation_solver.hpp"
 #include <vector>
 
 using namespace raptor;
 
 void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol = 1e-05, int max_iter = -1);
 
-void Pre_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol = 1e-05, int max_iter = -1);
+void Pre_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, ParMultilevel *ml, aligned_vector<double>& res,
+                  double tol = 1e-05, int max_iter = -1);
 
 void SeqInner_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol = 1e-05, int max_iter = -1);
 

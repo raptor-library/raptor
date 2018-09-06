@@ -3,6 +3,8 @@
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
 #include "krylov/par_bicgstab.hpp"
+#include "multilevel/par_multilevel.hpp"
+#include "aggregation/par_smoothed_aggregation_solver.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/par_stencil.hpp"
 
@@ -20,22 +22,50 @@ int main(int argc, char* argv[])
     double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
     //double* stencil = diffusion_stencil_2d(0.1, M_PI/4.0);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
+    ParMultilevel *ml;
 
     ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    std::vector<double> residuals;
-    std::vector<double> pre_residuals;
+    aligned_vector<double> residuals;
+    aligned_vector<double> pre_residuals;
 
     x.set_const_value(1.0);
     A->mult(x, b);
     x.set_const_value(0.0);
 
-    // Call BiCGStab
+    // BiCGStab
     BiCGStab(A, x, b, residuals);
 
-    // Call Preconditioned BiCGStab
+    // Setup AMG hierarchy
+    ml = new ParSmoothedAggregationSolver(0.0);
+    ml->max_levels = 3;
+    ml->setup(A);
+
+    for (int i = 0; i < ml->num_levels; i++) {
+        ParCSRMatrix* Al = ml->levels[i]->A;
+        long lcl_nnz = Al->local_nnz;
+        long nnz;
+        MPI_Reduce(&lcl_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+        if (rank == 0) {
+            printf("%d\t%d\t%d\t%lu\n", i, Al->global_num_rows, Al->global_num_cols, nnz);
+        }
+    }
+    
+    for (int i = 0; i < ml->num_levels; i++) {
+        ParCSRMatrix* Pl = ml->levels[i]->A;
+        long lcl_nnz = Pl->local_nnz;
+        long nnz;
+        MPI_Reduce(&lcl_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+        if (rank == 0) {
+            printf("%d\t%d\t%d\t%lu\n", i, Pl->global_num_rows, Pl->global_num_cols, nnz);
+        }
+    }
+
+    int iter = ml->solve(x, b);
+
+    // AMG Preconditioned BiCGStab
     x.set_const_value(0.0);
-    Pre_BiCGStab(A, x, b, pre_residuals);
+    //Pre_BiCGStab(A, x, b, ml, pre_residuals);
 
     if (rank == 0) {
         FILE *f;
@@ -70,6 +100,7 @@ int main(int argc, char* argv[])
 
 
     delete[] stencil;
+    delete ml;
     delete A;
 
     MPI_Finalize();

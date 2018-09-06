@@ -29,9 +29,9 @@ int main(int argc, char* argv[])
     ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector x_true(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    std::vector<double> residuals_true;
-    std::vector<double> residuals_contig;
-    std::vector<double> residuals_striped;
+    aligned_vector<double> residuals_true;
+    aligned_vector<double> residuals_contig;
+    aligned_vector<double> residuals_striped;
 
     x_true.set_const_value(1.0);
     A->mult(x_true, b);
@@ -100,7 +100,7 @@ int main(int argc, char* argv[])
     MPI_Barrier(MPI_COMM_WORLD);*/
 
     MPI_Comm_free(&contig_comm);
-    //MPI_Comm_free(&striped_comm);
+    MPI_Comm_free(&striped_comm);
 
     delete[] stencil;
     delete A;
