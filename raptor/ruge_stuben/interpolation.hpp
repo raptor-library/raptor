@@ -9,13 +9,15 @@
 using namespace raptor;
 
 CSRMatrix* direct_interpolation(CSRMatrix* A, 
-        CSRMatrix* S, const std::vector<int>& states);
+        CSRMatrix* S, const aligned_vector<int>& states);
 
 CSRMatrix* mod_classical_interpolation(CSRMatrix* A,
-        CSRMatrix* S, const std::vector<int>& states);
+        CSRMatrix* S, const aligned_vector<int>& states, int num_variables = 1,
+        int* variables = NULL);
 
 CSRMatrix* extended_interpolation(CSRMatrix* A,
-        CSRMatrix* S, const std::vector<int>& states);
+        CSRMatrix* S, const aligned_vector<int>& states, int num_variables = 1,
+        int* variables = NULL);
 
 #endif
 

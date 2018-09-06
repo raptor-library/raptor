@@ -36,7 +36,7 @@ TEST(TestRAP, TestsInRuge_Stuben)
     A = readMatrix(A0_fn);
     P = readMatrix(P0_fn);
     AP = A->mult(P);
-    P_csc = new CSCMatrix(P);
+    P_csc = P->to_CSC();
     Ac = AP->mult_T(P_csc);
     Ac_rap = readMatrix(A1_fn);
     compare(Ac, Ac_rap);
@@ -51,7 +51,7 @@ TEST(TestRAP, TestsInRuge_Stuben)
     A = readMatrix(A1_fn);
     P = readMatrix(P1_fn);
     AP = A->mult(P);
-    P_csc = new CSCMatrix(P);
+    P_csc = P->to_CSC();
     Ac = AP->mult_T(P_csc);
     Ac_rap = readMatrix(A2_fn);
     compare(Ac, Ac_rap);

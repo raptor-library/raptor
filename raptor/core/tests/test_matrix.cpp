@@ -30,47 +30,50 @@ TEST(MatrixTest, TestsInCore)
     //int col_ctr_condensed[7] = {0, 3, 4, 5, 7, 8, 10};
 
     // Create COO Matrix (25x25)
-    COOMatrix A_coo(25, 25, 1);
+    COOMatrix* A_coo = new COOMatrix(25, 25, 1);
 
     // Add Values to COO Matrix
-    A_coo.add_value(22, 5, 2.0);
-    A_coo.add_value(17, 18, 1.0);
-    A_coo.add_value(12, 21, 0.5);
-    A_coo.add_value(0, 0, 1.0);
-    A_coo.add_value(5, 7, 2.0);
-    A_coo.add_value(7, 7, 1.0);
-    A_coo.add_value(1, 0, 1.2);
-    A_coo.add_value(0, 1, 2.2);
-    A_coo.add_value(0, 0, 1.5);
-    A_coo.add_value(12, 21, -1.0);
+    A_coo->add_value(22, 5, 2.0);
+    A_coo->add_value(17, 18, 1.0);
+    A_coo->add_value(12, 21, 0.5);
+    A_coo->add_value(0, 0, 1.0);
+    A_coo->add_value(5, 7, 2.0);
+    A_coo->add_value(7, 7, 1.0);
+    A_coo->add_value(1, 0, 1.2);
+    A_coo->add_value(0, 1, 2.2);
+    A_coo->add_value(0, 0, 1.5);
+    A_coo->add_value(12, 21, -1.0);
 
     // Check dimensions of A_coo
-    ASSERT_EQ(A_coo.n_rows, 25);
-    ASSERT_EQ(A_coo.n_cols, 25);
-    ASSERT_EQ(A_coo.nnz, 10);
+    ASSERT_EQ(A_coo->n_rows, 25);
+    ASSERT_EQ(A_coo->n_cols, 25);
+    ASSERT_EQ(A_coo->nnz, 10);
 
    // Check that rows, columns, and values in A_coo are correct
     for (int i = 0; i < 10; i++)
     {
-        ASSERT_EQ(A_coo.idx1[i], rows[i]);
-        ASSERT_EQ(A_coo.idx2[i], cols[i]);
-        ASSERT_EQ(A_coo.vals[i], vals[i]);
+        ASSERT_EQ(A_coo->idx1[i], rows[i]);
+        ASSERT_EQ(A_coo->idx2[i], cols[i]);
+        ASSERT_EQ(A_coo->vals[i], vals[i]);
     }
 
     // Create CSR Matrix from COO
-    CSRMatrix A_csr(&A_coo);
+    CSRMatrix* A_csr = A_coo->to_CSR();
 
     // Check dimensions of A_csr
-    ASSERT_EQ(A_csr.n_rows,25);
-    ASSERT_EQ(A_csr.n_cols,25);
-    ASSERT_EQ(A_csr.nnz,10);
+    ASSERT_EQ(A_csr->n_rows,25);
+    ASSERT_EQ(A_csr->n_cols,25);
+    ASSERT_EQ(A_csr->nnz,10);
 
     // Check that rows, columns, and values in A_coo are correct
     
     for (int i = 0; i < 26; i++)
     {
-        ASSERT_EQ(A_csr.idx1[i],row_ctr[i]);
+        ASSERT_EQ(A_csr->idx1[i],row_ctr[i]);
     }
+
+    delete A_coo;
+    delete A_csr;
 
 } // end of TEST(MatrixTest, TestsInCore) //
 

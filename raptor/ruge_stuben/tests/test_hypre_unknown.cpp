@@ -91,8 +91,8 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     int* coarse_dof_func;
     int* coarse_pnts_gbl;
 
-    std::vector<int> states;
-    std::vector<int> off_proc_states;
+    aligned_vector<int> states;
+    aligned_vector<int> off_proc_states;
     double* weights;
 
     const char* A0_fn = "../../../../test_data/rss_A0.pm";
@@ -111,7 +111,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     // Create strength with unknown approach
     var = create_unknown_variables(A->local_num_rows, 
             A->partition->first_local_row, num_variables);
-    S = A->strength(0.25, num_variables, var);
+    S = A->strength(Classical, 0.25, false, num_variables, var);
     hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, num_variables, var, &S_hyp);
     compareS(S, S_hyp);
 
@@ -131,7 +131,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
         }
     }
 
-    std::vector<int> coarse_variables;
+    aligned_vector<int> coarse_variables;
     for (int i = 0; i < A->local_num_rows; i++)
     {
         if (states[i] == 1) 
@@ -182,7 +182,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     num_variables = 2;
     var = create_unknown_variables(A->local_num_rows, 
             A->partition->first_local_row, num_variables);
-    S = A->strength(0.25, num_variables, var);
+    S = A->strength(Classical, 0.25, false, num_variables, var);
     hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, num_variables, var, &S_hyp);
     compareS(S, S_hyp);
 

@@ -32,8 +32,8 @@ TEST(TestTAPSplitting, TestsInRuge_Stuben)
     setenv("PPN", "4", 1);
 
     FILE* f;
-    std::vector<int> states;
-    std::vector<int> off_proc_states;
+    aligned_vector<int> states;
+    aligned_vector<int> off_proc_states;
     int cf;
 
     ParCSRMatrix* S;
@@ -49,7 +49,7 @@ TEST(TestTAPSplitting, TestsInRuge_Stuben)
     S->tap_comm = new TAPComm(S->partition, S->off_proc_column_map);
 
     f = fopen(weights_fn, "r");
-    std::vector<double> weights(S->local_num_rows);
+    aligned_vector<double> weights(S->local_num_rows);
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
         fscanf(f, "%lf\n", &weights[0]);

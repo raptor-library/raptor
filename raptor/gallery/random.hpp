@@ -28,7 +28,7 @@ CSRMatrix* random(int rows, int cols, int nnz_per_row)
     }
     Atmp->nnz = nnz;
 
-    A = new CSRMatrix(Atmp);
+    A = Atmp->to_CSR();
     delete Atmp;
 
     return A;

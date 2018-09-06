@@ -15,7 +15,7 @@
 #include "gallery/laplacian27pt.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/par_matrix_IO.hpp"
-#include "multilevel/par_multilevel.hpp"
+#include "ruge_stuben/par_ruge_stuben_solver.hpp"
 
 #define eager_cutoff 8000
 #define short_cutoff 496
@@ -46,13 +46,13 @@ int main(int argc, char *argv[])
 
     double strong_threshold = 0.25;
     int cache_len = 10000;
-    std::vector<double> cache_array(cache_len);
-    std::vector<double> residuals;
+    aligned_vector<double> cache_array(cache_len);
+    aligned_vector<double> residuals;
 
     if (system < 2)
     {
         double* stencil = NULL;
-        std::vector<int> grid;
+        aligned_vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);
@@ -114,14 +114,14 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(strong_threshold, RS, Direct, SOR);
+    ml = new ParRugeStubenSolver(strong_threshold, RS, Direct, Classical, SOR);
     ml->setup(A);
     raptor_setup = MPI_Wtime() - t0;
     clear_cache(cache_array);
 
     // Solve Raptor Hierarchy
     x.set_const_value(0.0);
-    std::vector<double> res;
+    aligned_vector<double> res;
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
     ml->solve(x, b);

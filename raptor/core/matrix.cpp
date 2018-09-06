@@ -116,7 +116,7 @@ Matrix* CSRMatrix::transpose()
     CSCMatrix* T_csc = new CSCMatrix(n_rows, n_cols, idx1, idx2, vals); 
 
     // Convert back to CSR to tranpose
-    Matrix* T = new CSRMatrix(T_csc);
+    Matrix* T = T_csc->to_CSR();
 
     delete T_csc;
 
@@ -129,7 +129,7 @@ Matrix* CSCMatrix::transpose()
     CSRMatrix* T_csr = new CSRMatrix(n_rows, n_cols, idx1, idx2, vals); 
 
     // Convert back to CSC to tranpose
-    Matrix* T = new CSCMatrix(T_csr);
+    Matrix* T = T_csr->to_CSC();
 
     delete T_csr;
 
@@ -183,11 +183,11 @@ void COOMatrix::add_value(int row, int col, double value)
     nnz++;
 }
 
-void COOMatrix::add_block(int row, int col, std::vector<double>& values){
+void COOMatrix::add_block(int row, int col, aligned_vector<double>& values){
     printf("Not implemented.\n");
 }
 
-void COOMatrix::copy(const COOMatrix* A)
+void COOMatrix::copy_helper(const COOMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -207,7 +207,7 @@ void COOMatrix::copy(const COOMatrix* A)
         vals.push_back(A->vals[i]);
     }
 }
-void COOMatrix::copy(const CSRMatrix* A)
+void COOMatrix::copy_helper(const CSRMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -232,7 +232,7 @@ void COOMatrix::copy(const CSRMatrix* A)
         }
     }
 }
-void COOMatrix::copy(const CSCMatrix* A)
+void COOMatrix::copy_helper(const CSCMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -258,7 +258,7 @@ void COOMatrix::copy(const CSCMatrix* A)
     }
 }
 
-void COOMatrix::copy(const BSRMatrix* A)
+void COOMatrix::copy_helper(const BSRMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -279,12 +279,12 @@ void COOMatrix::copy(const BSRMatrix* A)
         for (int j = row_start; j < row_end; j++)
         {
             // Call block copy function
-	    block_copy(A, i, j, A->idx2[j]);
+	    block_copy_helper(A, i, j, A->idx2[j]);
         }
     }
 }
 
-void COOMatrix::block_copy(const BSRMatrix* A, int row, int num_blocks_prev, int col)
+void COOMatrix::block_copy_helper(const BSRMatrix* A, int row, int num_blocks_prev, int col)
 {
     int upper_i = row * A->b_rows;
     int upper_j = col * A->b_cols;
@@ -318,9 +318,9 @@ void COOMatrix::block_copy(const BSRMatrix* A, int row, int num_blocks_prev, int
 ***** Converts the COOMatrix into a dense matrix
 ***** in the form of a flattened vector ordered row-wise
 **************************************************************/
-std::vector<double> COOMatrix::to_dense() const
+aligned_vector<double> COOMatrix::to_dense() const
 {
-    std::vector<double> dense(n_rows * n_cols);
+    aligned_vector<double> dense(n_rows * n_cols);
     std::fill(dense.begin(), dense.end(), 0.0);
 
     for (int i = 0; i < nnz; i++)
@@ -348,8 +348,8 @@ void COOMatrix::sort()
 
     int k, prev_k;
 
-    std::vector<int> permutation(nnz);
-    std::vector<bool> done(nnz, false);
+    aligned_vector<int> permutation(nnz);
+    aligned_vector<bool> done(nnz, false);
 
     // Create permutation vector p
     std::iota(permutation.begin(), permutation.end(), 0);
@@ -498,11 +498,11 @@ void CSRMatrix::add_value(int row, int col, double value)
     nnz++;
 }
 
-void CSRMatrix::add_block(int row, int col, std::vector<double>& values){
+void CSRMatrix::add_block(int row, int col, aligned_vector<double>& values){
     printf("Not implemented.\n");
 }
 
-void CSRMatrix::copy(const COOMatrix* A)
+void CSRMatrix::copy_helper(const COOMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -513,7 +513,8 @@ void CSRMatrix::copy(const COOMatrix* A)
     if (nnz)
     {
         idx2.resize(nnz);
-        vals.resize(nnz);
+        if (A->vals.size())
+            vals.resize(nnz);
     }
 
     // Calculate indptr
@@ -528,7 +529,7 @@ void CSRMatrix::copy(const COOMatrix* A)
     }
 
     // Add indices and data
-    std::vector<int> ctr;
+    aligned_vector<int> ctr;
     if (n_rows)
     {
     	ctr.resize(n_rows, 0);
@@ -537,13 +538,16 @@ void CSRMatrix::copy(const COOMatrix* A)
     {
         int row = A->idx1[i];
         int col = A->idx2[i];
-        double val = A->vals[i];
         int index = idx1[row] + ctr[row]++;
         idx2[index] = col;
-        vals[index] = val;
+        if (A->vals.size())
+        {
+            double val = A->vals[i];
+            vals[index] = val;
+        }
     }
 }
-void CSRMatrix::copy(const CSRMatrix* A)
+void CSRMatrix::copy_helper(const CSRMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -566,7 +570,7 @@ void CSRMatrix::copy(const CSRMatrix* A)
         }
     }
 }
-void CSRMatrix::copy(const CSCMatrix* A)
+void CSRMatrix::copy_helper(const CSCMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -579,7 +583,8 @@ void CSRMatrix::copy(const CSCMatrix* A)
     // Resize vectors to appropriate dimensions
     idx1.resize(A->n_rows + 1);
     idx2.resize(A->nnz);
-    vals.resize(A->nnz);
+    if (A->vals.size())
+        vals.resize(A->nnz);
 
     // Create indptr, summing number times row appears in CSC
     for (int i = 0; i <= A->n_rows; i++) idx1[i] = 0;
@@ -593,7 +598,7 @@ void CSRMatrix::copy(const CSCMatrix* A)
     }
 
     // Add values to indices and data
-    std::vector<int> ctr(n_rows, 0);
+    aligned_vector<int> ctr(n_rows, 0);
     for (int i = 0; i < A->n_cols; i++)
     {
         int col_start = A->idx1[i];
@@ -603,11 +608,14 @@ void CSRMatrix::copy(const CSCMatrix* A)
             int row = A->idx2[j];
             int idx = idx1[row] + ctr[row]++;
             idx2[idx] = i;
-            vals[idx] = A->vals[j];
+            if (A->vals.size())
+            {
+                vals[idx] = A->vals[j];
+            }
         }
     }
 }
-void CSRMatrix::copy(const BSRMatrix* A)
+void CSRMatrix::copy_helper(const BSRMatrix* A)
 {
     printf("Currently not implemented\n");
 }
@@ -618,9 +626,9 @@ void CSRMatrix::copy(const BSRMatrix* A)
 ***** Converts the CSRMatrix into a dense matrix
 ***** in the form of a flattened vector ordered row-wise
 **************************************************************/
-std::vector<double> CSRMatrix::to_dense() const
+aligned_vector<double> CSRMatrix::to_dense() const
 {
-    std::vector<double> dense(n_rows * n_cols);
+    aligned_vector<double> dense(n_rows * n_cols);
     std::fill(dense.begin(), dense.end(), 0.0);
 
     for (int i = 0; i < n_rows; i++)
@@ -651,8 +659,8 @@ void CSRMatrix::sort()
         return;
     }
 
-    std::vector<int> permutation;
-    std::vector<bool> done;
+    aligned_vector<int> permutation;
+    aligned_vector<bool> done;
 
     // Sort the columns of each row (and data accordingly) and remove
     // duplicates (summing values together)
@@ -857,12 +865,12 @@ void CSRMatrix::remove_duplicates()
 *****  BSRMatrix Copy
 **************************************************************
 **************************************************************/
-void BSRMatrix::copy(const COOMatrix* A)
+void BSRMatrix::copy_helper(const COOMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
 
-    std::vector<double> A_dense = A->to_dense();
+    aligned_vector<double> A_dense = A->to_dense();
 
     double block_dense[n_rows*n_cols];
 
@@ -885,17 +893,17 @@ void BSRMatrix::copy(const COOMatrix* A)
     }    
 
     const BSRMatrix* B = new BSRMatrix(n_rows, n_cols, b_rows, b_cols, block_dense);
-    copy(B);
+    copy_helper(B);
 
     delete B;
 }
 
-void BSRMatrix::copy(const CSRMatrix* A)
+void BSRMatrix::copy_helper(const CSRMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
 
-    std::vector<double> A_dense = A->to_dense();
+    aligned_vector<double> A_dense = A->to_dense();
     double block_dense[n_rows*n_cols];
 
     int block_ind, glob_i, glob_j;
@@ -917,17 +925,17 @@ void BSRMatrix::copy(const CSRMatrix* A)
     }
 
     const BSRMatrix* B = new BSRMatrix(n_rows, n_cols, b_rows, b_cols, block_dense);
-    copy(B);
+    copy_helper(B);
 
     delete B;
 }
 
-void BSRMatrix::copy(const CSCMatrix* A)
+void BSRMatrix::copy_helper(const CSCMatrix* A)
 {
     printf("Currently not implemented\n");
 }
 
-void BSRMatrix::copy(const BSRMatrix* A)
+void BSRMatrix::copy_helper(const BSRMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -952,9 +960,9 @@ void BSRMatrix::copy(const BSRMatrix* A)
 ***** Converts the BSRMatrix into a dense matrix
 ***** in the form of a flattened vector ordered row-wise
 **************************************************************/
-std::vector<double> BSRMatrix::to_dense()
+aligned_vector<double> BSRMatrix::to_dense()
 {
-    std::vector<double> dense(n_rows * n_cols);
+    aligned_vector<double> dense(n_rows * n_cols);
     std::fill(dense.begin(), dense.end(), 0.0);
 
     int start, end;
@@ -1012,7 +1020,7 @@ void BSRMatrix::add_value(int row, int col, double value)
 *****   values:
 *****     vector of block values - ordered row-wise within the block
 **************************************************************/
-void BSRMatrix::add_block(int row, int col, std::vector<double>& values)
+void BSRMatrix::add_block(int row, int col, aligned_vector<double>& values)
 {
     // Only add correct number of elements for block if values is longer than
     // block size
@@ -1120,11 +1128,11 @@ void CSCMatrix::add_value(int row, int col, double value)
     nnz++;
 }
 
-void CSCMatrix::add_block(int row, int col, std::vector<double>& values){
+void CSCMatrix::add_block(int row, int col, aligned_vector<double>& values){
     printf("Not implemented.\n");
 }
 
-void CSCMatrix::copy(const COOMatrix* A)
+void CSCMatrix::copy_helper(const COOMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -1135,7 +1143,8 @@ void CSCMatrix::copy(const COOMatrix* A)
     if (nnz)
     {
         idx2.resize(nnz);
-        vals.resize(nnz);
+        if (A->vals.size())
+            vals.resize(nnz);
     }
 
     // Calculate indptr
@@ -1153,7 +1162,7 @@ void CSCMatrix::copy(const COOMatrix* A)
     }
 
     // Add indices and data
-    std::vector<int> ctr;
+    aligned_vector<int> ctr;
     if (n_cols)
     {
         ctr.resize(n_cols, 0);
@@ -1162,13 +1171,16 @@ void CSCMatrix::copy(const COOMatrix* A)
     {
         int row = A->idx1[i];
         int col = A->idx2[i];
-        double val = A->vals[i];
         int index = idx1[col] + ctr[col]++;
         idx2[index] = row;
-        vals[index] = val;
+        if (A->vals.size())
+        {
+            double val = A->vals[i];
+            vals[index] = val;
+        }
     }        
 }
-void CSCMatrix::copy(const CSRMatrix* A)
+void CSCMatrix::copy_helper(const CSRMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -1179,7 +1191,8 @@ void CSCMatrix::copy(const CSRMatrix* A)
     if (A->nnz)
     {
         idx2.resize(A->nnz);
-        vals.resize(A->nnz);
+        if (A->vals.size())
+            vals.resize(A->nnz);
     }
 
     // Create indptr, summing number times col appears in CSR
@@ -1199,7 +1212,7 @@ void CSCMatrix::copy(const CSRMatrix* A)
     // Add values to indices and data
     if (A->n_cols)
     {
-        std::vector<int> ctr(A->n_cols, 0);
+        aligned_vector<int> ctr(A->n_cols, 0);
         for (int i = 0; i < A->n_rows; i++)
         {
             int row_start = A->idx1[i];
@@ -1209,13 +1222,16 @@ void CSCMatrix::copy(const CSRMatrix* A)
                 int col = A->idx2[j];
                 int idx = idx1[col] + ctr[col]++;
                 idx2[idx] = i;
-                vals[idx] = A->vals[j];
+                if (A->vals.size())
+                {
+                    vals[idx] = A->vals[j];
+                }
             }
         }
     }
 }
 
-void CSCMatrix::copy(const CSCMatrix* A)
+void CSCMatrix::copy_helper(const CSCMatrix* A)
 {
     n_rows = A->n_rows;
     n_cols = A->n_cols;
@@ -1239,7 +1255,7 @@ void CSCMatrix::copy(const CSCMatrix* A)
     }
 }
 
-void CSCMatrix::copy(const BSRMatrix* A)
+void CSCMatrix::copy_helper(const BSRMatrix* A)
 {
     printf("Currently not implemented");
     return;
@@ -1257,8 +1273,8 @@ void CSCMatrix::sort()
     int start, end, col_size;
     int prev_k, k;
 
-    std::vector<int> permutation;
-    std::vector<bool> done;
+    aligned_vector<int> permutation;
+    aligned_vector<bool> done;
 
     if (sorted || nnz == 0)
     {
@@ -1405,4 +1421,81 @@ void CSCMatrix::move_diag()
 
     diag_first = true;
 }
+
+
+COOMatrix* COOMatrix::to_COO()
+{
+    return this;
+}
+
+CSRMatrix* COOMatrix::to_CSR()
+{
+    CSRMatrix* A = new CSRMatrix();
+    A->copy_helper(this);
+    return A;
+}
+
+CSCMatrix* COOMatrix::to_CSC()
+{
+    CSCMatrix* A = new CSCMatrix();
+    A->copy_helper(this);
+    return A;
+}
+
+COOMatrix* CSRMatrix::to_COO()
+{
+    COOMatrix* A = new COOMatrix();
+    A->copy_helper(this);
+    return A;
+}
+
+CSRMatrix* CSRMatrix::to_CSR()
+{
+    return this;
+}
+
+CSCMatrix* CSRMatrix::to_CSC()
+{
+    CSCMatrix* A = new CSCMatrix();
+    A->copy_helper(this);
+    return A;
+}
+
+COOMatrix* CSCMatrix::to_COO()
+{
+    COOMatrix* A = new COOMatrix();
+    A->copy_helper(this);
+    return A;
+}
+
+CSRMatrix* CSCMatrix::to_CSR()
+{
+    CSRMatrix* A = new CSRMatrix();
+    A->copy_helper(this);
+    return A;
+}
+
+CSCMatrix* CSCMatrix::to_CSC()
+{
+   return this; 
+}
+
+
+COOMatrix* BSRMatrix::to_COO()
+{
+    COOMatrix* A = new COOMatrix();
+    A->copy_helper(this);
+    return A;
+}
+
+CSRMatrix* BSRMatrix::to_CSR()
+{
+    return NULL;
+}
+
+CSCMatrix* BSRMatrix::to_CSC()
+{
+    return NULL;
+}
+
 

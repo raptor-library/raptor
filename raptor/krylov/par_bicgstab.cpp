@@ -8,7 +8,7 @@ using namespace raptor;
 /**************************************************************************************
  BiCGStab 
  **************************************************************************************/
-void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, double tol, int max_iter)
+void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol, int max_iter)
 {
     /*           A : ParCSRMatrix for system to solve
      *           x : ParVector solution to solve for
@@ -130,7 +130,7 @@ void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& 
     }
 }
 
-void SeqInner_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, double tol, int max_iter)
+void SeqInner_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol, int max_iter)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -239,6 +239,7 @@ void SeqInner_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<
     return;
 }
 
+<<<<<<< HEAD
 /**************************************************************************************
  AMG Preconditioned BiCGStab 
  **************************************************************************************/
@@ -378,7 +379,7 @@ void Pre_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<doubl
     return;
 }
 
-void SeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, double tol, int max_iter)
+void SeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol, int max_iter)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -487,7 +488,7 @@ void SeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<d
     return;
 }
 
-void SeqInnerSeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, double tol, int max_iter)
+void SeqInnerSeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol, int max_iter)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -599,7 +600,7 @@ void SeqInnerSeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::
 /**************************************************************************************
  BiCGStab with some inner products replaced with partial inner product approximations
  **************************************************************************************/
-void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, MPI_Comm &inner_comm,
+void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, MPI_Comm &inner_comm,
                  int &my_color, int &first_root, int &second_root, int part_global, int contig, double tol, int max_iter)
 {
     /*           A : ParCSRMatrix for system to solve
@@ -647,6 +648,7 @@ void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double
     p.resize(b.global_n, b.local_n, b.first_local);
     Ap.resize(b.global_n, b.local_n, b.first_local);
     As.resize(b.global_n, b.local_n, b.first_local);
+<<<<<<< HEAD
 
     // BEGIN ALGORITHM
     // r0 = b - A * x0
@@ -742,7 +744,7 @@ void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double
 /**************************************************************************************
  Preconditioned BiCGStab with some inner products replaced with partial inner product approximations
  **************************************************************************************/
-void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, MPI_Comm &inner_comm,
+void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, MPI_Comm &inner_comm,
                  int &my_color, int &first_root, int &second_root, int part_global, int contig, double tol, int max_iter)
 {
     /*           A : ParCSRMatrix for system to solve

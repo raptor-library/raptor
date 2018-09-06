@@ -16,6 +16,7 @@
 #include "gallery/diffusion.hpp"
 #include "gallery/par_matrix_IO.hpp"
 #include "multilevel/par_multilevel.hpp"
+#include "ruge_stuben/par_ruge_stuben_solver.hpp"
 #include "tests/hypre_compare.hpp"
 #include "gallery/external/hypre_wrapper.hpp"
 
@@ -26,7 +27,7 @@
 //using namespace raptor;
 //
 
-void form_hypre_weights(std::vector<double>& weights, int n_rows)
+void form_hypre_weights(aligned_vector<double>& weights, int n_rows)
 {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -77,13 +78,13 @@ int main(int argc, char *argv[])
 
     int cache_len = 10000;
 
-    std::vector<double> cache_array(cache_len);
-    std::vector<double> residuals;
+    aligned_vector<double> cache_array(cache_len);
+    aligned_vector<double> residuals;
 
     if (system < 2)
     {
         double* stencil = NULL;
-        std::vector<int> grid;
+        aligned_vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);
@@ -212,7 +213,7 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(strong_threshold, CLJP, Classical, SOR);
+    ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
     ml->setup(A);
     raptor_setup = MPI_Wtime() - t0;
     delete ml;
@@ -221,7 +222,7 @@ int main(int argc, char *argv[])
     // Setup TAP Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(strong_threshold, CLJP, Classical, SOR);
+    ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
     ml->tap_amg = 3;
     ml->setup(A);
     raptor_tap_setup = MPI_Wtime() - t0;
@@ -229,20 +230,30 @@ int main(int argc, char *argv[])
 
     // Solve Raptor Hierarchy
     x.set_const_value(0.0);
-    std::vector<double> res;
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
-    ml->solve(x, b, res);
+    ml->tap_amg = -1;
+    ml->store_residuals = true;
+    ml->solve(x, b);
     raptor_solve = MPI_Wtime() - t0;
+    aligned_vector<double> res;
+    std::copy(ml->residuals.begin(), ml->residuals.end(), 
+        std::back_inserter(res));
+    ml->residuals.clear();
     clear_cache(cache_array);
 
     // TAP Solve Raptor
     x.set_const_value(0.0);
-    std::vector<double> tap_res;
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
-    ml->tap_solve(x, b, tap_res, 3);
+    ml->tap_amg = 3;
+    ml->store_residuals = true;
+    ml->solve(x, b);
     raptor_tap_solve = MPI_Wtime() - t0;
+    aligned_vector<double> tap_res;
+    std::copy(ml->residuals.begin(), ml->residuals.end(),
+        std::back_inserter(tap_res));
+    ml->residuals.clear();
     clear_cache(cache_array);
 
     long lcl_nnz;
@@ -291,8 +302,8 @@ int main(int argc, char *argv[])
         ParVector& tmpl = ml->levels[i]->tmp;
         ParVector& bl1 = ml->levels[i+1]->b;
         ParVector& xl1 = ml->levels[i+1]->x;
-        std::vector<int> states;
-        std::vector<int> off_proc_states;
+        aligned_vector<int> states;
+        aligned_vector<int> off_proc_states;
 
         if (!Al->tap_comm)
             Al->tap_comm = new TAPComm(Al->partition,
@@ -301,13 +312,13 @@ int main(int argc, char *argv[])
             Pl->tap_comm = new TAPComm(Pl->partition, 
                     Pl->off_proc_column_map, Pl->on_proc_column_map);
 
-        ParCSRMatrix* Sl = Al->strength(strong_threshold);
+        ParCSRMatrix* Sl = Al->strength(Classical, strong_threshold);
 
         int n_times = 100;
         if (rank == 0) printf("Level %d\n", i);
 
         // TIME CLJP on Level i
-        std::vector<double> weights;
+        aligned_vector<double> weights;
         form_hypre_weights(weights, Al->local_num_rows);
         clear_cache(cache_array);
         MPI_Barrier(MPI_COMM_WORLD);
@@ -397,7 +408,7 @@ int main(int argc, char *argv[])
         clear_cache(cache_array);
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        sor(Al, xl, bl, tmpl, n_times, 1.0, Al->comm);
+        sor(Al, xl, bl, tmpl, n_times, 1.0);
         raptor_solve = (MPI_Wtime() - t0) / n_times;
         MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank == 0) printf("SOR Time: %e\n", t0);
@@ -406,7 +417,7 @@ int main(int argc, char *argv[])
         clear_cache(cache_array);
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        sor(Al, xl, bl, tmpl, n_times, 1.0, Al->tap_comm);
+        sor(Al, xl, bl, tmpl, n_times, 1.0, true);
         raptor_solve = (MPI_Wtime() - t0) / n_times;
         MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank == 0) printf("TAP SOR Time: %e\n", t0);
@@ -497,4 +508,3 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-

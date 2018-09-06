@@ -2,10 +2,10 @@
 
 using namespace raptor;
 
-CSRMatrix* CSRMatrix::mult(const CSRMatrix* B)
+CSRMatrix* CSRMatrix::spgemm(const CSRMatrix* B)
 {
-    std::vector<int> next(n_cols, -1);
-    std::vector<double> sums(n_cols, 0);
+    aligned_vector<int> next(n_cols, -1);
+    aligned_vector<double> sums(n_cols, 0);
 
     CSRMatrix* C = new CSRMatrix(n_rows, B->n_cols);
     C->idx2.reserve(1.5*nnz);
@@ -55,14 +55,14 @@ CSRMatrix* CSRMatrix::mult(const CSRMatrix* B)
     return C;
 }
 
-CSRMatrix* CSRMatrix::mult_T(const CSCMatrix* A)
+CSRMatrix* CSRMatrix::spgemm_T(const CSCMatrix* A)
 {
     CSRMatrix* C = new CSRMatrix(A->n_cols, n_cols);
     C->idx2.reserve(1.5*nnz);
     C->vals.reserve(1.5*nnz);
 
-    std::vector<int> next(A->n_rows, -1); 
-    std::vector<double> sums(A->n_rows, 0);
+    aligned_vector<int> next(A->n_rows, -1); 
+    aligned_vector<double> sums(A->n_rows, 0);
 
     C->idx1[0] = 0;
     for (int i = 0; i < A->n_cols; i++)
@@ -106,150 +106,5 @@ CSRMatrix* CSRMatrix::mult_T(const CSCMatrix* A)
     C->nnz = C->idx2.size();
 
     return C;
-}
-
-/**************************************************************
-*****   CSRMatrix-CSRMatrix Multiply (C = A*B)
-**************************************************************
-***** Multiplies the matrix times a matrix B, and writes the
-***** result in matrix C->
-*****
-***** Parameters
-***** -------------
-***** B : CSRMatrix*
-*****    Matrix by which to multiply the matrix 
-***** C : Matrix*
-*****    CSRMatrix in which to place solution
-**************************************************************/
-CSRMatrix* CSRMatrix::mult(const CSCMatrix* B)
-{
-    printf("Converting Matrix to CSR before multiplication...\n");
-    CSRMatrix* B_csr = new CSRMatrix(B);
-    CSRMatrix* C = mult(B_csr);
-
-    delete B_csr;
-    return C;
-}
-
-CSRMatrix* CSRMatrix::mult(const COOMatrix* B)
-{
-    printf("Converting Matrix to CSR before multiplication...\n");
-    CSRMatrix* B_csr = new CSRMatrix(B);
-    CSRMatrix* C = mult(B_csr);
-
-    delete B_csr;
-    return C;
-}
-
-CSRMatrix* CSRMatrix::mult_T(const CSRMatrix* A)
-{
-    printf("Converting Matrix to CSR before multiplication...\n");
-    CSCMatrix* A_csc = new CSCMatrix(A);
-    CSRMatrix* C = mult(A_csc);
-
-    delete A_csc;
-    return C;
-}
-
-CSRMatrix* CSRMatrix::mult_T(const COOMatrix* A)
-{
-    printf("Converting Matrix to CSR before multiplication...\n");
-    CSCMatrix* A_csc = new CSCMatrix(A);
-    CSRMatrix* C = mult(A_csc);
-
-    delete A_csc;
-    return C;
-}
-
-CSRMatrix* COOMatrix::mult(const CSRMatrix* B)
-{
-    printf("Converting Matrix to CSR before multiplication...\n");
-    CSRMatrix* csr_mat=nullptr;
-    if (format() == COO)
-    {
-       csr_mat = new CSRMatrix((COOMatrix*) this);
-    }
-    else if (format() == CSC)
-    {
-        csr_mat = new CSRMatrix((CSCMatrix*) this);
-    }
-
-    CSRMatrix* C = this->mult(B);
-
-    delete csr_mat;
-    return C;
-}
-CSRMatrix* CSCMatrix::mult(const CSRMatrix* B)
-{
-    printf("Converting Matrix to CSR before multiplication...\n");
-    CSRMatrix* csr_mat=nullptr;
-    if (format() == COO)
-    {
-       csr_mat = new CSRMatrix((COOMatrix*) this);
-    }
-    else if (format() == CSC)
-    {
-        csr_mat = new CSRMatrix((CSCMatrix*) this);
-    }
-
-    CSRMatrix* C = this->mult(B);
-
-    delete csr_mat;
-    return C;
-}
-
-CSRMatrix* COOMatrix::mult(const CSCMatrix* B)
-{
-    printf("Cannot multiply these matrix formats...\n");
-    return NULL;
-}
-CSRMatrix* CSCMatrix::mult(const CSCMatrix* B)
-{
-    printf("Cannot multiply these matrix formats...\n");
-    return NULL;
-}
-
-CSRMatrix* COOMatrix::mult(const COOMatrix* B)
-{
-    printf("Cannot multiply these matrix formats...\n");
-    return NULL;
-}
-CSRMatrix* CSCMatrix::mult(const COOMatrix* B)
-{
-    printf("Cannot multiply these matrix formats...\n");
-    return NULL;
-}
-
-CSRMatrix* COOMatrix::mult_T(const CSRMatrix* A)
-{
-    printf("Cannot transpose multiply these matrix formats...\n");
-    return NULL;
-}
-CSRMatrix* CSCMatrix::mult_T(const CSRMatrix* A)
-{
-    printf("Cannot transpose multiply these matrix formats...\n");
-    return NULL;
-}
-
-CSRMatrix* COOMatrix::mult_T(const CSCMatrix* A)
-{
-    printf("Cannot transpose multiply these matrix formats...\n");
-    return NULL;
-}
-CSRMatrix* CSCMatrix::mult_T(const CSCMatrix* A)
-{
-    printf("Cannot transpose multiply these matrix formats...\n");
-    return NULL;
-}
-
-CSRMatrix* COOMatrix::mult_T(const COOMatrix* A)
-{
-    printf("Cannot transpose multiply these matrix formats...\n");
-    return NULL;
-}
-CSRMatrix* CSCMatrix::mult_T(const COOMatrix* A)
-{
-    printf("Cannot transpose multiply these matrix formats...\n");
-    return NULL;
 }
 

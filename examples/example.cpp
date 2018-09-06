@@ -30,10 +30,13 @@ int main(int argc, char *argv[])
     int dim = 2;
     int n = 100;
 
-    std::vector<int> grid;
+    aligned_vector<int> grid;
     grid.resize(dim, n);
 
     // Anisotropic diffusion
+    coarsen_t coarsen_type = CLJP;
+    interp_t interp_type = ModClassical;
+    relax_t relax_type = SOR;
     double eps = 0.001;
     double theta = M_PI/8.0;
     double* stencil = NULL;
@@ -57,7 +60,7 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);
     time_base = MPI_Wtime();
-    ml = new ParMultilevel(strong_threshold, Falgout, Direct, SOR);
+    ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, relax_type);
     ml->setup(A);
     time_setup = MPI_Wtime() - time_base;
 

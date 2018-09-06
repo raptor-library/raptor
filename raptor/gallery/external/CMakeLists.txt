@@ -24,4 +24,3 @@ set(external_gallery_SOURCES
     gallery/external/hypre_wrapper.cpp 
     ${external_mfem_SOURCES}
     PARENT_SCOPE)
-

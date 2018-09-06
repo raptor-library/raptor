@@ -30,8 +30,8 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     FILE* f;
-    std::vector<int> states;
-    std::vector<int> off_proc_states;
+    aligned_vector<int> states;
+    aligned_vector<int> off_proc_states;
     int cf;
 
     ParCSRMatrix* A;
@@ -51,7 +51,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     HYPRE_IJMatrixGetObject(Aij, (void**) &A_hyp);
     compare(A, A_hyp);
     
-    S_rap = A->strength(0.25);
+    S_rap = A->strength(Classical, 0.25);
     hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, 1, NULL, &S_hyp);
     
     compareS(S_rap, S_hyp);
@@ -70,7 +70,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     HYPRE_IJMatrixGetObject(Aij, (void**) &A_hyp);
     compare(A, A_hyp);
     
-    S_rap = A->strength(0.25);
+    S_rap = A->strength(Classical, 0.25);
     hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, 1, NULL, &S_hyp);
     
     compareS(S_rap, S_hyp);

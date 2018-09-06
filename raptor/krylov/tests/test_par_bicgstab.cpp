@@ -23,7 +23,7 @@ int main(int argc, char* argv[])
 
     ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    std::vector<double> residuals;
+    aligned_vector<double> residuals;
 
     x.set_const_value(1.0);
     A->mult(x, b);
@@ -31,14 +31,13 @@ int main(int argc, char* argv[])
 
     BiCGStab(A, x, b, residuals);
 
+    // Just testing the first 10 residuals
     if(rank == 0){
         FILE* f = fopen("../../../../test_data/bicgstab_res.txt", "r");
-        //FILE* f = fopen("../../../../test_data/bicgstab_res_TEST.txt", "r");
         double res;
-        for (int i = 0; i < 20; i++)
+        for (int i = 0; i < 10; i++)
         {
             fscanf(f, "%lf\n", &res);
-	    //printf("%lf %lf %lf\n", res, residuals[i], fabs(res - residuals[i]));
             assert(fabs(res - residuals[i]) < 1e-06);
         }
         fclose(f);

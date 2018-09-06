@@ -27,11 +27,11 @@ TEST(ParRandomSpMVTest, TestsInUtil)
     double b_val;
 
     // Setup ParBSRMatrix 
-    std::vector<std::vector<double>> on_blocks = {{1,0,2,1}, {6,7,8,2}, {1,4,5,1},
+    aligned_vector<aligned_vector<double>> on_blocks = {{1,0,2,1}, {6,7,8,2}, {1,4,5,1},
 	    					{4,3,0,0}, {7,2,0,0}};
-    std::vector<std::vector<double>> off_blocks = {{1,0,0,1}, {2,0,0,0}, {3,0,1,0}};
-    std::vector<std::vector<int>> on_indx = {{0,0}, {0,1}, {1,1}, {2,1}, {2,2}};
-    std::vector<std::vector<int>> off_indx = {{0,4}, {1,3}, {2,5}};
+    aligned_vector<aligned_vector<double>> off_blocks = {{1,0,0,1}, {2,0,0,0}, {3,0,1,0}};
+    aligned_vector<aligned_vector<int>> on_indx = {{0,0}, {0,1}, {1,1}, {2,1}, {2,2}};
+    aligned_vector<aligned_vector<int>> off_indx = {{0,4}, {1,3}, {2,5}};
 
     ParBSRMatrix* A = new ParBSRMatrix(12, 12, 2, 2);
 

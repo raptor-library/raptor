@@ -4,7 +4,7 @@
 
 using namespace raptor;
 
-void BiCGStab(CSRMatrix* A, Vector& x, Vector& b, std::vector<double>& res, double tol, int max_iter)
+void BiCGStab(CSRMatrix* A, Vector& x, Vector& b, aligned_vector<double>& res, double tol, int max_iter)
 {
     Vector r;
     Vector rstar;
@@ -90,7 +90,6 @@ void BiCGStab(CSRMatrix* A, Vector& x, Vector& b, std::vector<double>& res, doub
 	p.axpy(Ap, -1.0*omega);
         p.scale(beta);
         p.axpy(r, 1.0);
-
         norm_r = r.norm(2);
         res.push_back(norm_r);
 

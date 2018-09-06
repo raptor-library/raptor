@@ -37,8 +37,8 @@ TEST(ParSparsifyTest, TestsInMultilevel)
     int cf;
 
     ParCSRMatrix* A;
-    std::vector<int> states;
-    std::vector<double> weights;
+    aligned_vector<int> states;
+    aligned_vector<double> weights;
     ParCSRMatrix* S;
     ParCSRMatrix* P;
     ParCSRMatrix* I;
@@ -52,7 +52,7 @@ TEST(ParSparsifyTest, TestsInMultilevel)
     const char* A1_hgal_fn = "../../../../test_data/rss_A1_hgal.pm";
 
     A = readParMatrix(A0_fn);
-    S = A->strength(0.25);
+    S = A->strength(Classical, 0.25);
 
     f = fopen(weight_fn, "r");
     weights.resize(S->local_num_rows);
@@ -81,7 +81,7 @@ TEST(ParSparsifyTest, TestsInMultilevel)
 
     P = mod_classical_interpolation(A, S, states, S->comm->recv_data->int_buffer);
 
-    std::vector<int> first_rows(num_procs+1);
+    aligned_vector<int> first_rows(num_procs+1);
     first_rows[0] = 0;
     MPI_Allgather(&P->on_proc_num_cols, 1, MPI_INT, &first_rows[1], 1, MPI_INT, MPI_COMM_WORLD);
     for (int i = 0; i < num_procs; i++)

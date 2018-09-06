@@ -4,7 +4,8 @@ using namespace mfem;
 
 // Create an MFEM Linear Elasticity Matrix and convert to Raptor format
 raptor::ParCSRMatrix* mfem_adaptive_laplacian(raptor::ParVector& x_raptor, 
-        raptor::ParVector& b_raptor, const char* mesh_file, int order, MPI_Comm comm)
+        raptor::ParVector& b_raptor, const char* mesh_file, int order, 
+        int max_dofs, MPI_Comm comm)
 {
     int rank, num_procs;
     MPI_Comm_rank(comm, &rank);
@@ -63,7 +64,7 @@ raptor::ParCSRMatrix* mfem_adaptive_laplacian(raptor::ParVector& x_raptor,
     ThresholdRefiner refiner(estimator);
     refiner.SetTotalErrorFraction(0.7);
 
-    const int max_dofs = 10000000;
+    max_dofs = 10000000;
     while(1)
     {
         a.Assemble();

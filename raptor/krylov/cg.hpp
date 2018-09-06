@@ -8,6 +8,6 @@
 
 using namespace raptor;
 
-void CG(CSRMatrix* A, Vector& x, Vector& b, std::vector<double>& res, double tol = 1e-05, int max_iter = -1);
+void CG(CSRMatrix* A, Vector& x, Vector& b, aligned_vector<double>& res, double tol = 1e-05, int max_iter = -1);
 
 #endif

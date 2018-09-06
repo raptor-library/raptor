@@ -9,18 +9,21 @@
 using namespace raptor;
 
 ParCSRMatrix* direct_interpolation(ParCSRMatrix* A, 
-        ParCSRMatrix* S, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states);
+        ParCSRMatrix* S, const aligned_vector<int>& states,
+        const aligned_vector<int>& off_proc_states,
+        data_t* comm_t = NULL);
 
 ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
-        ParCSRMatrix* S, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states,
-        bool tap_amg = false, int num_variables = 1, int* variables = NULL);
+        ParCSRMatrix* S, const aligned_vector<int>& states,
+        const aligned_vector<int>& off_proc_states,
+        bool tap_amg = false, int num_variables = 1, int* variables = NULL,
+        data_t* comm_t = NULL, data_t* comm_mat_t = NULL);
 
 ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
-        ParCSRMatrix* S, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states,
-        bool tap_amg = false, int num_variables = 1, int* variables = NULL);
+        ParCSRMatrix* S, const aligned_vector<int>& states,
+        const aligned_vector<int>& off_proc_states,
+        bool tap_amg = false, int num_variables = 1, int* variables = NULL,
+        data_t* comm_t = NULL, data_t* comm_mat_t = NULL);
 
 #endif
 

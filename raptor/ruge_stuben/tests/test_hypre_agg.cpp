@@ -55,7 +55,7 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
     int cf;
 
     int n = 25;
-    std::vector<int> grid(3, n);
+    aligned_vector<int> grid(3, n);
     double* stencil = laplace_stencil_27pt();
 
     std::vector<ParCSRMatrix*> A_array;
@@ -79,8 +79,8 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
     int* coarse_dof_func;
     int* coarse_pnts_gbl;
 
-    std::vector<int> states;
-    std::vector<int> off_proc_states;
+    aligned_vector<int> states;
+    aligned_vector<int> off_proc_states;
 
     int nrows = A_array[0]->global_num_rows;
     int level = 0;
@@ -89,7 +89,7 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
         ParCSRMatrix* Al = A_array[level];
 
         // Create Strength of Connection Matrix
-        ParCSRMatrix* Sl = Al->strength(0.25);
+        ParCSRMatrix* Sl = Al->strength(Classical, 0.25);
         hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, 1, NULL, &S_hyp);
         compareS(Sl, S_hyp);
 

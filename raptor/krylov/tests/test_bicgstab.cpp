@@ -16,7 +16,7 @@ int main(int argc, char* argv[])
     CSRMatrix* A = stencil_grid(stencil, grid, 2);
     Vector x(A->n_rows);
     Vector b(A->n_rows);
-    std::vector<double> residuals;
+    aligned_vector<double> residuals;
 
     x.set_const_value(1.0);
     A->mult(x, b);
@@ -29,8 +29,7 @@ int main(int argc, char* argv[])
     for (int i = 0; i < 30; i++)
     {
         fscanf(f, "%lf\n", &res);
-	assert(fabs(res-residuals[i]) < 1e-06);
-	//printf("%lf %lf %lf\n", res, residuals[i], fabs(res-residuals[i]));
+	    assert(fabs(res-residuals[i]) < 1e-06);
     }
     fclose(f);
     delete[] stencil;
@@ -38,6 +37,3 @@ int main(int argc, char* argv[])
 
     return 0;
 }
-
-
-

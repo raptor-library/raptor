@@ -61,24 +61,30 @@ namespace raptor
             }
         }
 
-        virtual void update(const std::vector<int>& off_proc_col_exists) = 0;
+        virtual void update(const aligned_vector<int>& off_proc_col_exists,
+                data_t* comm_t = NULL) = 0;
 
-        static MPI_Datatype get_type(std::vector<int> buffer)
+        static MPI_Datatype get_type(aligned_vector<int> buffer)
         {
             return MPI_INT;
         }
-        static MPI_Datatype get_type(std::vector<double> buffer)
+        static MPI_Datatype get_type(aligned_vector<double> buffer)
         {
             return MPI_DOUBLE;
         }
 
 
         // Matrix Communication
-        virtual CSRMatrix* communicate(std::vector<int>& rowptr, 
-                std::vector<int>& col_indices, std::vector<double>& values) = 0;
-        virtual CSRMatrix* communicate_T(std::vector<int>& rowptr,
-                std::vector<int>& col_indices, std::vector<double>& values, 
-                int n_result_rows) = 0;
+        virtual CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
+                const aligned_vector<int>& col_indices, const aligned_vector<double>& values) = 0;
+        virtual CSRMatrix* communicate_T(const aligned_vector<int>& rowptr,
+                const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
+                const int n_result_rows) = 0;
+        virtual CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
+                const aligned_vector<int>& col_indices) = 0;
+        virtual CSRMatrix* communicate_T(const aligned_vector<int>& rowptr,
+                const aligned_vector<int>& col_indices, const int n_result_rows) = 0;
+
         CSRMatrix* communicate(ParCSRMatrix* A);
         CSRMatrix* communicate(CSRMatrix* A)
         {
@@ -91,161 +97,105 @@ namespace raptor
         }
 
         // Vector Communication
-        std::vector<double>& communicate(ParVector& v);
+        aligned_vector<double>& communicate(ParVector& v);
         void init_comm(ParVector& v);
 
         // Standard Communication
         template<typename T>
-        std::vector<T>& communicate(const std::vector<T>& values)
+        aligned_vector<T>& communicate(const aligned_vector<T>& values)
         {  
             return communicate(values.data());
         }
         template<typename T>
-        void init_comm(const std::vector<T>& values)
+        void init_comm(const aligned_vector<T>& values)
         {
             init_comm(values.data());
         }
         template<typename T> void init_comm(const T* values);
-        template<typename T> std::vector<T>& complete_comm();
-        template<typename T> std::vector<T>& communicate(const T* values);
+        template<typename T> aligned_vector<T>& complete_comm();
+        template<typename T> aligned_vector<T>& communicate(const T* values);
         virtual void init_double_comm(const double* values) = 0;
         virtual void init_int_comm(const int* values) = 0;
-        virtual std::vector<double>& complete_double_comm() = 0;
-        virtual std::vector<int>& complete_int_comm() = 0;
+        virtual aligned_vector<double>& complete_double_comm() = 0;
+        virtual aligned_vector<int>& complete_int_comm() = 0;
 
         // Transpose Communication
         template<typename T, typename U>
-        void communicate_T(const std::vector<T>& values, std::vector<U>& result)
+        void communicate_T(const aligned_vector<T>& values, aligned_vector<U>& result,
+                std::function<U(U, T)> result_func = &sum_func<T, U>,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {  
-            communicate_T(values.data(), result);
+            communicate_T(values.data(), result, result_func, 
+                    init_result_func, init_result_func_val);
         }
         template<typename T>
-        void communicate_T(const std::vector<T>& values)
+        void communicate_T(const aligned_vector<T>& values,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {  
-            communicate_T(values.data());
+            communicate_T(values.data(), init_result_func,
+                    init_result_func_val);
         }
         template<typename T>
-        void init_comm_T(const std::vector<T>& values)
+        void init_comm_T(const aligned_vector<T>& values,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            init_comm_T(values.data());
+            init_comm_T(values.data(), init_result_func, init_result_func_val);
         }
-        template<typename T> void init_comm_T(const T* values);
-        template<typename T, typename U> void complete_comm_T(std::vector<U>& result);
-        template<typename T> void complete_comm_T();
-        template<typename T, typename U> void communicate_T(const T* values, std::vector<U>& result);
-        template<typename T> void communicate_T(const T* values);
-        virtual void init_double_comm_T(const double* values) = 0;
-        virtual void init_int_comm_T(const int* values) = 0;
-        virtual void complete_double_comm_T(std::vector<double>& result) = 0;
-        virtual void complete_double_comm_T(std::vector<int>& result) = 0;
-        virtual void complete_int_comm_T(std::vector<int>& result) = 0;
-        virtual void complete_int_comm_T(std::vector<double>& result) = 0;
-        virtual void complete_double_comm_T() = 0;
-        virtual void complete_int_comm_T() = 0;
-
-        // Conditional Communication
-        template<typename T> std::vector<T>& conditional_comm(const std::vector<T>& values, 
-                const std::vector<int>& send_compares, 
-                const std::vector<int>& recv_compares, 
-                std::function<bool(int)> compare_func = {})
-        {  
-            return conditional_comm(values.data(), send_compares.data(), recv_compares.data(), 
-                    compare_func);
-        }
-        template<typename T> std::vector<T>& conditional_comm(const std::vector<T>& values, 
-                const int* send_compares, 
-                const int* recv_compares, 
-                std::function<bool(int)> compare_func = {})
-        {  
-            return conditional_comm(values.data(), send_compares, recv_compares, 
-                    compare_func);
-        }
-        template<typename T> std::vector<T>& conditional_comm(const T* values, 
-                const std::vector<int>& send_compares, 
-                const std::vector<int>& recv_compares, 
-                std::function<bool(int)> compare_func = {})
-        {  
-            return conditional_comm(values, send_compares.data(), recv_compares.data(), 
-                    compare_func);
-        }
-        template<typename T> std::vector<T>& conditional_comm(const T* values, 
-                    const int* send_compares, 
-                    const int* recv_compares,
-                    std::function<bool(int)> compare_func = {});
-
-        template<typename T, typename U> void conditional_comm_T(const std::vector<T>& values,
-                std::vector<U>& result, 
-                const std::vector<int>& send_compares, 
-                const std::vector<int>& recv_compares, 
-                std::function<bool(int)> compare_func = {},
-                std::function<U(U, T)> result_func = {})
-        {  
-            return conditional_comm_T(values.data(), result, send_compares.data(), 
-                    recv_compares.data(), compare_func, result_func);
-        }
-        template<typename T, typename U> void conditional_comm_T(const std::vector<T>& values,
-                std::vector<U>& result, 
-                const int* send_compares, 
-                const int* recv_compares, 
-                std::function<bool(int)> compare_func = {},
-                std::function<U(U, T)> result_func = {})
-        {  
-            return conditional_comm_T(values.data(), result, send_compares, recv_compares, 
-                    compare_func, result_func);
-        }
-        template<typename T, typename U> void conditional_comm_T(const T* values,
-                std::vector<U>& result, 
-                const std::vector<int>& send_compares, 
-                const std::vector<int>& recv_compares, 
-                std::function<bool(int)> compare_func = {},
-                std::function<U(U, T)> result_func = {})
-        {  
-            return conditional_comm_T(values, result, send_compares.data(), 
-                    recv_compares.data(), compare_func, result_func);
-        }
-        template<typename T, typename U> void conditional_comm_T(const T* values,
-                    std::vector<U>& result, 
-                    const int* send_compares, 
-                    const int* recv_compares,
-                    std::function<bool(int)> compare_func = {},
-                    std::function<U(U, T)> result_func = {});
-
-        virtual std::vector<double>& conditional_double_comm(const double* values,
-                const int* send_compares,
-                const int* recv_compares, 
-                std::function<bool(int)> compare_func = {}) = 0;
-        virtual std::vector<int>& conditional_int_comm(const int* values, 
-                const int* send_compares,
-                const int* recv_compares, 
-                std::function<bool(int)> compare_func = {}) = 0;
-        virtual void conditional_double_comm_T(const double* values, 
-                std::vector<double>& result, 
-                const int* send_compares,
-                const int* recv_compares, 
-                std::function<bool(int)> compare_func = {},
-                std::function<double(double, double)> result_func = {}) = 0;
-        virtual void conditional_int_comm_T(const int* values, 
-                std::vector<int>& result,
-                const int* send_compares,
-                const int* recv_compares, 
-                std::function<bool(int)> compare_func = {},
-                std::function<int(int, int)> result_func = {}) = 0;
-        virtual void conditional_int_comm_T(const int* values, 
-                std::vector<double>& result,
-                const int* send_compares,
-                const int* recv_compares, 
-                std::function<bool(int)> compare_func = {},
-                std::function<double(double, int)> result_func = {}) = 0;
+        template<typename T> void init_comm_T(const T* values,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
+                T init_result_func_val = 0);
+        template<typename T, typename U> void complete_comm_T(aligned_vector<U>& result,
+                std::function<U(U, T)> result_func = &sum_func<T, U>,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
+                T init_result_func_val = 0);
+        template<typename T> void complete_comm_T(
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0);
+        template<typename T, typename U> void communicate_T(const T* values, 
+                aligned_vector<U>& result, 
+                std::function<U(U, T)> result_func = &sum_func<T, U>,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
+                T init_result_func_val = 0);
+        template<typename T> void communicate_T(const T* values,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0);
+        virtual void init_double_comm_T(const double* values,
+                std::function<double(double, double)> init_result_func = 
+                    &sum_func<double, double>, 
+                    double init_result_func_val = 0) = 0;
+        virtual void init_int_comm_T(const int* values,
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0) = 0;
+        virtual void complete_double_comm_T(aligned_vector<double>& result,
+                std::function<double(double, double)> result_func = &sum_func<double, double>,
+                std::function<double(double, double)> init_result_func = 
+                    &sum_func<double, double>, double init_result_func_val = 0) = 0;
+        virtual void complete_double_comm_T(aligned_vector<int>& result,
+                std::function<int(int, double)> result_func = &sum_func<double, int>,
+                std::function<double(double, double)> init_result_func = 
+                    &sum_func<double, double>, double init_result_func_val = 0) = 0;
+        virtual void complete_int_comm_T(aligned_vector<int>& result,
+                std::function<int(int, int)> result_func = &sum_func<int, int>,
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0) = 0;
+        virtual void complete_int_comm_T(aligned_vector<double>& result,
+                std::function<double(double, int)> result_func = &sum_func<int, double>,
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0) = 0;
+        virtual void complete_double_comm_T(
+                std::function<double(double, double)> init_result_func = 
+                    &sum_func<double, double>, double init_result_func_val = 0) = 0;
+        virtual void complete_int_comm_T(
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0) = 0;
 
         // Helper methods
-        template <typename T> std::vector<T>& get_recv_buffer();
-        virtual std::vector<double>& get_double_recv_buffer() = 0;
-        virtual std::vector<int>& get_int_recv_buffer() = 0;
-
-        virtual void reset_comm_data() = 0;
-        virtual void reset_comm_T_data() = 0;
-        virtual void print_comm_data(bool vec = true) = 0;
-        virtual void print_comm_T_data(bool vec = true) = 0;
+        template <typename T> aligned_vector<T>& get_recv_buffer();
+        virtual aligned_vector<double>& get_double_recv_buffer() = 0;
+        virtual aligned_vector<int>& get_int_recv_buffer() = 0;
 
         // Class Variables
         Topology* topology;
@@ -272,20 +222,20 @@ namespace raptor
     ***** size_recvs : index_t 
     *****    Total number of elements this process recvs from
     *****    all messages
-    ***** send_procs : std::vector<index_t>
+    ***** send_procs : aligned_vector<int>
     *****    Distant processes messages are to be sent to
-    ***** send_row_starts : std::vector<index_t>
+    ***** send_row_starts : aligned_vector<int>
     *****    Pointer to first position in send_row_indices
     *****    that a given process will send.
-    ***** send_row_indices : std::vector<index_t> 
+    ***** send_row_indices : aligned_vector<int> 
     *****    The indices of values that must be sent to each
     *****    process in send_procs
-    ***** recv_procs : std::vector<index_t>
+    ***** recv_procs : aligned_vector<int>
     *****    Distant processes messages are to be recvd from
-    ***** recv_col_starts : std::vector<index_t>
+    ***** recv_col_starts : aligned_vector<int>
     *****    Pointer to first column recvd from each process
     *****    in recv_procs
-    ***** col_to_proc : std::vector<index_t>
+    ***** col_to_proc : aligned_vector<int>
     *****    Maps each local column in the off-diagonal block
     *****    to the process that holds corresponding data
     **************************************************************/
@@ -327,38 +277,40 @@ namespace raptor
         *****
         ***** Parameters
         ***** -------------
-        ***** off_proc_column_map : std::vector<index_t>&
+        ***** off_proc_column_map : aligned_vector<int>&
         *****    Maps local off_proc columns indices to global
         ***** _key : int (optional)
         *****    Tag to be used in MPI Communication (default 9999)
         **************************************************************/
         ParComm(Partition* partition,
-                const std::vector<int>& off_proc_column_map,
+                const aligned_vector<int>& off_proc_column_map,
                 int _key = 9999,
-                MPI_Comm comm = MPI_COMM_WORLD) : CommPkg(partition)
+                MPI_Comm comm = MPI_COMM_WORLD,
+                data_t* comm_t = NULL) : CommPkg(partition)
         {
             mpi_comm = comm;
-            init_par_comm(partition, off_proc_column_map, _key, comm);
+            init_par_comm(partition, off_proc_column_map, _key, comm, comm_t);
         }
 
         ParComm(Partition* partition,
-                const std::vector<int>& off_proc_column_map,
-                const std::vector<int>& on_proc_column_map,
+                const aligned_vector<int>& off_proc_column_map,
+                const aligned_vector<int>& on_proc_column_map,
                 int _key = 9999, 
-                MPI_Comm comm = MPI_COMM_WORLD) : CommPkg(partition)
+                MPI_Comm comm = MPI_COMM_WORLD,
+                data_t* comm_t = NULL) : CommPkg(partition)
         {
             mpi_comm = comm;
             int idx;
             int ctr = 0;
-            std::vector<int> part_col_to_new;
+            aligned_vector<int> part_col_to_new;
 
-            init_par_comm(partition, off_proc_column_map, _key, comm);
+            init_par_comm(partition, off_proc_column_map, _key, comm, comm_t);
             
             if (partition->local_num_cols)
             {
                 part_col_to_new.resize(partition->local_num_cols, -1);
             }
-            for (std::vector<int>::const_iterator it = on_proc_column_map.begin();
+            for (aligned_vector<int>::const_iterator it = on_proc_column_map.begin();
                     it != on_proc_column_map.end(); ++it)
             {
                 part_col_to_new[*it - partition->first_local_col] = ctr++;
@@ -374,8 +326,8 @@ namespace raptor
         }
 
         void init_par_comm(Partition* partition,
-                const std::vector<int>& off_proc_column_map,
-                int _key, MPI_Comm comm)
+                const aligned_vector<int>& off_proc_column_map,
+                int _key, MPI_Comm comm, data_t* comm_t = NULL)
         {
             // Get MPI Information
             int rank, num_procs;
@@ -395,8 +347,8 @@ namespace raptor
             int off_proc_num_cols = off_proc_column_map.size();
             MPI_Status recv_status;
 
-            std::vector<int> off_proc_col_to_proc(off_proc_num_cols);
-            std::vector<int> tmp_send_buffer;
+            aligned_vector<int> off_proc_col_to_proc(off_proc_num_cols);
+            aligned_vector<int> tmp_send_buffer;
 
             partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
 
@@ -428,6 +380,9 @@ namespace raptor
             {
                 tmp_send_buffer.resize(recv_data->size_msgs);
             }
+
+            if (comm_t) *comm_t -= MPI_Wtime();
+
             for (int i = 0; i < recv_data->num_msgs; i++)
             {
                 proc = recv_data->procs[i];
@@ -488,6 +443,9 @@ namespace raptor
                 }
                 MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
             }
+
+            if (comm_t) *comm_t += MPI_Wtime();
+
             if (send_data->num_msgs)
             {
                 send_data->finalize();
@@ -502,7 +460,8 @@ namespace raptor
             key = comm->key;
         }
 
-        ParComm(ParComm* comm, const std::vector<int>& off_proc_col_to_new)
+        ParComm(ParComm* comm, const aligned_vector<int>& off_proc_col_to_new,
+                data_t* comm_t = NULL)
             : CommPkg(comm->topology)
         {
             mpi_comm = comm->mpi_comm;
@@ -520,10 +479,98 @@ namespace raptor
             }
             key = comm->key;
 
-            comm->communicate_T(off_proc_col_to_new);
+            init_off_proc_new(comm, off_proc_col_to_new, comm_t);
+        }
+        
+        ParComm(ParComm* comm, const aligned_vector<int>& on_proc_col_to_new,
+                const aligned_vector<int>& off_proc_col_to_new, data_t* comm_t = NULL) 
+            : CommPkg(comm->topology)
+        {
+            mpi_comm = comm->mpi_comm;
+            bool comm_proc;
+            int proc, start, end;
+            int idx, new_idx;
 
-            recv_data->size_msgs = 0;
-            if (comm->recv_data->indices.size())
+            send_data = new CommData();
+            recv_data = new CommData();
+
+            if (comm == NULL)
+            {
+                key = 0;
+                return;
+            }
+            key = comm->key;
+      
+            init_off_proc_new(comm, off_proc_col_to_new, comm_t);
+
+            for (int i = 0; i < send_data->size_msgs; i++)
+            {
+                idx = send_data->indices[i];
+                new_idx = on_proc_col_to_new[idx];
+                if (new_idx != -1)
+                {
+                    send_data->indices[i] = new_idx;
+                }
+            }
+        }
+
+
+        void init_off_proc_new(ParComm* comm, const aligned_vector<int>& off_proc_col_to_new,
+                data_t* comm_t = NULL)
+        {
+            bool comm_proc, comm_idx;
+            int proc, start, end;
+            int idx, new_idx, ctr;
+            int idx_start, idx_end;
+
+            std::function<int(int, int)> compare_func = [](const int a, const int b)
+            {
+                if (b >= 0) return b;
+                else return a;
+            };
+            if (comm_t) *comm_t -= MPI_Wtime();
+            comm->communicate_T(off_proc_col_to_new, compare_func, -1);
+            if (comm_t) *comm_t += MPI_Wtime();
+
+            if (comm->recv_data->indptr_T.size())
+            {
+                recv_data->indptr_T.push_back(0);
+                for (int i = 0; i < comm->recv_data->num_msgs; i++)
+                {
+                    comm_proc = false;
+                    proc = comm->recv_data->procs[i];
+                    start = comm->recv_data->indptr[i];
+                    end = comm->recv_data->indptr[i+1];
+                    for (int j = start; j < end; j++)
+                    {
+                        comm_idx = false;
+                        idx_start = comm->recv_data->indptr_T[j];
+                        idx_end = comm->recv_data->indptr_T[j+1];
+                        for (int k = idx_start; k < idx_end; k++)
+                        {
+                            idx = comm->recv_data->indices[k];
+                            new_idx = off_proc_col_to_new[idx];
+                            if (new_idx != -1)
+                            {
+                                comm_proc = true;
+                                comm_idx = true;
+                                recv_data->indices.push_back(new_idx);
+                            }
+                        }
+                        if (comm_idx)
+                        {
+                            recv_data->indptr_T.push_back(recv_data->indices.size());
+                        }
+                    }
+                    if (comm_proc)
+                    {
+                        recv_data->procs.push_back(proc);
+                        recv_data->indptr.push_back(recv_data->indptr_T.size() - 1);
+                    }
+                }
+                recv_data->size_msgs = recv_data->indptr_T.size() - 1;
+            }
+            else if (comm->recv_data->indices.size())
             {
                 for (int i = 0; i < comm->recv_data->num_msgs; i++)
                 {
@@ -538,18 +585,20 @@ namespace raptor
                         if (new_idx != -1)
                         {
                             comm_proc = true;
-                            recv_data->size_msgs++;
+                            recv_data->indices.push_back(new_idx);
                         }
                     }
                     if (comm_proc)
                     {
                         recv_data->procs.push_back(proc);
-                        recv_data->indptr.push_back(recv_data->size_msgs);
+                        recv_data->indptr.push_back(recv_data->indices.size());
                     }
                 }
+                recv_data->size_msgs = recv_data->indices.size();
             }
             else
             {
+                recv_data->size_msgs = 0;
                 for (int i = 0; i < comm->recv_data->num_msgs; i++)
                 {
                     comm_proc = false;
@@ -599,110 +648,8 @@ namespace raptor
             send_data->num_msgs = send_data->procs.size();
             send_data->size_msgs = send_data->indices.size();
             send_data->finalize();
-        }
 
-        ParComm(ParComm* comm, const std::vector<int>& on_proc_col_to_new,
-                const std::vector<int>& off_proc_col_to_new) 
-            : CommPkg(comm->topology)
-        {
-            mpi_comm = comm->mpi_comm;
-            bool comm_proc;
-            int proc, start, end;
-            int idx, new_idx;
-
-            send_data = new CommData();
-            recv_data = new CommData();
-
-            if (comm == NULL)
-            {
-                key = 0;
-                return;
-            }
-            key = comm->key;
-
-            comm->communicate_T(off_proc_col_to_new);
-
-            recv_data->size_msgs = 0;
-            if (comm->recv_data->indices.size())
-            {
-                for (int i = 0; i < comm->recv_data->num_msgs; i++)
-                {
-                    comm_proc = false;
-                    proc = comm->recv_data->procs[i];
-                    start = comm->recv_data->indptr[i];
-                    end = comm->recv_data->indptr[i+1];
-                    for (int j = start; j < end; j++)
-                    {
-                        idx = comm->recv_data->indices[j];
-                        new_idx = off_proc_col_to_new[idx];
-                        if (new_idx != -1)
-                        {
-                            comm_proc = true;
-                            recv_data->size_msgs++;
-                        }
-                    }
-                    if (comm_proc)
-                    {
-                        recv_data->procs.push_back(proc);
-                        recv_data->indptr.push_back(recv_data->size_msgs);
-                    }
-                }
-            }
-            else
-            {
-                for (int i = 0; i < comm->recv_data->num_msgs; i++)
-                {
-                    comm_proc = false;
-                    proc = comm->recv_data->procs[i];
-                    start = comm->recv_data->indptr[i];
-                    end = comm->recv_data->indptr[i+1];
-                    for (int j = start; j < end; j++)
-                    {
-                        idx = j;
-                        new_idx = off_proc_col_to_new[idx];
-                        if (new_idx != -1)
-                        {
-                            comm_proc = true;
-                            recv_data->size_msgs++;
-                        }
-                    }
-                    if (comm_proc)
-                    {
-                        recv_data->procs.push_back(proc);
-                        recv_data->indptr.push_back(recv_data->size_msgs);
-                    }
-                }
-            }
-
-            recv_data->num_msgs = recv_data->procs.size();
-            recv_data->finalize();
-
-            for (int i = 0; i < comm->send_data->num_msgs; i++)
-            {
-                comm_proc = false;
-                proc = comm->send_data->procs[i];
-                start = comm->send_data->indptr[i];
-                end = comm->send_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    idx = comm->send_data->indices[j];
-                    new_idx = on_proc_col_to_new[idx];
-                    if (new_idx != -1 && comm->send_data->int_buffer[j] != -1)
-                    {
-                        comm_proc = true;
-                        send_data->indices.push_back(new_idx);
-                    }
-                }
-                if (comm_proc)
-                {
-                    send_data->procs.push_back(proc);
-                    send_data->indptr.push_back(send_data->indices.size());
-                }
-            }
-            send_data->num_msgs = send_data->procs.size();
-            send_data->size_msgs = send_data->indices.size();
-            send_data->finalize();
-
+            
         }
 
         /**************************************************************
@@ -716,13 +663,18 @@ namespace raptor
             delete recv_data;
         }
 
-        void update(const std::vector<int>& off_proc_col_exists)
+        void update(const aligned_vector<int>& off_proc_col_exists, 
+                data_t* comm_t = NULL)
         {
             int ctr, send_ctr;
             int start, end;
             int idx;
+
+            if (comm_t) *comm_t -= MPI_Wtime();
             communicate_T(off_proc_col_exists);
-            std::vector<int>& send_exists = send_data->int_buffer;
+            if (comm_t) *comm_t += MPI_Wtime();
+
+            aligned_vector<int>& send_exists = send_data->int_buffer;
 
             // Update recv_data
             ctr = 0;
@@ -815,21 +767,21 @@ namespace raptor
         {
             initialize(values);
         }
-        std::vector<double>& complete_double_comm()
+        aligned_vector<double>& complete_double_comm()
         {
             return complete<double>();
         }
-        std::vector<int>& complete_int_comm()
+        aligned_vector<int>& complete_int_comm()
         {
             return complete<int>();
         }
         template<typename T>
-        std::vector<T>& communicate(const std::vector<T>& values)
+        aligned_vector<T>& communicate(const aligned_vector<T>& values)
         {
             return CommPkg::communicate(values.data());
         }
         template<typename T>
-        std::vector<T>& communicate(const T* values)
+        aligned_vector<T>& communicate(const T* values)
         {
             return CommPkg::communicate(values);
         }
@@ -840,13 +792,10 @@ namespace raptor
             int start, end;
             int proc;
 
-            std::vector<T>& sendbuf = send_data->get_buffer<T>();
-            std::vector<T>& recvbuf = recv_data->get_buffer<T>();
+            aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
+            aligned_vector<T>& recvbuf = recv_data->get_buffer<T>();
             MPI_Datatype type = get_type(sendbuf);
-            send_data->vector_data.num_msgs += send_data->num_msgs;
-            send_data->vector_data.size_msgs += send_data->size_msgs;
 
-            send_data->matrix_data.wait_time -= MPI_Wtime();
             for (int i = 0; i < send_data->num_msgs; i++)
             {
                 proc = send_data->procs[i];
@@ -867,13 +816,11 @@ namespace raptor
                 MPI_Irecv(&(recvbuf[start]), end - start, type,
                         proc, key, mpi_comm, &(recv_data->requests[i]));
             }
-            send_data->matrix_data.wait_time += MPI_Wtime();
         }
 
         template<typename T>
-        std::vector<T>& complete()
+        aligned_vector<T>& complete()
         {
-            send_data->matrix_data.wait_time -= MPI_Wtime();
             if (send_data->num_msgs)
             {
                 MPI_Waitall(send_data->num_msgs, send_data->requests.data(), MPI_STATUS_IGNORE);
@@ -883,77 +830,115 @@ namespace raptor
             {
                 MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUS_IGNORE);
             }
-            send_data->matrix_data.wait_time += MPI_Wtime();
+
+            key++;
 
             return get_recv_buffer<T>();
         }
 
         // Transpose Communication
-        void init_double_comm_T(const double* values)
+        void init_double_comm_T(const double* values,
+                std::function<double(double, double)> init_result_func = 
+                    &sum_func<double, double>, 
+                    double init_result_func_val = 0)
         {
-            initialize_T(values);
+            initialize_T(values, init_result_func, init_result_func_val);
         }
-        void init_int_comm_T(const int* values)
+        void init_int_comm_T(const int* values,
+                std::function<int(int, int)> init_result_func = 
+                    &sum_func<int, int>, 
+                    int init_result_func_val = 0)
         {
-            initialize_T(values);
+            initialize_T(values, init_result_func, init_result_func_val);
         }
-        void complete_double_comm_T(std::vector<double>& result)
+        void complete_double_comm_T(aligned_vector<double>& result,
+                std::function<double(double, double)> result_func = &sum_func<double, double>,
+                std::function<double(double, double)> init_result_func = 
+                    &sum_func<double, double>,
+                    double init_result_func_val = 0)
         {
-            complete_T<double>(result);
+            complete_T<double>(result, result_func, init_result_func, init_result_func_val);
         }
-        void complete_double_comm_T(std::vector<int>& result)
+        void complete_double_comm_T(aligned_vector<int>& result,
+                std::function<int(int, double)> result_func = &sum_func<double, int>,
+                std::function<double(double, double)> init_result_func = 
+                    &sum_func<double, double>,
+                    double init_result_func_val = 0)
         {
-            complete_T<double>(result);
+            complete_T<double>(result, result_func, init_result_func, init_result_func_val);
         }
-        void complete_int_comm_T(std::vector<double>& result)
+        void complete_int_comm_T(aligned_vector<double>& result,
+                std::function<double(double, int)> result_func = &sum_func<int, double>,
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0)
         {
-            complete_T<int>(result);
+            complete_T<int>(result, result_func, init_result_func, init_result_func_val);
         }
-        void complete_int_comm_T(std::vector<int>& result)
+        void complete_int_comm_T(aligned_vector<int>& result,
+                std::function<int(int, int)> result_func = &sum_func<int, int>,
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0)
         {
-            complete_T<int>(result);
+            complete_T<int>(result, result_func, init_result_func, init_result_func_val);
         }
-        void complete_double_comm_T()
+        void complete_double_comm_T(std::function<double(double, double)> init_result_func = 
+                    &sum_func<double, double>,
+                    double init_result_func_val = 0)
         {
-            complete_T<double>();
+            complete_T<double>(init_result_func, init_result_func_val);
         }
-        void complete_int_comm_T()
+        void complete_int_comm_T(
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0)
         {
-            complete_T<int>();
+            complete_T<int>(init_result_func, init_result_func_val);
         }
         template<typename T, typename U>
-        void communicate_T(const std::vector<T>& values, std::vector<U>& result)
+        void communicate_T(const aligned_vector<T>& values, aligned_vector<U>& result,
+                std::function<U(U, T)> result_func = &sum_func<T, U>,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
+                T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values.data(), result);
+            CommPkg::communicate_T(values.data(), result, result_func,
+                    init_result_func, init_result_func_val);
         }
         template<typename T, typename U>
-        void communicate_T(const T* values, std::vector<U>& result)
+        void communicate_T(const T* values, aligned_vector<U>& result,
+                std::function<U(U, T)> result_func = &sum_func<T, U>,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values, result);
+            CommPkg::communicate_T(values, result, result_func,
+                    init_result_func, init_result_func_val);
         }
         template<typename T>
-        void communicate_T(const std::vector<T>& values)
+        void communicate_T(const aligned_vector<T>& values,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values.data());
+            CommPkg::communicate_T(values.data(), init_result_func,
+                    init_result_func_val);
         }
         template<typename T>
-        void communicate_T(const T* values)
+        void communicate_T(const T* values,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values);
+            CommPkg::communicate_T(values, init_result_func, init_result_func_val);
         }
 
         template<typename T>
-        void initialize_T(const T* values)
+        void initialize_T(const T* values,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
+                T init_result_func_val = 0)
         {
             int start, end;
             int proc, idx;
-            std::vector<T>& sendbuf = send_data->get_buffer<T>();
-            std::vector<T>& recvbuf = recv_data->get_buffer<T>();
+            aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
+            aligned_vector<T>& recvbuf = recv_data->get_buffer<T>();
             MPI_Datatype type = get_type(sendbuf);
-            recv_data->vector_data.num_msgs += recv_data->num_msgs;
-            recv_data->vector_data.size_msgs += recv_data->size_msgs;
+int rank;MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-            recv_data->matrix_data.wait_time -= MPI_Wtime();
             if (recv_data->indptr_T.size())
             {
                 int idx_start, idx_end;
@@ -967,10 +952,10 @@ namespace raptor
                     {
                         idx_start = recv_data->indptr_T[j];
                         idx_end = recv_data->indptr_T[j+1];
-                        val = 0;
+                        val = init_result_func_val;
                         for (int k = idx_start; k < idx_end; k++)
                         {
-                            val += values[recv_data->indices[k]];
+                            val = init_result_func(val, values[recv_data->indices[k]]);
                         }
                         recvbuf[j] = val;
                     }
@@ -1018,27 +1003,30 @@ namespace raptor
                 MPI_Irecv(&(sendbuf[start]), end - start, type,
                         proc, key, mpi_comm, &(send_data->requests[i]));
             }
-            recv_data->matrix_data.wait_time += MPI_Wtime();
         }
 
         template<typename T, typename U>
-        void complete_T(std::vector<U>& result)
+        void complete_T(aligned_vector<U>& result, 
+                std::function<U(U, T)> result_func = &sum_func<T, U>,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            complete_T<T>();
+            complete_T<T>(init_result_func, init_result_func_val);
 
             int idx;
-            std::vector<T>& sendbuf = send_data->get_buffer<T>();
+            aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
+
             for (int i = 0; i < send_data->size_msgs; i++)
             {
                 idx = send_data->indices[i];
-                result[idx] += sendbuf[i];
+                result[idx]  = result_func(result[idx], sendbuf[i]);
             }
         }
 
         template<typename T>
-        void complete_T()
+        void complete_T(std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            recv_data->matrix_data.wait_time -= MPI_Wtime();
             if (send_data->num_msgs)
             {
                 MPI_Waitall(send_data->num_msgs, send_data->requests.data(), MPI_STATUSES_IGNORE);
@@ -1048,107 +1036,24 @@ namespace raptor
             {
                 MPI_Waitall(recv_data->num_msgs, recv_data->requests.data(), MPI_STATUSES_IGNORE);
             }
-            recv_data->matrix_data.wait_time += MPI_Wtime();
+            key++;
         }
 
-
-        // Matrix Communication
-        CSRMatrix* communicate(std::vector<int>& rowptr, std::vector<int>& col_indices,
-                std::vector<double>& values);
-        CSRMatrix* communicate_T(std::vector<int>& rowptr, std::vector<int>& col_indices,
-                std::vector<double>& values, int n_result_rows);
-        CSRMatrix* communicate(ParCSRMatrix* A)
+        // Conditional communication
+        template <typename T>
+        aligned_vector<T>& conditional_comm(const aligned_vector<T>& vals,  
+                const aligned_vector<int>& states, 
+                const aligned_vector<int>& off_proc_states,
+                std::function<bool(int)> compare_func)
         {
-            return CommPkg::communicate(A);
-        }
-        CSRMatrix* communicate(CSRMatrix* A)
-        {
-            return CommPkg::communicate(A);
-        }
-        CSRMatrix* communicate_T(CSRMatrix* A)
-        {
-            return CommPkg::communicate_T(A);
-        }
-
-
-        // Vector Communication
-        std::vector<double>& communicate(ParVector& v)
-        {
-            return CommPkg::communicate(v);
-        }
-        void init_comm(ParVector& v)
-        {
-            CommPkg::init_comm(v);
-        }
-
-
-        // Conditional Communication
-        std::vector<double>& conditional_double_comm(const double* values, 
-                const int* send_compares,
-                const int* recv_compares, 
-                std::function<bool(int)> compare_func = {})
-        {
-            return conditional_communication<double>(values, send_compares, 
-                    recv_compares, compare_func);
-        
-        }
-        std::vector<int>& conditional_int_comm(const int* values,
-                const int* send_compares,
-                const int* recv_compares, 
-                std::function<bool(int)> compare_func = {})
-        {
-            return conditional_communication<int>(values, send_compares, 
-                    recv_compares, compare_func);
-        }
-
-        void conditional_double_comm_T(const double* values, 
-                std::vector<double>& result,
-                const int* send_compares,
-                const int* recv_compares, 
-                std::function<bool(int)> compare_func = {},
-                std::function<double(double, double)> result_func = {})
-        {
-            conditional_communication_T<double, double>(values, result, 
-                    send_compares, recv_compares, compare_func, result_func);
-        }
-
-        void conditional_int_comm_T(const int* values, 
-                std::vector<int>& result,
-                const int* send_compares,
-                const int* recv_compares, 
-                std::function<bool(int)> compare_func = {},
-                std::function<int(int, int)> result_func = {})
-        {
-            conditional_communication_T<int, int>(values, result, send_compares, 
-                    recv_compares, compare_func, result_func);
-        }
-
-        void conditional_int_comm_T(const int* values, 
-                std::vector<double>& result,
-                const int* send_compares,
-                const int* recv_compares, 
-                std::function<bool(int)> compare_func = {},
-                std::function<double(double, int)> result_func = {})
-        {
-            conditional_communication_T<int, double>(values, result, 
-                    send_compares, recv_compares, compare_func, result_func);
-        }
-
-        template<typename T>
-        std::vector<T>& conditional_communication(const T* values, 
-                const int* send_compares,
-                const int* recv_compares,
-                std::function<bool(int)> compare_func = {})
-        {
-            if (!compare_func) return communicate(values);
-
             int proc, start, end;
             int idx, size;
             int ctr, prev_ctr;
             int n_sends, n_recvs;
+            int key = 325493;
 
-            std::vector<T>& sendbuf = send_data->get_buffer<T>();
-            std::vector<T>& recvbuf = recv_data->get_buffer<T>();
+            aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
+            aligned_vector<T>& recvbuf = recv_data->get_buffer<T>();
             MPI_Datatype type = get_type(sendbuf);
 
             n_sends = 0;
@@ -1162,15 +1067,15 @@ namespace raptor
                 for (int j = start; j < end; j++)
                 {
                     idx = send_data->indices[j];
-                    if (compare_func(send_compares[idx]))
+                    if (compare_func(states[idx]))
                     {
-                        sendbuf[ctr++] = values[idx];
+                        sendbuf[ctr++] = vals[idx];
                     }
                 }
                 size = ctr - prev_ctr;
                 if (size)
                 {
-                    MPI_Issend(&(sendbuf[prev_ctr]), size, type, 
+                    MPI_Isend(&(sendbuf[prev_ctr]), size, type, 
                             proc, key, mpi_comm, &(send_data->requests[n_sends++]));
                     prev_ctr = ctr;
                 }
@@ -1180,54 +1085,26 @@ namespace raptor
             n_recvs = 0;
             ctr = 0;
             prev_ctr = 0;
-            if (recv_data->indices.size())
+            for (int i = 0; i < recv_data->num_msgs; i++)
             {
-                for (int i = 0; i < recv_data->num_msgs; i++)
+                proc = recv_data->procs[i];
+                start = recv_data->indptr[i];
+                end = recv_data->indptr[i+1];
+                for (int j = start; j < end; j++)
                 {
-                    proc = recv_data->procs[i];
-                    start = recv_data->indptr[i];
-                    end = recv_data->indptr[i+1];
-                    for (int j = start; j < end; j++)
-                    {
-                        idx = recv_data->indices[j];
+                    idx = j;
 
-                        if (compare_func(recv_compares[idx]))
-                        {
-                            ctr++;
-                        }
-                    }
-                    size = ctr - prev_ctr;
-                    if (size)
+                    if (compare_func(off_proc_states[idx]))
                     {
-                        MPI_Irecv(&(recvbuf[prev_ctr]), size, type,
-                                proc, key, mpi_comm, &(recv_data->requests[n_recvs++]));
-                        prev_ctr = ctr;
+                        ctr++;
                     }
                 }
-            }
-            else
-            {
-                for (int i = 0; i < recv_data->num_msgs; i++)
+                size = ctr - prev_ctr;
+                if (size)
                 {
-                    proc = recv_data->procs[i];
-                    start = recv_data->indptr[i];
-                    end = recv_data->indptr[i+1];
-                    for (int j = start; j < end; j++)
-                    {
-                        idx = j;
-
-                        if (compare_func(recv_compares[idx]))
-                        {
-                            ctr++;
-                        }
-                    }
-                    size = ctr - prev_ctr;
-                    if (size)
-                    {
-                        MPI_Irecv(&(recvbuf[prev_ctr]), size, type,
-                                proc, key, mpi_comm, &(recv_data->requests[n_recvs++]));
-                        prev_ctr = ctr;
-                    }
+                    MPI_Irecv(&(recvbuf[prev_ctr]), size, type,
+                            proc, key, mpi_comm, &(recv_data->requests[n_recvs++]));
+                    prev_ctr = ctr;
                 }
             }
 
@@ -1241,147 +1118,60 @@ namespace raptor
             }
 
             ctr--;
-            if (recv_data->indices.size())
+            for (int i = recv_data->size_msgs - 1; i >= 0; i--)
             {
-                for (int i = recv_data->size_msgs - 1; i >= 0; i--)
+                if (compare_func(off_proc_states[i]))
                 {
-                    idx = recv_data->indices[i];
-
-                    if (compare_func(recv_compares[idx]))
-                    {
-                        recvbuf[idx] = recvbuf[ctr--];
-                    }
-                    else
-                    {
-                        recvbuf[idx] = 0.0;
-                    }
+                    recvbuf[i] = recvbuf[ctr--];
+                }
+                else
+                {
+                    recvbuf[i] = 0.0;
                 }
             }
-            else
-            {
-                for (int i = recv_data->size_msgs - 1; i >= 0; i--)
-                {
-                    idx = i;
 
-                    if (compare_func(recv_compares[idx]))
-                    {
-                        recvbuf[idx] = recvbuf[ctr--];
-                    }
-                    else
-                    {
-                        recvbuf[idx] = 0.0;
-                    }
-                }
-            }
             return recvbuf;
         }
 
-        template<typename T, typename U>
-        void conditional_communication_T(const T* values,
-                std::vector<U>& result, 
-                const int* send_compares,
-                const int* recv_compares,
-                std::function<bool(int)> compare_func = {},
-                std::function<U(U, T)> result_func = {})
+        template <typename T, typename U>
+        void conditional_comm_T(const aligned_vector<T>& vals,  
+                const aligned_vector<int>& states, 
+                const aligned_vector<int>& off_proc_states,
+                std::function<bool(int)> compare_func,
+                aligned_vector<U>& result, 
+                std::function<U(U, T)> result_func)
         {
-            if (!compare_func)
-            {
-                communicate_T(values, result);
-                return;
-            }
-
             int proc, start, end;
             int idx, size;
             int ctr, prev_ctr;
             int n_sends, n_recvs;
 
-            std::vector<T>& sendbuf = send_data->get_buffer<T>();
-            std::vector<T>& recvbuf = recv_data->get_buffer<T>();
+            aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
+            aligned_vector<T>& recvbuf = recv_data->get_buffer<T>();
             MPI_Datatype type = get_type(sendbuf);
+            int key = 453246;
 
             n_sends = 0;
             ctr = 0;
             prev_ctr = 0;
-            if (recv_data->indptr_T.size())
+            for (int i = 0; i < recv_data->num_msgs; i++)
             {
-                int idx_start, idx_end;
-                T val;
-                for (int i = 0; i < recv_data->num_msgs; i++)
+                proc = recv_data->procs[i];
+                start = recv_data->indptr[i];
+                end = recv_data->indptr[i+1];
+                for (int j = start; j < end; j++)
                 {
-                    proc = recv_data->procs[i];
-                    start = recv_data->indptr[i];
-                    end = recv_data->indptr[i+1];
-                    for (int j = start; j < end; j++)
+                    if (compare_func(off_proc_states[j]))
                     {
-                        if (compare_func(recv_compares[idx]))
-                        {
-                            idx_start = recv_data->indptr_T[j];
-                            idx_end = recv_data->indptr_T[j+1];
-                            val = 0;
-                            for (int k = idx_start; k < idx_end; k++)
-                            {
-                                val += values[recv_data->indices[k]];
-                            }
-                            recvbuf[ctr++] = val;
-                        }
-                    }
-                    size = ctr - prev_ctr;
-                    if (size)
-                    {
-                        MPI_Issend(&(recvbuf[prev_ctr]), size, type, 
-                                proc, key, mpi_comm, &(recv_data->requests[n_sends++]));
-                        prev_ctr = ctr;
+                        recvbuf[ctr++] = vals[j];
                     }
                 }
-            }
-            else if (recv_data->indices.size())
-            {
-                for (int i = 0; i < recv_data->num_msgs; i++)
+                size = ctr - prev_ctr;
+                if (size)
                 {
-                    proc = recv_data->procs[i];
-                    start = recv_data->indptr[i];
-                    end = recv_data->indptr[i+1];
-                    for (int j = start; j < end; j++)
-                    {
-                        idx = recv_data->indices[j];
-
-                        if (compare_func(recv_compares[idx]))
-                        {
-                            recvbuf[ctr++] = values[idx];
-                        }
-                    }
-                    size = ctr - prev_ctr;
-                    if (size)
-                    {
-                        MPI_Issend(&(recvbuf[prev_ctr]), size, type, 
-                                proc, key, mpi_comm, &(recv_data->requests[n_sends++]));
-                        prev_ctr = ctr;
-                    }
-                }
-            }
-            else
-            {
-                for (int i = 0; i < recv_data->num_msgs; i++)
-                {
-                    proc = recv_data->procs[i];
-                    start = recv_data->indptr[i];
-                    end = recv_data->indptr[i+1];
-                    for (int j = start; j < end; j++)
-                    {
-                        idx = j;
-
-                        if (compare_func(recv_compares[idx]))
-                        {
-                            recvbuf[ctr++] = values[idx];
-                        }
-                    }
-                    size = ctr - prev_ctr;
-                    if (size)
-                    {
-                        MPI_Issend(&(recvbuf[prev_ctr]), size, type, 
-                                proc, key, mpi_comm, &(recv_data->requests[n_sends++]));
-                        prev_ctr = ctr;
-                    }
+                    MPI_Issend(&(recvbuf[prev_ctr]), size, type, 
+                            proc, key, mpi_comm, &(recv_data->requests[n_sends++]));
+                    prev_ctr = ctr;
                 }
             }
 
@@ -1396,7 +1186,7 @@ namespace raptor
                 for (int j = start; j < end; j++)
                 {
                     idx = send_data->indices[j];
-                    if (compare_func(send_compares[idx]))
+                    if (compare_func(states[idx]))
                     {
                         ctr++;
                     }
@@ -1419,55 +1209,70 @@ namespace raptor
                 MPI_Waitall(n_recvs, send_data->requests.data(), MPI_STATUSES_IGNORE);
             }
 
-            if (result_func)
+            ctr = 0;
+            for (int i = 0; i < send_data->size_msgs; i++)
             {
-                ctr = 0;
-                for (int i = 0; i < send_data->size_msgs; i++)
+                idx = send_data->indices[i];
+                if (compare_func(states[idx]))
                 {
-                    idx = send_data->indices[i];
-                    if (compare_func(send_compares[idx]))
-                    {
-                        result[idx] = result_func(result[idx], sendbuf[ctr++]);
-                    }
+                    result[idx] = result_func(result[idx], sendbuf[ctr++]);
                 }
             }
         }
 
+
+        // Matrix Communication
+        CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
+                const aligned_vector<int>& col_indices, const aligned_vector<double>& values);
+        CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
+                const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
+                const int n_result_rows);
+        CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
+                const aligned_vector<int>& col_indices);
+        CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
+                const aligned_vector<int>& col_indices, const int n_result_rows);
+        CSRMatrix* communicate(ParCSRMatrix* A)
+        {
+            return CommPkg::communicate(A);
+        }
+        CSRMatrix* communicate(CSRMatrix* A)
+        {
+            return CommPkg::communicate(A);
+        }
+        CSRMatrix* communicate_T(CSRMatrix* A)
+        {
+            return CommPkg::communicate_T(A);
+        }
+
+
+        // Vector Communication
+        aligned_vector<double>& communicate(ParVector& v)
+        {
+            return CommPkg::communicate(v);
+        }
+        void init_comm(ParVector& v)
+        {
+            CommPkg::init_comm(v);
+        }
+
         // Helper Methods
-        std::vector<double>& get_double_recv_buffer()
+        aligned_vector<double>& get_double_recv_buffer()
         {
             return recv_data->buffer;
         }
-        std::vector<int>& get_int_recv_buffer()
+        aligned_vector<int>& get_int_recv_buffer()
         {
             return recv_data->int_buffer;
         }
-        std::vector<double>& get_double_send_buffer()
+        aligned_vector<double>& get_double_send_buffer()
         {
             return send_data->buffer;
         }
-        std::vector<int>& get_int_send_buffer()
+        aligned_vector<int>& get_int_send_buffer()
         {
             return send_data->int_buffer;
         }
 
-
-        void reset_comm_data()
-        {
-            send_data->reset_data();
-        }
-        void reset_comm_T_data()
-        {
-            recv_data->reset_data();
-        }
-        void print_comm_data(bool vec)
-        {
-            send_data->print_data(vec);
-        }
-        void print_comm_T_data(bool vec)
-        {
-            recv_data->print_data(vec);
-        }
 
         int key;
         CommData* send_data;
@@ -1529,7 +1334,7 @@ namespace raptor
         *****
         ***** Parameters
         ***** -------------
-        ***** off_proc_column_map : std::vector<int>&
+        ***** off_proc_column_map : aligned_vector<int>&
         *****    Maps local off_proc columns indices to global
         ***** global_num_cols : int
         *****    Number of global columns in matrix
@@ -1537,27 +1342,29 @@ namespace raptor
         *****    Number of columns local to rank
         **************************************************************/
         TAPComm(Partition* partition, 
-                const std::vector<int>& off_proc_column_map,
+                const aligned_vector<int>& off_proc_column_map,
                 bool form_S = true,
-                MPI_Comm comm = MPI_COMM_WORLD) : CommPkg(partition)
+                MPI_Comm comm = MPI_COMM_WORLD,
+                data_t* comm_t = NULL) : CommPkg(partition)
         {
             if (form_S)
             {
-                init_tap_comm(partition, off_proc_column_map, comm);
+                init_tap_comm(partition, off_proc_column_map, comm, comm_t);
             }
             else
             {
-                init_tap_comm_simple(partition, off_proc_column_map, comm);
+                init_tap_comm_simple(partition, off_proc_column_map, comm, comm_t);
             }
         }
 
         TAPComm(Partition* partition,
-                const std::vector<int>& off_proc_column_map,
-                const std::vector<int>& on_proc_column_map,
+                const aligned_vector<int>& off_proc_column_map,
+                const aligned_vector<int>& on_proc_column_map,
                 bool form_S = true,
-                MPI_Comm comm = MPI_COMM_WORLD) : CommPkg(partition)
+                MPI_Comm comm = MPI_COMM_WORLD,
+                data_t* comm_t = NULL) : CommPkg(partition)
         {
-            std::vector<int> on_proc_to_new;
+            aligned_vector<int> on_proc_to_new;
             int on_proc_num_cols = on_proc_column_map.size();
             if (partition->local_num_cols)
             {
@@ -1570,9 +1377,9 @@ namespace raptor
 
             if (form_S)
             {
-                init_tap_comm(partition, off_proc_column_map, comm);
+                init_tap_comm(partition, off_proc_column_map, comm, comm_t);
 
-                for (std::vector<int>::iterator it = local_S_par_comm->send_data->indices.begin();
+                for (aligned_vector<int>::iterator it = local_S_par_comm->send_data->indices.begin();
                         it != local_S_par_comm->send_data->indices.end(); ++it)
                 {
                     *it = on_proc_to_new[*it];
@@ -1580,16 +1387,16 @@ namespace raptor
             }
             else
             {
-                init_tap_comm_simple(partition, off_proc_column_map, comm);
+                init_tap_comm_simple(partition, off_proc_column_map, comm, comm_t);
 
-                for (std::vector<int>::iterator it = global_par_comm->send_data->indices.begin();
+                for (aligned_vector<int>::iterator it = global_par_comm->send_data->indices.begin();
                         it != global_par_comm->send_data->indices.end(); ++it)
                 {
                     *it = on_proc_to_new[*it];
                 }
             }
 
-            for (std::vector<int>::iterator it = local_L_par_comm->send_data->indices.begin();
+            for (aligned_vector<int>::iterator it = local_L_par_comm->send_data->indices.begin();
                     it != local_L_par_comm->send_data->indices.end(); ++it)
             {
                 *it = on_proc_to_new[*it];
@@ -1629,282 +1436,136 @@ namespace raptor
             }
         }
 
-        TAPComm(TAPComm* tap_comm, const std::vector<int>& on_proc_col_to_new,
-                const std::vector<int>& off_proc_col_to_new, bool communicate = false) 
-            : CommPkg(tap_comm->topology)
+        TAPComm(TAPComm* tap_comm, const aligned_vector<int>& off_proc_col_to_new, 
+                data_t* comm_t = NULL) : CommPkg(tap_comm->topology)
         {
-            bool comm_proc;
-            int proc, start, end;
-            int idx, new_idx;
-            
-            int new_idx_L;
-            int new_idx_R;
+            init_off_proc_new(tap_comm, off_proc_col_to_new, comm_t);
+        }
 
+        TAPComm(TAPComm* tap_comm, const aligned_vector<int>& on_proc_col_to_new,
+                const aligned_vector<int>& off_proc_col_to_new, 
+                data_t* comm_t = NULL) : CommPkg(tap_comm->topology)
+        {
+            int idx;
+
+            init_off_proc_new(tap_comm, off_proc_col_to_new, comm_t);
+
+            for (int i = 0; i < local_L_par_comm->send_data->size_msgs; i++)
+            {
+                idx = local_L_par_comm->send_data->indices[i];
+                local_L_par_comm->send_data->indices[i] = on_proc_col_to_new[idx];
+            }
+
+            if (local_S_par_comm)
+            {
+                for (int i = 0; i < local_S_par_comm->send_data->size_msgs; i++)
+                {
+                    idx = local_S_par_comm->send_data->indices[i];
+                    local_S_par_comm->send_data->indices[i] = on_proc_col_to_new[idx];
+                }
+            }
+            else
+            {
+                for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
+                {
+                    idx = global_par_comm->send_data->indices[i];
+                    global_par_comm->send_data->indices[i] = on_proc_col_to_new[idx];
+                }
+            }
+        }
+
+
+        void init_off_proc_new(TAPComm* tap_comm, const aligned_vector<int>& off_proc_col_to_new,
+                data_t* comm_t = NULL)
+        {
+            int idx, ctr;
+            int start, end;
+
+            local_L_par_comm = new ParComm(tap_comm->local_L_par_comm, off_proc_col_to_new, 
+                    comm_t);
+            local_R_par_comm = new ParComm(tap_comm->local_R_par_comm, off_proc_col_to_new,
+                    comm_t);
+
+            // Create global par comm / update R send indices
+            aligned_vector<int> G_to_new(tap_comm->global_par_comm->recv_data->size_msgs, -1);
+            ctr = 0;
+            for (int i = 0; i < tap_comm->global_par_comm->recv_data->size_msgs; i++)
+            {
+                start = tap_comm->global_par_comm->recv_data->indptr_T[i];
+                end = tap_comm->global_par_comm->recv_data->indptr_T[i+1];
+                for (int j = start; j < end; j++)
+                {
+                    idx = tap_comm->global_par_comm->recv_data->indices[j];
+                    if (tap_comm->local_R_par_comm->send_data->int_buffer[idx] != -1)
+                    {
+                        G_to_new[i] = ctr++;
+                        break;
+                    }
+                }
+            }
+            for (aligned_vector<int>::iterator it = local_R_par_comm->send_data->indices.begin();
+                    it != local_R_par_comm->send_data->indices.end(); ++it)
+            {
+                *it = G_to_new[*it];
+            }
+            idx = 0;
+            for (aligned_vector<int>::iterator it = 
+                    tap_comm->local_R_par_comm->send_data->int_buffer.begin();
+                    it != tap_comm->local_R_par_comm->send_data->int_buffer.end(); ++it)
+            {
+                if (*it != -1) *it = idx++;
+            }
+
+            global_par_comm = new ParComm(tap_comm->global_par_comm, 
+                    tap_comm->local_R_par_comm->send_data->int_buffer, comm_t);
+
+
+            // create local S / update global send indices
             if (tap_comm->local_S_par_comm)
             {
-                local_S_par_comm = new ParComm(tap_comm->topology,
-                        tap_comm->local_S_par_comm->key, tap_comm->local_S_par_comm->mpi_comm);
-            }
-
-            local_L_par_comm = new ParComm(tap_comm->topology, 
-                    tap_comm->local_L_par_comm->key, tap_comm->local_L_par_comm->mpi_comm);
-            local_R_par_comm = new ParComm(tap_comm->topology,
-                    tap_comm->local_R_par_comm->key, tap_comm->local_R_par_comm->mpi_comm);
-            global_par_comm = new ParComm(tap_comm->topology,
-                    tap_comm->global_par_comm->key, tap_comm->global_par_comm->mpi_comm);
-            
-            // Communicate the col_to_new lists to other local procs
-            tap_comm->local_S_par_comm->communicate(on_proc_col_to_new);
-            tap_comm->local_R_par_comm->communicate_T(off_proc_col_to_new);
-
-            // Form col_to_new for S_recv, R_send, and global_recv
-            std::vector<int>& S_recv_col_to_new 
-                = tap_comm->local_S_par_comm->recv_data->int_buffer;
-            std::vector<int>& R_send_col_to_new = 
-                tap_comm->local_R_par_comm->send_data->int_buffer;
-            std::vector<int> global_recv_col_to_new;
-            if (tap_comm->global_par_comm->recv_data->size_msgs)
-            {
-                global_recv_col_to_new.resize(tap_comm->global_par_comm->recv_data->size_msgs);
-            }
-            for (int i = 0; i < tap_comm->local_R_par_comm->send_data->size_msgs; i++)
-            {
-                idx = tap_comm->local_R_par_comm->send_data->indices[i];
-                global_recv_col_to_new[idx] = R_send_col_to_new[i];
-            }
-
-            // Update local_L_par_comm
-            for (int i = 0; i < tap_comm->local_L_par_comm->send_data->num_msgs; i++)
-            {
-                comm_proc = false;
-                start = tap_comm->local_L_par_comm->send_data->indptr[i];
-                end = tap_comm->local_L_par_comm->send_data->indptr[i+1];
-                for (int j = start; j < end; j++)
+                aligned_vector<int> S_to_new(tap_comm->local_S_par_comm->recv_data->size_msgs, -1);
+                ctr = 0;
+                for (int i = 0; i < tap_comm->local_S_par_comm->recv_data->size_msgs; i++)
                 {
-                    idx = tap_comm->local_L_par_comm->send_data->indices[j];
-                    new_idx = on_proc_col_to_new[idx];
-                    if (new_idx != -1)
+                    start = tap_comm->local_S_par_comm->recv_data->indptr_T[i];
+                    end = tap_comm->local_S_par_comm->recv_data->indptr_T[i+1];
+                    for (int j = start; j < end; j++)
                     {
-                        comm_proc = true;
-                        local_L_par_comm->send_data->indices.push_back(new_idx);
+                        idx = tap_comm->local_S_par_comm->recv_data->indices[j];
+                        if (tap_comm->global_par_comm->send_data->int_buffer[idx] != -1)
+                        {
+                            S_to_new[i] = ctr++;
+                            break;
+                        }
                     }
                 }
-                if (comm_proc)
+                for (aligned_vector<int>::iterator it = global_par_comm->send_data->indices.begin();
+                        it != global_par_comm->send_data->indices.end(); ++it)
                 {
-                    proc = tap_comm->local_L_par_comm->send_data->procs[i];
-                    local_L_par_comm->send_data->procs.push_back(proc);
-                    local_L_par_comm->send_data->indptr.push_back(
-                            local_L_par_comm->send_data->indices.size());
+                    *it = S_to_new[*it];
                 }
+                idx = 0;
+                for (aligned_vector<int>::iterator it = 
+                        tap_comm->global_par_comm->send_data->int_buffer.begin();
+                        it != tap_comm->global_par_comm->send_data->int_buffer.end(); ++it)
+                {
+                    if (*it != -1) *it = idx++;
+                }
+
+                local_S_par_comm = new ParComm(tap_comm->local_S_par_comm,
+                        tap_comm->global_par_comm->send_data->int_buffer, comm_t);
             }
-            local_L_par_comm->send_data->num_msgs = local_L_par_comm->send_data->procs.size();
-            local_L_par_comm->send_data->size_msgs = local_L_par_comm->send_data->indices.size();
-            local_L_par_comm->send_data->finalize();
 
-            for (int i = 0; i < tap_comm->local_L_par_comm->recv_data->num_msgs; i++)
-            {
-                comm_proc = false;
-                start = tap_comm->local_L_par_comm->recv_data->indptr[i];
-                end = tap_comm->local_L_par_comm->recv_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    idx = tap_comm->local_L_par_comm->recv_data->indices[j];
-                    new_idx = off_proc_col_to_new[idx];
-                    if (new_idx != -1)
-                    {
-                        comm_proc = true;
-                        local_L_par_comm->recv_data->indices.push_back(new_idx);
-                    }
-                }
-                if (comm_proc)
-                {
-                    proc = tap_comm->local_L_par_comm->recv_data->procs[i];
-                    local_L_par_comm->recv_data->procs.push_back(proc);
-                    local_L_par_comm->recv_data->indptr.push_back(
-                            local_L_par_comm->recv_data->indices.size());
-                }
-            }
-            local_L_par_comm->recv_data->num_msgs = local_L_par_comm->recv_data->procs.size();
-            local_L_par_comm->recv_data->size_msgs = local_L_par_comm->recv_data->indices.size();
-            local_L_par_comm->recv_data->finalize();
-
-
-
-            // Update local_S_par_comm
-            for (int i = 0; i < tap_comm->local_S_par_comm->send_data->num_msgs; i++)
-            {
-                comm_proc = false;
-                start = tap_comm->local_S_par_comm->send_data->indptr[i];
-                end = tap_comm->local_S_par_comm->send_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    idx = tap_comm->local_S_par_comm->send_data->indices[j];
-                    new_idx = on_proc_col_to_new[idx];
-                    if (new_idx != -1)
-                    {
-                        comm_proc = true;
-                        local_S_par_comm->send_data->indices.push_back(new_idx);
-                    }
-                }
-                if (comm_proc)
-                {
-                    proc = tap_comm->local_S_par_comm->send_data->procs[i];
-                    local_S_par_comm->send_data->procs.push_back(proc);
-                    local_S_par_comm->send_data->indptr.push_back(
-                            local_S_par_comm->send_data->indices.size());
-                }
-            }
-            local_S_par_comm->send_data->num_msgs = local_S_par_comm->send_data->procs.size();
-            local_S_par_comm->send_data->size_msgs = local_S_par_comm->send_data->indices.size();
-            local_S_par_comm->send_data->finalize();
-
-            local_S_par_comm->recv_data->size_msgs = 0;
-            for (int i = 0; i < tap_comm->local_S_par_comm->recv_data->num_msgs; i++)
-            {
-                comm_proc = false;
-                start = tap_comm->local_S_par_comm->recv_data->indptr[i];
-                end = tap_comm->local_S_par_comm->recv_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    new_idx = S_recv_col_to_new[j];
-                    if (new_idx != -1)
-                    {
-                        comm_proc = true;
-                        local_S_par_comm->recv_data->size_msgs++;
-                    }
-                }
-                if (comm_proc)
-                {
-                    proc = tap_comm->local_S_par_comm->recv_data->procs[i];
-                    local_S_par_comm->recv_data->procs.push_back(proc);
-                    local_S_par_comm->recv_data->indptr.push_back(
-                            local_S_par_comm->recv_data->size_msgs);
-                }
-            }
-            local_S_par_comm->recv_data->num_msgs = local_S_par_comm->recv_data->procs.size();
-            local_S_par_comm->recv_data->finalize();
-
-
-            // Update local_R_par_comm
-            for (int i = 0; i < tap_comm->local_R_par_comm->recv_data->num_msgs; i++)
-            {
-                comm_proc = false;
-                start = tap_comm->local_R_par_comm->recv_data->indptr[i];
-                end = tap_comm->local_R_par_comm->recv_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    idx = tap_comm->local_R_par_comm->recv_data->indices[j];
-                    new_idx = off_proc_col_to_new[idx];
-                    if (new_idx != -1)
-                    {
-                        comm_proc = true;
-                        local_R_par_comm->recv_data->indices.push_back(new_idx);
-                    }
-                }
-                if (comm_proc)
-                {
-                    proc = tap_comm->local_R_par_comm->recv_data->procs[i];
-                    local_R_par_comm->recv_data->procs.push_back(proc);
-                    local_R_par_comm->recv_data->indptr.push_back(
-                            local_R_par_comm->recv_data->indices.size());
-                }
-            }
-            local_R_par_comm->recv_data->num_msgs = local_R_par_comm->recv_data->procs.size();
-            local_R_par_comm->recv_data->size_msgs = local_R_par_comm->recv_data->indices.size();
-            local_R_par_comm->recv_data->finalize();
-
-            for (int i = 0; i < tap_comm->local_R_par_comm->send_data->num_msgs; i++)
-            {
-                comm_proc = false;
-                start = tap_comm->local_R_par_comm->send_data->indptr[i];
-                end = tap_comm->local_R_par_comm->send_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    idx = tap_comm->local_R_par_comm->send_data->indices[j];
-                    new_idx = R_send_col_to_new[idx];
-                    if (new_idx != -1)
-                    {
-                        comm_proc = true;
-                        local_R_par_comm->send_data->indices.push_back(new_idx);
-                    }
-                }
-                if (comm_proc)
-                {
-                    proc = tap_comm->local_R_par_comm->send_data->procs[i];
-                    local_R_par_comm->send_data->procs.push_back(proc);
-                    local_R_par_comm->send_data->indptr.push_back(
-                            local_R_par_comm->send_data->indices.size());
-                }
-            }
-            local_R_par_comm->send_data->num_msgs = local_R_par_comm->send_data->procs.size();
-            local_R_par_comm->send_data->size_msgs = local_R_par_comm->send_data->indices.size();
-            local_R_par_comm->send_data->finalize();
-
-
-
-            // Update global par comm
-            for (int i = 0; i < tap_comm->global_par_comm->send_data->num_msgs; i++)
-            {
-                comm_proc = false;
-                start = tap_comm->global_par_comm->send_data->indptr[i];
-                end = tap_comm->global_par_comm->send_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    idx = tap_comm->global_par_comm->send_data->indices[j];
-                    new_idx = S_recv_col_to_new[idx];
-                    if (new_idx != -1)
-                    {
-                        comm_proc = true;
-                        global_par_comm->send_data->indices.push_back(new_idx);
-                    }
-                }
-                if (comm_proc)
-                {
-                    proc = tap_comm->global_par_comm->send_data->procs[i];
-                    global_par_comm->send_data->procs.push_back(proc);
-                    global_par_comm->send_data->indptr.push_back(
-                            global_par_comm->send_data->indices.size());
-                }
-            }
-            global_par_comm->send_data->num_msgs = global_par_comm->send_data->procs.size();
-            global_par_comm->send_data->size_msgs = global_par_comm->send_data->indices.size();
-            global_par_comm->send_data->finalize();
-
-
-            global_par_comm->recv_data->size_msgs = 0;
-            for (int i = 0; i < tap_comm->global_par_comm->recv_data->num_msgs; i++)
-            {
-                comm_proc = false;
-                start = tap_comm->global_par_comm->recv_data->indptr[i];
-                end = tap_comm->global_par_comm->recv_data->indptr[i+1];
-                for (int j = start; j < end; j++)
-                {
-                    new_idx = global_recv_col_to_new[j];
-                    if (new_idx != -1)
-                    {
-                        comm_proc = true;
-                        global_par_comm->recv_data->size_msgs++;
-                    }
-                }
-                if (comm_proc)
-                {
-                    proc = tap_comm->global_par_comm->recv_data->procs[i];
-                    global_par_comm->recv_data->procs.push_back(proc);
-                    global_par_comm->recv_data->indptr.push_back(
-                            global_par_comm->recv_data->size_msgs);
-                }
-            }
-            global_par_comm->recv_data->num_msgs = global_par_comm->recv_data->procs.size();
-            global_par_comm->recv_data->finalize();
-
-            
+            // Determine size of final recvs (should be equal to 
+            // number of off_proc cols)
             int recv_size = local_R_par_comm->recv_data->size_msgs +
                 local_L_par_comm->recv_data->size_msgs;
             if (recv_size)
             {
+                // Want a single recv buffer local_R and local_L par_comms
                 recv_buffer.resize(recv_size);
                 int_recv_buffer.resize(recv_size);
-            }
+            }        
         }
 
         /**************************************************************
@@ -1921,8 +1582,8 @@ namespace raptor
         }
 
         void init_tap_comm(Partition* partition,
-                const std::vector<int>& off_proc_column_map,
-                MPI_Comm comm)
+                const aligned_vector<int>& off_proc_column_map,
+                MPI_Comm comm, data_t* comm_t = NULL)
         {
             // Get MPI Information
             int rank, num_procs;
@@ -1938,16 +1599,16 @@ namespace raptor
             // Initialize Variables
             int idx;
             int recv_size;
-            std::vector<int> off_proc_col_to_proc;
-            std::vector<int> on_node_column_map;
-            std::vector<int> on_node_col_to_proc;
-            std::vector<int> off_node_column_map;
-            std::vector<int> off_node_col_to_node;
-            std::vector<int> on_node_to_off_proc;
-            std::vector<int> off_node_to_off_proc;
-            std::vector<int> recv_nodes;
-            std::vector<int> orig_procs;
-            std::vector<int> node_to_local_proc;
+            aligned_vector<int> off_proc_col_to_proc;
+            aligned_vector<int> on_node_column_map;
+            aligned_vector<int> on_node_col_to_proc;
+            aligned_vector<int> off_node_column_map;
+            aligned_vector<int> off_node_col_to_node;
+            aligned_vector<int> on_node_to_off_proc;
+            aligned_vector<int> off_node_to_off_proc;
+            aligned_vector<int> recv_nodes;
+            aligned_vector<int> orig_procs;
+            aligned_vector<int> node_to_local_proc;
 
             // Find process on which vector value associated with each column is
             // stored
@@ -1960,14 +1621,14 @@ namespace raptor
 
             // Gather all nodes with which any local process must communication
             form_local_R_par_comm(off_node_column_map, off_node_col_to_node, 
-                    orig_procs);
+                    orig_procs, comm_t);
 
             // Find global processes with which rank communications
-            form_global_par_comm(orig_procs);
+            form_global_par_comm(orig_procs, comm_t);
 
             // Form local_S_par_comm: initial distribution of values among local
             // processes, before inter-node communication
-            form_local_S_par_comm(orig_procs);
+            form_local_S_par_comm(orig_procs, comm_t);
 
             // Adjust send indices (currently global vector indices) to be index 
             // of global vector value from previous recv
@@ -1976,7 +1637,7 @@ namespace raptor
             // Form local_L_par_comm: fully local communication (origin and
             // destination processes both local to node)
             form_local_L_par_comm(on_node_column_map, on_node_col_to_proc,
-                    partition->first_local_col);
+                    partition->first_local_col, comm_t);
 
             // Determine size of final recvs (should be equal to 
             // number of off_proc cols)
@@ -2012,8 +1673,8 @@ namespace raptor
         }
 
         void init_tap_comm_simple(Partition* partition,
-                const std::vector<int>& off_proc_column_map,
-                MPI_Comm comm)
+                const aligned_vector<int>& off_proc_column_map,
+                MPI_Comm comm, data_t* comm_t = NULL)
         {
             // Get MPI Information
             int rank, num_procs;
@@ -2029,13 +1690,13 @@ namespace raptor
             // Initialize Variables
             int idx;
             int recv_size;
-            std::vector<int> off_proc_col_to_proc;
-            std::vector<int> on_node_column_map;
-            std::vector<int> on_node_col_to_proc;
-            std::vector<int> off_node_column_map;
-            std::vector<int> off_node_col_to_proc;
-            std::vector<int> on_node_to_off_proc;
-            std::vector<int> off_node_to_off_proc;
+            aligned_vector<int> off_proc_col_to_proc;
+            aligned_vector<int> on_node_column_map;
+            aligned_vector<int> on_node_col_to_proc;
+            aligned_vector<int> off_node_column_map;
+            aligned_vector<int> off_node_col_to_proc;
+            aligned_vector<int> on_node_to_off_proc;
+            aligned_vector<int> off_node_to_off_proc;
 
             // Find process on which vector value associated with each column is
             // stored
@@ -2050,11 +1711,11 @@ namespace raptor
             // corresponding to global rank on which data originates.  E.g. if
             // data is on rank r = (p, n), and my rank is s = (q, m), I will
             // recv data from (p, m).
-            form_simple_R_par_comm(off_node_column_map, off_node_col_to_proc);
+            form_simple_R_par_comm(off_node_column_map, off_node_col_to_proc, comm_t);
 
             // Form global par comm.. Will recv from proc on which data
             // originates
-            form_simple_global_comm(off_node_col_to_proc);
+            form_simple_global_comm(off_node_col_to_proc, comm_t);
 
             // Adjust send indices (currently global vector indices) to be
             // index of global vector value from previous recv (only updating
@@ -2064,7 +1725,7 @@ namespace raptor
             // Form local_L_par_comm: fully local communication (origin and
             // destination processes both local to node)
             form_local_L_par_comm(on_node_column_map, on_node_col_to_proc,
-                    partition->first_local_col);
+                    partition->first_local_col, comm_t);
 
             // Determine size of final recvs (should be equal to 
             // number of off_proc cols)
@@ -2099,33 +1760,35 @@ namespace raptor
             }
         }
 
-        void update(const std::vector<int>& off_proc_col_exists)
+        void update(const aligned_vector<int>& off_proc_col_exists,
+                data_t* comm_t = NULL)
         {
             // TODO
         }
 
 
         // Helper methods for forming TAPComm:
-        void split_off_proc_cols(const std::vector<int>& off_proc_column_map,
-                const std::vector<int>& off_proc_col_to_proc,
-                std::vector<int>& on_node_column_map,
-                std::vector<int>& on_node_col_to_proc,
-                std::vector<int>& on_node_to_off_proc,
-                std::vector<int>& off_node_column_map,
-                std::vector<int>& off_node_col_to_node,
-                std::vector<int>& off_node_to_off_proc);
-        void form_local_R_par_comm(const std::vector<int>& off_node_column_map,
-                const std::vector<int>& off_node_col_to_node,
-                std::vector<int>& orig_procs);
-        void form_global_par_comm(std::vector<int>& orig_procs);
-        void form_local_S_par_comm(std::vector<int>& orig_procs);
+        void split_off_proc_cols(const aligned_vector<int>& off_proc_column_map,
+                const aligned_vector<int>& off_proc_col_to_proc,
+                aligned_vector<int>& on_node_column_map,
+                aligned_vector<int>& on_node_col_to_proc,
+                aligned_vector<int>& on_node_to_off_proc,
+                aligned_vector<int>& off_node_column_map,
+                aligned_vector<int>& off_node_col_to_node,
+                aligned_vector<int>& off_node_to_off_proc);
+        void form_local_R_par_comm(const aligned_vector<int>& off_node_column_map,
+                const aligned_vector<int>& off_node_col_to_node,
+                aligned_vector<int>& orig_procs, data_t* comm_t = NULL);
+        void form_global_par_comm(aligned_vector<int>& orig_procs, data_t* comm_t = NULL);
+        void form_local_S_par_comm(aligned_vector<int>& orig_procs, data_t* comm_t = NULL);
         void adjust_send_indices(const int first_local_col);
-        void form_local_L_par_comm(const std::vector<int>& on_node_column_map,
-                const std::vector<int>& on_node_col_to_proc,
-                const int first_local_col);
-        void form_simple_R_par_comm(std::vector<int>& off_node_column_map,
-                std::vector<int>& off_node_col_to_proc);
-        void form_simple_global_comm(std::vector<int>& off_node_col_to_proc);
+        void form_local_L_par_comm(const aligned_vector<int>& on_node_column_map,
+                const aligned_vector<int>& on_node_col_to_proc,
+                const int first_local_col, data_t* comm_t = NULL);
+        void form_simple_R_par_comm(aligned_vector<int>& off_node_column_map,
+                aligned_vector<int>& off_node_col_to_proc, data_t* comm_t = NULL);
+        void form_simple_global_comm(aligned_vector<int>& off_node_col_to_proc,
+                data_t* comm_t = NULL);
 
         // Class Methods
         void init_double_comm(const double* values)
@@ -2136,22 +1799,22 @@ namespace raptor
         {
             initialize(values);
         }
-        std::vector<double>& complete_double_comm()
+        aligned_vector<double>& complete_double_comm()
         {
             return complete<double>();
         }
-        std::vector<int>& complete_int_comm()
+        aligned_vector<int>& complete_int_comm()
         {
             return complete<int>();
         }
         
         template<typename T>
-        std::vector<T>& communicate(const std::vector<T>& values)
+        aligned_vector<T>& communicate(const aligned_vector<T>& values)
         {
             return CommPkg::communicate<T>(values.data());
         }
         template<typename T>
-        std::vector<T>& communicate(const T* values)
+        aligned_vector<T>& communicate(const T* values)
         {
             return CommPkg::communicate<T>(values);
         }
@@ -2165,7 +1828,7 @@ namespace raptor
             if (local_S_par_comm)
             {
                 // Initial redistribution among node
-                std::vector<T>& S_vals = local_S_par_comm->communicate<T>(values);
+                aligned_vector<T>& S_vals = local_S_par_comm->communicate<T>(values);
 
                 // Begin inter-node communication 
                 global_par_comm->initialize(S_vals.data());
@@ -2177,17 +1840,17 @@ namespace raptor
         }
 
         template<typename T>
-        std::vector<T>& complete()
+        aligned_vector<T>& complete()
         {
             // Complete inter-node communication
-            std::vector<T>& G_vals = global_par_comm->complete<T>();
+            aligned_vector<T>& G_vals = global_par_comm->complete<T>();
 
             // Redistributing recvd inter-node values
             local_R_par_comm->communicate<T>(G_vals.data());
 
-            std::vector<T>& recvbuf = get_recv_buffer<T>();
-            std::vector<T>& R_recvbuf = local_R_par_comm->recv_data->get_buffer<T>();
-            std::vector<T>& L_recvbuf = local_L_par_comm->recv_data->get_buffer<T>();
+            aligned_vector<T>& recvbuf = get_recv_buffer<T>();
+            aligned_vector<T>& R_recvbuf = local_R_par_comm->recv_data->get_buffer<T>();
+            aligned_vector<T>& L_recvbuf = local_L_par_comm->recv_data->get_buffer<T>();
 
             // Add values from L_recv and R_recv to appropriate positions in 
             // Vector recv
@@ -2211,128 +1874,175 @@ namespace raptor
 
 
         // Transpose Communication
-        void init_double_comm_T(const double* values)
+        void init_double_comm_T(const double* values,
+                std::function<double(double, double)> init_result_func = 
+                    &sum_func<double, double>,
+                    double init_result_func_val = 0)
         {
-            initialize_T(values);
+            initialize_T(values, init_result_func, init_result_func_val);
         }
-        void init_int_comm_T(const int* values)
+        void init_int_comm_T(const int* values,
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0)
         {
-            initialize_T(values);
+            initialize_T(values, init_result_func, init_result_func_val);
         }
-        void complete_double_comm_T(std::vector<double>& result)
+        void complete_double_comm_T(aligned_vector<double>& result,
+                std::function<double(double, double)> result_func = &sum_func<double, double>,
+                std::function<double(double, double)> init_result_func = 
+                    &sum_func<double, double>,
+                    double init_result_func_val = 0)
         {
-            complete_T<double>(result);
+            complete_T<double>(result, result_func, init_result_func, init_result_func_val);
         }        
-        void complete_double_comm_T(std::vector<int>& result)
+        void complete_double_comm_T(aligned_vector<int>& result,
+                std::function<int(int, double)> result_func = &sum_func<double, int>,
+                std::function<double(double, double)> init_result_func = 
+                    &sum_func<double, double>,
+                    double init_result_func_val = 0)
         {
-            complete_T<double>(result);
+            complete_T<double>(result, result_func, init_result_func, init_result_func_val);
         }
-        void complete_int_comm_T(std::vector<double>& result)
+        void complete_int_comm_T(aligned_vector<double>& result,
+                std::function<double(double, int)> result_func = &sum_func<int, double>,
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0)
         {
-            complete_T<int>(result);
+            complete_T<int>(result, result_func, init_result_func, init_result_func_val);
         }
-        void complete_int_comm_T(std::vector<int>& result)
+        void complete_int_comm_T(aligned_vector<int>& result,
+                std::function<int(int, int)> result_func = &sum_func<int, int>,
+                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                int init_result_func_val = 0)
         {
-            complete_T<int>(result);
+            complete_T<int>(result, result_func, init_result_func, init_result_func_val);
         }
 
-        void complete_double_comm_T()
+        void complete_double_comm_T(std::function<double(double, double)> init_result_func = 
+                    &sum_func<double, double>,
+                    double init_result_func_val = 0)
         {
-            complete_T<double>();
+            complete_T<double>(init_result_func, init_result_func_val);
         }
-        void complete_int_comm_T()
+        void complete_int_comm_T(std::function<int(int, int)> init_result_func = 
+                    &sum_func<int, int>,
+                    int init_result_func_val = 0)
         {
-            complete_T<int>();
+            complete_T<int>(init_result_func, init_result_func_val);
         }
 
         template<typename T, typename U>
-        void communicate_T(const std::vector<T>& values, std::vector<U>& result)
+        void communicate_T(const aligned_vector<T>& values, aligned_vector<U>& result,
+                std::function<U(U, T)> result_func = &sum_func<T, U>,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values.data(), result);
+            CommPkg::communicate_T(values.data(), result, result_func, init_result_func,
+                    init_result_func_val);
         }
         template<typename T, typename U>
-        void communicate_T(const T* values, std::vector<U>& result)
+        void communicate_T(const T* values, aligned_vector<U>& result,
+                std::function<U(U, T)> result_func = &sum_func<T, U>,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values, result);
+            CommPkg::communicate_T(values, result, result_func, init_result_func,
+                    init_result_func_val);
         }
         template<typename T>
-        void communicate_T(const std::vector<T>& values)
+        void communicate_T(const aligned_vector<T>& values,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values.data());
+            CommPkg::communicate_T(values.data(), init_result_func, init_result_func_val);
         }
         template<typename T>
-        void communicate_T(const T* values)
+        void communicate_T(const T* values,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values);
+            CommPkg::communicate_T(values, init_result_func, init_result_func_val);
         }
 
         template<typename T>
-        void initialize_T(const T* values)
+        void initialize_T(const T* values,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
             int idx;
 
             // Messages with origin and final destination on node
-            local_L_par_comm->communicate_T(values);
+            local_L_par_comm->communicate_T(values, init_result_func, init_result_func_val);
 
             // Initial redistribution among node
-            local_R_par_comm->communicate_T(values);
+            local_R_par_comm->communicate_T(values, init_result_func, init_result_func_val);
 
             // Begin inter-node communication 
-            std::vector<T>& R_sendbuf = local_R_par_comm->send_data->get_buffer<T>();
-            global_par_comm->init_comm_T(R_sendbuf);
+            aligned_vector<T>& R_sendbuf = local_R_par_comm->send_data->get_buffer<T>();
+            global_par_comm->init_comm_T(R_sendbuf, init_result_func, init_result_func_val);
         }
 
         template<typename T, typename U>
-        void complete_T(std::vector<U>& result)
+        void complete_T(aligned_vector<U>& result, 
+                std::function<U(U, T)> result_func = &sum_func<T, U>,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
-            complete_T<T>();
-
+            complete_T<T>(init_result_func, init_result_func_val);
             int idx;
-            std::vector<T>& L_sendbuf = local_L_par_comm->send_data->get_buffer<T>();
+            aligned_vector<T>& L_sendbuf = local_L_par_comm->send_data->get_buffer<T>();
+
             for (int i = 0; i < local_L_par_comm->send_data->size_msgs; i++)
             {
                 idx = local_L_par_comm->send_data->indices[i];
-                result[idx] += L_sendbuf[i];
+                result[idx] = result_func(result[idx], L_sendbuf[i]);
             }
 
             if (local_S_par_comm)
             {
-                std::vector<T>& S_sendbuf = local_S_par_comm->send_data->get_buffer<T>();
+                aligned_vector<T>& S_sendbuf = local_S_par_comm->send_data->get_buffer<T>();
                 for (int i = 0; i < local_S_par_comm->send_data->size_msgs; i++)
                 {
                     idx = local_S_par_comm->send_data->indices[i];
-                    result[idx] += S_sendbuf[i];
+                    result[idx] = result_func(result[idx], S_sendbuf[i]);
                 }
             }
             else
             {
-                std::vector<T>& G_sendbuf = global_par_comm->send_data->get_buffer<T>();
+                aligned_vector<T>& G_sendbuf = global_par_comm->send_data->get_buffer<T>();
                 for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
                 {
                     idx = global_par_comm->send_data->indices[i];
-                    result[idx] += G_sendbuf[i];
+                    result[idx] = result_func(result[idx], G_sendbuf[i]);
                 }
             }
         }
         template<typename T>
-        void complete_T()
+        void complete_T(std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                T init_result_func_val = 0)
         {
             // Complete inter-node communication
-            global_par_comm->complete_comm_T<T>();
+            global_par_comm->complete_comm_T<T>(init_result_func, init_result_func_val);
     
             if (local_S_par_comm)
             {
-                std::vector<T>& G_sendbuf = global_par_comm->send_data->get_buffer<T>();
-                local_S_par_comm->communicate_T(G_sendbuf);
+                aligned_vector<T>& G_sendbuf = global_par_comm->send_data->get_buffer<T>();
+                local_S_par_comm->communicate_T(G_sendbuf, init_result_func,
+                        init_result_func_val);
             }
         }
 
 
         // Matrix Communication
-        CSRMatrix* communicate(std::vector<int>& rowptr, std::vector<int>& col_indices,
-                std::vector<double>& values);
-        CSRMatrix* communicate_T(std::vector<int>& rowptr, std::vector<int>& col_indices, 
-                std::vector<double>& values, int n_result_rows);
+        CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
+                const aligned_vector<int>& col_indices, const aligned_vector<double>& values);
+        CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
+                const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
+                const int n_result_rows);
+        CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
+                const aligned_vector<int>& col_indices);
+        CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
+                const aligned_vector<int>& col_indices, const int n_result_rows);
         CSRMatrix* communicate(ParCSRMatrix* A)
         {
             return CommPkg::communicate(A);
@@ -2347,7 +2057,7 @@ namespace raptor
         }
 
         // Vector Communication        
-        std::vector<double>& communicate(ParVector& v)
+        aligned_vector<double>& communicate(ParVector& v)
         {
             return CommPkg::communicate(v);
         }
@@ -2357,283 +2067,14 @@ namespace raptor
             CommPkg::init_comm(v);
         }
 
-
-        // Conditional Communication
-        std::vector<double>& conditional_double_comm(const double* values, 
-                const int* send_compares,
-                const int* recv_compares, 
-                std::function<bool(int)> compare_func = {})
-        {
-            return conditional_communication<double>(values, send_compares, 
-                    recv_compares, compare_func);
-        
-        }
-        std::vector<int>& conditional_int_comm(const int* values,
-                const int* send_compares,
-                const int* recv_compares, 
-                std::function<bool(int)> compare_func = {})
-        {
-            return conditional_communication<int>(values, send_compares, 
-                    recv_compares, compare_func);
-        }
-
-        void conditional_double_comm_T(const double* values, 
-                std::vector<double>& result,
-                const int* send_compares,
-                const int* recv_compares, 
-                std::function<bool(int)> compare_func = {},
-                std::function<double(double, double)> result_func = {})
-        {
-            conditional_communication_T<double, double>(values, result, 
-                    send_compares, recv_compares, compare_func, result_func);
-        }
-        void conditional_int_comm_T(const int* values, 
-                std::vector<int>& result,
-                const int* send_compares,
-                const int* recv_compares, 
-                std::function<bool(int)> compare_func = {},
-                std::function<int(int, int)> result_func = {})                
-        {
-            conditional_communication_T<int, int>(values, result, 
-                    send_compares, recv_compares, compare_func, result_func);
-        }
-        void conditional_int_comm_T(const int* values, 
-                std::vector<double>& result,
-                const int* send_compares,
-                const int* recv_compares, 
-                std::function<bool(int)> compare_func = {},
-                std::function<double(double, int)> result_func = {})                
-        {
-            conditional_communication_T<int, double>(values, result, 
-                    send_compares, recv_compares, compare_func, result_func);
-        }
-
-        template<typename T>
-        std::vector<T>& conditional_communication(const T* values, 
-                const int* send_compares,
-                const int* recv_compares,
-                std::function<bool(int)> compare_func = {})
-        {
-            int start, end;
-            int idx, new_idx;
-            int proc, size;
-            int n_sends, n_recvs;
-            int ctr;
-            bool send_msg;
-
-            std::vector<int> global_send_compares;
-            std::vector<int> global_recv_compares;
-            std::vector<T> L_recvbuf;
-            std::vector<T> S_recvbuf;
-            std::vector<T> R_recvbuf;
-            std::vector<T> G_recvbuf;
-
-            // Local communication... send states and off proc states
-            local_S_par_comm->communicate(send_compares);
-            std::copy(local_S_par_comm->recv_data->int_buffer.begin(),
-                    local_S_par_comm->recv_data->int_buffer.end(),
-                    std::back_inserter(global_send_compares));
-            local_R_par_comm->communicate_T(recv_compares);
-            if (global_par_comm->recv_data->size_msgs)
-            {
-                global_recv_compares.resize(global_par_comm->recv_data->size_msgs);
-            }
-            for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
-            {
-                idx = local_R_par_comm->send_data->indices[i];
-                global_recv_compares[idx] = local_R_par_comm->send_data->int_buffer[i];
-            }
-
-            // Local communication... can send / recv everything
-            S_recvbuf = local_S_par_comm->communicate(values);
-
-            // Global communication... only send if compare yields true
-            G_recvbuf = global_par_comm->conditional_comm(S_recvbuf,
-                    global_send_compares,  
-                    global_recv_compares, 
-                    compare_func);
-            //G_recvbuf = global_par_comm->communicate(S_recvbuf, comm);
-
-            // local communication ... send as normal
-            R_recvbuf = local_R_par_comm->communicate(G_recvbuf);
-            L_recvbuf = local_L_par_comm->communicate(values);
-
-            // Add values to recv_buffer
-            std::vector<T>& recvbuf = get_recv_buffer<T>();
-
-            for (int i = 0; i < L_recvbuf.size(); i++)
-            {
-                idx = local_L_par_comm->recv_data->indices[i];
-                if (compare_func(recv_compares[idx]))
-                {
-                    recvbuf[idx] = L_recvbuf[i];
-                }
-                else
-                {
-                    recvbuf[idx] = 0.0;
-                }
-            }
-            for (int i = 0; i < local_R_par_comm->recv_data->size_msgs; i++)
-            {
-                idx = local_R_par_comm->recv_data->indices[i];
-                if (compare_func(recv_compares[idx]))
-                {
-                    recvbuf[idx] = R_recvbuf[i];
-                }
-                else
-                {
-                    recvbuf[idx] = 0.0;
-                }
-            }
-
-            return recvbuf; 
-        }
-
-        template<typename T, typename U>
-        void conditional_communication_T(const T* values,
-                std::vector<U>& result, 
-                const int* send_compares,
-                const int* recv_compares,
-                std::function<bool(int)> compare_func = {},
-                std::function<U(U, T)> result_func = {})
-        {
-            int idx, new_idx;
-
-            std::vector<T> L_sendbuf;
-            std::vector<T> R_sendbuf;
-            std::vector<T> G_sendbuf;
-            std::vector<T> S_sendbuf;
-
-            std::vector<T> G_recvbuf;
-            std::vector<T> S_recvbuf;
-
-            std::vector<int> global_send_compares;
-            std::vector<int> global_recv_compares;
-
-            // Local communication... send states and off proc states
-            local_S_par_comm->communicate(send_compares);
-            std::copy(local_S_par_comm->recv_data->int_buffer.begin(),
-                    local_S_par_comm->recv_data->int_buffer.end(),
-                    std::back_inserter(global_send_compares));
-            local_R_par_comm->communicate_T(recv_compares);
-            if (global_par_comm->recv_data->size_msgs)
-            {
-                global_recv_compares.resize(global_par_comm->recv_data->size_msgs);
-            }
-            for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
-            {
-                idx = local_R_par_comm->send_data->indices[i];
-                global_recv_compares[idx] = local_R_par_comm->send_data->int_buffer[i];
-            }
-
-            // Initial redistribution among node
-            local_R_par_comm->communicate_T(values);
-            R_sendbuf = local_R_par_comm->send_data->get_buffer<T>();
-
-            // Begin inter-node communication 
-            G_recvbuf = global_par_comm->recv_data->get_buffer<T>();
-            std::fill(G_recvbuf.begin(), G_recvbuf.end(), 0);
-            for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
-            {
-                idx = local_R_par_comm->send_data->indices[i];
-                G_recvbuf[idx] = result_func(G_recvbuf[idx], R_sendbuf[i]);
-            }
-            
-            // Global communication... only send if compare yields true
-            S_recvbuf = local_S_par_comm->recv_data->get_buffer<T>();
-            std::fill(S_recvbuf.begin(), S_recvbuf.end(), 0);
-            global_par_comm->conditional_comm_T<T, T>(G_recvbuf, 
-                    S_recvbuf,
-                    global_send_compares,  
-                    global_recv_compares, 
-                    compare_func, 
-                    result_func);
-
-            local_S_par_comm->communicate_T(S_recvbuf);
-            S_sendbuf = local_S_par_comm->send_data->get_buffer<T>();
-
-            local_L_par_comm->communicate_T(values);
-            L_sendbuf = local_L_par_comm->send_data->get_buffer<T>();
-
-            for (int i = 0; i < local_S_par_comm->send_data->size_msgs; i++)
-            {
-                idx = local_S_par_comm->send_data->indices[i];
-                result[idx] = result_func(result[idx], S_sendbuf[i]);
-            }
-            for (int i = 0; i < local_L_par_comm->send_data->size_msgs; i++)
-            {
-                idx = local_L_par_comm->send_data->indices[i];
-                result[idx] = result_func(result[idx], L_sendbuf[i]);
-            }
-        }
-
-
         // Helper Methods
-        std::vector<double>& get_double_recv_buffer()
+        aligned_vector<double>& get_double_recv_buffer()
         {
             return recv_buffer;
         }
-        std::vector<int>& get_int_recv_buffer()
+        aligned_vector<int>& get_int_recv_buffer()
         {
             return int_recv_buffer;
-        }
-
-        void reset_comm_data()
-        {
-            if (local_S_par_comm)
-            {
-                local_S_par_comm->send_data->reset_data();
-            }
-
-            local_L_par_comm->send_data->reset_data();
-            local_R_par_comm->send_data->reset_data();
-            global_par_comm->send_data->reset_data();
-        }
-        void reset_comm_T_data()
-        {
-            if (local_S_par_comm)
-            {
-                local_S_par_comm->recv_data->reset_data();
-            }
-
-            local_L_par_comm->recv_data->reset_data();
-            local_R_par_comm->recv_data->reset_data();
-            global_par_comm->recv_data->reset_data();
-        }
-        void print_comm_data(bool vec)
-        {
-            int rank;
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-            if (local_S_par_comm)
-            {
-                if (rank == 0) printf("Local S: ");
-                local_S_par_comm->send_data->print_data(vec);
-            }
-            if (rank == 0) printf("Local R: ");
-            local_R_par_comm->send_data->print_data(vec);
-            if (rank == 0) printf("Local L: ");
-            local_L_par_comm->send_data->print_data(vec);
-            if (rank == 0) printf("Global: ");
-            global_par_comm->send_data->print_data(vec);
-        }
-        void print_comm_T_data(bool vec)
-        {
-            int rank;
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-            if (local_S_par_comm)
-            {
-                if (rank == 0) printf("Local S: ");
-                local_S_par_comm->recv_data->print_data(vec);
-            }
-
-            if (rank == 0) printf("Local R: ");
-            local_R_par_comm->recv_data->print_data(vec);
-            if (rank == 0) printf("Local L: ");
-            local_L_par_comm->recv_data->print_data(vec);
-            if (rank == 0) printf("Global: ");
-            global_par_comm->recv_data->print_data(vec);
         }
 
         // Class Attributes
@@ -2641,8 +2082,8 @@ namespace raptor
         ParComm* local_R_par_comm;
         ParComm* local_L_par_comm;
         ParComm* global_par_comm;
-        std::vector<double> recv_buffer;
-        std::vector<int> int_recv_buffer;
+        aligned_vector<double> recv_buffer;
+        aligned_vector<int> int_recv_buffer;
     };
 }
 #endif

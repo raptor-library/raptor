@@ -40,3 +40,4 @@ if (WITH_MPI)
     add_test(TestParBiCGStabPartialInnerInputFile ./test_par_bicgstab_partial_inner_infile)
 endif()
 
+

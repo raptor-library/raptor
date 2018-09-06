@@ -28,7 +28,7 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     CSRMatrix* S;
     CSRMatrix* P;
     CSRMatrix* P_rap;
-    std::vector<int> splitting;
+    aligned_vector<int> splitting;
     FILE* f;
 
     const char* A0_fn = "../../../../test_data/rss_A0.pm";

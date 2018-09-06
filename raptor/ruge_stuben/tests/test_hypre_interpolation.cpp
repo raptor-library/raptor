@@ -43,15 +43,15 @@ int main(int argc, char** argv)
     return temp;
 } // end of main() //
 
-TEST(TestParSplitting, TestsInRuge_Stuben)
+TEST(TestHypreInterpolation, TestsInRuge_Stuben)
 { 
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     FILE* f;
-    std::vector<int> states;
-    std::vector<int> off_proc_states;
+    aligned_vector<int> states;
+    aligned_vector<int> off_proc_states;
     double* weights;
     int cf;
 
@@ -75,7 +75,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     form_hypre_weights(&weights, A->local_num_rows);
     Aij = convert(A);
     HYPRE_IJMatrixGetObject(Aij, (void**) &A_hyp);
-    S = A->strength(0.25);
+    S = A->strength(Classical, 0.25);
     hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, 1, NULL, &S_hyp);
     split_pmis(S, states, off_proc_states, false, weights);
     hypre_BoomerAMGCoarsenPMIS(S_hyp, A_hyp, 0, 0, &states_hypre);
@@ -111,7 +111,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     form_hypre_weights(&weights, A->local_num_rows);
     Aij = convert(A);
     HYPRE_IJMatrixGetObject(Aij, (void**) &A_hyp);
-    S = A->strength(0.25);
+    S = A->strength(Classical, 0.25);
     hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, 1, NULL, &S_hyp);
     split_pmis(S, states, off_proc_states, false, weights);
     hypre_BoomerAMGCoarsenPMIS(S_hyp, A_hyp, 0, 0, &states_hypre);

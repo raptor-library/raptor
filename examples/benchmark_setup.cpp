@@ -15,7 +15,7 @@
 #include "gallery/laplacian27pt.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/par_matrix_IO.hpp"
-#include "multilevel/par_multilevel.hpp"
+#include "ruge_stuben/par_ruge_stuben_solver.hpp"
 
 #define eager_cutoff 8000
 #define short_cutoff 496
@@ -46,13 +46,13 @@ int main(int argc, char *argv[])
 
     double strong_threshold = 0.25;
     int cache_len = 10000;
-    std::vector<double> cache_array(cache_len);
-    std::vector<double> residuals;
+    aligned_vector<double> cache_array(cache_len);
+    aligned_vector<double> residuals;
 
     if (system < 2)
     {
         double* stencil = NULL;
-        std::vector<int> grid;
+        aligned_vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
-    ml = new ParMultilevel(strong_threshold, RS, Direct, SOR);
+    ml = new ParRugeStubenSolver(strong_threshold);
     ml->setup(A);
     raptor_setup = MPI_Wtime() - t0;
     clear_cache(cache_array);
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
     ml->solve(x, b);
-    std::vector<double>& res = ml->get_residuals();
+    aligned_vector<double>& res = ml->get_residuals();
     raptor_solve = MPI_Wtime() - t0;
     clear_cache(cache_array);
 
@@ -149,8 +149,11 @@ int main(int argc, char *argv[])
 
     MPI_Reduce(&raptor_setup, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Raptor Setup Time: %e\n", t0);
+    ml->print_setup_times();
+
     MPI_Reduce(&raptor_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Raptor Solve Time: %e\n", t0);
+    ml->print_solve_times();
 
     for (int i = 0; i < ml->num_levels - 1; i++)
     {
@@ -375,20 +378,6 @@ int main(int argc, char *argv[])
 
 
         model = model_a + model_b;
-
-
-        MPI_Reduce(&ml->setup_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Setup Time %e\n", t0);
-        MPI_Reduce(&ml->strength_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Strength Time %e\n", t0);
-        MPI_Reduce(&ml->coarsen_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Coarsen Time %e\n", t0);
-        MPI_Reduce(&ml->interp_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Interp Time %e\n", t0);
-        MPI_Reduce(&ml->matmat_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("SpGEMM Time %e\n", t0);
-        MPI_Reduce(&ml->matmat_comm_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("SpGEMM Comm Time %e\n", t0);
 
         int n_tests = 10;
         double comm_time = 0;

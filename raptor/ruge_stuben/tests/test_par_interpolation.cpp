@@ -24,8 +24,8 @@ ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, 
     int first_row, first_col;
     FILE* f;
     ParCSRMatrix* P_rap=nullptr;
-    std::vector<int> proc_sizes(num_procs);
-    std::vector<int> splitting;
+    aligned_vector<int> proc_sizes(num_procs);
+    aligned_vector<int> splitting;
     if (A->local_num_rows)
     {
         splitting.resize(A->local_num_rows);
@@ -171,4 +171,3 @@ TEST(TestParInterpolation, TestsInRuge_Stuben)
     delete A;
 
 } // end of TEST(TestParInterpolation, TestsInRuge_Stuben) //
-

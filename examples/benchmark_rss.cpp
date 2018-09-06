@@ -15,7 +15,7 @@
 #include "gallery/laplacian27pt.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/par_matrix_IO.hpp"
-#include "multilevel/par_multilevel.hpp"
+#include "ruge_stuben/par_ruge_stuben_solver.hpp"
 #include "tests/hypre_compare.hpp"
 #include "gallery/external/hypre_wrapper.hpp"
 #include "krylov/par_cg.hpp"
@@ -27,7 +27,7 @@
 //using namespace raptor;
 //
 
-void form_hypre_weights(std::vector<double>& weights, int n_rows)
+void form_hypre_weights(aligned_vector<double>& weights, int n_rows)
 {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -81,13 +81,13 @@ int main(int argc, char *argv[])
 
     int cache_len = 10000;
 
-    std::vector<double> cache_array(cache_len);
-    std::vector<double> residuals;
+    aligned_vector<double> cache_array(cache_len);
+    aligned_vector<double> residuals;
 
     if (system < 2)
     {
         double* stencil = NULL;
-        std::vector<int> grid;
+        aligned_vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);
@@ -204,7 +204,7 @@ int main(int argc, char *argv[])
     MPI_Barrier(MPI_COMM_WORLD);    
     t0 = MPI_Wtime();
     
-    ParMultilevel* ml = new ParMultilevel(strong_threshold, HMIS, Extended, SOR);
+    ParMultilevel* ml = new ParRugeStubenSolver(strong_threshold, HMIS, Extended, Classical, SOR);
     ml->num_variables = num_variables;
     ml->setup(A);
     raptor_setup = MPI_Wtime() - t0;
@@ -212,7 +212,7 @@ int main(int argc, char *argv[])
 
 
     // Solve Raptor Hierarchy
-    std::vector<double> res;
+    aligned_vector<double> res;
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
     //ml->tap_solve(x, b);
@@ -222,7 +222,7 @@ int main(int argc, char *argv[])
     clear_cache(cache_array);
 
     // TAP Solve Raptor
-    std::vector<double> tap_res;
+    aligned_vector<double> tap_res;
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
     PCG(A, ml, x_tap, b, tap_res, 1e-6, 100);
@@ -255,16 +255,6 @@ int main(int argc, char *argv[])
     MPI_Reduce(&raptor_tap_solve, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Raptor TAP Solve Time: %e\n", t0);
       
-    int n0, s0;
-    MPI_Reduce(&ml->setup_comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&ml->setup_comm_n, &n0, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&ml->setup_comm_s, &s0, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    if (rank == 0) printf("Setup Comm Time: %e, Comm N: %d, Comm S: %d\n", t0, n0, s0);
-    MPI_Reduce(&ml->solve_comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&ml->solve_comm_n, &n0, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&ml->solve_comm_s, &s0, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    if (rank == 0) printf("Solve Comm Time: %e, Comm N: %d, Comm S: %d\n", t0, n0, s0);
-
     // Delete raptor hierarchy
     delete ml;
 

@@ -34,8 +34,8 @@ TEST(ParCommTest, TestsInCore)
     int start, end;
     double val;
     double* stencil = diffusion_stencil_2d(eps, theta);
-    std::vector<int> sendbuf;
-    std::vector<double> seq_row;
+    aligned_vector<int> sendbuf;
+    aligned_vector<double> seq_row;
 
     CSRMatrix* A_seq = stencil_grid(stencil, grid, 2);
 

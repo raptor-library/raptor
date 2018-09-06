@@ -6,8 +6,8 @@
 
 using namespace raptor;
 
-CSRMatrix* extended_interpolation(CSRMatrix* A,
-        CSRMatrix* S, const std::vector<int>& states)
+CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S, 
+        const aligned_vector<int>& states, int num_variables, int* variables)
 {
     int startA, endA;
     int startS, endS;
@@ -19,10 +19,10 @@ CSRMatrix* extended_interpolation(CSRMatrix* A,
     double val;
     double sign;
     double coarse_sum;
-    std::vector<int> pos;
-    std::vector<int> row_coarse;
-    std::vector<double> row_strong;
-    std::vector<int> next;
+    aligned_vector<int> pos;
+    aligned_vector<int> row_coarse;
+    aligned_vector<double> row_strong;
+    aligned_vector<int> next;
     if (A->n_rows)
     {
         pos.resize(A->n_rows, -1);
@@ -37,7 +37,7 @@ CSRMatrix* extended_interpolation(CSRMatrix* A,
     S->sort();
     S->move_diag();
     
-    std::vector<int> col_to_new;
+    aligned_vector<int> col_to_new;
     if (A->n_cols)
     {
         col_to_new.resize(A->n_cols, -1);
@@ -107,14 +107,16 @@ CSRMatrix* extended_interpolation(CSRMatrix* A,
                 else if (states[col] == 0)
                 {
                     row_strong[col] = val;
-                    if (i == 34 && col == 95) printf("RowStrong %e\n", row_strong[col]);
                 }
                 
                 ctr++;
             }
-            else // Weak
+            else if (num_variables == 1 || variables[i] == variables[col]) // Weak
             {
-                weak_sum += val;
+                if (states[col] != -3)
+                {
+                    weak_sum += val;
+                }
             }
         }
 
@@ -161,7 +163,6 @@ CSRMatrix* extended_interpolation(CSRMatrix* A,
                         if (val * sign < 0)
                         {
                             coarse_sum += val;
-                    if (i == 34 && col == 95) printf("CoarseSum %e, val %e, col_k %d\n", coarse_sum, val, col_k);
                         }
                     }
                     
@@ -173,7 +174,6 @@ CSRMatrix* extended_interpolation(CSRMatrix* A,
                     else
                     {
                         row_strong[col] /= coarse_sum;
-                    if (i == 34 && col == 95) printf("RowStrong %e CoarseSum %e\n", row_strong[col], coarse_sum);
                     }
                 }
                 ctr++;
@@ -195,7 +195,6 @@ CSRMatrix* extended_interpolation(CSRMatrix* A,
                     if (val*sign < 0 && col_k == i)
                     {
                         weak_sum += (row_strong[col] * val);
-                        if (i == 34) printf("WeakSum %e %d\n", weak_sum, col);
                     }
                     if (val * sign < 0 && idx >= 0)
                     {
@@ -215,14 +214,13 @@ CSRMatrix* extended_interpolation(CSRMatrix* A,
         }
         row_coarse[i] = 0;
 
-        if (i == 34) printf("WeakSum %e\n", weak_sum);
 
         P->idx1[i+1] = P->idx2.size();
 
     }
     P->nnz = P->idx2.size();
 
-    for (std::vector<int>::iterator it = P->idx2.begin(); it != P->idx2.end(); ++it)
+    for (aligned_vector<int>::iterator it = P->idx2.begin(); it != P->idx2.end(); ++it)
     {
         *it = col_to_new[*it];
     }
@@ -230,8 +228,8 @@ CSRMatrix* extended_interpolation(CSRMatrix* A,
     return P;
 }
 
-CSRMatrix* mod_classical_interpolation(CSRMatrix* A,
-        CSRMatrix* S, const std::vector<int>& states)
+CSRMatrix* mod_classical_interpolation(CSRMatrix* A, CSRMatrix* S, 
+        const aligned_vector<int>& states, int num_variables, int* variables)
 {
     int startA, endA;
     int startS, endS;
@@ -241,9 +239,9 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A,
     double val;
     double sign;
     double coarse_sum;
-    std::vector<int> pos;
-    std::vector<int> row_coarse;
-    std::vector<double> row_strong;
+    aligned_vector<int> pos;
+    aligned_vector<int> row_coarse;
+    aligned_vector<double> row_strong;
     if (A->n_rows)
     {
         pos.resize(A->n_rows, -1);
@@ -257,7 +255,7 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A,
     S->sort();
     S->move_diag();
     
-    std::vector<int> col_to_new;
+    aligned_vector<int> col_to_new;
     if (A->n_cols)
     {
         col_to_new.resize(A->n_cols, -1);
@@ -325,7 +323,7 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A,
                 }
                 ctr++;
             }
-            else // Weak
+            else if (num_variables == 1 || variables[i] == variables[col]) // Weak
             {
                 weak_sum += val;
             }
@@ -413,7 +411,7 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A,
 }
 
 CSRMatrix* direct_interpolation(CSRMatrix* A,
-        CSRMatrix* S, const std::vector<int>& states)
+        CSRMatrix* S, const aligned_vector<int>& states)
 {
     int start, end, col;
     int ctr;
@@ -428,7 +426,7 @@ CSRMatrix* direct_interpolation(CSRMatrix* A,
     S->move_diag();
 
     // Copy entries of A into sparsity pattern of S
-    std::vector<double> sa;
+    aligned_vector<double> sa;
     if (S->nnz)
     {
         sa.resize(S->nnz);
@@ -449,7 +447,7 @@ CSRMatrix* direct_interpolation(CSRMatrix* A,
         }
     }
 
-    std::vector<int> col_to_new;
+    aligned_vector<int> col_to_new;
     if (A->n_cols)
     {
         col_to_new.resize(A->n_cols, -1);

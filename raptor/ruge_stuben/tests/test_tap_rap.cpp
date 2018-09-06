@@ -42,7 +42,7 @@ TEST(TestTAPRAP, TestsInRuge_Stuben)
     // TEST LEVEL 0
     A = readParMatrix(A0_fn);
     P = readParMatrix(P0_fn);
-    P_csc = new ParCSCMatrix(P);
+    P_csc = P->to_ParCSC();
 
     A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, true);
     AP = A->tap_mult(P);
@@ -71,7 +71,7 @@ TEST(TestTAPRAP, TestsInRuge_Stuben)
     // TEST LEVEL 1
     A = readParMatrix(A1_fn);
     P = readParMatrix(P1_fn);
-    P_csc = new ParCSCMatrix(P);
+    P_csc = P->to_ParCSC();
 
     A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, true);
     AP = A->tap_mult(P);
@@ -99,4 +99,3 @@ TEST(TestTAPRAP, TestsInRuge_Stuben)
 
     setenv("PPN", "16", 1);
 } // end of TEST(TestParRAP, TestsInRuge_Stuben) //
-

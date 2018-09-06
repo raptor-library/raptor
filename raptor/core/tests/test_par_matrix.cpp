@@ -34,7 +34,7 @@ TEST(ParMatrixTest, TestsInCore)
     CSRMatrix* A = stencil_grid(stencil, grid, 2);
     ParCSRMatrix* A_par = par_stencil_grid(stencil, grid, 2);
 
-    ParCSCMatrix* A_par_csc = new ParCSCMatrix(A_par);
+    ParCSCMatrix* A_par_csc = A_par->to_ParCSC();
 
     int lcl_nnz = A_par->local_nnz;
     int nnz;

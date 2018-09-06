@@ -89,7 +89,7 @@ void ParMatrix::condense_off_proc()
     std::sort(off_proc_column_map.begin(), off_proc_column_map.end());
 
     off_proc_num_cols = 0;
-    for (std::vector<int>::iterator it = off_proc_column_map.begin(); 
+    for (aligned_vector<int>::iterator it = off_proc_column_map.begin(); 
             it != off_proc_column_map.end(); ++it)
     {
         if (*it != prev_col)
@@ -101,7 +101,7 @@ void ParMatrix::condense_off_proc()
     }
     off_proc_column_map.resize(off_proc_num_cols);
 
-    for (std::vector<int>::iterator it = off_proc->idx2.begin();
+    for (aligned_vector<int>::iterator it = off_proc->idx2.begin();
             it != off_proc->idx2.end(); ++it)
     {
         *it = orig_to_new[*it];
@@ -114,7 +114,7 @@ void ParMatrix::condense_off_proc()
 void ParMatrix::expand_off_proc(int b_cols)
 {
     int start, end;
-    std::vector<int> new_map;
+    aligned_vector<int> new_map;
 
     int rank, num_procs;
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
@@ -122,13 +122,13 @@ void ParMatrix::expand_off_proc(int b_cols)
 
     for(int i=0; i<off_proc_column_map.size(); i++)
     {
-	start = off_proc_column_map[i] * b_cols;
-	if (start >= partition->first_local_col && rank!= 0) start += partition->local_num_cols;
-	end = start + b_cols;
+    start = off_proc_column_map[i] * b_cols;
+    if (start >= partition->first_local_col && rank!= 0) start += partition->local_num_cols;
+    end = start + b_cols;
         for(int j=start; j<end; j++)
-	{
+    {
             new_map.push_back(j);
-	}
+    }
     }
 
     off_proc_column_map.clear();
@@ -145,7 +145,7 @@ void ParMatrix::finalize(bool create_comm, int b_cols)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     // Assume nonzeros in each on_proc column
-    if (on_proc_num_cols)
+    if (on_proc_num_cols > on_proc_column_map.size())
     {
         on_proc_column_map.resize(on_proc_num_cols);
         for (int i = 0; i < on_proc_num_cols; i++)
@@ -153,8 +153,8 @@ void ParMatrix::finalize(bool create_comm, int b_cols)
             on_proc_column_map[i] = i + partition->first_local_col;
         }
     }
-    
-    if (local_num_rows)
+
+    if (local_num_rows > local_row_map.size())
     {
         local_row_map.resize(local_num_rows);
         for (int i = 0; i < local_num_rows; i++)
@@ -182,9 +182,9 @@ void ParMatrix::finalize(bool create_comm, int b_cols)
     {
         expand_off_proc(b_cols);
         if (rank == 0)
-	{
-	    for (int i = 0; i < off_proc_column_map.size(); i++)
-	    {
+    {
+        for (int i = 0; i < off_proc_column_map.size(); i++)
+        {
                 off_proc_column_map[i] += on_proc_num_cols;
             }
         }
@@ -209,13 +209,75 @@ int* ParMatrix::map_partition_to_local()
     return on_proc_partition_to_col;
 }
 
-void ParMatrix::copy(ParCOOMatrix* A)
-{
-    if (A->off_proc_num_cols != (int) A->off_proc_column_map.size())
-    {
-        A->finalize();
-    }
 
+
+ParCOOMatrix* ParCOOMatrix::to_ParCOO()
+{
+    return this;
+}
+ParCSRMatrix* ParCOOMatrix::to_ParCSR()
+{
+    ParCSRMatrix* A = new ParCSRMatrix();
+    A->copy_helper(this);
+    return A;
+}
+ParCSCMatrix* ParCOOMatrix::to_ParCSC()
+{
+    ParCSCMatrix* A = new ParCSCMatrix();
+    A->copy_helper(this);
+    return A;
+}
+ParCOOMatrix* ParCSRMatrix::to_ParCOO()
+{
+    ParCOOMatrix* A = new ParCOOMatrix();
+    A->copy_helper(this);
+    return A;
+}
+ParCSRMatrix* ParCSRMatrix::to_ParCSR()
+{
+    return this; 
+}
+ParCSCMatrix* ParCSRMatrix::to_ParCSC()
+{
+    ParCSCMatrix* A = new ParCSCMatrix();
+    A->copy_helper(this);
+    return A;
+}
+ParCOOMatrix* ParCSCMatrix::to_ParCOO()
+{
+    ParCOOMatrix* A = new ParCOOMatrix();
+    A->copy_helper(this);
+    return A;
+}
+ParCSRMatrix* ParCSCMatrix::to_ParCSR()
+{
+    ParCSRMatrix* A = new ParCSRMatrix();
+    A->copy_helper(this);
+    return A;
+}
+ParCSCMatrix* ParCSCMatrix::to_ParCSC()
+{
+    return this;
+}
+ParCOOMatrix* ParBSRMatrix::to_ParCOO()
+{
+    return NULL;
+}
+ParCSRMatrix* ParBSRMatrix::to_ParCSR()
+{
+    return NULL;
+}
+ParCSCMatrix* ParBSRMatrix::to_ParCSC()
+{
+    return NULL;
+}
+
+
+
+
+
+void ParMatrix::copy_helper(ParCOOMatrix* A)
+{
     partition = A->partition;
     partition->num_shared++;
 
@@ -253,13 +315,8 @@ void ParMatrix::copy(ParCOOMatrix* A)
     }
 }
 
-void ParMatrix::copy(ParCSRMatrix* A)
+void ParMatrix::copy_helper(ParCSRMatrix* A)
 {
-    if (A->off_proc_num_cols != (int) A->off_proc_column_map.size())
-    {
-        A->finalize();
-    }
-
     partition = A->partition;
     partition->num_shared++;
 
@@ -297,13 +354,8 @@ void ParMatrix::copy(ParCSRMatrix* A)
     }
 }
 
-void ParMatrix::copy(ParCSCMatrix* A)
+void ParMatrix::copy_helper(ParCSCMatrix* A)
 {
-    if (A->off_proc_num_cols != (int) A->off_proc_column_map.size())
-    {
-        A->finalize();
-    }
-
     partition = A->partition;
     partition->num_shared++;
 
@@ -341,13 +393,8 @@ void ParMatrix::copy(ParCSCMatrix* A)
     }
 }
 
-void ParMatrix::copy(ParBSRMatrix* A)
+void ParMatrix::copy_helper(ParBSRMatrix* A)
 {
-    if (A->off_proc_num_cols != (int) A->off_proc_column_map.size())
-    {
-        A->finalize();
-    }
-
     partition = A->partition;
     partition->num_shared++;
 
@@ -385,7 +432,7 @@ void ParMatrix::copy(ParBSRMatrix* A)
     }
 }
 
-void ParCOOMatrix::copy(ParCSRMatrix* A)
+void ParCOOMatrix::copy_helper(ParCSRMatrix* A)
 {
     if (on_proc)
     {   
@@ -396,13 +443,13 @@ void ParCOOMatrix::copy(ParCSRMatrix* A)
         delete off_proc;
     }
 
-    on_proc = new COOMatrix((CSRMatrix*) A->on_proc);
-    off_proc = new COOMatrix((CSRMatrix*) A->off_proc);
+    on_proc = A->on_proc->to_COO();
+    off_proc = A->off_proc->to_COO();
 
-    ParMatrix::copy(A);
+    ParMatrix::copy_helper(A);
 }
 
-void ParCOOMatrix::copy(ParCSCMatrix* A)
+void ParCOOMatrix::copy_helper(ParCSCMatrix* A)
 {
     if (on_proc)
     {   
@@ -413,13 +460,13 @@ void ParCOOMatrix::copy(ParCSCMatrix* A)
         delete off_proc;
     }
 
-    on_proc = new COOMatrix((CSCMatrix*) A->on_proc);
-    off_proc = new COOMatrix((CSCMatrix*) A->off_proc);
+    on_proc = A->on_proc->to_COO();
+    off_proc = A->off_proc->to_COO();
 
-    ParMatrix::copy(A);
+    ParMatrix::copy_helper(A);
 }
 
-void ParCOOMatrix::copy(ParCOOMatrix* A)
+void ParCOOMatrix::copy_helper(ParCOOMatrix* A)
 {
     if (on_proc)
     {   
@@ -430,13 +477,13 @@ void ParCOOMatrix::copy(ParCOOMatrix* A)
         delete off_proc;
     }
 
-    on_proc = new COOMatrix((COOMatrix*) A->on_proc);
-    off_proc = new COOMatrix((COOMatrix*) A->off_proc);
+    on_proc = A->on_proc->copy();
+    off_proc = A->off_proc->copy();
 
-    ParMatrix::copy(A);
+    ParMatrix::copy_helper(A);
 }
 
-void ParCOOMatrix::copy(ParBSRMatrix* A)
+void ParCOOMatrix::copy_helper(ParBSRMatrix* A)
 {
     if (on_proc)
     {
@@ -447,45 +494,13 @@ void ParCOOMatrix::copy(ParBSRMatrix* A)
         delete off_proc;
     }
 
-    on_proc = new COOMatrix((COOMatrix*) A->on_proc);
-    off_proc = new COOMatrix((COOMatrix*) A->off_proc);
+    on_proc = A->on_proc->to_COO();
+    off_proc = A->off_proc->to_COO();
 
-    ParMatrix::copy(A);
+    ParMatrix::copy_helper(A);
 }
 
-void ParCSRMatrix::copy(ParCSRMatrix* A)
-{
-    if (on_proc)
-    {   
-        delete on_proc;
-    }
-    if (off_proc)
-    {
-        delete off_proc;
-    }
-    on_proc = new CSRMatrix((CSRMatrix*) A->on_proc);
-    off_proc = new CSRMatrix((CSRMatrix*) A->off_proc);
-
-    ParMatrix::copy(A);
-}
-
-void ParCSRMatrix::copy(ParCSCMatrix* A)
-{
-    if (on_proc)
-    {   
-        delete on_proc;
-    }
-    if (off_proc)
-    {
-        delete off_proc;
-    }
-    on_proc = new CSRMatrix((CSCMatrix*) A->on_proc);
-    off_proc = new CSRMatrix((CSCMatrix*) A->off_proc);
-
-    ParMatrix::copy(A);
-}
-
-void ParCSRMatrix::copy(ParCOOMatrix* A)
+void ParCSRMatrix::copy_helper(ParCSRMatrix* A)
 {
     if (on_proc)
     {   
@@ -496,18 +511,52 @@ void ParCSRMatrix::copy(ParCOOMatrix* A)
         delete off_proc;
     }
 
-    on_proc = new CSRMatrix((COOMatrix*) A->on_proc);
-    off_proc = new CSRMatrix((COOMatrix*) A->off_proc);
+    on_proc = A->on_proc->copy();
+    off_proc = A->off_proc->copy();
 
-    ParMatrix::copy(A);
+    ParMatrix::copy_helper(A);
 }
 
-void ParCSRMatrix::copy(ParBSRMatrix* A)
+void ParCSRMatrix::copy_helper(ParCSCMatrix* A)
+{
+    if (on_proc)
+    {   
+        delete on_proc;
+    }
+    if (off_proc)
+    {
+        delete off_proc;
+    }
+
+    on_proc = A->on_proc->to_CSR();
+    off_proc = A->off_proc->to_CSR();
+
+    ParMatrix::copy_helper(A);
+}
+
+void ParCSRMatrix::copy_helper(ParCOOMatrix* A)
+{
+    if (on_proc)
+    {   
+        delete on_proc;
+    }
+    if (off_proc)
+    {
+        delete off_proc;
+    }
+
+    on_proc = A->on_proc->to_CSR();
+    off_proc = A->off_proc->to_CSR();
+
+    ParMatrix::copy_helper(A);
+}
+
+void ParCSRMatrix::copy_helper(ParBSRMatrix* A)
 {
     printf("Currently not implemented\n");
 }
 
-void ParCSCMatrix::copy(ParCSRMatrix* A)
+void ParCSCMatrix::copy_helper(ParCSRMatrix* A)
 {
     if (on_proc)
     {   
@@ -518,13 +567,13 @@ void ParCSCMatrix::copy(ParCSRMatrix* A)
         delete off_proc;
     }
 
-    on_proc = new CSCMatrix((CSRMatrix*) A->on_proc);
-    off_proc = new CSCMatrix((CSRMatrix*) A->off_proc);
+    on_proc = A->on_proc->to_CSC();
+    off_proc = A->off_proc->to_CSC();
 
-    ParMatrix::copy(A);
+    ParMatrix::copy_helper(A);
 }
 
-void ParCSCMatrix::copy(ParCSCMatrix* A)
+void ParCSCMatrix::copy_helper(ParCSCMatrix* A)
 {
     if (on_proc)
     {   
@@ -535,13 +584,13 @@ void ParCSCMatrix::copy(ParCSCMatrix* A)
         delete off_proc;
     }
 
-    on_proc = new CSCMatrix((CSCMatrix*) A->on_proc);
-    off_proc = new CSCMatrix((CSCMatrix*) A->off_proc);
+    on_proc = A->on_proc->copy();
+    off_proc = A->off_proc->copy();
 
-    ParMatrix::copy(A);
+    ParMatrix::copy_helper(A);
 }
 
-void ParCSCMatrix::copy(ParCOOMatrix* A)
+void ParCSCMatrix::copy_helper(ParCOOMatrix* A)
 {
     if (on_proc)
     {   
@@ -552,47 +601,47 @@ void ParCSCMatrix::copy(ParCOOMatrix* A)
         delete off_proc;
     }
 
-    on_proc = new CSCMatrix((COOMatrix*) A->on_proc);
-    off_proc = new CSCMatrix((COOMatrix*) A->off_proc);
+    on_proc = A->on_proc->to_CSC();
+    off_proc = A->off_proc->to_CSC();
 
-    ParMatrix::copy(A);
+    ParMatrix::copy_helper(A);
 }
 
-void ParCSCMatrix::copy(ParBSRMatrix* A)
+void ParCSCMatrix::copy_helper(ParBSRMatrix* A)
 {
     printf("Currently not implemented\n");
 }
 
-void ParBSRMatrix::copy(ParCSRMatrix* A)
+void ParBSRMatrix::copy_helper(ParCSRMatrix* A)
 {
     printf("Currently not implemented.\n");
 }
 
-void ParBSRMatrix::copy(ParCSCMatrix* A)
+void ParBSRMatrix::copy_helper(ParCSCMatrix* A)
 {
     printf("Currently not implemented.\n");
 }
 
-void ParBSRMatrix::copy(ParCOOMatrix* A)
+void ParBSRMatrix::copy_helper(ParCOOMatrix* A)
 {
     printf("Currently not implemented.\n");
 }
 
-void ParBSRMatrix::copy(ParBSRMatrix* A)
+void ParBSRMatrix::copy_helper(ParBSRMatrix* A)
 {
     printf("Currently not implemented\n");
 }
 
 
-void ParCOOMatrix::add_block(int global_row_coarse, int global_col_coarse, std::vector<double>& data){
+void ParCOOMatrix::add_block(int global_row_coarse, int global_col_coarse, aligned_vector<double>& data){
     printf("currently not implemented.\n");
 }
 
-void ParCSRMatrix::add_block(int global_row_coarse, int global_col_coarse, std::vector<double>& data){
+void ParCSRMatrix::add_block(int global_row_coarse, int global_col_coarse, aligned_vector<double>& data){
     printf("currently not implemented.\n");
 }
 
-void ParCSCMatrix::add_block(int global_row_coarse, int global_col_coarse, std::vector<double>& data){
+void ParCSCMatrix::add_block(int global_row_coarse, int global_col_coarse, aligned_vector<double>& data){
     printf("currently not implemented.\n");
 }
 
@@ -607,7 +656,7 @@ void ParCSCMatrix::add_block(int global_row_coarse, int global_col_coarse, std::
 *****    data:
 *****        vector of values for non-zero block to be added
 ***********************************************************/
-void ParBSRMatrix::add_block(int global_row_coarse, int global_col_coarse, std::vector<double>& data){
+void ParBSRMatrix::add_block(int global_row_coarse, int global_col_coarse, aligned_vector<double>& data){
 
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -617,7 +666,7 @@ void ParBSRMatrix::add_block(int global_row_coarse, int global_col_coarse, std::
     if(num_procs <= 1)
     {
         on_proc->add_block(global_row_coarse, global_col_coarse, data);
-	local_nnz += b_size;
+    local_nnz += b_size;
     }
     else
     {
@@ -638,20 +687,20 @@ void ParBSRMatrix::add_block(int global_row_coarse, int global_col_coarse, std::
             if (first_col >= partition->first_local_col &&
                 last_col <= partition->last_local_col)
             {
-	        local_block_col = global_col_coarse % (partition->local_num_cols / b_cols);
+            local_block_col = global_col_coarse % (partition->local_num_cols / b_cols);
                 on_proc->add_block(local_block_row, local_block_col, data);
-	    }
-	    else
-	    {
+        }
+        else
+        {
                 // Check to see if block is before on_proc columns or after to 
-	        // determine whether local_block_col changes or stays the same
+            // determine whether local_block_col changes or stays the same
                 if (last_col < partition->last_local_col) local_block_col = global_col_coarse;
                 else local_block_col = global_col_coarse - (partition->local_num_cols / b_cols);
                 off_proc->add_block(local_block_row, local_block_col, data);
-	    }
+        }
 
-	    // Update local nnz
-	    local_nnz += b_size;
+        // Update local nnz
+        local_nnz += b_size;
         }
     }
 }
@@ -681,15 +730,9 @@ ParMatrix* ParCSRMatrix::transpose()
     CSCMatrix* recv_mat;
     ParCSRMatrix* T = NULL;
 
-    struct PairData 
-    {
-        double val;
-        int index;
-    };
-
-    std::vector<PairData> send_buffer;
-    std::vector<PairData> recv_buffer;
-    std::vector<int> send_ptr(comm->recv_data->num_msgs+1);
+    aligned_vector<PairData> send_buffer;
+    aligned_vector<PairData> recv_buffer;
+    aligned_vector<int> send_ptr(comm->recv_data->num_msgs+1);
 
     // Transpose partition
     part_T = partition->transpose();
@@ -698,7 +741,7 @@ ParMatrix* ParCSRMatrix::transpose()
     on_proc_T = on_proc->transpose();
 
     // Allocate vectors for sending off_proc matrix
-    send_mat = new CSCMatrix((CSRMatrix*) off_proc);
+    send_mat = off_proc->to_CSC();
     recv_mat = new CSCMatrix(local_num_rows, comm->send_data->size_msgs);
 
     // Add off_proc cols of matrix to send buffer
@@ -765,7 +808,7 @@ ParMatrix* ParCSRMatrix::transpose()
     MPI_Waitall(comm->recv_data->num_msgs, comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
 
     off_proc_T = new CSRMatrix(on_proc_num_cols, -1);
-    std::vector<int> off_T_sizes(on_proc_num_cols, 0);
+    aligned_vector<int> off_T_sizes(on_proc_num_cols, 0);
     for (int i = 0; i < comm->send_data->size_msgs; i++)
     {
         row = comm->send_data->indices[i];
