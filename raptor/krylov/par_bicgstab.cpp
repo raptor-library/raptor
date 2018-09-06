@@ -372,8 +372,145 @@ void Pre_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, ParMultilevel *ml
     return;
 }
 
+/**************************************************************************************
+ AMG Preconditioned BiCGStab 
+ **************************************************************************************/
+void Pre_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, ParMultilevel *ml, aligned_vector<double>& res, double tol,
+                  int max_iter)
+{
+    /*           A : ParCSRMatrix for system to solve
+     *           x : ParVector solution to solve for
+     *           b : ParVector rhs of system to solve
+     *         res : vector containing residuals of each iteration
+     *         tol : tolerance for convergence
+     *    max_iter : maximum number of iterations
+     */
+
+    int rank, num_procs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+    ParVector r;
+    ParVector r_star;
+    ParVector s;
+    ParVector p;
+    ParVector Ap;
+    ParVector As;
+    ParVector p_hat;
+    ParVector s_hat;
+    int amg_iter;
+
+    int iter;
+    data_t alpha, beta, omega;
+    data_t rr_inner, next_inner, Apr_inner, As_inner, AsAs_inner;
+    double norm_r;
+
+    // Same max iterations definition as pyAMG
+    if (max_iter <= 0)
+    {
+        max_iter = ((int)(1.3*b.global_n)) + 2;
+    }
+
+    // Fixed Constructors
+    r.resize(b.global_n, b.local_n, b.first_local);
+    r_star.resize(b.global_n, b.local_n, b.first_local);
+    p.resize(b.global_n, b.local_n, b.first_local);
+    Ap.resize(b.global_n, b.local_n, b.first_local);
+    As.resize(b.global_n, b.local_n, b.first_local);
+
+    // BEGIN ALGORITHM
+    // r0 = b - A * x0
+    A->residual(x, b, r);
+
+    // r* = r0
+    r_star.copy(r);
+
+    // p0 = r0
+    p.copy(r);
+
+    // Use true residual inner product to start
+    rr_inner = r.inner_product(r_star);
+    norm_r = r.norm(2);
+    res.push_back(norm_r);
+
+    if (norm_r != 0.0)
+    {
+        tol = tol * norm_r;
+    }
+
+    // Main BiCGStab Loop
+    while (norm_r > tol && iter < max_iter)
+    {
+        // p_i = M^-1 p_i
+        // Apply preconditioner
+        p_hat.set_const_value(0.0);
+        printf("Before p_hat solve\n");
+        amg_iter = ml->solve(p_hat, p);
+        printf("After p_hat solve\n");
+
+        // alpha_i = (r_i, r*) / (Ap_i, r*)
+        A->mult(p_hat, Ap);
+        Apr_inner = Ap.inner_product(r_star);
+        alpha = rr_inner / Apr_inner;
+
+        // s_i = r_i - alpha_i * Ap_i
+        s.copy(r);
+        s.axpy(Ap, -1.0*alpha);
+
+        // s_i = M^-1 s_i
+        // Apply preconditioner
+        s_hat.set_const_value(0.0);
+        amg_iter = ml->solve(s_hat, s);
+
+        // omega_i = (As_i, s_i) / (As_i, As_i)
+        A->mult(s_hat, As);
+        As_inner = As.inner_product(s);
+        AsAs_inner = As.inner_product(As);
+        omega = As_inner / AsAs_inner;
+
+        // x_{i+1} = x_i + alpha_i * p_i + omega_i * s_i
+        x.axpy(p_hat, alpha);
+        x.axpy(s_hat, omega);
+
+        // r_{i+1} = s_i - omega_i * As_i
+        r.copy(s);
+        r.axpy(As, -1.0*omega);
+
+        // beta_i = (r_{i+1}, r_star) / (r_i, r_star) * alpha_i / omega_i
+        next_inner = r.inner_product(r_star);
+        beta = (next_inner / rr_inner) * (alpha / omega);
+
+        // p_{i+1} = r_{i+1} + beta_i * (p_i - omega_i * Ap_i)
+        p.scale(beta);
+        p.axpy(r, 1.0);
+        p.axpy(Ap, -1.0*beta*omega);
+
+        // Update next inner product
+        rr_inner = next_inner;
+        norm_r = r.norm(2);
+        res.push_back(norm_r);
+
+        iter++;
+    }
+
+    if (rank == 0)
+    {
+        if (iter == max_iter)
+        {
+            printf("Max Iterations Reached.\n");
+            printf("2 Norm of Residual: %lg\n\n", norm_r);
+        }
+        else
+        {
+            printf("%d Iteration required to converge\n", iter-1);
+            printf("2 Norm of Residual: %lg\n\n", norm_r);
+        }
+    }
+
+    return;
+}
+
 void SeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, double tol, int max_iter)
->>>>>>> Adding all partial inner product relevant files and tests
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -594,7 +731,8 @@ void SeqInnerSeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, align
 /**************************************************************************************
  BiCGStab with some inner products replaced with partial inner product approximations
  **************************************************************************************/
-void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, int contig, aligned_vector<double>& res, double tol, int max_iter)
+void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, MPI_Comm &inner_comm,
+                 int &my_color, int &first_root, int &second_root, int part_global, int contig, double tol, int max_iter)
 {
     /*           A : ParCSRMatrix for system to solve
      *           x : ParVector solution to solve for
@@ -736,7 +874,7 @@ void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, int contig, aligne
 /**************************************************************************************
  Preconditioned BiCGStab with some inner products replaced with partial inner product approximations
  **************************************************************************************/
-void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, MPI_Comm &inner_comm,
+void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, MPI_Comm &inner_comm,
                  int &my_color, int &first_root, int &second_root, int part_global, int contig, double tol, int max_iter)
 {
     /*           A : ParCSRMatrix for system to solve
@@ -756,7 +894,6 @@ void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<dou
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
->>>>>>> Adding all partial inner product relevant files and tests
     
     // Create communicators for partial inner products
     create_partial_inner_comm(inner_comm, x, my_color, first_root, second_root, part_global, contig);
