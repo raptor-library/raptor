@@ -4,6 +4,9 @@
 
 using namespace raptor;
 
+/********************************************************************** 
+ Performs approximate inner product using contiguous half of processes
+ *********************************************************************/
 data_t half_inner_contig(ParVector &x, ParVector &y, int half, int part_global){
     /* x : ParVector for calculating inner product
      * y : ParVector for calculating inner product
@@ -93,7 +96,10 @@ data_t half_inner_contig(ParVector &x, ParVector &y, int half, int part_global){
     return ((1.0*x.global_n)/part_global) * inner_prod;
 }
 
-// Sequential Inner Product for Testing Reproducibility
+
+/***************************************************************** 
+ Performs sequential inner product for testing reproducibility 
+ ****************************************************************/
 data_t sequential_inner(ParVector &x, ParVector &y){
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -130,6 +136,10 @@ data_t sequential_inner(ParVector &x, ParVector &y){
     return inner_prod;
 }
 
+
+/***************************************************************** 
+ Performs sequential vector norm with parallel vector 
+ ****************************************************************/
 data_t sequential_norm(ParVector &x, index_t p){
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -143,56 +153,130 @@ data_t sequential_norm(ParVector &x, index_t p){
 }
 
 
+void create_partial_inner_comm(MPI_Comm &inner_comm, ParVector &x, int &my_color, int &first_root, int &second_root, int &part_global, int contig)
+{
+    /*     inner_comm : MPI communicator containing the processes performing the partial inner product
+     *              x : ParVector to create communicators for
+     *       my_color : 0 : process is part of first half of vector
+     *                  1 : process is part of second half of vector 
+     *     first_root : root for communicator corresponding to first half of vector
+     *    second_root : root for communicator corresponding to second half of vector
+     *         contig : 1 : use contiguous processes in inner product
+     *                  0 : use striped processes in inner product
+     */
 
-
-
-
-
-// ***************** THIS NEEDS TO BE UPDATED **************************
-/*data_t half_inner_striped(ParVector &x, ParVector &y, int half, int part_global){
-    int rank;
+    int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    // CREATE COMMUNICATOR FOR EVEN/ODD RANKS
+    if (num_procs <= 1) 
+    {
+       part_global = x.local_n;
+       return; 
+    }
+
+    int inner_comm_size, recv_comm_size;
+
+    // Calculate number of processes in half inner product
+    int half_procs = num_procs / 2;
+ 
+    // If the partial inner product uses contiguous processes 
+    if (contig) {
+        if (num_procs % 2 != 0) half_procs++;
+
+        if (rank < half_procs) my_color = 0;
+        else my_color = 1;
+        first_root = 0;
+        second_root = half_procs;    
+    
+        MPI_Comm_split(MPI_COMM_WORLD, my_color, rank, &inner_comm);
+    }
+    else {
+        if (rank % 2 == 0) my_color = 0;
+        else my_color = 1;
+        first_root = 0;
+        second_root =  1; 
+        
+        MPI_Comm_split(MPI_COMM_WORLD, my_color, rank, &inner_comm);
+    }
+
+    // Get number of values being used in the inner product calculation
+    part_global = x.local_n;
+    MPI_Allreduce(MPI_IN_PLACE, &part_global, 1, MPI_INT, MPI_SUM, inner_comm);
+
+    return;
+}
+
+/***************************************************************** 
+ Performs approximate inner product using half of the processes
+ ****************************************************************/
+data_t half_inner(MPI_Comm &inner_comm, ParVector &x, ParVector &y, int &my_color, int send_color, int &inner_root,
+                  int &recv_root, int part_global) {
+    /*  inner_comm : MPI communicator containing the processes to use in the inner product 
+     *   recv_comm : MPI communicator containing the processes to receive approx inner product
+     *           x : ParVector for calculating inner product
+     *           y : ParVector for calculating inner product
+     *    my_color : color corresponding to the procs communicator 
+     *  send_color : color calculating the inner product and sending to the other half of processes
+     *  inner_root : root of inner_comm
+     *   recv_root : root of recv_comm
+     * part_global : number of values being used in inner product
+     */
+
+    int rank, num_procs, inner_comm_size, comm_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    MPI_Request req;
+    MPI_Status stat;
 
     data_t inner_prod = 0.0;
 
-    if(x.local_n != y.local_n){
+    // Check if single process
+    if (num_procs <= 1 || inner_comm == MPI_COMM_NULL){
+        if (x.local_n != y.local_n){
+                printf("Error. Dimensions do not match.\n");
+            exit(-1);
+        }
+        inner_prod = x.local.inner_product(y.local);
+        return inner_prod;
+    }
+    
+    // Get communicator sizes
+    MPI_Comm_size(inner_comm, &inner_comm_size);
+    //MPI_Comm_size(recv_comm, &recv_comm_size);
+
+    if (x.local_n != y.local_n){
         printf("Error. Dimensions do not match.\n");
 	exit(-1);
     }
 
-    if(x.local_n){
-        inner_prod = x.local.inner_product(y.local);
+    // Perform partial inner product - if proc belongs to inner_comm
+    // and corresponds to the half performing the inner product this iteration
+    if (my_color == send_color){
+        if (x.local_n){
+            inner_prod = x.local.inner_product(y.local);
+        }
+        if (inner_comm_size > 1) MPI_Allreduce(MPI_IN_PLACE, &inner_prod, 1, MPI_DATA_T, MPI_SUM, inner_comm);
+        // Scale inner product by global percentage before sending
+        inner_prod = ((1.0*x.global_n)/part_global) * inner_prod;
     }
 
-    // CHANGE THIS TO BE CORRECT COMMUNICATOR
-    MPI_Allreduce(MPI_IN_PLACE, &inner_prod, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
-
-    return 2 * inner_prod;
-}*/
-
-/*void half_inner_approx(ParVector &x, ParVector &y){
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    // CREATE COMMUNICATOR FOR CONTIGUOUS HALF
-    // CALCULATE PERCENTAGE OF VECTOR USED
-
-    data_t inner_prod = 0.0;
-
-    if(x.local_n != y.local_n){
-        printf("Error. Dimensions do not match.\n");
-	exit(-1);
+    //printf("rank %d inner_prod %lg\n", rank, inner_prod);
+    // Send partial inner product from inner_root to recv_root
+    if (rank == inner_root) {
+        MPI_Isend(&inner_prod, 1, MPI_DATA_T, recv_root, 1, MPI_COMM_WORLD, &req);
+        MPI_Wait(&req, &stat);
+    }
+    if (rank == recv_root) {
+        MPI_Irecv(&inner_prod, 1, MPI_DATA_T, inner_root, 1, MPI_COMM_WORLD, &req);
+        MPI_Wait(&req, &stat);
     }
 
-    if (x.local_n){
-        inner_prod = x.local.inner_product(y.local);
+    // Broadcast for Receiving Half
+    if (my_color != send_color){
+        MPI_Bcast(&inner_prod, 1, MPI_DATA_T, 0, inner_comm);
     }
 
-    // CHANGE THIS TO BE CORRECT COMMUNICATOR
-    MPI_Allreduce(MPI_IN_PLACE, &inner_prod, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
-
-    //inner_prod *= 
+    // Return partial inner_prod scaled by global percentage
     return inner_prod;
-}*/
+}
