@@ -31,9 +31,9 @@ int main(int argc, char* argv[])
     ParVector x_striped(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector x_true(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    std::vector<double> residuals_true;
-    std::vector<double> residuals_contig;
-    std::vector<double> residuals_striped;
+    aligned_vector<double> residuals_true;
+    aligned_vector<double> residuals_contig;
+    aligned_vector<double> residuals_striped;
 
     x_true.set_const_value(1.0);
     A->mult(x_true, b);
