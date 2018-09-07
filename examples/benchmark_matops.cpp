@@ -329,7 +329,7 @@ int main(int argc, char *argv[])
 
 
         if (rank == 0) printf("A*P:\n");
-        Al->print_mult(Pl, proc_distances, worst_proc_distances);
+        //Al->print_mult(Pl, proc_distances, worst_proc_distances);
         int active = 1;
         int sum_active;
         if (Al->local_num_rows == 0) active = 0;
@@ -383,7 +383,7 @@ int main(int argc, char *argv[])
         MPI_Barrier(MPI_COMM_WORLD);
         ml->levels[i]->x.set_const_value(0.0);
         if (rank == 0) printf("A*x\n");
-	Al->print_mult(proc_distances, worst_proc_distances);
+	//Al->print_mult(proc_distances, worst_proc_distances);
         active = 1;
         if (Al->local_num_rows == 0) active = 0;
         MPI_Reduce(&active, &sum_active, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);

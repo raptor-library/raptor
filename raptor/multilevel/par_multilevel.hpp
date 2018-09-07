@@ -81,6 +81,7 @@ namespace raptor
                     strength_t _strength_type,
                     relax_t _relax_type) // which level to start tap_amg (-1 == no TAP)
             {
+		num_levels = 0;
                 strong_threshold = _strong_threshold;
                 strength_type = _strength_type;
                 relax_type = _relax_type;
@@ -106,15 +107,18 @@ namespace raptor
 
             virtual ~ParMultilevel()
             {
-                if (levels[num_levels-1]->A->local_num_rows)
-                {
-                    MPI_Comm_free(&coarse_comm);
-                }
-                for (std::vector<ParLevel*>::iterator it = levels.begin();
-                        it != levels.end(); ++it)
-                {
-                    delete *it;
-                }
+		if (num_levels > 0)
+		{
+                    if (levels[num_levels-1]->A->local_num_rows)
+                    {
+                        MPI_Comm_free(&coarse_comm);
+                    }
+                    for (std::vector<ParLevel*>::iterator it = levels.begin();
+                            it != levels.end(); ++it)
+                    {
+                        delete *it;
+                    }
+		}
                 delete[] setup_times;
                 delete[] solve_times;
                 delete[] setup_comm_times;

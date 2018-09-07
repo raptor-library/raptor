@@ -378,6 +378,12 @@ void make_contiguous(ParCSRMatrix* A)
         }
     }
 
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        A->on_proc_column_map[i] = A->partition->first_local_col + i;
+    }
+    A->local_row_map = A->get_on_proc_column_map();
+
     A->comm = new ParComm(A->partition, A->off_proc_column_map);
 
     // Sort rows, removing duplicate entries and moving diagonal 

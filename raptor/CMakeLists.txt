@@ -7,6 +7,7 @@ add_subdirectory(ruge_stuben)
 add_subdirectory(aggregation)
 add_subdirectory(multilevel)
 add_subdirectory(krylov)
+add_subdirectory(profiling)
 
 if (WITH_MPI)
     set(par_SOURCES
@@ -17,11 +18,15 @@ else()
         )
 endif()
 
-add_library(raptor STATIC ${core_SOURCES} ${core_HEADERS} ${gallery_SOURCES}
-    ${gallery_HEADERS} ${ext_gallery_HEADERS} ${util_SOURCES} ${util_HEADERS}
-    ${par_SOURCES} strength.cpp ${ruge_stuben_SOURCES} ${ruge_stuben_HEADERS}
-    ${aggregation_SOURCES} ${aggregation_HEADERS}
-    ${multilevel_SOURCES} ${multilevel_HEADERS} ${krylov_SOURCES} ${krylov_HEADERS} )
+add_library(raptor STATIC ${core_SOURCES} ${core_HEADERS} 
+	${gallery_SOURCES} ${gallery_HEADERS} ${ext_gallery_HEADERS} 
+	${util_SOURCES} ${util_HEADERS}
+	${par_SOURCES} strength.cpp 
+	${ruge_stuben_SOURCES} ${ruge_stuben_HEADERS}
+        ${aggregation_SOURCES} ${aggregation_HEADERS}
+        ${multilevel_SOURCES} ${multilevel_HEADERS} 
+        ${krylov_SOURCES} ${krylov_HEADERS} 
+        ${profile_SOURCES} ${profile_HEADERS})
 
 target_link_libraries(raptor ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
     ${PTSCOTCH_LIBRARIES} ${EXTERNAL_LIBS} )
@@ -36,6 +41,7 @@ install(FILES ${ruge_stuben_HEADERS} DESTINATION "include/raptor/ruge_stuben")
 install(FILES ${aggregation_HEADERS} DESTINATION "include/raptor/aggregation")
 install(FILES ${multilevel_HEADERS} DESTINATION "include/raptor/multilevel")
 install(FILES ${krylov_HEADERS} DESTINATION "include/raptor/krylov")
+install(FILES ${profile_HEADERS} DESTINATION "include/raptor/profiling")
 
 
 include_directories(".")

@@ -108,34 +108,7 @@ void ParMatrix::condense_off_proc()
     }
 }
 
-// Expands the off_proc_column_map for BSR matrices to hold the
-// global columns in off process with non-zeros, not just the
-// coarse block columns
-void ParMatrix::expand_off_proc(int b_cols)
-{
-    int start, end;
-    aligned_vector<int> new_map;
-
-    int rank, num_procs;
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    for(int i=0; i<off_proc_column_map.size(); i++)
-    {
-    start = off_proc_column_map[i] * b_cols;
-    if (start >= partition->first_local_col && rank!= 0) start += partition->local_num_cols;
-    end = start + b_cols;
-        for(int j=start; j<end; j++)
-    {
-            new_map.push_back(j);
-    }
-    }
-
-    off_proc_column_map.clear();
-    std::copy(new_map.begin(), new_map.end(), std::back_inserter(off_proc_column_map));
-}
-
-void ParMatrix::finalize(bool create_comm, int b_cols)
+void ParMatrix::finalize(bool create_comm)
 {
     on_proc->sort();
     off_proc->sort();
@@ -297,6 +270,33 @@ ParCSCMatrix* ParBSCMatrix::to_ParCSC()
 }
 
 
+void ParCSRMatrix::copy_structure(ParBSRMatrix* A)
+{
+    on_proc->idx1.clear();
+    on_proc->idx2.clear();
+    off_proc->idx1.clear();
+    off_proc->idx2.clear();
+
+    std::copy(A->on_proc->idx1.begin(), A->on_proc->idx1.end(),
+		std::back_inserter(on_proc->idx1));
+    std::copy(A->on_proc->idx2.begin(), A->on_proc->idx2.end(),
+		std::back_inserter(on_proc->idx2));
+    
+    std::copy(A->off_proc->idx1.begin(), A->off_proc->idx1.end(),
+		std::back_inserter(off_proc->idx1));
+    std::copy(A->off_proc->idx2.begin(), A->off_proc->idx2.end(),
+		std::back_inserter(off_proc->idx2));
+
+    on_proc->n_rows = A->on_proc->n_rows;
+    on_proc->n_cols = A->on_proc->n_cols;
+    on_proc->nnz = A->on_proc->nnz;
+
+    off_proc->n_rows = A->off_proc->n_rows;
+    off_proc->n_cols = A->off_proc->n_cols;
+    off_proc->nnz = A->off_proc->nnz;
+
+    ParMatrix::copy_helper(A);
+}
 
 
 void ParMatrix::default_copy_helper(ParMatrix* A)
@@ -305,7 +305,6 @@ void ParMatrix::default_copy_helper(ParMatrix* A)
     partition->num_shared++;
 
     local_nnz = A->local_nnz;
-    printf("Local NNZ %d\n", local_nnz);
     local_num_rows = A->local_num_rows;
     global_num_rows = A->global_num_rows;
     global_num_cols = A->global_num_cols;
@@ -325,10 +324,10 @@ void ParMatrix::default_copy_helper(ParMatrix* A)
         comm = new ParComm((ParComm*) A->comm);
     }
     else
-    {   
+    {
         comm = NULL;
     }
-    
+
     if (A->tap_comm)
     {
         tap_comm = new TAPComm((TAPComm*) A->tap_comm);

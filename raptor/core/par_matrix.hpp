@@ -120,22 +120,6 @@ namespace raptor
         tap_comm = NULL;
     }
 
-    // For BSR Matrix class use only - ensures that blocks are not
-    // divided when creating the partition
-    ParMatrix(index_t glob_rows, index_t glob_cols, int _brows, int _bcols)
-    {
-        partition = new Partition(glob_rows, glob_cols, _brows, _bcols);
-
-        global_num_rows = partition->global_num_rows;
-        global_num_cols = partition->global_num_cols;
-        on_proc_num_cols = partition->local_num_cols;
-        off_proc_num_cols = global_num_cols - on_proc_num_cols;
-        local_num_rows = partition->local_num_rows;
-
-        comm = NULL;
-        tap_comm = NULL;
-    }
-
     ParMatrix(index_t glob_rows, 
             index_t glob_cols, 
             int local_rows, 
@@ -237,11 +221,10 @@ namespace raptor
     ***** the local_to_global indices, and creates the parallel
     ***** communicator
     **************************************************************/
-    void finalize(bool create_comm = true, int b_cols = 0); //b_cols added for BSR
+    void finalize(bool create_comm = true); //b_cols added for BSR
 
     int* map_partition_to_local();
     void condense_off_proc();
-    void expand_off_proc(int b_cols); // to be used by BSR matrix class
 
     void residual(ParVector& x, ParVector& b, ParVector& r, bool tap = false, 
             data_t* comm_t = NULL);
@@ -533,6 +516,8 @@ namespace raptor
         A->copy_helper(this);
         return A;
     }
+
+    void copy_structure(ParBSRMatrix* A);
 
     ParBSRMatrix* to_ParBSR(const int block_row_size, const int block_col_size);
 
