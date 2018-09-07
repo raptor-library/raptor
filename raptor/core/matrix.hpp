@@ -140,8 +140,8 @@ namespace raptor
     virtual void spmv_append_neg(const double* x, double* b) const = 0;
     virtual void spmv_append_neg_T(const double* x, double* b) const = 0;
 
-    virtual CSRMatrix* spgemm(CSRMatrix* B) = 0;
-    virtual CSRMatrix* spgemm_T(CSCMatrix* A) = 0;
+    virtual CSRMatrix* spgemm(CSRMatrix* B, int* B_to_C = NULL) = 0;
+    virtual CSRMatrix* spgemm_T(CSCMatrix* A, int* C_map = NULL) = 0;
     virtual Matrix* transpose() = 0;
 
     double* get_values(Vector& x) const
@@ -366,17 +366,18 @@ namespace raptor
         spmv_append_neg(get_values(x), get_values(r));
     }
 
-    CSRMatrix* mult(CSRMatrix* B);
-    CSRMatrix* mult(CSCMatrix* B);
-    CSRMatrix* mult(COOMatrix* B);
-    CSRMatrix* mult_T(CSCMatrix* A);
-    CSRMatrix* mult_T(CSRMatrix* A);
-    CSRMatrix* mult_T(COOMatrix* A);
+    CSRMatrix* mult(CSRMatrix* B, int* B_to_C = NULL);
+    CSRMatrix* mult(CSCMatrix* B, int* B_to_C = NULL);
+    CSRMatrix* mult(COOMatrix* B, int* B_to_C = NULL);
+    CSRMatrix* mult_T(CSCMatrix* A, int* C_map = NULL);
+    CSRMatrix* mult_T(CSRMatrix* A, int* C_map = NULL);
+    CSRMatrix* mult_T(COOMatrix* A, int* C_map = NULL);
 
     virtual void add_value(int row, int col, double value) = 0;
     virtual void add_value(int row, int col, double* value) = 0;
 
-    Matrix* add(CSRMatrix* A);
+    Matrix* add(CSRMatrix* A, bool remove_dup = true);
+    void add_append(CSRMatrix* A, CSRMatrix* C, bool remove_dup = true);
     Matrix* subtract(CSRMatrix* A);
 
     void resize(int _n_rows, int _n_cols);
@@ -522,8 +523,8 @@ namespace raptor
     void spmv_append_neg(const double* x, double* b) const;
     void spmv_append_neg_T(const double* x, double* b) const;
 
-    CSRMatrix* spgemm(CSRMatrix* B);
-    CSRMatrix* spgemm_T(CSCMatrix* A);
+    CSRMatrix* spgemm(CSRMatrix* B, int* B_to_C = NULL);
+    CSRMatrix* spgemm_T(CSCMatrix* A, int* C_map = NULL);
 
     COOMatrix* to_COO();
     CSRMatrix* to_CSR();
@@ -697,10 +698,11 @@ namespace raptor
     void spmv_append_neg(const double* x, double* b) const;
     void spmv_append_neg_T(const double* x, double* b) const;
 
-    CSRMatrix* spgemm(CSRMatrix* B);
-    CSRMatrix* spgemm_T(CSCMatrix* A);
+    CSRMatrix* spgemm(CSRMatrix* B, int* B_to_C = NULL);
+    CSRMatrix* spgemm_T(CSCMatrix* A, int* C_map = NULL);
 
-    CSRMatrix* add(CSRMatrix* A);
+    CSRMatrix* add(CSRMatrix* A, bool remove_dup = true);
+    void add_append(CSRMatrix* A, CSRMatrix* C, bool remove_dup = true);
     CSRMatrix* subtract(CSRMatrix* A);
 
     CSRMatrix* strength(strength_t strength_type = Classical,
@@ -862,8 +864,8 @@ namespace raptor
     void spmv_append_neg_T(const double* x, double* b) const;
 
 
-    CSRMatrix* spgemm(CSRMatrix* B);
-    CSRMatrix* spgemm_T(CSCMatrix* A);
+    CSRMatrix* spgemm(CSRMatrix* B, int* B_to_C = NULL);
+    CSRMatrix* spgemm_T(CSCMatrix* A, int* C_map = NULL);
 
     void jacobi(Vector& x, Vector& b, Vector& tmp, double omega = .667);    
 
@@ -987,8 +989,8 @@ class BSRMatrix : public CSRMatrix
     void print();
     BSRMatrix* copy();
 
-    BSRMatrix* spgemm(CSRMatrix* B);
-    BSRMatrix* spgemm_T(CSCMatrix* A);
+    BSRMatrix* spgemm(CSRMatrix* B, int* B_to_C = NULL);
+    BSRMatrix* spgemm_T(CSCMatrix* A, int* C_map = NULL);
 
     void spmv_append(const double* x, double* b) const;
     void spmv_append_T(const double* x, double* b) const;
@@ -1094,8 +1096,8 @@ class BCOOMatrix : public COOMatrix
     CSRMatrix* to_CSR();
     CSCMatrix* to_CSC();
 
-    BSRMatrix* spgemm(CSRMatrix* B);
-    BSRMatrix* spgemm_T(CSCMatrix* A);
+    BSRMatrix* spgemm(CSRMatrix* B, int* B_to_C = NULL);
+    BSRMatrix* spgemm_T(CSCMatrix* A, int* C_map = NULL);
 
     void spmv_append(const double* x, double* b) const;
     void spmv_append_T(const double* x, double* b) const;
@@ -1206,8 +1208,8 @@ class BSCMatrix : public CSCMatrix
     void print();
     BSCMatrix* copy();
 
-    BSRMatrix* spgemm(CSRMatrix* B);
-    BSRMatrix* spgemm_T(CSCMatrix* A);
+    BSRMatrix* spgemm(CSRMatrix* B, int* B_to_C = NULL);
+    BSRMatrix* spgemm_T(CSCMatrix* A, int* C_map = NULL);
 
     void spmv_append(const double* x, double* b) const;
     void spmv_append_T(const double* x, double* b) const;

@@ -70,11 +70,12 @@ void finalize_sums(aligned_vector<double*>& sums)
 
 template <typename T>
 CSRMatrix* spgemm_helper(const CSRMatrix* A, const CSRMatrix* B, 
-        aligned_vector<T>& A_vals, aligned_vector<T>& B_vals)
+        aligned_vector<T>& A_vals, aligned_vector<T>& B_vals,
+        int* B_to_C = NULL)
 {
-    aligned_vector<int> next(A->n_cols, -1);
+    aligned_vector<int> next(B->n_cols, -1);
     aligned_vector<T> sums;
-    init_sums(sums, A->n_cols, A->b_size);
+    init_sums(sums, B->n_cols, B->b_size);
 
     CSRMatrix* C = NULL;
     aligned_vector<T>& C_vals = form_new(A, B, &C, A_vals);
@@ -109,9 +110,16 @@ CSRMatrix* spgemm_helper(const CSRMatrix* A, const CSRMatrix* B,
         for (int j = 0; j < length; j++)
         {
             double val = A->abs_val(sums[head]);
-            if (A->abs_val(sums[head]) > zero_tol)
+            if (val > zero_tol)
             {
-                C->idx2.push_back(head);
+                if (B_to_C) 
+                {
+                    C->idx2.push_back(B_to_C[head]);
+                }
+                else
+                {
+                    C->idx2.push_back(head);
+                }
                 C_vals.push_back(sums[head]);
             }
             int tmp = head;
@@ -130,15 +138,16 @@ CSRMatrix* spgemm_helper(const CSRMatrix* A, const CSRMatrix* B,
 
 template <typename T>
 CSRMatrix* spgemm_T_helper(const CSCMatrix* A, const CSRMatrix* B,
-        aligned_vector<T>& A_vals, aligned_vector<T>& B_vals)
+        aligned_vector<T>& A_vals, aligned_vector<T>& B_vals,
+        int* C_map = NULL)
 {
     CSRMatrix* C;
     aligned_vector<T>& C_vals = form_new(A, B, &C, A_vals);
     C->reserve_size(1.5*B->nnz);
 
-    aligned_vector<int> next(A->n_rows, -1); 
+    aligned_vector<int> next(B->n_cols, -1); 
     aligned_vector<T> sums;
-    init_sums(sums, A->n_rows, A->b_size);
+    init_sums(sums, B->n_cols, A->b_size);
 
     C->idx1[0] = 0;
     for (int i = 0; i < A->n_cols; i++)
@@ -170,7 +179,14 @@ CSRMatrix* spgemm_T_helper(const CSCMatrix* A, const CSRMatrix* B,
         {
             if (A->abs_val(sums[head]) > zero_tol)
             {
-                C->idx2.push_back(head);
+                if (C_map)
+                {
+                    C->idx2.push_back(C_map[head]);
+                }
+                else
+                {
+                    C->idx2.push_back(head);
+                }
                 C_vals.push_back(sums[head]);
             }
             int tmp = head;
@@ -188,121 +204,131 @@ CSRMatrix* spgemm_T_helper(const CSCMatrix* A, const CSRMatrix* B,
 }
 
 
-CSRMatrix* Matrix::mult(CSRMatrix* B)
+CSRMatrix* Matrix::mult(CSRMatrix* B, int* B_to_C)
 {
-    return spgemm(B);
+    return spgemm(B, B_to_C);
 }
-CSRMatrix* Matrix::mult(CSCMatrix* B)
+CSRMatrix* Matrix::mult(CSCMatrix* B, int* B_to_C)
 {
     CSRMatrix* B_csr = B->to_CSR();
-    CSRMatrix* C = spgemm(B_csr);
+    CSRMatrix* C = spgemm(B_csr, B_to_C);
     delete B_csr;
     return C;
 }
-CSRMatrix* Matrix::mult(COOMatrix* B)
+CSRMatrix* Matrix::mult(COOMatrix* B, int* B_to_C)
 {
     CSRMatrix* B_csr = B->to_CSR();
-    CSRMatrix* C = spgemm(B_csr);
+    CSRMatrix* C = spgemm(B_csr, B_to_C);
     delete B_csr;
     return C;
 }
 
-CSRMatrix* Matrix::mult_T(CSCMatrix* A)
+CSRMatrix* Matrix::mult_T(CSCMatrix* A, int* C_map)
 {
-    return spgemm_T(A);
+    return spgemm_T(A, C_map);
 }
-CSRMatrix* Matrix::mult_T(CSRMatrix* A)
+CSRMatrix* Matrix::mult_T(CSRMatrix* A, int* C_map)
 {
     CSCMatrix* A_csc = A->to_CSC();
-    CSRMatrix* C = spgemm_T(A_csc);
+    CSRMatrix* C = spgemm_T(A_csc, C_map);
     delete A_csc;
     return C;
 }
-CSRMatrix* Matrix::mult_T(COOMatrix* A)
+CSRMatrix* Matrix::mult_T(COOMatrix* A, int* C_map)
 {
     CSCMatrix* A_csc = A->to_CSC();
-    CSRMatrix* C = spgemm_T(A_csc);
+    CSRMatrix* C = spgemm_T(A_csc, C_map);
     delete A_csc;
     return C;
 }
 
-CSRMatrix* CSRMatrix::spgemm(CSRMatrix* B)
+CSRMatrix* CSRMatrix::spgemm(CSRMatrix* B, int* B_to_C)
 {
-    return spgemm_helper(this, B, vals, B->vals);
+    return spgemm_helper(this, B, vals, B->vals, B_to_C);
 }
-BSRMatrix* BSRMatrix::spgemm(CSRMatrix* B)
+BSRMatrix* BSRMatrix::spgemm(CSRMatrix* B, int* B_to_C)
 {
     BSRMatrix* B_bsr = (BSRMatrix*) B;
-    return (BSRMatrix*) spgemm_helper(this, B_bsr, vals, B_bsr->vals);
+    return (BSRMatrix*) spgemm_helper(this, B_bsr, vals, 
+            B_bsr->vals, B_to_C);
 }
-CSRMatrix* COOMatrix::spgemm(CSRMatrix* B)
+CSRMatrix* COOMatrix::spgemm(CSRMatrix* B, int* B_to_C)
 {
     CSRMatrix* A_csr = to_CSR();
-    CSRMatrix* C = spgemm_helper(A_csr, B, A_csr->vals, B->vals);
+    CSRMatrix* C = spgemm_helper(A_csr, B, A_csr->vals, B->vals, 
+            B_to_C);
     delete A_csr;
     return C;
 }
-BSRMatrix* BCOOMatrix::spgemm(CSRMatrix* B)
+BSRMatrix* BCOOMatrix::spgemm(CSRMatrix* B, int* B_to_C)
 {
     BSRMatrix* A_bsr = (BSRMatrix*) to_CSR();
     BSRMatrix* B_bsr = (BSRMatrix*) B;
-    BSRMatrix* C = (BSRMatrix*) spgemm_helper(A_bsr, B_bsr, A_bsr->vals, B_bsr->vals);
+    BSRMatrix* C = (BSRMatrix*) spgemm_helper(A_bsr, B_bsr, 
+            A_bsr->vals, B_bsr->vals, B_to_C);
     delete A_bsr;
     return C;
 }
-CSRMatrix* CSCMatrix::spgemm(CSRMatrix* B)
+CSRMatrix* CSCMatrix::spgemm(CSRMatrix* B, int* B_to_C)
 {
     CSRMatrix* A_csr = to_CSR();
-    CSRMatrix* C = spgemm_helper(A_csr, B, A_csr->vals, B->vals);
+    CSRMatrix* C = spgemm_helper(A_csr, B, A_csr->vals, B->vals,
+            B_to_C);
     delete A_csr;
     return C;
 }
-BSRMatrix* BSCMatrix::spgemm(CSRMatrix* B)
+BSRMatrix* BSCMatrix::spgemm(CSRMatrix* B, int* B_to_C)
 {
     BSRMatrix* A_bsr = (BSRMatrix*) to_CSR();
     BSRMatrix* B_bsr = (BSRMatrix*) B;
-    BSRMatrix* C = (BSRMatrix*) spgemm_helper(A_bsr, B_bsr, A_bsr->vals, B_bsr->vals);
+    BSRMatrix* C = (BSRMatrix*) spgemm_helper(A_bsr, B_bsr, 
+            A_bsr->vals, B_bsr->vals, B_to_C);
     delete A_bsr;
     return C;
 }
 
 
-CSRMatrix* CSRMatrix::spgemm_T(CSCMatrix* A)
+CSRMatrix* CSRMatrix::spgemm_T(CSCMatrix* A, int* C_map)
 {
-    return spgemm_T_helper(A, this, A->vals, vals);
+    return spgemm_T_helper(A, this, A->vals, vals, C_map);
 }
-BSRMatrix* BSRMatrix::spgemm_T(CSCMatrix* A)
+BSRMatrix* BSRMatrix::spgemm_T(CSCMatrix* A, int* C_map)
 {
     BSCMatrix* A_bsc = (BSCMatrix*) A;
-    return (BSRMatrix*) spgemm_T_helper(A_bsc, this, A_bsc->vals, vals);
+    return (BSRMatrix*) spgemm_T_helper(A_bsc, this, 
+            A_bsc->vals, vals, C_map);
 }
-CSRMatrix* COOMatrix::spgemm_T(CSCMatrix* A)
+CSRMatrix* COOMatrix::spgemm_T(CSCMatrix* A, int* C_map)
 {
     CSRMatrix* B_csr = to_CSR();
-    CSRMatrix* C = spgemm_T_helper(A, B_csr, A->vals, B_csr->vals);
+    CSRMatrix* C = spgemm_T_helper(A, B_csr, A->vals, 
+            B_csr->vals, C_map);
     delete B_csr;
     return C;
 }
-BSRMatrix* BCOOMatrix::spgemm_T(CSCMatrix* A)
+BSRMatrix* BCOOMatrix::spgemm_T(CSCMatrix* A, int* C_map)
 {
     BSCMatrix* A_bsc = (BSCMatrix*) A;
     BSRMatrix* B_bsr = (BSRMatrix*) to_CSR();
-    BSRMatrix* C = (BSRMatrix*) spgemm_T_helper(A_bsc, B_bsr, A_bsc->vals, B_bsr->vals);
+    BSRMatrix* C = (BSRMatrix*) spgemm_T_helper(A_bsc, B_bsr, 
+            A_bsc->vals, B_bsr->vals, C_map);
     delete B_bsr;
     return C;
 }
-CSRMatrix* CSCMatrix::spgemm_T(CSCMatrix* A)
+CSRMatrix* CSCMatrix::spgemm_T(CSCMatrix* A, int* C_map)
 {
     CSRMatrix* B_csr = to_CSR();
-    CSRMatrix* C = spgemm_T_helper(A, B_csr, A->vals, B_csr->vals);
+    CSRMatrix* C = spgemm_T_helper(A, B_csr, A->vals, 
+            B_csr->vals, C_map);
     delete B_csr;
     return C;
 }
-BSRMatrix* BSCMatrix::spgemm_T(CSCMatrix* A)
+BSRMatrix* BSCMatrix::spgemm_T(CSCMatrix* A, int* C_map)
 {
     BSCMatrix* A_bsc = (BSCMatrix*) A;
     BSRMatrix* B_bsr = (BSRMatrix*) to_CSR();
-    BSRMatrix* C = (BSRMatrix*) spgemm_T_helper(A_bsc, B_bsr, A_bsc->vals, B_bsr->vals);
+    BSRMatrix* C = (BSRMatrix*) spgemm_T_helper(A_bsc, B_bsr, 
+            A_bsc->vals, B_bsr->vals, C_map);
     delete B_bsr;
     return C;
 }
