@@ -52,6 +52,8 @@ TEST(TestCandidates, TestsInAggregation)
 
     P_py = readMatrix(P1_fn);
     P = jacobi_prolongation(A, T);
+    P->sort();
+    P->move_diag();
     P_py->sort();
     P_py->move_diag();
 

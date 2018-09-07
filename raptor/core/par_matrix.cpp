@@ -305,7 +305,6 @@ void ParMatrix::default_copy_helper(ParMatrix* A)
     partition->num_shared++;
 
     local_nnz = A->local_nnz;
-    printf("Local NNZ %d\n", local_nnz);
     local_num_rows = A->local_num_rows;
     global_num_rows = A->global_num_rows;
     global_num_cols = A->global_num_cols;

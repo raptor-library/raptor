@@ -6,23 +6,45 @@
 using namespace raptor;
 
 // TODO -- currently assumes partitions are the same 
-Matrix* Matrix::add(CSRMatrix* B)
+Matrix* Matrix::add(CSRMatrix* B, bool remove_dup)
 {
-    return NULL;
+    CSRMatrix* A = to_CSR();
+    CSRMatrix* C = new CSRMatrix(n_rows, n_cols, 2*nnz);
+    A->add_append(B, C, remove_dup);
+    delete A;
+    return C;
+}
+void Matrix::add_append(CSRMatrix* B, CSRMatrix* C, bool remove_dup)
+{
+    CSRMatrix* A = to_CSR();
+    A->add_append(B, C, remove_dup);
+    delete A;
 }
 Matrix* Matrix::subtract(CSRMatrix* B)
 {
-    return NULL;
+    CSRMatrix* A = to_CSR();
+    CSRMatrix* C = A->subtract(B);
+    delete A;
+    return C;
 }
 
-CSRMatrix* CSRMatrix::add(CSRMatrix* B)
+
+CSRMatrix* CSRMatrix::add(CSRMatrix* B, bool remove_dup)
+{
+    CSRMatrix* C = new CSRMatrix(n_rows, n_cols, 2*nnz);
+    add_append(B, C, remove_dup);
+    return C;
+}
+
+void CSRMatrix::add_append(CSRMatrix* B, CSRMatrix* C, bool remove_dup)
 {
     int start, end;
 
     assert(n_rows == B->n_rows);
     assert(n_cols == B->n_cols);
 
-    CSRMatrix* C = new CSRMatrix(n_rows, n_cols, 2*nnz);
+    C->resize(n_rows, n_cols);
+
     C->idx1[0] = 0;
     for (int i = 0; i < n_rows; i++)
     {
@@ -44,10 +66,8 @@ CSRMatrix* CSRMatrix::add(CSRMatrix* B)
     }
     C->nnz = C->idx2.size();
     C->sort();
-    C->remove_duplicates();
-    C->move_diag();    
-
-    return C;
+    if (remove_dup) 
+        C->remove_duplicates();
 }
 
 CSRMatrix* CSRMatrix::subtract(CSRMatrix* B)
@@ -80,7 +100,6 @@ CSRMatrix* CSRMatrix::subtract(CSRMatrix* B)
     C->nnz = C->idx2.size();
     C->sort();
     C->remove_duplicates();
-    C->move_diag();    
 
     return C;
 }
