@@ -5,11 +5,13 @@ pkg_check_modules(MFEM QUIET mfem)
 
 find_path(MFEM_INCLUDE_DIR mfem.hpp
           HINTS ${PC_MFEM_INCLUDEDIR} ${PC_MFEM_INCLUDE_DIRS}
-			${MFEM_DIR} ${MFEM_DIR}/include)
+		  ${MFEM_DIR} ${MFEM_DIR}/include	
+          $ENV{MFEM_DIR} $ENV{MFEM_DIR}/include)
 
 find_library(MFEM_LIBRARY NAMES mfem
              HINTS ${PC_MFEM_LIBDIR} ${PC_MFEM_LIBRARY_DIRS}
-				${MFEM_DIR} ${MFEM_DIR}/lib)
+             ${MFEM_DIR} ${MFEM_DIR}/lib
+				$ENV{MFEM_DIR} $ENV{MFEM_DIR}/lib)
 
 set(MFEM_LIBRARIES ${MFEM_LIBRARY} )
 set(MFEM_INCLUDE_DIRS ${MFEM_INCLUDE_DIR} )
