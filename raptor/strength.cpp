@@ -315,5 +315,7 @@ CSRMatrix* CSRMatrix::strength(strength_t strength_type,
         case Symmetric:
             return symmetric_strength(this, theta);
     }
+
+    return NULL;
 }
 

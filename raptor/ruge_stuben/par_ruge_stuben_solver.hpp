@@ -45,7 +45,7 @@ namespace raptor
 
             setup_helper(Af);
 
-            delete[] variables;
+            if (num_variables > 1) delete[] variables;
             variables = NULL;
         }
        
@@ -181,6 +181,7 @@ namespace raptor
 
             // Form coarse grid operator
             levels.push_back(new ParLevel());
+
 
             if (setup_times) setup_times[4][level_ctr] -= MPI_Wtime();
             AP = A->mult(levels[level_ctr]->P, tap_level, AP_mat_time);

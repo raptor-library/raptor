@@ -569,6 +569,7 @@ ParCSRMatrix* ParCSRMatrix::strength(strength_t strength_type,
         case Symmetric:
             return symmetric_strength(this, theta, tap_amg, comm_t);
     }
+    return NULL;
 }
 
 

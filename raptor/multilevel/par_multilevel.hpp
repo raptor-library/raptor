@@ -182,7 +182,8 @@ namespace raptor
                 }
 
                 num_levels = levels.size();
-                delete[] weights;
+                if (Af->local_num_rows) 
+                    delete[] weights;
 
                 // Duplicate coarsest level across all processes that hold any
                 // rows of A_c
