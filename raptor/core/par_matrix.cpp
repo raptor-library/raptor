@@ -750,14 +750,14 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
                 {
                     on_proc_pos[block_col] = A_on_proc->idx2.size();
                     A_on_proc->idx2.push_back(block_col);
-                    A_on_proc->vals.push_back(
+                    A_on_proc->block_vals.push_back(
                             new double[A_on_proc->b_size]());
                 }
                 val = on_proc->vals[k];
                 pos = on_proc_pos[block_col];
                 col_pos = col % block_col_size;
                 block_pos = row_pos * block_col_size + col_pos;
-                A_on_proc->vals[pos][block_pos] = val;
+                A_on_proc->block_vals[pos][block_pos] = val;
             }
 
             start = off_proc->idx1[i+row_pos];
@@ -771,14 +771,14 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
                 {
                     off_proc_pos[block_col] = A_off_proc->idx2.size();
                     A_off_proc->idx2.push_back(block_col);
-                    A_off_proc->vals.push_back(
+                    A_off_proc->block_vals.push_back(
                             new double[A_off_proc->b_size]());
                 }
                 val = off_proc->vals[k];
                 pos = off_proc_pos[block_col];
                 col_pos = global_col % block_col_size;
                 block_pos = row_pos * block_col_size + col_pos;
-                A_off_proc->vals[pos][block_pos] = val;
+                A_off_proc->block_vals[pos][block_pos] = val;
             }
         }
         A_on_proc->idx1[i/block_row_size + 1] = A_on_proc->idx2.size();

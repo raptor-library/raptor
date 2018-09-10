@@ -972,8 +972,8 @@ class BSRMatrix : public CSRMatrix
 
     ~BSRMatrix()
     {
-        for (aligned_vector<double*>::iterator it = vals.begin();
-                it != vals.end(); ++it)
+        for (aligned_vector<double*>::iterator it = block_vals.begin();
+                it != block_vals.end(); ++it)
             delete[] *it;
     }
 
@@ -1005,34 +1005,34 @@ class BSRMatrix : public CSRMatrix
     void add_value(int row, int col, double* value) 
     {
         idx2.push_back(col);
-        vals.push_back(copy_val(value));
+        block_vals.push_back(copy_val(value));
         nnz++;
     }
 
     void* get_data()
     {
-       return vals.data();
+       return block_vals.data();
     } 
     int data_size() const
     {
-        return vals.size();
+        return block_vals.size();
     }
     void resize_data(int size)
     {
-        vals.resize(size);
+        block_vals.resize(size);
     }
     void reserve_size(int size)
     {
         idx2.reserve(size);
-        vals.reserve(size);
+        block_vals.reserve(size);
     }
 
     double get_val(const int j, const int k)
     {
-        return vals[j][k];
+        return block_vals[j][k];
     }
 
-    aligned_vector<double*> vals;
+    aligned_vector<double*> block_vals;
 };
 
 class BCOOMatrix : public COOMatrix
@@ -1080,8 +1080,8 @@ class BCOOMatrix : public COOMatrix
 
     ~BCOOMatrix()
     {
-        for (aligned_vector<double*>::iterator it = vals.begin();
-                it != vals.end(); ++it)
+        for (aligned_vector<double*>::iterator it = block_vals.begin();
+                it != block_vals.end(); ++it)
             delete[] *it;
     }
 
@@ -1108,7 +1108,7 @@ class BCOOMatrix : public COOMatrix
     {
         idx1.push_back(row);
         idx2.push_back(col);
-        vals.push_back(copy_val(values));
+        block_vals.push_back(copy_val(values));
         nnz++;
     }
 
@@ -1119,29 +1119,29 @@ class BCOOMatrix : public COOMatrix
 
     void* get_data()
     {
-       return vals.data();
+       return block_vals.data();
     } 
     int data_size() const
     {
-        return vals.size();
+        return block_vals.size();
     }
     void resize_data(int size)
     {
-        vals.resize(size);
+        block_vals.resize(size);
     }
     void reserve_size(int size)
     {
         idx1.reserve(size);
         idx2.reserve(size);
-        vals.reserve(size);
+        block_vals.reserve(size);
     }
 
     double get_val(const int j, const int k)
     {
-        return vals[j][k];
+        return block_vals[j][k];
     }
 
-    aligned_vector<double*> vals;
+    aligned_vector<double*> block_vals;
 };
 
 // Blocks are still stored row-wise in BSC matrix...
@@ -1191,8 +1191,8 @@ class BSCMatrix : public CSCMatrix
 
     ~BSCMatrix()
     {
-        for (aligned_vector<double*>::iterator it = vals.begin();
-                it != vals.end(); ++it)
+        for (aligned_vector<double*>::iterator it = block_vals.begin();
+                it != block_vals.end(); ++it)
             delete[] *it;
     }
 
@@ -1224,34 +1224,34 @@ class BSCMatrix : public CSCMatrix
     void add_value(int row, int col, double* value)
     {
         idx2.push_back(row);
-        vals.push_back(copy_val(value));
+        block_vals.push_back(copy_val(value));
         nnz++;
     }
 
     void* get_data()
     {
-       return vals.data();
+       return block_vals.data();
     }
     void resize_data(int size)
     {
-        vals.resize(size);
+        block_vals.resize(size);
     }
     int data_size() const
     {
-        return vals.size();
+        return block_vals.size();
     }
     void reserve_size(int size)
     {
         idx2.reserve(size);
-        vals.reserve(size);
+        block_vals.reserve(size);
     }
 
     double get_val(const int j, const int k)
     {
-        return vals[j][k];
+        return block_vals[j][k];
     }
 
-    aligned_vector<double*> vals;
+    aligned_vector<double*> block_vals;
 };
 
 

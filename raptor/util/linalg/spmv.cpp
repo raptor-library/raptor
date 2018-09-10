@@ -191,22 +191,22 @@ void COOMatrix::spmv_append_neg_T(const double* x, double* b) const
 }
 void BCOOMatrix::spmv_append(const double* x,double* b) const
 {
-    COO_append(this, vals, x, b);
+    COO_append(this, block_vals, x, b);
 }
 
 void BCOOMatrix::spmv_append_T(const double* x,double* b) const
 {
-    COO_append_T(this, vals, x, b);
+    COO_append_T(this, block_vals, x, b);
 }
 
 void BCOOMatrix::spmv_append_neg(const double* x,double* b) const
 {
-    COO_append_neg(this, vals, x, b);
+    COO_append_neg(this, block_vals, x, b);
 }
 
 void BCOOMatrix::spmv_append_neg_T(const double* x,double* b) const
 {
-    COO_append_neg_T(this, vals, x, b);
+    COO_append_neg_T(this, block_vals, x, b);
 }
 
 
@@ -229,22 +229,22 @@ void CSRMatrix::spmv_append_neg_T(const double* x, double* b) const
 }
 void BSRMatrix::spmv_append(const double* x,double* b) const
 {
-    CSR_append(this, vals, x, b);
+    CSR_append(this, block_vals, x, b);
 }
 
 void BSRMatrix::spmv_append_T(const double* x,double* b) const
 {
-    CSR_append_T(this, vals, x, b);
+    CSR_append_T(this, block_vals, x, b);
 }
 
 void BSRMatrix::spmv_append_neg(const double* x,double* b) const
 {
-    CSR_append_neg(this, vals, x, b);
+    CSR_append_neg(this, block_vals, x, b);
 }
 
 void BSRMatrix::spmv_append_neg_T(const double* x,double* b) const
 {
-    CSR_append_neg_T(this, vals, x, b);
+    CSR_append_neg_T(this, block_vals, x, b);
 }
 
 
@@ -268,19 +268,19 @@ void CSCMatrix::spmv_append_neg_T(const double* x, double* b) const
 }
 void BSCMatrix::spmv_append(const double* x,double* b) const
 {
-    CSC_append(this, vals, x, b);
+    CSC_append(this, block_vals, x, b);
 }
 void BSCMatrix::spmv_append_T(const double* x,double* b) const
 {
-    CSC_append_T(this, vals, x, b);
+    CSC_append_T(this, block_vals, x, b);
 }
 void BSCMatrix::spmv_append_neg(const double* x,double* b) const
 {
-    CSC_append_neg(this, vals, x, b);
+    CSC_append_neg(this, block_vals, x, b);
 }
 void BSCMatrix::spmv_append_neg_T(const double* x,double* b) const
 {
-    CSC_append_neg_T(this, vals, x, b);
+    CSC_append_neg_T(this, block_vals, x, b);
 }
 
 

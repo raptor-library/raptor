@@ -19,7 +19,7 @@ void compare_vals(CSRMatrix* A, BSRMatrix* B)
             for (int j = B->idx1[i]; j < B->idx1[i+1]; j++)
             {
                 int b_col = B->idx2[j];
-                double* val = B->vals[j];
+                double* val = B->block_vals[j];
                 for (int l = 0; l < B->b_cols; l++)
                 {
                     if (fabs(val[k*B->b_cols + l]) > zero_tol)
@@ -183,6 +183,7 @@ TEST(BlockMatrixTest, TestsInCore)
     delete C_csr;
     delete C_bsr;
 
+    
     for (aligned_vector<double*>::iterator it = block_vals.begin();
             it != block_vals.end(); ++it)
         delete[] *it;

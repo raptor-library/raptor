@@ -95,7 +95,7 @@ COOMatrix* COOMatrix::transpose()
 
 BCOOMatrix* BCOOMatrix::transpose()
 {
-    BCOOMatrix* T = new BCOOMatrix(b_rows, b_cols, n_rows, n_cols, idx2, idx1, vals);
+    BCOOMatrix* T = new BCOOMatrix(b_rows, b_cols, n_rows, n_cols, idx2, idx1, block_vals);
     return T;
 }
 
@@ -109,7 +109,7 @@ CSRMatrix* CSRMatrix::transpose()
 
 BSRMatrix* BSRMatrix::transpose()
 {
-    BSCMatrix* T_bsc = new BSCMatrix(b_rows, b_cols, n_rows, n_cols, idx1, idx2, vals);
+    BSCMatrix* T_bsc = new BSCMatrix(b_rows, b_cols, n_rows, n_cols, idx1, idx2, block_vals);
     BSRMatrix* T = (BSRMatrix*) T_bsc->to_CSR();
     delete T_bsc;
     return T;
@@ -124,7 +124,7 @@ CSCMatrix* CSCMatrix::transpose()
 }
 BSCMatrix* BSCMatrix::transpose()
 {
-    BSRMatrix* T_bsr = new BSRMatrix(b_rows, b_cols, n_rows, n_cols, idx1, idx2, vals); 
+    BSRMatrix* T_bsr = new BSRMatrix(b_rows, b_cols, n_rows, n_cols, idx1, idx2, block_vals); 
     BSCMatrix* T = (BSCMatrix*) T_bsr->to_CSC();
     delete T_bsr;
     return T;
@@ -710,7 +710,7 @@ void COOMatrix::sort()
 }
 void BCOOMatrix::sort()
 {
-    sort_helper(this, vals);
+    sort_helper(this, block_vals);
 }
 void CSRMatrix::sort()
 {
@@ -718,7 +718,7 @@ void CSRMatrix::sort()
 }
 void BSRMatrix::sort()
 {
-    sort_helper(this, vals);
+    sort_helper(this, block_vals);
 }
 void CSCMatrix::sort()
 {
@@ -726,7 +726,7 @@ void CSCMatrix::sort()
 }
 void BSCMatrix::sort()
 {
-    sort_helper(this, vals);
+    sort_helper(this, block_vals);
 }
 
 
@@ -906,7 +906,7 @@ void COOMatrix::move_diag()
 }
 void BCOOMatrix::move_diag()
 {
-    move_diag_helper(this, vals);
+    move_diag_helper(this, block_vals);
 }
 void CSRMatrix::move_diag()
 {
@@ -914,7 +914,7 @@ void CSRMatrix::move_diag()
 }
 void BSRMatrix::move_diag()
 {
-    move_diag_helper(this, vals);
+    move_diag_helper(this, block_vals);
 }
 void CSCMatrix::move_diag()
 {
@@ -922,7 +922,7 @@ void CSCMatrix::move_diag()
 }
 void BSCMatrix::move_diag()
 {
-    move_diag_helper(this, vals);
+    move_diag_helper(this, block_vals);
 }
 
 /**************************************************************
@@ -1111,7 +1111,7 @@ void COOMatrix::remove_duplicates()
 }
 void BCOOMatrix::remove_duplicates()
 {
-    remove_duplicates_helper(this, vals);
+    remove_duplicates_helper(this, block_vals);
 }
 void CSRMatrix::remove_duplicates()
 {
@@ -1119,7 +1119,7 @@ void CSRMatrix::remove_duplicates()
 }
 void BSRMatrix::remove_duplicates()
 {
-    remove_duplicates_helper(this, vals);
+    remove_duplicates_helper(this, block_vals);
 }
 void CSCMatrix::remove_duplicates()
 {
@@ -1127,7 +1127,7 @@ void CSCMatrix::remove_duplicates()
 }
 void BSCMatrix::remove_duplicates()
 {
-    remove_duplicates_helper(this, vals);
+    remove_duplicates_helper(this, block_vals);
 }
 
 /**************************************************************
@@ -1158,7 +1158,7 @@ CSRMatrix* BCOOMatrix::to_CSR()
     A->b_rows = b_rows;
     A->b_cols = b_cols;
     A->b_size = b_size;
-    COO_to_CSR(this, A, vals, A->vals);
+    COO_to_CSR(this, A, block_vals, A->block_vals);
     return A;
 }
 
@@ -1174,7 +1174,7 @@ CSCMatrix* BCOOMatrix::to_CSC()
     A->b_rows = b_rows;
     A->b_cols = b_cols;
     A->b_size = b_size;
-    COO_to_CSC(this, A, vals, A->vals);
+    COO_to_CSC(this, A, block_vals, A->block_vals);
     return A;
 }
 
@@ -1190,7 +1190,7 @@ COOMatrix* BSRMatrix::to_COO()
     A->b_rows = b_rows;
     A->b_cols = b_cols;
     A->b_size = b_size;
-    CSR_to_COO(this, A, vals, A->vals);
+    CSR_to_COO(this, A, block_vals, A->block_vals);
     return A;
 }
 
@@ -1215,7 +1215,7 @@ CSCMatrix* BSRMatrix::to_CSC()
     A->b_rows = b_rows;
     A->b_cols = b_cols;
     A->b_size = b_size;
-    CSR_to_CSC(this, A, vals, A->vals);
+    CSR_to_CSC(this, A, block_vals, A->block_vals);
     return A;
 }
 
@@ -1231,7 +1231,7 @@ COOMatrix* BSCMatrix::to_COO()
     A->b_rows = b_rows;
     A->b_cols = b_cols;
     A->b_size = b_size;
-    CSC_to_COO(this, A, vals, A->vals);
+    CSC_to_COO(this, A, block_vals, A->block_vals);
     return A;
 }
 
@@ -1247,7 +1247,7 @@ CSRMatrix* BSCMatrix::to_CSR()
     A->b_rows = b_rows;
     A->b_cols = b_cols;
     A->b_size = b_size;
-    CSC_to_CSR(this, A, vals, A->vals);
+    CSC_to_CSR(this, A, block_vals, A->block_vals);
     return A;
 }
 CSCMatrix* CSCMatrix::to_CSC()
@@ -1271,7 +1271,7 @@ BCOOMatrix* BCOOMatrix::copy()
     A->b_rows = b_rows;
     A->b_cols = b_cols;
     A->b_size = b_size;
-    COO_to_COO(this, A, vals, A->vals);
+    COO_to_COO(this, A, block_vals, A->block_vals);
     return A;
 }
 CSRMatrix* CSRMatrix::copy()
@@ -1286,7 +1286,7 @@ BSRMatrix* BSRMatrix::copy()
     A->b_rows = b_rows;
     A->b_cols = b_cols;
     A->b_size = b_size;
-    CSR_to_CSR(this, A, vals, A->vals);
+    CSR_to_CSR(this, A, block_vals, A->block_vals);
     return A;
 }
 CSCMatrix* CSCMatrix::copy()
@@ -1301,7 +1301,7 @@ BSCMatrix* BSCMatrix::copy()
     A->b_rows = b_rows;
     A->b_cols = b_cols;
     A->b_size = b_size;
-    CSC_to_CSC(this, A, vals, A->vals);
+    CSC_to_CSC(this, A, block_vals, A->block_vals);
     return A;
 }
 
