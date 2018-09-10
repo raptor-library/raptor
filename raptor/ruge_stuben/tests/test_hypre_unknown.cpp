@@ -150,7 +150,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     compare(P, P_hyp);
 
     ParCSRMatrix* APtmp = A->mult(P);
-    ParCSCMatrix* Pcsc = new ParCSCMatrix(P);
+    ParCSCMatrix* Pcsc = P->to_ParCSC();
     ParCSRMatrix* Ac = APtmp->mult_T(Pcsc);
     delete APtmp;
     delete Pcsc;

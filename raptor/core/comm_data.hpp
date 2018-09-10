@@ -71,6 +71,9 @@ public:
         if (num_msgs)
         {
             requests.resize(num_msgs);
+	}
+	if (size_msgs)
+	{
             buffer.resize(size_msgs);
             int_buffer.resize(size_msgs);
         }
@@ -126,6 +129,8 @@ public:
     template <typename T>
     void recv(int key, MPI_Comm mpi_comm, const int block_size = 1)
     {
+	if (num_msgs == 0) return;
+
         int proc, start, end, size, pos;
         int flat_size = size_msgs * block_size;
         MPI_Datatype datatype = get_type<T>();
@@ -161,6 +166,8 @@ public:
 
     void recv(CSRMatrix* recv_mat, int key, MPI_Comm mpi_comm, const int block_size = 1)
     {
+	if (num_msgs == 0) return;
+
         int proc, start, end, size;
         int ctr, row_size, row_count;
         int count;
@@ -200,6 +207,8 @@ public:
 
     void recv_sparsity(CSRMatrix* recv_mat, int key, MPI_Comm mpi_comm, const int block_size = 1)
     {
+	if (num_msgs == 0) return;
+
         int proc, start, end, size;
         int ctr, row_size, row_count;
         int count;
@@ -254,6 +263,8 @@ public:
     template <typename T>
     void unpack(aligned_vector<T>& buffer, MPI_Comm mpi_comm, const int block_size = 1)
     {
+	if (num_msgs == 0) return;
+
         int position = 0;
         int flat_size = size_msgs * block_size;
         if (buffer.size() < flat_size) buffer.resize(flat_size);
@@ -392,6 +403,8 @@ public:
             std::function<T(T, T)> init_result_func = &sum_func<T, T>,
             T init_result_func_val = 0)
     {
+	if (num_msgs == 0) return;
+
         MPI_Datatype datatype = get_type<T>();
 
         int start, end;
@@ -425,6 +438,12 @@ public:
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size = 1)
     {
+	if (num_msgs == 0)
+	{
+		*n_send_ptr = 0;
+		return;
+	}
+
         int n_sends;
         int proc, start, end;
         int idx, size;
@@ -482,6 +501,8 @@ public:
             int key, MPI_Comm mpi_comm, 
             const int block_size = 1)
     {
+	if (num_msgs == 0) return;
+
         int start, end, proc;
         int ctr, prev_ctr, size;
         int row, row_start, row_end;
@@ -526,6 +547,8 @@ public:
             const int* col_indices,
             int key, MPI_Comm mpi_comm, const int block_size = 1)
     {
+	if (num_msgs == 0) return;
+
         int start, end, proc;
         int ctr, prev_ctr, size;
         int row, row_start, row_end;
@@ -586,6 +609,13 @@ public:
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
    {
+	if (num_msgs == 0)
+	{
+		*s_recv_ptr = 0;
+		*n_recv_ptr = 0;
+		return;
+	}
+
         int n_recvs, ctr, prev_ctr;
         int proc, start, end;
         int idx, size, pos;
@@ -768,6 +798,8 @@ public:
             std::function<T(T, T)> init_result_func = &sum_func<T, T>,
             T init_result_func_val = 0)
     {
+	if (num_msgs == 0) return;
+
         MPI_Datatype datatype = get_type<T>();
 
         int start, end;
@@ -804,6 +836,12 @@ public:
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size = 1)
     {
+	if (num_msgs == 0)
+	{
+		*n_send_ptr = 0;
+		return;
+	}
+
         int n_sends;
         int proc, start, end;
         int idx, size;
@@ -863,6 +901,8 @@ public:
             int key, MPI_Comm mpi_comm, 
             const int block_size = 1)
     {
+	if (num_msgs == 0) return;
+
         int start, end, proc;
         int ctr, prev_ctr, size;
         int row, row_start, row_end;
@@ -908,6 +948,8 @@ public:
             const int* col_indices,
             int key, MPI_Comm mpi_comm, const int block_size = 1)
     {
+	if (num_msgs == 0) return;
+
         int start, end, proc;
         int ctr, prev_ctr, size;
         int row, row_start, row_end;
@@ -969,6 +1011,13 @@ public:
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
    {
+	if (num_msgs == 0)
+	{
+		*s_recv_ptr = 0;
+		*n_recv_ptr = 0;
+		return;
+	}
+
          int n_recvs, ctr, prev_ctr;
         int proc, start, end;
         int idx, size, pos;
@@ -1120,6 +1169,8 @@ public:
             std::function<T(T, T)> init_result_func = &sum_func<T, T>,
             T init_result_func_val = 0)
     {
+	if (num_msgs == 0) return;
+
         MPI_Datatype datatype = get_type<T>();
 
         int start, end;
@@ -1178,6 +1229,8 @@ public:
             int key, MPI_Comm mpi_comm, 
             const int block_size = 1)
     {
+	if (num_msgs == 0) return;
+
         int start, end, proc;
         int ctr, prev_ctr, size;
         int row, row_start, row_end;
@@ -1255,6 +1308,8 @@ public:
             const int* col_indices,
             int key, MPI_Comm mpi_comm, const int block_size = 1)
     {
+	if (num_msgs == 0) return;
+
         int start, end, proc;
         int ctr, prev_ctr, size;
         int row, row_start, row_end;
