@@ -25,9 +25,26 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap, data_t* comm_t)
     }
     else
     {
-        Partition* part = new Partition(partition, B->partition);
-        C = new ParCSRMatrix(part);
-        part->num_shared = 0;
+        if (partition->global_num_rows == B->partition->global_num_rows &&
+            partition->local_num_rows == B->partition->local_num_rows &&
+            partition->first_local_row == B->partition->first_local_row &&
+            partition->last_local_row == B->partition->last_local_row)
+        {
+            C = new ParCSRMatrix(B->partition);
+        }
+        else if (partition->global_num_cols == B->partition->global_num_cols &&
+            partition->local_num_cols == B->partition->local_num_cols &&
+            partition->first_local_col == partition->first_local_col &&
+            partition->last_local_col == partition->last_local_col)
+        {
+            C = new ParCSRMatrix(partition);
+        }
+	else
+	{
+            Partition* part = new Partition(partition, B->partition);
+            C = new ParCSRMatrix(part);
+            part->num_shared = 0;
+	}
     }
 
     // Communicate data and multiply
@@ -58,9 +75,26 @@ ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B, data_t* comm_t)
     }
     else
     {
-        Partition* part = new Partition(partition, B->partition);
-        C = new ParCSRMatrix(part);
-        part->num_shared = 0;
+        if (partition->global_num_rows == B->partition->global_num_rows &&
+            partition->local_num_rows == B->partition->local_num_rows &&
+            partition->first_local_row == B->partition->first_local_row &&
+            partition->last_local_row == B->partition->last_local_row)
+        {
+            C = new ParCSRMatrix(B->partition);
+        }
+        else if (partition->global_num_cols == B->partition->global_num_cols &&
+            partition->local_num_cols == B->partition->local_num_cols &&
+            partition->first_local_col == partition->first_local_col &&
+            partition->last_local_col == partition->last_local_col)
+        {
+            C = new ParCSRMatrix(partition);
+        }
+	else
+	{
+            Partition* part = new Partition(partition, B->partition);
+            C = new ParCSRMatrix(part);
+            part->num_shared = 0;
+	}
     }
 
     // Communicate data and multiply
@@ -114,9 +148,26 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap, data_t* comm_t)
     }
     else
     {
-        Partition* part = new Partition(partition, A->partition);
-        C = new ParCSRMatrix(part);
-        part->num_shared = 0;
+        if (partition->global_num_rows == A->partition->global_num_rows &&
+            partition->local_num_rows == A->partition->local_num_rows &&
+            partition->first_local_row == A->partition->first_local_row &&
+            partition->last_local_row == A->partition->last_local_row)
+        {
+            C = new ParCSRMatrix(A->partition);
+        }
+        else if (partition->global_num_cols == A->partition->global_num_cols &&
+            partition->local_num_cols == A->partition->local_num_cols &&
+            partition->first_local_col == partition->first_local_col &&
+            partition->last_local_col == partition->last_local_col)
+        {
+            C = new ParCSRMatrix(partition);
+        }
+	else
+	{
+            Partition* part = new Partition(partition, A->partition);
+            C = new ParCSRMatrix(part);
+            part->num_shared = 0;
+	}
     }
 
     CSRMatrix* Ctmp = mult_T_partial(A);
@@ -185,9 +236,26 @@ ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A, data_t* comm_t)
     }
     else
     {
-        Partition* part = new Partition(partition, A->partition);
-        C = new ParCSRMatrix(part);
-        part->num_shared = 0;
+        if (partition->global_num_rows == A->partition->global_num_rows &&
+            partition->local_num_rows == A->partition->local_num_rows &&
+            partition->first_local_row == A->partition->first_local_row &&
+            partition->last_local_row == A->partition->last_local_row)
+        {
+            C = new ParCSRMatrix(A->partition);
+        }
+        else if (partition->global_num_cols == A->partition->global_num_cols &&
+            partition->local_num_cols == A->partition->local_num_cols &&
+            partition->first_local_col == partition->first_local_col &&
+            partition->last_local_col == partition->last_local_col)
+        {
+            C = new ParCSRMatrix(partition);
+        }
+	else
+	{
+            Partition* part = new Partition(partition, A->partition);
+            C = new ParCSRMatrix(part);
+            part->num_shared = 0;
+	}
     }
 
     CSRMatrix* Ctmp = mult_T_partial(A);
@@ -492,6 +560,7 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
         *it = global_to_C[*it];
     }
 
+    recv_off->n_cols = C->off_proc_num_cols;
     CSRMatrix* C_off_on = off_proc->mult_T((CSCMatrix*) P->on_proc, 
             map_to_C.data());
     C_off_on->add_append(recv_off, (CSRMatrix*) C->off_proc);

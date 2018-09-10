@@ -84,7 +84,7 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
 
     int nrows = A_array[0]->global_num_rows;
     int level = 0;
-    while (nrows > 50)
+  //  while (nrows > 50)
     {
         ParCSRMatrix* Al = A_array[level];
 
@@ -117,7 +117,8 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
 
         // SpGEMM (Form Ac)
         ParCSRMatrix* APl = Al->mult(Pl);
-        ParCSCMatrix* Pcsc = new ParCSCMatrix(Pl);
+	ParCSCMatrix* Pcsc = Pl->to_ParCSC();
+	APl->comm = new ParComm(APl->partition, APl->off_proc_column_map, APl->on_proc_column_map);
         ParCSRMatrix* Ac = APl->mult_T(Pcsc);
         Ac->comm = new ParComm(Ac->partition, Ac->off_proc_column_map, Ac->on_proc_column_map);
         A_array.push_back(Ac);
@@ -136,10 +137,9 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
         hypre_ParCSRMatrixDestroy(P_hyp);
         hypre_ParCSRMatrixDestroy(S_hyp);
 
-
-        delete Sl;
         delete APl;
         delete Pcsc;
+        delete Sl;
     }
     hypre_ParCSRMatrixDestroy(Ac_hyp);
 

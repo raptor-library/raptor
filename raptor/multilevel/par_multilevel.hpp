@@ -10,7 +10,6 @@
 #include "util/linalg/par_relax.hpp"
 #include "ruge_stuben/par_interpolation.hpp"
 #include "ruge_stuben/par_cf_splitting.hpp"
-#include "multilevel/par_sparsify.hpp"
 
 #ifdef USING_HYPRE
 #include "_hypre_utilities.h"
