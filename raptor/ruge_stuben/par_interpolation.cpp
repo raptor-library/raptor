@@ -4,6 +4,9 @@
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 
+// This method needs Selected to be 1 and Unselected to be 0 (subtracts the two
+// at times)
+//
 using namespace raptor;
 
 // TODO -- if in S, col is positive, otherwise col is -(col+1)
@@ -34,7 +37,7 @@ void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<int>& st
         for (int j = start; j < end; j++)
         {
             col = A->on_proc->idx2[j];
-            if (states[col] == 1)
+            if (states[col] == Selected)
             {
                 global_col = A->on_proc_column_map[col];
                 if (ctr_S < end_S && S->on_proc->idx2[ctr_S] == col)
@@ -61,11 +64,11 @@ void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<int>& st
         for (int j = start; j < end; j++)
         {
             col = A->off_proc->idx2[j];
-            if (off_proc_states[col] == -3) continue;
+            if (off_proc_states[col] == NoNeighbors) continue;
             global_col = A->off_proc_column_map[col];
             if (ctr_S < end_S && S->off_proc_column_map[S->off_proc->idx2[ctr_S]] == global_col)
             {
-                if (off_proc_states[col] == 0)
+                if (off_proc_states[col] == Unselected)
                 {
                     global_col += A->partition->global_num_cols;
                 }
@@ -74,7 +77,7 @@ void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<int>& st
             }
             else
             {
-                if (off_proc_states[col] == 0)
+                if (off_proc_states[col] == Unselected)
                 {
                     global_col += A->partition->global_num_cols;
                 }
@@ -157,7 +160,7 @@ void communicate(ParCSRMatrix* A, const aligned_vector<int>& states,
         for (int j = start; j < end; j++)
         {
             col = A->on_proc->idx2[j];
-            if (states[col] == 1)
+            if (states[col] == Selected)
             {
                 col_indices.push_back(A->on_proc_column_map[col]);
                 values.push_back(A->on_proc->vals[j]);
@@ -168,7 +171,7 @@ void communicate(ParCSRMatrix* A, const aligned_vector<int>& states,
         for (int j = start; j < end; j++)
         {
             col = A->off_proc->idx2[j];
-            if (off_proc_states[col] == 1)
+            if (off_proc_states[col] == Selected)
             {
                 col_indices.push_back(A->off_proc_column_map[col]);
                 values.push_back(A->off_proc->vals[j]);
@@ -362,7 +365,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     off_proc_cols = 0;
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
-        if (off_proc_states[i] == 1)
+        if (off_proc_states[i] == Selected)
         {
             off_proc_cols++;
             global_set.insert(S->off_proc_column_map[i]);
@@ -370,7 +373,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     }
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
-        if (off_proc_states[i] == 0)
+        if (off_proc_states[i] == Unselected)
         {
             col_A = off_proc_S_to_A[i];
             start = recv_off->idx1[col_A];
@@ -448,7 +451,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     on_proc_cols = 0;
     for (int i = 0; i < S->on_proc_num_cols; i++)
     {
-        if (states[i] == 1)
+        if (states[i] == Selected)
         {
             on_proc_cols++;
         }
@@ -460,7 +463,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
 
     for (int i = 0; i < S->on_proc_num_cols; i++)
     {
-        if (states[i] == 1)
+        if (states[i] == Selected)
         {
             on_proc_col_to_new[i] = P->on_proc_column_map.size();
             P->on_proc_column_map.push_back(S->on_proc_column_map[i]);
@@ -476,7 +479,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     ctr = 0;
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
-        if (off_proc_states[i] != 1)
+        if (off_proc_states[i] != Selected)
         {
             continue; // Only for coarse points
         }
@@ -516,9 +519,9 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     for (int i = 0; i < A->local_num_rows; i++)
     {
         // If coarse row, add to P
-        if (states[i] != 0)
+        if (states[i] != Unselected)
         {
-            if (states[i] == 1)
+            if (states[i] == Selected)
             {
                 P->on_proc->idx2.push_back(on_proc_col_to_new[i]);
                 P->on_proc->vals.push_back(1);
@@ -554,14 +557,14 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
             val = A->on_proc->vals[j];
             if (ctr < end_S && S->on_proc->idx2[ctr] == col)
             {
-                if (states[col] == 1)
+                if (states[col] == Selected)
                 {
                     pos[col] = P->on_proc->idx2.size();
                     P->on_proc->idx2.push_back(on_proc_col_to_new[col]);
                     P->on_proc->vals.push_back(val);
                     row_coarse[col] = 1;               
                 }
-                else if (states[col] == 0)
+                else if (states[col] == Unselected)
                 {
                     row_strong[col] = val;
                 }
@@ -569,7 +572,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
             }
             else if (num_variables == 1 || variables[i] == variables[col])// weak connection
             {
-                if (states[col] != -3)
+                if (states[col] != NoNeighbors)
                 {
                     weak_sum += val;
                 }
@@ -588,7 +591,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
             // If strong connection
             if (ctr < end_S && S->off_proc_column_map[S->off_proc->idx2[ctr]] == global_col)
             {
-                if (off_proc_states_A[col] == 1)
+                if (off_proc_states_A[col] == Selected)
                 {
                     col_P = off_proc_A_to_P[col];
                     off_proc_pos[col_P] = P->off_proc->idx2.size();
@@ -597,7 +600,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                     P->off_proc->vals.push_back(val);
                     off_proc_row_coarse[col_P] = 1;
                 }
-                else if (off_proc_states_A[col] == 0)
+                else if (off_proc_states_A[col] == Unselected)
                 {
                     off_proc_row_strong[col] = val;
                 }
@@ -605,7 +608,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
             }
             else if (num_variables == 1 || variables[i] == off_variables[col])
             {
-                if (off_proc_states_A[col] != -3)
+                if (off_proc_states_A[col] != NoNeighbors)
                 {
                     weak_sum += val;
                 }
@@ -618,14 +621,14 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         for (int j = start; j < end; j++)
         {
             col = S->on_proc->idx2[j];
-            if (states[col] == 0)
+            if (states[col] == Unselected)
             {
                 start_k = S->on_proc->idx1[col]+1;
                 end_k = S->on_proc->idx1[col+1];
                 for (int k = start_k; k < end_k; k++)
                 {
                     col_k = S->on_proc->idx2[k];
-                    if (states[col_k] == -3)
+                    if (states[col_k] == NoNeighbors)
                         continue;
                     row_coarse[col_k] += states[col_k];
                 }
@@ -634,7 +637,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                 for (int k = start_k; k < end_k; k++)
                 {
                     col_k = S->off_proc->idx2[k];
-                    if (off_proc_states[col_k] == 1)
+                    if (off_proc_states[col_k] == Selected)
                     {
                         col_A = off_proc_S_to_A[col_k];
                         col_P = off_proc_A_to_P[col_A];
@@ -648,7 +651,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         for (int j = start; j < end; j++)
         {
             col = S->off_proc->idx2[j];
-            if (off_proc_states[col] == 0)
+            if (off_proc_states[col] == Unselected)
             {
                 col_A = off_proc_S_to_A[col];
                 start_k = S_recv_on->idx1[col_A];
@@ -701,7 +704,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         for (int j = start; j < end; j++)
         {
             col = S->on_proc->idx2[j]; // k
-            if (states[col] == 0) // Not coarse: k in D_i^s
+            if (states[col] == Unselected) // Not coarse: k in D_i^s
             {
                 // Find sum of all coarse points in row k (with sign NOT equal to diag)
                 coarse_sum = 0;
@@ -745,7 +748,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         for (int j = start; j < end; j++)
         {
             col = off_proc_S_to_A[S->off_proc->idx2[j]];
-            if (off_proc_states_A[col] == 0) // Not Coarse
+            if (off_proc_states_A[col] == Unselected) // Not Coarse
             {
                 // Strong connection... create 
                 coarse_sum = 0;
@@ -831,7 +834,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         for (int j = start; j < end; j++)
         {
             col = S->on_proc->idx2[j]; // k
-            if (states[col] == 0) // k in F_i^S
+            if (states[col] == Unselected) // k in F_i^S
             {
                 start_k = A->on_proc->idx1[col]+1;
                 end_k = A->on_proc->idx1[col+1];
@@ -875,7 +878,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         {
             col_S = S->off_proc->idx2[j];
             col = off_proc_S_to_A[col_S];
-            if (off_proc_states_A[col] == 0)
+            if (off_proc_states_A[col] == Unselected)
             {
                 start_k = D_recv_on->idx1[col];
                 end_k = D_recv_on->idx1[col+1];
@@ -1093,14 +1096,14 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     int on_proc_cols = 0;
     for (int i = 0; i < S->on_proc_num_cols; i++)
     {
-        if (states[i] == 1)
+        if (states[i] == Selected)
         {
             on_proc_cols++;
         }
     }
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
-        if (off_proc_states[i] == 1)
+        if (off_proc_states[i] == Selected)
         {
             off_proc_cols++;
         }
@@ -1112,7 +1115,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     for (int i = 0; i < A->on_proc_num_cols; i++)
     {
-        if (states[i] == 1)
+        if (states[i] == Selected)
         {
             on_proc_col_to_new[i] = P->on_proc_column_map.size();
             P->on_proc_column_map.push_back(S->on_proc_column_map[i]);
@@ -1215,7 +1218,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     for (int i = 0; i < A->local_num_rows; i++)
     {
         // If coarse row, add to P
-        if (states[i] == 1)
+        if (states[i] == Selected)
         {
             P->on_proc->idx2.push_back(on_proc_col_to_new[i]);
             P->on_proc->vals.push_back(1);
@@ -1247,17 +1250,17 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
             val = A->on_proc->vals[j];
             if (ctr < end_S && S->on_proc->idx2[ctr] == col)
             {
-                if (states[col] == 1)
+                if (states[col] == Selected)
                 {
                     pos[col] = P->on_proc->idx2.size();
                     P->on_proc->idx2.push_back(on_proc_col_to_new[col]);
                     P->on_proc->vals.push_back(val);
                 }
 
-                if (states[col] != -3)
+                if (states[col] != NoNeighbors)
                 {
                     row_coarse[col] = states[col];
-                    row_strong[col] = (1 - states[col]) * val;
+                    row_strong[col] = (Selected - states[col]) * val;
                 }
                 ctr++;
             }
@@ -1281,17 +1284,17 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
             if (ctr < end_S && S->off_proc_column_map[S->off_proc->idx2[ctr]] == global_col)
             {
                 col_S = S->off_proc->idx2[ctr];
-                if (off_proc_states_A[col] == 1)
+                if (off_proc_states_A[col] == Selected)
                 {
                     off_proc_pos[col] = P->off_proc->idx2.size();
                     col_exists[col_S] = true;
                     P->off_proc->idx2.push_back(col_S);
                     P->off_proc->vals.push_back(val);
                 }
-                if (off_proc_states_A[col] != -3)
+                if (off_proc_states_A[col] != NoNeighbors)
                 {
                     off_proc_row_coarse[col] = off_proc_states_A[col];
-                    off_proc_row_strong[col] = (1 - off_proc_states_A[col]) * val;
+                    off_proc_row_strong[col] = (Selected - off_proc_states_A[col]) * val;
                 }
                 ctr++;
             }
@@ -1310,7 +1313,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
             col = A->on_proc->idx2[j]; // k
             if (ctr < end_S && S->on_proc->idx2[ctr] == col)
             {
-                if (states[col] == 0) // Not coarse: k in D_i^s
+                if (states[col] == Unselected) // Not coarse: k in D_i^s
                 {
                     // Find sum of all coarse points in row k (with sign NOT equal to diag)
                     coarse_sum = 0;
@@ -1360,7 +1363,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
             if (ctr < end_S && S->off_proc_column_map[S->off_proc->idx2[ctr]] 
                     == A->off_proc_column_map[col])
             {
-                if (off_proc_states_A[col] == 0) // Not Coarse
+                if (off_proc_states_A[col] == Unselected) // Not Coarse
                 {
                     // Strong connection... create 
                     coarse_sum = 0;
@@ -1407,7 +1410,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         for (int j = start; j < end; j++)
         {
             col = S->on_proc->idx2[j]; // k
-            if (states[col] == 0) // k in D_i^S
+            if (states[col] == Unselected) // k in D_i^S
             {
                 start_k = A->on_proc->idx1[col]+1;
                 end_k = A->on_proc->idx1[col+1];
@@ -1443,7 +1446,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         {
             col_S = S->off_proc->idx2[j];
             col = off_proc_S_to_A[col_S];
-            if (off_proc_states_A[col] == 0)
+            if (off_proc_states_A[col] == Unselected)
             {
                 start_k = recv_on->idx1[col];
                 end_k = recv_on->idx1[col+1];
@@ -1479,7 +1482,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         {
             col = S->on_proc->idx2[j];
             idx = pos[col];
-            if (states[col] == 1)
+            if (states[col] == Selected)
             {
                 P->on_proc->vals[idx] /= -weak_sum;
             }
@@ -1490,7 +1493,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         {
             col = off_proc_S_to_A[S->off_proc->idx2[j]];
             idx = off_proc_pos[col];
-            if (off_proc_states_A[col] == 1)
+            if (off_proc_states_A[col] == Selected)
             {
                 P->off_proc->vals[idx] /= -weak_sum;
             }
@@ -1634,14 +1637,14 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
     int on_proc_cols = 0;
     for (int i = 0; i < S->on_proc_num_cols; i++)
     {
-        if (states[i])
+        if (states[i] == Selected)
         {
             on_proc_cols++;
         }
     }
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
-        if (off_proc_states[i])
+        if (off_proc_states[i] == Selected)
         {
             off_proc_cols++;
         }
@@ -1653,7 +1656,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
 
     for (int i = 0; i < S->on_proc_num_cols; i++)
     {
-        if (states[i])
+        if (states[i] == Selected)
         {
             on_proc_col_to_new[i] = P->on_proc_column_map.size();
             P->on_proc_column_map.push_back(S->on_proc_column_map[i]);
@@ -1668,7 +1671,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
 
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        if (states[i] == 1)
+        if (states[i] == Selected)
         {
             P->on_proc->idx2.push_back(on_proc_col_to_new[i]);
             P->on_proc->vals.push_back(1);
@@ -1689,7 +1692,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
             for (int j = start; j < end; j++)
             {
                 col = S->on_proc->idx2[j]; 
-                if (states[col] == 1)
+                if (states[col] == Selected)
                 {
                     val = sa_on[j];
                     if (val < 0)
@@ -1708,7 +1711,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
             {
                 col = S->off_proc->idx2[j];
 
-                if (off_proc_states[col] == 1)
+                if (off_proc_states[col] == Selected)
                 {
                     val = sa_off[j];
                     if (val < 0)
@@ -1787,7 +1790,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
             for (int j = start; j < end; j++)
             {
                 col = S->on_proc->idx2[j];
-                if (states[col] == 1)
+                if (states[col] == Selected)
                 {
                     val = sa_on[j];
                     P->on_proc->idx2.push_back(on_proc_col_to_new[col]);
@@ -1807,7 +1810,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
             for (int j = start; j < end; j++)
             {
                 col = S->off_proc->idx2[j];
-                if (off_proc_states[col] == 1)
+                if (off_proc_states[col] == Selected)
                 {
                     val = sa_off[j];
                     col_exists[col] = true;

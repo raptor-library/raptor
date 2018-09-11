@@ -124,11 +124,11 @@ void set_initial_states(ParCSRMatrix* S, aligned_vector<int>& states)
         if (S->on_proc->idx1[i+1] - S->on_proc->idx1[i] > 1
                 || S->off_proc->idx1[i+1] - S->off_proc->idx1[i])
         {
-            states[i] = -1;
+            states[i] = Unassigned;
         }
         else
         {
-            states[i] = -3;
+            states[i] = NoNeighbors;
         }
     }
 }
@@ -153,7 +153,7 @@ void reset_boundaries(ParCSRMatrix* S, aligned_vector<int>& states)
     {
         if (boundary[i])
         {
-            states[i] = -1;
+            states[i] = Unassigned;
         }
     }
 }
@@ -332,7 +332,7 @@ void find_off_proc_weights(CommPkg* comm,
     {
         std::function<bool(int)> compare_func = [](const int a)
         {
-            return a == -1;
+            return a == Unassigned;
         };
         aligned_vector<double>& recvbuf = ((ParComm*)comm)->conditional_comm(weights, states,
                 off_proc_states, compare_func);
@@ -365,7 +365,7 @@ void find_max_off_weights(CommPkg* comm,
     }
     for (int i = 0; i < off_proc_num_cols; i++)
     {
-        if (off_proc_states[i] == -1 || first_pass)
+        if (off_proc_states[i] == Unassigned || first_pass)
         {
             max_weight = 0;
             start = off_col_ptr[i];
@@ -396,7 +396,7 @@ void find_max_off_weights(CommPkg* comm,
     {
         std::function<bool(int)> compare_func = [](const int a)
         {
-            return a == -1;
+            return a == Unassigned;
         };
         ((ParComm*)comm)->conditional_comm_T(send_weights, states, off_proc_states, 
                 compare_func, max_weights, result_max);
@@ -490,7 +490,7 @@ int select_independent_set(const ParCSRMatrix* S,
 
         // If i made it this far, weight is greater than all unassigned
         // neighbors
-        states[u] = 2;
+        states[u] = NewSelection;
         new_coarse_list[num_new_coarse++] = u;
     }
 
@@ -523,7 +523,7 @@ void update_row_weights(const ParCSRMatrix* S,
         for (int j = start; j < end; j++)
         {
             idx = S->on_proc->idx2[j];
-            if (states[idx] == -1 && on_edgemark[j])
+            if (states[idx] == Unassigned && on_edgemark[j])
             {
                 on_edgemark[j] = 0;
                 weights[idx]--;
@@ -535,7 +535,7 @@ void update_row_weights(const ParCSRMatrix* S,
         for (int j = start; j < end; j++)
         {
             idx = S->off_proc->idx2[j];
-            if (off_proc_states[idx] == -1 && off_edgemark[j])
+            if (off_proc_states[idx] == Unassigned && off_edgemark[j])
             {
                 off_edgemark[j] = 0;
                 off_proc_weight_updates[idx]--;
@@ -564,7 +564,7 @@ void update_local_dist2_weights(const ParCSRMatrix* S,
     aligned_vector<int> c_dep_cache;
     if (S->on_proc_num_cols)
     {
-        c_dep_cache.resize(S->on_proc_num_cols, -1);
+        c_dep_cache.resize(S->on_proc_num_cols, Unassigned);
     }
 
     // Update local weights based on new_coarse values
@@ -578,7 +578,7 @@ void update_local_dist2_weights(const ParCSRMatrix* S,
         for (int j = start; j < end; j++)
         {
             idx = on_col_indices[j];
-            if (states[idx] == -1)
+            if (states[idx] == Unassigned)
             {
                 c_dep_cache[idx] = c;
             }
@@ -590,7 +590,7 @@ void update_local_dist2_weights(const ParCSRMatrix* S,
         for (int j = start; j < end; j++)
         {
             idx = on_col_indices[j];
-            if (states[idx] == 1) continue;
+            if (states[idx] == Selected) continue;
 
             idx_start = S->on_proc->idx1[idx];
             idx_end = S->on_proc->idx1[idx+1];
@@ -601,7 +601,7 @@ void update_local_dist2_weights(const ParCSRMatrix* S,
             for (int k = idx_start; k < idx_end; k++)
             {
                 idx_k = S->on_proc->idx2[k];
-                if (states[idx_k] == -1 && on_edgemark[k] && c_dep_cache[idx_k] == c)
+                if (states[idx_k] == Unassigned && on_edgemark[k] && c_dep_cache[idx_k] == c)
                 {
                     on_edgemark[k] = 0;
                     weights[idx_k]--;
@@ -614,7 +614,7 @@ void update_local_dist2_weights(const ParCSRMatrix* S,
     {
         for (int i = 0; i < S->local_num_rows; i++)
         {
-            c_dep_cache[i] = -1;
+            c_dep_cache[i] = Unassigned;
         }
     }
 
@@ -629,7 +629,7 @@ void update_local_dist2_weights(const ParCSRMatrix* S,
         for (int j = start; j < end; j++)
         {
             idx = off_col_indices[j];
-            if (states[idx] == -1)
+            if (states[idx] == Unassigned)
             {
                 c_dep_cache[idx] = c;
             }
@@ -641,7 +641,7 @@ void update_local_dist2_weights(const ParCSRMatrix* S,
         for (int j = start; j < end; j++)
         {
             idx = off_col_indices[j];
-            if (states[idx] == 1) continue;
+            if (states[idx] == Selected) continue;
 
             idx_start = S->on_proc->idx1[idx];
             idx_end = S->on_proc->idx1[idx+1];
@@ -652,7 +652,7 @@ void update_local_dist2_weights(const ParCSRMatrix* S,
             for (int k = idx_start; k < idx_end; k++)
             {
                 idx_k = S->on_proc->idx2[k];
-                if (states[idx_k] == -1 && on_edgemark[k] && c_dep_cache[idx_k] == c)
+                if (states[idx_k] == Unassigned && on_edgemark[k] && c_dep_cache[idx_k] == c)
                 {
                     on_edgemark[k] = 0;
                     weights[idx_k]--;
@@ -696,7 +696,7 @@ void update_off_proc_dist2_weights(const ParCSRMatrix* S,
     aligned_vector<int> c_dep_cache;
     if (S->off_proc_num_cols)
     {
-        c_dep_cache.resize(S->off_proc_num_cols, -1);
+        c_dep_cache.resize(S->off_proc_num_cols, Unassigned);
     }
 
     // Map global off_proc columns to local indices
@@ -811,7 +811,7 @@ void update_off_proc_dist2_weights(const ParCSRMatrix* S,
         for (int j = start; j < end; j++)
         {
             idx = on_indices[j];
-            if (off_proc_states[idx] == -1)
+            if (off_proc_states[idx] == Unassigned)
             {
                 c_dep_cache[idx] = c;
             }
@@ -830,7 +830,7 @@ void update_off_proc_dist2_weights(const ParCSRMatrix* S,
             for (int k = idx_start; k < idx_end; k++)
             {
                 idx_k = S->off_proc->idx2[k];
-                if (off_proc_states[idx_k] == -1 && off_edgemark[k] 
+                if (off_proc_states[idx_k] == Unassigned && off_edgemark[k] 
                         && c_dep_cache[idx_k] == c)
                 {
                     off_edgemark[k] = 0;
@@ -842,7 +842,7 @@ void update_off_proc_dist2_weights(const ParCSRMatrix* S,
 
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
-        c_dep_cache[i] = -1;
+        c_dep_cache[i] = Unassigned;
     }
 
     // Go through off_proc coarse columns
@@ -856,7 +856,7 @@ void update_off_proc_dist2_weights(const ParCSRMatrix* S,
         for (int j = start; j < end; j++)
         {
             idx = off_indices[j];
-            if (off_proc_states[idx] == -1)
+            if (off_proc_states[idx] == Unassigned)
             {
                 c_dep_cache[idx] = c;
             }
@@ -875,7 +875,7 @@ void update_off_proc_dist2_weights(const ParCSRMatrix* S,
             for (int k = idx_start; k < idx_end; k++)
             {
                 idx_k = S->off_proc->idx2[k];
-                if (off_proc_states[idx_k] == -1 && off_edgemark[k]
+                if (off_proc_states[idx_k] == Unassigned && off_edgemark[k]
                         && c_dep_cache[idx_k] == c)
                 {
                     off_edgemark[k] = 0;
@@ -901,7 +901,7 @@ int find_off_proc_states(CommPkg* comm,
         for (int i = 0; i < off_proc_num_cols; i++)
         {
             new_state = recvbuf[i];
-            if (new_state == 2)
+            if (new_state == NewSelection)
             {
                 num_new_coarse++;
             }
@@ -913,15 +913,15 @@ int find_off_proc_states(CommPkg* comm,
         aligned_vector<int>& recvbuf = ((ParComm*)comm)->conditional_comm(states, states, 
                 off_proc_states, [&](const int a)
                 {
-                    return a == -1 || a == 2 || a == 3;
+                    return a == Unassigned || a > Selected;
                 });
 
         for (int i = 0; i < off_proc_num_cols; i++)
         {
-            if (off_proc_states[i] == -1)
+            if (off_proc_states[i] == Unassigned)
             {
                 new_state = recvbuf[i];
-                if (new_state == 2)
+                if (new_state == NewSelection)
                 {
                     num_new_coarse++;
                 }
@@ -982,7 +982,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
             for (int j = start; j < end; j++)
             {
                 idx = S->on_proc->idx2[j];
-                if (states[idx] == 2)
+                if (states[idx] == NewSelection)
                 {
                     send_buffer.push_back(S->on_proc_column_map[idx]);
                 }
@@ -992,7 +992,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
             for (int j = start; j < end; j++)
             {
                 idx = S->off_proc->idx2[j];
-                if (off_proc_states[idx] == 2)
+                if (off_proc_states[idx] == NewSelection)
                 {
                     send_buffer.push_back(S->off_proc_column_map[idx]);
                 }
@@ -1048,7 +1048,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
             for (int j = start; j < end; j++)
             {
                 idx = S->comm->send_data->indices[j];
-                if (states[idx] == -1)
+                if (states[idx] == Unassigned)
                 {
                     // Assuming num coarse in row is zero, 
                     // but will update later
@@ -1065,7 +1065,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
                     for (int k = idx_start; k < idx_end; k++)
                     {
                         idx_k = S->on_proc->idx2[k];
-                        if (states[idx_k] == 2)
+                        if (states[idx_k] == NewSelection)
                         {
                             // New coarse, so add global idx to buffer
                             send_buffer.push_back(S->on_proc_column_map[idx_k]);
@@ -1076,7 +1076,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
                     for (int k = idx_start; k < idx_end; k++)
                     {
                         idx_k = S->off_proc->idx2[k];
-                        if (off_proc_states[idx_k] == 2)
+                        if (off_proc_states[idx_k] == NewSelection)
                         {
                             // New coarse, so add global idx to buffer
                             send_buffer.push_back(S->off_proc_column_map[idx_k]);
@@ -1116,7 +1116,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
 
             for (int j = start; j < end; j++)
             {
-                if (off_proc_states[j] == -1)
+                if (off_proc_states[j] == Unassigned)
                 {
                     msg_avail = true;
                     break;
@@ -1137,7 +1137,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
             ctr = 0;
             for (int j = start; j < end; j++)
             {
-                if (off_proc_states[j] == -1)
+                if (off_proc_states[j] == Unassigned)
                 {
                     size = recv_buffer[ctr++];
                     for (int k = 0; k < size; k++)
@@ -1192,7 +1192,7 @@ void combine_weight_updates(CommPkg* comm,
     {
         std::function<bool(int)> compare_func = [](const int a)
         {
-            return a == -1;
+            return a == Unassigned;
         };        
         ((ParComm*)comm)->conditional_comm_T(off_proc_weight_updates, states, 
                 off_proc_states, compare_func, weights, result_func);
@@ -1209,15 +1209,15 @@ int update_states(aligned_vector<double>& weights,
     for (int i = 0; i < remaining; i++)
     {
         u = unassigned[i];
-        if (states[u] == 2)
+        if (states[u] == NewSelection)
         {
             weights[u] = 0.0;
-            states[u] = 1;
+            states[u] = Selected;
         }
-        else if (weights[u] < 1.0 || states[u] == 3)
+        else if (weights[u] < 1.0 || states[u] == NewUnselection)
         {
             weights[u] = 0.0;
-            states[u] = 0;
+            states[u] = Unselected;
         }
         else
         {
@@ -1279,28 +1279,28 @@ void pmis_main_loop(ParCSRMatrix* S,
 
     for (int i = 0; i < S->on_proc_num_cols; i++)
     {
-        if (states[i] == 1)
+        if (states[i] == Selected)
         {
             start = on_col_ptr[i];
             end = on_col_ptr[i+1];
             for (int j = start; j < end; j++)
             {
                 row = on_col_indices[j];
-                if (states[row] == -1)
+                if (states[row] == Unassigned)
                 {
-                    states[row] = 0;
+                    states[row] = Unselected;
                 }
             }
         }
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        if (states[i] == -1 && weights[i] < 1)
+        if (states[i] == Unassigned && weights[i] < 1)
         {
-            states[i] = 0;
+            states[i] = Unselected;
 	        weights[i] = 0.0;
         }
-        else if (states[i] == -1)
+        else if (states[i] == Unassigned)
         {
             unassigned[num_remaining++] = i;
         }
@@ -1318,7 +1318,7 @@ void pmis_main_loop(ParCSRMatrix* S,
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
         off_proc_states[i] = recvbuf[i];
-        if (off_proc_states[i] == -1)
+        if (off_proc_states[i] == Unassigned)
         {
             unassigned_off[num_remaining_off++] = i;
         }
@@ -1358,25 +1358,25 @@ void pmis_main_loop(ParCSRMatrix* S,
             for (int j = start; j < end; j++)
             {
                 row = on_col_indices[j];
-                if (states[row] == -1)
+                if (states[row] == Unassigned)
                 {
-                    states[row] = 3;
+                    states[row] = NewUnselection;
                 }
             }
         }
         for (int i = 0; i < num_remaining_off; i++)
         {
             idx = unassigned_off[i];
-            if (off_proc_states[idx] == 2)
+            if (off_proc_states[idx] == NewSelection)
             {
                 start = off_col_ptr[idx];
                 end = off_col_ptr[idx+1];
                 for (int j = start; j < end; j++)
                 {
                     row = off_col_indices[j];
-                    if (states[row] == -1)
+                    if (states[row] == Unassigned)
                     {
-                        states[row] = 3;
+                        states[row] = NewUnselection;
                     }
                 }
             }       
@@ -1494,7 +1494,7 @@ void cljp_main_loop(ParCSRMatrix* S,
     num_new_coarse = 0;
     for (int i = 0; i < S->on_proc_num_cols; i++)
     {
-        if (states[i] == -1)
+        if (states[i] == Unassigned)
         {
             unassigned[remaining++] = i;
         }
@@ -1502,7 +1502,7 @@ void cljp_main_loop(ParCSRMatrix* S,
 	    {
             weights[i] = 0.0;
             
-            if (states[i] == 1)
+            if (states[i] == Selected)
             {
                 new_coarse_list[num_new_coarse++] = i;
             }
@@ -1531,7 +1531,7 @@ void cljp_main_loop(ParCSRMatrix* S,
 
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
-        if (off_proc_states[i] == -1)
+        if (off_proc_states[i] == Unassigned)
         {
             unassigned_off[off_remaining++] = i;
         }
@@ -1558,7 +1558,7 @@ void cljp_main_loop(ParCSRMatrix* S,
         if (comm_t) *comm_t += MPI_Wtime();
 
         /**********************************************
-        * Select independent set: all indices with
+        * Selectedt independent set: all indices with
         * maximum weight among unassigned neighbors
         **********************************************/
         num_new_coarse = select_independent_set(S, remaining, unassigned,
@@ -1574,7 +1574,7 @@ void cljp_main_loop(ParCSRMatrix* S,
         ctr = 0;
         for (int i = 0; i < S->off_proc_num_cols; i++)
         {
-            if (off_proc_states[i] == 2)
+            if (off_proc_states[i] == NewSelection)
             {
                 off_new_coarse_list[ctr++] = i;
             }

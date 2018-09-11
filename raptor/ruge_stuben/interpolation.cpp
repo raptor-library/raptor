@@ -46,7 +46,7 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
     ctr = 0;
     for (int i = 0; i < A->n_cols; i++)
     {
-        if (states[i])
+        if (states[i] == Selected)
         {
             col_to_new[i] = ctr++;
         }
@@ -59,7 +59,7 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
     P->idx1[0] = 0;
     for (int i = 0; i < A->n_rows; i++)
     {
-        if (states[i] == 1)
+        if (states[i] == Selected)
         {
             P->idx2.push_back(i);
             P->vals.push_back(1.0);
@@ -97,14 +97,14 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
             val = A->vals[j];
             if (ctr < endS && S->idx2[ctr] == col) // Strong
             {
-                if (states[col] == 1)
+                if (states[col] == Selected)
                 {
                     pos[col] = P->idx2.size();
                     P->idx2.push_back(col);
                     P->vals.push_back(val);
                     row_coarse[col] = 1;
                 }
-                else if (states[col] == 0)
+                else if (states[col] == Unselected)
                 {
                     row_strong[col] = val;
                 }
@@ -113,7 +113,7 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
             }
             else if (num_variables == 1 || variables[i] == variables[col]) // Weak
             {
-                if (states[col] != -3)
+                if (states[col] != NoNeighbors)
                 {
                     weak_sum += val;
                 }
@@ -123,7 +123,7 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
         for (int j = startS; j < endS; j++)
         {
             col = S->idx2[j];
-            if (states[col] == 0)
+            if (states[col] == Unselected)
             {
                 // Add distance-2
                 start_k = S->idx1[col]+1;
@@ -131,7 +131,7 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
                 for (int k = start_k; k < end_k; k++)
                 {
                     col_k = S->idx2[k];
-                    if (states[col_k] == 1 && row_coarse[col_k] == 0)
+                    if (states[col_k] == Selected && row_coarse[col_k] == 0)
                     {
                         pos[col_k] = P->idx2.size();
                         P->idx2.push_back(col_k);
@@ -151,7 +151,7 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
             col = A->idx2[j];
             if (ctr < endS && S->idx2[ctr] == col)
             {
-                if (states[col] == 0) // k in F^s
+                if (states[col] == Unselected) // k in F^s
                 {
                     coarse_sum = 0;
                     start_k = A->idx1[col] + 1;
@@ -183,7 +183,7 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
         for (int j = startS; j < endS; j++)
         {
             col = S->idx2[j];
-            if (states[col] == 0)
+            if (states[col] == Unselected)
             {
                 start_k = A->idx1[col]+1;
                 end_k = A->idx1[col+1];
@@ -264,7 +264,7 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A, CSRMatrix* S,
     ctr = 0;
     for (int i = 0; i < A->n_cols; i++)
     {
-        if (states[i])
+        if (states[i] == Selected)
         {
             col_to_new[i] = ctr++;
         }
@@ -277,7 +277,7 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A, CSRMatrix* S,
     P->idx1[0] = 0;
     for (int i = 0; i < A->n_rows; i++)
     {
-        if (states[i] == 1)
+        if (states[i] == Selected)
         {
             P->idx2.push_back(col_to_new[i]);
             P->vals.push_back(1.0);
@@ -309,17 +309,17 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A, CSRMatrix* S,
             val = A->vals[j];
             if (ctr < endS && S->idx2[ctr] == col) // Strong
             {
-                if (states[col] == 1)
+                if (states[col] == Selected)
                 {
                     pos[col] = P->idx2.size();
                     P->idx2.push_back(col_to_new[col]);
                     P->vals.push_back(val);
                 }
                 
-                if (states[col] != -3)
+                if (states[col] != NoNeighbors)
                 {
                     row_coarse[col] = states[col];
-                    row_strong[col] = (1 - states[col]) * val;
+                    row_strong[col] = (Selected - states[col]) * val;
                 }
                 ctr++;
             }
@@ -336,7 +336,7 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A, CSRMatrix* S,
             col = A->idx2[j];
             if (ctr < endS && S->idx2[ctr] == col)
             {
-                if (states[col] == 0)
+                if (states[col] == Unselected)
                 {
                     coarse_sum = 0;
                     start_k = A->idx1[col] + 1;
@@ -368,7 +368,7 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A, CSRMatrix* S,
         for (int j = startS; j < endS; j++)
         {
             col = S->idx2[j];
-            if (states[col] == 0)
+            if (states[col] == Unselected)
             {
                 start_k = A->idx1[col]+1;
                 end_k = A->idx1[col+1];
@@ -389,7 +389,7 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A, CSRMatrix* S,
         {
             col = S->idx2[j];
             idx = pos[col];
-            if (states[col] == 1)
+            if (states[col] == Selected)
             {
                 P->vals[idx] /= -weak_sum;
             }
@@ -456,7 +456,7 @@ CSRMatrix* direct_interpolation(CSRMatrix* A,
     ctr = 0;
     for (int i = 0; i < A->n_cols; i++)
     {
-        if (states[i])
+        if (states[i] == Selected)
         {
             col_to_new[i] = ctr++;
         }
@@ -467,7 +467,7 @@ CSRMatrix* direct_interpolation(CSRMatrix* A,
     P->idx1[0] = 0;
     for (int i = 0; i < A->n_rows; i++)
     {
-        if (states[i] == 1)
+        if (states[i] == Selected)
         {
             P->idx2.push_back(col_to_new[i]);
             P->vals.push_back(1);
@@ -488,7 +488,7 @@ CSRMatrix* direct_interpolation(CSRMatrix* A,
             for (int j = start; j < end; j++)
             {
                 col = S->idx2[j];
-                if (states[col] == 1)
+                if (states[col] == Selected)
                 {
                     val = sa[j];
                     if (val < 0)
@@ -542,7 +542,7 @@ CSRMatrix* direct_interpolation(CSRMatrix* A,
             for (int j = start; j < end; j++)
             {
                 col = S->idx2[j];
-                if (states[col] == 1)
+                if (states[col] == Selected)
                 {
                     val = sa[j];
                     P->idx2.push_back(col_to_new[col]);

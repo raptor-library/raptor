@@ -27,6 +27,16 @@ using namespace std;
 #define MPI_INDEX_T MPI_INT
 #define MPI_DATA_T MPI_DOUBLE
 
+// Defines for CF splitting and aggregation
+#define TmpSelection 4
+#define NewSelection 3
+#define NewUnselection 2
+#define Selected 1
+#define Unselected 0
+#define Unassigned -1
+#define NoNeighbors -2
+
+
 #ifdef WITH_MPI
 #include <mpi.h>
 #endif

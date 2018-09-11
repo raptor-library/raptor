@@ -78,7 +78,7 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
         {
             aggregates[i] = - A->partition->global_num_rows;
         }
-        else if (states[i] > 0)
+        else if (states[i] == Selected)
         {
             aggregates[i] = S->on_proc_column_map[i];
             n_aggs++;
@@ -97,7 +97,7 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
     // Pass 1 : add each node to neighboring aggregate
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        if (states[i] > 0) continue;
+        if (states[i] == Selected) continue;
 
         start = S->on_proc->idx1[i];
         end = S->on_proc->idx1[i+1];
@@ -105,7 +105,7 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
         {
             col = S->on_proc->idx2[j];
 
-            if (states[col] > 0 && aggregates[col] >= 0)
+            if (states[col] == Selected && aggregates[col] >= 0)
             {
                 aggregates[i] = aggregates[col]; // global col
                 break;
@@ -118,7 +118,7 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
             for (j = start; j < end; j++)
             {
                 col = S->off_proc->idx2[j];
-                if (off_proc_states[col] > 0 && off_proc_aggregates[col] >= 0)
+                if (off_proc_states[col] == Selected && off_proc_aggregates[col] >= 0)
                 {
                     aggregates[i] = off_proc_aggregates[col]; // global col
                     break;
