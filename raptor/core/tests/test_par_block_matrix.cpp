@@ -27,7 +27,6 @@ void compare_vals(CSRMatrix* A, BSRMatrix* B)
                 {
                     if (fabs(val[k*B->b_cols + l]) > zero_tol)
                         ASSERT_NEAR(val[k*B->b_cols + l], A->vals[ctr++], 1e-10);
-
                 }
             }
         }
@@ -50,6 +49,8 @@ TEST(ParBlockMatrixTest, TestsInCore)
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+    setenv("PPN", "4", 1);
 
     int start, end, pos;
     int col, prev_col, block_col;
@@ -129,9 +130,11 @@ TEST(ParBlockMatrixTest, TestsInCore)
     for (int i = 0; i < A->local_num_rows; i++)
         ASSERT_NEAR(tmp[i], b[i], 1e-10);
 
-
     delete A;
     delete A_bsr;
+
+    setenv("PPN", "16", 1);
+    
 
 } // end of TEST(MatrixTest, TestsInCore) //
 

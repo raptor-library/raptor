@@ -263,7 +263,7 @@ public:
     template <typename T>
     void unpack(aligned_vector<T>& buffer, MPI_Comm mpi_comm, const int block_size = 1)
     {
-	if (num_msgs == 0) return;
+        if (num_msgs == 0) return;
 
         int position = 0;
         int flat_size = size_msgs * block_size;
@@ -403,7 +403,7 @@ public:
             std::function<T(T, T)> init_result_func = &sum_func<T, T>,
             T init_result_func_val = 0)
     {
-	if (num_msgs == 0) return;
+        if (num_msgs == 0) return;
 
         MPI_Datatype datatype = get_type<T>();
 
@@ -424,8 +424,8 @@ public:
             proc = procs[i];
             start = indptr[i];
             end = indptr[i+1];
-            MPI_Pack(&(values[start]), (end - start) * block_size, datatype,
-                    buf_ptr, size, &pos, mpi_comm);
+            MPI_Pack(&values[start * block_size], (end - start) * block_size,
+                    datatype, buf_ptr, size, &pos, mpi_comm);
             MPI_Isend(&(buf_ptr[prev_pos]), pos - prev_pos, MPI_PACKED, proc, 
                     key, mpi_comm, &(requests[i]));
             prev_pos = pos;
