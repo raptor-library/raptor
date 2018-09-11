@@ -104,7 +104,7 @@ void ParMatrix::mult_T(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
         return;
     }
 
-    int idx;
+    int idx, pos;
 
     // Check that communication package has been initialized
     if (comm == NULL)
@@ -112,8 +112,8 @@ void ParMatrix::mult_T(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
         comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
     }
 
-    aligned_vector<double>& x_tmp = comm->recv_data->buffer;
-    if (x_tmp.size() < comm->recv_data->size_msgs * off_proc->b_cols)
+    aligned_vector<double>& x_tmp = comm->get_buffer<double>();
+    if (x_tmp.size() <= comm->recv_data->size_msgs * off_proc->b_cols)
         x_tmp.resize(comm->recv_data->size_msgs * off_proc->b_cols);
 
     off_proc->mult_T(x.local, x_tmp);
@@ -128,19 +128,8 @@ void ParMatrix::mult_T(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
     }
 
     if (comm_t) *comm_t -= MPI_Wtime();
-    comm->complete_comm_T<double>(off_proc->b_cols);
+    comm->complete_comm_T<double>(b.local.values, off_proc->b_cols);
     if (comm_t) *comm_t += MPI_Wtime();
-
-    // Append b.local (add recvd values)
-    aligned_vector<double>& b_tmp = comm->send_data->buffer;
-    for (int i = 0; i < comm->send_data->size_msgs; i++)
-    {
-        idx = comm->send_data->indices[i] * off_proc->b_cols;
-        for (int j = 0; j < off_proc->b_cols; j++)
-        {
-            b.local[idx + j] += b_tmp[i*off_proc->b_cols + j];
-        }
-    } 
 }
 
 void ParMatrix::tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t)
@@ -154,6 +143,8 @@ void ParMatrix::tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t)
     }
 
     aligned_vector<double>& x_tmp = tap_comm->get_buffer<double>();
+    if (x_tmp.size() < tap_comm->recv_size * off_proc->b_cols)
+        x_tmp.resize(tap_comm->recv_size * off_proc->b_cols);
 
     off_proc->mult_T(x.local, x_tmp);
 
@@ -167,40 +158,8 @@ void ParMatrix::tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t)
     }
 
     if (comm_t) *comm_t -= MPI_Wtime();
-    tap_comm->complete_comm_T<double>(off_proc->b_cols);
+    tap_comm->complete_comm_T<double>(b.local.values, off_proc->b_cols);
     if (comm_t) *comm_t += MPI_Wtime();
-
-    // Append b.local (add recvd values)
-    aligned_vector<double>& L_tmp = tap_comm->local_L_par_comm->send_data->buffer;
-    for (int i = 0; i < tap_comm->local_L_par_comm->send_data->size_msgs; i++)
-    {
-        idx = tap_comm->local_L_par_comm->send_data->indices[i] * off_proc->b_cols;
-        pos = i * off_proc->b_cols;
-        for (int j = 0; j < off_proc->b_cols; j++)
-        {
-            b.local[idx + j] += L_tmp[pos + j];
-        }
-    }
-
-    ParComm* final_comm;
-    if (tap_comm->local_S_par_comm)
-    {
-        final_comm = tap_comm->local_S_par_comm;
-    }
-    else
-    {
-        final_comm = tap_comm->global_par_comm;
-    }
-    aligned_vector<double>& final_tmp = final_comm->send_data->buffer;
-    for (int i = 0; i < final_comm->send_data->size_msgs; i++)
-    {
-        idx = final_comm->send_data->indices[i] * off_proc->b_cols;
-        pos = i * off_proc->b_cols;
-        for (int j = 0; j < off_proc->b_cols; j++)
-        {
-            b.local[idx + j] += final_tmp[pos + j];
-        }
-    }
 }
 
 void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap,
