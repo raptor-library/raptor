@@ -28,6 +28,7 @@ add_feature_info(ptscotch WITH_PTSCOTCH "Enable PTScotch Partitioning")
 include(options)
 include(testing)
 include(source)
+SET(MPIRUN "")
 
 #add_feature_info(mpi WITH_MPI "Compile with MPI")
 #include(cxx11)
@@ -35,9 +36,10 @@ include(source)
 
 if (WITH_MPI)
 #    include(mpi_config)
-add_definitions ( -DUSING_MPI )
+    add_definitions ( -DUSING_MPI )
     find_package(MPI REQUIRED)
     include_directories(${MPI_INCLUDE_PATH})
+    SET(MPIRUN mpirun)
 endif (WITH_MPI)
 
 include_directories("external")
@@ -51,6 +53,7 @@ SET(PTSCOTCH_DIR "" CACHE STRING "Directory of mfem")
 
 if (CRAYXE)
     set(EXTERNAL_LIBS "")
+    set(MPIRUN aprun)
 elseif (BGQ)
     find_library(LAPACK_LIB NAMES liblapack lapack HINTS
         "/soft/libraries/alcf/current/xl/LAPACK/lib")
