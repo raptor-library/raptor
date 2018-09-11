@@ -31,9 +31,9 @@ if (WITH_MPI)
         
     add_executable(test_par_block_matrix test_par_block_matrix.cpp)
     target_link_libraries(test_par_block_matrix raptor ${MPI_LIBRARIES} googletest pthread )
-#    add_test(ParBlockMatrixTest ${MPIRUN} -n 1 ./test_par_block_matrix)
-#    add_test(ParBlockMatrixTest ${MPIRUN} -n 4 ./test_par_block_matrix)
-#    add_test(ParBlockMatrixTest ${MPIRUN} -n 16 ./test_par_block_matrix)
+    add_test(ParBlockMatrixTest ${MPIRUN} -n 1 ./test_par_block_matrix)
+    add_test(ParBlockMatrixTest ${MPIRUN} -n 4 ./test_par_block_matrix)
+    add_test(ParBlockMatrixTest ${MPIRUN} -n 16 ./test_par_block_matrix)
 
 endif ()
 
