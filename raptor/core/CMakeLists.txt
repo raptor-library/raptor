@@ -38,6 +38,7 @@ set(core_HEADERS
     core/types.hpp
     core/vector.hpp
     core/matrix.hpp
+    core/utilities.hpp
     ${par_core_HEADERS}
     PARENT_SCOPE
     )

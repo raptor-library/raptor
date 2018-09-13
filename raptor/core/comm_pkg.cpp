@@ -261,7 +261,7 @@ CSRMatrix* communication_helper(const int* rowptr,
     // Don't know number of columns, but does not matter (CSR)
     CSRMatrix* recv_mat = new CSRMatrix(recv_comm->size_msgs, -1);
 
-    aligned_vector<PairData> send_buffer;
+    aligned_vector<char> send_buffer;
     send_comm->send(send_buffer, rowptr, col_indices, values,
             key, mpi_comm, block_size);
     recv_comm->recv(recv_mat, key, mpi_comm, block_size);
@@ -280,9 +280,10 @@ CSRMatrix* communication_helper(const int* rowptr,
     // Don't know number of columns, but does not matter (CSR)
     CSRMatrix* recv_mat = new CSRMatrix(recv_comm->size_msgs, -1);
 
-    aligned_vector<int> send_buffer;
-    send_comm->send_sparsity(send_buffer, rowptr, col_indices, key, mpi_comm, block_size); 
-    recv_comm->recv_sparsity(recv_mat, key, mpi_comm, block_size);
+    aligned_vector<char> send_buffer;
+    double* vals = NULL;
+    send_comm->send(send_buffer, rowptr, col_indices, vals, key, mpi_comm, block_size); 
+    recv_comm->recv(recv_mat, key, mpi_comm, block_size, false);
     if (send_comm->num_msgs)
         MPI_Waitall(send_comm->num_msgs, send_comm->requests.data(),
                 MPI_STATUSES_IGNORE);

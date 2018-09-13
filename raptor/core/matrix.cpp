@@ -2,6 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "core/matrix.hpp"
+#include "core/utilities.hpp"
 
 using namespace raptor;
 
@@ -492,40 +493,7 @@ void sort_helper(COOMatrix* A, aligned_vector<T>& vals)
         return;
     }
 
-    int k, prev_k;
-
-    aligned_vector<int> permutation(A->nnz);
-    aligned_vector<bool> done(A->nnz, false);
-
-    // Create permutation vector p
-    std::iota(permutation.begin(), permutation.end(), 0);
-    std::sort(permutation.begin(), permutation.end(),
-        [&](int i, int j){ 
-            if (A->idx1[i] == A->idx1[j])
-                return A->idx2[i] < A->idx2[j];
-            else
-                return A->idx1[i] < A->idx1[j];
-        });
-
-    // Permute all vectors (rows, cols, data) 
-    // according to p
-    for (int i = 0; i < A->nnz; i++)
-    {
-        if (done[i]) continue;
-
-        done[i] = true;
-        prev_k = i;
-        k = permutation[i];
-        while (i != k)
-        {
-            std::swap(A->idx1[prev_k], A->idx1[k]);
-            std::swap(A->idx2[prev_k], A->idx2[k]);
-            std::swap(vals[prev_k], vals[k]);
-            done[k] = true;
-            prev_k = k;
-            k = permutation[k];
-        }
-    }
+    vec_sort(A->idx1, A->idx2, vals);
 
     A->sorted = true;
     A->diag_first = false;
@@ -536,16 +504,12 @@ template <typename T>
 void sort_helper(CSRMatrix* A, aligned_vector<T>& vals)
 {
     int start, end, row_size;
-    int k, prev_k;
 
     if (A->sorted || A->nnz == 0)
     {
         A->sorted = true;
         return;
     }
-
-    aligned_vector<int> permutation;
-    aligned_vector<bool> done;
 
     // Sort the columns of each row (and data accordingly) and remove
     // duplicates (summing values together)
@@ -559,59 +523,10 @@ void sort_helper(CSRMatrix* A, aligned_vector<T>& vals)
             continue;
         }
 
-        // Create permutation vector p for row
-        permutation.resize(row_size);
-        std::iota(permutation.begin(), permutation.end(), 0);
-        std::sort(permutation.begin(), permutation.end(),
-                [&](int i, int j)
-                { 
-                    return A->idx2[i+start] < A->idx2[j+start];
-                });
-
-
-        // Permute columns and data according to p
-        done.resize(row_size);
-        for (int i = 0; i < row_size; i++)
-        {
-            done[i] = false;
-        }
         if (A->data_size())
-        {
-            for (int i = 0; i < row_size; i++)
-            {
-                if (done[i]) continue;
-
-                done[i] = true;
-                prev_k = i;
-                k = permutation[i];
-                while (i != k)
-                {
-                    std::swap(A->idx2[prev_k + start], A->idx2[k + start]);
-                    std::swap(vals[prev_k + start], vals[k + start]);
-                    done[k] = true;
-                    prev_k = k;
-                    k = permutation[k];
-                }
-            }
-        }
+            vec_sort(A->idx2, vals, start, end);
         else
-        {
-            for (int i = 0; i < row_size; i++)
-            {
-                if (done[i]) continue;
-
-                done[i] = true;
-                prev_k = i;
-                k = permutation[i];
-                while (i != k)
-                {
-                    std::swap(A->idx2[prev_k + start], A->idx2[k + start]);
-                    done[k] = true;
-                    prev_k = k;
-                    k = permutation[k];
-                }
-            }
-        }
+            std::sort(A->idx2.begin() + start, A->idx2.begin() + end);
     }
 
     A->sorted = true;
@@ -622,16 +537,12 @@ template <typename T>
 void sort_helper(CSCMatrix* A, aligned_vector<T>& vals)
 {
     int start, end, col_size;
-    int k, prev_k;
 
     if (A->sorted || A->nnz == 0)
     {
         A->sorted = true;
         return;
     }
-
-    aligned_vector<int> permutation;
-    aligned_vector<bool> done;
 
     // Sort the columns of each col (and data accordingly) and remove
     // duplicates (summing values together)
@@ -645,59 +556,10 @@ void sort_helper(CSCMatrix* A, aligned_vector<T>& vals)
             continue;
         }
 
-        // Create permutation vector p for col
-        permutation.resize(col_size);
-        std::iota(permutation.begin(), permutation.end(), 0);
-        std::sort(permutation.begin(), permutation.end(),
-                [&](int i, int j)
-                { 
-                    return A->idx2[i+start] < A->idx2[j+start];
-                });
-
-
-        // Permute columns and data according to p
-        done.resize(col_size);
-        for (int i = 0; i < col_size; i++)
-        {
-            done[i] = false;
-        }
         if (A->data_size())
-        {
-            for (int i = 0; i < col_size; i++)
-            {
-                if (done[i]) continue;
-
-                done[i] = true;
-                prev_k = i;
-                k = permutation[i];
-                while (i != k)
-                {
-                    std::swap(A->idx2[prev_k + start], A->idx2[k + start]);
-                    std::swap(vals[prev_k + start], vals[k + start]);
-                    done[k] = true;
-                    prev_k = k;
-                    k = permutation[k];
-                }
-            }
-        }
+            vec_sort(A->idx2, vals, start, end);
         else
-        {
-            for (int i = 0; i < col_size; i++)
-            {
-                if (done[i]) continue;
-
-                done[i] = true;
-                prev_k = i;
-                k = permutation[i];
-                while (i != k)
-                {
-                    std::swap(A->idx2[prev_k + start], A->idx2[k + start]);
-                    done[k] = true;
-                    prev_k = k;
-                    k = permutation[k];
-                }
-            }
-        }
+            std::sort(A->idx2.begin() + start, A->idx2.begin() + end);
     }
 
     A->sorted = true;

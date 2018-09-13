@@ -9,6 +9,7 @@
 #include "types.hpp"
 #include "vector.hpp"
 #include "matrix.hpp"
+#include "utilities.hpp"
 
 /**************************************************************
  *****   CommData Class
@@ -114,22 +115,24 @@ public:
             int* n_send_ptr, const int block_size) = 0;
 
 
-    virtual void send(aligned_vector<PairData>& send_buffer,
+    virtual void send(aligned_vector<char>& send_buffer,
             const int* rowptr, 
             const int* col_indices,
             const double* values, 
             int key, MPI_Comm mpi_comm, 
             const int block_size = 1) = 0;
-    virtual void send_sparsity(aligned_vector<int>& send_buffer, 
+    virtual void send(aligned_vector<char>& send_buffer,
             const int* rowptr, 
             const int* col_indices,
-            int key, MPI_Comm mpi_comm, const int block_size = 1) = 0;
+            const double** values, 
+            int key, MPI_Comm mpi_comm, 
+            const int block_size = 1) = 0;
 
 
     template <typename T>
     void recv(int key, MPI_Comm mpi_comm, const int block_size = 1)
     {
-	if (num_msgs == 0) return;
+        if (num_msgs == 0) return;
 
         int proc, start, end, size, pos;
         int flat_size = size_msgs * block_size;
@@ -164,16 +167,18 @@ public:
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1) = 0;
 
-    void recv(CSRMatrix* recv_mat, int key, MPI_Comm mpi_comm, const int block_size = 1)
+    void recv(CSRMatrix* recv_mat, int key, MPI_Comm mpi_comm, const int block_size = 1,
+            const bool vals = true)
     {
-	if (num_msgs == 0) return;
+        if (num_msgs == 0) return;
 
         int proc, start, end, size;
         int ctr, row_size, row_count;
-        int count;
+        int count, recv_size;
         MPI_Status recv_status;
-        aligned_vector<PairData> recv_buffer;
+        aligned_vector<char> recv_buffer;
 
+        recv_size = 0;
         row_count = 0;
         for (int i = 0; i < num_msgs; i++)
         {
@@ -181,70 +186,58 @@ public:
             start = indptr[i];
             end = indptr[i+1];
             size = end - start;
+            
+            // Recv message of any size from proc
             MPI_Probe(proc, key, mpi_comm, &recv_status);
-            MPI_Get_count(&recv_status, MPI_DOUBLE_INT, &count);
+            MPI_Get_count(&recv_status, MPI_PACKED, &count);
+
+            // Resize recv_buffer as needed
             if (count > recv_buffer.size())
             {
                 recv_buffer.resize(count);
             }
-            MPI_Recv(&(recv_buffer[0]), count, MPI_DOUBLE_INT, proc, key,
+            MPI_Recv(&(recv_buffer[0]), count, MPI_PACKED, proc, key,
                     mpi_comm, &recv_status);
+
+            // Go through recv, adding indices to matrix recv_mat
             ctr = 0;
             for (int j = 0; j < size; j++)
             {
-                row_size = recv_buffer[ctr++].index;
-                recv_mat->idx1[row_count + 1] = recv_mat->idx1[row_count] + row_size;
+                MPI_Unpack(recv_buffer.data(), count, &ctr, &row_size, 1, MPI_INT,
+                        mpi_comm);
+                recv_mat->idx1[row_count + 1] = recv_size + row_size;
                 row_count++;
-                for (int k = 0; k < row_size; k++)
+                recv_mat->idx2.resize(recv_size + row_size);
+                MPI_Unpack(recv_buffer.data(), count, &ctr, &recv_mat->idx2[recv_size],
+                        row_size, MPI_INT, mpi_comm);
+                
+                if (vals)
                 {
-                    recv_mat->idx2.push_back(recv_buffer[ctr].index);
-                    recv_mat->vals.push_back(recv_buffer[ctr++].val);
+                    if (block_size > 1)
+                    {
+                        BSRMatrix* recv_mat_bsr = (BSRMatrix*) recv_mat;
+                        recv_mat_bsr->block_vals.resize(recv_size + row_size);
+                        for (int i = 0; i < row_size; i++)
+                        {
+                            recv_mat_bsr->block_vals[i] = new double[block_size];
+                            MPI_Unpack(recv_buffer.data(), count, &ctr, recv_mat_bsr->block_vals[i],
+                                    block_size, MPI_DOUBLE, mpi_comm);
+                        }
+                    }
+                    else
+                    {
+                        recv_mat->vals.resize(recv_size + row_size);
+                        MPI_Unpack(recv_buffer.data(), count, &ctr, &recv_mat->vals[recv_size],
+                                row_size, MPI_DOUBLE, mpi_comm);
+                    }
                 }
+                recv_size += row_size;
             }
         }
         recv_mat->nnz = recv_mat->idx2.size();
     }
 
-    void recv_sparsity(CSRMatrix* recv_mat, int key, MPI_Comm mpi_comm, const int block_size = 1)
-    {
-	if (num_msgs == 0) return;
-
-        int proc, start, end, size;
-        int ctr, row_size, row_count;
-        int count;
-        MPI_Status recv_status;
-        aligned_vector<int> recv_buffer;
-
-        row_count = 0;
-        for (int i = 0; i < num_msgs; i++)
-        {
-            proc = procs[i];
-            start = indptr[i];
-            end = indptr[i+1];
-            size = end - start;
-            MPI_Probe(proc, key, mpi_comm, &recv_status);
-            MPI_Get_count(&recv_status, MPI_INT, &count);
-            if (count > recv_buffer.size())
-            {
-                recv_buffer.resize(count);
-            }
-            MPI_Recv(&(recv_buffer[0]), count, MPI_INT, proc, key,
-                    mpi_comm, &recv_status);
-            ctr = 0;
-            for (int j = 0; j < size; j++)
-            {
-                row_size = recv_buffer[ctr++];
-                recv_mat->idx1[row_count + 1] = recv_mat->idx1[row_count] + row_size;
-                row_count++;
-                for (int k = 0; k < row_size; k++)
-                {
-                    recv_mat->idx2.push_back(recv_buffer[ctr++]);
-                }
-            }
-        }
-        recv_mat->nnz = recv_mat->idx2.size();
-    }
-
+ 
     void waitall()
     {
         if (num_msgs)
@@ -260,6 +253,22 @@ public:
         }
     }
 
+    void pack_values(const double* values, int row_start, int size, aligned_vector<char>& send_buffer,
+           int bytes, int* ctr, MPI_Comm mpi_comm, int block_size)
+    {
+        MPI_Pack(&(values[row_start]), size, MPI_DOUBLE, send_buffer.data(), 
+                bytes, ctr, mpi_comm);
+    }
+    void pack_values(const double** values, int row_start, int size, aligned_vector<char>& send_buffer,
+            int bytes, int* ctr, MPI_Comm mpi_comm, int block_size)
+    {
+        for (int i = 0; i < size; i++)
+        {
+            MPI_Pack(values[row_start], block_size, MPI_DOUBLE, send_buffer.data(),
+                    bytes, ctr, mpi_comm);
+        }
+    }
+
     template <typename T>
     void unpack(aligned_vector<T>& buffer, MPI_Comm mpi_comm, const int block_size = 1)
     {
@@ -271,6 +280,11 @@ public:
         MPI_Datatype datatype = get_type<T>();
         MPI_Unpack(pack_buffer.data(), pack_buffer.size(), &position,
                 buffer.data(), flat_size, datatype, mpi_comm);
+    }
+
+    void reset_buffer()
+    {
+        pack_buffer.resize(size_msgs);
     }
 
     int num_msgs;
@@ -494,97 +508,90 @@ public:
         *n_send_ptr = n_sends;
     }
 
-    void send(aligned_vector<PairData>& send_buffer,
+    void send(aligned_vector<char>& send_buffer,
             const int* rowptr, 
             const int* col_indices,
             const double* values, 
             int key, MPI_Comm mpi_comm, 
             const int block_size = 1)
     {
-	if (num_msgs == 0) return;
-
-        int start, end, proc;
-        int ctr, prev_ctr, size;
-        int row, row_start, row_end;
-        int count, row_count, row_size;
-
-        aligned_vector<int> send_ptr(num_msgs+1);
-
-        // Send pair_data for each row using MPI_DOUBLE_INT
-        send_ptr[0] = 0;
-        ctr = 0;
-        for (int i = 0; i < num_msgs; i++)
-        {
-            start = indptr[i];
-            end = indptr[i+1];
-            for (int j = start; j < end; j++)
-            {
-                row = j;
-                row_start = rowptr[row];
-                row_end = rowptr[row+1];
-                send_buffer.push_back(PairData());
-                send_buffer[ctr++].index = row_end - row_start;
-                for (int k = row_start; k < row_end; k++)
-                {
-                    send_buffer.push_back(PairData());
-                    send_buffer[ctr].index = col_indices[k];
-                    send_buffer[ctr++].val = values[k];
-                }
-            }
-            send_ptr[i+1] = ctr;
-        }
-        for (int i = 0; i < num_msgs; i++)
-        {
-            proc = procs[i];
-            start = send_ptr[i];
-            end = send_ptr[i+1];
-            MPI_Isend(&(send_buffer[start]), end - start, MPI_DOUBLE_INT, proc, 
-                    key, mpi_comm, &(requests[i]));
-        }
+        send_helper(send_buffer, rowptr, col_indices, values, key,
+                mpi_comm, block_size);
     }
-    void send_sparsity(aligned_vector<int>& send_buffer, 
-            const int* rowptr, 
-            const int* col_indices,
-            int key, MPI_Comm mpi_comm, const int block_size = 1)
+
+    void send(aligned_vector<char>& send_buffer,
+        const int* rowptr,
+        const int* col_indices,
+        const double** values,
+        int key, MPI_Comm mpi_comm,
+        const int block_size = 1)     
     {
-	if (num_msgs == 0) return;
+        send_helper(send_buffer, rowptr, col_indices, values, key,
+                mpi_comm, block_size);
+    }
+
+    // values can be double* (CSRMatrix) or double** (BSRMatrix)
+    template <typename T>
+    void send_helper(aligned_vector<char>& send_buffer,
+        const int* rowptr,
+        const int* col_indices,
+        const T& values,
+        int key, MPI_Comm mpi_comm,
+        const int block_size = 1)
+    {   
+        if (num_msgs == 0) return;
 
         int start, end, proc;
         int ctr, prev_ctr, size;
-        int row, row_start, row_end;
-        int count, row_count, row_size;
+        int row_start, row_end;
+        int num_ints, num_doubles;
+        int double_bytes, bytes;
 
-        aligned_vector<int> send_ptr(num_msgs+1);
+        // Calculate total msg size
+        start = indptr[0];
+        end = indptr[num_msgs];
+        row_start = rowptr[start];
+        row_end = rowptr[end];
+        num_ints = (row_end - row_start) + (end - start);
+        num_doubles = (row_end - row_start) * block_size;
+        MPI_Pack_size(num_ints, MPI_INT, mpi_comm, &bytes);
+
+        if (values)
+        {
+            MPI_Pack_size(num_doubles, MPI_DOUBLE, mpi_comm, &double_bytes);
+            bytes += double_bytes;
+        }
+
+        // Resize buffer
+        send_buffer.resize(bytes);
 
         ctr = 0;
-        send_ptr[0] = 0;
+        prev_ctr = 0;
         for (int i = 0; i < num_msgs; i++)
         {
+            proc = procs[i];
             start = indptr[i];
             end = indptr[i+1];
             for (int j = start; j < end; j++)
             {
-                row = j;
-                row_start = rowptr[row];
-                row_end = rowptr[row+1];
-                send_buffer.push_back(row_end - row_start);
-                for (int k = row_start; k < row_end; k++)
+                row_start = rowptr[j];
+                row_end = rowptr[j+1];
+                size = row_end - row_start;
+                MPI_Pack(&size, 1, MPI_INT, send_buffer.data(), bytes, 
+                        &ctr, mpi_comm);
+                MPI_Pack(&(col_indices[row_start]), size, MPI_INT,
+                        send_buffer.data(), bytes, &ctr, mpi_comm);
+                if (values)
                 {
-                    send_buffer.push_back(col_indices[k]);
+                    pack_values(values, row_start, size, send_buffer, bytes, 
+                            &ctr, mpi_comm, block_size);
                 }
             }
-            send_ptr[i+1] = send_buffer.size();
-        }
-        for (int i = 0; i < num_msgs; i++)
-        {
-            proc = procs[i];
-            start = send_ptr[i];
-            end = send_ptr[i+1];
-            MPI_Isend(&(send_buffer[start]), end - start, MPI_INT, proc, 
+            MPI_Isend(&(send_buffer[prev_ctr]), ctr - prev_ctr, MPI_PACKED, proc, 
                     key, mpi_comm, &(requests[i]));
+            prev_ctr = ctr;
         }
-    }
-
+    } 
 
     void int_recv(int key, MPI_Comm mpi_comm, 
             const aligned_vector<int>& off_proc_states,
@@ -836,11 +843,11 @@ public:
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size = 1)
     {
-	if (num_msgs == 0)
-	{
-		*n_send_ptr = 0;
-		return;
-	}
+        if (num_msgs == 0)
+        {
+            *n_send_ptr = 0;
+            return;
+        }
 
         int n_sends;
         int proc, start, end;
@@ -894,73 +901,70 @@ public:
 
         *n_send_ptr = n_sends;
     }
-    void send(aligned_vector<PairData>& send_buffer,
+
+    void send(aligned_vector<char>& send_buffer,
             const int* rowptr, 
             const int* col_indices,
             const double* values, 
             int key, MPI_Comm mpi_comm, 
             const int block_size = 1)
     {
-	if (num_msgs == 0) return;
-
-        int start, end, proc;
-        int ctr, prev_ctr, size;
-        int row, row_start, row_end;
-        int count, row_count, row_size;
-
-        aligned_vector<int> send_ptr(num_msgs+1);
-
-        // Send pair_data for each row using MPI_DOUBLE_INT
-        send_ptr[0] = 0;
-        ctr = 0;
-        for (int i = 0; i < num_msgs; i++)
-        {
-            start = indptr[i];
-            end = indptr[i+1];
-            for (int j = start; j < end; j++)
-            {
-                row = indices[j];
-                row_start = rowptr[row];
-                row_end = rowptr[row+1];
-                send_buffer.push_back(PairData());
-                send_buffer[ctr++].index = row_end - row_start;
-                for (int k = row_start; k < row_end; k++)
-                {
-                    send_buffer.push_back(PairData());
-                    send_buffer[ctr].index = col_indices[k];
-                    send_buffer[ctr++].val = values[k];
-                }
-            }
-            send_ptr[i+1] = ctr;
-        }
-
-        for (int i = 0; i < num_msgs; i++)
-        {
-            proc = procs[i];
-            start = send_ptr[i];
-            end = send_ptr[i+1];
-            MPI_Isend(&(send_buffer[start]), end - start, MPI_DOUBLE_INT, proc, 
-                    key, mpi_comm, &(requests[i]));
-        }
+        send_helper(send_buffer, rowptr, col_indices, values, key,
+                mpi_comm, block_size);
     }
-    void send_sparsity(aligned_vector<int>& send_buffer, 
-            const int* rowptr, 
-            const int* col_indices,
-            int key, MPI_Comm mpi_comm, const int block_size = 1)
+
+    void send(aligned_vector<char>& send_buffer,
+        const int* rowptr,
+        const int* col_indices,
+        const double** values,
+        int key, MPI_Comm mpi_comm,
+        const int block_size = 1)     
     {
-	if (num_msgs == 0) return;
+        send_helper(send_buffer, rowptr, col_indices, values, key,
+                mpi_comm, block_size);
+    }
+
+    template <typename T>
+    void send_helper(aligned_vector<char>& send_buffer,
+        const int* rowptr,
+        const int* col_indices,
+        const T& values,
+        int key, MPI_Comm mpi_comm,
+        const int block_size = 1)     
+    {
+        if (num_msgs == 0) return;
 
         int start, end, proc;
         int ctr, prev_ctr, size;
         int row, row_start, row_end;
-        int count, row_count, row_size;
+        int num_ints, num_doubles;
+        int double_bytes, bytes;
 
-        aligned_vector<int> send_ptr(num_msgs+1);
+        // Calculate message size
+        num_ints = indptr[num_msgs] - indptr[0];
+        num_doubles = 0;
+        for (aligned_vector<int>::iterator it = indices.begin();
+                it != indices.end(); ++it)
+        {
+            num_doubles += (rowptr[*it+1] - rowptr[*it]);
+        }
+        num_ints += num_doubles;
+        MPI_Pack_size(num_ints, MPI_INT, mpi_comm, &bytes);
+
+        if (values)
+        {
+            MPI_Pack_size(num_doubles * block_size, MPI_DOUBLE, mpi_comm, &double_bytes);
+            bytes += double_bytes;
+        }
+
+        // Resize send buffer
+        send_buffer.resize(bytes);
 
         ctr = 0;
-        send_ptr[0] = 0;
+        prev_ctr = 0;
         for (int i = 0; i < num_msgs; i++)
         {
+            proc = procs[i];
             start = indptr[i];
             end = indptr[i+1];
             for (int j = start; j < end; j++)
@@ -968,26 +972,24 @@ public:
                 row = indices[j];
                 row_start = rowptr[row];
                 row_end = rowptr[row+1];
-                send_buffer.push_back(row_end - row_start);
-                for (int k = row_start; k < row_end; k++)
-                {
-                    send_buffer.push_back(col_indices[k]);
+                size = (row_end - row_start);
+                MPI_Pack(&size, 1, MPI_INT, send_buffer.data(), bytes, 
+                        &ctr, mpi_comm);
+                MPI_Pack(&(col_indices[row_start]), size, MPI_INT, 
+                        send_buffer.data(), bytes, &ctr, mpi_comm);
+                if (values)
+                {                    
+                    pack_values(values, row_start, size, send_buffer, bytes, &ctr, 
+                            mpi_comm, block_size);
                 }
             }
-            send_ptr[i+1] = send_buffer.size();
-        }
-
-        for (int i = 0; i < num_msgs; i++)
-        {
-            proc = procs[i];
-            start = send_ptr[i];
-            end = send_ptr[i+1];
-            MPI_Isend(&(send_buffer[start]), end - start, MPI_INT, proc, 
+            MPI_Isend(&(send_buffer[prev_ctr]), ctr - prev_ctr, MPI_PACKED, proc, 
                     key, mpi_comm, &(requests[i]));
+            prev_ctr = ctr;
         }
     }
 
-
+ 
     void int_recv(int key, MPI_Comm mpi_comm, 
             const aligned_vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
@@ -1222,162 +1224,200 @@ public:
 
     }
 
-    void send(aligned_vector<PairData>& send_buffer,
+    void append_val(aligned_vector<double>& vec, const double val, int block_size)
+    {
+        vec.push_back(val);
+    }
+    void append_val(aligned_vector<double>& vec, const double* val, int block_size)
+    {
+        for (int i = 0; i < block_size; i++)
+            vec.push_back(val[i]);
+    }
+    
+    template <typename T>
+    void combine_entries(int j, const int* rowptr, const int* col_indices, 
+            const T& values, int block_size, aligned_vector<int>& send_indices, 
+            aligned_vector<double>& send_values, int* size_ptr)
+    {
+        int idx_start, idx_end;
+        int row_start, row_end;
+        int size, row, idx, ctr;
+        int pos = 0;
+
+        idx_start = indptr_T[j];
+        idx_end = indptr_T[j+1];
+        for (int k = idx_start; k < idx_end; k++)
+        {
+            row = indices[k];
+            row_start = rowptr[row];
+            row_end = rowptr[row+1];
+            for (int l = row_start; l < row_end; l++)
+            {
+                send_indices.push_back(col_indices[l]);
+                append_val(send_values, values[l], block_size);
+            }
+        }
+        if (send_indices.size())
+        {
+            vec_sort(send_indices, send_values);
+            size = 1;
+
+            for (int k = 1; k < send_indices.size(); k++)
+            {
+                ctr = k * block_size;
+                if (send_indices[k] != send_indices[size - 1])
+                {
+                    idx = size * block_size;
+                    for (int i = 0; i < block_size; i++)
+                    {
+                        send_values[idx + i] = send_values[ctr + i];
+                    }
+                    send_indices[size++] = send_indices[k];
+                }
+                else
+                {
+                    idx = (size - 1) * block_size;
+                    for (int i = 0; i < block_size; i++)
+                    {
+                        send_values[idx + i] += send_values[ctr + i];
+                    }
+                }
+            } 
+        }
+        *size_ptr = size;
+    }
+    
+    void combine_entries(int j, const int* rowptr, const int* col_indices, 
+            aligned_vector<int>& send_indices, int* size_ptr)
+    {
+        int idx_start, idx_end;
+        int row_start, row_end;
+        int size, row;
+
+        idx_start = indptr_T[j];
+        idx_end = indptr_T[j+1];
+        for (int k = idx_start; k < idx_end; k++)
+        {
+            row = indices[k];
+            row_start = rowptr[row];
+            row_end = rowptr[row+1];
+            for (int l = row_start; l < row_end; l++)
+            {
+                send_indices.push_back(col_indices[l]);
+            }
+        }
+        if (send_indices.size())
+        {
+            size = 1;
+            std::sort(send_indices.begin(), send_indices.end());
+            for (int k = 1; k < send_indices.size(); k++)
+            {
+                if (send_indices[k] != send_indices[size - 1])
+                {
+                    send_indices[size++] = send_indices[k];
+                }
+            }
+        }
+
+        *size_ptr = size;
+    }
+
+
+    // TODO -- how to communicate block matrices?
+    //
+    void send(aligned_vector<char>& send_buffer,
+            const int* rowptr, 
+            const int* col_indices,
+            const double** values, 
+            int key, MPI_Comm mpi_comm, 
+            const int block_size = 1)
+    {
+        send_helper(send_buffer, rowptr, col_indices, values, key, mpi_comm, block_size);
+    }
+    void send(aligned_vector<char>& send_buffer,
             const int* rowptr, 
             const int* col_indices,
             const double* values, 
             int key, MPI_Comm mpi_comm, 
             const int block_size = 1)
     {
-	if (num_msgs == 0) return;
-
-        int start, end, proc;
-        int ctr, prev_ctr, size;
-        int row, row_start, row_end;
-        int count, row_count, row_size;
-        int size_pos, idx_start, idx_end;
-
-        aligned_vector<int> send_ptr(num_msgs+1);
-
-        // Send pair_data for each row using MPI_DOUBLE_INT
-        send_ptr[0] = 0;
-        ctr = 0;
-        for (int i = 0; i < num_msgs; i++)
-        {
-            start = indptr[i];
-            end = indptr[i+1];
-            for (int j = start; j < end; j++)
-            {
-                size_pos = ctr;
-                send_buffer.push_back(PairData());
-                send_buffer[ctr++].index = 0;
-                idx_start = indptr_T[j];
-                idx_end = indptr_T[j+1];
-                for (int k = idx_start; k < idx_end; k++)
-                {
-                    row = indices[k];
-                    row_start = rowptr[row];
-                    row_end = rowptr[row+1];
-                    send_buffer[size_pos].index += (row_end - row_start);
-                    for (int l = row_start; l < row_end; l++)
-                    {
-                        send_buffer.push_back(PairData());
-                        send_buffer[ctr].index = col_indices[l];
-                        send_buffer[ctr++].val = values[l];
-                    }
-                }
-                if (ctr > size_pos + 1)
-                {
-                    std::sort(send_buffer.begin() + size_pos + 1, send_buffer.begin() + ctr, 
-                            [&](const PairData& lhs, const PairData& rhs)
-                            {
-                                return lhs.index < rhs.index;
-                            });
-                    int pos = size_pos + 1;
-                    for (int k = size_pos + 2; k < ctr; k++)
-                    {
-                        if (send_buffer[k].index == send_buffer[pos].index)
-                        {
-                            send_buffer[pos].val += send_buffer[k].val;
-                send_buffer[size_pos].index--;
-                        }
-                        else
-                        {
-                            pos++;
-                            send_buffer[pos].index = send_buffer[k].index;
-                            send_buffer[pos].val = send_buffer[k].val;
-                        }
-                    }
-                    ctr = pos + 1;
-                    send_buffer.resize(ctr);
-                }
-            }
-            send_ptr[i+1] = send_buffer.size();
-        }
-        for (int i = 0; i < num_msgs; i++)
-        {
-            proc = procs[i];
-            start = send_ptr[i];
-            end = send_ptr[i+1];
-            MPI_Isend(&(send_buffer[start]), end - start, MPI_DOUBLE_INT, proc, 
-                    key, mpi_comm, &(requests[i]));
-        }
+        send_helper(send_buffer, rowptr, col_indices, values, key, mpi_comm, block_size);
     }
-    void send_sparsity(aligned_vector<int>& send_buffer, 
+
+    template <typename T>
+    void send_helper(aligned_vector<char>& send_buffer,
             const int* rowptr, 
             const int* col_indices,
-            int key, MPI_Comm mpi_comm, const int block_size = 1)
+            const T& values, 
+            int key, MPI_Comm mpi_comm, 
+            const int block_size = 1)
     {
-	if (num_msgs == 0) return;
+        if (num_msgs == 0) return;
 
         int start, end, proc;
         int ctr, prev_ctr, size;
         int row, row_start, row_end;
-        int count, row_count, row_size;
-        int size_pos, idx_start, idx_end;
+        int idx_start, idx_end;
+        int num_ints, num_doubles;
+        int double_bytes, bytes;
 
-        aligned_vector<int> send_ptr(num_msgs+1);
+        // Calculate message size (upper bound)
+        num_ints = indptr[num_msgs] - indptr[0];
+        num_doubles = 0;
+        for (aligned_vector<int>::iterator it = indices.begin();
+                it != indices.end(); ++it)
+        {
+            num_doubles += (rowptr[*it+1] - rowptr[*it]);
+        }
+        num_ints += num_doubles;
+        MPI_Pack_size(num_ints, MPI_INT, mpi_comm, &bytes);
+        if (values)
+        {
+            MPI_Pack_size(num_doubles * block_size, MPI_DOUBLE, mpi_comm, &double_bytes);
+            bytes += double_bytes;
+        }
+
+        // Resize send buffer
+        send_buffer.resize(bytes);
 
         ctr = 0;
-        send_ptr[0] = 0;
+        prev_ctr = 0;
         for (int i = 0; i < num_msgs; i++)
         {
+            proc = procs[i];
             start = indptr[i];
             end = indptr[i+1];
             for (int j = start; j < end; j++)
             {
-                size_pos = ctr;
-                send_buffer.push_back(0);
-                idx_start = indptr_T[j];
-                idx_end = indptr_T[j+1];
-                for (int k = idx_start; k < idx_end; k++)
+                aligned_vector<int> send_indices;
+                aligned_vector<double> send_values;
+                
+                if (values)
                 {
-                    row = indices[k];
-                    row_start = rowptr[row];
-                    row_end = rowptr[row+1];
-                    send_buffer[size_pos] += (row_end - row_start);
-                    for (int l = row_start; l < row_end; l++)
-                    {
-                        send_buffer.push_back(col_indices[l]);
-                    }
+                    combine_entries(j, rowptr, col_indices, values, block_size,
+                            send_indices, send_values, &size);
                 }
-                if (ctr > size_pos + 1)
+                else
                 {
-                    std::sort(send_buffer.begin() + size_pos + 1, send_buffer.begin() + ctr, 
-                            [&](const int lhs, const int rhs)
-                            {
-                                return lhs < rhs;
-                            });
-                    int pos = size_pos + 1;
-                    for (int k = size_pos + 2; k < ctr; k++)
-                    {
-                        if (send_buffer[k] == send_buffer[pos])
-                        {
-                            send_buffer[size_pos]--;
-                        }
-                        else
-                        {
-                            pos++;
-                            send_buffer[pos] = send_buffer[k];
-                        }
-                    }
-                    ctr = pos + 1;
-                    send_buffer.resize(ctr);
+                    combine_entries(j, rowptr, col_indices, send_indices, &size);
+                }
+                MPI_Pack(&size, 1, MPI_INT, send_buffer.data(), bytes, &ctr, mpi_comm);
+                MPI_Pack(send_indices.data(), size, MPI_INT, send_buffer.data(),
+                    bytes, &ctr, mpi_comm);
+
+                if (values)
+                {
+                    pack_values(send_values.data(), row_start, size, send_buffer, bytes, &ctr, 
+                            mpi_comm, block_size);
                 }
             }
-            send_ptr[i+1] = send_buffer.size();
-        }
-        for (int i = 0; i < num_msgs; i++)
-        {
-            proc = procs[i];
-            start = send_ptr[i];
-            end = send_ptr[i+1];
-            MPI_Isend(&(send_buffer[start]), end - start, MPI_INT, proc, 
+            MPI_Isend(&(send_buffer[prev_ctr]), ctr - prev_ctr, MPI_PACKED, proc, 
                     key, mpi_comm, &(requests[i]));
+            prev_ctr = ctr;
         }
     }
 
-    aligned_vector<int> indptr_T;
+     aligned_vector<int> indptr_T;
 
 }; 
 
