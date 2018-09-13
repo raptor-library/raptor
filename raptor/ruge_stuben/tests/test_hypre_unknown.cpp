@@ -155,7 +155,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     delete APtmp;
     delete Pcsc;
     hypre_ParCSRMatrix* A_H;
-    hypre_BoomerAMGBuildCoarseOperatorKT(P_hyp, A_hyp, P_hyp, false, &A_H);
+    hypre_BoomerAMGBuildCoarseOperator(P_hyp, A_hyp, P_hyp,  &A_H);
     compare(Ac, A_H);
 
 

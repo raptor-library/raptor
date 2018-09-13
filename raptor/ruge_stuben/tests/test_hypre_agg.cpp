@@ -117,12 +117,12 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
 
         // SpGEMM (Form Ac)
         ParCSRMatrix* APl = Al->mult(Pl);
-	ParCSCMatrix* Pcsc = Pl->to_ParCSC();
-	APl->comm = new ParComm(APl->partition, APl->off_proc_column_map, APl->on_proc_column_map);
+	    ParCSCMatrix* Pcsc = Pl->to_ParCSC();
+	    APl->comm = new ParComm(APl->partition, APl->off_proc_column_map, APl->on_proc_column_map);
         ParCSRMatrix* Ac = APl->mult_T(Pcsc);
         Ac->comm = new ParComm(Ac->partition, Ac->off_proc_column_map, Ac->on_proc_column_map);
         A_array.push_back(Ac);
-        hypre_BoomerAMGBuildCoarseOperatorKT(P_hyp, A_hyp, P_hyp, 0, &Ac_hyp);
+        hypre_BoomerAMGBuildCoarseOperator(P_hyp, A_hyp, P_hyp, &Ac_hyp);
         compare(Ac, Ac_hyp);
                 
 

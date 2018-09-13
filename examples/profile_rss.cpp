@@ -381,7 +381,7 @@ int main(int argc, char *argv[])
         if (rank == 0) printf("TAP A mult P Time: %e\n", t0);
 
         // TIME P^T*(AP) on Level i
-        ParCSCMatrix* Pcsc = new ParCSCMatrix(Pl);
+        ParCSCMatrix* Pcsc = Pl->to_ParCSC();
         ParCSRMatrix* Actmp;
         clear_cache(cache_array);
         MPI_Barrier(MPI_COMM_WORLD);

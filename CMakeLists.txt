@@ -72,7 +72,7 @@ elseif (BGQ)
     find_library(XLSMP_LIB NAMES libxlomp_ser.a xlomp_ser HINTS
         "/soft/compilers/ibmcmp-may2016/xlsmp/bg/3.1/bglib64")
 
-    set(EXTERNAL_LIBS ${LAPACK_LIB} ${BLAS_LIB} ${ESSL_LIB} ${XLF_LIB} 
+    set(EXTERNAL_LIBS ${LAPACK_LIB} ${BLAS_LIB} ${ESSL_LIB} ${XLF_LIB}
         ${XLOPT_LIB} ${XLFMATH_LIB} ${XL_LIB} ${XLSMP_LIB})
 else()
 	find_library(LAPACK_LIB NAMES liblapack.so.3 lapack HINTS "/usr/lib/x86_64-linux-gnu/")
@@ -116,6 +116,7 @@ if(WITH_MFEM)
 		endif(HYPRE_FOUND)
 	endif(NOT HYPRE_FOUND)
 
+    add_definitions ( -DUSING_METIS )
 	find_package(Metis)
 	if(METIS_FOUND)
 		include_directories(${METIS_INCLUDE_DIRS})
@@ -127,7 +128,7 @@ if(WITH_MFEM)
 	if (MFEM_FOUND)
 		include_directories(${MFEM_INCLUDE_DIRS})
 	else()
-		message(FATAL_ERROR "Cannot find mfem. Try setting MFEM_DIR.")	
+		message(FATAL_ERROR "Cannot find mfem. Try setting MFEM_DIR.")
 	endif(MFEM_FOUND)
 endif(WITH_MFEM)
 
