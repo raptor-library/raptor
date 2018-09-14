@@ -201,7 +201,7 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
     HYPRE_BoomerAMGSetRelaxType(amg_data, 3);
     HYPRE_BoomerAMGSetNumFunctions(amg_data, num_functions);
 
-    HYPRE_BoomerAMGSetPrintLevel(amg_data, 2);
+    HYPRE_BoomerAMGSetPrintLevel(amg_data, 3);
     HYPRE_BoomerAMGSetMaxIter(amg_data, 100);
 
     // Setup AMG

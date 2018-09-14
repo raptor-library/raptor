@@ -84,7 +84,7 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
 
     int nrows = A_array[0]->global_num_rows;
     int level = 0;
-  //  while (nrows > 50)
+    while (nrows > 50)
     {
         ParCSRMatrix* Al = A_array[level];
 

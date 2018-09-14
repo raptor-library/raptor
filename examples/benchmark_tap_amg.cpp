@@ -10,6 +10,25 @@
 
 #include "raptor.hpp"
 
+
+void form_hypre_weights(double** weight_ptr, int n_rows)
+{
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    hypre_SeedRand(2747 + rank);
+    double* weights;
+    if (n_rows)
+    {
+        weights = new double[n_rows];
+        for (int i = 0; i < n_rows; i++)
+        {
+            weights[i] = hypre_Rand();
+        }
+    }
+
+    *weight_ptr = weights;
+}
+
 int main(int argc, char* argv[])
 {
     MPI_Init(&argc, &argv);
@@ -150,13 +169,56 @@ int main(int argc, char* argv[])
         x.set_const_value(0.0);
     }
 
+    // Create Hypre system
+    HYPRE_IJMatrix A_h_ij = convert(A);
+    HYPRE_IJVector x_h_ij = convert(x);
+    HYPRE_IJVector b_h_ij = convert(b);
+    hypre_ParCSRMatrix* A_h;
+    HYPRE_IJMatrixGetObject(A_h_ij, (void**) &A_h);
+    hypre_ParVector* x_h;
+    HYPRE_IJVectorGetObject(x_h_ij, (void **) &x_h);
+    hypre_ParVector* b_h;
+    HYPRE_IJVectorGetObject(b_h_ij, (void **) &b_h);
+    data_t* x_data = hypre_VectorData(hypre_ParVectorLocalVector(x_h));
+    data_t* b_data = hypre_VectorData(hypre_ParVectorLocalVector(b_h));
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        x_data[i] = x[i];
+        b_data[i] = b[i];
+    }
+
+    // Setup Hypre Hierarchy
+    int hyp_coarsen_type = 10; // HMIS
+    //int hyp_coarsen_type = 8; // PMIS
+    int hyp_interp_type = 6; // Extended
+    //int hyp_interp_type = 0; // Mod Classical
+    int p_max_elmts = 0;
+    int agg_num_levels = 0;
+    MPI_Barrier(MPI_COMM_WORLD);
+    t0 = MPI_Wtime();
+    HYPRE_Solver solver_data = hypre_create_hierarchy(A_h, x_h, b_h, 
+                                hyp_coarsen_type, hyp_interp_type, p_max_elmts, agg_num_levels, 
+                                strong_threshold);
+    tfinal = MPI_Wtime() - t0;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("HYPRE Setup Time: %e\n", t0);
+
+
+    // Solve Hypre Hierarchy
+    MPI_Barrier(MPI_COMM_WORLD);
+    t0 = MPI_Wtime();
+    HYPRE_BoomerAMGSolve(solver_data, A_h, b_h, x_h);
+    tfinal = MPI_Wtime() - t0;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("HYPRE Solve Time: %e\n", t0);
 
     // Ruge-Stuben AMG
     if (rank == 0) printf("Ruge Stuben Solver: \n");
     MPI_Barrier(MPI_COMM_WORLD);
     ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, SOR);
+    form_hypre_weights(&ml->weights, A->local_num_rows);
     ml->max_iterations = 1000;
-    ml->solve_tol = 1e-05;
+    ml->solve_tol = 1e-07;
     ml->num_variables = num_variables;
     ml->track_times = true;
     t0 = MPI_Wtime();
@@ -182,8 +244,9 @@ int main(int argc, char* argv[])
     if (rank == 0) printf("\n\nTAP Ruge Stuben Solver: \n");
     MPI_Barrier(MPI_COMM_WORLD);
     ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, SOR);
+    form_hypre_weights(&ml->weights, A->local_num_rows);
     ml->max_iterations = 1000;
-    ml->solve_tol = 1e-05;
+    ml->solve_tol = 1e-07;
     ml->num_variables = num_variables;
     ml->track_times = true;
     ml->tap_amg = 0;
@@ -210,8 +273,9 @@ int main(int argc, char* argv[])
     if (rank == 0) printf("\n\nSmoothed Aggregation Solver:\n");
     ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation, 
             Symmetric, SOR);
+    form_hypre_weights(&ml->weights, A->local_num_rows);
     ml->max_iterations = 1000;
-    ml->solve_tol = 1e-05;
+    ml->solve_tol = 1e-07;
     ml->track_times = true;
     t0 = MPI_Wtime();
     ml->setup(A);
@@ -235,8 +299,9 @@ int main(int argc, char* argv[])
     if (rank == 0) printf("\n\nTAP Smoothed Aggregation Solver:\n");
     ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation,
             Symmetric, SOR);
+    form_hypre_weights(&ml->weights, A->local_num_rows);
     ml->max_iterations = 1000;
-    ml->solve_tol = 1e-05;
+    ml->solve_tol = 1e-07;
     ml->track_times = true;
     ml->tap_amg = 0;
     t0 = MPI_Wtime();

@@ -23,26 +23,17 @@ void form_hypre_weights(double** weight_ptr, int n_rows)
 {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    double* weights = NULL;
-
+    hypre_SeedRand(2747 + rank);
+    double* weights;
     if (n_rows)
     {
         weights = new double[n_rows];
-        int seed = 2747 + rank;
-        int a = 16807;
-        int m = 2147483647;
-        int q = 127773;
-        int r = 2836;
         for (int i = 0; i < n_rows; i++)
         {
-            int high = seed / q;
-            int low = seed % q;
-            int test = a * low - r * high;
-            if (test > 0) seed = test;
-            else seed = test + m;
-            weights[i] = ((double)(seed) / m);
+            weights[i] = hypre_Rand();
         }
     }
+
     *weight_ptr = weights;
 }
 
