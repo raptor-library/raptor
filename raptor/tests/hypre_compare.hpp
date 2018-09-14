@@ -116,7 +116,7 @@ void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h)
         if (end - start)
         {
             if (diag_j[start] == i) start++;
-            qsort1(diag_j, diag_data, start, end - 1);
+            hypre_qsort1(diag_j, diag_data, start, end - 1);
         }
 
         if (offd_cols)
@@ -125,7 +125,7 @@ void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h)
             end = offd_i[i+1];
             if (end - start)
             {
-                qsort1(offd_j, offd_data, start, end - 1);
+                hypre_qsort1(offd_j, offd_data, start, end - 1);
             }
         }
     }
@@ -210,14 +210,14 @@ void compareS(ParCSRMatrix* S, hypre_ParCSRMatrix* S_h)
         end = diag_i[i+1];
         if (end - start)
         {
-            qsort0(diag_j, start, end - 1);
+            hypre_qsort0(diag_j, start, end - 1);
         }
 
         start = offd_i[i];
         end = offd_i[i+1];
         if (end - start)
         {
-            qsort0(offd_j, start, end - 1);
+            hypre_qsort0(offd_j, start, end - 1);
         }
     }
 

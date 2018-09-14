@@ -163,7 +163,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     delete P;
 
 
-    hypre_TFree(states_hypre);
+    hypre_TFree(states_hypre, HYPRE_MEMORY_HOST);
     hypre_ParCSRMatrixDestroy(S_hyp);
     delete S;
     delete[] var;
@@ -210,7 +210,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     hypre_ParCSRMatrixDestroy(P_hyp);
     delete P;
 
-    hypre_TFree(states_hypre);
+    hypre_TFree(states_hypre, HYPRE_MEMORY_HOST);
     hypre_ParCSRMatrixDestroy(S_hyp);
     delete S;
     delete[] var;

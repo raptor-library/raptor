@@ -133,7 +133,7 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
         nrows = Ac->global_num_rows;
         level++;
 
-        hypre_TFree(states_hypre);
+        hypre_TFree(states_hypre, HYPRE_MEMORY_HOST);
         hypre_ParCSRMatrixDestroy(P_hyp);
         hypre_ParCSRMatrixDestroy(S_hyp);
 

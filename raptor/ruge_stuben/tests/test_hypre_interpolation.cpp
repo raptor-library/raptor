@@ -98,7 +98,7 @@ TEST(TestHypreInterpolation, TestsInRuge_Stuben)
     hypre_ParCSRMatrixDestroy(P_hyp);
     delete P;
 
-    hypre_TFree(states_hypre);
+    hypre_TFree(states_hypre, HYPRE_MEMORY_HOST);
     HYPRE_IJMatrixDestroy(Aij);
     hypre_ParCSRMatrixDestroy(S_hyp);
     delete[] weights;
@@ -134,7 +134,7 @@ TEST(TestHypreInterpolation, TestsInRuge_Stuben)
     hypre_ParCSRMatrixDestroy(P_hyp);
     delete P;
 
-    hypre_TFree(states_hypre);
+    hypre_TFree(states_hypre, HYPRE_MEMORY_HOST);
     HYPRE_IJMatrixDestroy(Aij);
     hypre_ParCSRMatrixDestroy(S_hyp);
     delete[] weights;
