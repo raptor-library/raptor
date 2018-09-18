@@ -153,16 +153,18 @@ data_t sequential_norm(ParVector &x, index_t p){
 }
 
 
-void create_partial_inner_comm(MPI_Comm &inner_comm, ParVector &x, int &my_color, int &first_root, int &second_root, int &part_global, int contig)
+void create_partial_inner_comm(MPI_Comm &inner_comm, MPI_Comm &root_comm, double frac, ParVector &x, int &my_inner_color,
+                               int &my_root_color, int &inner_root, int &procs_in_group, int &part_global)
 {
     /*     inner_comm : MPI communicator containing the processes performing the partial inner product
+     *      root_comm : MPI communicator containing the root process for each inner_comm group
+     *           frac : fraction of processes to use in inner product calculation
      *              x : ParVector to create communicators for
-     *       my_color : 0 : process is part of first half of vector
-     *                  1 : process is part of second half of vector 
-     *     first_root : root for communicator corresponding to first half of vector
-     *    second_root : root for communicator corresponding to second half of vector
-     *         contig : 1 : use contiguous processes in inner product
-     *                  0 : use striped processes in inner product
+     * my_inner_color : corresponds to the group of processes included in each inner product
+     *  my_root_color : corresponds to processes in the root communicator
+     *     inner_root : root for each processes' inner_comm
+     * procs_in_group : average number of processes in each group - rounded up if uneven
+     *    part_global : number of values being used in the inner product
      */
 
     int rank, num_procs;
@@ -171,34 +173,29 @@ void create_partial_inner_comm(MPI_Comm &inner_comm, ParVector &x, int &my_color
 
     if (num_procs <= 1) 
     {
+       inner_comm = MPI_COMM_NULL;
+       root_comm = MPI_COMM_NULL;
        part_global = x.local_n;
        return; 
     }
 
     int inner_comm_size, recv_comm_size;
 
-    // Calculate number of processes in half inner product
-    int half_procs = num_procs / 2;
- 
-    // If the partial inner product uses contiguous processes 
-    if (contig) {
-        if (num_procs % 2 != 0) half_procs++;
+    // Calculate number of processes in group
+    procs_in_group = num_procs * frac; 
+    if (num_procs % 2) procs_in_group++;
 
-        if (rank < half_procs) my_color = 0;
-        else my_color = 1;
-        first_root = 0;
-        second_root = half_procs;    
-    
-        MPI_Comm_split(MPI_COMM_WORLD, my_color, rank, &inner_comm);
-    }
-    else {
-        if (rank % 2 == 0) my_color = 0;
-        else my_color = 1;
-        first_root = 0;
-        second_root =  1; 
-        
-        MPI_Comm_split(MPI_COMM_WORLD, my_color, rank, &inner_comm);
-    }
+    // Split into contigous groups by color and get root for each group
+    my_inner_color = rank / procs_in_group;
+    inner_root = my_inner_color * procs_in_group;
+    if (rank == inner_root) my_root_color = 0;
+    else my_root_color = 1;
+
+    // Split processes into communicators for inner products
+    MPI_Comm_split(MPI_COMM_WORLD, my_inner_color, rank, &inner_comm);
+
+    // Split processes into root communicator
+    MPI_Comm_split(MPI_COMM_WORLD, my_root_color, rank, &root_comm);
 
     // Get number of values being used in the inner product calculation
     part_global = x.local_n;
@@ -213,7 +210,6 @@ void create_partial_inner_comm(MPI_Comm &inner_comm, ParVector &x, int &my_color
 data_t half_inner(MPI_Comm &inner_comm, ParVector &x, ParVector &y, int &my_color, int send_color, int &inner_root,
                   int &recv_root, int part_global) {
     /*  inner_comm : MPI communicator containing the processes to use in the inner product 
-     *   recv_comm : MPI communicator containing the processes to receive approx inner product
      *           x : ParVector for calculating inner product
      *           y : ParVector for calculating inner product
      *    my_color : color corresponding to the procs communicator 
@@ -275,6 +271,68 @@ data_t half_inner(MPI_Comm &inner_comm, ParVector &x, ParVector &y, int &my_colo
     // Broadcast for Receiving Half
     if (my_color != send_color){
         MPI_Bcast(&inner_prod, 1, MPI_DATA_T, 0, inner_comm);
+    }
+
+    // Return partial inner_prod scaled by global percentage
+    return inner_prod;
+}
+
+/***************************************************************** 
+ Performs approximate inner product using part of the processes
+ ****************************************************************/
+data_t partial_inner(MPI_Comm &inner_comm, MPI_Comm &root_comm, ParVector &x, ParVector &y, int my_color,
+                     int send_color, int inner_root, int procs_in_group, int part_global) {
+    /*     inner_comm : MPI communicator containing the processes to use in the inner product 
+     *      root_comm : MPI communicator containing the root processes for each inner_comm communicator
+     *              x : ParVector for calculating inner product
+     *              y : ParVector for calculating inner product
+     *       my_color : color corresponding to the processes' communicator 
+     *     send_color : color calculating the inner product and sending to the other processes
+     *     inner_root : root of the processes' inner_comm
+     * procs_in_group : average number of processes in group - rounded up if uneven
+     *    part_global : number of values being used in inner product for scaling inner product accordingly
+     */
+
+    int rank, num_procs, inner_comm_size, comm_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    MPI_Request req;
+    MPI_Status stat;
+
+    data_t inner_prod = 0.0;
+
+    // Check if single process or inner_comm undefined - then default to full inner product
+    if (num_procs <= 1 || inner_comm == MPI_COMM_NULL){
+        return y.inner_product(x); 
+    }
+    
+    // Get communicator sizes
+    MPI_Comm_size(inner_comm, &inner_comm_size);
+
+    if (x.local_n != y.local_n){
+        printf("Error. Dimensions do not match.\n");
+	    exit(-1);
+    }
+
+    // Perform partial inner product - if proc belongs to inner_comm
+    // and corresponds to the half performing the inner product this iteration
+    if (my_color == send_color){
+        if (x.local_n){
+            inner_prod = x.local.inner_product(y.local);
+        }
+        if (inner_comm_size > 1) MPI_Allreduce(MPI_IN_PLACE, &inner_prod, 1, MPI_DATA_T, MPI_SUM, inner_comm);
+        // Scale inner product by global percentage before sending
+        inner_prod = ((1.0*x.global_n)/part_global) * inner_prod;
+    }
+
+    // Broadcast inner product to group roots
+    if (rank == inner_root) {
+        MPI_Bcast(&inner_prod, 1, MPI_DATA_T, send_color, root_comm);
+    }
+
+    // Broadcast from group roots to each group
+    if (my_color != send_color){
+        if (inner_comm_size > 1) MPI_Bcast(&inner_prod, 1, MPI_DATA_T, 0, inner_comm);
     }
 
     // Return partial inner_prod scaled by global percentage

@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-    MPI_Comm contig_comm, striped_comm;
+    MPI_Comm inner_comm, roots_comm; 
 
     int grid[2] = {50, 50};
     double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
@@ -27,38 +27,24 @@ int main(int argc, char* argv[])
     y.set_const_value(1.0);
 
     data_t inner;
-    int color, first_root, second_root, part_global; 
+    int color, root_color, root, procs_in_group, part_global, groups;
+    std::vector<double> fracs = {0.5, 0.333, 0.25, 0.2, 0.1};
 
-    // Contiguous Communicator
-    create_partial_inner_comm(contig_comm, x, color, first_root, second_root, part_global, 1);
+    for (int i=0; i<fracs.size(); i++) {
+        inner_comm = MPI_COMM_NULL;
+        roots_comm = MPI_COMM_NULL;
+        create_partial_inner_comm(inner_comm, roots_comm, fracs[i], x, color, root_color, root, procs_in_group, part_global);
+       
+        groups = 1 / fracs[i];
+        for (int j=0; j<groups; j++) {
+            inner = partial_inner(inner_comm, roots_comm, x, y, color, j, root, procs_in_group, part_global);
+            assert(fabs(inner - x.global_n) < 1e-01);
+            MPI_Barrier(MPI_COMM_WORLD); 
+        }
+    }
 
-    // Contiguous Tests for both halves 
-    inner = half_inner(contig_comm, x, y, color, 0, first_root, second_root, part_global);
-    assert(fabs(inner - x.global_n) < 1e-01);
-
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    inner = half_inner(contig_comm, x, y, color, 1, second_root, first_root, part_global);
-    assert(fabs(inner - x.global_n) < 1e-01);
-    
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    // Striped Communicator
-    create_partial_inner_comm(striped_comm, x, color, first_root, second_root, part_global, 0);
-    
-    // Striped Tests for both halves 
-    inner = half_inner(striped_comm, x, y, color, 0, first_root, second_root, part_global);
-    assert(fabs(inner - x.global_n) < 1e-01);
-
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    inner = half_inner(striped_comm, x, y, color, 1, second_root, first_root, part_global);
-    assert(fabs(inner - x.global_n) < 1e-01);
-    
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    MPI_Comm_free(&contig_comm);
-    MPI_Comm_free(&striped_comm);
+    MPI_Comm_free(&inner_comm);
+    MPI_Comm_free(&roots_comm);
     delete[] stencil;
     delete A;
 

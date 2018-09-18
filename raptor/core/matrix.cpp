@@ -904,29 +904,25 @@ void BSRMatrix::copy_helper(const CSRMatrix* A)
     n_rows = A->n_rows;
     n_cols = A->n_cols;
 
-<<<<<<< HEAD
     aligned_vector<double> A_dense = A->to_dense();
-=======
-    std::vector<double> A_dense = A->to_dense();
->>>>>>> Adding BSR Guide
     double block_dense[n_rows*n_cols];
 
     int block_ind, glob_i, glob_j;
     for (int k = 0; k < n_rows/b_rows; k++)
     {
         for (int w = 0; w < n_cols/b_cols; w++)
-	{
+        {
             for (int i = 0; i < b_rows; i++)
-	    {
+            {
                 for (int j = 0; j < b_cols; j++)
-		{
+                {
                     block_ind = k*n_cols/b_cols + w;
-		    glob_i = k * b_rows + i;
-		    glob_j = w * b_cols + j;
-		    block_dense[block_ind * b_size + i * b_cols + j] = A_dense[glob_i * n_cols + glob_j];
-		}
-	    }
-	}
+                    glob_i = k * b_rows + i;
+                    glob_j = w * b_cols + j;
+                    block_dense[block_ind * b_size + i * b_cols + j] = A_dense[glob_i * n_cols + glob_j];
+                }
+            }
+        }
     }
 
     const BSRMatrix* B = new BSRMatrix(n_rows, n_cols, b_rows, b_cols, block_dense);
