@@ -124,7 +124,7 @@ public:
     virtual void send(aligned_vector<char>& send_buffer,
             const int* rowptr, 
             const int* col_indices,
-            const double** values, 
+            double const* const* values, 
             int key, MPI_Comm mpi_comm, 
             const int block_size = 1) = 0;
 
@@ -219,8 +219,9 @@ public:
                         recv_mat_bsr->block_vals.resize(recv_size + row_size);
                         for (int i = 0; i < row_size; i++)
                         {
-                            recv_mat_bsr->block_vals[i] = new double[block_size];
-                            MPI_Unpack(recv_buffer.data(), count, &ctr, recv_mat_bsr->block_vals[i],
+                            recv_mat_bsr->block_vals[recv_size + i] = new double[block_size];
+                            MPI_Unpack(recv_buffer.data(), count, &ctr, 
+                                    recv_mat_bsr->block_vals[recv_size + i],
                                     block_size, MPI_DOUBLE, mpi_comm);
                         }
                     }
@@ -259,12 +260,13 @@ public:
         MPI_Pack(&(values[row_start]), size, MPI_DOUBLE, send_buffer.data(), 
                 bytes, ctr, mpi_comm);
     }
-    void pack_values(const double** values, int row_start, int size, aligned_vector<char>& send_buffer,
+    void pack_values(double const* const* values, int row_start, int size, 
+            aligned_vector<char>& send_buffer,
             int bytes, int* ctr, MPI_Comm mpi_comm, int block_size)
     {
         for (int i = 0; i < size; i++)
         {
-            MPI_Pack(values[row_start], block_size, MPI_DOUBLE, send_buffer.data(),
+            MPI_Pack(values[row_start + i], block_size, MPI_DOUBLE, send_buffer.data(),
                     bytes, ctr, mpi_comm);
         }
     }
@@ -452,11 +454,11 @@ public:
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size = 1)
     {
-	if (num_msgs == 0)
-	{
-		*n_send_ptr = 0;
-		return;
-	}
+        if (num_msgs == 0)
+        {
+            *n_send_ptr = 0;
+            return;
+        }
 
         int n_sends;
         int proc, start, end;
@@ -522,7 +524,7 @@ public:
     void send(aligned_vector<char>& send_buffer,
         const int* rowptr,
         const int* col_indices,
-        const double** values,
+        double const* const* values,
         int key, MPI_Comm mpi_comm,
         const int block_size = 1)     
     {
@@ -916,7 +918,7 @@ public:
     void send(aligned_vector<char>& send_buffer,
         const int* rowptr,
         const int* col_indices,
-        const double** values,
+        double const* const* values,
         int key, MPI_Comm mpi_comm,
         const int block_size = 1)     
     {
@@ -1328,7 +1330,7 @@ public:
     void send(aligned_vector<char>& send_buffer,
             const int* rowptr, 
             const int* col_indices,
-            const double** values, 
+            const double* values, 
             int key, MPI_Comm mpi_comm, 
             const int block_size = 1)
     {
@@ -1337,7 +1339,7 @@ public:
     void send(aligned_vector<char>& send_buffer,
             const int* rowptr, 
             const int* col_indices,
-            const double* values, 
+            double const* const* values, 
             int key, MPI_Comm mpi_comm, 
             const int block_size = 1)
     {

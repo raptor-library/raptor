@@ -30,6 +30,7 @@
 namespace raptor
 {
     class ParCSRMatrix;
+    class ParBSRMatrix;
 
     class CommPkg
     {
@@ -62,27 +63,49 @@ namespace raptor
         }
 
         // Matrix Communication
+        // TODO -- Block transpose communication
+        //      -- Should b_rows / b_cols be switched?
         virtual CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
                 const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
-                const int block_size = 1) = 0;
+                const int b_rows = 1, const int b_cols = 1, const bool has_vals = true) = 0;
+        virtual CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
+                const aligned_vector<int>& col_indices, const aligned_vector<double*>& values,
+                const int b_rows = 1, const int b_cols = 1, const bool has_vals = true) = 0;
         virtual CSRMatrix* communicate_T(const aligned_vector<int>& rowptr,
                 const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
-                const int n_result_rows, const int block_size = 1) = 0;
-        virtual CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices, const int block_size = 1) = 0;
+                const int n_result_rows, const int b_rows = 1, const int b_cols = 1,
+                const bool has_vals = true) = 0;
         virtual CSRMatrix* communicate_T(const aligned_vector<int>& rowptr,
-                const aligned_vector<int>& col_indices, const int n_result_rows,
-                const int block_size = 1) = 0;
+                const aligned_vector<int>& col_indices, const aligned_vector<double*>& values, 
+                const int n_result_rows, const int b_rows = 1, const int b_cols = 1,
+                const bool has_vals = true) = 0;
 
-        CSRMatrix* communicate(ParCSRMatrix* A, const int block_size = 1);
-        CSRMatrix* communicate(CSRMatrix* A, const int block_size = 1)
+
+        aligned_vector<double>& get_vals(CSRMatrix* A)
         {
-            return communicate(A->idx1, A->idx2, A->vals, block_size);
+            return A->vals;
         }
-        CSRMatrix* communicate_T(CSRMatrix* A, const int block_size = 1)
+        aligned_vector<double*> get_vals(BSRMatrix* A)
         {
-            return communicate_T(A->idx1, A->idx2, A->vals,
-                    A->n_rows, block_size);
+            return A->block_vals;
+        }
+
+        CSRMatrix* communicate_sparsity(ParCSRMatrix* A)
+        {
+            return communicate(A, false);
+        }
+
+        CSRMatrix* communicate(ParCSRMatrix* A, const bool has_vals = true);
+        CSRMatrix* communicate(ParBSRMatrix* A, const bool has_vals = true);
+
+        CSRMatrix* communicate(CSRMatrix* A, const int has_vals = true)
+        {
+            return communicate(A->idx1, A->idx2, get_vals(A), A->b_rows, A->b_cols, has_vals);
+        }
+        CSRMatrix* communicate_T(CSRMatrix* A, const int has_vals = true)
+        {
+            return communicate_T(A->idx1, A->idx2, get_vals(A), A->n_rows, A->b_rows, 
+                    A->b_cols, has_vals);
         }
 
         // Vector Communication
@@ -410,80 +433,6 @@ namespace raptor
             {
                 send_data->indices[i] -= partition->first_local_col;
             }
-            /*if (recv_data->size_msgs)
-            {
-                tmp_send_buffer.resize(recv_data->size_msgs);
-            }
-
-            if (comm_t) *comm_t -= MPI_Wtime();
-
-            for (int i = 0; i < recv_data->num_msgs; i++)
-            {
-                proc = recv_data->procs[i];
-                send_start = recv_data->indptr[i];
-                send_end = recv_data->indptr[i+1];
-                for (int j = send_start; j < send_end; j++)
-                {
-                    tmp_send_buffer[j] = off_proc_column_map[j];
-                }
-                MPI_Issend(&(tmp_send_buffer[send_start]), send_end - send_start, MPI_INT, 
-                        proc, tag, comm, &(recv_data->requests[i]));
-            }
-
-            // Determine which processes to which I send messages,
-            // and what vector indices to send to each.
-            // Receive any messages, regardless of source (which is unknown)
-            int finished, msg_avail;
-            MPI_Request barrier_request;
-	        if (recv_data->num_msgs)
-	        {
-            	MPI_Testall(recv_data->num_msgs, recv_data->requests.data(), &finished,
-                        MPI_STATUSES_IGNORE);
-                while (!finished)
-                {
-                    MPI_Iprobe(MPI_ANY_SOURCE, tag, comm, &msg_avail, &recv_status);
-                    if (msg_avail)
-                    {
-                        MPI_Get_count(&recv_status, MPI_INT, &count);
-                        proc = recv_status.MPI_SOURCE;
-                        int recvbuf[count];
-                        MPI_Recv(recvbuf, count, MPI_INT, proc, tag, comm, &recv_status);
-                        for (int i = 0; i < count; i++)
-                        {
-                            recvbuf[i] -= partition->first_local_col;
-                        }
-                        send_data->add_msg(proc, count, recvbuf);
-                    }
-                    MPI_Testall(recv_data->num_msgs, recv_data->requests.data(), &finished,
-                            MPI_STATUSES_IGNORE);
-                }
-	        }
-            MPI_Ibarrier(comm, &barrier_request);
-            MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
-            while (!finished)
-            {
-                MPI_Iprobe(MPI_ANY_SOURCE, tag, comm, &msg_avail, &recv_status);
-                if (msg_avail)
-                {
-                    MPI_Get_count(&recv_status, MPI_INT, &count);
-                    proc = recv_status.MPI_SOURCE;
-                    int recvbuf[count];
-                    MPI_Recv(recvbuf, count, MPI_INT, proc, tag, comm, &recv_status);
-                    for (int i = 0; i < count; i++)
-                    {
-                        recvbuf[i] -= partition->first_local_col;
-                    }
-                    send_data->add_msg(proc, count, recvbuf);
-                }
-                MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
-            }
-
-            if (comm_t) *comm_t += MPI_Wtime();
-
-            if (send_data->num_msgs)
-            {
-                send_data->finalize();
-            }*/
         }
 
         ParComm(ParComm* comm) : CommPkg(comm->topology)
@@ -912,26 +861,34 @@ namespace raptor
         // Matrix Communication
         CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
                 const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
-                const int block_size = 1);
+                const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
+        CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
+                const aligned_vector<int>& col_indices, const aligned_vector<double*>& values,
+                const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
         CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
                 const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
-                const int n_result_rows, const int block_size = 1);
-        CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices, const int block_size = 1);
+                const int n_result_rows, const int b_rows = 1, const int b_cols = 1, 
+                const bool has_vals = true);
         CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices, const int n_result_rows,
-                const int block_size = 1);
-        CSRMatrix* communicate(ParCSRMatrix* A, const int block_size = 1)
+                const aligned_vector<int>& col_indices, const aligned_vector<double*>& values, 
+                const int n_result_rows, const int b_rows = 1, const int b_cols = 1, 
+                const bool has_vals = true);
+
+        CSRMatrix* communicate(ParCSRMatrix* A, const bool has_vals = true)
         {
-            return CommPkg::communicate(A, block_size);
+            return CommPkg::communicate(A, has_vals);
         }
-        CSRMatrix* communicate(CSRMatrix* A, const int block_size = 1)
+        CSRMatrix* communicate(ParBSRMatrix* A, const bool has_vals = true)
         {
-            return CommPkg::communicate(A, block_size);
+            return CommPkg::communicate(A, has_vals);
         }
-        CSRMatrix* communicate_T(CSRMatrix* A, const int block_size = 1)
+        CSRMatrix* communicate(CSRMatrix* A, const bool has_vals = true)
         {
-            return CommPkg::communicate_T(A, block_size);
+            return CommPkg::communicate(A, has_vals);
+        }
+        CSRMatrix* communicate_T(CSRMatrix* A, const bool has_vals = true)
+        {
+            return CommPkg::communicate_T(A, has_vals);
         }
 
 
@@ -1768,27 +1725,35 @@ namespace raptor
 
         // Matrix Communication
         CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
-                const int block_size = 1);
-        CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
-                const int n_result_rows, const int block_size = 1);
+                const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
+                const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
         CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices, const int block_size = 1);
+                const aligned_vector<int>& col_indices, const aligned_vector<double*>& values,
+                const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
         CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices, const int n_result_rows,
-                const int block_size = 1);
-        CSRMatrix* communicate(ParCSRMatrix* A, const int block_size = 1)
+                const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
+                const int n_result_rows, const int b_rows = 1, const int b_cols = 1, 
+                const bool has_vals = true);
+        CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
+                const aligned_vector<int>& col_indices, const aligned_vector<double*>& values, 
+                const int n_result_rows, const int b_rows = 1, const int b_cols = 1, 
+                const bool has_vals = true);
+
+        CSRMatrix* communicate(ParCSRMatrix* A, const bool has_vals = true)
         {
-            return CommPkg::communicate(A);
+            return CommPkg::communicate(A, has_vals);
         }
-        CSRMatrix* communicate(CSRMatrix* A, const int block_size = 1)
+        CSRMatrix* communicate(ParBSRMatrix* A, const bool has_vals = true)
         {
-            return CommPkg::communicate(A);
+            return CommPkg::communicate(A, has_vals);
         }
-        CSRMatrix* communicate_T(CSRMatrix* A, const int block_size = 1)
+        CSRMatrix* communicate(CSRMatrix* A, const bool has_vals = true)
         {
-            return CommPkg::communicate_T(A);
+            return CommPkg::communicate(A, has_vals);
+        }
+        CSRMatrix* communicate_T(CSRMatrix* A, const bool has_vals = true)
+        {
+            return CommPkg::communicate_T(A, has_vals);
         }
 
         // Vector Communication        

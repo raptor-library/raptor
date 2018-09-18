@@ -130,6 +130,16 @@ TEST(ParBlockMatrixTest, TestsInCore)
     for (int i = 0; i < A->local_num_rows; i++)
         ASSERT_NEAR(tmp[i], b[i], 1e-10);
 
+    // Test Blocked Matrix Communication
+    CSRMatrix* C = A->comm->communicate(A);
+    BSRMatrix* C_bsr = (BSRMatrix*) A_bsr->comm->communicate(A_bsr);
+    C->sort();
+    C_bsr->sort();
+    ASSERT_EQ(C->n_rows, C_bsr->n_rows * C_bsr->b_rows);
+    compare_vals(C, C_bsr);
+    delete C;
+    delete C_bsr;
+
     delete A;
     delete A_bsr;
 

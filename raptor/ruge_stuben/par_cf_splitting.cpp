@@ -1000,7 +1000,8 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
             send_ptr[i+1] =  send_buffer.size();
         }
 
-        CSRMatrix* recv_mat = comm->communicate(send_ptr, send_buffer); 
+        aligned_vector<double> vals;
+        CSRMatrix* recv_mat = comm->communicate(send_ptr, send_buffer, vals, 1, 1, false); 
 
         off_proc_col_ptr[0] = 0;
         for (int i = 0; i < off_proc_num_cols; i++)
