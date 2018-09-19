@@ -1286,6 +1286,8 @@ public:
                 }
             } 
         }
+        else size = 0;
+
         *size_ptr = size;
     }
     
@@ -1320,6 +1322,7 @@ public:
                 }
             }
         }
+        else size = 0;
 
         *size_ptr = size;
     }
