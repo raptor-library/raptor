@@ -330,14 +330,17 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
     // Can copy A's comm pkg... may not need to communicate everything in comm,
     // but this is probably less costly than creating a new communicator
     // TODO... but is it?
-    if (A->comm)
+    if (!comm_t)
     {
-        S->comm = new ParComm((ParComm*) A->comm, orig_to_S, comm_t);
-    }
+        if (A->comm)
+        {
+            S->comm = new ParComm((ParComm*) A->comm, orig_to_S, comm_t);
+        }
 
-    if (A->tap_comm)
-    {
-        S->tap_comm = new TAPComm((TAPComm*) A->tap_comm, orig_to_S, comm_t);
+        if (A->tap_comm)
+        {
+            S->tap_comm = new TAPComm((TAPComm*) A->tap_comm, orig_to_S, comm_t);
+        }
     }
 
     return S;
@@ -541,15 +544,17 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, da
     // Can copy A's comm pkg... may not need to communicate everything in comm,
     // but this is probably less costly than creating a new communicator
     // TODO... but is it?
-    if (A->comm)
+    if (!comm_t)
     {
-        S->comm = new ParComm((ParComm*) A->comm, orig_to_S, comm_t);
-        //S->comm = new ParComm(S->partition, S->off_proc_column_map, S->on_proc_column_map);
-    }
+    	if (A->comm)
+    	{
+            S->comm = new ParComm((ParComm*) A->comm, orig_to_S, comm_t);
+	}
 
-    if (A->tap_comm)
-    {
-        S->tap_comm = new TAPComm((TAPComm*) A->tap_comm, orig_to_S, comm_t);
+    	if (A->tap_comm)
+    	{
+            S->tap_comm = new TAPComm((TAPComm*) A->tap_comm, orig_to_S, comm_t);
+   	}
     }
 
     return S;
@@ -569,7 +574,5 @@ ParCSRMatrix* ParCSRMatrix::strength(strength_t strength_type,
         case Symmetric:
             return symmetric_strength(this, theta, tap_amg, comm_t);
     }
-    return NULL;
 }
-
 

@@ -113,6 +113,19 @@ namespace raptor
 
             // Form CF Splitting
             if (setup_times) setup_times[2][level_ctr] -= MPI_Wtime();
+
+            aligned_vector<int> A_to_S(A->off_proc_num_cols, -1);
+            int ctr = 0;
+            for (int i = 0; i < S->off_proc_num_cols; i++)
+            {
+                int global_col = S->off_proc_column_map[i];
+                while (A->off_proc_column_map[ctr] != global_col)
+                ctr++;
+                A_to_S[ctr] = i;
+            }
+            if (tap_level) S->tap_comm = new TAPComm((TAPComm*) A->tap_comm, A_to_S, coarsen_time);
+            S->comm = new ParComm((ParComm*) A->comm, A_to_S, coarsen_time);
+
             switch (coarsen_type)
             {
                 case RS:
@@ -151,7 +164,7 @@ namespace raptor
             {
                 case Direct:
                     P = direct_interpolation(A, S, states, off_proc_states, 
-                            interp_time);
+                            tap_level, interp_time);
                     break;
                 case ModClassical:
                     P = mod_classical_interpolation(A, S, states, off_proc_states, 
@@ -194,8 +207,8 @@ namespace raptor
             level_ctr++;
             levels[level_ctr]->A = A;
             A->comm = new ParComm(A->partition, A->off_proc_column_map,
-                    A->on_proc_column_map, P->comm->key, P->comm->mpi_comm,
-                    total_time);
+                    A->on_proc_column_map, levels[level_ctr-1]->A->comm->key,
+                    levels[level_ctr-1]->A->comm->mpi_comm, total_time);
             levels[level_ctr]->x.resize(A->global_num_rows, A->local_num_rows,
                     A->partition->first_local_row);
             levels[level_ctr]->b.resize(A->global_num_rows, A->local_num_rows,

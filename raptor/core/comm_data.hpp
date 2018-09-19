@@ -1173,7 +1173,7 @@ public:
             std::function<T(T, T)> init_result_func = &sum_func<T, T>,
             T init_result_func_val = 0)
     {
-	if (num_msgs == 0) return;
+        if (num_msgs == 0) return;
 
         MPI_Datatype datatype = get_type<T>();
 
