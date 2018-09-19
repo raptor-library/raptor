@@ -17,29 +17,29 @@ int main(int argc, char* argv[])
 
     // Get filename and symmetry for matrix to read in
     char *fname;
-    if (argc == 2) {
+    double frac;
+    if (argc == 3) {
        fname = argv[1];
+       frac  = atof(argv[2]);
     }
     else {
-        printf("Input <matrix filename>\n");
+        printf("Input <matrix filename> <fraction for partial inner product>\n");
         exit(-1);
     }
 
     // Needed for partial inner products
-    int first_root = 0, second_root = 0, color = 0, part_global;
-    MPI_Comm contig_comm = MPI_COMM_NULL;
-    MPI_Comm striped_comm = MPI_COMM_NULL;
+    int inner_color, root_color, inner_root, procs_in_group, part_global;
+    MPI_Comm inner_comm = MPI_COMM_NULL;
+    MPI_Comm root_comm = MPI_COMM_NULL;
 
     // Setup problem to solve
     ParCSRMatrix* A = readParMatrix(fname);
     
-    ParVector x_contig(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    ParVector x_striped(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    ParVector x_part(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector x_true(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     aligned_vector<double> residuals_true;
-    aligned_vector<double> residuals_contig;
-    aligned_vector<double> residuals_striped;
+    aligned_vector<double> residuals_part;
 
     x_true.set_const_value(1.0);
     A->mult(x_true, b);
@@ -50,62 +50,45 @@ int main(int argc, char* argv[])
 
     // Test contiguous first half
     //create_partial_inner_comm(inner_comm, color, first_root, second_root, part_global, 0);
-    x_contig.set_const_value(1.0);
-    A->mult(x_contig, b);
-    x_contig.set_const_value(0.0);
-    PI_BiCGStab(A, x_contig, b, residuals_contig, contig_comm, color, first_root, second_root, part_global, 0);
-
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    // Test striped even procs
-    //create_partial_inner_comm(striped_comm, color, first_root, second_root, part_global, 1);
-    x_striped.set_const_value(1.0);
-    A->mult(x_striped, b);
-    x_striped.set_const_value(0.0);
-    PI_BiCGStab(A, x_striped, b, residuals_striped, striped_comm, color, first_root, second_root, part_global, 1);
+    x_part.set_const_value(1.0);
+    A->mult(x_part, b);
+    x_part.set_const_value(0.0);
+    PI_BiCGStab(A, x_part, b, residuals_part, inner_comm, root_comm, frac, inner_color, root_color, inner_root, procs_in_group,
+                part_global);
 
     MPI_Barrier(MPI_COMM_WORLD);
 
     // Write out residuals to file
     FILE *f;
     if (rank == 0) {
-       f = fopen("PartInner_Contig_BiCGStab_Res.txt", "w");
-       fprintf(f, "CFD %d x %d\n", A->global_num_rows, A->global_num_cols);
-       for (int i=0; i<residuals_contig.size(); i++) {
-           fprintf(f, "%lf \n", residuals_contig[i]);
-       }
-       fclose(f);
+        const char *start_fname = "_PartInner_";
+        const char *end_fname = "_BiCGStab_Res.txt";
+        char fname_buffer[512];
+        sprintf(fname_buffer, "%s%s%f%s", fname, start_fname, frac, end_fname);
+        printf("%s\n", fname_buffer);
+        f = fopen(fname_buffer, "w");
+        fprintf(f, "%d x %d\n", A->global_num_rows, A->global_num_cols);
+        for (int i=0; i<residuals_part.size(); i++) {
+            fprintf(f, "%lf \n", residuals_part[i]);
+        }
+        fclose(f);
        
-       f = fopen("PartInner_Striped_BiCGStab_Res.txt", "w");
-       fprintf(f, "CFD %d x %d\n", A->global_num_rows, A->global_num_cols);
-       for (int i=0; i<residuals_striped.size(); i++) {
-           fprintf(f, "%lf\n", residuals_striped[i]);
-       }
-       fclose(f);
-       
-       f = fopen("PartInner_True_BiCGStab_Res.txt", "w");
-       fprintf(f, "CFD %d x %d\n", A->global_num_rows, A->global_num_cols);
-       for (int i=0; i<residuals_true.size(); i++) {
-           fprintf(f, "%lf\n", residuals_true[i]);
-       }
-       fclose(f);
-
+        sprintf(fname_buffer, "%s%s", fname, end_fname);
+        f = fopen(fname_buffer, "w");
+        fprintf(f, "%d x %d\n", A->global_num_rows, A->global_num_cols);
+        for (int i=0; i<residuals_true.size(); i++) {
+            fprintf(f, "%lf\n", residuals_true[i]);
+        }
+        fclose(f);
     }
 
     // Write out solutions to file
-    f = fopen("PartInner_Contig_BiCGStab_x.txt", "w");
+    /*f = fopen("PartInner_Contig_BiCGStab_x.txt", "w");
     for (int i = 0; i < num_procs; i++) {
         if (rank == i) {
-            for (int j = 0; j < x_contig.local_n; j++) fprintf(f, "%lf \n", x_contig.local[j]);
+            for (int j = 0; j < x_part.local_n; j++) fprintf(f, "%lf \n", x_part.local[j]);
         }
-    }
-    fclose(f);
-
-    f = fopen("PartInner_Striped_BiCGStab_x.txt", "w");
-    for (int i = 0; i < num_procs; i++) {
-        if (rank == i) {
-            for (int j = 0; j < x_striped.local_n; j++) fprintf(f, "%lf \n", x_striped.local[j]);
-        }
+        MPI_Barrier(MPI_COMM_WORLD);
     }
     fclose(f);
 
@@ -114,8 +97,9 @@ int main(int argc, char* argv[])
         if (rank == i) {
             for (int j = 0; j < x_true.local_n; j++) fprintf(f, "%lf \n", x_true.local[j]);
         }
+        MPI_Barrier(MPI_COMM_WORLD);
     }
-    fclose(f);
+    fclose(f);*/
     
     /*if (rank == 0) printf("Testing Contiguous Solution\n");
     for (int i = 0; i < x_true.local_n; i++) {
@@ -131,8 +115,8 @@ int main(int argc, char* argv[])
         printf("%lf %lf\n", 1e-04, fabs(x_true.local[i] - x_striped.local[i]));
     }*/
 
-    MPI_Comm_free(&contig_comm);
-    MPI_Comm_free(&striped_comm);
+    MPI_Comm_free(&inner_comm);
+    MPI_Comm_free(&root_comm);
 
     delete A;
 

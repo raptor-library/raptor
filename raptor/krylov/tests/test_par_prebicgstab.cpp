@@ -3,7 +3,7 @@
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
 #include "krylov/par_bicgstab.hpp"
-#include "multilevel/par_multilevel.hpp"
+//#include "multilevel/par_multilevel.hpp"
 #include "aggregation/par_smoothed_aggregation_solver.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/par_stencil.hpp"
@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
     ml->max_levels = 3;
     ml->setup(A);
 
-    for (int i = 0; i < ml->num_levels; i++) {
+    /*for (int i = 0; i < ml->num_levels; i++) {
         ParCSRMatrix* Al = ml->levels[i]->A;
         long lcl_nnz = Al->local_nnz;
         long nnz;
@@ -59,9 +59,12 @@ int main(int argc, char* argv[])
         if (rank == 0) {
             printf("%d\t%d\t%d\t%lu\n", i, Pl->global_num_rows, Pl->global_num_cols, nnz);
         }
-    }
+    }*/
 
-    int iter = ml->solve(x, b);
+    ParVector res(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    x.set_const_value(0.0);
+    A->residual(x, b, res);
+    int iter = ml->solve(x, res);
 
     // AMG Preconditioned BiCGStab
     x.set_const_value(0.0);

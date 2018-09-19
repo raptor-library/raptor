@@ -17,9 +17,17 @@ int main(int argc, char* argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     // Needed for partial inner products
-    int first_root = 0, second_root = 0, color = 0, part_global;
-    MPI_Comm contig_comm = MPI_COMM_NULL;
-    MPI_Comm striped_comm = MPI_COMM_NULL;
+    int inner_color, root_color, inner_root, procs_in_group, part_global;
+    double frac;
+    MPI_Comm inner_comm = MPI_COMM_NULL;
+    MPI_Comm root_comm = MPI_COMM_NULL;
+
+    if (argc < 2) {
+        printf("Include fraction for partial inner product\n");
+        exit(-1);
+    }
+
+    frac = atof(argv[1]);
 
     // Setup problem to solve
     int grid[2] = {50, 50};
@@ -27,13 +35,11 @@ int main(int argc, char* argv[])
     //double* stencil = diffusion_stencil_2d(0.1, M_PI/4.0);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
     
-    ParVector x_contig(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    ParVector x_striped(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    ParVector x_part(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector x_true(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     aligned_vector<double> residuals_true;
-    aligned_vector<double> residuals_contig;
-    aligned_vector<double> residuals_striped;
+    aligned_vector<double> residuals_part;
 
     x_true.set_const_value(1.0);
     A->mult(x_true, b);
@@ -42,66 +48,50 @@ int main(int argc, char* argv[])
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    // Test contiguous first half
-    //create_partial_inner_comm(inner_comm, color, first_root, second_root, part_global, 0);
-    x_contig.set_const_value(1.0);
-    A->mult(x_contig, b);
-    x_contig.set_const_value(0.0);
-    PI_BiCGStab(A, x_contig, b, residuals_contig, contig_comm, color, first_root, second_root, part_global, 0);
-
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    // Test striped even procs
-    //create_partial_inner_comm(striped_comm, color, first_root, second_root, part_global, 1);
-    x_striped.set_const_value(1.0);
-    A->mult(x_striped, b);
-    x_striped.set_const_value(0.0);
-    PI_BiCGStab(A, x_striped, b, residuals_striped, striped_comm, color, first_root, second_root, part_global, 1);
+    // Test half
+    x_part.set_const_value(1.0);
+    A->mult(x_part, b);
+    x_part.set_const_value(0.0);
+    PI_BiCGStab(A, x_part, b, residuals_part, inner_comm, root_comm, frac, inner_color, root_color, inner_root, procs_in_group,
+                part_global);
 
     MPI_Barrier(MPI_COMM_WORLD);
 
     // Write out residuals to file
     if (rank == 0) {
-       FILE *f;
-       f = fopen("PartInner_Contig_BiCGStab_Res.txt", "w");
-       fprintf(f, "Grid = {50,50} Diffusion 2d Stencil (0.001, pi/8)  %d x %d\n", A->global_num_rows, A->global_num_cols);
-       for (int i=0; i<residuals_contig.size(); i++) {
-           fprintf(f, "%lf \n", residuals_contig[i]);
-       }
-       fclose(f);
+        FILE *f;
+        const char *prob = "aniso";
+        const char *start_fname = "_PartInner_";
+        const char *end_fname = "_BiCGStab_Res.txt";
+        char fname_buffer[512];
+        sprintf(fname_buffer, "%s%s%f%s", prob, start_fname, frac, end_fname);
+        f = fopen(fname_buffer, "w");
+        fprintf(f, "Grid = {50,50} Diffusion 2d Stencil (0.001, pi/8)  %d x %d\n", A->global_num_rows, A->global_num_cols);
+        for (int i=0; i<residuals_part.size(); i++) {
+            fprintf(f, "%lf \n", residuals_part[i]);
+        }
+        fclose(f);
        
-       f = fopen("PartInner_Striped_BiCGStab_Res.txt", "w");
-       fprintf(f, "Grid = {50,50} Diffusion 2d Stencil (0.001, pi/8)  %d x %d\n", A->global_num_rows, A->global_num_cols);
-       for (int i=0; i<residuals_striped.size(); i++) {
-           fprintf(f, "%lf\n", residuals_striped[i]);
-       }
-       fclose(f);
-       
-       f = fopen("PartInner_True_BiCGStab_Res.txt", "w");
-       fprintf(f, "Grid = {50,50} Diffusion 2d Stencil (0.001, pi/8)  %d x %d\n", A->global_num_rows, A->global_num_cols);
-       for (int i=0; i<residuals_true.size(); i++) {
-           fprintf(f, "%lf\n", residuals_true[i]);
-       }
-       fclose(f);
-
+        sprintf(fname_buffer, "%s%s", prob, end_fname);
+        f = fopen(fname_buffer, "w");
+        fprintf(f, "Grid = {50,50} Diffusion 2d Stencil (0.001, pi/8)  %d x %d\n", A->global_num_rows, A->global_num_cols);
+        for (int i=0; i<residuals_true.size(); i++) {
+            fprintf(f, "%lf\n", residuals_true[i]);
+        }
+        fclose(f);
     }
     
     MPI_Barrier(MPI_COMM_WORLD);
 
     if (rank == 0) printf("Testing Contiguous Solution\n");
     for (int i = 0; i < x_true.local_n; i++) {
-        assert(fabs(x_true.local[i] - x_contig.local[i]) < 1e-05);
+        assert(fabs(x_true.local[i] - x_part.local[i]) < 1e-05);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
     
-    if (rank == 0) printf("Testing Striped Solution\n");
-    for (int i = 0; i < x_true.local_n; i++) {
-        assert(fabs(x_true.local[i] - x_striped.local[i]) < 1e-05);
-    }
-
-    MPI_Comm_free(&contig_comm);
-    MPI_Comm_free(&striped_comm);
+    MPI_Comm_free(&inner_comm);
+    MPI_Comm_free(&root_comm);
 
     delete[] stencil;
     delete A;
