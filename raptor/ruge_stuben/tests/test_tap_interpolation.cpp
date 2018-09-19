@@ -23,7 +23,7 @@ ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, 
 
     int first_row, first_col;
     FILE* f;
-    ParCSRMatrix* P_rap;
+    ParCSRMatrix* P_rap = NULL;
     aligned_vector<int> proc_sizes(num_procs);
     aligned_vector<int> splitting;
     if (A->local_num_rows)
@@ -58,6 +58,7 @@ ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, 
     else if (interp_option == 1)
     {
         P_rap = mod_classical_interpolation(A, S, splitting, S->comm->recv_data->int_buffer, true);
+        return P_rap;
     }
     else if (interp_option == 2)
     {
@@ -120,6 +121,20 @@ TEST(TestTAPInterpolation, TestsInRuge_Stuben)
     A = readParMatrix(A0_fn);
     A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
     S = readParMatrix(S0_fn);
+    aligned_vector<int> A_to_S(A->off_proc_num_cols, -1);
+    int ctr = 0;
+    for (int i = 0; i < S->off_proc_num_cols; i++)
+    {
+        int global_col = S->off_proc_column_map[i];
+        while (A->off_proc_column_map[ctr] != global_col)
+        ctr++;
+        A_to_S[ctr] = i;
+    }
+    if (!S->tap_comm) 
+        S->tap_comm = new TAPComm((TAPComm*) A->tap_comm, A_to_S);
+    if (!S->comm)
+        S->comm = new ParComm((ParComm*) A->comm, A_to_S);
+
     P_rap = form_Prap(A, S, cf0_fn, 
             &first_row, &first_col, 0);
     P = readParMatrix(P0_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
@@ -151,6 +166,23 @@ TEST(TestTAPInterpolation, TestsInRuge_Stuben)
     A->tap_comm = new TAPComm(A->partition, 
             A->off_proc_column_map, A->on_proc_column_map);
     S = readParMatrix(S1_fn);
+    A_to_S.resize(A->off_proc_num_cols);
+    std::fill(A_to_S.begin(), A_to_S.end(), -1);
+    ctr = 0;
+    for (int i = 0; i < S->off_proc_num_cols; i++)
+    {
+        int global_col = S->off_proc_column_map[i];
+        while (A->off_proc_column_map[ctr] != global_col)
+        ctr++;
+        A_to_S[ctr] = i;
+    }
+    if (!S->tap_comm) 
+        S->tap_comm = new TAPComm((TAPComm*) A->tap_comm, A_to_S);
+    if (!S->comm)
+        S->comm = new ParComm((ParComm*) A->comm, A_to_S);
+
+
+
     P_rap = form_Prap(A, S, cf1_fn, 
             &first_row, &first_col, 0);
     P = readParMatrix(P1_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 

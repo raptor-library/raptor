@@ -432,7 +432,11 @@ namespace raptor
                                     tap_level, relax_t);
                             break;
                     }
-                    if (solve_times) solve_times[1][level] += MPI_Wtime();
+                    if (solve_times)
+                    {
+                        solve_times[1][level] += MPI_Wtime();
+                        solve_times[0][level] += MPI_Wtime();
+                    }
                 }
 
                 if (solve_times)
