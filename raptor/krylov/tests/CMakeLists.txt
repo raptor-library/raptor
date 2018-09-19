@@ -25,19 +25,15 @@ if (WITH_MPI)
 
     add_executable(test_partial_inner test_partial_inner.cpp)
     target_link_libraries(test_partial_inner raptor ${MPI_LIBRARIES})
-    add_test(TestPartialInner ./test_partial_inner)
     
     add_executable(test_par_bicgstab_partial_inner_aniso test_par_bicgstab_partial_inner_aniso.cpp)
     target_link_libraries(test_par_bicgstab_partial_inner_aniso raptor ${MPI_LIBRARIES})
-    add_test(TestParBiCGStabPartialInnerAniso ./test_par_bicgstab_partial_inner_aniso)
     
     add_executable(test_par_bicgstab_partial_inner_laplacian test_par_bicgstab_partial_inner_laplacian.cpp)
     target_link_libraries(test_par_bicgstab_partial_inner_laplacian raptor ${MPI_LIBRARIES})
-    add_test(TestParBiCGStabPartialInnerLaplacian ./test_par_bicgstab_partial_inner_laplacian)
     
     add_executable(test_par_bicgstab_partial_inner_infile test_par_bicgstab_partial_inner_infile.cpp)
     target_link_libraries(test_par_bicgstab_partial_inner_infile raptor ${MPI_LIBRARIES})
-    add_test(TestParBiCGStabPartialInnerInputFile ./test_par_bicgstab_partial_inner_infile)
 endif()
 
 

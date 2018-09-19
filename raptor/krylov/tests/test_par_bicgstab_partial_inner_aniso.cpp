@@ -83,10 +83,10 @@ int main(int argc, char* argv[])
     
     MPI_Barrier(MPI_COMM_WORLD);
 
-    if (rank == 0) printf("Testing Contiguous Solution\n");
+    /*if (rank == 0) printf("Testing Contiguous Solution\n");
     for (int i = 0; i < x_true.local_n; i++) {
         assert(fabs(x_true.local[i] - x_part.local[i]) < 1e-05);
-    }
+    }*/
 
     MPI_Barrier(MPI_COMM_WORLD);
     

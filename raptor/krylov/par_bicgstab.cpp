@@ -306,28 +306,7 @@ void Pre_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, ParMultilevel *ml
         // p_i = M^-1 p_i
         // Apply preconditioner
         p_hat.set_const_value(0.0);
-
-    for (int i = 0; i < ml->num_levels; i++) {
-        ParCSRMatrix* Al = ml->levels[i]->A;
-        long lcl_nnz = Al->local_nnz;
-        long nnz;
-        MPI_Reduce(&lcl_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-        if (rank == 0) {
-            printf("%d\t%d\t%d\t%lu\n", i, Al->global_num_rows, Al->global_num_cols, nnz);
-        }
-    }
-    
-    for (int i = 0; i < ml->num_levels; i++) {
-        ParCSRMatrix* Pl = ml->levels[i]->A;
-        long lcl_nnz = Pl->local_nnz;
-        long nnz;
-        MPI_Reduce(&lcl_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-        if (rank == 0) {
-            printf("%d\t%d\t%d\t%lu\n", i, Pl->global_num_rows, Pl->global_num_cols, nnz);
-        }
-    }
-        return;
-        amg_iter = ml->solve(p_hat, p);
+        ml->cycle(p_hat, p);
 
         // alpha_i = (r_i, r*) / (Ap_i, r*)
         A->mult(p_hat, Ap);
@@ -341,7 +320,7 @@ void Pre_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, ParMultilevel *ml
         // s_i = M^-1 s_i
         // Apply preconditioner
         s_hat.set_const_value(0.0);
-        amg_iter = ml->solve(s_hat, s);
+        ml->cycle(s_hat, s);
 
         // omega_i = (As_i, s_i) / (As_i, As_i)
         A->mult(s_hat, As);
