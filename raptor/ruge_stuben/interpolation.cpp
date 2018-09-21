@@ -11,6 +11,10 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
 {
     int startA, endA;
     int startS, endS;
+    int startNS, endNS;
+    int startSS, endSS;
+    int startSU, endSU;
+    int startNU, endNU;
     int start_k, end_k, col_k;
     int col, ctr, idx;
     int row_start, row_end;
@@ -18,24 +22,94 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
     double weak_sum;
     double val;
     double sign;
-    double coarse_sum;
     aligned_vector<int> pos;
     aligned_vector<int> row_coarse;
     aligned_vector<double> row_strong;
     aligned_vector<int> next;
+    aligned_vector<double> weak_sums;
+    aligned_vector<int> signs;
+    aligned_vector<double> coarse_sum;
     if (A->n_rows)
     {
         pos.resize(A->n_rows, -1);
         row_coarse.resize(A->n_rows, 0);
         row_strong.resize(A->n_rows, 0);
+        weak_sums.resize(A->n_rows, 0);
+        signs.resize(A->n_rows, 1);
+        coarse_sum.resize(A->n_rows, 0);
     }
-
-    // Copy values of A into S
 
     A->sort();
     A->move_diag();
     S->sort();
     S->move_diag();
+
+    // Split matrices into the following:
+    //      - NS: values in A but not S
+    //      - SS: selected values in S
+    //      - SU: unselected values in S
+    CSRMatrix* NS = new CSRMatrix(A->n_rows, A->n_cols);
+    CSRMatrix* SS = new CSRMatrix(A->n_rows, A->n_cols);
+    CSRMatrix* SU = new CSRMatrix(A->n_rows, A->n_cols);
+    CSRMatrix* NU = new CSRMatrix(A->n_rows, A->n_cols);
+    NS->idx1[0] = 0;
+    SS->idx1[0] = 0;
+    SU->idx1[0] = 0;
+    for (int i = 0; i < A->n_rows; i++)
+    {
+        ctr = S->idx1[i] + 1;
+        endS = S->idx1[i+1];
+        startA = A->idx1[i];
+        endA = A->idx1[i+1];
+        // Add diagonal to NS
+        weak_sums[i] = A->vals[startA++];
+        if (weak_sums[i] < 0) 
+            signs[i] = -1;
+        for (int j = startA; j < endA; j++)
+        {
+            col = A->idx2[j];
+            val = A->vals[j];
+            if (ctr < endS && S->idx2[ctr] == col)
+            {
+                if (states[col] == Selected)
+                {
+                    SS->idx2.push_back(col);
+                    SS->vals.push_back(val);
+                }
+                else if (states[col] == Unselected)
+                {
+                    SU->idx2.push_back(col);
+                    SU->vals.push_back(val);
+                    NU->idx2.push_back(col);
+                    NU->vals.push_back(val);
+                }
+                ctr++;
+            }
+            else
+            {
+                if (num_variables == 1 || variables[i] == variables[col])
+                {
+                    weak_sums[i] += val;
+                }
+
+                if (states[col] == Selected)
+                {
+                    NS->idx2.push_back(col);
+                    NS->vals.push_back(val);
+                }
+                else
+                {
+                    NU->idx2.push_back(col);
+                    NU->vals.push_back(val);
+                }
+            }
+        }
+        NS->idx1[i+1] = NS->idx2.size();
+        SS->idx1[i+1] = SS->idx2.size();
+        SU->idx1[i+1] = SU->idx2.size();
+        NU->idx1[i+1] = NU->idx2.size();
+    }
+    NU->nnz = NU->idx2.size();
     
     aligned_vector<int> col_to_new;
     if (A->n_cols)
@@ -52,8 +126,11 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
         }
     }
 
-    // Form P
+    // Form Sparsity Pattern of P
     CSRMatrix* P = new CSRMatrix(A->n_rows, ctr, A->nnz);
+
+    CSCMatrix* U_csc = NU->to_CSC();
+    delete NU;
 
     // Main loop.. add entries to P
     P->idx1[0] = 0;
@@ -67,141 +144,150 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
             continue;
         }
 
-        startA = A->idx1[i]+1;
-        endA = A->idx1[i+1];
-        startS = S->idx1[i]+1;
-        endS = S->idx1[i+1];
-
         row_start = P->idx2.size();
-
-        // Skip over diagonal values
-        weak_sum = A->vals[startA-1];
-
-        // Adding diagonal into coarse points (ext+i)
         row_coarse[i] = 1;
 
-        if (weak_sum < 0)
+        // Skip over diagonal values
+        startNS = NS->idx1[i];
+        endNS = NS->idx1[i+1];
+        startSS = SS->idx1[i];
+        endSS = SS->idx1[i+1];
+        startSU = SU->idx1[i];
+        endSU = SU->idx1[i+1];
+
+        // Add strongly connected C points to P
+        for (int j = startSS; j < endSS; j++)
         {
-            sign = -1.0;
-        }
-        else
-        {
-            sign = 1.0;
+            col = SS->idx2[j];
+            val = SS->vals[j];
+            pos[col] = P->idx2.size();
+            P->idx2.push_back(col);
+            P->vals.push_back(val);
+            row_coarse[col] = 1;
         }
 
-        // Find weak sum, and save coarse cols / strong col values
-        ctr = startS;
-        for (int j = startA; j < endA; j++)
+        for (int j = startSU; j < endSU; j++)
         {
-            col = A->idx2[j];
-            val = A->vals[j];
-            if (ctr < endS && S->idx2[ctr] == col) // Strong
-            {
-                if (states[col] == Selected)
-                {
-                    pos[col] = P->idx2.size();
-                    P->idx2.push_back(col);
-                    P->vals.push_back(val);
-                    row_coarse[col] = 1;
-                }
-                else if (states[col] == Unselected)
-                {
-                    row_strong[col] = val;
-                }
-                
-                ctr++;
-            }
-            else if (num_variables == 1 || variables[i] == variables[col]) // Weak
-            {
-                if (states[col] != NoNeighbors)
-                {
-                    weak_sum += val;
-                }
-            }
+            col = SU->idx2[j];
+            val = SU->vals[j];
+            row_strong[col] = val;
         }
 
-        for (int j = startS; j < endS; j++)
+        sign = signs[i];
+        weak_sum = weak_sums[i];
+
+        for (int j = startSU; j < endSU; j++)
         {
-            col = S->idx2[j];
-            if (states[col] == Unselected)
+            col = SU->idx2[j];
+            // Add distance-2
+            start_k = SS->idx1[col];
+            end_k = SS->idx1[col+1];
+            for (int k = start_k; k < end_k; k++)
             {
-                // Add distance-2
-                start_k = S->idx1[col]+1;
-                end_k = S->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
+                col_k = SS->idx2[k];
+                if (row_coarse[col_k] == 0)
                 {
-                    col_k = S->idx2[k];
-                    if (states[col_k] == Selected && row_coarse[col_k] == 0)
-                    {
-                        pos[col_k] = P->idx2.size();
-                        P->idx2.push_back(col_k);
-                        P->vals.push_back(0); // Aij is 0
-                        row_coarse[col_k] = 1;
-                    } 
-                }
+                    pos[col_k] = P->idx2.size();
+                    P->idx2.push_back(col_k);
+                    P->vals.push_back(0); // Aij is 0
+                    row_coarse[col_k] = 1;
+                } 
             }
         }
         row_end = P->idx2.size();
 
 
         // Find row coarse sums 
-        ctr = startS;
-        for (int j = startA; j < endA; j++)
+        for (int j = startSU; j < endSU; j++)
         {
-            col = A->idx2[j];
-            if (ctr < endS && S->idx2[ctr] == col)
+            col = SU->idx2[j];
+            coarse_sum[col] = 0;
+            start_k = NS->idx1[col];
+            end_k = NS->idx1[col+1];
+            for (int k = start_k; k < end_k; k++)
             {
-                if (states[col] == Unselected) // k in F^s
+                col_k = NS->idx2[k];
+                val = NS->vals[k] * row_coarse[col_k];
+                if (val * sign < 0)
                 {
-                    coarse_sum = 0;
-                    start_k = A->idx1[col] + 1;
-                    end_k = A->idx1[col+1];
-                    for (int k = start_k; k < end_k; k++)
-                    {
-                        col_k = A->idx2[k];
-                        val = A->vals[k] * row_coarse[col_k];
-                        if (val * sign < 0)
-                        {
-                            coarse_sum += val;
-                        }
-                    }
-                    
-                    if (fabs(coarse_sum) < zero_tol)
-                    {
-                        weak_sum += A->vals[j];
-                        row_strong[col] = 0;
-                    }
-                    else
-                    {
-                        row_strong[col] /= coarse_sum;
-                    }
+                    coarse_sum[col] += val;
                 }
-                ctr++;
+            }
+            start_k = SS->idx1[col];
+            end_k = SS->idx1[col+1];
+            for (int k = start_k; k < end_k; k++)
+            {
+                col_k = SS->idx2[k];
+                val = SS->vals[k] * row_coarse[col_k];
+                if (val * sign < 0)
+                {
+                    coarse_sum[col] += val;
+                }
             }
         }
 
-        for (int j = startS; j < endS; j++)
+        // Add column i 
+        startNU = U_csc->idx1[i];
+        endNU = U_csc->idx1[i+1];
+        for (int j = startNU; j < endNU; j++)
         {
-            col = S->idx2[j];
-            if (states[col] == Unselected)
+            int row = U_csc->idx2[j];
+            val = U_csc->vals[j];
+            if (val * sign < 0)
+                coarse_sum[row] += val;
+        }
+
+        for (int j = startSU; j < endSU; j++)
+        {
+            col = SU->idx2[j];
+            if (fabs(coarse_sum[col]) < zero_tol)
             {
-                start_k = A->idx1[col]+1;
-                end_k = A->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
+                weak_sum += SU->vals[j];
+                row_strong[col] = 0;
+            }
+            else
+            {
+                row_strong[col] /= coarse_sum[col];
+            }
+        }
+
+        for (int j = startSU; j < endSU; j++)
+        {
+            col = SU->idx2[j];
+            start_k = NS->idx1[col];
+            end_k = NS->idx1[col+1];
+            for (int k = start_k; k < end_k; k++)
+            {
+                col_k = NS->idx2[k];
+                val = NS->vals[k];
+                idx = pos[col_k];
+                if (val * sign < 0 && idx >= 0)
                 {
-                    col_k = A->idx2[k];
-                    val = A->vals[k];
-                    idx = pos[col_k];
-                    if (val*sign < 0 && col_k == i)
-                    {
-                        weak_sum += (row_strong[col] * val);
-                    }
-                    if (val * sign < 0 && idx >= 0)
-                    {
-                        P->vals[idx] += (row_strong[col] * val);
-                    }
+                    P->vals[idx] += (row_strong[col] * val);
                 }
             }
+            start_k = SS->idx1[col];
+            end_k = SS->idx1[col+1];
+            for (int k = start_k; k < end_k; k++)
+            {
+                col_k = SS->idx2[k];
+                val = SS->vals[k];
+                idx = pos[col_k];
+                if (val * sign < 0 && idx >= 0)
+                {
+                    P->vals[idx] += (row_strong[col] * val);
+                }
+            }
+        }
+
+        // Go through column i and add to weak sum
+        startNU = U_csc->idx1[i];
+        endNU = U_csc->idx1[i+1];
+        for (int j = startNU; j < endNU; j++)
+        {
+            int row = U_csc->idx2[j];
+            val = U_csc->vals[j];
+            weak_sum += (row_strong[row] * val);
         }
 
         for (int j = row_start; j < row_end; j++)
@@ -212,8 +298,11 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
             row_strong[col] = 0;
             pos[col] = -1;
         }
+
         row_coarse[i] = 0;
 
+        for (int i = 0; i < A->n_rows; i++)
+            row_strong[i] = 0;
 
         P->idx1[i+1] = P->idx2.size();
 
@@ -225,6 +314,11 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
         *it = col_to_new[*it];
     }
 
+    delete NS;
+    delete SS;
+    delete SU;
+    delete U_csc;
+
     return P;
 }
 
@@ -233,8 +327,12 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A, CSRMatrix* S,
 {
     int startA, endA;
     int startS, endS;
+    int startNS, endNS;
+    int startSS, endSS;
+    int startSU, endSU;
+    int startNU, endNU;
     int start_k, end_k, col_k;
-    int col, ctr;
+    int col, ctr, idx;
     double weak_sum;
     double val;
     double sign;
@@ -242,19 +340,78 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A, CSRMatrix* S,
     aligned_vector<int> pos;
     aligned_vector<int> row_coarse;
     aligned_vector<double> row_strong;
+    aligned_vector<double> weak_sums;
+    aligned_vector<int> signs;
     if (A->n_rows)
     {
         pos.resize(A->n_rows, -1);
         row_coarse.resize(A->n_rows, 0);
         row_strong.resize(A->n_rows, 0);
+        weak_sums.resize(A->n_rows, 0);
+        signs.resize(A->n_rows, 1);
     }
-
 
     A->sort();
     A->move_diag();
     S->sort();
     S->move_diag();
-    
+
+    // Split matrices into the following:
+    //      - NS: values in A but not S
+    //      - SS: selected values in S
+    //      - SU: unselected values in S
+    CSRMatrix* NS = new CSRMatrix(A->n_rows, A->n_cols);
+    CSRMatrix* SS = new CSRMatrix(A->n_rows, A->n_cols);
+    CSRMatrix* SU = new CSRMatrix(A->n_rows, A->n_cols);
+    NS->idx1[0] = 0;
+    SS->idx1[0] = 0;
+    SU->idx1[0] = 0;
+    for (int i = 0; i < A->n_rows; i++)
+    {
+        ctr = S->idx1[i] + 1;
+        endS = S->idx1[i+1];
+        startA = A->idx1[i];
+        endA = A->idx1[i+1];
+        // Add diagonal to NS
+        weak_sums[i] += A->vals[startA++];
+        if (weak_sums[i] < 0)
+            signs[i] = -1;
+        for (int j = startA; j < endA; j++)
+        {
+            col = A->idx2[j];
+            val = A->vals[j];
+            if (ctr < endS && S->idx2[ctr] == col)
+            {
+                if (states[col] == Selected)
+                {
+                    SS->idx2.push_back(col);
+                    SS->vals.push_back(val);
+                }
+                else if (states[col] == Unselected)
+                {
+                    SU->idx2.push_back(col);
+                    SU->vals.push_back(val);
+                }
+                ctr++;
+            }
+            else
+            {
+                if (states[col] == Selected)
+                {
+                    NS->idx2.push_back(col);
+                    NS->vals.push_back(val);
+                }
+                if (num_variables == 1 || variables[i] == variables[col])
+                {
+                    weak_sums[i] += val;
+                }
+            }
+        }
+        NS->idx1[i+1] = NS->idx2.size();
+        SS->idx1[i+1] = SS->idx2.size();
+        SU->idx1[i+1] = SU->idx2.size();
+    }
+
     aligned_vector<int> col_to_new;
     if (A->n_cols)
     {
@@ -285,127 +442,124 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A, CSRMatrix* S,
             continue;
         }
 
-        startA = A->idx1[i]+1;
-        endA = A->idx1[i+1];
-        startS = S->idx1[i]+1;
-        endS = S->idx1[i+1];
-
-        // Skip over diagonal values
-        weak_sum = A->vals[startA-1];
-        if (weak_sum < 0)
+        startSS = SS->idx1[i];
+        endSS = SS->idx1[i+1];
+        for (int j = startSS; j < endSS; j++)
         {
-            sign = -1.0;
-        }
-        else
-        {
-            sign = 1.0;
+            col = SS->idx2[j];
+            val = SS->vals[j];
+            pos[col] = P->idx2.size();
+            P->idx2.push_back(col_to_new[col]);
+            P->vals.push_back(val);
+            row_coarse[col] = 1;
         }
 
-        // Find weak sum, and save coarse cols / strong col values
-        ctr = startS;
-        for (int j = startA; j < endA; j++)
+        // Add strong fine values to row_strong
+        startSU = SU->idx1[i];
+        endSU = SU->idx1[i+1];
+        for (int j = startSU; j < endSU; j++)
         {
-            col = A->idx2[j];
-            val = A->vals[j];
-            if (ctr < endS && S->idx2[ctr] == col) // Strong
+            col = SU->idx2[j];
+            val = SU->vals[j];
+            row_strong[col] = val;
+        }
+
+        // Add weak values to weak_sum
+        startNS = NS->idx1[i];
+        endNS = NS->idx1[i+1];
+
+        weak_sum = weak_sums[i];
+        sign = signs[i];
+
+        for (int j = startSU; j < endSU; j++)
+        {
+            col = SU->idx2[j];
+            coarse_sum = 0;
+            start_k = SS->idx1[col];
+            end_k = SS->idx1[col+1];
+            for (int k = start_k; k < end_k; k++)
             {
-                if (states[col] == Selected)
-                {
-                    pos[col] = P->idx2.size();
-                    P->idx2.push_back(col_to_new[col]);
-                    P->vals.push_back(val);
-                }
-                
-                if (states[col] != NoNeighbors)
-                {
-                    row_coarse[col] = states[col];
-                    row_strong[col] = (Selected - states[col]) * val;
-                }
-                ctr++;
+                col_k = SS->idx2[k];
+                val = SS->vals[k] * row_coarse[col_k];
+                if (val * sign < 0)
+                    coarse_sum += val;
             }
-            else if (num_variables == 1 || variables[i] == variables[col]) // Weak
+            start_k = NS->idx1[col];
+            end_k = NS->idx1[col+1];
+            for (int k = start_k; k < end_k; k++)
             {
-                weak_sum += val;
+                col_k = NS->idx2[k];
+                val = NS->vals[k] * row_coarse[col_k];
+                if (val * sign < 0)
+                    coarse_sum += val;
             }
-        }
-
-        // Find row coarse sums 
-        ctr = startS;
-        for (int j = startA; j < endA; j++)
-        {
-            col = A->idx2[j];
-            if (ctr < endS && S->idx2[ctr] == col)
+            if (fabs(coarse_sum) < zero_tol)
             {
-                if (states[col] == Unselected)
-                {
-                    coarse_sum = 0;
-                    start_k = A->idx1[col] + 1;
-                    end_k = A->idx1[col+1];
-                    for (int k = start_k; k < end_k; k++)
-                    {
-                        col_k = A->idx2[k];
-                        val = A->vals[k] * row_coarse[col_k];
-                        if (val * sign < 0)
-                        {
-                            coarse_sum += val;
-                        }
-                    }
-                    if (fabs(coarse_sum) < zero_tol)
-                    {
-                        weak_sum += A->vals[j];
-                        row_strong[col] = 0;
-                    }
-                    else
-                    {
-                        row_strong[col] /= coarse_sum;
-                    }
-                }
-                ctr++;
+                weak_sum += A->vals[j];
+                row_strong[col] = 0;
+            }
+            else
+            {
+                row_strong[col] /= coarse_sum;
             }
         }
 
-        int idx;
-        for (int j = startS; j < endS; j++)
+        for (int j = startSU; j < endSU; j++)
         {
-            col = S->idx2[j];
-            if (states[col] == Unselected)
+            col = SU->idx2[j];
+            if (row_strong[col])
             {
-                start_k = A->idx1[col]+1;
-                end_k = A->idx1[col+1];
+                start_k = SS->idx1[col];
+                end_k = SS->idx1[col+1];
                 for (int k = start_k; k < end_k; k++)
                 {
-                    col_k = A->idx2[k];
-                    val = A->vals[k];
-                    idx = pos[col_k];
-                    if (val * sign < 0 && idx >= 0)
+                    col_k = SS->idx2[k];
+                    val = SS->vals[k] * row_coarse[col_k];
+                    if (val * sign < 0)
                     {
-                        P->vals[idx] += (row_strong[col] * val);
+                        P->vals[pos[col_k]] += (row_strong[col] * val);
+                    }
+                }
+                start_k = NS->idx1[col];
+                end_k = NS->idx1[col+1];
+                for (int k = start_k; k < end_k; k++)
+                {
+                    col_k = NS->idx2[k];
+                    val = NS->vals[k] * row_coarse[col_k];
+                    if (val * sign < 0)
+                    {
+                        P->vals[pos[col_k]] += (row_strong[col] * val);
                     }
                 }
             }
         }
 
-        for (int j = startS; j < endS; j++)
+        for (int j = startSS; j < endSS; j++)
         {
-            col = S->idx2[j];
+            col = SS->idx2[j];
             idx = pos[col];
-            if (states[col] == Selected)
-            {
-                P->vals[idx] /= -weak_sum;
-            }
+            P->vals[idx] /= -weak_sum;
         }
 
-        for (int j = startS; j < endS; j++)
+        for (int j = startSS; j < endSS; j++)
         {
-            col = S->idx2[j];
+            col = SS->idx2[j];
             pos[col] = -1;
             row_coarse[col] = 0;
+        }
+        for (int j = startSU; j < endSU; j++)
+        {
+            col = SU->idx2[j];
             row_strong[col] = 0;
         }
 
         P->idx1[i+1] = P->idx2.size();
     }
     P->nnz = P->idx2.size();
+
+    delete NS;
+    delete SS;
+    delete SU;
 
     return P;
 }
