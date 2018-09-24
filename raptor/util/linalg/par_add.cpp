@@ -42,17 +42,17 @@ ParCSRMatrix* ParCSRMatrix::add(ParCSRMatrix* B)
         {
             off_proc_to_new[ctr++] = C->off_proc_column_map.size();
             B_off_proc_to_new[ctr_B++] = C->off_proc_column_map.size();
-            C->off_proc_column_map.push_back(global_col);
+            C->off_proc_column_map.emplace_back(global_col);
         }
         else if (global_col < global_col_B)
         {
             off_proc_to_new[ctr++] = C->off_proc_column_map.size();
-            C->off_proc_column_map.push_back(global_col);
+            C->off_proc_column_map.emplace_back(global_col);
         }
         else
         {
             B_off_proc_to_new[ctr_B++] = C->off_proc_column_map.size();
-            C->off_proc_column_map.push_back(global_col_B);
+            C->off_proc_column_map.emplace_back(global_col_B);
         }
     }
     C->off_proc_num_cols = C->off_proc_column_map.size();
@@ -66,15 +66,15 @@ ParCSRMatrix* ParCSRMatrix::add(ParCSRMatrix* B)
         end = on_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            C->on_proc->idx2.push_back(on_proc->idx2[j]);
-            C->on_proc->vals.push_back(on_proc->vals[j]);
+            C->on_proc->idx2.emplace_back(on_proc->idx2[j]);
+            C->on_proc->vals.emplace_back(on_proc->vals[j]);
         }
         start = B->on_proc->idx1[i];
         end = B->on_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            C->on_proc->idx2.push_back(B->on_proc->idx2[j]);
-            C->on_proc->vals.push_back(B->on_proc->vals[j]);
+            C->on_proc->idx2.emplace_back(B->on_proc->idx2[j]);
+            C->on_proc->vals.emplace_back(B->on_proc->vals[j]);
         }
         C->on_proc->idx1[i+1] = C->on_proc->idx2.size();
 
@@ -83,15 +83,15 @@ ParCSRMatrix* ParCSRMatrix::add(ParCSRMatrix* B)
         end = off_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            C->off_proc->idx2.push_back(off_proc_to_new[off_proc->idx2[j]]);
-            C->off_proc->vals.push_back(off_proc->vals[j]);
+            C->off_proc->idx2.emplace_back(off_proc_to_new[off_proc->idx2[j]]);
+            C->off_proc->vals.emplace_back(off_proc->vals[j]);
         }
         start = B->off_proc->idx1[i];
         end = B->off_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            C->off_proc->idx2.push_back(B_off_proc_to_new[B->off_proc->idx2[j]]);
-            C->off_proc->vals.push_back(B->off_proc->vals[j]);
+            C->off_proc->idx2.emplace_back(B_off_proc_to_new[B->off_proc->idx2[j]]);
+            C->off_proc->vals.emplace_back(B->off_proc->vals[j]);
         }
         C->off_proc->idx1[i+1] = C->off_proc->idx2.size();
     }
@@ -172,17 +172,17 @@ ParCSRMatrix* ParCSRMatrix::subtract(ParCSRMatrix* B)
         {
             off_proc_to_new[ctr++] = C->off_proc_column_map.size();
             B_off_proc_to_new[ctr_B++] = C->off_proc_column_map.size();
-            C->off_proc_column_map.push_back(global_col);
+            C->off_proc_column_map.emplace_back(global_col);
         }
         else if (global_col < global_col_B)
         {
             off_proc_to_new[ctr++] = C->off_proc_column_map.size();
-            C->off_proc_column_map.push_back(global_col);
+            C->off_proc_column_map.emplace_back(global_col);
         }
         else
         {
             B_off_proc_to_new[ctr_B++] = C->off_proc_column_map.size();
-            C->off_proc_column_map.push_back(global_col_B);
+            C->off_proc_column_map.emplace_back(global_col_B);
         }
     }
     C->off_proc_num_cols = C->off_proc_column_map.size();
@@ -196,15 +196,15 @@ ParCSRMatrix* ParCSRMatrix::subtract(ParCSRMatrix* B)
         end = on_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            C->on_proc->idx2.push_back(on_proc->idx2[j]);
-            C->on_proc->vals.push_back(on_proc->vals[j]);
+            C->on_proc->idx2.emplace_back(on_proc->idx2[j]);
+            C->on_proc->vals.emplace_back(on_proc->vals[j]);
         }
         start = B->on_proc->idx1[i];
         end = B->on_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            C->on_proc->idx2.push_back(B->on_proc->idx2[j]);
-            C->on_proc->vals.push_back(-B->on_proc->vals[j]);
+            C->on_proc->idx2.emplace_back(B->on_proc->idx2[j]);
+            C->on_proc->vals.emplace_back(-B->on_proc->vals[j]);
         }
         C->on_proc->idx1[i+1] = C->on_proc->idx2.size();
 
@@ -213,15 +213,15 @@ ParCSRMatrix* ParCSRMatrix::subtract(ParCSRMatrix* B)
         end = off_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            C->off_proc->idx2.push_back(off_proc_to_new[off_proc->idx2[j]]);
-            C->off_proc->vals.push_back(off_proc->vals[j]);
+            C->off_proc->idx2.emplace_back(off_proc_to_new[off_proc->idx2[j]]);
+            C->off_proc->vals.emplace_back(off_proc->vals[j]);
         }
         start = B->off_proc->idx1[i];
         end = B->off_proc->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            C->off_proc->idx2.push_back(B_off_proc_to_new[B->off_proc->idx2[j]]);
-            C->off_proc->vals.push_back(-B->off_proc->vals[j]);
+            C->off_proc->idx2.emplace_back(B_off_proc_to_new[B->off_proc->idx2[j]]);
+            C->off_proc->vals.emplace_back(-B->off_proc->vals[j]);
         }
         C->off_proc->idx1[i+1] = C->off_proc->idx2.size();
     }

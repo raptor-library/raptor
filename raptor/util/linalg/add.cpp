@@ -52,15 +52,15 @@ void CSRMatrix::add_append(CSRMatrix* B, CSRMatrix* C, bool remove_dup)
         end = idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            C->idx2.push_back(idx2[j]);
-            C->vals.push_back(vals[j]);
+            C->idx2.emplace_back(idx2[j]);
+            C->vals.emplace_back(vals[j]);
         }
         start = B->idx1[i];
         end = B->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            C->idx2.push_back(B->idx2[j]);
-            C->vals.push_back(B->vals[j]);
+            C->idx2.emplace_back(B->idx2[j]);
+            C->vals.emplace_back(B->vals[j]);
         }
         C->idx1[i+1] = C->idx2.size();
     }
@@ -85,15 +85,15 @@ CSRMatrix* CSRMatrix::subtract(CSRMatrix* B)
         end = idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            C->idx2.push_back(idx2[j]);
-            C->vals.push_back(vals[j]);
+            C->idx2.emplace_back(idx2[j]);
+            C->vals.emplace_back(vals[j]);
         }
         start = B->idx1[i];
         end = B->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            C->idx2.push_back(B->idx2[j]);
-            C->vals.push_back(-B->vals[j]);
+            C->idx2.emplace_back(B->idx2[j]);
+            C->vals.emplace_back(-B->vals[j]);
         }
         C->idx1[i+1] = C->idx2.size();
     }

@@ -34,7 +34,7 @@ void CG(CSRMatrix* A, Vector& x, Vector& b, aligned_vector<double>& res, double 
     // Find initial (r, r) and residual
     rr_inner = r.inner_product(r);
     norm_r = sqrt(rr_inner);
-    res.push_back(norm_r);
+    res.emplace_back(norm_r);
 
     // Scale tolerance by norm_r
     if (norm_r != 0.0)
@@ -83,7 +83,7 @@ void CG(CSRMatrix* A, Vector& x, Vector& b, aligned_vector<double>& res, double 
         rr_inner = next_inner;
         norm_r = sqrt(rr_inner);
 
-        res.push_back(norm_r);
+        res.emplace_back(norm_r);
 
         iter++;
     }

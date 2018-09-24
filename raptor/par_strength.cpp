@@ -185,7 +185,7 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
             threshold = row_scale * theta;
 
             // Always add diagonal
-            S->on_proc->idx2.push_back(i);
+            S->on_proc->idx2.emplace_back(i);
 
             // Add all off-diagonal entries to strength
             // if magnitude greater than equal to 
@@ -199,7 +199,7 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                         val = A->on_proc->vals[j];
                         if (val > threshold)
                         {
-                            S->on_proc->idx2.push_back(A->on_proc->idx2[j]);
+                            S->on_proc->idx2.emplace_back(A->on_proc->idx2[j]);
                         }
                     }
                     for (int j = row_start_off; j < row_end_off; j++)
@@ -208,7 +208,7 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                         if (val > threshold)
                         {
                             col = A->off_proc->idx2[j];
-                            S->off_proc->idx2.push_back(col);
+                            S->off_proc->idx2.emplace_back(col);
                             col_exists[col] = true;
                         }
                     }
@@ -220,7 +220,7 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                         val = A->on_proc->vals[j];
                         if (val < threshold)
                         {
-                            S->on_proc->idx2.push_back(A->on_proc->idx2[j]);
+                            S->on_proc->idx2.emplace_back(A->on_proc->idx2[j]);
                         }
                     }
                     for (int j = row_start_off; j < row_end_off; j++)
@@ -229,7 +229,7 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                         if (val < threshold)
                         {
                             col = A->off_proc->idx2[j];
-                            S->off_proc->idx2.push_back(col);
+                            S->off_proc->idx2.emplace_back(col);
                             col_exists[col] = true;
                         }
                     }
@@ -247,7 +247,7 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                             val = A->on_proc->vals[j];
                             if (val > threshold)
                             {
-                                S->on_proc->idx2.push_back(col);
+                                S->on_proc->idx2.emplace_back(col);
                             }
                         }
                     }
@@ -259,7 +259,7 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                             val = A->off_proc->vals[j];
                             if (val > threshold)
                             {
-                                S->off_proc->idx2.push_back(col);
+                                S->off_proc->idx2.emplace_back(col);
                                 col_exists[col] = true;
                             }
                         }
@@ -275,7 +275,7 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                             val = A->on_proc->vals[j];
                             if (val < threshold)
                             {
-                                S->on_proc->idx2.push_back(col);
+                                S->on_proc->idx2.emplace_back(col);
                             }
                         }
                     }
@@ -287,7 +287,7 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                             val = A->off_proc->vals[j];
                             if (val < threshold)
                             {
-                                S->off_proc->idx2.push_back(col);
+                                S->off_proc->idx2.emplace_back(col);
                                 col_exists[col] = true;
                             }
                         }
@@ -317,7 +317,7 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
         if (col_exists[i])
         {
             orig_to_S[i] = S->off_proc_column_map.size();
-            S->off_proc_column_map.push_back(A->off_proc_column_map[i]);
+            S->off_proc_column_map.emplace_back(A->off_proc_column_map[i]);
         }
     }
     S->off_proc_num_cols = S->off_proc_column_map.size();
@@ -481,7 +481,7 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, da
             threshold = row_scales[i];
 
             // Always add diagonal
-            S->on_proc->idx2.push_back(i);
+            S->on_proc->idx2.emplace_back(i);
 
             // Add all off-diagonal entries to strength
             // if magnitude greater than equal to 
@@ -494,7 +494,7 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, da
                         || (neg_diags[col] && val > row_scales[col])
                         || (!neg_diags[col] && val < row_scales[col]))
                 {
-                    S->on_proc->idx2.push_back(col);
+                    S->on_proc->idx2.emplace_back(col);
                 }
             }
             for (int j = row_start_off; j < row_end_off; j++)
@@ -505,7 +505,7 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, da
                         || (off_proc_neg_diags[col] && val > off_proc_row_scales[col])
                         || (!off_proc_neg_diags[col] && val < off_proc_row_scales[col]))
                 {
-                    S->off_proc->idx2.push_back(col);
+                    S->off_proc->idx2.emplace_back(col);
                     col_exists[col] = true;
                 }
             }                    
@@ -531,7 +531,7 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, da
         if (col_exists[i])
         {
             orig_to_S[i] = S->off_proc_column_map.size();
-            S->off_proc_column_map.push_back(A->off_proc_column_map[i]);
+            S->off_proc_column_map.emplace_back(A->off_proc_column_map[i]);
         }
     }
     S->off_proc_num_cols = S->off_proc_column_map.size();

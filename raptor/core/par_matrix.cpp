@@ -550,11 +550,11 @@ ParCSRMatrix* ParCSRMatrix::transpose()
             col = j;
             col_start = send_mat->idx1[col];
             col_end = send_mat->idx1[col+1];
-            send_buffer.push_back(PairData());
+            send_buffer.emplace_back(PairData());
             send_buffer[ctr++].index = col_end - col_start;
             for (int k = col_start; k < col_end; k++)
             {
-                send_buffer.push_back(PairData());
+                send_buffer.emplace_back(PairData());
                 send_buffer[ctr].index = local_row_map[send_mat->idx2[k]];
                 send_buffer[ctr++].val = send_mat->vals[k];
             }
@@ -593,8 +593,8 @@ ParCSRMatrix* ParCSRMatrix::transpose()
             col_count++;
             for (int k = 0; k < col_size; k++)
             {
-                recv_mat->idx2.push_back(recv_buffer[ctr].index);
-                recv_mat->vals.push_back(recv_buffer[ctr++].val);
+                recv_mat->idx2.emplace_back(recv_buffer[ctr].index);
+                recv_mat->vals.emplace_back(recv_buffer[ctr++].val);
             }
         }
     }
@@ -688,7 +688,7 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
         block_row = *it / block_row_size;
         if (block_row != prev_row)
         {
-            A->local_row_map.push_back(block_row);
+            A->local_row_map.emplace_back(block_row);
             prev_row = block_row;
         }
     }
@@ -705,7 +705,7 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
             block_col = *it / block_col_size;
             if (block_col != prev_col)
             {
-                A->on_proc_column_map.push_back(block_row);
+                A->on_proc_column_map.emplace_back(block_row);
                 prev_col = block_row;
             }
         }
@@ -720,7 +720,7 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
         if (block_col != prev_col)
         {
             global_to_block_local[block_col] = A->off_proc_column_map.size();
-            A->off_proc_column_map.push_back(block_col);
+            A->off_proc_column_map.emplace_back(block_col);
             prev_col = block_col;
         }
     }
@@ -749,8 +749,8 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
                 if (on_proc_pos[block_col] == -1)
                 {
                     on_proc_pos[block_col] = A_on_proc->idx2.size();
-                    A_on_proc->idx2.push_back(block_col);
-                    A_on_proc->block_vals.push_back(
+                    A_on_proc->idx2.emplace_back(block_col);
+                    A_on_proc->block_vals.emplace_back(
                             new double[A_on_proc->b_size]());
                 }
                 val = on_proc->vals[k];
@@ -770,8 +770,8 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
                 if (off_proc_pos[block_col] == -1)
                 {
                     off_proc_pos[block_col] = A_off_proc->idx2.size();
-                    A_off_proc->idx2.push_back(block_col);
-                    A_off_proc->block_vals.push_back(
+                    A_off_proc->idx2.emplace_back(block_col);
+                    A_off_proc->block_vals.emplace_back(
                             new double[A_off_proc->b_size]());
                 }
                 val = off_proc->vals[k];

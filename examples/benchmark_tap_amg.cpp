@@ -187,7 +187,131 @@ int main(int argc, char* argv[])
         b_data[i] = b[i];
     }
 
-    // Setup Hypre Hierarchy
+
+int* on_idx1 = new int[A->on_proc->idx1.size()];
+int* off_idx1 = new int[A->off_proc->idx1.size()];
+int* on_idx2 = NULL;
+int* off_idx2 = NULL;
+double* on_vals = NULL;
+double* off_vals = NULL;
+double* x_lcl = x.local.values.data();
+double* b_lcl = b.local.values.data();
+if (A->on_proc->nnz)
+{
+    on_idx2 = new int[A->on_proc->nnz];
+    on_vals = new double[A->on_proc->nnz];
+}
+if (A->off_proc->nnz)
+{
+    off_idx2 = new int[A->off_proc->nnz];
+    off_vals = new double[A->off_proc->nnz];
+}
+on_idx1[0] = 0;
+for (int i = 0; i < A->on_proc->n_rows; i++)
+{
+    on_idx1[i+1] = A->on_proc->idx1[i+1];
+    for (int j = on_idx1[i]; j < on_idx1[i+1]; j++)
+    {
+        on_idx2[j] = A->on_proc->idx2[j];
+        on_vals[j] = A->on_proc->vals[j];
+    }
+}
+off_idx1[0] = 0;
+for (int i = 0; i < A->off_proc->n_rows; i++)
+{
+    off_idx1[i+1] = A->off_proc->idx1[i+1];
+    for (int j = off_idx1[i]; j < off_idx1[i+1]; j++)
+    {
+        off_idx2[j] = A->off_proc->idx2[j];
+        off_vals[j] = A->off_proc->vals[j];
+    }
+}
+
+
+int n_spmv_tests = 10;
+hypre_CSRMatrix *diag = hypre_ParCSRMatrixDiag(A_h);
+hypre_Vector* x_local = hypre_ParVectorLocalVector(x_h);
+hypre_Vector* b_local = hypre_ParVectorLocalVector(b_h);
+hypre_Vector* y_local = hypre_ParVectorLocalVector(b_h);
+for (int test = 0; test < 5; test++)
+{
+    t0 = MPI_Wtime();
+    for (int i = 0; i < n_spmv_tests; i++)
+    {
+        hypre_CSRMatrixMatvecOutOfPlace(1.0, diag, x_local, 0.0, b_local, y_local, 0);
+    }
+    tfinal = (MPI_Wtime() - t0) / n_spmv_tests;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+   if (rank == 0) printf("HYPRE SEQ SpMV %e\n", t0);
+}
+for (int test = 0; test < 5; test++)
+{
+    t0 = MPI_Wtime();
+    for (int i = 0; i < n_spmv_tests; i++)
+    {
+        int start = 0;
+        int end; 
+        for (int j = 0; j < A->on_proc->n_rows; j++)
+        {
+            end = on_idx1[j+1];
+            for (int k = start; k < end; k++)
+            {
+                b_lcl[j] += on_vals[k] * x_lcl[on_idx2[j]];
+            }
+            start = end;
+        }
+    }
+    tfinal = (MPI_Wtime() - t0) / n_spmv_tests;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+   if (rank == 0) printf("RAPtor SEQ SpMV %e\n", t0);
+}
+
+
+
+n_spmv_tests = 10;
+
+for (int test = 0; test < 5; test++)
+{
+    t0 = MPI_Wtime();
+    for (int i = 0; i < n_spmv_tests; i++)
+    {
+        hypre_ParCSRMatrixMatvec(1.0, A_h, x_h, 0.0, b_h);
+    }
+    tfinal = (MPI_Wtime() - t0) / n_spmv_tests;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+   if (rank == 0) printf("HYPRE SpMV %e\n", t0);
+}
+
+for (int test = 0; test < 5; test++)
+{
+    t0 = MPI_Wtime();
+    for (int i = 0; i < n_spmv_tests; i++)
+    {
+        A->mult(x, b);
+    }
+    tfinal = (MPI_Wtime() - t0) / n_spmv_tests;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("RAPtor SpMV %e\n", t0);
+}
+
+for (int test = 0; test < 5; test++)
+{
+    t0 = MPI_Wtime();
+    for (int i = 0; i < n_spmv_tests; i++)
+    {
+        A->comm->init_comm(x);
+        A->on_proc->mult(x.local, b.local);
+        aligned_vector<double>& x_tmp = A->comm->complete_comm<double>();
+        A->off_proc->mult_append(x_tmp, b.local);
+    }
+    tfinal = (MPI_Wtime() - t0) / n_spmv_tests;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("RAPtor SpMV Rewritten %e\n", t0);
+}
+
+
+
+/*    // Setup Hypre Hierarchy
     int hyp_coarsen_type = 10; // HMIS
     //int hyp_coarsen_type = 8; // PMIS
     int hyp_interp_type = 6; // Extended
@@ -211,6 +335,7 @@ int main(int argc, char* argv[])
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("HYPRE Solve Time: %e\n", t0);
+    hypre_BoomerAMGDestroy(solver_data);
 
     // Ruge-Stuben AMG
     if (rank == 0) printf("Ruge Stuben Solver: \n");
@@ -220,14 +345,14 @@ int main(int argc, char* argv[])
     ml->max_iterations = 1000;
     ml->solve_tol = 1e-07;
     ml->num_variables = num_variables;
-    ml->track_times = true;
+    ml->track_times = false;
     t0 = MPI_Wtime();
     ml->setup(A);
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Total Setup Time: %e\n", t0);
-    ml->print_hierarchy();
-    ml->print_setup_times();
+    //ml->print_hierarchy();
+    //ml->print_setup_times();
 
     MPI_Barrier(MPI_COMM_WORLD);
     ParVector rss_sol = ParVector(x);
@@ -236,8 +361,8 @@ int main(int argc, char* argv[])
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Total Solve Time: %e\n", t0);
-    ml->print_residuals(iter);
-    ml->print_solve_times();
+    //ml->print_residuals(iter);
+    //ml->print_solve_times();
     delete ml;
 
     // TAP Ruge-Stuben AMG
@@ -321,9 +446,12 @@ int main(int argc, char* argv[])
     ml->print_residuals(iter);
     ml->print_solve_times();
     delete ml;
-
+*/
 
     delete A;
+    HYPRE_IJMatrixDestroy(A_h_ij);
+    HYPRE_IJVectorDestroy(x_h_ij);
+    HYPRE_IJVectorDestroy(b_h_ij);
 
     MPI_Finalize();
     return 0;

@@ -193,7 +193,7 @@ namespace raptor
             }
 
             // Form coarse grid operator
-            levels.push_back(new ParLevel());
+            levels.emplace_back(new ParLevel());
 
 
             if (setup_times) setup_times[4][level_ctr] -= MPI_Wtime();
@@ -203,6 +203,9 @@ namespace raptor
             if (setup_times) setup_times[5][level_ctr] -= MPI_Wtime();
             A = AP->mult_T(P, tap_level, PTAP_mat_time);
             if (setup_times) setup_times[5][level_ctr] += MPI_Wtime();
+
+            A->sort();
+            A->on_proc->move_diag();
 
             level_ctr++;
             levels[level_ctr]->A = A;

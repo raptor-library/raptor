@@ -252,14 +252,14 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C,
             if (global_col < B->partition->first_local_col ||
                     global_col > B->partition->last_local_col)
             {
-                recv_off->idx2.push_back(global_col);
-                recv_off->vals.push_back(recv_mat->vals[j]);
+                recv_off->idx2.emplace_back(global_col);
+                recv_off->vals.emplace_back(recv_mat->vals[j]);
             }
             else
             {
-                recv_on->idx2.push_back(part_to_col[global_col - 
+                recv_on->idx2.emplace_back(part_to_col[global_col - 
                         B->partition->first_local_col]);
-                recv_on->vals.push_back(recv_mat->vals[j]);
+                recv_on->vals.emplace_back(recv_mat->vals[j]);
             }
         }
         recv_on->idx1[i+1] = recv_on->idx2.size();
@@ -278,7 +278,7 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C,
     for (aligned_vector<int>::iterator it = B->off_proc_column_map.begin();
             it != B->off_proc_column_map.end(); ++it)
     {
-        C->off_proc_column_map.push_back(*it);
+        C->off_proc_column_map.emplace_back(*it);
     }
     std::sort(C->off_proc_column_map.begin(), C->off_proc_column_map.end());
 
@@ -389,13 +389,13 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
             if (col < partition->first_local_col
                     || col > partition->last_local_col)
             {
-                recv_off->idx2.push_back(col);
-                recv_off->vals.push_back(recv_mat->vals[j]);
+                recv_off->idx2.emplace_back(col);
+                recv_off->vals.emplace_back(recv_mat->vals[j]);
             }
             else
             {
-                recv_on->idx2.push_back(col);
-                recv_on->vals.push_back(recv_mat->vals[j]);
+                recv_on->idx2.emplace_back(col);
+                recv_on->vals.emplace_back(recv_mat->vals[j]);
             }
         }
         recv_on->idx1[i+1] = recv_on->idx2.size();
@@ -469,7 +469,7 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
             it != C_col_set.end(); ++it)
     {
         global_to_C[*it] = C->off_proc_column_map.size();
-        C->off_proc_column_map.push_back(*it);
+        C->off_proc_column_map.emplace_back(*it);
     }
 
     // Map local off_proc_cols to C->off_proc_column_map
@@ -477,7 +477,7 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
             it != off_proc_column_map.end(); ++it)
     {
         col_C = global_to_C[*it];
-        map_to_C.push_back(col_C);
+        map_to_C.emplace_back(col_C);
     }
 
     // Update recvd cols from global_col to local col in C

@@ -534,17 +534,17 @@ namespace raptor
     
     void add_value(int row, int col, double value)
     {
-        idx1.push_back(row);
-        idx2.push_back(col);
-        vals.push_back(value);
+        idx1.emplace_back(row);
+        idx2.emplace_back(col);
+        vals.emplace_back(value);
         nnz++;
     }
 
     void add_value(int row, int col, double* value)
     {
-        idx1.push_back(row);
-        idx2.push_back(col);
-        vals.push_back(*value);
+        idx1.emplace_back(row);
+        idx2.emplace_back(col);
+        vals.emplace_back(*value);
         nnz++;
     }
 
@@ -723,14 +723,14 @@ namespace raptor
 
     void add_value(int row, int col, double value) 
     {
-        idx2.push_back(col);
-        vals.push_back(value);
+        idx2.emplace_back(col);
+        vals.emplace_back(value);
         nnz++;
     }
     void add_value(int row, int col, double* value)
     {
-        idx2.push_back(col);
-        vals.push_back(*value);
+        idx2.emplace_back(col);
+        vals.emplace_back(*value);
         nnz++;
     }
 
@@ -881,14 +881,14 @@ namespace raptor
 
     void add_value(int row, int col, double value)
     {
-        idx2.push_back(row);
-        vals.push_back(value);
+        idx2.emplace_back(row);
+        vals.emplace_back(value);
         nnz++;
     }
     void add_value(int row, int col, double* value)
     {
-        idx2.push_back(row);
-        vals.push_back(*value);
+        idx2.emplace_back(row);
+        vals.emplace_back(*value);
         nnz++;
     }
 
@@ -1004,8 +1004,8 @@ class BSRMatrix : public CSRMatrix
 
     void add_value(int row, int col, double* value) 
     {
-        idx2.push_back(col);
-        block_vals.push_back(copy_val(value));
+        idx2.emplace_back(col);
+        block_vals.emplace_back(copy_val(value));
         nnz++;
     }
 
@@ -1106,9 +1106,9 @@ class BCOOMatrix : public COOMatrix
 
     void add_value(int row, int col, double* values)
     {
-        idx1.push_back(row);
-        idx2.push_back(col);
-        block_vals.push_back(copy_val(values));
+        idx1.emplace_back(row);
+        idx2.emplace_back(col);
+        block_vals.emplace_back(copy_val(values));
         nnz++;
     }
 
@@ -1223,8 +1223,8 @@ class BSCMatrix : public CSCMatrix
 
     void add_value(int row, int col, double* value)
     {
-        idx2.push_back(row);
-        block_vals.push_back(copy_val(value));
+        idx2.emplace_back(row);
+        block_vals.emplace_back(copy_val(value));
         nnz++;
     }
 

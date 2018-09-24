@@ -32,7 +32,7 @@ public:
     {
         num_msgs = 0;
         size_msgs = 0;
-        indptr.push_back(0);
+        indptr.emplace_back(0);
     }
 
     CommData(CommData* data)
@@ -346,8 +346,8 @@ public:
             }
             if (comm_proc)
             {
-                data->procs.push_back(proc);
-                data->indptr.push_back(data->size_msgs);
+                data->procs.emplace_back(proc);
+                data->indptr.emplace_back(data->size_msgs);
             }
         }
         data->num_msgs = data->procs.size();
@@ -359,8 +359,8 @@ public:
     void add_msg(int proc, int msg_size, int* msg_indices = NULL)
     {
         int last_ptr = indptr[num_msgs];
-        procs.push_back(proc);
-        indptr.push_back(last_ptr + msg_size);
+        procs.emplace_back(proc);
+        indptr.emplace_back(last_ptr + msg_size);
 
         num_msgs++;
         size_msgs += msg_size;
@@ -377,9 +377,9 @@ public:
         {
             MPI_Recv(&size, 1, MPI_INT, MPI_ANY_SOURCE, key,
                     mpi_comm, &recv_status);
-            procs.push_back(recv_status.MPI_SOURCE);
+            procs.emplace_back(recv_status.MPI_SOURCE);
             size_msgs += size;
-            indptr.push_back(size_msgs);
+            indptr.emplace_back(size_msgs);
         }
         num_msgs = procs.size();
         finalize();
@@ -715,13 +715,13 @@ public:
                 if (new_idx != -1)
                 {
                     comm_proc = true;
-                    data->indices.push_back(new_idx);
+                    data->indices.emplace_back(new_idx);
                 }
             }
             if (comm_proc)
             {
-                data->procs.push_back(proc);
-                data->indptr.push_back(data->indices.size());
+                data->procs.emplace_back(proc);
+                data->indptr.emplace_back(data->indices.size());
             }
         }
         data->size_msgs = data->indices.size();
@@ -736,13 +736,13 @@ public:
             int* msg_indices = NULL)
     {
         int last_ptr = indptr[num_msgs];
-        procs.push_back(proc);
-        indptr.push_back(last_ptr + msg_size);
+        procs.emplace_back(proc);
+        indptr.emplace_back(last_ptr + msg_size);
         if (msg_indices)
         {
             for (int i = 0; i < msg_size; i++)
             {
-                indices.push_back(msg_indices[i]);
+                indices.emplace_back(msg_indices[i]);
             }
         }
 
@@ -768,8 +768,8 @@ public:
             MPI_Recv(&(indices[size_recvd]), count, MPI_INT, proc, 
                     key, mpi_comm, &recv_status);
             size_recvd += count;
-            procs.push_back(proc);
-            indptr.push_back(size_recvd);
+            procs.emplace_back(proc);
+            indptr.emplace_back(size_recvd);
         }
         num_msgs = procs.size();
         finalize();
@@ -1100,7 +1100,7 @@ public:
 
         DuplicateData* data = new DuplicateData();
 
-        data->indptr_T.push_back(0);
+        data->indptr_T.emplace_back(0);
         for (int i = 0; i < num_msgs; i++)
         {
             comm_proc = false;
@@ -1119,19 +1119,19 @@ public:
                     if (new_idx != -1)
                     {
                         comm_idx = true;
-                        data->indices.push_back(new_idx);
+                        data->indices.emplace_back(new_idx);
                     }
                 }
                 if (comm_idx)
                 {
                     comm_proc = true;
-                    data->indptr_T.push_back(data->indices.size());
+                    data->indptr_T.emplace_back(data->indices.size());
                 }
             }
             if (comm_proc)
             {
-                data->procs.push_back(proc);
-                data->indptr.push_back(data->indptr_T.size() - 1);
+                data->procs.emplace_back(proc);
+                data->indptr.emplace_back(data->indptr_T.size() - 1);
             }
         }
         data->size_msgs = data->indptr_T.size() - 1;
@@ -1228,12 +1228,12 @@ public:
 
     void append_val(aligned_vector<double>& vec, const double val, int block_size)
     {
-        vec.push_back(val);
+        vec.emplace_back(val);
     }
     void append_val(aligned_vector<double>& vec, const double* val, int block_size)
     {
         for (int i = 0; i < block_size; i++)
-            vec.push_back(val[i]);
+            vec.emplace_back(val[i]);
     }
     
     template <typename T>
@@ -1255,7 +1255,7 @@ public:
             row_end = rowptr[row+1];
             for (int l = row_start; l < row_end; l++)
             {
-                send_indices.push_back(col_indices[l]);
+                send_indices.emplace_back(col_indices[l]);
                 append_val(send_values, values[l], block_size);
             }
         }
@@ -1307,7 +1307,7 @@ public:
             row_end = rowptr[row+1];
             for (int l = row_start; l < row_end; l++)
             {
-                send_indices.push_back(col_indices[l]);
+                send_indices.emplace_back(col_indices[l]);
             }
         }
         if (send_indices.size())

@@ -323,12 +323,12 @@ namespace raptor
         }
         tmp = first_local_col;
         proc = rank - 1;
-        assumed_col_ptr.push_back(tmp);
+        assumed_col_ptr.emplace_back(tmp);
         while (assumed_first_col < tmp)
         {
             MPI_Recv(&recvbuf, 1, MPI_INT, proc, 2345, MPI_COMM_WORLD, &status);
             tmp = recvbuf;
-            assumed_col_ptr.push_back(tmp);
+            assumed_col_ptr.emplace_back(tmp);
             proc--;
         }
         if (ctr)
@@ -340,7 +340,7 @@ namespace raptor
         std::reverse(assumed_col_ptr.begin(), assumed_col_ptr.end());
         for (int i = assumed_col_ptr.size() - 1; i >= 0; i--)
         {
-            assumed_col_procs.push_back(rank - i);
+            assumed_col_procs.emplace_back(rank - i);
         }
 
         // If first_local_col != first, exchange data with neighbors
@@ -363,14 +363,14 @@ namespace raptor
         }
         tmp = last_local_col + 1;
         proc = rank + 1;
-        assumed_col_ptr.push_back(last_local_col + 1);
-        assumed_col_procs.push_back(proc);
+        assumed_col_ptr.emplace_back(last_local_col + 1);
+        assumed_col_procs.emplace_back(proc);
         while (assumed_last_col > tmp && proc < num_procs)
         {
             MPI_Recv(&recvbuf, 1, MPI_INT, proc, 2345, MPI_COMM_WORLD, &status);
             tmp = recvbuf;
-            assumed_col_ptr.push_back(recvbuf);
-            assumed_col_procs.push_back(++proc);
+            assumed_col_ptr.emplace_back(recvbuf);
+            assumed_col_procs.emplace_back(++proc);
         }
         if (ctr)
         {
@@ -405,19 +405,19 @@ namespace raptor
         {
             off_proc_col_to_proc.resize(off_proc_num_cols);
             prev_proc = off_proc_column_map[0] / assumed_num_cols;
-            send_procs.push_back(prev_proc);
-            send_proc_starts.push_back(0);
+            send_procs.emplace_back(prev_proc);
+            send_proc_starts.emplace_back(0);
             for (int i = 1; i < off_proc_num_cols; i++)
             {
                 proc = off_proc_column_map[i] / assumed_num_cols;
                 if (proc != prev_proc)
                 {
-                    send_procs.push_back(proc);
-                    send_proc_starts.push_back(i);
+                    send_procs.emplace_back(proc);
+                    send_proc_starts.emplace_back(i);
                     prev_proc = proc;
                 }
             }
-            send_proc_starts.push_back(off_proc_num_cols);
+            send_proc_starts.emplace_back(off_proc_num_cols);
 
             num_sends = send_procs.size();
             send_requests.resize(num_sends);
@@ -464,8 +464,8 @@ namespace raptor
                     int recvbuf[count];
                     MPI_Recv(recvbuf, count, MPI_INT, proc, 9753, 
                             MPI_COMM_WORLD, &status);
-                    sendbuf_procs.push_back(proc);
-                    sendbuf_starts.push_back(sendbuf.size());
+                    sendbuf_procs.emplace_back(proc);
+                    sendbuf_starts.emplace_back(sendbuf.size());
                     int k = 0;
                     for (int i = 0; i < count; i++)
                     {
@@ -476,7 +476,7 @@ namespace raptor
                             k++;
                         }
                         proc = assumed_col_procs[k];
-                        sendbuf.push_back(proc);    
+                        sendbuf.emplace_back(proc);    
                     }
                 }
                 MPI_Testall(num_sends, send_requests.data(), &finished, MPI_STATUSES_IGNORE);
@@ -494,8 +494,8 @@ namespace raptor
                 int recvbuf[count];
                 MPI_Recv(recvbuf, count, MPI_INT, proc, 9753, 
                         MPI_COMM_WORLD, &status);
-                sendbuf_procs.push_back(proc);
-                sendbuf_starts.push_back(sendbuf.size());
+                sendbuf_procs.emplace_back(proc);
+                sendbuf_starts.emplace_back(sendbuf.size());
                 int k = 0;
                 for (int i = 0; i < count; i++)
                 {
@@ -506,12 +506,12 @@ namespace raptor
                         k++;
                     }
                     proc = assumed_col_procs[k];
-                    sendbuf.push_back(proc);
+                    sendbuf.emplace_back(proc);
                 }
             }
             MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
         }
-        sendbuf_starts.push_back(sendbuf.size());
+        sendbuf_starts.emplace_back(sendbuf.size());
 
         int n_sendbuf = sendbuf_procs.size();
         aligned_vector<MPI_Request> sendbuf_requests(n_sendbuf);

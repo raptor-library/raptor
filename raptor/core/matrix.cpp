@@ -176,9 +176,9 @@ void COO_to_COO(const COOMatrix* A, COOMatrix* B, aligned_vector<T>& A_vals,
     B_vals.reserve(A->nnz);
     for (int i = 0; i < A->nnz; i++)
     {
-        B->idx1.push_back(A->idx1[i]);
-        B->idx2.push_back(A->idx2[i]);
-        B_vals.push_back(B->copy_val(A_vals[i]));
+        B->idx1.emplace_back(A->idx1[i]);
+        B->idx2.emplace_back(A->idx2[i]);
+        B_vals.emplace_back(B->copy_val(A_vals[i]));
     }
 }
 template <typename T>
@@ -202,9 +202,9 @@ void CSR_to_COO(const CSRMatrix* A, COOMatrix* B, aligned_vector<T>& A_vals,
         int row_end = A->idx1[i+1];
         for (int j = row_start; j < row_end; j++)
         {
-            B->idx1.push_back(i);
-            B->idx2.push_back(A->idx2[j]);
-            B_vals.push_back(B->copy_val(A_vals[j]));
+            B->idx1.emplace_back(i);
+            B->idx2.emplace_back(A->idx2[j]);
+            B_vals.emplace_back(B->copy_val(A_vals[j]));
         }
     }
 }
@@ -229,9 +229,9 @@ void CSC_to_COO(const CSCMatrix* A, COOMatrix* B, aligned_vector<T>& A_vals,
         int col_end = A->idx1[i+1];
         for (int j = col_start; j < col_end; j++)
         {
-            B->idx1.push_back(A->idx2[j]);
-            B->idx2.push_back(i);
-            B_vals.push_back(B->copy_val(A_vals[j]));
+            B->idx1.emplace_back(A->idx2[j]);
+            B->idx2.emplace_back(i);
+            B_vals.emplace_back(B->copy_val(A_vals[j]));
         }
     }
 

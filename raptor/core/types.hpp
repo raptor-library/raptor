@@ -91,7 +91,7 @@ public:
         {
                 void * const pv = static_cast<void *>(p);
 
-                new (pv) T(t);
+			new (pv) T(t);
         }
 
         void destroy(T * const p) const

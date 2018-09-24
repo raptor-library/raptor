@@ -40,7 +40,7 @@ void init_sums(aligned_vector<double*>& sums, int size, int b_size)
 {
     for (int i = 0; i < size; i++)
     {
-        sums.push_back(new double[b_size]);
+        sums.emplace_back(new double[b_size]);
         for (int j = 0; j < b_size; j++)
             sums[i][j] = 0.0;
     }
@@ -114,13 +114,13 @@ CSRMatrix* spgemm_helper(const CSRMatrix* A, const CSRMatrix* B,
             {
                 if (B_to_C) 
                 {
-                    C->idx2.push_back(B_to_C[head]);
+                    C->idx2.emplace_back(B_to_C[head]);
                 }
                 else
                 {
-                    C->idx2.push_back(head);
+                    C->idx2.emplace_back(head);
                 }
-                C_vals.push_back(sums[head]);
+                C_vals.emplace_back(sums[head]);
             }
             int tmp = head;
             head = next[head];
@@ -181,13 +181,13 @@ CSRMatrix* spgemm_T_helper(const CSCMatrix* A, const CSRMatrix* B,
             {
                 if (C_map)
                 {
-                    C->idx2.push_back(C_map[head]);
+                    C->idx2.emplace_back(C_map[head]);
                 }
                 else
                 {
-                    C->idx2.push_back(head);
+                    C->idx2.emplace_back(head);
                 }
-                C_vals.push_back(sums[head]);
+                C_vals.emplace_back(sums[head]);
             }
             int tmp = head;
             head = next[head];

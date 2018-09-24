@@ -29,36 +29,41 @@
 void SOR_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
         const aligned_vector<double>& dist_x, double omega)
 {
-    int start, end, col;
+    int start_on, end_on;
+    int start_off, end_off;
+    int col;
     double diag;
     double row_sum;
 
+    start_on = 0;
+    start_off = 0;
     for (int i = 0; i < A->local_num_rows; i++)
     {
         row_sum = 0;
-        start = A->on_proc->idx1[i];
-        end = A->on_proc->idx1[i+1];
-        if (A->on_proc->idx2[start] == i)
+        end_on = A->on_proc->idx1[i+1];
+        if (A->on_proc->idx2[start_on] == i)
         {
-            diag = A->on_proc->vals[start];
-            start++;
+            diag = A->on_proc->vals[start_on];
+            start_on++;
         }        
         else continue;
-        for (int j = start; j < end; j++)
+        for (int j = start_on; j < end_on; j++)
         {
             col = A->on_proc->idx2[j];
             row_sum += A->on_proc->vals[j] * x[col];
         }
+        start_on = end_on;
 
-        start = A->off_proc->idx1[i];
-        end = A->off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
+        end_off = A->off_proc->idx1[i+1];
+        for (int j = start_off; j < end_off; j++)
         {
             col = A->off_proc->idx2[j];
             row_sum += A->off_proc->vals[j] * dist_x[col];
         }
+        start_off = end_off;
 
-        x[i] = ((1.0 - omega)*x[i]) + (omega*((y[i] - row_sum) / diag));
+//        x[i] = ((1.0 - omega)*x[i]) + (omega*((y[i] - row_sum) / diag));
+        x[i] = (x[i] + omega * (y[i] - x[i] - row_sum)) / diag;
     }
 }
 

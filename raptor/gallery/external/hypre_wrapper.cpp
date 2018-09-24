@@ -145,8 +145,8 @@ raptor::ParCSRMatrix* convert(hypre_ParCSRMatrix* A_hypre, MPI_Comm comm_mat)
         int row_end = diag_i[i+1];
         for (int j = row_start; j < row_end; j++)
         {
-            A->on_proc->idx2.push_back(diag_j[j]);
-            A->on_proc->vals.push_back(diag_data[j]);
+            A->on_proc->idx2.emplace_back(diag_j[j]);
+            A->on_proc->vals.emplace_back(diag_data[j]);
         }
         A->on_proc->idx1[i+1] = A->on_proc->idx2.size();
     }
@@ -162,8 +162,8 @@ raptor::ParCSRMatrix* convert(hypre_ParCSRMatrix* A_hypre, MPI_Comm comm_mat)
             for (int j = row_start; j < row_end; j++)
             {
                 int global_col = col_map_offd[offd_j[j]];
-                A->off_proc->idx2.push_back(global_col);
-                A->off_proc->vals.push_back(offd_data[j]);
+                A->off_proc->idx2.emplace_back(global_col);
+                A->off_proc->vals.emplace_back(offd_data[j]);
             }
         }
         A->off_proc->idx1[i+1] = A->off_proc->idx2.size();

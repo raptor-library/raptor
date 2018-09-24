@@ -523,13 +523,13 @@ namespace raptor
                     if (comm->send_data->int_buffer[j] != -1)
                     {
                         comm_proc = true;
-                        send_data->indices.push_back(comm->send_data->indices[j]);
+                        send_data->indices.emplace_back(comm->send_data->indices[j]);
                     }
                 }
                 if (comm_proc)
                 {
-                    send_data->procs.push_back(proc);
-                    send_data->indptr.push_back(send_data->indices.size());
+                    send_data->procs.emplace_back(proc);
+                    send_data->indptr.emplace_back(send_data->indices.size());
                 }
             }
             send_data->num_msgs = send_data->procs.size();

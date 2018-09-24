@@ -67,7 +67,7 @@ namespace raptor
                     form_rand_weights(Af->n_rows);
                 }
 
-                levels.push_back(new Level());
+                levels.emplace_back(new Level());
                 levels[0]->A = Af->copy();
                 levels[0]->A->sort();
                 levels[0]->x.resize(Af->n_rows);

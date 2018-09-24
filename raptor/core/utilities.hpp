@@ -8,6 +8,9 @@ using namespace raptor;
 template <typename T, typename U>
 void vec_sort(aligned_vector<T>& vec1, aligned_vector<U>& vec2, int start = 0, int end = -1)
 {
+    vec1.shrink_to_fit();
+    vec2.shrink_to_fit();
+
     int k, prev_k;
     int n = vec1.size();
     if (end < 0) end = n;
@@ -44,6 +47,10 @@ void vec_sort(aligned_vector<T>& vec1, aligned_vector<T>& vec2,
         aligned_vector<U>& vec3,
         int start = 0, int end = -1)
 {
+    vec1.shrink_to_fit();
+    vec2.shrink_to_fit();
+    vec3.shrink_to_fit();
+
     int k, prev_k;
     int n = vec1.size();
     if (end < 0) end = n;

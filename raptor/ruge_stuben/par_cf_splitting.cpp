@@ -984,7 +984,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
                 idx = S->on_proc->idx2[j];
                 if (states[idx] == NewSelection)
                 {
-                    send_buffer.push_back(S->on_proc_column_map[idx]);
+                    send_buffer.emplace_back(S->on_proc_column_map[idx]);
                 }
             }
             start = S->off_proc->idx1[i];
@@ -994,7 +994,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
                 idx = S->off_proc->idx2[j];
                 if (off_proc_states[idx] == NewSelection)
                 {
-                    send_buffer.push_back(S->off_proc_column_map[idx]);
+                    send_buffer.emplace_back(S->off_proc_column_map[idx]);
                 }
             }
             send_ptr[i+1] =  send_buffer.size();
@@ -1014,7 +1014,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
                 if (global_col >= S->partition->first_local_col 
                         && global_col <= S->partition->last_local_col)
                 {
-                    off_proc_col_coarse.push_back(part_to_col[global_col -
+                    off_proc_col_coarse.emplace_back(part_to_col[global_col -
                             S->partition->first_local_col]);
                 }
                 else
@@ -1023,7 +1023,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
                     global_to_local.find(global_col);
                     if (ptr != global_to_local.end())
                     {
-                        off_proc_col_coarse.push_back(ptr->second + S->on_proc_num_cols);
+                        off_proc_col_coarse.emplace_back(ptr->second + S->on_proc_num_cols);
                     }   
                 }
             }
@@ -1054,7 +1054,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
                     // Assuming num coarse in row is zero, 
                     // but will update later
                     buf_ptr = send_buffer.size();
-                    send_buffer.push_back(0);
+                    send_buffer.emplace_back(0);
 
                     // Iterate through row
                     idx_start = S->on_proc->idx1[idx];
@@ -1069,7 +1069,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
                         if (states[idx_k] == NewSelection)
                         {
                             // New coarse, so add global idx to buffer
-                            send_buffer.push_back(S->on_proc_column_map[idx_k]);
+                            send_buffer.emplace_back(S->on_proc_column_map[idx_k]);
                         }
                     }
                     idx_start = S->off_proc->idx1[idx];
@@ -1080,7 +1080,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
                         if (off_proc_states[idx_k] == NewSelection)
                         {
                             // New coarse, so add global idx to buffer
-                            send_buffer.push_back(S->off_proc_column_map[idx_k]);
+                            send_buffer.emplace_back(S->off_proc_column_map[idx_k]);
                         }
                     }
                     // Update buffer[ptr] with the number of coarse points
@@ -1147,7 +1147,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
                         if (global_col >= S->partition->first_local_col 
                                 && global_col <= S->partition->last_local_col)
                         {
-                            off_proc_col_coarse.push_back(part_to_col[global_col -
+                            off_proc_col_coarse.emplace_back(part_to_col[global_col -
                                     S->partition->first_local_col]);
                         }
                         else
@@ -1156,7 +1156,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
                             global_to_local.find(global_col);
                             if (ptr != global_to_local.end())
                             {
-                                off_proc_col_coarse.push_back(ptr->second + S->on_proc_num_cols);
+                                off_proc_col_coarse.emplace_back(ptr->second + S->on_proc_num_cols);
                             }   
                         }
                     }

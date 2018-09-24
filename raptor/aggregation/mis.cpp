@@ -57,7 +57,7 @@ void mis2(CSRMatrix* A, aligned_vector<int>& states,
             col = A->idx2[j];
             if (r[i] > r[col])
             {
-                D->idx2.push_back(col);
+                D->idx2.emplace_back(col);
             }
         }
 

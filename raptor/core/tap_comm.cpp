@@ -67,15 +67,15 @@ void TAPComm::split_off_proc_cols(const aligned_vector<int>& off_proc_column_map
         global_col = off_proc_column_map[i];
         if (node == rank_node)
         {
-            on_node_column_map.push_back(global_col);
-            on_node_col_to_proc.push_back(topology->get_local_proc(proc));
-            on_node_to_off_proc.push_back(i);
+            on_node_column_map.emplace_back(global_col);
+            on_node_col_to_proc.emplace_back(topology->get_local_proc(proc));
+            on_node_to_off_proc.emplace_back(i);
         }
         else
         {
-            off_node_column_map.push_back(global_col);
-            off_node_col_to_proc.push_back(proc);
-            off_node_to_off_proc.push_back(i);
+            off_node_column_map.emplace_back(global_col);
+            off_node_col_to_proc.emplace_back(proc);
+            off_node_to_off_proc.emplace_back(i);
         }
     }
 }
@@ -159,7 +159,7 @@ void TAPComm::form_local_R_par_comm(const aligned_vector<int>& off_node_column_m
         {
             if ((nodal_recv_nodes[i] >> j) & 1)
             {
-                recv_nodes.push_back(i*int_size + j);
+                recv_nodes.emplace_back(i*int_size + j);
             }
         }
     }
@@ -250,8 +250,8 @@ void TAPComm::form_local_R_par_comm(const aligned_vector<int>& off_node_column_m
         {
             recv_size += local_recv_sizes[i];
             proc_to_idx[i] = local_R_recv->procs.size();
-            local_R_recv->procs.push_back(i);
-            local_R_recv->indptr.push_back(recv_size);
+            local_R_recv->procs.emplace_back(i);
+            local_R_recv->indptr.emplace_back(recv_size);
             local_recv_sizes[i] = 0;
             local_recv_procs[i] = 1;
         }
@@ -323,7 +323,7 @@ void TAPComm::form_local_R_par_comm(const aligned_vector<int>& off_node_column_m
         // global communication setup)
         for (int j = start_ctr; j < count; j++)
         {
-            orig_procs.push_back(recvbuf[j]);
+            orig_procs.emplace_back(recvbuf[j]);
         }
     }
     local_R_par_comm->send_data->finalize();
@@ -411,8 +411,8 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
         {
             recv_size += node_sizes[i];
             node_to_idx[i] = global_recv->procs.size();
-            global_recv->indptr.push_back(recv_size);
-            global_recv->procs.push_back(i);  // currently have node 
+            global_recv->indptr.emplace_back(recv_size);
+            global_recv->procs.emplace_back(i);  // currently have node 
             node_sizes[i] = 0;
         }
     }
@@ -517,8 +517,8 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
                 proc = recv_status.MPI_SOURCE;
                 MPI_Recv(&recvbuf, 1, MPI_INT, proc, 9876, MPI_COMM_WORLD, 
                         &recv_status);
-                sendbuf.push_back(proc);
-                sendbuf_sizes.push_back(recvbuf);
+                sendbuf.emplace_back(proc);
+                sendbuf_sizes.emplace_back(recvbuf);
             }
             MPI_Testall(global_recv->num_msgs, 
                     global_recv->requests.data(), &finished, MPI_STATUSES_IGNORE);
@@ -533,8 +533,8 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
         {
             proc = recv_status.MPI_SOURCE;
             MPI_Recv(&recvbuf, 1, MPI_INT, proc, 9876, MPI_COMM_WORLD, &recv_status);
-            sendbuf.push_back(proc);
-            sendbuf_sizes.push_back(recvbuf);
+            sendbuf.emplace_back(proc);
+            sendbuf_sizes.emplace_back(recvbuf);
         }
         MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
     }
@@ -586,7 +586,7 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
     n_sends = 0;
     for (size_t i = topology->PPN - local_rank - 1; i < send_procs.size(); i += topology->PPN)
     {
-        global_par_comm->send_data->procs.push_back(send_procs[i]);
+        global_par_comm->send_data->procs.emplace_back(send_procs[i]);
     }
     global_par_comm->send_data->num_msgs = global_par_comm->send_data->procs.size();
     global_par_comm->send_data->requests.resize(global_par_comm->send_data->num_msgs);
@@ -621,8 +621,8 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
 
     for (int i = 0; i < global_recv->size_msgs; i++)
     {
-        send_buffer.push_back(global_recv->indices[i]);
-        send_buffer.push_back(node_recv_idx_orig_procs[i]);
+        send_buffer.emplace_back(global_recv->indices[i]);
+        send_buffer.emplace_back(node_recv_idx_orig_procs[i]);
     }
 
 
@@ -653,10 +653,10 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
         MPI_Recv(recvbuf, count, MPI_INT, proc, 5432, MPI_COMM_WORLD, &recv_status);
         for (int j = 0; j < count; j += 2)
         {
-           global_par_comm->send_data->indices.push_back(recvbuf[j]);
-           orig_procs.push_back(topology->get_local_proc(recvbuf[j+1]));
+           global_par_comm->send_data->indices.emplace_back(recvbuf[j]);
+           orig_procs.emplace_back(topology->get_local_proc(recvbuf[j+1]));
         }
-        global_par_comm->send_data->indptr.push_back(
+        global_par_comm->send_data->indptr.emplace_back(
                 global_par_comm->send_data->indices.size()); 
     }
     global_par_comm->send_data->num_msgs = global_par_comm->send_data->procs.size();
@@ -730,8 +730,8 @@ void TAPComm::form_local_S_par_comm(aligned_vector<int>& orig_procs,
         {
             recv_size += proc_sizes[i];
             proc_to_idx[i] = local_S_recv->procs.size();
-            local_S_recv->procs.push_back(i);
-            local_S_recv->indptr.push_back(recv_size);
+            local_S_recv->procs.emplace_back(i);
+            local_S_recv->indptr.emplace_back(recv_size);
         }
         proc_sizes[i] = 0;
     }
@@ -799,11 +799,11 @@ void TAPComm::form_local_S_par_comm(aligned_vector<int>& orig_procs,
         MPI_Recv(recvbuf, count, MPI_INT, proc, 4321, topology->local_comm, &recv_status);
         for (int j = 0; j < count; j++)
         {
-            local_S_par_comm->send_data->indices.push_back(recvbuf[j]);
+            local_S_par_comm->send_data->indices.emplace_back(recvbuf[j]);
         }
-        local_S_par_comm->send_data->indptr.push_back(
+        local_S_par_comm->send_data->indptr.emplace_back(
                 local_S_par_comm->send_data->indices.size());
-        local_S_par_comm->send_data->procs.push_back(proc);
+        local_S_par_comm->send_data->procs.emplace_back(proc);
     }
     local_S_par_comm->send_data->num_msgs = local_S_par_comm->send_data->procs.size();
     local_S_par_comm->send_data->size_msgs = local_S_par_comm->send_data->indices.size();
@@ -963,7 +963,7 @@ void TAPComm::form_local_L_par_comm(const aligned_vector<int>& on_node_column_ma
 
         for (int i = 0; i < on_node_num_cols; i++)
         {
-            local_L_recv->indices.push_back(i);
+            local_L_recv->indices.emplace_back(i);
         }
     }
 
@@ -1041,8 +1041,8 @@ void TAPComm::form_simple_R_par_comm(aligned_vector<int>& off_node_column_map,
             local_proc_sizes[i] = 0;
 
             proc_size_idx[i] = local_R_recv->procs.size();
-            local_R_recv->procs.push_back(i);
-            local_R_recv->indptr.push_back(
+            local_R_recv->procs.emplace_back(i);
+            local_R_recv->indptr.emplace_back(
                     local_R_recv->size_msgs);
         }
     }
@@ -1105,7 +1105,7 @@ void TAPComm::form_simple_global_comm(aligned_vector<int>& off_proc_col_to_proc,
         proc = int_buffer[i];
         if (proc_sizes[proc] == 0)
         {
-            global_recv->procs.push_back(proc);
+            global_recv->procs.emplace_back(proc);
         }
         proc_sizes[proc]++;
     }
@@ -1118,7 +1118,7 @@ void TAPComm::form_simple_global_comm(aligned_vector<int>& off_proc_col_to_proc,
         proc = global_recv->procs[i];
         global_recv->size_msgs += proc_sizes[proc];
         proc_sizes[proc] = i; // Will now use this for proc_idx
-        global_recv->indptr.push_back(global_recv->size_msgs);
+        global_recv->indptr.emplace_back(global_recv->size_msgs);
     }
     if (global_recv->size_msgs)
     {

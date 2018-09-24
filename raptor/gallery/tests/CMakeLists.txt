@@ -28,7 +28,7 @@ if (WITH_MPI)
 
     add_executable(test_par_matrix_market test_par_matrix_market.cpp)
     target_link_libraries(test_par_matrix_market raptor ${MPI_LIBRARIES} googletest pthread )
-    add_test(ParMatrixMarketTest mpirun -n 1 ./test_par_matrix_market)
-    add_test(ParMatrixMarketTest mpirun -n 2 ./test_par_matrix_market)
+    add_test(ParMatrixMarketTest ${MPIRUN} -n 1 ./test_par_matrix_market)
+    add_test(ParMatrixMarketTest ${MPIRUN} -n 2 ./test_par_matrix_market)
 endif()
 

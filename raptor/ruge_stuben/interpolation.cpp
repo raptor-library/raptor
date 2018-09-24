@@ -73,15 +73,15 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
             {
                 if (states[col] == Selected)
                 {
-                    SS->idx2.push_back(col);
-                    SS->vals.push_back(val);
+                    SS->idx2.emplace_back(col);
+                    SS->vals.emplace_back(val);
                 }
                 else if (states[col] == Unselected)
                 {
-                    SU->idx2.push_back(col);
-                    SU->vals.push_back(val);
-                    NU->idx2.push_back(col);
-                    NU->vals.push_back(val);
+                    SU->idx2.emplace_back(col);
+                    SU->vals.emplace_back(val);
+                    NU->idx2.emplace_back(col);
+                    NU->vals.emplace_back(val);
                 }
                 ctr++;
             }
@@ -94,13 +94,13 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
 
                 if (states[col] == Selected)
                 {
-                    NS->idx2.push_back(col);
-                    NS->vals.push_back(val);
+                    NS->idx2.emplace_back(col);
+                    NS->vals.emplace_back(val);
                 }
                 else
                 {
-                    NU->idx2.push_back(col);
-                    NU->vals.push_back(val);
+                    NU->idx2.emplace_back(col);
+                    NU->vals.emplace_back(val);
                 }
             }
         }
@@ -138,8 +138,8 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
     {
         if (states[i] == Selected)
         {
-            P->idx2.push_back(i);
-            P->vals.push_back(1.0);
+            P->idx2.emplace_back(i);
+            P->vals.emplace_back(1.0);
             P->idx1[i+1] = P->idx2.size();
             continue;
         }
@@ -161,8 +161,8 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
             col = SS->idx2[j];
             val = SS->vals[j];
             pos[col] = P->idx2.size();
-            P->idx2.push_back(col);
-            P->vals.push_back(val);
+            P->idx2.emplace_back(col);
+            P->vals.emplace_back(val);
             row_coarse[col] = 1;
         }
 
@@ -188,8 +188,8 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
                 if (row_coarse[col_k] == 0)
                 {
                     pos[col_k] = P->idx2.size();
-                    P->idx2.push_back(col_k);
-                    P->vals.push_back(0); // Aij is 0
+                    P->idx2.emplace_back(col_k);
+                    P->vals.emplace_back(0); // Aij is 0
                     row_coarse[col_k] = 1;
                 } 
             }
@@ -384,13 +384,13 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A, CSRMatrix* S,
             {
                 if (states[col] == Selected)
                 {
-                    SS->idx2.push_back(col);
-                    SS->vals.push_back(val);
+                    SS->idx2.emplace_back(col);
+                    SS->vals.emplace_back(val);
                 }
                 else if (states[col] == Unselected)
                 {
-                    SU->idx2.push_back(col);
-                    SU->vals.push_back(val);
+                    SU->idx2.emplace_back(col);
+                    SU->vals.emplace_back(val);
                 }
                 ctr++;
             }
@@ -398,8 +398,8 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A, CSRMatrix* S,
             {
                 if (states[col] == Selected)
                 {
-                    NS->idx2.push_back(col);
-                    NS->vals.push_back(val);
+                    NS->idx2.emplace_back(col);
+                    NS->vals.emplace_back(val);
                 }
                 if (num_variables == 1 || variables[i] == variables[col])
                 {
@@ -436,8 +436,8 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A, CSRMatrix* S,
     {
         if (states[i] == Selected)
         {
-            P->idx2.push_back(col_to_new[i]);
-            P->vals.push_back(1.0);
+            P->idx2.emplace_back(col_to_new[i]);
+            P->vals.emplace_back(1.0);
             P->idx1[i+1] = P->idx2.size();
             continue;
         }
@@ -449,8 +449,8 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A, CSRMatrix* S,
             col = SS->idx2[j];
             val = SS->vals[j];
             pos[col] = P->idx2.size();
-            P->idx2.push_back(col_to_new[col]);
-            P->vals.push_back(val);
+            P->idx2.emplace_back(col_to_new[col]);
+            P->vals.emplace_back(val);
             row_coarse[col] = 1;
         }
 
@@ -623,8 +623,8 @@ CSRMatrix* direct_interpolation(CSRMatrix* A,
     {
         if (states[i] == Selected)
         {
-            P->idx2.push_back(col_to_new[i]);
-            P->vals.push_back(1);
+            P->idx2.emplace_back(col_to_new[i]);
+            P->vals.emplace_back(1);
         }
         else
         {
@@ -699,14 +699,14 @@ CSRMatrix* direct_interpolation(CSRMatrix* A,
                 if (states[col] == Selected)
                 {
                     val = sa[j];
-                    P->idx2.push_back(col_to_new[col]);
+                    P->idx2.emplace_back(col_to_new[col]);
                     if (val < 0)
                     {
-                        P->vals.push_back(neg_coeff * val);
+                        P->vals.emplace_back(neg_coeff * val);
                     }
                     else
                     {
-                        P->vals.push_back(pos_coeff * val);
+                        P->vals.emplace_back(pos_coeff * val);
                     }
                 }
             }

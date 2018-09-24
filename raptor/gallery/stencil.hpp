@@ -191,8 +191,8 @@ CSRMatrix* stencil_grid(data_t* stencil, int* grid, int dim)
             if (col >= 0 && col < N_v && fabs(value) > zero_tol)
             //if (fabs(value) > zero_tol)
             {
-                A->idx2.push_back(col);
-                A->vals.push_back(value);
+                A->idx2.emplace_back(col);
+                A->vals.emplace_back(value);
             }
         }
         A->idx1[i+1] = A->idx2.size();

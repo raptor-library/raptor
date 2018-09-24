@@ -1,33 +1,29 @@
 // Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#include <mpi.h>
 #include <math.h>
 #include <stdlib.h>
 #include <iostream>
 #include <assert.h>
-
 #include "clear_cache.hpp"
+#include <ctime>
 
-#include "core/par_matrix.hpp"
-#include "core/par_vector.hpp"
+#include "core/matrix.hpp"
+#include "core/vector.hpp"
 #include "core/types.hpp"
-#include "gallery/par_stencil.hpp"
+#include "gallery/stencil.hpp"
 #include "gallery/laplacian27pt.hpp"
 #include "gallery/diffusion.hpp"
-#include "gallery/par_matrix_IO.hpp"
-
-#ifdef USING_MFEM
-#include "gallery/external/mfem_wrapper.hpp"
-#endif
+#include "gallery/matrix_IO.hpp"
 
 //using namespace raptor;
+
+double wtime()
+{
+    return (double) clock() / (double) CLOCKS_PER_SEC;
+}
+
 int main(int argc, char *argv[])
 {
-    MPI_Init(&argc, &argv);
-    int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
     int dim=0;
     int n = 5;
     int system = 0;
@@ -37,16 +33,14 @@ int main(int argc, char *argv[])
         system = atoi(argv[1]);
     }
 
-    ParCSRMatrix* A=nullptr;
-    ParVector x;
-    ParVector b;
+    CSRMatrix* A=NULL;
+    Vector x;
+    Vector b;
 
     double t0, tfinal;
 
     int cache_len = 10000;
     int num_tests = 2;
-
-    aligned_vector<double> cache_array(cache_len);
 
     if (system < 2)
     {
@@ -79,45 +73,9 @@ int main(int argc, char *argv[])
             }
             stencil = diffusion_stencil_2d(eps, theta);
         }
-        A = par_stencil_grid(stencil, grid.data(), dim);
+        A = stencil_grid(stencil, grid.data(), dim);
         delete[] stencil;
     }
-#ifdef USING_MFEM
-    if (system < 2)
-    {
-        double* stencil = NULL;
-        aligned_vector<int> grid;
-        if (argc > 2)
-        {
-            n = atoi(argv[2]);
-        }
-
-        if (system == 0)
-        {
-            dim = 3;
-            grid.resize(dim, n);
-            stencil = laplace_stencil_27pt();
-        }
-        else if (system == 1)
-        {
-            dim = 2;
-            grid.resize(dim, n);
-            double eps = 0.001;
-            double theta = M_PI/4.0;
-            if (argc > 3)
-            {
-                eps = atof(argv[3]);
-                if (argc > 4)
-                {
-                    theta = atof(argv[4]);
-                }
-            }
-            stencil = diffusion_stencil_2d(eps, theta);
-        }
-        A = par_stencil_grid(stencil, grid.data(), dim);
-        delete[] stencil;
-    }
-#endif
     else if (system == 3)
     {
         const char* file = "../../test_data/rss_A0.pm";
@@ -125,41 +83,70 @@ int main(int argc, char *argv[])
         if (argc > 2)
         {
             file = argv[2];
-
-
-
-
         }
-        A = readParMatrix(file);
+        A = readMatrix(file);
     }
 
-    if (system != 2)
+    x = Vector(A->n_rows);
+    b = Vector(A->n_rows);
+    double* x_data = x.values.data();
+    double* b_data = b.values.data();
+
+    x.set_const_value(1.0);
+
+    int n_spmvs = 10000;
+
+    int* idx1 = new int[A->idx1.size()];
+    int* idx2 = new int[A->idx2.size()];
+    double* vals = new double[A->vals.size()];
+    double* b_ptr = new double[A->n_rows];
+    double* x_ptr = new double[A->n_rows];
+    idx1[0] = 0;
+    for (int i = 0; i < A->n_rows; i++)
     {
-        x = ParVector(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
-        b = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-        x.set_const_value(1.0);
-        A->mult(x, b);
+        idx1[i+1] = A->idx1[i+1];
+        for (int j = idx1[i]; j < idx1[i+1]; j++)
+        {
+            idx2[j] = A->idx2[j];
+            vals[j] = A->vals[j];
+        }
+        x_ptr[i] = 1.0;
     }
 
-    int n_spmvs = 100;
+    int start, end;
     for (int i = 0; i < num_tests; i++)
     {
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
+        t0 = wtime();
         for (int j = 0; j < n_spmvs; j++)
         {
             A->mult(x, b);
         }
-        tfinal = (MPI_Wtime() - t0) / n_spmvs;
+        tfinal = (wtime() - t0) / n_spmvs;
+        printf("Standard SpMV Time: %e\n", tfinal);
 
-        MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Test %d Max SpMV Time: %e\n", i, t0);
+        t0 = wtime();
+        for (int j = 0; j < n_spmvs; j++)
+        {
+            for (int k = 0; k < A->n_rows; k++)
+            {
+                b_ptr[k] = 0.0;
+            }
+            start = 0;
+            for (int k = 0; k < A->n_rows; k++)
+            {
+                end = idx1[k+1];
+                for (int l = start; l < end; l++)
+                {
+                    b_ptr[k] += vals[l] * x_ptr[idx2[l]];
+                }
+                start = end;
+            }
+        }
+        tfinal = (wtime() - t0) / n_spmvs;
+        printf("Pointer SpMV Time: %e\n", tfinal);
     }
 
     delete A;
-
-    MPI_Finalize();
 
     return 0;
 }

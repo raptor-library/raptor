@@ -138,7 +138,7 @@ namespace raptor
                 t0 = MPI_Wtime();
 
                 // Add original, fine level to hierarchy
-                levels.push_back(new ParLevel());
+                levels.emplace_back(new ParLevel());
                 levels[0]->A = Af->copy();
                 levels[0]->A->sort();
                 levels[0]->A->on_proc->move_diag();
@@ -156,9 +156,9 @@ namespace raptor
 
                 for (int i = 0; i < n_setup_times; i++)
                 {
-                    setup_times[i].push_back(0.0);
-                    setup_comm_times[i].push_back(0.0);
-                    setup_mat_comm_times[i].push_back(0.0);
+                    setup_times[i].emplace_back(0.0);
+                    setup_comm_times[i].emplace_back(0.0);
+                    setup_mat_comm_times[i].emplace_back(0.0);
                 }
 
                 if (weights == NULL)
@@ -175,9 +175,9 @@ namespace raptor
 
                     for (int i = 0; i < n_setup_times; i++)
                     {
-                        setup_times[i].push_back(0.0);
-                        setup_comm_times[i].push_back(0.0);
-                        setup_mat_comm_times[i].push_back(0.0);
+                        setup_times[i].emplace_back(0.0);
+                        setup_comm_times[i].emplace_back(0.0);
+                        setup_mat_comm_times[i].emplace_back(0.0);
                     }
                 }
 
@@ -223,7 +223,7 @@ namespace raptor
                 {
                     if (proc_sizes[i])
                     {
-                        active_procs.push_back(i);
+                        active_procs.emplace_back(i);
                     }
                 }
                 MPI_Group world_group;

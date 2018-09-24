@@ -115,10 +115,12 @@ namespace raptor
             }
 
             // Form coarse-grid operator
-            levels.push_back(new Level());
+            levels.emplace_back(new Level());
             AP = A->mult(P);
             P_csc = P->to_CSC();
             A = AP->mult_T(P_csc);
+            A->sort();
+            A->move_diag();
 
             level_ctr++;
             levels[level_ctr]->A = A;

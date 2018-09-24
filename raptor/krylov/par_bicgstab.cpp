@@ -47,7 +47,7 @@ void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double
 
     rr_inner = r.inner_product(r_star);
     norm_r = r.norm(2);
-    res.push_back(norm_r);
+    res.emplace_back(norm_r);
 
     if (norm_r != 0.0)
     {
@@ -93,7 +93,7 @@ void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double
         // Update next inner product
         rr_inner = next_inner;
         norm_r = r.norm(2);
-	res.push_back(norm_r);
+	res.emplace_back(norm_r);
 
         if (norm_r < tol)
 	{
@@ -161,7 +161,7 @@ void SeqInner_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vect
 
     rr_inner = sequential_inner(r, r_star);
     norm_r = r.norm(2);
-    res.push_back(norm_r);
+    res.emplace_back(norm_r);
 
     if (norm_r != 0.0)
     {
@@ -206,7 +206,7 @@ void SeqInner_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vect
         // Update next inner product
         rr_inner = next_inner;
         norm_r = r.norm(2);
-	res.push_back(norm_r);
+	res.emplace_back(norm_r);
 
         iter++;
     }
@@ -270,7 +270,7 @@ void SeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vecto
 
     rr_inner = r.inner_product(r_star);
     norm_r = sequential_norm(r, 2);
-    res.push_back(norm_r);
+    res.emplace_back(norm_r);
 
     if (norm_r != 0.0)
     {
@@ -315,7 +315,7 @@ void SeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vecto
         // Update next inner product
         rr_inner = next_inner;
         norm_r = sequential_norm(r, 2);
-	res.push_back(norm_r);
+	res.emplace_back(norm_r);
 
         iter++;
     }
@@ -379,7 +379,7 @@ void SeqInnerSeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, align
 
     rr_inner = sequential_inner(r, r_star);
     norm_r = sequential_norm(r, 2);
-    res.push_back(norm_r);
+    res.emplace_back(norm_r);
 
     if (norm_r != 0.0)
     {
@@ -424,7 +424,7 @@ void SeqInnerSeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, align
         // Update next inner product
         rr_inner = next_inner;
         norm_r = sequential_norm(r, 2);
-	res.push_back(norm_r);
+	res.emplace_back(norm_r);
 
         iter++;
     }
@@ -495,7 +495,7 @@ void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, int contig, aligne
     // Use true residual inner product to start
     rr_inner = r.inner_product(r_star);
     norm_r = r.norm(2);
-    res.push_back(norm_r);
+    res.emplace_back(norm_r);
 
     if (norm_r != 0.0)
     {
@@ -540,7 +540,7 @@ void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, int contig, aligne
         // Update next inner product
         rr_inner = next_inner;
         norm_r = r.norm(2);
-	res.push_back(norm_r);
+	res.emplace_back(norm_r);
 
         iter++;
     }

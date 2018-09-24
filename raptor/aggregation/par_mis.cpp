@@ -313,7 +313,7 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
             col = A->on_proc->idx2[j];
             if (r[i] > r[col])
             {
-                D_on->idx2.push_back(col);
+                D_on->idx2.emplace_back(col);
             }
         }
 
@@ -324,7 +324,7 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
             col = A->off_proc->idx2[j];
             if (r[i] > off_proc_r[col])
             {
-                D_off->idx2.push_back(col);
+                D_off->idx2.emplace_back(col);
             }
         }
 
