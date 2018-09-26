@@ -85,13 +85,24 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap, data_t* comm_t)
 
     // Initialize C (matrix to be returned)
     ParCSRMatrix* C = init_matrix(this, B);
+    aligned_vector<char> send_buffer;
 
     // Communicate data and multiply
     if (comm_t) *comm_t -= MPI_Wtime();
-    CSRMatrix* recv_mat = comm->communicate(B);
+    comm->init_par_mat_comm(B, send_buffer);
     if (comm_t) *comm_t += MPI_Wtime();
 
-    mult_helper(B, C, recv_mat);
+    // Fully Local Computation
+    CSRMatrix* C_on_on = on_proc->mult((CSRMatrix*) B->on_proc);
+    CSRMatrix* C_on_off = on_proc->mult((CSRMatrix*) B->off_proc);
+
+    if (comm_t) *comm_t -= MPI_Wtime();
+    CSRMatrix* recv_mat = comm->complete_mat_comm();
+    if (comm_t) *comm_t += MPI_Wtime();
+
+    mult_helper(B, C, recv_mat, C_on_on, C_on_off);
+    delete C_on_on;
+    delete C_on_off;
     delete recv_mat;
 
     // Return matrix containing product
@@ -108,13 +119,24 @@ ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B, data_t* comm_t)
 
     // Initialize C (matrix to be returned)
     ParCSRMatrix* C = init_matrix(this, B);;
+    aligned_vector<char> send_buffer;
 
     // Communicate data and multiply
     if (comm_t) *comm_t -= MPI_Wtime();
-    CSRMatrix* recv_mat = tap_comm->communicate(B);
+    tap_comm->init_par_mat_comm(B, send_buffer);
     if (comm_t) *comm_t += MPI_Wtime();
 
-    mult_helper(B, C, recv_mat);
+    // Fully Local Computation
+    CSRMatrix* C_on_on = on_proc->mult((CSRMatrix*) B->on_proc);
+    CSRMatrix* C_on_off = on_proc->mult((CSRMatrix*) B->off_proc);
+
+    if (comm_t) *comm_t -= MPI_Wtime();
+    CSRMatrix* recv_mat = tap_comm->complete_mat_comm();
+    if (comm_t) *comm_t += MPI_Wtime();
+
+    mult_helper(B, C, recv_mat, C_on_on, C_on_off);
+    delete C_on_on;
+    delete C_on_off;
     delete recv_mat;
 
     // Return matrix containing product
@@ -156,16 +178,26 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap, data_t* comm_t)
     ParCSRMatrix* C = init_matrix(this, A);;
 
     CSRMatrix* Ctmp = mult_T_partial(A);
+    aligned_vector<char> send_buffer;
 
     if (comm_t) *comm_t -= MPI_Wtime();
-    CSRMatrix* recv_mat = A->comm->communicate_T(Ctmp->idx1, Ctmp->idx2, 
-            Ctmp->vals, A->on_proc_num_cols);
+    A->comm->init_mat_comm_T(send_buffer, Ctmp->idx1, Ctmp->idx2, 
+            Ctmp->vals);
     if (comm_t) *comm_t += MPI_Wtime();
 
-    mult_T_combine(A, C, recv_mat);
+    CSRMatrix* C_on_on = on_proc->mult_T((CSCMatrix*) A->on_proc);
+    CSRMatrix* C_off_on = off_proc->mult_T((CSCMatrix*) A->on_proc);
+
+    if (comm_t) *comm_t -= MPI_Wtime();
+    CSRMatrix* recv_mat = A->comm->complete_mat_comm_T(A->on_proc_num_cols);
+    if (comm_t) *comm_t += MPI_Wtime();
+
+    mult_T_combine(A, C, recv_mat, C_on_on, C_off_on);
 
     // Clean up
     delete Ctmp;
+    delete C_on_on;
+    delete C_off_on;
     delete recv_mat;
 
     // Return matrix containing product
@@ -187,17 +219,27 @@ ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A, data_t* comm_t)
     ParCSRMatrix* C = init_matrix(this, A);
 
     CSRMatrix* Ctmp = mult_T_partial(A);
+    aligned_vector<char> send_buffer;
 
     if (comm_t) *comm_t -= MPI_Wtime();
-    CSRMatrix* recv_mat = A->tap_comm->communicate_T(Ctmp->idx1, Ctmp->idx2, 
-            Ctmp->vals, A->on_proc_num_cols);
+    A->tap_comm->init_mat_comm_T(send_buffer, Ctmp->idx1, Ctmp->idx2, 
+            Ctmp->vals);
     if (comm_t) *comm_t += MPI_Wtime();
 
-    mult_T_combine(A, C, recv_mat);
+    CSRMatrix* C_on_on = on_proc->mult_T((CSCMatrix*) A->on_proc);
+    CSRMatrix* C_off_on = off_proc->mult_T((CSCMatrix*) A->on_proc);
+
+    if (comm_t) *comm_t -= MPI_Wtime();
+    CSRMatrix* recv_mat = A->tap_comm->complete_mat_comm_T(A->on_proc_num_cols);
+    if (comm_t) *comm_t += MPI_Wtime();
+
+    mult_T_combine(A, C, recv_mat, C_on_on, C_off_on);
 
     // Clean up
     delete Ctmp;
     delete recv_mat;
+    delete C_on_on;
+    delete C_off_on;
 
     // Return matrix containing product
     return C;
@@ -213,7 +255,7 @@ ParMatrix* ParMatrix::mult(ParCSRMatrix* B, bool tap, data_t* comm)
 }
 
 void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, 
-        CSRMatrix* recv_mat)
+        CSRMatrix* recv_mat, CSRMatrix* C_on_on, CSRMatrix* C_on_off)
 {
     // Set dimensions of C
     C->global_num_rows = global_num_rows;
@@ -307,20 +349,14 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C,
         *it = global_to_C[*it];
     }
 
+    for (aligned_vector<int>::iterator it = C_on_off->idx2.begin();
+            it != C_on_off->idx2.end(); ++it)
+    {
+        *it = B_to_C[*it];
+    }
     C->off_proc_num_cols = C->off_proc_column_map.size();
-
     recv_on->n_cols = B->on_proc->n_cols;
     recv_off->n_cols = C->off_proc_num_cols;
-
-    // Local Computation
-    // Multiply A->on_proc * B->on_proc -> C_on_on 
-    // TODO - Overlap this with communication
-    CSRMatrix* C_on_on = on_proc->mult((CSRMatrix*) B->on_proc);
-
-    // Multiply A->on_proc * B->off_proc -> C_on_off
-    // TODO - Overlap this with communication
-    CSRMatrix* C_on_off = on_proc->mult((CSRMatrix*) B->off_proc, 
-              B_to_C.data());
     C_on_off->n_cols = C->off_proc_num_cols;
 
     // Multiply A->off_proc * B->recv_on -> C_off_on
@@ -333,12 +369,10 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C,
 
     // Create C->on_proc by adding C_on_on + C_off_on
     C_on_on->add_append(C_off_on, (CSRMatrix*) C->on_proc);
-    delete C_on_on;
     delete C_off_on;
 
     // Create C->off_proc by adding C_off_on + C_off_off
     C_on_off->add_append(C_off_off, (CSRMatrix*) C->off_proc);
-    delete C_on_off;
     delete C_off_off;
 
     C->local_nnz = C->on_proc->nnz + C->off_proc->nnz;
@@ -363,7 +397,8 @@ CSRMatrix* ParCSRMatrix::mult_T_partial(ParCSCMatrix* A)
     return mult_T_partial((CSCMatrix*) A->off_proc); 
 }
 
-void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* recv_mat)
+void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* recv_mat,
+        CSRMatrix* C_on_on, CSRMatrix* C_off_on)
 { 
     int start, end, ctr;
     int head, length, tmp;
@@ -432,9 +467,7 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
 
     // Multiply on_proc    
     recv_on->n_cols = C->on_proc_num_cols;
-    CSRMatrix* C_on_on = on_proc->mult_T((CSCMatrix*) P->on_proc);
     C_on_on->add_append(recv_on, (CSRMatrix*) C->on_proc);
-    delete C_on_on;
 
     /******************************
      * Form off_proc
@@ -488,10 +521,12 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
     }
 
     recv_off->n_cols = C->off_proc_num_cols;
-    CSRMatrix* C_off_on = off_proc->mult_T((CSCMatrix*) P->on_proc, 
-            map_to_C.data());
+    for (aligned_vector<int>::iterator it = C_off_on->idx2.begin();
+            it != C_off_on->idx2.end(); ++it)
+    {
+        *it = map_to_C[*it];
+    }
     C_off_on->add_append(recv_off, (CSRMatrix*) C->off_proc);
-    delete C_off_on;
 
     C->local_nnz = C->on_proc->nnz + C->off_proc->nnz;
 

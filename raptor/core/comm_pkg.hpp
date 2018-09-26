@@ -71,6 +71,15 @@ namespace raptor
         virtual CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
                 const aligned_vector<int>& col_indices, const aligned_vector<double*>& values,
                 const int b_rows = 1, const int b_cols = 1, const bool has_vals = true) = 0;
+        virtual void init_mat_comm(aligned_vector<char>& send_buffer, const aligned_vector<int>& rowptr, 
+                const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
+                const int b_rows = 1, const int b_cols = 1, const bool has_vals = true) = 0;
+        virtual void init_mat_comm(aligned_vector<char>& send_buffer, const aligned_vector<int>& rowptr, 
+                const aligned_vector<int>& col_indices, const aligned_vector<double*>& values,
+                const int b_rows = 1, const int b_cols = 1, const bool has_vals = true) = 0;
+        virtual CSRMatrix* complete_mat_comm(const int b_rows = 1, const int b_cols = 1, 
+                const bool has_vals = true) = 0;
+
         virtual CSRMatrix* communicate_T(const aligned_vector<int>& rowptr,
                 const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
                 const int n_result_rows, const int b_rows = 1, const int b_cols = 1,
@@ -79,7 +88,17 @@ namespace raptor
                 const aligned_vector<int>& col_indices, const aligned_vector<double*>& values, 
                 const int n_result_rows, const int b_rows = 1, const int b_cols = 1,
                 const bool has_vals = true) = 0;
-
+        virtual void init_mat_comm_T(aligned_vector<char>& send_buffer, 
+                const aligned_vector<int>& rowptr, const aligned_vector<int>& col_indices, 
+                const aligned_vector<double>& values, const int b_rows = 1, 
+                const int b_cols = 1, const bool has_vals = true) = 0;
+        virtual void init_mat_comm_T(aligned_vector<char>& send_buffer,
+                const aligned_vector<int>& rowptr, const aligned_vector<int>& col_indices, 
+                const aligned_vector<double*>& values, const int b_rows = 1, 
+                const int b_cols = 1, const bool has_vals = true) = 0;
+        virtual CSRMatrix* complete_mat_comm_T(const int n_result_rows, 
+                const int b_rows = 1, const int b_cols = 1,
+                const bool has_vals = true) = 0;
 
         aligned_vector<double>& get_vals(CSRMatrix* A)
         {
@@ -97,6 +116,10 @@ namespace raptor
 
         CSRMatrix* communicate(ParCSRMatrix* A, const bool has_vals = true);
         CSRMatrix* communicate(ParBSRMatrix* A, const bool has_vals = true);
+        void init_par_mat_comm(ParCSRMatrix* A, aligned_vector<char>& send_buffer,
+                const bool has_vals = true);
+        void init_par_mat_comm(ParBSRMatrix* A, aligned_vector<char>& send_buffer,
+                const bool has_vals = true);
 
         CSRMatrix* communicate(CSRMatrix* A, const int has_vals = true)
         {
@@ -865,6 +888,15 @@ namespace raptor
         CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
                 const aligned_vector<int>& col_indices, const aligned_vector<double*>& values,
                 const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
+        void init_mat_comm(aligned_vector<char>& send_buffer, const aligned_vector<int>& rowptr, 
+                const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
+                const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
+        void init_mat_comm(aligned_vector<char>& send_buffer, const aligned_vector<int>& rowptr, 
+                const aligned_vector<int>& col_indices, const aligned_vector<double*>& values,
+                const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
+        CSRMatrix* complete_mat_comm(const int b_rows = 1, const int b_cols = 1, 
+                const bool has_vals = true);
+
         CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
                 const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
                 const int n_result_rows, const int b_rows = 1, const int b_cols = 1, 
@@ -873,6 +905,18 @@ namespace raptor
                 const aligned_vector<int>& col_indices, const aligned_vector<double*>& values, 
                 const int n_result_rows, const int b_rows = 1, const int b_cols = 1, 
                 const bool has_vals = true);
+        void init_mat_comm_T(aligned_vector<char>& send_buffer, 
+                const aligned_vector<int>& rowptr, const aligned_vector<int>& col_indices, 
+                const aligned_vector<double>& values, const int b_rows = 1, 
+                const int b_cols = 1, const bool has_vals = true) ;
+        void init_mat_comm_T(aligned_vector<char>& send_buffer,
+                const aligned_vector<int>& rowptr, const aligned_vector<int>& col_indices, 
+                const aligned_vector<double*>& values, const int b_rows = 1, 
+                const int b_cols = 1, const bool has_vals = true) ;
+        CSRMatrix* complete_mat_comm_T(const int n_result_rows, 
+                const int b_rows = 1, const int b_cols = 1,
+                const bool has_vals = true) ;
+
 
         CSRMatrix* communicate(ParCSRMatrix* A, const bool has_vals = true)
         {
@@ -1730,6 +1774,15 @@ namespace raptor
         CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
                 const aligned_vector<int>& col_indices, const aligned_vector<double*>& values,
                 const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
+        void init_mat_comm(aligned_vector<char>& send_buffer, const aligned_vector<int>& rowptr, 
+                const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
+                const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
+        void init_mat_comm(aligned_vector<char>& send_buffer, const aligned_vector<int>& rowptr, 
+                const aligned_vector<int>& col_indices, const aligned_vector<double*>& values,
+                const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
+        CSRMatrix* complete_mat_comm(const int b_rows = 1, const int b_cols = 1, 
+                const bool has_vals = true);
+
         CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
                 const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
                 const int n_result_rows, const int b_rows = 1, const int b_cols = 1, 
@@ -1737,6 +1790,17 @@ namespace raptor
         CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
                 const aligned_vector<int>& col_indices, const aligned_vector<double*>& values, 
                 const int n_result_rows, const int b_rows = 1, const int b_cols = 1, 
+                const bool has_vals = true);
+        void init_mat_comm_T(aligned_vector<char>& send_buffer, 
+                const aligned_vector<int>& rowptr, const aligned_vector<int>& col_indices, 
+                const aligned_vector<double>& values, const int b_rows = 1, 
+                const int b_cols = 1, const bool has_vals = true) ;
+        void init_mat_comm_T(aligned_vector<char>& send_buffer,
+                const aligned_vector<int>& rowptr, const aligned_vector<int>& col_indices, 
+                const aligned_vector<double*>& values, const int b_rows = 1, 
+                const int b_cols = 1, const bool has_vals = true) ;
+        CSRMatrix* complete_mat_comm_T(const int n_result_rows, 
+                const int b_rows = 1, const int b_cols = 1,
                 const bool has_vals = true);
 
         CSRMatrix* communicate(ParCSRMatrix* A, const bool has_vals = true)
