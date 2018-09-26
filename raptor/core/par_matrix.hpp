@@ -556,10 +556,12 @@ namespace raptor
     void print_mult_T(const aligned_vector<int>& proc_distances,
                 const aligned_vector<int>& worst_proc_distances);
     
-    void mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, CSRMatrix* recv);
+    void mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, CSRMatrix* recv,
+            CSRMatrix* C_on_on, CSRMatrix* C_on_off);
     CSRMatrix* mult_T_partial(ParCSCMatrix* A);
     CSRMatrix* mult_T_partial(CSCMatrix* A_off);
-    void mult_T_combine(ParCSCMatrix* A, ParCSRMatrix* C, CSRMatrix* recv_mat);
+    void mult_T_combine(ParCSCMatrix* A, ParCSRMatrix* C, CSRMatrix* recv_mat,
+            CSRMatrix* C_on_on, CSRMatrix* C_off_on);
     
     ParCSRMatrix* transpose();
   };

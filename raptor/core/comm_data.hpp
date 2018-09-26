@@ -115,17 +115,20 @@ public:
             int* n_send_ptr, const int block_size) = 0;
 
 
-    virtual void send(aligned_vector<char>& send_buffer,
+    virtual void send(char* send_buffer,
             const int* rowptr, 
             const int* col_indices,
             const double* values, 
             int key, MPI_Comm mpi_comm, 
             const int block_size = 1) = 0;
-    virtual void send(aligned_vector<char>& send_buffer,
+    virtual void send(char* send_buffer,
             const int* rowptr, 
             const int* col_indices,
             double const* const* values, 
             int key, MPI_Comm mpi_comm, 
+            const int block_size = 1) = 0;
+    virtual int get_msg_size(const int* rowptr, 
+            const bool has_vals, MPI_Comm mpi_comm, 
             const int block_size = 1) = 0;
 
 
@@ -254,19 +257,18 @@ public:
         }
     }
 
-    void pack_values(const double* values, int row_start, int size, aligned_vector<char>& send_buffer,
+    void pack_values(const double* values, int row_start, int size, char* send_buffer,
            int bytes, int* ctr, MPI_Comm mpi_comm, int block_size)
     {
-        MPI_Pack(&(values[row_start]), size, MPI_DOUBLE, send_buffer.data(), 
+        MPI_Pack(&(values[row_start]), size, MPI_DOUBLE, send_buffer, 
                 bytes, ctr, mpi_comm);
     }
     void pack_values(double const* const* values, int row_start, int size, 
-            aligned_vector<char>& send_buffer,
-            int bytes, int* ctr, MPI_Comm mpi_comm, int block_size)
+            char* send_buffer, int bytes, int* ctr, MPI_Comm mpi_comm, int block_size)
     {
         for (int i = 0; i < size; i++)
         {
-            MPI_Pack(values[row_start + i], block_size, MPI_DOUBLE, send_buffer.data(),
+            MPI_Pack(values[row_start + i], block_size, MPI_DOUBLE, send_buffer,
                     bytes, ctr, mpi_comm);
         }
     }
@@ -510,7 +512,7 @@ public:
         *n_send_ptr = n_sends;
     }
 
-    void send(aligned_vector<char>& send_buffer,
+    void send(char* send_buffer,
             const int* rowptr, 
             const int* col_indices,
             const double* values, 
@@ -521,7 +523,7 @@ public:
                 mpi_comm, block_size);
     }
 
-    void send(aligned_vector<char>& send_buffer,
+    void send(char* send_buffer,
         const int* rowptr,
         const int* col_indices,
         double const* const* values,
@@ -532,19 +534,10 @@ public:
                 mpi_comm, block_size);
     }
 
-    // values can be double* (CSRMatrix) or double** (BSRMatrix)
-    template <typename T>
-    void send_helper(aligned_vector<char>& send_buffer,
-        const int* rowptr,
-        const int* col_indices,
-        const T& values,
-        int key, MPI_Comm mpi_comm,
-        const int block_size = 1)
-    {   
-        if (num_msgs == 0) return;
-
-        int start, end, proc;
-        int ctr, prev_ctr, size;
+    int get_msg_size(const int* rowptr, const bool has_vals, MPI_Comm mpi_comm, 
+            const int block_size = 1)
+    {
+        int start, end;
         int row_start, row_end;
         int num_ints, num_doubles;
         int double_bytes, bytes;
@@ -558,14 +551,32 @@ public:
         num_doubles = (row_end - row_start) * block_size;
         MPI_Pack_size(num_ints, MPI_INT, mpi_comm, &bytes);
 
-        if (values)
+        if (has_vals)
         {
             MPI_Pack_size(num_doubles, MPI_DOUBLE, mpi_comm, &double_bytes);
             bytes += double_bytes;
         }
 
-        // Resize buffer
-        send_buffer.resize(bytes);
+        return bytes;
+    }
+
+    // values can be double* (CSRMatrix) or double** (BSRMatrix)
+    template <typename T>
+    void send_helper(char* send_buffer,
+        const int* rowptr,
+        const int* col_indices,
+        const T& values,
+        int key, MPI_Comm mpi_comm,
+        const int block_size = 1)
+    {   
+        if (num_msgs == 0) return;
+
+        int start, end, proc;
+        int ctr, prev_ctr, size;
+        int row_start, row_end;
+        int bytes;
+
+        bytes = get_msg_size(rowptr, values, mpi_comm, block_size);
 
         ctr = 0;
         prev_ctr = 0;
@@ -579,10 +590,10 @@ public:
                 row_start = rowptr[j];
                 row_end = rowptr[j+1];
                 size = row_end - row_start;
-                MPI_Pack(&size, 1, MPI_INT, send_buffer.data(), bytes, 
+                MPI_Pack(&size, 1, MPI_INT, send_buffer, bytes, 
                         &ctr, mpi_comm);
                 MPI_Pack(&(col_indices[row_start]), size, MPI_INT,
-                        send_buffer.data(), bytes, &ctr, mpi_comm);
+                        send_buffer, bytes, &ctr, mpi_comm);
                 if (values)
                 {
                     pack_values(values, row_start, size, send_buffer, bytes, 
@@ -904,7 +915,7 @@ public:
         *n_send_ptr = n_sends;
     }
 
-    void send(aligned_vector<char>& send_buffer,
+    void send(char* send_buffer,
             const int* rowptr, 
             const int* col_indices,
             const double* values, 
@@ -915,7 +926,7 @@ public:
                 mpi_comm, block_size);
     }
 
-    void send(aligned_vector<char>& send_buffer,
+    void send(char* send_buffer,
         const int* rowptr,
         const int* col_indices,
         double const* const* values,
@@ -926,19 +937,11 @@ public:
                 mpi_comm, block_size);
     }
 
-    template <typename T>
-    void send_helper(aligned_vector<char>& send_buffer,
-        const int* rowptr,
-        const int* col_indices,
-        const T& values,
-        int key, MPI_Comm mpi_comm,
-        const int block_size = 1)     
+    int get_msg_size(const int* rowptr, const bool has_vals, MPI_Comm mpi_comm,
+            const int block_size = 1)
     {
-        if (num_msgs == 0) return;
-
-        int start, end, proc;
-        int ctr, prev_ctr, size;
-        int row, row_start, row_end;
+        int start, end;
+        int row_start, row_end;
         int num_ints, num_doubles;
         int double_bytes, bytes;
 
@@ -953,14 +956,33 @@ public:
         num_ints += num_doubles;
         MPI_Pack_size(num_ints, MPI_INT, mpi_comm, &bytes);
 
-        if (values)
+        if (has_vals)
         {
             MPI_Pack_size(num_doubles * block_size, MPI_DOUBLE, mpi_comm, &double_bytes);
             bytes += double_bytes;
         }
 
+        return bytes;
+    }
+
+    template <typename T>
+    void send_helper(char* send_buffer,
+        const int* rowptr,
+        const int* col_indices,
+        const T& values,
+        int key, MPI_Comm mpi_comm,
+        const int block_size = 1)     
+    {
+        if (num_msgs == 0) return;
+
+        int start, end, proc;
+        int ctr, prev_ctr, size;
+        int row, row_start, row_end;
+        int num_ints, num_doubles;
+        int double_bytes, bytes;
+
         // Resize send buffer
-        send_buffer.resize(bytes);
+        bytes = get_msg_size(rowptr, values, mpi_comm, block_size);
 
         ctr = 0;
         prev_ctr = 0;
@@ -975,10 +997,10 @@ public:
                 row_start = rowptr[row];
                 row_end = rowptr[row+1];
                 size = (row_end - row_start);
-                MPI_Pack(&size, 1, MPI_INT, send_buffer.data(), bytes, 
+                MPI_Pack(&size, 1, MPI_INT, send_buffer, bytes, 
                         &ctr, mpi_comm);
                 MPI_Pack(&(col_indices[row_start]), size, MPI_INT, 
-                        send_buffer.data(), bytes, &ctr, mpi_comm);
+                        send_buffer, bytes, &ctr, mpi_comm);
                 if (values)
                 {                    
                     pack_values(values, row_start, size, send_buffer, bytes, &ctr, 
@@ -1330,7 +1352,7 @@ public:
 
     // TODO -- how to communicate block matrices?
     //
-    void send(aligned_vector<char>& send_buffer,
+    void send(char* send_buffer,
             const int* rowptr, 
             const int* col_indices,
             const double* values, 
@@ -1339,7 +1361,7 @@ public:
     {
         send_helper(send_buffer, rowptr, col_indices, values, key, mpi_comm, block_size);
     }
-    void send(aligned_vector<char>& send_buffer,
+    void send(char* send_buffer,
             const int* rowptr, 
             const int* col_indices,
             double const* const* values, 
@@ -1349,20 +1371,11 @@ public:
         send_helper(send_buffer, rowptr, col_indices, values, key, mpi_comm, block_size);
     }
 
-    template <typename T>
-    void send_helper(aligned_vector<char>& send_buffer,
-            const int* rowptr, 
-            const int* col_indices,
-            const T& values, 
-            int key, MPI_Comm mpi_comm, 
+    int get_msg_size(const int* rowptr, const bool has_vals, MPI_Comm mpi_comm, 
             const int block_size = 1)
     {
-        if (num_msgs == 0) return;
-
-        int start, end, proc;
-        int ctr, prev_ctr, size;
-        int row, row_start, row_end;
-        int idx_start, idx_end;
+        int start, end;
+        int row_start, row_end;
         int num_ints, num_doubles;
         int double_bytes, bytes;
 
@@ -1376,14 +1389,33 @@ public:
         }
         num_ints += num_doubles;
         MPI_Pack_size(num_ints, MPI_INT, mpi_comm, &bytes);
-        if (values)
+        if (has_vals)
         {
             MPI_Pack_size(num_doubles * block_size, MPI_DOUBLE, mpi_comm, &double_bytes);
             bytes += double_bytes;
         }
 
+        return bytes;
+    }
+
+    template <typename T>
+    void send_helper(char* send_buffer,
+            const int* rowptr, 
+            const int* col_indices,
+            const T& values, 
+            int key, MPI_Comm mpi_comm, 
+            const int block_size = 1)
+    {
+        if (num_msgs == 0) return;
+
+        int start, end, proc;
+        int ctr, prev_ctr, size;
+        int row, row_start, row_end;
+        int idx_start, idx_end;
+        int bytes;
+
         // Resize send buffer
-        send_buffer.resize(bytes);
+        bytes = get_msg_size(rowptr, values, mpi_comm, block_size);
 
         ctr = 0;
         prev_ctr = 0;
@@ -1406,8 +1438,8 @@ public:
                 {
                     combine_entries(j, rowptr, col_indices, send_indices, &size);
                 }
-                MPI_Pack(&size, 1, MPI_INT, send_buffer.data(), bytes, &ctr, mpi_comm);
-                MPI_Pack(send_indices.data(), size, MPI_INT, send_buffer.data(),
+                MPI_Pack(&size, 1, MPI_INT, send_buffer, bytes, &ctr, mpi_comm);
+                MPI_Pack(send_indices.data(), size, MPI_INT, send_buffer,
                     bytes, &ctr, mpi_comm);
 
                 if (values)
