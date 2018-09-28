@@ -621,7 +621,6 @@ namespace raptor
 
             // Extract packed data to appropriate buffer
             aligned_vector<T>& buf = recv_data->get_buffer<T>();
-            recv_data->unpack(buf, mpi_comm, block_size);
 
             return buf;
         }
@@ -746,7 +745,7 @@ namespace raptor
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
-            // TODO - dont need to copy into sendbuf first (unpack directly here)
+            // TODO - dont need to copy into sendbuf first
             complete_T<T>(block_size, init_result_func, init_result_func_val);
 
             int idx, pos;
@@ -773,7 +772,6 @@ namespace raptor
             key++;
             
             aligned_vector<T>& buf = send_data->get_buffer<T>();
-            send_data->unpack(buf, mpi_comm, block_size);
         }
 
         // Conditional communication
@@ -796,9 +794,7 @@ namespace raptor
             send_data->waitall(n_sends);
             recv_data->waitall(n_recvs);
 
-            // TODO -- dont have to unpack here first...
             aligned_vector<T>& recvbuf = recv_data->get_buffer<T>();
-            recv_data->unpack(recvbuf, mpi_comm, block_size);
 
             ctr--;
             for (int i = recv_data->size_msgs - 1; i >= 0; i--)
@@ -853,9 +849,7 @@ namespace raptor
             recv_data->waitall(n_sends);
             send_data->waitall(n_recvs);
 
-            // TODO -- dont have to unpack here first...
             aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
-            send_data->unpack(sendbuf, mpi_comm, block_size);
 
             ctr = 0;
             for (int i = 0; i < send_data->size_msgs; i++)
@@ -1175,7 +1169,6 @@ namespace raptor
                     comm_t);
 
             // Create global par comm / update R send indices
-            // TODO -- dont need to unpack R and G first
             aligned_vector<int>& local_R_int_buffer = 
                 tap_comm->local_R_par_comm->send_data->get_buffer<int>();
             aligned_vector<int>& global_int_buffer = 
@@ -1545,7 +1538,6 @@ namespace raptor
 
             aligned_vector<T>& recvbuf = get_buffer<T>();
 
-            // TODO Don't need to unpack R_recvbuf and L_recvbuf first...
             aligned_vector<T>& R_recvbuf = local_R_par_comm->recv_data->get_buffer<T>();
             aligned_vector<T>& L_recvbuf = local_L_par_comm->recv_data->get_buffer<T>();
 
