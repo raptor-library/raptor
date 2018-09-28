@@ -629,6 +629,44 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         NS_off->idx1[i+1] = NS_off->idx2.size();
     }
 
+    // Find upperbound size of P->on_proc and P->off_proc
+    int nnz_on = 0;
+    int nnz_off = 0;
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        if (states[i] == Unselected)
+        {
+            nnz_on += SS_on->idx1[i+1] - SS_on->idx1[i];
+            nnz_off += SS_off->idx1[i+1] - SS_off->idx1[i];
+
+            start = SU_on->idx1[i];
+            end = SU_on->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                col = SU_on->idx2[j];
+                nnz_on += (SS_on->idx1[col+1] - SS_on->idx1[col]);
+                nnz_off += (SS_off->idx1[col+1] - SS_off->idx1[col]);
+            }
+            start = SU_off->idx1[i];
+            end = SU_off->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                col = SU_off->idx2[j];
+                col_A = off_proc_S_to_A[col];
+                nnz_on += (S_recv_on->idx1[col_A+1] - S_recv_on->idx1[col_A]);
+                nnz_off += (S_recv_off->idx1[col_A+1] - S_recv_off->idx1[col_A]);
+            }
+        }
+        else
+        {
+            nnz_on++;
+        }
+    }
+    P->on_proc->idx2.resize(nnz_on);
+    P->on_proc->vals.resize(nnz_on);
+    P->off_proc->idx2.resize(nnz_off);
+    P->off_proc->vals.resize(nnz_off);
+
     // Convert U_on and D_recv_on to CSC
     // Only care about column i
     // (+i portion of extended+i)
@@ -639,6 +677,8 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     delete U_on;
     delete D_recv_on;
 
+    nnz_on = 0;
+    nnz_off = 0;
     for (int i = 0; i < A->local_num_rows; i++)
     {
         // If coarse row, add to P
@@ -646,11 +686,11 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         {
             if (states[i] == Selected)
             {
-                P->on_proc->idx2.push_back(on_proc_col_to_new[i]);
-                P->on_proc->vals.push_back(1);
+                P->on_proc->idx2[nnz_on] = on_proc_col_to_new[i];
+                P->on_proc->vals[nnz_on++] = 1;
             }
-            P->on_proc->idx1[i+1] = P->on_proc->idx2.size();
-            P->off_proc->idx1[i+1] = P->off_proc->idx2.size();
+            P->on_proc->idx1[i+1] = nnz_on;
+            P->off_proc->idx1[i+1] = nnz_off;
             continue;
         }
 
@@ -679,8 +719,8 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
 
         // Go through strong coarse points, 
         // add to row coarse and create sparsity of P (dist1)
-        row_start_on = P->on_proc->idx2.size();
-        row_start_off = P->off_proc->idx2.size();
+        row_start_on = nnz_on;
+        row_start_off = nnz_off;
 
         pos[i] = A->global_num_rows;
         start = SS_on->idx1[i];
@@ -689,9 +729,9 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         {
             col = SS_on->idx2[j];
             val = SS_on->vals[j];
-            pos[col] = P->on_proc->idx2.size();
-            P->on_proc->idx2.push_back(col);
-            P->on_proc->vals.push_back(val);
+            pos[col] = nnz_on;
+            P->on_proc->idx2[nnz_on] = col;
+            P->on_proc->vals[nnz_on++] = val;
         }
         start = SS_off->idx1[i];
         end = SS_off->idx1[i+1];
@@ -701,10 +741,10 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
             col = off_proc_S_to_A[col_S];
             col_P = off_proc_A_to_P[col];
             val = SS_off->vals[j];
-            off_proc_pos[col_P] = P->off_proc->idx2.size();
+            off_proc_pos[col_P] = nnz_off;
             col_exists[col_P] = true;
-            P->off_proc->idx2.push_back(col_P);
-            P->off_proc->vals.push_back(val);
+            P->off_proc->idx2[nnz_off] = col_P;
+            P->off_proc->vals[nnz_off++] = val;
         }
 
         // Add distance-2 processes to row_coarse
@@ -722,9 +762,9 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                 col_k = SS_on->idx2[k];
                 if (pos[col_k] == -1)
                 {
-                    pos[col_k] = P->on_proc->idx2.size();
-                    P->on_proc->idx2.push_back(col_k);
-                    P->on_proc->vals.push_back(0.0);
+                    pos[col_k] = nnz_on;
+                    P->on_proc->idx2[nnz_on] = col_k;
+                    P->on_proc->vals[nnz_on++] = 0.0;
                 }
             }
             start_k = SS_off->idx1[col];
@@ -736,10 +776,10 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                 col_P = off_proc_A_to_P[col_A];
                 if (off_proc_pos[col_P] == -1)
                 {
-                    off_proc_pos[col_P] = P->off_proc->idx2.size();
+                    off_proc_pos[col_P] = nnz_off;
+                    P->off_proc->idx2[nnz_off] = col_P;
+                    P->off_proc->vals[nnz_off++] = 0.0;
                     col_exists[col_P] = true;
-                    P->off_proc->idx2.push_back(col_P);
-                    P->off_proc->vals.push_back(0.0);
                 }
             }
         }
@@ -756,9 +796,9 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                 col_k = S_recv_on->idx2[k];
                 if (pos[col_k] == -1)
                 {
-                    pos[col_k] = P->on_proc->idx2.size();
-                    P->on_proc->idx2.push_back(col_k);
-                    P->on_proc->vals.push_back(0.0);
+                    pos[col_k] = nnz_on;
+                    P->on_proc->idx2[nnz_on] = col_k;
+                    P->on_proc->vals[nnz_on++] = 0.0;
                 }
             }
             start_k = S_recv_off->idx1[col_A];
@@ -768,16 +808,16 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                 col_k = S_recv_off->idx2[k];
                 if (off_proc_pos[col_k] == -1)
                 {
-                    off_proc_pos[col_k] = P->off_proc->idx2.size();
+                    off_proc_pos[col_k] = nnz_off;
+                    P->off_proc->idx2[nnz_off] = col_k;
+                    P->off_proc->vals[nnz_off++] = 0.0;
                     col_exists[col_k] = true;
-                    P->off_proc->idx2.push_back(col_k);
-                    P->off_proc->vals.push_back(0.0);
                 }
             }
         }
 
-        row_end_on = P->on_proc->idx2.size();
-        row_end_off = P->off_proc->idx2.size();
+        row_end_on = nnz_on;
+        row_end_off = nnz_off;
 
 
         start = SU_on->idx1[i];
@@ -786,7 +826,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         {
             col = SU_on->idx2[j]; // k
             // Find sum of all coarse points in row k (with sign NOT equal to diag)
-            coarse_sum[col] = 0;
+            double col_sum = 0;
 
             start_k = NS_on->idx1[col];
             end_k = NS_on->idx1[col+1];
@@ -796,7 +836,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                 val = NS_on->vals[k];
                 if (val * sign < 0 && pos[col_k] > -1)
                 {
-                    coarse_sum[col] += val;
+                    col_sum += val;
                 }
             }
             start_k = SS_on->idx1[col];
@@ -807,7 +847,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                 val = SS_on->vals[k];
                 if (val * sign < 0 && pos[col_k] > -1)
                 {
-                    coarse_sum[col] += val;
+                    col_sum += val;
                 }
             }
 
@@ -820,7 +860,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                 val = NS_off->vals[k];
                 if (col_P >= 0 && val * sign < 0 && off_proc_pos[col_P] > -1)
                 {
-                    coarse_sum[col] += val;
+                    col_sum += val;
                 }
             }
             start_k = SS_off->idx1[col];
@@ -833,9 +873,11 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                 val = SS_off->vals[k];
                 if (col_P >= 0 && val * sign < 0 && off_proc_pos[col_P] > -1)
                 {
-                    coarse_sum[col] += val;
+                    col_sum += val;
                 }
             }
+
+            coarse_sum[col] = col_sum;
         }
 
         start_k = U_on_csc->idx1[i];
@@ -851,15 +893,16 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         for (int j = start; j < end; j++)
         {
             col = SU_on->idx2[j]; // k
+            val = coarse_sum[col];
 
-            if (fabs(coarse_sum[col]) < zero_tol)
+            if (fabs(val) < zero_tol)
             {
                 weak_sum += SU_on->vals[j];
                 row_strong[col] = 0;
             }
             else
             {
-                row_strong[col] /= coarse_sum[col];  // holds val for a_ik/sum_C(a_km)
+                row_strong[col] /= val;  // holds val for a_ik/sum_C(a_km)
             }
         }
 
@@ -1121,8 +1164,19 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         P->on_proc->idx1[i+1] = row_end_on;
         P->off_proc->idx1[i+1] = row_end_off;
     }
-    P->on_proc->nnz = P->on_proc->idx2.size();
-    P->off_proc->nnz = P->off_proc->idx2.size();
+    P->on_proc->nnz = nnz_on;
+    P->off_proc->nnz = nnz_off;
+
+    P->on_proc->idx2.resize(nnz_on);
+    P->on_proc->idx2.shrink_to_fit();
+    P->on_proc->vals.resize(nnz_on);
+    P->on_proc->vals.shrink_to_fit();
+
+    P->off_proc->idx2.resize(nnz_off);
+    P->off_proc->idx2.shrink_to_fit();
+    P->off_proc->vals.resize(nnz_off);
+    P->off_proc->vals.shrink_to_fit();
+
     P->local_nnz = P->on_proc->nnz + P->off_proc->nnz;
 
     // Update off_proc columns in P (remove col j if col_exists[j] is false)
