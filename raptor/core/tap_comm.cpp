@@ -358,10 +358,11 @@ void TAPComm::form_local_R_par_comm(const aligned_vector<int>& off_node_column_m
 void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
         data_t* comm_t)
 {
-    int rank;
+    int rank, num_procs;
     int local_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_rank(topology->local_comm, &local_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     int n_sends;
     int proc, node;
@@ -494,7 +495,19 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
     global_recv->size_msgs = ctr;
     global_recv->finalize();
 
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= MPI_Wtime(); 
+    aligned_vector<int> send_p(num_procs, 0);
+    for (int i = 0; i < global_recv->num_msgs; i++)
+    {
+        node = global_recv->procs[i];
+        proc = topology->get_global_proc(node, local_rank);
+        send_p[proc] = 1;
+    }
+    MPI_Allreduce(MPI_IN_PLACE, send_p.data(), num_procs, MPI_INT,
+            MPI_SUM, MPI_COMM_WORLD);
+    int recv_n = send_p[rank];
+    sendbuf.resize(recv_n);
+    sendbuf_sizes.resize(recv_n);
     // Send recv sizes to corresponding local procs on appropriate nodes
     ctr = 0;
     for (int i = 0; i < global_recv->num_msgs; i++)
@@ -504,43 +517,20 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
         MPI_Issend(&(node_sizes[node]), 1, MPI_INT, proc, 9876, MPI_COMM_WORLD,
                 &(global_recv->requests[i]));
     }
-    // Dynamically recv sizes to send to various processes
-    if (global_recv->num_msgs)
+    for (int i = 0; i < recv_n; i++)
     {
-        MPI_Testall(global_recv->num_msgs, 
-                global_recv->requests.data(), &finished, MPI_STATUSES_IGNORE);
-        while (!finished)
-        {
-            MPI_Iprobe(MPI_ANY_SOURCE, 9876, MPI_COMM_WORLD, &msg_avail, &recv_status);
-            if (msg_avail)
-            {
-                proc = recv_status.MPI_SOURCE;
-                MPI_Recv(&recvbuf, 1, MPI_INT, proc, 9876, MPI_COMM_WORLD, 
-                        &recv_status);
-                sendbuf.push_back(proc);
-                sendbuf_sizes.push_back(recvbuf);
-            }
-            MPI_Testall(global_recv->num_msgs, 
-                    global_recv->requests.data(), &finished, MPI_STATUSES_IGNORE);
-        }    
+        MPI_Probe(MPI_ANY_SOURCE, 9876, MPI_COMM_WORLD, &recv_status);
+        proc = recv_status.MPI_SOURCE;
+        MPI_Recv(&recvbuf, 1, MPI_INT, proc, 9876, MPI_COMM_WORLD, 
+                &recv_status);
+        sendbuf[i] = proc;
+        sendbuf_sizes[i] = recvbuf;
     }
-    MPI_Ibarrier(MPI_COMM_WORLD, &barrier_request);
-    MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
-    while (!finished)
-    {
-        MPI_Iprobe(MPI_ANY_SOURCE, 9876, MPI_COMM_WORLD, &msg_avail, &recv_status);
-        if (msg_avail)
-        {
-            proc = recv_status.MPI_SOURCE;
-            MPI_Recv(&recvbuf, 1, MPI_INT, proc, 9876, MPI_COMM_WORLD, &recv_status);
-            sendbuf.push_back(proc);
-            sendbuf_sizes.push_back(recvbuf);
-        }
-        MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
-    }
+    MPI_Waitall(global_recv->num_msgs, global_recv->requests.data(),
+            MPI_STATUSES_IGNORE);
     if (comm_t) *comm_t += MPI_Wtime();
 
-    // Gather all procs that node must send to
+    // Gather all procs to which node must send 
     n_sends = sendbuf.size();
     MPI_Allgather(&n_sends, 1, MPI_INT, send_sizes.data(), 1, MPI_INT, topology->local_comm);
     send_displs[0] = 0;

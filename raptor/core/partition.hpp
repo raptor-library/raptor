@@ -122,7 +122,7 @@ namespace raptor
         global_num_cols = _global_num_cols;
 
         // Partition rows across processes
-	global_num_row_blocks = global_num_rows / _brows;
+        global_num_row_blocks = global_num_rows / _brows;
         avg_num_blocks = global_num_row_blocks / num_procs;
         extra = global_num_row_blocks % num_procs;
         first_local_row = avg_num_blocks * rank * _brows;
@@ -138,13 +138,13 @@ namespace raptor
         }
 
         // Partition cols across processes
-	// local_num_cols = number of cols in on_proc matrix
+	    // local_num_cols = number of cols in on_proc matrix
         if (global_num_row_blocks < num_procs)
         {
             num_procs = global_num_row_blocks;
         }
 
-	global_num_col_blocks = global_num_cols / _bcols;
+	    global_num_col_blocks = global_num_cols / _bcols;
         avg_num_blocks = global_num_col_blocks / num_procs;
         extra = global_num_col_blocks % num_procs;
         if (local_num_rows)
@@ -379,10 +379,11 @@ namespace raptor
     }
 
     void form_col_to_proc (const aligned_vector<int>& off_proc_column_map,
-            aligned_vector<int>& off_proc_col_to_proc) const
+            aligned_vector<int>& off_proc_col_to_proc) 
     {
-        int rank;
+        int rank, num_procs;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
         int off_proc_num_cols = off_proc_column_map.size();
         int assumed_col_ptr_size = assumed_col_ptr.size();
@@ -391,6 +392,38 @@ namespace raptor
         int proc, start, end;
         int col, count;
         int finished, msg_avail;
+        int ctr, prev_col;
+
+        if (off_proc_num_cols)
+            off_proc_col_to_proc.resize(off_proc_num_cols);
+
+        // If off_proc_columns were previously communicated, use those procs
+        int prev_off_cols = prev_col_procs.size();
+        int col_ctr = 0;
+        aligned_vector<int> new_col_map(off_proc_num_cols);
+
+        ctr = 0; 
+        prev_col = -1;
+        for (int i = 0; i < off_proc_num_cols; i++)
+        {
+            col = off_proc_column_map[i];
+            while (ctr < prev_off_cols && prev_col < col)
+            {
+                prev_col = prev_col_procs[++ctr].first;
+            }
+            if (col == prev_col)
+            {
+                off_proc_col_to_proc[i] = prev_col_procs[ctr].second;
+            }
+            else
+            {
+                off_proc_col_to_proc[i] = -1;
+                new_col_map[col_ctr++] = col;
+            }
+        }
+
+        new_col_map.resize(col_ctr);
+        aligned_vector<int> new_col_procs(col_ctr);
 
         aligned_vector<int> send_procs;
         aligned_vector<int> send_proc_starts;
@@ -401,15 +434,14 @@ namespace raptor
         MPI_Request barrier_request;
         MPI_Status status;
 
-        if (off_proc_num_cols)
+        if (col_ctr)
         {
-            off_proc_col_to_proc.resize(off_proc_num_cols);
-            prev_proc = off_proc_column_map[0] / assumed_num_cols;
+            prev_proc = new_col_map[0] / assumed_num_cols;
             send_procs.push_back(prev_proc);
             send_proc_starts.push_back(0);
-            for (int i = 1; i < off_proc_num_cols; i++)
+            for (int i = 1; i < col_ctr; i++)
             {
-                proc = off_proc_column_map[i] / assumed_num_cols;
+                proc = new_col_map[i] / assumed_num_cols;
                 if (proc != prev_proc)
                 {
                     send_procs.push_back(proc);
@@ -417,10 +449,25 @@ namespace raptor
                     prev_proc = proc;
                 }
             }
-            send_proc_starts.push_back(off_proc_num_cols);
-
-            num_sends = send_procs.size();
+            send_proc_starts.push_back(col_ctr);
+        }
+        num_sends = send_procs.size();
+        if (num_sends) 
             send_requests.resize(num_sends);
+
+        aligned_vector<int> send_p(num_procs, 0);
+        for (int i = 0; i < num_sends; i++)
+        {
+            proc = send_procs[i];
+            if (proc != rank)
+                send_p[proc] = 1;
+        }
+        MPI_Allreduce(MPI_IN_PLACE, send_p.data(), num_procs, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+        int recv_n = send_p[rank];
+        int send_n = 0;
+        int tag = 9753;
+        if (col_ctr)
+        {
             for (int i = 0; i < num_sends; i++)
             {
                 proc = send_procs[i];
@@ -432,96 +479,63 @@ namespace raptor
                     int k = 0;
                     for (int j = start; j < end; j++)
                     {
-                        col = off_proc_column_map[j];
+                        col = new_col_map[j];
                         while (k + 1 < assumed_col_ptr_size && 
                                 col >= assumed_col_ptr[k+1])
                         {
                             k++;
                         }
                         proc = assumed_col_procs[k];
-                        off_proc_col_to_proc[j] = proc;
+                        new_col_procs[j] = proc;
                     }
                     send_requests[i] = MPI_REQUEST_NULL;
                 }
                 else
                 {
-                    MPI_Issend(&(off_proc_column_map[start]), end - start, MPI_INT,
-                            proc, 9753, MPI_COMM_WORLD, &(send_requests[i]));
+                    MPI_Isend(&(new_col_map[start]), end - start, MPI_INT,
+                            proc, tag, MPI_COMM_WORLD, &(send_requests[i]));
                 }
             }
         }
 
-        if (num_sends)
+
+        sendbuf_procs.resize(recv_n);
+        sendbuf_starts.resize(recv_n+1);
+        sendbuf_starts[0] = 0;
+        for (int i = 0; i < recv_n; i++)
         {
-            MPI_Testall(num_sends, send_requests.data(), &finished, MPI_STATUSES_IGNORE);
-            while (!finished)
+            MPI_Probe(MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, &status);
+            MPI_Get_count(&status, MPI_INT, &count);
+            proc = status.MPI_SOURCE;
+            int recvbuf[count];
+            MPI_Recv(recvbuf, count, MPI_INT, proc, tag, MPI_COMM_WORLD, &status);
+            sendbuf_procs[i] = proc;
+            int k = 0;
+            for (int j = 0; j < count; j++)
             {
-                MPI_Iprobe(MPI_ANY_SOURCE, 9753, MPI_COMM_WORLD, &msg_avail, &status);
-                if (msg_avail)
+                col = recvbuf[j];
+                while (k + 1 < assumed_col_ptr_size &&
+                        col >= assumed_col_ptr[k + 1])
                 {
-                    MPI_Get_count(&status, MPI_INT, &count);
-                    proc = status.MPI_SOURCE;
-                    int recvbuf[count];
-                    MPI_Recv(recvbuf, count, MPI_INT, proc, 9753, 
-                            MPI_COMM_WORLD, &status);
-                    sendbuf_procs.push_back(proc);
-                    sendbuf_starts.push_back(sendbuf.size());
-                    int k = 0;
-                    for (int i = 0; i < count; i++)
-                    {
-                        col = recvbuf[i];
-                        while (k + 1 < assumed_col_ptr_size &&
-                                col >= assumed_col_ptr[k + 1])
-                        {
-                            k++;
-                        }
-                        proc = assumed_col_procs[k];
-                        sendbuf.push_back(proc);    
-                    }
+                    k++;
                 }
-                MPI_Testall(num_sends, send_requests.data(), &finished, MPI_STATUSES_IGNORE);
+                proc = assumed_col_procs[k];
+                sendbuf.push_back(proc);    
             }
+            sendbuf_starts[i+1] = sendbuf.size();
         }
-        MPI_Ibarrier(MPI_COMM_WORLD, &barrier_request);
-        MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
-        while (!finished)
-        {
-            MPI_Iprobe(MPI_ANY_SOURCE, 9753, MPI_COMM_WORLD, &msg_avail, &status);
-            if (msg_avail)
-            {
-                MPI_Get_count(&status, MPI_INT, &count);
-                proc = status.MPI_SOURCE;
-                int recvbuf[count];
-                MPI_Recv(recvbuf, count, MPI_INT, proc, 9753, 
-                        MPI_COMM_WORLD, &status);
-                sendbuf_procs.push_back(proc);
-                sendbuf_starts.push_back(sendbuf.size());
-                int k = 0;
-                for (int i = 0; i < count; i++)
-                {
-                    col = recvbuf[i];
-                    while (k + 1 < assumed_col_ptr_size &&
-                            col >= assumed_col_ptr[k + 1])
-                    {
-                        k++;
-                    }
-                    proc = assumed_col_procs[k];
-                    sendbuf.push_back(proc);
-                }
-            }
-            MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
-        }
-        sendbuf_starts.push_back(sendbuf.size());
+        MPI_Waitall(send_n, send_requests.data(), MPI_STATUSES_IGNORE); 
 
         int n_sendbuf = sendbuf_procs.size();
         aligned_vector<MPI_Request> sendbuf_requests(n_sendbuf);
+        tag = 8642;
         for (int i = 0; i < n_sendbuf; i++)
         {
             int proc = sendbuf_procs[i];
             int start = sendbuf_starts[i];
             int end = sendbuf_starts[i+1];
             MPI_Isend(&(sendbuf[start]), end-start, MPI_INT, proc,
-                    8642, MPI_COMM_WORLD, &(sendbuf_requests[i]));
+                    tag, MPI_COMM_WORLD, &(sendbuf_requests[i]));
         }
             
         for (int i = 0; i < num_sends; i++)
@@ -531,13 +545,35 @@ namespace raptor
                 continue;
             int start = send_proc_starts[i];
             int end = send_proc_starts[i+1];
-            MPI_Irecv(&(off_proc_col_to_proc[start]), end - start, MPI_INT, proc,
-                    8642, MPI_COMM_WORLD, &(send_requests[i]));
+            MPI_Irecv(&(new_col_procs[start]), end - start, MPI_INT, proc,
+                    tag, MPI_COMM_WORLD, &(send_requests[i]));
         }
 
         MPI_Waitall(n_sendbuf, sendbuf_requests.data(), MPI_STATUSES_IGNORE);
         MPI_Waitall(num_sends, send_requests.data(), MPI_STATUSES_IGNORE);
+
+        ctr = 0;
+        for (int i = 0; i < off_proc_num_cols; i++)
+        {
+            if (off_proc_col_to_proc[i] == -1)
+            {
+                proc = new_col_procs[ctr++];
+                off_proc_col_to_proc[i] = proc;
+
+                // Store col/proc pair in case later needed
+                prev_col_procs.push_back(std::make_pair(off_proc_column_map[i], proc));
+            }
+        }
+
+        std::sort(prev_col_procs.begin(), prev_col_procs.end(), 
+                [&](const std::pair<int, int>& lhs, const std::pair<int, int>& rhs)
+                {
+                    return lhs.first < rhs.first;
+                });
     }
+
+
+
 
     index_t global_num_rows;
     index_t global_num_cols;
@@ -553,6 +589,7 @@ namespace raptor
     int assumed_num_cols;
     aligned_vector<int> assumed_col_ptr;
     aligned_vector<int> assumed_col_procs;
+    aligned_vector<std::pair<int, int>> prev_col_procs;
 
     Topology* topology;
 
