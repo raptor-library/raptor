@@ -96,6 +96,80 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b, data_t* comm_t)
     }
 }
 
+void ParMatrix::mult_append(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
+{
+    if (tap)
+    {
+        this->tap_mult_append(x, b, comm_t);
+        return;
+    }
+
+    // Check that communication package has been initialized
+    if (comm == NULL)
+    {
+        comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
+    }
+
+    // Initialize Isends and Irecvs to communicate
+    // values of x
+    if (comm_t) *comm_t -= MPI_Wtime();
+    comm->init_comm(x, off_proc->b_cols);
+    if (comm_t) *comm_t += MPI_Wtime();
+
+    // Multiply the diagonal portion of the matrix,
+    // setting b = A_diag*x_local
+    if (local_num_rows)
+    {
+        on_proc->mult_append(x.local, b.local);
+    }
+
+    // Wait for Isends and Irecvs to complete
+    if (comm_t) *comm_t -= MPI_Wtime();
+    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
+    if (comm_t) *comm_t += MPI_Wtime();
+
+    // Multiply remaining columns, appending to previous
+    // solution in b (b += A_offd * x_distant)
+    if (off_proc_num_cols)
+    {
+        off_proc->mult_append(x_tmp, b.local);
+    }
+}
+
+void ParMatrix::tap_mult_append(ParVector& x, ParVector& b, data_t* comm_t)
+{
+    // Check that communication package has been initialized
+    if (tap_comm == NULL)
+    {
+        tap_comm = new TAPComm(partition, off_proc_column_map, on_proc_column_map);
+    }
+
+    // Initialize Isends and Irecvs to communicate
+    // values of x
+    if (comm_t) *comm_t -= MPI_Wtime();
+    tap_comm->init_comm(x, off_proc->b_cols);
+    if (comm_t) *comm_t += MPI_Wtime();
+
+    // Multiply the diagonal portion of the matrix,
+    // setting b = A_diag*x_local
+    if (local_num_rows)
+    {
+        on_proc->mult_append(x.local, b.local);
+    }
+
+    // Wait for Isends and Irecvs to complete
+    if (comm_t) *comm_t -= MPI_Wtime();
+    aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols);
+    if (comm_t) *comm_t += MPI_Wtime();
+
+    // Multiply remaining columns, appending to previous
+    // solution in b (b += A_offd * x_distant)
+    if (off_proc_num_cols)
+    {
+        off_proc->mult_append(x_tmp, b.local);
+    }
+}
+
 void ParMatrix::mult_T(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
 {
     if (tap)
@@ -183,13 +257,11 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap,
     comm->init_comm(x, off_proc->b_cols);
     if (comm_t) *comm_t += MPI_Wtime();
 
-    r.copy(b);
-
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
     if (local_num_rows && on_proc_num_cols)
     {
-        on_proc->mult_append_neg(x.local, r.local);
+        on_proc->residual(x.local, b.local, r.local);
     }
 
     // Wait for Isends and Irecvs to complete

@@ -7,6 +7,13 @@ enable_language(CXX)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_BUILD_TYPE Release)
 
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexpensive-optimizations  -funroll-loops -ffast-math")
+#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto -funroll-loops")
+SET(CMAKE_AR  "gcc-ar-4.7")
+SET(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
+SET(CMAKE_CXX_ARCHIVE_FINISH   true)
+
+
 include(FeatureSummary)
 
 option(CRAYXE "Running on Cray XE" OFF)
@@ -30,12 +37,7 @@ include(testing)
 include(source)
 SET(MPIRUN "")
 
-#add_feature_info(mpi WITH_MPI "Compile with MPI")
-#include(cxx11)
-#include(cxx_config)
-
 if (WITH_MPI)
-#    include(mpi_config)
     add_definitions ( -DUSING_MPI )
     find_package(MPI REQUIRED)
     include_directories(${MPI_INCLUDE_PATH})

@@ -400,20 +400,16 @@ namespace raptor
 
                     if (solve_times) solve_times[0][level] += MPI_Wtime();
 
-
-
                     cycle(levels[level+1]->x, levels[level+1]->b, level+1);
-
-
 
                     if (solve_times) solve_times[0][level] -= MPI_Wtime();
 
                     if (solve_times) solve_times[4][level] -= MPI_Wtime();
-                    P->mult(levels[level+1]->x, tmp, tap_level, interp_t);
-                    for (int i = 0; i < A->local_num_rows; i++)
-                    {
-                        x.local[i] += tmp.local[i];
-                    }
+                    P->mult_append(levels[level+1]->x, x, tap_level, interp_t);
+                    //for (int i = 0; i < A->local_num_rows; i++)
+                    //{
+                    //    x.local[i] += tmp.local[i];
+                    //}
                     if (solve_times) solve_times[4][level] += MPI_Wtime();
 
                     if (solve_times) solve_times[1][level] -= MPI_Wtime();
@@ -431,7 +427,7 @@ namespace raptor
                             ssor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
                                     tap_level, relax_t);
                             break;
-                    }
+                     }
                     if (solve_times)
                     {
                         solve_times[1][level] += MPI_Wtime();

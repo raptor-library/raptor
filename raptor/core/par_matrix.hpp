@@ -231,6 +231,8 @@ namespace raptor
     void tap_residual(ParVector& x, ParVector& b, ParVector& r, data_t* comm_t = NULL);
     void mult(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
     void tap_mult(ParVector& x, ParVector& b, data_t* comm_t = NULL);
+    void mult_append(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void tap_mult_append(ParVector& x, ParVector& b, data_t* comm_t = NULL);
     void mult_T(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
     void tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t = NULL);
     ParMatrix* mult(ParCSRMatrix* B, bool tap = false, data_t* comm_t = NULL);

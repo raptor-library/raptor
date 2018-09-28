@@ -141,22 +141,59 @@ int main(int argc, char *argv[])
         A->mult(x, b);
     }
 
-    int n_spmvs = 100;
-    for (int i = 0; i < num_tests; i++)
+
+    // Create Hypre system
+    HYPRE_IJMatrix A_h_ij = convert(A);
+    HYPRE_IJVector x_h_ij = convert(x);
+    HYPRE_IJVector b_h_ij = convert(b);
+    hypre_ParCSRMatrix* A_h;
+    HYPRE_IJMatrixGetObject(A_h_ij, (void**) &A_h);
+    hypre_ParVector* x_h;
+    HYPRE_IJVectorGetObject(x_h_ij, (void **) &x_h);
+    hypre_ParVector* b_h;
+    HYPRE_IJVectorGetObject(b_h_ij, (void **) &b_h);
+    data_t* x_data = hypre_VectorData(hypre_ParVectorLocalVector(x_h));
+    data_t* b_data = hypre_VectorData(hypre_ParVectorLocalVector(b_h));
+    for (int i = 0; i < A->local_num_rows; i++)
     {
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
+        x_data[i] = x[i];
+        b_data[i] = b[i];
+    }
+
+    int n_tests = 1000;
+
+    // Warm-up
+    hypre_ParCSRMatrixMatvec( 1.0, A_h, x_h, 0.0, b_h);
+    A->mult(x, b);
+
+
+    for (int test = 0; test < 5; test++)
+    {
         t0 = MPI_Wtime();
-        for (int j = 0; j < n_spmvs; j++)
+        for (int i = 0; i < n_tests; i++)
+        {
+             hypre_ParCSRMatrixMatvec( 1.0, A_h, x_h, 0.0, b_h);
+        }
+        tfinal = (MPI_Wtime() - t0) / n_tests;
+        MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Hypre SpMV Time: %e\n", t0);
+    }
+
+    for (int test = 0; test < 5; test++)
+    {
+        t0 = MPI_Wtime();
+        for (int i = 0; i < n_tests; i++)
         {
             A->mult(x, b);
         }
-        tfinal = (MPI_Wtime() - t0) / n_spmvs;
-
+        tfinal = (MPI_Wtime() - t0) / n_tests;
         MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Test %d Max SpMV Time: %e\n", i, t0);
+        if (rank == 0) printf("RAPtor SpMV Time: %e\n", t0);
     }
 
+    HYPRE_IJMatrixDestroy(A_h_ij);
+    HYPRE_IJVectorDestroy(x_h_ij);
+    HYPRE_IJVectorDestroy(b_h_ij);
     delete A;
 
     MPI_Finalize();

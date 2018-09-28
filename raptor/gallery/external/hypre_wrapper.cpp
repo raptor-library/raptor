@@ -199,9 +199,11 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
     HYPRE_BoomerAMGSetStrongThreshold(amg_data, strong_threshold);
     HYPRE_BoomerAMGSetMaxCoarseSize(amg_data, 50);
     HYPRE_BoomerAMGSetRelaxType(amg_data, 3);
+    HYPRE_BoomerAMGSetRelaxOrder(amg_data, 0);
+//    HYPRE_BoomerAMGSetRelaxWt(amg_data, 3.0/4); // set omega for SOR
     HYPRE_BoomerAMGSetNumFunctions(amg_data, num_functions);
 
-    HYPRE_BoomerAMGSetPrintLevel(amg_data, 3);
+    HYPRE_BoomerAMGSetPrintLevel(amg_data, 0);
     HYPRE_BoomerAMGSetMaxIter(amg_data, 100);
 
     // Setup AMG

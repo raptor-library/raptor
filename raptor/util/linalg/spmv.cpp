@@ -66,9 +66,44 @@ void CSR_spmv(const CSRMatrix* A, const double* x, double* b)
     }
 }
 
+void CSR_residual(const CSRMatrix* A, const double* x, 
+        const double* b, double* r)
+{
+    int start, end;
+    double val;
+    for (int i = 0; i < A->n_rows; i++)
+    {
+        start = A->idx1[i];
+        end = A->idx1[i+1];
+        val = b[i];
+        for (int j = start; j < end; j++)
+        {
+            val -= A->vals[j] * x[A->idx2[j]];
+        }
+        r[i] = val;
+    }
+}
+
+
+void CSR_append(const CSRMatrix* A, const double* x, double* b)
+{
+    int start, end;
+    double val;
+    for (int i = 0; i < A->n_rows; i++)
+    {
+        start = A->idx1[i];
+        end = A->idx1[i+1];
+        val = 0;
+        for (int j = start; j < end; j++)
+        {
+            val += A->vals[j] * x[A->idx2[j]];
+        }
+        b[i] += val;
+    }
+}
 
 template <typename T>
-void CSR_append(const CSRMatrix* A, const aligned_vector<T>& vals,
+void BSR_append(const CSRMatrix* A, const aligned_vector<T>& vals,
         const double* x, double* b)
 {
     int start, end;
@@ -244,6 +279,12 @@ void COOMatrix::spmv_append_neg_T(const double* x, double* b) const
 {
     COO_append_neg_T(this, vals, x, b);
 }
+void COOMatrix::spmv_residual(const double* x, const double* b, double* r) const
+{
+    for (int i = 0; i < n_rows; i++)
+        r[i] = b[i];
+    COO_append_neg(this, vals, x, r);
+}
 void BCOOMatrix::spmv(const double* x, double* b) const 
 {
     for (int i = 0; i < n_rows * b_rows; i++)
@@ -262,10 +303,15 @@ void BCOOMatrix::spmv_append_neg(const double* x,double* b) const
 {
     COO_append_neg(this, block_vals, x, b);
 }
-
 void BCOOMatrix::spmv_append_neg_T(const double* x,double* b) const
 {
     COO_append_neg_T(this, block_vals, x, b);
+}
+void BCOOMatrix::spmv_residual(const double* x, const double* b, double* r) const
+{
+    for (int i = 0; i < n_rows * b_rows; i++)
+        r[i] = b[i];
+    COO_append_neg(this, block_vals, x, r);
 }
 
 
@@ -276,7 +322,7 @@ void CSRMatrix::spmv(const double* x, double* b) const
 }
 void CSRMatrix::spmv_append(const double* x, double* b) const
 {
-    CSR_append(this, vals, x, b);
+    CSR_append(this, x, b);
 }
 void CSRMatrix::spmv_append_T(const double* x, double* b) const
 {
@@ -290,13 +336,17 @@ void CSRMatrix::spmv_append_neg_T(const double* x, double* b) const
 {
     CSR_append_neg_T(this, vals, x, b);
 }
+void CSRMatrix::spmv_residual(const double* x, const double* b, double* r) const
+{
+    CSR_residual(this, x, b, r);
+}
 void BSRMatrix::spmv(const double* x, double* b) const
 {
     BSR_spmv(this, x, b);
 }
 void BSRMatrix::spmv_append(const double* x,double* b) const
 {
-    CSR_append(this, block_vals, x, b);
+    BSR_append(this, block_vals, x, b);
 }
 void BSRMatrix::spmv_append_T(const double* x,double* b) const
 {
@@ -309,6 +359,12 @@ void BSRMatrix::spmv_append_neg(const double* x,double* b) const
 void BSRMatrix::spmv_append_neg_T(const double* x,double* b) const
 {
     CSR_append_neg_T(this, block_vals, x, b);
+}
+void BSRMatrix::spmv_residual(const double* x, const double* b, double* r) const
+{
+    for (int i = 0; i < n_rows * b_rows; i++)
+        r[i] = b[i];
+    CSR_append_neg(this, block_vals, x, r);
 }
 
 
@@ -335,6 +391,12 @@ void CSCMatrix::spmv_append_neg_T(const double* x, double* b) const
 {
     CSC_append_neg_T(this, vals, x, b);
 }
+void CSCMatrix::spmv_residual(const double* x, const double* b, double* r) const
+{
+    for (int i = 0; i < n_rows; i++)
+        r[i] = b[i];
+    CSC_append_neg(this, vals, x, r);
+}
 void BSCMatrix::spmv(const double* x, double* b) const
 { 
     for (int i = 0; i < n_rows * b_rows; i++)
@@ -356,6 +418,12 @@ void BSCMatrix::spmv_append_neg(const double* x,double* b) const
 void BSCMatrix::spmv_append_neg_T(const double* x,double* b) const
 {
     CSC_append_neg_T(this, block_vals, x, b);
+}
+void BSCMatrix::spmv_residual(const double* x, const double* b, double* r) const
+{
+    for (int i = 0; i < n_rows * b_rows; i++)
+        r[i] = b[i];
+    CSC_append_neg(this, block_vals, x, r);
 }
 
 
