@@ -205,6 +205,11 @@ int main(int argc, char* argv[])
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("HYPRE Solve Time: %e\n", t0);
+    if (rank == 0) 
+    {
+        iter = hypre_ParAMGDataNumIterations((hypre_ParAMGData*) solver_data);
+        printf("Solved in %d iterations\n", iter);
+    }
     hypre_BoomerAMGDestroy(solver_data);
 
 
@@ -236,6 +241,10 @@ int main(int argc, char* argv[])
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Total Solve Time: %e\n", t0);
+    if (rank == 0) 
+    {
+        printf("Solved in %d iterations\n", iter);
+    }
     delete ml;
 
     // TAP Ruge-Stuben AMG
@@ -260,6 +269,10 @@ int main(int argc, char* argv[])
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Total Solve Time: %e\n", t0);
+    if (rank == 0) 
+    {
+        printf("Solved in %d iterations\n", iter);
+    }
     delete ml;
 
     // Smoothed Aggregation AMG
@@ -281,6 +294,10 @@ int main(int argc, char* argv[])
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Total Solve Time: %e\n", t0);
+    if (rank == 0) 
+    {
+        printf("Solved in %d iterations\n", iter);
+    }
     delete ml;
 
     // TAPSmoothed Aggregation AMG
@@ -303,6 +320,10 @@ int main(int argc, char* argv[])
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Total Solve Time: %e\n", t0);
+    if (rank == 0) 
+    {
+        printf("Solved in %d iterations\n", iter);
+    }
     delete ml;
 
     delete A;

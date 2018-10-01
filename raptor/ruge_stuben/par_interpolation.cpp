@@ -1205,8 +1205,9 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
 
     if (tap_interp)
     {
+        // 2-step tap_comm for setup phase (will change to 3-step for solve)
         P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map,
-                P->on_proc_column_map);
+                P->on_proc_column_map, false);
     }
     else
     {
@@ -1874,6 +1875,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     if (tap_interp)
     {
+        // 2-step tap_comm for setup phase (will change to 3-step for solve)
         P->tap_comm = new TAPComm(S->tap_comm, on_proc_col_to_new, off_proc_col_to_new, comm_t);
     }
     else

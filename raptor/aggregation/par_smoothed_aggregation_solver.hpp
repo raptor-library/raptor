@@ -168,7 +168,6 @@ namespace raptor
             A = AP->mult_T(P, tap_level, PTAP_mat_time);
             if (setup_times) setup_times[6][level_ctr] += MPI_Wtime();
 
-
             level_ctr++;
             levels[level_ctr]->A = A;
             A->comm = new ParComm(A->partition, A->off_proc_column_map,
@@ -184,11 +183,13 @@ namespace raptor
 
             if (tap_amg >= 0 && tap_amg <= level_ctr)
             {
+                // Create 2-step node-aware communicator for setup phase
+                // will be changed to 3-step before solve phase
                 levels[level_ctr]->A->tap_comm = new TAPComm(
                         levels[level_ctr]->A->partition,
                         levels[level_ctr]->A->off_proc_column_map,
-                        levels[level_ctr]->A->on_proc_column_map, true, 
-                        A->comm->mpi_comm, total_time);
+                        levels[level_ctr]->A->on_proc_column_map, 
+                        true, A->comm->mpi_comm, total_time);
             }
 
             std::copy(R.begin(), R.end(), B.begin());

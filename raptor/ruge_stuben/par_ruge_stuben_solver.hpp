@@ -222,11 +222,13 @@ namespace raptor
 
             if (tap_amg >= 0 && tap_amg <= level_ctr)
             {
+                // Create two-step tap_comm (for setup phase, 
+                // will be changed to 3-step before solve phase)
                 levels[level_ctr]->A->tap_comm = new TAPComm(
                         levels[level_ctr]->A->partition,
                         levels[level_ctr]->A->off_proc_column_map,
                         levels[level_ctr]->A->on_proc_column_map,
-                        true, MPI_COMM_WORLD, total_time);
+                        false, MPI_COMM_WORLD, total_time);
             }
 
             delete AP;
