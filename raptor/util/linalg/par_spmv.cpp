@@ -183,7 +183,8 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap,
     comm->init_comm(x, off_proc->b_cols);
     if (comm_t) *comm_t += MPI_Wtime();
 
-    r.copy(b);
+    std::copy(b.local.values.begin(), b.local.values.end(), 
+            r.local.values.begin());
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
@@ -220,7 +221,7 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r,
     tap_comm->init_comm(x, off_proc->b_cols);
     if (comm_t) *comm_t += MPI_Wtime();
 
-    r.copy(b);
+    std::copy(b.local.values.begin(), b.local.values.end(), r.local.values.begin());
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local

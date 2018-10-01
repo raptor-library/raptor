@@ -322,7 +322,6 @@ int main(int argc, char* argv[])
     ml->print_solve_times();
     delete ml;
 
-
     delete A;
 
     MPI_Finalize();

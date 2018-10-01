@@ -123,7 +123,7 @@ namespace raptor
                 ctr++;
                 A_to_S[ctr] = i;
             }
-            if (tap_level) S->tap_comm = new TAPComm((TAPComm*) A->tap_comm, A_to_S, coarsen_time);
+            if (tap_level) S->update_tap_comm(A, A_to_S, coarsen_time);
             S->comm = new ParComm((ParComm*) A->comm, A_to_S, coarsen_time);
 
             switch (coarsen_type)
@@ -219,11 +219,8 @@ namespace raptor
 
             if (tap_amg >= 0 && tap_amg <= level_ctr)
             {
-                levels[level_ctr]->A->tap_comm = new TAPComm(
-                        levels[level_ctr]->A->partition,
-                        levels[level_ctr]->A->off_proc_column_map,
-                        levels[level_ctr]->A->on_proc_column_map,
-                        true, MPI_COMM_WORLD, total_time);
+                levels[level_ctr]->A->init_tap_communicators(MPI_COMM_WORLD, 
+                        total_time);
             }
 
             delete AP;

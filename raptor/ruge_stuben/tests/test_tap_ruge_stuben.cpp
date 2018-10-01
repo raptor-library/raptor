@@ -65,8 +65,8 @@ TEST(TestTAPRugeStuben, TestsInRuge_Stuben)
 
     // Test Level 0
     A = readParMatrix(A0_fn);
-    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
-    S = A->strength(Classical, 0.25);
+    A->init_tap_communicators();
+    S = A->strength(Classical, 0.25, true);
     MPI_Allgather(&A->local_num_rows, 1, MPI_INT, proc_sizes.data(),
             1, MPI_INT, MPI_COMM_WORLD);
     first_row = 0;
@@ -105,11 +105,10 @@ TEST(TestTAPRugeStuben, TestsInRuge_Stuben)
 
     // Test Level 1
     A = Ac_rap;
-    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, 
-            A->on_proc_column_map);
+    A->init_tap_communicators();
     A->comm = new ParComm(A->partition, A->off_proc_column_map, A->on_proc_column_map);
     Ac_rap = NULL;
-    S = A->strength(Classical, 0.25);
+    S = A->strength(Classical, 0.25, true);
     rand_vals.resize(A->local_num_rows);
     for (int i = 0; i < A->local_num_rows; i++)
     {

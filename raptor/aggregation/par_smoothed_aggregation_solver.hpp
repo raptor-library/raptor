@@ -127,7 +127,7 @@ namespace raptor
                         ctr++;
                         A_to_S[ctr] = i;
                     }
-                    if (tap_level) S->tap_comm = new TAPComm((TAPComm*) A->tap_comm, A_to_S, agg_time);
+                    if (tap_level) S->update_tap_comm(A, A_to_S, agg_time);
                     S->comm = new ParComm((ParComm*) A->comm, A_to_S, agg_time);
 
                     mis2(S, states, off_proc_states, tap_level, weights, agg_time);

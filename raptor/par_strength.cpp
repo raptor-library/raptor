@@ -332,14 +332,16 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
     // TODO... but is it?
     if (!comm_t)
     {
-        if (A->comm)
-        {
-            S->comm = new ParComm((ParComm*) A->comm, orig_to_S, comm_t);
-        }
-
+        // Need both communicators... CLJP needs tap_comm for first pass
+        // and then standard comm for conditional communication at other
+        // iterations
         if (A->tap_comm)
         {
-            S->tap_comm = new TAPComm((TAPComm*) A->tap_comm, orig_to_S, comm_t);
+            S->update_tap_comm(A, orig_to_S);
+        }
+        if (A->comm)
+        {
+            S->comm = new ParComm((ParComm*) A->comm, orig_to_S);
         }
     }
 
@@ -548,13 +550,13 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, da
     {
     	if (A->comm)
     	{
-            S->comm = new ParComm((ParComm*) A->comm, orig_to_S, comm_t);
-	}
+            S->comm = new ParComm((ParComm*) A->comm, orig_to_S);
+	    }
 
     	if (A->tap_comm)
     	{
-            S->tap_comm = new TAPComm((TAPComm*) A->tap_comm, orig_to_S, comm_t);
-   	}
+            S->update_tap_comm(A, orig_to_S);
+        }
     }
 
     return S;

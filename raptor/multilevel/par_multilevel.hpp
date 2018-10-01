@@ -80,7 +80,7 @@ namespace raptor
                     strength_t _strength_type,
                     relax_t _relax_type) // which level to start tap_amg (-1 == no TAP)
             {
-		num_levels = 0;
+                num_levels = 0;
                 strong_threshold = _strong_threshold;
                 strength_type = _strength_type;
                 relax_type = _relax_type;
@@ -106,8 +106,8 @@ namespace raptor
 
             virtual ~ParMultilevel()
             {
-		if (num_levels > 0)
-		{
+                if (num_levels > 0)
+                {
                     if (levels[num_levels-1]->A->local_num_rows)
                     {
                         MPI_Comm_free(&coarse_comm);
@@ -117,7 +117,7 @@ namespace raptor
                     {
                         delete *it;
                     }
-		}
+                }
                 delete[] setup_times;
                 delete[] solve_times;
                 delete[] setup_comm_times;
@@ -148,10 +148,22 @@ namespace raptor
                         Af->partition->first_local_row);
                 levels[0]->tmp.resize(Af->global_num_rows, Af->local_num_rows,
                         Af->partition->first_local_row);
-                if (tap_amg == 0 && !Af->tap_comm)
+                if (tap_amg == 0)
                 {
-                    levels[0]->A->tap_comm = new TAPComm(Af->partition,
-                            Af->off_proc_column_map, Af->on_proc_column_map);
+                    if (!Af->tap_comm && !Af->tap_mat_comm)
+                    {
+                        levels[0]->A->init_tap_communicators();
+                    }
+                    else if (!Af->tap_comm) // 3-step NAPComm
+                    {
+                        levels[0]->A->tap_comm = new TAPComm(Af->partition,
+                                Af->off_proc_column_map, Af->on_proc_column_map);
+                    }
+                    else if (!Af->tap_mat_comm) // 2-step NAPComm
+                    {
+                        levels[0]->A->tap_mat_comm = new TAPComm(Af->partition,
+                                Af->off_proc_column_map, Af->on_proc_column_map, false);
+                    }
                 }
 
                 for (int i = 0; i < n_setup_times; i++)

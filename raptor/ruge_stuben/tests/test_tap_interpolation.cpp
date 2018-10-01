@@ -119,7 +119,7 @@ TEST(TestTAPInterpolation, TestsInRuge_Stuben)
 
     // TEST LEVEL 0
     A = readParMatrix(A0_fn);
-    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
+    A->init_tap_communicators();
     S = readParMatrix(S0_fn);
     aligned_vector<int> A_to_S(A->off_proc_num_cols, -1);
     int ctr = 0;
@@ -130,10 +130,10 @@ TEST(TestTAPInterpolation, TestsInRuge_Stuben)
         ctr++;
         A_to_S[ctr] = i;
     }
-    if (!S->tap_comm) 
-        S->tap_comm = new TAPComm((TAPComm*) A->tap_comm, A_to_S);
     if (!S->comm)
         S->comm = new ParComm((ParComm*) A->comm, A_to_S);
+    if (S->tap_comm) delete S->tap_comm;
+    S->update_tap_comm(A, A_to_S);
 
     P_rap = form_Prap(A, S, cf0_fn, 
             &first_row, &first_col, 0);
@@ -163,8 +163,7 @@ TEST(TestTAPInterpolation, TestsInRuge_Stuben)
 
     // TEST LEVEL 1
     A = readParMatrix(A1_fn);
-    A->tap_comm = new TAPComm(A->partition, 
-            A->off_proc_column_map, A->on_proc_column_map);
+    A->init_tap_communicators();
     S = readParMatrix(S1_fn);
     A_to_S.resize(A->off_proc_num_cols);
     std::fill(A_to_S.begin(), A_to_S.end(), -1);
@@ -176,12 +175,10 @@ TEST(TestTAPInterpolation, TestsInRuge_Stuben)
         ctr++;
         A_to_S[ctr] = i;
     }
-    if (!S->tap_comm) 
-        S->tap_comm = new TAPComm((TAPComm*) A->tap_comm, A_to_S);
     if (!S->comm)
         S->comm = new ParComm((ParComm*) A->comm, A_to_S);
-
-
+    if (S->tap_comm) delete S->tap_comm; 
+    S->update_tap_comm(A, A_to_S);
 
     P_rap = form_Prap(A, S, cf1_fn, 
             &first_row, &first_col, 0);
