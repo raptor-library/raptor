@@ -114,6 +114,7 @@ ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B, data_t* mat_comm_t)
     // Check that communication package has been initialized
     if (tap_mat_comm == NULL)
     {
+        printf("Here...\n");
         // Always 2-step
         tap_mat_comm = new TAPComm(partition, off_proc_column_map, 
                 on_proc_column_map, false);
