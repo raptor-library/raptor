@@ -9,10 +9,6 @@ set(CMAKE_BUILD_TYPE Release)
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto -funroll-loops")
-SET(CMAKE_AR  "gcc-ar-4.7")
-SET(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
-SET(CMAKE_CXX_ARCHIVE_FINISH   true)
-
 
 include(FeatureSummary)
 
@@ -56,6 +52,10 @@ SET(PTSCOTCH_DIR "" CACHE STRING "Directory of mfem")
 if (CRAYXE)
     set(EXTERNAL_LIBS "")
     set(MPIRUN aprun)
+    set(CMAKE_AR  "gcc-ar-4.7")
+    set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
+    set(CMAKE_CXX_ARCHIVE_FINISH   true)
+
 elseif (BGQ)
     find_library(LAPACK_LIB NAMES liblapack lapack HINTS
         "/soft/libraries/alcf/current/xl/LAPACK/lib")
