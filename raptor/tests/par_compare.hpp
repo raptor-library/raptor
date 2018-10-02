@@ -90,4 +90,31 @@ void compare_pattern(ParCSRMatrix* A, ParCSRMatrix* A_rap)
         }
     }
 }
+
+void remove_empty_cols(ParCSRMatrix* S)
+{
+    aligned_vector<int> col_exists(S->off_proc_num_cols, 0);
+    for (aligned_vector<int>::iterator it = S->off_proc->idx2.begin();
+            it != S->off_proc->idx2.end(); ++it)
+    {
+        col_exists[*it] = 1;
+    }
+    int ctr = 0;
+    for (int i = 0; i < S->off_proc_num_cols; i++)
+    {
+        if (col_exists[i])
+        {
+            col_exists[i] = ctr;
+            S->off_proc_column_map[ctr++] = S->off_proc_column_map[i];
+        }
+    }
+    S->off_proc_column_map.resize(ctr);
+    S->off_proc_num_cols = ctr;
+    for (aligned_vector<int>::iterator it = S->off_proc->idx2.begin();
+            it != S->off_proc->idx2.end(); ++it)
+    {
+        *it = col_exists[*it];
+    }
+}
+
 #endif

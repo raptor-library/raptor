@@ -118,7 +118,7 @@ namespace raptor
             switch (agg_type)
             {
                 case MIS:
-                    aligned_vector<int> A_to_S(A->off_proc_num_cols, -1);
+                    /*aligned_vector<int> A_to_S(A->off_proc_num_cols, -1);
                     int ctr = 0;
                     for (int i = 0; i < S->off_proc_num_cols; i++)
                     {
@@ -128,8 +128,7 @@ namespace raptor
                         A_to_S[ctr] = i;
                     }
                     if (tap_level) S->update_tap_comm(A, A_to_S, agg_time);
-                    S->comm = new ParComm((ParComm*) A->comm, A_to_S, agg_time);
-
+                    S->comm = new ParComm((ParComm*) A->comm, A_to_S, agg_time);*/
                     mis2(S, states, off_proc_states, tap_level, weights, agg_time);
                     n_aggs = aggregate(A, S, states, off_proc_states, 
                             aggregates, tap_level, NULL, agg_time);
