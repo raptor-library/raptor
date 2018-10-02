@@ -91,6 +91,7 @@ namespace raptor
         comm = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
+        shared_comm = false;
     }
 
     ParMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows, 
@@ -107,6 +108,7 @@ namespace raptor
         comm = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
+        shared_comm = false;
     }
 
     ParMatrix(index_t glob_rows, index_t glob_cols)
@@ -121,6 +123,7 @@ namespace raptor
         comm = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
+        shared_comm = false;
     }
 
     ParMatrix(index_t glob_rows, 
@@ -142,6 +145,7 @@ namespace raptor
         comm = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
+        shared_comm = false;
     }
        
     ParMatrix()
@@ -155,6 +159,7 @@ namespace raptor
         comm = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
+        shared_comm = false;
 
         on_proc = NULL;
         off_proc = NULL;
@@ -166,9 +171,13 @@ namespace raptor
     {
         delete off_proc;
         delete on_proc;
-        delete comm;
-        delete tap_mat_comm;
-        delete tap_comm;
+
+        if (!shared_comm)
+        {
+            delete comm;
+            delete tap_mat_comm;
+            delete tap_comm;
+        }
 
         if (partition)
         {
@@ -331,6 +340,7 @@ namespace raptor
     ParComm* comm;
     TAPComm* tap_comm;
     TAPComm* tap_mat_comm;
+    bool shared_comm;
   };
 
   class ParCOOMatrix : public ParMatrix

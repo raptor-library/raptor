@@ -7,7 +7,7 @@ enable_language(CXX)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_BUILD_TYPE Release)
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexpensive-optimizations  -funroll-loops -ffast-math")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto -funroll-loops")
 SET(CMAKE_AR  "gcc-ar-4.7")
 SET(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")

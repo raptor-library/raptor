@@ -36,6 +36,7 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
 
     ParCSRMatrix* A;
     ParCSRMatrix* S;
+    ParCSRMatrix* S_red;
     ParCSRMatrix* T;
     ParCSRMatrix* P;
     ParCSRMatrix* Ac;
@@ -86,8 +87,12 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     // Strength of connection
     S = A->strength(Symmetric, 0.25);
     S_py = readParMatrix(S0_fn);
+    remove_empty_cols(S);
     compare_pattern(S, S_py);
     delete S_py;
+    delete S;
+    S = A->strength(Symmetric, 0.25);
+
 
     // Test MIS 2
     f = fopen(mis0_fn, "r");
@@ -215,8 +220,11 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     // Strength of connection
     S_py = readParMatrix(S1_fn, n_aggs, n_aggs, first_col, first_col);
     S = A->strength(Symmetric, 0.25);
+    remove_empty_cols(S);
     compare_pattern(S, S_py);
+    delete S;
     delete S_py;
+    S = A->strength(Symmetric, 0.25);
 
     // MIS2
     f = fopen(mis1_fn, "r");

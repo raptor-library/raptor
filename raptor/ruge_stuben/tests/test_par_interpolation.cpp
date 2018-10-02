@@ -116,7 +116,7 @@ TEST(TestParInterpolation, TestsInRuge_Stuben)
 
     // TEST LEVEL 0
     A = readParMatrix(A0_fn);
-    S = readParMatrix(S0_fn);
+    S = A->strength(Classical, 0.25);
     P_rap = form_Prap(A, S, cf0_fn, 
             &first_row, &first_col, 0);
     P = readParMatrix(P0_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
@@ -144,7 +144,7 @@ TEST(TestParInterpolation, TestsInRuge_Stuben)
 
     // TEST LEVEL 1
     A = readParMatrix(A1_fn);
-    S = readParMatrix(S1_fn);
+    S = A->strength(Classical, 0.25);
     P_rap = form_Prap(A, S, cf1_fn, &first_row, &first_col, 0);
     P = readParMatrix(P1_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
             first_row, first_col);

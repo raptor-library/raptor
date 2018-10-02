@@ -22,7 +22,6 @@ int main(int argc, char** argv)
     return temp;
 } // end of main() //
 
-
 TEST(ParStrengthTest, TestsInTests)
 {
     int rank, num_procs;
@@ -41,6 +40,7 @@ TEST(ParStrengthTest, TestsInTests)
     A = readParMatrix(A0_fn);
     S = readParMatrix(S0_fn);
     S_rap = A->strength(Classical, 0.25);
+    remove_empty_cols(S_rap);
     compare_pattern(S, S_rap);
     delete A;
     delete S;
@@ -49,6 +49,7 @@ TEST(ParStrengthTest, TestsInTests)
     A = readParMatrix(A1_fn);
     S = readParMatrix(S1_fn);
     S_rap = A->strength(Classical, 0.25);
+    remove_empty_cols(S_rap);
     compare_pattern(S, S_rap);
     delete A;
     delete S;

@@ -35,12 +35,6 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
         off_variables = recvbuf.data();
     }
 
-    aligned_vector<bool> col_exists;
-    if (A->off_proc_num_cols)
-    {
-        col_exists.resize(A->off_proc_num_cols, false);
-    }
-
     A->sort();
     A->on_proc->move_diag();
     S->on_proc->vals.clear();
@@ -209,7 +203,6 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                         {
                             col = A->off_proc->idx2[j];
                             S->off_proc->idx2.emplace_back(col);
-                            col_exists[col] = true;
                         }
                     }
                 }
@@ -230,7 +223,6 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                         {
                             col = A->off_proc->idx2[j];
                             S->off_proc->idx2.emplace_back(col);
-                            col_exists[col] = true;
                         }
                     }
                 }
@@ -260,7 +252,6 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                             if (val > threshold)
                             {
                                 S->off_proc->idx2.emplace_back(col);
-                                col_exists[col] = true;
                             }
                         }
                     }
@@ -288,7 +279,6 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                             if (val < threshold)
                             {
                                 S->off_proc->idx2.emplace_back(col);
-                                col_exists[col] = true;
                             }
                         }
                     }
@@ -305,45 +295,12 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
 
     S->on_proc_column_map = A->get_on_proc_column_map();
     S->local_row_map = A->get_local_row_map();
+    S->off_proc_column_map = A->get_off_proc_column_map();
 
-    aligned_vector<int> orig_to_S;
-    if (A->off_proc_num_cols)
-    {
-        orig_to_S.resize(A->off_proc_num_cols, -1);
-    }
-    S->off_proc_column_map.reserve(A->off_proc_num_cols);
-    for (int i = 0; i < A->off_proc_num_cols; i++)
-    {
-        if (col_exists[i])
-        {
-            orig_to_S[i] = S->off_proc_column_map.size();
-            S->off_proc_column_map.emplace_back(A->off_proc_column_map[i]);
-        }
-    }
-    S->off_proc_num_cols = S->off_proc_column_map.size();
-    for (aligned_vector<int>::iterator it = S->off_proc->idx2.begin();
-            it != S->off_proc->idx2.end(); ++it)
-    {
-        *it = orig_to_S[*it];
-    }
-
-    // Can copy A's comm pkg... may not need to communicate everything in comm,
-    // but this is probably less costly than creating a new communicator
-    // TODO... but is it?
-    if (!comm_t)
-    {
-        // Need both communicators... CLJP needs tap_comm for first pass
-        // and then standard comm for conditional communication at other
-        // iterations
-        if (A->tap_comm)
-        {
-            S->update_tap_comm(A, orig_to_S);
-        }
-        if (A->comm)
-        {
-            S->comm = new ParComm((ParComm*) A->comm, orig_to_S);
-        }
-    }
+    S->comm = A->comm;
+    S->tap_comm = A->tap_comm;
+    S->tap_mat_comm = A->tap_mat_comm;
+    S->shared_comm = true;
 
     return S;
 
@@ -377,12 +334,6 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, da
     ParCSRMatrix* S = new ParCSRMatrix(A->partition, A->global_num_rows, A->global_num_cols,
             A->local_num_rows, A->on_proc_num_cols, A->off_proc_num_cols);
     
-    aligned_vector<bool> col_exists;
-    if (A->off_proc_num_cols)
-    {
-        col_exists.resize(A->off_proc_num_cols, false);
-    }
-
     A->sort();
     A->on_proc->move_diag();
     S->on_proc->vals.clear();
@@ -508,7 +459,6 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, da
                         || (!off_proc_neg_diags[col] && val < off_proc_row_scales[col]))
                 {
                     S->off_proc->idx2.emplace_back(col);
-                    col_exists[col] = true;
                 }
             }                    
         }
@@ -521,43 +471,12 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, da
 
     S->on_proc_column_map = A->get_on_proc_column_map();
     S->local_row_map = A->get_local_row_map();
+    S->off_proc_column_map = A->get_off_proc_column_map();
 
-    aligned_vector<int> orig_to_S;
-    if (A->off_proc_num_cols)
-    {
-        orig_to_S.resize(A->off_proc_num_cols, -1);
-    }
-    S->off_proc_column_map.reserve(A->off_proc_num_cols);
-    for (int i = 0; i < A->off_proc_num_cols; i++)
-    {
-        if (col_exists[i])
-        {
-            orig_to_S[i] = S->off_proc_column_map.size();
-            S->off_proc_column_map.emplace_back(A->off_proc_column_map[i]);
-        }
-    }
-    S->off_proc_num_cols = S->off_proc_column_map.size();
-    for (aligned_vector<int>::iterator it = S->off_proc->idx2.begin();
-            it != S->off_proc->idx2.end(); ++it)
-    {
-        *it = orig_to_S[*it];
-    }
-
-    // Can copy A's comm pkg... may not need to communicate everything in comm,
-    // but this is probably less costly than creating a new communicator
-    // TODO... but is it?
-    if (!comm_t)
-    {
-    	if (A->comm)
-    	{
-            S->comm = new ParComm((ParComm*) A->comm, orig_to_S);
-	    }
-
-    	if (A->tap_comm)
-    	{
-            S->update_tap_comm(A, orig_to_S);
-        }
-    }
+    S->comm = A->comm;
+    S->tap_comm = A->tap_comm;
+    S->tap_mat_comm = A->tap_mat_comm;
+    S->shared_comm = true;
 
     return S;
 }
