@@ -90,6 +90,7 @@ namespace raptor
 
         comm = NULL;
         tap_comm = NULL;
+        tap_mat_comm = NULL;
     }
 
     ParMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows, 
@@ -105,6 +106,7 @@ namespace raptor
 
         comm = NULL;
         tap_comm = NULL;
+        tap_mat_comm = NULL;
     }
 
     ParMatrix(index_t glob_rows, index_t glob_cols)
@@ -118,6 +120,7 @@ namespace raptor
 
         comm = NULL;
         tap_comm = NULL;
+        tap_mat_comm = NULL;
     }
 
     ParMatrix(index_t glob_rows, 
@@ -138,6 +141,7 @@ namespace raptor
 
         comm = NULL;
         tap_comm = NULL;
+        tap_mat_comm = NULL;
     }
        
     ParMatrix()
@@ -150,6 +154,7 @@ namespace raptor
 
         comm = NULL;
         tap_comm = NULL;
+        tap_mat_comm = NULL;
 
         on_proc = NULL;
         off_proc = NULL;
@@ -162,6 +167,7 @@ namespace raptor
         delete off_proc;
         delete on_proc;
         delete comm;
+        delete tap_mat_comm;
         delete tap_comm;
 
         if (partition)
@@ -244,6 +250,25 @@ namespace raptor
     ParMatrix* add(ParCSRMatrix* A);
     ParMatrix* subtract(ParCSRMatrix* A);
 
+    void init_tap_communicators(MPI_Comm comm = MPI_COMM_WORLD, data_t* comm_t = NULL);
+    void update_tap_comm(ParMatrix* old, const aligned_vector<int>& old_to_new,
+            double* comm_t = NULL)
+    {
+        tap_comm = new TAPComm((TAPComm*) old->tap_comm, old_to_new, NULL, comm_t);
+        tap_mat_comm = new TAPComm((TAPComm*) old->tap_mat_comm, old_to_new, 
+                tap_comm->local_L_par_comm, comm_t);
+    }
+    void update_tap_comm(ParMatrix* old, const aligned_vector<int>& on_old_to_new,
+            const aligned_vector<int>& off_old_to_new, double* comm_t = NULL)
+    {
+        tap_comm = new TAPComm((TAPComm*) old->tap_comm, on_old_to_new, off_old_to_new, 
+                NULL, comm_t);
+        tap_mat_comm = new TAPComm((TAPComm*) old->tap_mat_comm, on_old_to_new, 
+                off_old_to_new, tap_comm->local_L_par_comm, comm_t);
+    }
+
+
+
     void sort()
     {
         on_proc->sort();
@@ -305,6 +330,7 @@ namespace raptor
     Partition* partition;
     ParComm* comm;
     TAPComm* tap_comm;
+    TAPComm* tap_mat_comm;
   };
 
   class ParCOOMatrix : public ParMatrix

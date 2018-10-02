@@ -232,9 +232,11 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     double val, weak_sum;
 
     CommPkg* comm = A->comm;
+    CommPkg* mat_comm = A->comm;
     if (tap_interp)
     {
         comm = A->tap_comm;
+        mat_comm = A->tap_mat_comm;
     }
 
     std::set<int> global_set;
@@ -254,6 +256,24 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     S->sort();
     A->on_proc->move_diag();
     S->on_proc->move_diag();
+
+
+    aligned_vector<double> weak_sums;
+    aligned_vector<int> signs;
+    if (A->on_proc_num_cols)
+    {
+        weak_sums.resize(A->on_proc_num_cols);
+        signs.resize(A->on_proc_num_cols);
+    }
+    for (int i = 0; i < A->on_proc->n_rows; i++)
+    {
+        weak_sums[i] = A->on_proc->vals[A->on_proc->idx1[i]];
+        if (weak_sums[i] < 0) 
+            signs[i] = -1;
+        else 
+            signs[i] = 1;
+    }
+
 
     if (A->off_proc_num_cols) off_variables.resize(A->off_proc_num_cols);
     if (num_variables > 1)
@@ -295,7 +315,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
 
     // Communicate parallel matrix A (Costly!)
     if (comm_mat_t) *comm_mat_t -= MPI_Wtime();
-    communicate(A, S, states, off_proc_states_A, comm, &recv_on, &recv_off);
+    communicate(A, S, states, off_proc_states_A, mat_comm, &recv_on, &recv_off);
     if (comm_mat_t) *comm_mat_t += MPI_Wtime();
 
     // Change on_proc_cols to local
@@ -322,8 +342,11 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                 {
                     col -= A->partition->global_num_cols;
                     col = on_proc_partition_to_col[col - A->partition->first_local_row];
-                    D_recv_on->idx2.emplace_back(col);
-                    D_recv_on->vals.emplace_back(val);
+                    if (val * signs[col] < 0) 
+                    {
+                        D_recv_on->idx2.push_back(col);
+                        D_recv_on->vals.push_back(val);
+                    }
                 }
                 else
                 {
@@ -339,8 +362,11 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                 {
                     col -= A->partition->global_num_cols;
                     col = on_proc_partition_to_col[col - A->partition->first_local_row];
-                    D_recv_on->idx2.emplace_back(col);
-                    D_recv_on->vals.emplace_back(val);
+                    if (val * signs[col] < 0)
+                    {
+                        D_recv_on->idx2.push_back(col);
+                        D_recv_on->vals.push_back(val);
+                    }
                 }
                 else
                 {
@@ -495,16 +521,12 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     aligned_vector<int> recv_off_pos;
     aligned_vector<double> row_strong;
     aligned_vector<double> off_proc_row_strong;
-    aligned_vector<double> weak_sums;
-    aligned_vector<int> signs;
     aligned_vector<double> coarse_sum;
     aligned_vector<double> off_proc_coarse_sum;
     if (A->on_proc_num_cols)
     {
         pos.resize(A->on_proc_num_cols, -1);
         row_strong.resize(A->on_proc_num_cols, 0);
-        weak_sums.resize(A->on_proc_num_cols);
-        signs.resize(A->on_proc_num_cols);
         coarse_sum.resize(A->on_proc_num_cols);
     }
     if (A->off_proc_num_cols)
@@ -526,19 +548,16 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     CSRMatrix* SS_off = new CSRMatrix(A->off_proc->n_rows, A->off_proc->n_cols);
     CSRMatrix* SU_off = new CSRMatrix(A->off_proc->n_rows, A->off_proc->n_cols);
     CSRMatrix* NS_off = new CSRMatrix(A->off_proc->n_rows, A->off_proc->n_cols);
+
+
     for (int i = 0; i < A->on_proc->n_rows; i++)
     {
-        start = A->on_proc->idx1[i];
+        start = A->on_proc->idx1[i] + 1;
         end = A->on_proc->idx1[i+1];
         ctr = S->on_proc->idx1[i]+1;
         end_S = S->on_proc->idx1[i+1];
 
-        weak_sums[i] = A->on_proc->vals[start++];
-        if (weak_sums[i] < 0) 
-            signs[i] = -1;
-        else 
-            signs[i] = 1;
-
+        aligned_vector<int> col_size(A->on_proc_num_cols, 0);
         for (int j = start; j < end; j++)
         {
             col = A->on_proc->idx2[j];
@@ -552,10 +571,13 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                 }
                 else
                 {
-                    SU_on->idx2.emplace_back(col);
-                    SU_on->vals.emplace_back(val);
-                    U_on->idx2.emplace_back(col);
-                    U_on->vals.emplace_back(val);
+                    SU_on->idx2.push_back(col);
+                    SU_on->vals.push_back(val);
+                    if (val * signs[col] < 0)
+                    {
+                        U_on->idx2.push_back(col);
+                        U_on->vals.push_back(val);
+                    }
                 }
                 ctr++;
             }
@@ -566,7 +588,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                     NS_on->idx2.emplace_back(col);
                     NS_on->vals.emplace_back(val);
                 }
-                else
+                else if (val * signs[col] < 0)
                 {
                     U_on->idx2.emplace_back(col);
                     U_on->vals.emplace_back(val);
@@ -584,11 +606,14 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         SU_on->idx1[i+1] = SU_on->idx2.size();
         NS_on->idx1[i+1] = NS_on->idx2.size();
         U_on->idx1[i+1] = U_on->idx2.size();
+
+        
         
         start = A->off_proc->idx1[i];
         end = A->off_proc->idx1[i+1];
         ctr = S->off_proc->idx1[i];
         end_S = S->off_proc->idx1[i+1];
+
         for (int j = start; j < end; j++)
         {
             col = A->off_proc->idx2[j];
@@ -876,7 +901,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                     col_sum += val;
                 }
             }
-
+            
             coarse_sum[col] = col_sum;
         }
 
@@ -886,8 +911,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         {
             int row = U_on_csc->idx2[k];
             val = U_on_csc->vals[k];
-            if (val * sign < 0)
-                coarse_sum[row] += val;
+            coarse_sum[row] += val;
         }
 
         for (int j = start; j < end; j++)
@@ -973,8 +997,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         {
             int row = D_recv_on_csc->idx2[k];
             val = D_recv_on_csc->vals[k];
-            if (val * sign < 0)
-                off_proc_coarse_sum[row] += val;
+            off_proc_coarse_sum[row] += val;
         }
 
         for (int j = start; j < end; j++)
@@ -1205,9 +1228,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
 
     if (tap_interp)
     {
-        // 2-step tap_comm for setup phase (will change to 3-step for solve)
-        P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map,
-                P->on_proc_column_map, false);
+        P->init_tap_communicators(MPI_COMM_WORLD, comm_t);
     }
     else
     {
@@ -1252,9 +1273,11 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     if (A->off_proc_num_cols) off_variables.resize(A->off_proc_num_cols);
 
     CommPkg* comm = A->comm;
+    CommPkg* mat_comm = A->comm;
     if (tap_interp)
     {
         comm = A->tap_comm;
+        mat_comm = A->tap_mat_comm;
     }
 
     CSRMatrix* recv_on; // On Proc Block of Recvd A
@@ -1349,7 +1372,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     // Communicate parallel matrix A (Costly!)
     if (comm_mat_t) *comm_mat_t -= MPI_Wtime();
-    communicate(A, states, off_proc_states_A, comm, &recv_on, &recv_off);
+    communicate(A, states, off_proc_states_A, mat_comm, &recv_on, &recv_off);
     if (comm_mat_t) *comm_mat_t += MPI_Wtime();
 
     // Change on_proc_cols to local
@@ -1875,8 +1898,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     if (tap_interp)
     {
-        // 2-step tap_comm for setup phase (will change to 3-step for solve)
-        P->tap_comm = new TAPComm(S->tap_comm, on_proc_col_to_new, off_proc_col_to_new, comm_t);
+        P->update_tap_comm(S, on_proc_col_to_new, off_proc_col_to_new, comm_t);
     }
     else
     {
@@ -2190,8 +2212,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
 
     if (tap_interp)
     {
-        P->tap_comm = new TAPComm(S->tap_comm, on_proc_col_to_new,
-                off_proc_col_to_new, comm_t);
+        P->update_tap_comm(S, on_proc_col_to_new, off_proc_col_to_new, comm_t);
     }
     else
     {

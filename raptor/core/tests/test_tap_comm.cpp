@@ -37,8 +37,9 @@ TEST(TAPCommTest, TestsInCore)
     aligned_vector<double> tap_simp_recv;
 
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
-    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
-    TAPComm* simple_tap = new TAPComm(A->partition, A->off_proc_column_map, false);
+    //A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
+    //TAPComm* simple_tap = new TAPComm(A->partition, A->off_proc_column_map, false);
+    A->init_tap_communicators(MPI_COMM_WORLD);
 
     ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParCSRMatrix* B = A->copy();
@@ -48,7 +49,7 @@ TEST(TAPCommTest, TestsInCore)
         x[i] = A->local_row_map[i];
     }
     tap_recv = A->tap_comm->communicate(x);
-    tap_simp_recv = simple_tap->communicate(x);
+    tap_simp_recv = A->tap_mat_comm->communicate(x);
     par_recv = A->comm->communicate(x);
     ASSERT_EQ(tap_recv.size(), par_recv.size());
     ASSERT_EQ(tap_recv.size(), tap_simp_recv.size());
@@ -60,7 +61,7 @@ TEST(TAPCommTest, TestsInCore)
 
     x.set_rand_values();
     tap_recv = A->tap_comm->communicate(x);
-    tap_simp_recv = simple_tap->communicate(x);
+    tap_simp_recv = A->tap_mat_comm->communicate(x);
     par_recv = A->comm->communicate(x);
     ASSERT_EQ(tap_recv.size(), par_recv.size());
     ASSERT_EQ(tap_simp_recv.size(), tap_recv.size());
@@ -72,14 +73,13 @@ TEST(TAPCommTest, TestsInCore)
 
     CSRMatrix* recv_mat = A->comm->communicate(B);
     CSRMatrix* tap_recv_mat = A->tap_comm->communicate(B);
-    CSRMatrix* tap_recv_simp_mat = simple_tap->communicate(B);
+    CSRMatrix* tap_recv_simp_mat = A->tap_mat_comm->communicate(B);
     compare(recv_mat, tap_recv_mat);
     compare(tap_recv_mat, tap_recv_simp_mat);
     delete recv_mat;
     delete tap_recv_mat;
     delete tap_recv_simp_mat;
 
-    delete simple_tap;
     delete[] stencil;
     delete A;
 

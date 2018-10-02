@@ -357,6 +357,7 @@ CSRMatrix* TAPComm::complete_mat_comm(const int b_rows, const int b_cols, const 
         BSRMatrix* G_mat_bsr = (BSRMatrix*) G_mat;
         R_mat = local_R_par_comm->communicate(G_mat_bsr->idx1, G_mat_bsr->idx2, 
             G_mat_bsr->block_vals, b_rows, b_cols, has_vals);
+
         BSRMatrix* R_mat_bsr = (BSRMatrix*) R_mat;
         BSRMatrix* L_mat_bsr = (BSRMatrix*) L_mat;
 
@@ -371,6 +372,7 @@ CSRMatrix* TAPComm::complete_mat_comm(const int b_rows, const int b_cols, const 
     {
         R_mat = local_R_par_comm->communicate(G_mat->idx1, G_mat->idx2, 
                 G_mat->vals, b_rows, b_cols, has_vals);
+
         // Create recv_mat (combination of L_mat and R_mat)
         recv_mat = combine_recvs(L_mat, R_mat, 
                 L_mat->vals, R_mat->vals, b_rows, b_cols,

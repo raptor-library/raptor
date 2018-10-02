@@ -301,7 +301,7 @@ void TAPComm::form_local_R_par_comm(const aligned_vector<int>& off_node_column_m
             idx = local_R_recv->indices[j];
             send_buffer[ctr++] = off_node_col_to_proc[idx];
         }
-        MPI_Issend(&(send_buffer[start_ctr]), 2*(recv_end - recv_start),
+        MPI_Isend(&(send_buffer[start_ctr]), 2*(recv_end - recv_start),
                 MPI_INT, recv_proc, 6543, topology->local_comm, 
                 &(local_R_recv->requests[i]));
         start_ctr = ctr;
@@ -514,7 +514,7 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
     {
         node = global_recv->procs[i];
         proc = topology->get_global_proc(node, local_rank);
-        MPI_Issend(&(node_sizes[node]), 1, MPI_INT, proc, 9876, MPI_COMM_WORLD,
+        MPI_Isend(&(node_sizes[node]), 1, MPI_INT, proc, 9876, MPI_COMM_WORLD,
                 &(global_recv->requests[i]));
     }
     for (int i = 0; i < recv_n; i++)
@@ -586,7 +586,7 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
     for (int i = 0; i < global_par_comm->send_data->num_msgs; i++)
     {
         proc = global_par_comm->send_data->procs[i];
-        MPI_Issend(&(global_par_comm->send_data->procs[i]), 1, MPI_INT, proc, 6789, 
+        MPI_Isend(&(global_par_comm->send_data->procs[i]), 1, MPI_INT, proc, 6789, 
                 MPI_COMM_WORLD, &(global_par_comm->send_data->requests[i]));
     }
     // Recv processes from which rank must recv
@@ -626,7 +626,7 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
         proc = global_recv->procs[i];
         start = global_recv->indptr[i];
         end = global_recv->indptr[i+1];
-        MPI_Issend(&(send_buffer[2*start]), 2*(end - start),
+        MPI_Isend(&(send_buffer[2*start]), 2*(end - start),
                 MPI_INT, proc, 5432, MPI_COMM_WORLD,
                 &(global_recv->requests[i]));
         
@@ -773,7 +773,7 @@ void TAPComm::form_local_S_par_comm(aligned_vector<int>& orig_procs,
         proc = local_S_recv->procs[i];
         start = local_S_recv->indptr[i];
         end = local_S_recv->indptr[i+1];
-        MPI_Issend(&(local_S_recv->indices[start]), 
+        MPI_Isend(&(local_S_recv->indices[start]), 
                 end - start, MPI_INT, proc, 4321, topology->local_comm,
                 &(local_S_recv->requests[i]));
     }
@@ -967,7 +967,7 @@ void TAPComm::form_local_L_par_comm(const aligned_vector<int>& on_node_column_ma
         proc = local_L_recv->procs[i];
         start = local_L_recv->indptr[i];
         end = local_L_recv->indptr[i+1];
-        MPI_Issend(&(on_node_column_map[start]), end - start, MPI_INT, proc,
+        MPI_Isend(&(on_node_column_map[start]), end - start, MPI_INT, proc,
                 7890, topology->local_comm, &(local_L_recv->requests[i]));
     }
     for (int i = 0; i < num_sends; i++)
@@ -1145,6 +1145,47 @@ void TAPComm::form_simple_global_comm(aligned_vector<int>& off_proc_col_to_proc,
     global_par_comm->recv_data->waitall();
     if (comm_t) *comm_t += MPI_Wtime();
 }
+
+void TAPComm::update_recv(const aligned_vector<int>& on_node_to_off_proc,
+        const aligned_vector<int>& off_node_to_off_proc, bool update_L)
+{
+    int idx;
+
+    // Determine size of final recvs (should be equal to 
+    // number of off_proc cols)
+    recv_size = local_R_par_comm->recv_data->size_msgs +
+        local_L_par_comm->recv_data->size_msgs;
+    NonContigData* local_R_recv = (NonContigData*) local_R_par_comm->recv_data;
+    NonContigData* local_L_recv = (NonContigData*) local_L_par_comm->recv_data;
+    if (recv_size)
+    {
+        // Want a single recv buffer local_R and local_L par_comms
+        buffer.resize(recv_size);
+        int_buffer.resize(recv_size);
+
+        // Map local_R recvs to original off_proc_column_map
+        if (local_R_recv->size_msgs)
+        {
+            for (int i = 0; i < local_R_recv->size_msgs; i++)
+            {
+                idx = local_R_recv->indices[i];
+                local_R_recv->indices[i] = off_node_to_off_proc[idx];
+            }
+        }
+
+
+        // Map local_L recvs to original off_proc_column_map
+        if (update_L && local_L_recv->size_msgs)
+        {
+            for (int i = 0; i < local_L_recv->size_msgs; i++)
+            {
+                idx = local_L_recv->indices[i];
+                local_L_recv->indices[i] = on_node_to_off_proc[idx];
+            }
+        }
+    }
+}
+
 
 
 

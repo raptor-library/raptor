@@ -46,7 +46,7 @@ TEST(TestTAPSplitting, TestsInRuge_Stuben)
 
     // TEST LEVEL 0
     S = readParMatrix(S0_fn);
-    S->tap_comm = new TAPComm(S->partition, S->off_proc_column_map);
+    S->init_tap_communicators();
 
     f = fopen(weights_fn, "r");
     aligned_vector<double> weights(S->local_num_rows);
@@ -77,7 +77,7 @@ TEST(TestTAPSplitting, TestsInRuge_Stuben)
 
     // TEST LEVEL 1
     S = readParMatrix(S1_fn);
-    S->tap_comm = new TAPComm(S->partition, S->off_proc_column_map);
+    S->init_tap_communicators();
 
     f = fopen(weights_fn, "r");
     weights.resize(S->local_num_rows);

@@ -992,16 +992,31 @@ namespace raptor
     {
         public:
 
-        TAPComm(Partition* partition) : CommPkg(partition)
+        TAPComm(Partition* partition, bool form_S = true, ParComm* L_comm = NULL) : CommPkg(partition)
         {
-            local_S_par_comm = new ParComm(partition, 2345, partition->topology->local_comm,
-                    new DuplicateData());
+            if (form_S)
+            {
+                local_S_par_comm = new ParComm(partition, 2345, partition->topology->local_comm,
+                        new DuplicateData());
+            }
+            else local_S_par_comm = NULL;
+
             local_R_par_comm = new ParComm(partition, 3456, partition->topology->local_comm,
-                    new NonContigData());
-            local_L_par_comm = new ParComm(partition, 4567, partition->topology->local_comm,
                     new NonContigData());
             global_par_comm = new ParComm(partition, 5678, MPI_COMM_WORLD,
                     new DuplicateData());
+
+            if (L_comm)
+            {
+                local_L_par_comm = L_comm;
+                shared_L = true;
+            }
+            else
+            {
+                local_L_par_comm = new ParComm(partition, 4567, partition->topology->local_comm,
+                        new NonContigData());
+                shared_L = false;
+            }
         }
 
 
@@ -1035,6 +1050,8 @@ namespace raptor
             {
                 init_tap_comm_simple(partition, off_proc_column_map, comm, comm_t);
             }
+
+            shared_L = false;
         }
 
         TAPComm(Partition* partition,
@@ -1081,6 +1098,8 @@ namespace raptor
             {
                 *it = on_proc_to_new[*it];
             }
+
+            shared_L = false;
         }
 
         /**************************************************************
@@ -1114,26 +1133,31 @@ namespace raptor
                 buffer.resize(recv_size);
                 int_buffer.resize(recv_size);
             }
+
+            shared_L = false;
         }
 
         TAPComm(TAPComm* tap_comm, const aligned_vector<int>& off_proc_col_to_new, 
-                data_t* comm_t = NULL) : CommPkg(tap_comm->topology)
+                ParComm* local_L = NULL, data_t* comm_t = NULL) : CommPkg(tap_comm->topology)
         {
-            init_off_proc_new(tap_comm, off_proc_col_to_new, comm_t);
+            init_off_proc_new(tap_comm, off_proc_col_to_new, local_L, comm_t);
         }
 
         TAPComm(TAPComm* tap_comm, const aligned_vector<int>& on_proc_col_to_new,
                 const aligned_vector<int>& off_proc_col_to_new, 
-                data_t* comm_t = NULL) : CommPkg(tap_comm->topology)
+                ParComm* local_L = NULL, data_t* comm_t = NULL) : CommPkg(tap_comm->topology)
         {
             int idx;
 
-            init_off_proc_new(tap_comm, off_proc_col_to_new, comm_t);
+            init_off_proc_new(tap_comm, off_proc_col_to_new, local_L, comm_t);
 
-            for (int i = 0; i < local_L_par_comm->send_data->size_msgs; i++)
+            if (!local_L)
             {
-                idx = local_L_par_comm->send_data->indices[i];
-                local_L_par_comm->send_data->indices[i] = on_proc_col_to_new[idx];
+                for (int i = 0; i < local_L_par_comm->send_data->size_msgs; i++)
+                {
+                    idx = local_L_par_comm->send_data->indices[i];
+                    local_L_par_comm->send_data->indices[i] = on_proc_col_to_new[idx];
+                }
             }
 
             if (local_S_par_comm)
@@ -1156,15 +1180,24 @@ namespace raptor
 
 
         void init_off_proc_new(TAPComm* tap_comm, const aligned_vector<int>& off_proc_col_to_new,
-                data_t* comm_t = NULL)
+                ParComm* local_L = NULL, data_t* comm_t = NULL)
         {
             int idx, ctr;
             int start, end;
 
             DuplicateData* global_recv = (DuplicateData*) tap_comm->global_par_comm->recv_data;
 
-            local_L_par_comm = new ParComm(tap_comm->local_L_par_comm, off_proc_col_to_new, 
-                    comm_t);
+            if (local_L)
+            {
+                local_L_par_comm = local_L;
+                shared_L = true;
+            }
+            else
+            {
+                local_L_par_comm = new ParComm(tap_comm->local_L_par_comm, off_proc_col_to_new, 
+                        comm_t);
+                shared_L = false;
+            }
             local_R_par_comm = new ParComm(tap_comm->local_R_par_comm, off_proc_col_to_new,
                     comm_t);
 
@@ -1241,6 +1274,7 @@ namespace raptor
                 local_S_par_comm = new ParComm(tap_comm->local_S_par_comm,
                         global_int_buffer, comm_t);
             }
+            else local_S_par_comm = NULL;
 
             // Determine size of final recvs (should be equal to 
             // number of off_proc cols)
@@ -1264,7 +1298,7 @@ namespace raptor
             delete global_par_comm;
             delete local_S_par_comm;  // May be NULL but can still call delete
             delete local_R_par_comm;
-            delete local_L_par_comm;
+            if (!shared_L) delete local_L_par_comm;
         }
 
         void init_tap_comm(Partition* partition,
@@ -1329,37 +1363,7 @@ namespace raptor
 
             // Determine size of final recvs (should be equal to 
             // number of off_proc cols)
-            recv_size = local_R_par_comm->recv_data->size_msgs +
-                local_L_par_comm->recv_data->size_msgs;
-            NonContigData* local_R_recv = (NonContigData*) local_R_par_comm->recv_data;
-            NonContigData* local_L_recv = (NonContigData*) local_L_par_comm->recv_data;
-            if (recv_size)
-            {
-                // Want a single recv buffer local_R and local_L par_comms
-                buffer.resize(recv_size);
-                int_buffer.resize(recv_size);
-
-                // Map local_R recvs to original off_proc_column_map
-                if (local_R_recv->size_msgs)
-                {
-                    for (int i = 0; i < local_R_recv->size_msgs; i++)
-                    {
-                        idx = local_R_recv->indices[i];
-                        local_R_recv->indices[i] = off_node_to_off_proc[idx];
-                    }
-                }
-
-
-                // Map local_L recvs to original off_proc_column_map
-                if (local_L_recv->size_msgs)
-                {
-                    for (int i = 0; i < local_L_recv->size_msgs; i++)
-                    {
-                        idx = local_L_recv->indices[i];
-                        local_L_recv->indices[i] = on_node_to_off_proc[idx];
-                    }
-                }
-            }
+            update_recv(on_node_to_off_proc, off_node_to_off_proc);
         }
 
         void init_tap_comm_simple(Partition* partition,
@@ -1420,37 +1424,8 @@ namespace raptor
 
             // Determine size of final recvs (should be equal to 
             // number of off_proc cols)
-            recv_size = local_R_par_comm->recv_data->size_msgs +
-                local_L_par_comm->recv_data->size_msgs;
-            NonContigData* local_R_recv = (NonContigData*) local_R_par_comm->recv_data;
-            NonContigData* local_L_recv = (NonContigData*) local_L_par_comm->recv_data;
-            if (recv_size)
-            {
-                // Want a single recv buffer local_R and local_L par_comms
-                buffer.resize(recv_size);
-                int_buffer.resize(recv_size);
+            update_recv(on_node_to_off_proc, off_node_to_off_proc);
 
-                // Map local_R recvs to original off_proc_column_map
-                if (local_R_recv->size_msgs)
-                {
-                    for (int i = 0; i < local_R_recv->size_msgs; i++)
-                    {
-                        idx = local_R_recv->indices[i];
-                        local_R_recv->indices[i] = off_node_to_off_proc[idx];
-                    }
-                }
-
-
-                // Map local_L recvs to original off_proc_column_map
-                if (local_L_recv->size_msgs)
-                {
-                    for (int i = 0; i < local_L_recv->size_msgs; i++)
-                    {
-                        idx = local_L_recv->indices[i];
-                        local_L_recv->indices[i] = on_node_to_off_proc[idx];
-                    }
-                }
-            }
         }
 
         // Helper methods for forming TAPComm:
@@ -1475,6 +1450,8 @@ namespace raptor
                 aligned_vector<int>& off_node_col_to_proc, data_t* comm_t = NULL);
         void form_simple_global_comm(aligned_vector<int>& off_node_col_to_proc,
                 data_t* comm_t = NULL);
+        void update_recv(const aligned_vector<int>& on_node_to_off_proc,
+                const aligned_vector<int>& off_node_to_off_proc, bool update_L = true);
 
         // Class Methods
         void init_double_comm(const double* values, const int block_size)
@@ -1840,6 +1817,7 @@ namespace raptor
         ParComm* local_R_par_comm;
         ParComm* local_L_par_comm;
         ParComm* global_par_comm;
+        bool shared_L;
     };
 }
 #endif

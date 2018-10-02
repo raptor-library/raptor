@@ -35,7 +35,6 @@ void split_cljp(ParCSRMatrix* S, aligned_vector<int>& states,
         aligned_vector<int>& off_proc_states, bool tap_cf, 
         double* rand_vals, data_t* comm_t, data_t* comm_mat_t)
 {
-    
     S->on_proc->move_diag();
 
     /**********************************************
@@ -1416,7 +1415,12 @@ void cljp_main_loop(ParCSRMatrix* S,
     int size, global_col;
 
     CommPkg* comm = S->comm;
-    if (tap_comm) comm = S->tap_comm;
+    CommPkg* mat_comm = S->comm;
+    if (tap_comm)
+    {
+        comm = S->tap_comm;
+        mat_comm = S->tap_mat_comm;
+    }
 
     aligned_vector<double> max_weights;
     aligned_vector<int> weight_updates;
@@ -1584,7 +1588,7 @@ void cljp_main_loop(ParCSRMatrix* S,
         // Find new coarse influenced by each off_proc col
         // TODO -- Add first pass option
         if (comm_mat_t) *comm_mat_t -= MPI_Wtime();
-        find_off_proc_new_coarse(S, comm, global_to_local, states, off_proc_states, 
+        find_off_proc_new_coarse(S, mat_comm, global_to_local, states, off_proc_states, 
                 part_to_col, off_proc_col_ptr, off_proc_col_coarse, first_pass);
         if (comm_mat_t) *comm_mat_t += MPI_Wtime();
 
