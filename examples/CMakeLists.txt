@@ -18,6 +18,10 @@ if (WITH_HYPRE)
 
     add_executable(benchmark_matops benchmark_matops.cpp)
     target_link_libraries(benchmark_matops raptor ${MPI_LIBRARIES})
+
+    add_executable(benchmark_par_spmv benchmark_par_spmv.cpp)
+    target_link_libraries(benchmark_par_spmv raptor ${MPI_LIBRARIES})
+
 endif()
 if (WITH_MPI)
     add_executable(benchmark_setup benchmark_setup.cpp)
@@ -34,9 +38,6 @@ if (WITH_MPI)
 
     add_executable(profile_tap_spgemm profile_tap_spgemm.cpp)
     target_link_libraries(profile_tap_spgemm raptor ${MPI_LIBRARIES})
-
-    add_executable(benchmark_par_spmv benchmark_par_spmv.cpp)
-    target_link_libraries(benchmark_par_spmv raptor ${MPI_LIBRARIES})
 
     add_executable(benchmark_commpkg benchmark_commpkg.cpp)
     target_link_libraries(benchmark_commpkg raptor ${MPI_LIBRARIES})
