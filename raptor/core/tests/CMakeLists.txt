@@ -31,6 +31,14 @@ if (WITH_MPI)
     add_test(ParBSRTest_4 mpirun -n 6 ./test_par_bsr)
 endif ()
 
+add_executable(test_ILU test_ILU.cpp)
+target_link_libraries(test_ILU raptor googletest pthread )
+add_test(ILUTest ./test_ILU)
+
+add_executable(test_ILU_bsr test_ILU_bsr.cpp)
+target_link_libraries(test_ILU_bsr raptor googletest pthread )
+add_test(ILUBSRTest ./test_ILU_bsr)
+
 add_executable(test_bsr_matrix test_bsr_matrix.cpp)
 target_link_libraries(test_bsr_matrix raptor googletest pthread )
 add_test(BSRMatrixTest ./test_bsr_matrix)

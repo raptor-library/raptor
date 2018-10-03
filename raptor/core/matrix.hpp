@@ -1761,6 +1761,7 @@ namespace raptor
 
 	std::vector<double> get_diag(BSRMatrix* levls, std::vector<double> data);
 	std::vector<double> fill_factors(BSRMatrix* levls);
+	std::vector<double> compute_multiplier(std::vector<double> diag_vec, std::vector<double> current_row_factors, int k);
 	std::vector<double> inv_diag_block(std::vector<double> diag_vec, int k);
 	std::vector<double> mult_b(std::vector<double> block_a, std::vector<double> block_b);
 };

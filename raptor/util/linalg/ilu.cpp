@@ -13,42 +13,16 @@ Matrix* COOMatrix::ilu_k(int lof)
 	return NULL;
 }
 
-/*Matrix* COOMatrix::ilu_levels()
-{
-	printf("Function not implemented for COO type\n");
-	return NULL;
-}
-
-Matrix* COOMatrix::ilu_sparsity(Matrix* levls, int lof)
-{
-	printf("Function not implemented for COO type\n");
-	return NULL;
-}
-
-Matrix* COOMatrix::ilu_symbolic(int lof)
-{
-	printf("Function not implemented for COO type\n");
-	return NULL;
-}
-
-std::vector<double> COOMatrix::ilu_numeric(Matrix* levls)
-{
-	printf("Function not implemented for COO type\n");
-	std::vector<double> emp;
-	return emp;
-}*/
-
-
 Matrix* CSRMatrix::ilu_k(int lof)
 {
-	printf("Begin ilu symbolic phase \n");
+	//printf("Begin ilu symbolic phase \n");
 	CSRMatrix* sparsity = ilu_symbolic(lof);
 
-	printf("\n");
+	//printf("\n");
 	
-	printf("Begin ilu numeric phase \n");
+	//printf("Begin ilu numeric phase \n");
 	std::vector<double> factors_data = this->ilu_numeric(sparsity);
-	printf("After numeric ilu phase completed\n");
+	//printf("After numeric ilu phase completed\n");
 	
 	Matrix* factors = new CSRMatrix(sparsity->n_rows,sparsity->n_cols);
 	factors->nnz = sparsity->nnz;
@@ -74,9 +48,9 @@ Matrix* CSRMatrix::ilu_k(int lof)
 
 CSRMatrix* CSRMatrix::ilu_symbolic(int lof)
 {
-	printf("Begin levls phase \n");
+	//printf("Begin levls phase \n");
 	CSRMatrix* levels = this->ilu_levels();
-	printf("Begin sparsity phase \n");
+	//printf("Begin sparsity phase \n");
 	CSRMatrix* sparsity = this->ilu_sparsity(levels, lof);
 	return sparsity;
 }
@@ -256,7 +230,7 @@ std::vector<double> CSRMatrix::ilu_numeric(CSRMatrix* levls){
 
 CSRMatrix* CSRMatrix::ilu_levels()
 {
-	printf("Begin ilu levels \n");
+	//printf("Begin ilu levels \n");
 	CSRMatrix * levls = new CSRMatrix(n_rows,n_cols);
 
 	//initialize vectors for final levels matrix
@@ -384,19 +358,10 @@ Matrix* CSCMatrix::ilu_k(int lof)
 ///////////////////////////BSR////////////////////////// 
 Matrix* BSRMatrix::ilu_k(int lof)
 {
-	printf("Begin ilu symbolic phase \n");
 	BSRMatrix* sparsity = ilu_symbolic(lof);
+	sparsity->print();
 
-	printf("\n");
-	
-	printf("Begin ilu numeric phase \n");
 	std::vector<double> factors_data = this->ilu_numeric(sparsity);
-	printf("After numeric ilu phase completed\n");
-
-	//for testing without numeric phase	
-	//std::vector<double> factors_data(b_size* sparsity->n_blocks);
-	//std::fill(factors_data.begin(), factors_data.end(), 1.0);
-
 
 	Matrix* factors = new BSRMatrix(sparsity->n_rows,sparsity->n_cols,sparsity->b_rows,sparsity->b_cols);
 	factors->nnz = sparsity->nnz;
@@ -423,7 +388,6 @@ Matrix* BSRMatrix::ilu_k(int lof)
 
 BSRMatrix* BSRMatrix::ilu_levels()
 {
-	printf("Begin ilu levels \n");
 	BSRMatrix * levls = new BSRMatrix(n_rows,n_cols,b_rows,b_cols);
 
 	//initialize vectors for final levels matrix
@@ -635,9 +599,7 @@ BSRMatrix* BSRMatrix::ilu_sparsity(BSRMatrix* levls, int lof)
 
 BSRMatrix* BSRMatrix::ilu_symbolic(int lof)
 {
-	printf("Begin levls phase \n");
 	BSRMatrix* levels = this->ilu_levels();
-	printf("Begin sparsity phase \n");
 	BSRMatrix* sparsity = this->ilu_sparsity(levels, lof);
 	return sparsity;
 }
@@ -671,15 +633,9 @@ std::vector<double> BSRMatrix::ilu_numeric(BSRMatrix* levls)
 		}
 		for(int k = 0; k < row_i; k++){
 			if(current_row_levls[k*b_size] != 0){
-				//compute inverse of diagonal block
-				std::vector<double> inv_diag_b = this->inv_diag_block(diag_vec, k);
-
-				//multiply inverse by block to get multiplier
-				std::vector<double> current_row_fac_b(b_size);
-				for(int ii = 0; ii< b_size; ii++)
-					current_row_fac_b[ii] = current_row_factors[k*b_size+ii];
-
-				std::vector<double> mult_b = this->mult_b(inv_diag_b,current_row_fac_b);
+				
+				
+				std::vector<double> mult_b = this->compute_multiplier(diag_vec,current_row_factors,k);
 
 				//update in data array
 				for(int ii=0; ii<b_size; ii++)
@@ -770,6 +726,20 @@ std::vector<double> BSRMatrix::fill_factors(BSRMatrix* levls){
 		else
 			factors_data[i] = 0.0;
 	}
+	return factors_data;
+}
+
+std::vector<double> BSRMatrix::compute_multiplier(std::vector<double> diag_vec,std::vector<double> current_row_factors, int k){
+		//compute inverse of diagonal block
+		std::vector<double> inv_diag_b = this->inv_diag_block(diag_vec, k);
+
+		//multiply inverse by block to get multiplier
+		std::vector<double> current_row_fac_b(b_size);
+		for(int ii = 0; ii< b_size; ii++)
+			current_row_fac_b[ii] = current_row_factors[k*b_size+ii];
+
+		std::vector<double> mult_b = this->mult_b(inv_diag_b,current_row_fac_b);
+		return mult_b;
 }
 
 std::vector<double> BSRMatrix::inv_diag_block(std::vector<double> diag_vec, int k){
@@ -787,7 +757,10 @@ std::vector<double> BSRMatrix::inv_diag_block(std::vector<double> diag_vec, int 
 	std::vector<double> inv_diag_b(b_size);
 	std::fill(inv_diag_b.begin(), inv_diag_b.end(), 0.0);
 
-	if(b_rows == 2){
+	if(b_rows == 1){
+		inv_diag_b[0] = 1.0/diag_b[0];
+	}
+	else if(b_rows == 2){
 		inv_det = 1.0/(diag_b[0]*diag_b[3]-diag_b[1]*diag_b[2]);
 		inv_diag_b[0] = inv_det * diag_b[3];
 		inv_diag_b[1] = -inv_det * diag_b[1];
