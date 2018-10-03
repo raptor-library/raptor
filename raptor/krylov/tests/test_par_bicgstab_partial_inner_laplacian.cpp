@@ -3,6 +3,8 @@
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
 #include "krylov/par_bicgstab.hpp"
+#include "multilevel/par_multilevel.hpp"
+#include "aggregation/par_smoothed_aggregation_solver.hpp"
 #include "gallery/laplacian27pt.hpp"
 #include "gallery/par_stencil.hpp"
 
@@ -34,16 +36,33 @@ int main(int argc, char* argv[])
     double* stencil = laplace_stencil_27pt();
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 3);
     
+    // Setup AMG hierarchy
+    ParMultilevel *ml;
+    ml = new ParSmoothedAggregationSolver(0.0);
+    ml->max_levels = 3;
+    ml->setup(A);
+    
     ParVector x_part(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector x_true(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     aligned_vector<double> residuals_true;
+    aligned_vector<double> residuals_pre;
     aligned_vector<double> residuals_part;
+    aligned_vector<double> residuals_prepart;
 
+    // True Solution
     x_true.set_const_value(1.0);
     A->mult(x_true, b);
     x_true.set_const_value(0.0);
     BiCGStab(A, x_true, b, residuals_true);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    
+    // Preconditioned Solution
+    x_true.set_const_value(1.0);
+    A->mult(x_true, b);
+    x_true.set_const_value(0.0);
+    Pre_BiCGStab(A, ml, x_true, b, residuals_pre);
 
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -53,6 +72,18 @@ int main(int argc, char* argv[])
     x_part.set_const_value(0.0);
     PI_BiCGStab(A, x_part, b, residuals_part, inner_comm, root_comm, frac, inner_color, root_color, inner_root, procs_in_group,
                 part_global);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    
+    // Test preconditioned half
+    aligned_vector<double> sas_inner_prods;
+    aligned_vector<double> asas_inner_prods;
+
+    x_part.set_const_value(1.0);
+    A->mult(x_part, b);
+    x_part.set_const_value(0.0);
+    PrePI_BiCGStab(A, ml, x_part, b, residuals_prepart, sas_inner_prods, asas_inner_prods, inner_comm, root_comm,
+                   frac, inner_color, root_color, inner_root, procs_in_group, part_global);
 
     MPI_Barrier(MPI_COMM_WORLD);
     

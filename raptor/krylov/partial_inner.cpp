@@ -207,16 +207,10 @@ void create_partial_inner_comm(MPI_Comm &inner_comm, MPI_Comm &root_comm, double
 /***************************************************************** 
  Performs approximate inner product using half of the processes
  ****************************************************************/
-data_t half_inner(MPI_Comm &inner_comm, ParVector &x, ParVector &y, int &my_color, int send_color, int &inner_root,
-                  int &recv_root, int part_global) {
+data_t half_inner(MPI_Comm &inner_comm, ParVector &x, ParVector &y) {
     /*  inner_comm : MPI communicator containing the processes to use in the inner product 
      *           x : ParVector for calculating inner product
      *           y : ParVector for calculating inner product
-     *    my_color : color corresponding to the procs communicator 
-     *  send_color : color calculating the inner product and sending to the other half of processes
-     *  inner_root : root of inner_comm
-     *   recv_root : root of recv_comm
-     * part_global : number of values being used in inner product
      */
 
     int rank, num_procs, inner_comm_size, comm_rank;
@@ -246,35 +240,144 @@ data_t half_inner(MPI_Comm &inner_comm, ParVector &x, ParVector &y, int &my_colo
 	exit(-1);
     }
 
-    // Perform partial inner product - if proc belongs to inner_comm
-    // and corresponds to the half performing the inner product this iteration
-    if (my_color == send_color){
-        if (x.local_n){
-            inner_prod = x.local.inner_product(y.local);
-        }
-        if (inner_comm_size > 1) MPI_Allreduce(MPI_IN_PLACE, &inner_prod, 1, MPI_DATA_T, MPI_SUM, inner_comm);
-        // Scale inner product by global percentage before sending
-        inner_prod = ((1.0*x.global_n)/part_global) * inner_prod;
-    }
+    // Perform your half of inner product
+    if (x.local_n) inner_prod = x.local.inner_product(y.local);
+    if (inner_comm_size > 1) MPI_Allreduce(MPI_IN_PLACE, &inner_prod, 1, MPI_DATA_T, MPI_SUM, inner_comm);
 
-    //printf("rank %d inner_prod %lg\n", rank, inner_prod);
-    // Send partial inner product from inner_root to recv_root
-    if (rank == inner_root) {
-        MPI_Isend(&inner_prod, 1, MPI_DATA_T, recv_root, 1, MPI_COMM_WORLD, &req);
-        MPI_Wait(&req, &stat);
-    }
-    if (rank == recv_root) {
-        MPI_Irecv(&inner_prod, 1, MPI_DATA_T, inner_root, 1, MPI_COMM_WORLD, &req);
-        MPI_Wait(&req, &stat);
-    }
-
-    // Broadcast for Receiving Half
-    if (my_color != send_color){
-        MPI_Bcast(&inner_prod, 1, MPI_DATA_T, 0, inner_comm);
-    }
-
-    // Return partial inner_prod scaled by global percentage
+    // Return partial inner_prod plus old half 
     return inner_prod;
+}
+
+data_t half_inner_communicate(MPI_Comm &inner_comm, data_t my_half, int my_root, int other_root) {
+    /* inner_comm : MPI communicator containing the processes used in my inner product portion
+     *    my_half : my computed portion of the inner product to be communicated
+     *    my_root : rank corresponding to root of each procs inner_comm
+     * other_root : rank corresponding to root of other inner_comm
+     */
+
+     int rank, num_procs, inner_comm_size, comm_rank;
+     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+     MPI_Request req;
+     MPI_Status stat;
+
+     // Holds non-computed half of inner product
+     data_t other_half;
+
+     // Exchange old halves between inner_comm roots
+     if (rank == my_root) {
+         MPI_Isend(&my_half, 1, MPI_DATA_T, other_root, 1, MPI_COMM_WORLD, &req);
+         MPI_Irecv(&other_half, 1, MPI_DATA_T, other_root, 1, MPI_COMM_WORLD, &req);
+         MPI_Wait(&req, &stat);
+     }
+
+     // Broadcast old inner_prod to each inner_comm
+     MPI_Bcast(&other_half, 1, MPI_DATA_T, 0, inner_comm);
+
+     return other_half;
+}
+
+data_t partial_inner_communicate(MPI_Comm &inner_comm, MPI_Comm &root_comm, data_t my_inner, int my_index,
+                                 std::vector<int> &roots, bool am_root) {
+    /* inner_comm : MPI communicator containing the processes used in my inner product portion
+     *  root_comm : MPI communicator containing the root processes for all inner_comm communicators
+     *   my_inner : my computed portion of the inner product to be communicated
+     *   my_index : index of my root in roots
+     *      roots : std::vector containing the ranks of the root processes for each inner_comm
+     *    am_root : bool that tells whether a process is a root for an inner_comm 
+     */
+
+     int rank, num_procs, inner_comm_size, comm_rank;
+     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+     MPI_Request req;
+     MPI_Status stat;
+
+     // Contains old off process portion of inner product
+     data_t old_part;
+
+     // Holds non-computed half of inner product
+     std::vector<data_t> old_buffer(roots.size());
+
+     // Set your inner_comm value in buffer before broadcasts
+     old_buffer[my_index] = my_inner;    
+ 
+     // Exchange old halves between inner_comm roots
+     for (int i = 0; i < roots.size(); i++){
+         if( am_root ) MPI_Bcast(&(old_buffer[i]), 1, MPI_DATA_T, i, root_comm);
+     }
+
+     // Broadcast buffer to each inner_comm
+     MPI_Bcast(&(old_buffer[0]), old_buffer.size(), MPI_DATA_T, 0, inner_comm);
+
+     // Each process calculates the sum of old_buffer
+     for (int i = 0; i < old_buffer.size(); i++) {
+         if ( i != my_index) old_part += old_buffer[i];
+     }
+
+     return old_part;
+}
+
+void create_partial_inner_comm_v2(MPI_Comm &inner_comm, MPI_Comm &root_comm, double frac, ParVector &x, int &my_index,
+                                  std::vector<int> &roots, bool &am_root)
+{
+    /*     inner_comm : MPI communicator containing the processes performing the partial inner product
+     *      root_comm : MPI communicator containing the root process for each inner_comm group
+     *           frac : fraction of processes to use in inner product calculation
+     *              x : ParVector to create communicators for
+     *       my_index : index of my root in roots
+     *          roots : std::vector containing the ranks of the root processes for each inner_comm
+     *        am_root : bool that tells whether a process is a root for an inner_comm 
+     */
+
+    int rank, num_procs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+    if (num_procs <= 1) 
+    {
+       inner_comm = MPI_COMM_NULL;
+       root_comm = MPI_COMM_NULL;
+       return; 
+    }
+
+    int my_root_color;
+    // Number of groups to iterate through for partial inner products
+    int groups = 1 / frac;
+
+    // Calculate number of processes in group
+    int procs_in_group = num_procs * frac;
+    int extra = num_procs % groups;
+ 
+    roots.resize(groups);
+   
+    int root_to_add = 0;
+    // Create list of roots for other inner_comm communicators 
+    for (int i = 0; i < groups; i++) {
+        if (rank >= root_to_add) my_index = i;
+        roots[i] = root_to_add;
+        root_to_add += procs_in_group;
+        if (i < extra) root_to_add++; 
+    }
+
+    int inner_root = roots[my_index];
+    // Split into contigous groups by color and get root for each group
+    if (rank == inner_root) {
+        my_root_color = 0;
+        am_root = true;
+    }
+    else {
+        my_root_color = 1;
+        am_root = false;
+    }
+
+    // Split processes into communicators for inner products
+    MPI_Comm_split(MPI_COMM_WORLD, my_index, rank, &inner_comm);
+
+    // Split processes into root communicator
+    MPI_Comm_split(MPI_COMM_WORLD, my_root_color, rank, &root_comm);
+
+    return;
 }
 
 /***************************************************************** 

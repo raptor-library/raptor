@@ -237,7 +237,7 @@ void SeqInner_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vect
 /**************************************************************************************
  AMG Preconditioned BiCGStab 
  **************************************************************************************/
-void Pre_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, ParMultilevel *ml, aligned_vector<double>& res, double tol,
+void Pre_BiCGStab(ParCSRMatrix* A, ParMultilevel *ml, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol,
                   int max_iter)
 {
     /*           A : ParCSRMatrix for system to solve
@@ -260,7 +260,6 @@ void Pre_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, ParMultilevel *ml
     ParVector As;
     ParVector p_hat;
     ParVector s_hat;
-    int amg_iter;
 
     int iter;
     data_t alpha, beta, omega;
@@ -277,6 +276,8 @@ void Pre_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, ParMultilevel *ml
     r.resize(b.global_n, b.local_n, b.first_local);
     r_star.resize(b.global_n, b.local_n, b.first_local);
     p.resize(b.global_n, b.local_n, b.first_local);
+    p_hat.resize(b.global_n, b.local_n, b.first_local);
+    s_hat.resize(b.global_n, b.local_n, b.first_local);
     Ap.resize(b.global_n, b.local_n, b.first_local);
     As.resize(b.global_n, b.local_n, b.first_local);
 
@@ -615,7 +616,14 @@ void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<dou
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
     // Create communicators for partial inner products
+    int other_root;
+    int my_ind;
+    std::vector<int> roots;
+    bool am_root;
     create_partial_inner_comm(inner_comm, root_comm, frac, x, inner_color, root_color, inner_root, procs_in_group, part_global);
+    //create_partial_inner_comm_v2(inner_comm, root_comm, frac, x, my_ind, roots, am_root);
+    if (inner_root == 0) other_root = num_procs/2;
+    else other_root = 0;
     // Number of groups to iterate through for partial inner products
     int groups = 1 / frac;
 
@@ -626,7 +634,7 @@ void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<dou
     ParVector Ap;
     ParVector As;
 
-    int iter;
+    int iter= 0;
     data_t alpha, beta, omega;
     data_t rr_inner, next_inner, Apr_inner, As_inner, AsAs_inner;
     double norm_r;
@@ -666,6 +674,7 @@ void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<dou
 
     // Main BiCGStab Loop
     int group = 0;
+    data_t As_old_half, AsAs_old_half;
     while (norm_r > tol && iter < max_iter)
     {
         // alpha_i = (r_i, r*) / (Ap_i, r*)
@@ -682,12 +691,23 @@ void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<dou
 
         // Replace inner product with half inner for testing
         //As_inner = As.inner_product(s);
-        As_inner = partial_inner(inner_comm, root_comm, s, As, inner_color, group, inner_root, procs_in_group, part_global);
+        //As_inner = partial_inner(inner_comm, root_comm, s, As, inner_color, group, inner_root, procs_in_group, part_global);
+        As_inner = half_inner(inner_comm, s, As);
+        //if (iter == 0) As_old_half = half_inner_communicate(inner_comm, As_inner, inner_root, other_root);
+        if (iter%2 == 0) As_old_half = half_inner_communicate(inner_comm, As_inner, inner_root, other_root);
+        //if (iter == 0) As_old_half = partial_inner_communicate(inner_comm, root_comm, As_inner, my_ind, roots, am_root);
+        As_inner += As_old_half;
 
         // Replace single inner product with half inner for testing
         //AsAs_inner = As.inner_product(As);
-        AsAs_inner = partial_inner(inner_comm, root_comm, As, As, inner_color, (group+1)%groups, inner_root, procs_in_group, part_global);
-        group = (group++) % groups;
+        //AsAs_inner = partial_inner(inner_comm, root_comm, As, As, inner_color, (group+1)%groups, inner_root, procs_in_group, part_global);
+        AsAs_inner = half_inner(inner_comm, As, As);
+        //if (iter == 0) AsAs_old_half = half_inner_communicate(inner_comm, AsAs_inner, inner_root, other_root);
+        if (iter%2 == 0) AsAs_old_half = half_inner_communicate(inner_comm, AsAs_inner, inner_root, other_root);
+        //if (iter == 0) AsAs_old_half = partial_inner_communicate(inner_comm, root_comm, AsAs_inner, my_ind, roots, am_root);
+        AsAs_inner += AsAs_old_half;
+        
+        //group = (group++) % groups;
 
         omega = As_inner / AsAs_inner;
 
@@ -712,6 +732,15 @@ void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<dou
         rr_inner = next_inner;
         norm_r = r.norm(2);
         res.push_back(norm_r);
+
+// COMMUNICATE INNER PRODUCTS - UPDATE OLD OTHER HALF
+        //if (iter > 0) {
+        if (iter%2 > 0) {
+            As_old_half = half_inner_communicate(inner_comm, As_inner, inner_root, other_root);
+            AsAs_old_half = half_inner_communicate(inner_comm, AsAs_inner, inner_root, other_root);
+            //As_old_half = partial_inner_communicate(inner_comm, root_comm, As_inner, my_ind, roots, am_root);
+            //AsAs_old_half = partial_inner_communicate(inner_comm, root_comm, AsAs_inner, my_ind, roots, am_root);
+        }
 
         iter++;
     }
@@ -736,7 +765,8 @@ void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<dou
 /**************************************************************************************
  Preconditioned BiCGStab with some inner products replaced with partial inner product approximations
  **************************************************************************************/
-void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, MPI_Comm &inner_comm,
+void PrePI_BiCGStab(ParCSRMatrix* A, ParMultilevel* ml, ParVector& x, ParVector& b, aligned_vector<double>& res, 
+                 aligned_vector<double>& sAs_inner_list, aligned_vector<double>& AsAs_inner_list, MPI_Comm &inner_comm,
                  MPI_Comm &root_comm, double frac, int inner_color, int root_color, int inner_root, int procs_in_group,
                  int part_global, double tol, int max_iter)
 {
@@ -754,13 +784,22 @@ void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<
      *            tol : tolerance for convergence
      *       max_iter : maximum number of iterations
      */
-
+    
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
     // Create communicators for partial inner products
+    int other_root;
+    int my_ind;
+    std::vector<int> roots;
+    bool am_root;
     create_partial_inner_comm(inner_comm, root_comm, frac, x, inner_color, root_color, inner_root, procs_in_group, part_global);
+    //create_partial_inner_comm_v2(inner_comm, root_comm, frac, x, my_ind, roots, am_root);
+    if (inner_root == 0) other_root = num_procs/2;
+    else other_root = 0;
+    // Number of groups to iterate through for partial inner products
+    int groups = 1 / frac;
 
     ParVector r;
     ParVector r_star;
@@ -768,15 +807,8 @@ void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<
     ParVector p;
     ParVector Ap;
     ParVector As;
-    ParMultilevel* ml;
     ParVector p_hat;
     ParVector s_hat;
-    int amg_iter;
-
-    // Setup AMG hierarchy
-    ml->max_levels = 3;
-    ml = new ParSmoothedAggregationSolver(0.0);
-    ml->setup(A);
 
     int iter;
     data_t alpha, beta, omega;
@@ -793,6 +825,8 @@ void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<
     r.resize(b.global_n, b.local_n, b.first_local);
     r_star.resize(b.global_n, b.local_n, b.first_local);
     p.resize(b.global_n, b.local_n, b.first_local);
+    p_hat.resize(b.global_n, b.local_n, b.first_local);
+    s_hat.resize(b.global_n, b.local_n, b.first_local);
     Ap.resize(b.global_n, b.local_n, b.first_local);
     As.resize(b.global_n, b.local_n, b.first_local);
 
@@ -817,14 +851,16 @@ void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<
     }
 
     // Main BiCGStab Loop
+    data_t As_old_half, AsAs_old_half;
     while (norm_r > tol && iter < max_iter)
     {
         // p_i = M^-1 p_i
         // Apply preconditioner
-        //iter = ml->solve(p, )
+        p_hat.set_const_value(0.0);
+        ml->cycle(p_hat, p);
 
         // alpha_i = (r_i, r*) / (Ap_i, r*)
-        A->mult(p, Ap);
+        A->mult(p_hat, Ap);
         Apr_inner = Ap.inner_product(r_star);
         alpha = rr_inner / Apr_inner;
 
@@ -834,28 +870,34 @@ void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<
 
         // s_i = M^-1 s_i
         // Apply preconditioner
+        s_hat.set_const_value(0.0);
+        ml->cycle(s_hat, s);
 
         // omega_i = (As_i, s_i) / (As_i, As_i)
-        A->mult(s, As);
-        As_inner = As.inner_product(s);
-        AsAs_inner = As.inner_product(As);
-        // Replace single inner product with half inner for testing
-        // UPDATE THESE PARTIAL INNER PRODUCT CALCULATIONS
-        /*if (iter % 2 == 0) {
-            //As_inner = half_inner(inner_comm, As, s, my_color, 0, first_root, second_root, part_global);
-            As_inner = half_inner(inner_comm, As, s, my_color, 1, second_root, first_root, part_global);
-            AsAs_inner = half_inner(inner_comm, As, As, my_color, 0, first_root, second_root, part_global);
-        }
-        else {
-            //As_inner = half_inner(inner_comm, As, s, my_color, 1, second_root, first_root, part_global);
-            As_inner = half_inner(inner_comm, As, s, my_color, 0, first_root, second_root, part_global);
-            AsAs_inner = half_inner(inner_comm, As, As, my_color, 1, second_root, first_root, part_global);
-        }*/
+        A->mult(s_hat, As);
+        //As_inner = As.inner_product(s);
+        As_inner = half_inner(inner_comm, s, As);
+        //if (iter == 0) As_old_half = half_inner_communicate(inner_comm, As_inner, inner_root, other_root);
+        if (iter%2 == 0) As_old_half = half_inner_communicate(inner_comm, As_inner, inner_root, other_root);
+        //if (iter%2 == 0) As_old_half = partial_inner_communicate(inner_comm, root_comm, As_inner, my_ind, roots, am_root);
+        //if (iter == 0) As_old_half = partial_inner_communicate(inner_comm, root_comm, As_inner, my_ind, roots, am_root);
+        As_inner += As_old_half;
+        sAs_inner_list.push_back(As_inner);
+
+        //AsAs_inner = As.inner_product(As);
+        AsAs_inner = half_inner(inner_comm, As, As);
+        //if (iter == 0) AsAs_old_half = half_inner_communicate(inner_comm, AsAs_inner, inner_root, other_root);
+        if (iter%2 == 0) AsAs_old_half = half_inner_communicate(inner_comm, AsAs_inner, inner_root, other_root);
+        //if (iter%2 == 0) AsAs_old_half = partial_inner_communicate(inner_comm, root_comm, AsAs_inner, my_ind, roots, am_root);
+        //if (iter == 0) AsAs_old_half = partial_inner_communicate(inner_comm, root_comm, AsAs_inner, my_ind, roots, am_root);
+        AsAs_inner += AsAs_old_half;
+        AsAs_inner_list.push_back(AsAs_inner);
+
         omega = As_inner / AsAs_inner;
 
         // x_{i+1} = x_i + alpha_i * p_i + omega_i * s_i
-        x.axpy(p, alpha);
-        x.axpy(s, omega);
+        x.axpy(p_hat, alpha);
+        x.axpy(s_hat, omega);
 
         // r_{i+1} = s_i - omega_i * As_i
         r.copy(s);
@@ -874,6 +916,14 @@ void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<
         rr_inner = next_inner;
         norm_r = r.norm(2);
         res.push_back(norm_r);
+        
+        //if (iter > 0) {
+        if (iter%2) {
+            As_old_half = half_inner_communicate(inner_comm, As_inner, inner_root, other_root);
+            AsAs_old_half = half_inner_communicate(inner_comm, AsAs_inner, inner_root, other_root);
+            //As_old_half = partial_inner_communicate(inner_comm, root_comm, As_inner, my_ind, roots, am_root);
+            //AsAs_old_half = partial_inner_communicate(inner_comm, root_comm, AsAs_inner, my_ind, roots, am_root);
+        }
 
         iter++;
     }

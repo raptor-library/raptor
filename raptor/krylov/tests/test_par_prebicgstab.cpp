@@ -3,7 +3,7 @@
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
 #include "krylov/par_bicgstab.hpp"
-//#include "multilevel/par_multilevel.hpp"
+#include "multilevel/par_multilevel.hpp"
 #include "aggregation/par_smoothed_aggregation_solver.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/par_stencil.hpp"
@@ -41,34 +41,9 @@ int main(int argc, char* argv[])
     ml->max_levels = 3;
     ml->setup(A);
 
-    /*for (int i = 0; i < ml->num_levels; i++) {
-        ParCSRMatrix* Al = ml->levels[i]->A;
-        long lcl_nnz = Al->local_nnz;
-        long nnz;
-        MPI_Reduce(&lcl_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-        if (rank == 0) {
-            printf("%d\t%d\t%d\t%lu\n", i, Al->global_num_rows, Al->global_num_cols, nnz);
-        }
-    }
-    
-    for (int i = 0; i < ml->num_levels; i++) {
-        ParCSRMatrix* Pl = ml->levels[i]->A;
-        long lcl_nnz = Pl->local_nnz;
-        long nnz;
-        MPI_Reduce(&lcl_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-        if (rank == 0) {
-            printf("%d\t%d\t%d\t%lu\n", i, Pl->global_num_rows, Pl->global_num_cols, nnz);
-        }
-    }*/
-
-    ParVector res(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    x.set_const_value(0.0);
-    A->residual(x, b, res);
-    int iter = ml->solve(x, res);
-
     // AMG Preconditioned BiCGStab
     x.set_const_value(0.0);
-    //Pre_BiCGStab(A, x, b, ml, pre_residuals);
+    Pre_BiCGStab(A, ml, x, b, pre_residuals);
 
     if (rank == 0) {
         FILE *f;

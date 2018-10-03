@@ -343,7 +343,6 @@ namespace raptor
                     restrict_t = &solve_comm_times[3][level];
                     interp_t = &solve_comm_times[4][level];
                 }
-    
 
                 if (level == num_levels - 1)
                 {
