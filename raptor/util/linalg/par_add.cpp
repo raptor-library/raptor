@@ -60,40 +60,76 @@ ParCSRMatrix* ParCSRMatrix::add(ParCSRMatrix* B)
 
     C->on_proc->idx1[0] = 0;
     C->off_proc->idx1[0] = 0;
+    int on_nnz = on_proc->nnz + B->on_proc->nnz;
+    int off_nnz = off_proc->nnz + B->off_proc->nnz;
+    C->on_proc->idx2.resize(on_nnz);
+    C->on_proc->vals.resize(on_nnz);
+    C->off_proc->idx2.resize(off_nnz);
+    C->off_proc->vals.resize(off_nnz);
+    on_nnz = 0;
+    off_nnz = 0;
     for (int i = 0; i < local_num_rows; i++)
     {
+        // Add on_proc column indices and values
         start = on_proc->idx1[i];
         end = on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            C->on_proc->idx2.emplace_back(on_proc->idx2[j]);
-            C->on_proc->vals.emplace_back(on_proc->vals[j]);
-        }
+        std::copy(on_proc->idx2.begin() + start,
+                on_proc->idx2.begin() + end,
+                C->on_proc->idx2.begin() + on_nnz);
+        std::copy(on_proc->vals.begin() + start,
+                on_proc->vals.begin() + end,
+                C->on_proc->vals.begin() + on_nnz);
+        on_nnz += (end - start);
+
+        // Add on_proc columns and values from B
         start = B->on_proc->idx1[i];
         end = B->on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            C->on_proc->idx2.emplace_back(B->on_proc->idx2[j]);
-            C->on_proc->vals.emplace_back(B->on_proc->vals[j]);
-        }
-        C->on_proc->idx1[i+1] = C->on_proc->idx2.size();
+        std::copy(B->on_proc->idx2.begin() + start,
+                B->on_proc->idx2.begin() + end,
+                C->on_proc->idx2.begin() + on_nnz);
+        std::copy(B->on_proc->vals.begin() + start,
+                B->on_proc->vals.begin() + end,
+                C->on_proc->vals.begin() + on_nnz);
+        on_nnz += (end - start);
+
+        // Update rowptr
+        C->on_proc->idx1[i+1] = on_nnz;
 
 
+        // Add off_proc columns and values
         start = off_proc->idx1[i];
         end = off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
+        std::copy(off_proc->idx2.begin() + start,
+                off_proc->idx2.begin() + end,
+                C->off_proc->idx2.begin() + off_nnz);
+        std::copy(off_proc->vals.begin() + start,
+                off_proc->vals.begin() + end,
+                C->off_proc->vals.begin() + off_nnz);
+        for (aligned_vector<int>::iterator it = C->off_proc->idx2.begin() + off_nnz;
+                it != C->off_proc->idx2.begin() + off_nnz + (end - start); ++it)
         {
-            C->off_proc->idx2.emplace_back(off_proc_to_new[off_proc->idx2[j]]);
-            C->off_proc->vals.emplace_back(off_proc->vals[j]);
+            *it = off_proc_to_new[*it];
         }
+        off_nnz += (end - start);
+
+        // Add off_proc columns and values from B
         start = B->off_proc->idx1[i];
         end = B->off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
+        std::copy(B->off_proc->idx2.begin() + start,
+                B->off_proc->idx2.begin() + end,
+                C->off_proc->idx2.begin() + off_nnz);
+        std::copy(B->off_proc->vals.begin() + start,
+                B->off_proc->vals.begin() + end,
+                C->off_proc->vals.begin() + off_nnz);
+        for (aligned_vector<int>::iterator it = C->off_proc->idx2.begin() + off_nnz;
+                it != C->off_proc->idx2.begin() + off_nnz + (end - start); ++it)
         {
-            C->off_proc->idx2.emplace_back(B_off_proc_to_new[B->off_proc->idx2[j]]);
-            C->off_proc->vals.emplace_back(B->off_proc->vals[j]);
+            *it = off_proc_to_new[*it];
         }
-        C->off_proc->idx1[i+1] = C->off_proc->idx2.size();
+        off_nnz += (end - start);
+
+        // Update rowptr
+        C->off_proc->idx1[i+1] = off_nnz; 
     }
     C->on_proc->nnz = C->on_proc->idx2.size();
     C->off_proc->nnz = C->off_proc->idx2.size();

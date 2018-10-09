@@ -83,24 +83,64 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap, data_t* mat_comm_t)
         comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
     }
 
+double t0, tfinal;
+int rank, num_procs;
+MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+MPI_Barrier(MPI_COMM_WORLD);
+t0 = MPI_Wtime();
+
     // Initialize C (matrix to be returned)
     ParCSRMatrix* C = init_matrix(this, B);
     aligned_vector<char> send_buffer;
+
+tfinal = (MPI_Wtime() - t0);
+MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+if (rank == 0) printf("Init Mat Time %e\n", t0);
+
+MPI_Barrier(MPI_COMM_WORLD);
+t0 = MPI_Wtime();
 
     // Communicate data and multiply
     if (mat_comm_t) *mat_comm_t -= MPI_Wtime();
     comm->init_par_mat_comm(B, send_buffer);
     if (mat_comm_t) *mat_comm_t += MPI_Wtime();
 
+tfinal = (MPI_Wtime() - t0);
+MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+if (rank == 0) printf("Initialize Comm Time %e\n", t0);
+
+MPI_Barrier(MPI_COMM_WORLD);
+t0 = MPI_Wtime();
+
     // Fully Local Computation
     CSRMatrix* C_on_on = on_proc->mult((CSRMatrix*) B->on_proc);
     CSRMatrix* C_on_off = on_proc->mult((CSRMatrix*) B->off_proc);
+
+tfinal = (MPI_Wtime() - t0);
+MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+if (rank == 0) printf("Fully Local SpGEMM Time %e\n", t0);
+
+MPI_Barrier(MPI_COMM_WORLD);
+t0 = MPI_Wtime();
 
     if (mat_comm_t) *mat_comm_t -= MPI_Wtime();
     CSRMatrix* recv_mat = comm->complete_mat_comm();
     if (mat_comm_t) *mat_comm_t += MPI_Wtime();
 
+tfinal = (MPI_Wtime() - t0);
+MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+if (rank == 0) printf("Finalize Mat Comm Time %e\n", t0);
+
+MPI_Barrier(MPI_COMM_WORLD);
+t0 = MPI_Wtime();
+
     mult_helper(B, C, recv_mat, C_on_on, C_on_off);
+
+tfinal = (MPI_Wtime() - t0);
+MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+if (rank == 0) printf("Final SpGEMM / Add Time %e\n", t0);
+
     delete C_on_on;
     delete C_on_off;
     delete recv_mat;
