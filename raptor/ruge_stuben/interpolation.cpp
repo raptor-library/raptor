@@ -26,16 +26,12 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
     aligned_vector<int> row_coarse;
     aligned_vector<double> row_strong;
     aligned_vector<int> next;
-    aligned_vector<double> weak_sums;
-    aligned_vector<int> signs;
     aligned_vector<double> coarse_sum;
     if (A->n_rows)
     {
         pos.resize(A->n_rows, -1);
         row_coarse.resize(A->n_rows, 0);
         row_strong.resize(A->n_rows, 0);
-        weak_sums.resize(A->n_rows, 0);
-        signs.resize(A->n_rows, 1);
         coarse_sum.resize(A->n_rows, 0);
     }
 
@@ -62,9 +58,6 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
         startA = A->idx1[i];
         endA = A->idx1[i+1];
         // Add diagonal to NS
-        weak_sums[i] = A->vals[startA++];
-        if (weak_sums[i] < 0) 
-            signs[i] = -1;
         for (int j = startA; j < endA; j++)
         {
             col = A->idx2[j];
@@ -87,11 +80,6 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
             }
             else
             {
-                if (num_variables == 1 || variables[i] == variables[col])
-                {
-                    weak_sums[i] += val;
-                }
-
                 if (states[col] == Selected)
                 {
                     NS->idx2.emplace_back(col);
@@ -171,15 +159,7 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
             col = SU->idx2[j];
             val = SU->vals[j];
             row_strong[col] = val;
-        }
 
-        sign = signs[i];
-        weak_sum = weak_sums[i];
-
-        for (int j = startSU; j < endSU; j++)
-        {
-            col = SU->idx2[j];
-            // Add distance-2
             start_k = SS->idx1[col];
             end_k = SS->idx1[col+1];
             for (int k = start_k; k < end_k; k++)
@@ -196,6 +176,34 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
         }
         row_end = P->idx2.size();
 
+
+        startA = A->idx1[i];
+        endA = A->idx1[i+1];
+        ctr = S->idx1[i]+1;
+        endS = S->idx1[i+1];
+
+        weak_sum = A->vals[startA++];
+        sign = 1.0;
+        if (weak_sum < 0) sign = -1.0;
+
+        for (int j = startA; j < endA; j++)
+        {
+            col = A->idx2[j];
+            if (ctr < endS && S->idx2[ctr] == col)
+            {
+               ctr++;
+            }
+            else
+            {
+                if (states[col] == Unselected || pos[col] == -1)
+                {
+                    if (num_variables == 1 || variables[i] == variables[col])
+                    {
+                        weak_sum += A->vals[j];
+                    }
+                }
+            }
+        } 
 
         // Find row coarse sums 
         for (int j = startSU; j < endSU; j++)
@@ -495,7 +503,7 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A, CSRMatrix* S,
             }
             if (fabs(coarse_sum) < zero_tol)
             {
-                weak_sum += A->vals[j];
+                weak_sum += SU->vals[j];
                 row_strong[col] = 0;
             }
             else

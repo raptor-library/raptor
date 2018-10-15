@@ -74,7 +74,7 @@ TEST(TestCandidates, TestsInAggregation)
     // Test strength of connection
     S = A->strength(Symmetric, 0.25);
     S_py = readMatrix(S0_fn);
-    compare(S, S_py);
+    compare_pattern(S, S_py);
     delete S_py;
 
     // Test MIS2
@@ -140,7 +140,7 @@ TEST(TestCandidates, TestsInAggregation)
     // Test strength of connection
     S = A->strength(Symmetric, 0.25);
     S_py = readMatrix(S1_fn);
-    compare(S, S_py);
+    compare_pattern(S, S_py);
     delete S_py;
 
     // Test MIS2
@@ -186,7 +186,6 @@ TEST(TestCandidates, TestsInAggregation)
     compare(P, P_py);
     delete P_py;
 
-    
 
 } // end of TEST(TestSplitting, TestsInRuge_Stuben) //
 

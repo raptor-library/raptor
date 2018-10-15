@@ -31,43 +31,46 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     aligned_vector<int> splitting;
     FILE* f;
 
-    const char* A0_fn = "../../../../test_data/rss_A0.pm";
-    const char* A1_fn = "../../../../test_data/rss_A1.pm";
-    const char* S0_fn = "../../../../test_data/rss_S0.pm";
-    const char* S1_fn = "../../../../test_data/rss_S1.pm";
-    const char* cf0_fn = "../../../../test_data/rss_cf0.txt";
-    const char* cf1_fn = "../../../../test_data/rss_cf1.txt";
-    const char* P0_fn = "../../../../test_data/rss_P0.pm";
-    const char* P0_mc_fn = "../../../../test_data/rss_P0_mc.pm";
-    const char* P0_extend = "../../../../test_data/rss_P0_extend.pm";
-    const char* P1_fn = "../../../../test_data/rss_P1.pm";
-    const char* P1_mc_fn = "../../../../test_data/rss_P1_mc.pm";
-    const char* P1_extend = "../../../../test_data/rss_P1_extend.pm";
+    const char* Aniso_fn = "../../../../test_data/aniso.pm";
+    const char* Aniso_S_fn = "../../../../test_data/aniso_S.pm";
+    const char* Aniso_split_fn = "../../../../test_data/aniso_split.txt";
+    const char* Aniso_P_d_fn = "../../../../test_data/aniso_P_direct.pm";
+    const char* Aniso_P_mc_fn = "../../../../test_data/aniso_P_mod_class.pm";
+    const char* Aniso_P_e_fn = "../../../../test_data/aniso_P_extend.pm";
+    const char* Laplacian_fn = "../../../../test_data/laplacian.pm";
+    const char* Laplacian_S_fn = "../../../../test_data/laplacian_S.pm";
+    const char* Laplacian_split_fn = "../../../../test_data/laplacian_split.txt";
+    const char* Laplacian_P_d_fn = "../../../../test_data/laplacian_P_direct.pm";
+    const char* Laplacian_P_mc_fn = "../../../../test_data/laplacian_P_mod_class.pm";
+    const char* Laplacian_P_e_fn = "../../../../test_data/laplacian_P_extend.pm";
 
-    // TEST LEVEL 0
-    A = readMatrix(A0_fn);
-    S = readMatrix(S0_fn);
+    // Test Anisotropic
+    A = readMatrix(Aniso_fn);
+    S = readMatrix(Aniso_S_fn);
     splitting.resize(A->n_rows);
-    f = fopen(cf0_fn, "r");
+    f = fopen(Aniso_split_fn, "r");
     for (int i = 0; i < A->n_rows; i++)
     {
         fscanf(f, "%d\n", &splitting[i]);
     }
     fclose(f);
 
-    P = readMatrix(P0_fn);
+    // Direct Interpolation
+    P = readMatrix(Aniso_P_d_fn);
     P_rap = direct_interpolation(A, S, splitting);
     compare(P, P_rap);
     delete P_rap;
     delete P;
 
-    P = readMatrix(P0_mc_fn);
+    // ModClassical Interpolation
+    P = readMatrix(Aniso_P_mc_fn);
     P_rap = mod_classical_interpolation(A, S, splitting);
     compare(P, P_rap);
     delete P_rap;
     delete P;
 
-    P = readMatrix(P0_extend);
+    // Extended Interpolation
+    P = readMatrix(Aniso_P_e_fn);
     P_rap = extended_interpolation(A, S, splitting);
     compare(P, P_rap);
     delete P_rap;
@@ -76,32 +79,33 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     delete S;
     delete A;
 
-    // TEST LEVEL 1
-    A = readMatrix(A1_fn);
-    S = readMatrix(S1_fn);
+    // Test Laplacian
+    A = readMatrix(Laplacian_fn);
+    S = readMatrix(Laplacian_S_fn);
     splitting.resize(A->n_rows);
-    f = fopen(cf1_fn, "r");
+    f = fopen(Laplacian_split_fn, "r");
     for (int i = 0; i < A->n_rows; i++)
     {
         fscanf(f, "%d\n", &splitting[i]);
     }
     fclose(f);
 
-    P = readMatrix(P1_fn);
+    // Direct Interpolation
+    P = readMatrix(Laplacian_P_d_fn);
     P_rap = direct_interpolation(A, S, splitting);
     compare(P, P_rap);
     delete P_rap;
     delete P;
 
-    // TODO -- serial mod classical interp not working
-    P = readMatrix(P1_mc_fn);
+    // ModClassical Interpolation
+    P = readMatrix(Laplacian_P_mc_fn);
     P_rap = mod_classical_interpolation(A, S, splitting);
     compare(P, P_rap);
-
-    delete P;
     delete P_rap;
+    delete P;
 
-    P = readMatrix(P1_extend);
+    // Extended Interpolation
+    P = readMatrix(Laplacian_P_e_fn);
     P_rap = extended_interpolation(A, S, splitting);
     compare(P, P_rap);
     delete P_rap;
@@ -109,5 +113,6 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
 
     delete S;
     delete A;
+
 } // end of TEST(TestInterpolation, TestsInRuge_Stuben) //
 

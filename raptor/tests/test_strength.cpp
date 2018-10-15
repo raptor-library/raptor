@@ -25,10 +25,12 @@ TEST(StrengthTest, TestsIntests)
     CSRMatrix* S;
     CSRMatrix* S_rap;
 
-    const char* A0_fn = "../../../test_data/rss_A0.pm";
-    const char* A1_fn = "../../../test_data/rss_A1.pm";
-    const char* S0_fn = "../../../test_data/rss_S0.pm";
-    const char* S1_fn = "../../../test_data/rss_S1.pm";
+    const char* A0_fn = "../../../test_data/aniso.pm";
+    const char* S0_fn = "../../../test_data/aniso_S.pm";
+    const char* SS0_fn = "../../../test_data/aniso_SS.pm";
+    const char* A1_fn = "../../../test_data/laplacian.pm";
+    const char* S1_fn = "../../../test_data/laplacian_S.pm";
+    const char* SS1_fn = "../../../test_data/laplacian_SS.pm";
 
     A = readMatrix(A0_fn);
     S = readMatrix(S0_fn);
@@ -45,5 +47,22 @@ TEST(StrengthTest, TestsIntests)
     delete A;
     delete S;
     delete S_rap;
+
+    A = readMatrix(A0_fn);
+    S = readMatrix(SS0_fn);
+    S_rap = A->strength(Symmetric, 0.25);
+    compare_pattern(S, S_rap);
+    delete A;
+    delete S;
+    delete S_rap;
+
+    A = readMatrix(A1_fn);
+    S = readMatrix(SS1_fn);
+    S_rap = A->strength(Symmetric, 0.25);
+    compare_pattern(S, S_rap);
+    delete A;
+    delete S;
+    delete S_rap;
+
 
 } // end of TEST(StrengthTest, TestsIntests) //
