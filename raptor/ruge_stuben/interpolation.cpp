@@ -11,10 +11,6 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
 {
     int startA, endA;
     int startS, endS;
-    int startNS, endNS;
-    int startSS, endSS;
-    int startSU, endSU;
-    int startNU, endNU;
     int start_k, end_k, col_k;
     int col, ctr, idx;
     int row_start, row_end;
@@ -22,82 +18,18 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
     double weak_sum;
     double val;
     double sign;
+    double coarse_sum;
     aligned_vector<int> pos;
-    aligned_vector<int> row_coarse;
-    aligned_vector<double> row_strong;
     aligned_vector<int> next;
-    aligned_vector<double> coarse_sum;
     if (A->n_rows)
     {
         pos.resize(A->n_rows, -1);
-        row_coarse.resize(A->n_rows, 0);
-        row_strong.resize(A->n_rows, 0);
-        coarse_sum.resize(A->n_rows, 0);
     }
 
     A->sort();
     A->move_diag();
     S->sort();
     S->move_diag();
-
-    // Split matrices into the following:
-    //      - NS: values in A but not S
-    //      - SS: selected values in S
-    //      - SU: unselected values in S
-    CSRMatrix* NS = new CSRMatrix(A->n_rows, A->n_cols);
-    CSRMatrix* SS = new CSRMatrix(A->n_rows, A->n_cols);
-    CSRMatrix* SU = new CSRMatrix(A->n_rows, A->n_cols);
-    CSRMatrix* NU = new CSRMatrix(A->n_rows, A->n_cols);
-    NS->idx1[0] = 0;
-    SS->idx1[0] = 0;
-    SU->idx1[0] = 0;
-    for (int i = 0; i < A->n_rows; i++)
-    {
-        ctr = S->idx1[i] + 1;
-        endS = S->idx1[i+1];
-        startA = A->idx1[i];
-        endA = A->idx1[i+1];
-        // Add diagonal to NS
-        for (int j = startA; j < endA; j++)
-        {
-            col = A->idx2[j];
-            val = A->vals[j];
-            if (ctr < endS && S->idx2[ctr] == col)
-            {
-                if (states[col] == Selected)
-                {
-                    SS->idx2.emplace_back(col);
-                    SS->vals.emplace_back(val);
-                }
-                else if (states[col] == Unselected)
-                {
-                    SU->idx2.emplace_back(col);
-                    SU->vals.emplace_back(val);
-                    NU->idx2.emplace_back(col);
-                    NU->vals.emplace_back(val);
-                }
-                ctr++;
-            }
-            else
-            {
-                if (states[col] == Selected)
-                {
-                    NS->idx2.emplace_back(col);
-                    NS->vals.emplace_back(val);
-                }
-                else
-                {
-                    NU->idx2.emplace_back(col);
-                    NU->vals.emplace_back(val);
-                }
-            }
-        }
-        NS->idx1[i+1] = NS->idx2.size();
-        SS->idx1[i+1] = SS->idx2.size();
-        SU->idx1[i+1] = SU->idx2.size();
-        NU->idx1[i+1] = NU->idx2.size();
-    }
-    NU->nnz = NU->idx2.size();
     
     aligned_vector<int> col_to_new;
     if (A->n_cols)
@@ -117,9 +49,6 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
     // Form Sparsity Pattern of P
     CSRMatrix* P = new CSRMatrix(A->n_rows, ctr, A->nnz);
 
-    CSCMatrix* U_csc = NU->to_CSC();
-    delete NU;
-
     // Main loop.. add entries to P
     P->idx1[0] = 0;
     for (int i = 0; i < A->n_rows; i++)
@@ -133,47 +62,43 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
         }
 
         row_start = P->idx2.size();
-        row_coarse[i] = 1;
 
-        // Skip over diagonal values
-        startNS = NS->idx1[i];
-        endNS = NS->idx1[i+1];
-        startSS = SS->idx1[i];
-        endSS = SS->idx1[i+1];
-        startSU = SU->idx1[i];
-        endSU = SU->idx1[i+1];
-
-        // Add strongly connected C points to P
-        for (int j = startSS; j < endSS; j++)
+        startS = S->idx1[i]+1;
+        endS = S->idx1[i+1];
+        for (int j = startS; j < endS; j++)
         {
-            col = SS->idx2[j];
-            val = SS->vals[j];
-            pos[col] = P->idx2.size();
-            P->idx2.emplace_back(col);
-            P->vals.emplace_back(val);
-            row_coarse[col] = 1;
-        }
-
-        for (int j = startSU; j < endSU; j++)
-        {
-            col = SU->idx2[j];
-            val = SU->vals[j];
-            row_strong[col] = val;
-
-            start_k = SS->idx1[col];
-            end_k = SS->idx1[col+1];
-            for (int k = start_k; k < end_k; k++)
+            col = S->idx2[j];
+            val = S->vals[j];
+            if (states[col] == Selected)
             {
-                col_k = SS->idx2[k];
-                if (row_coarse[col_k] == 0)
+                if (pos[col] < row_start)
                 {
-                    pos[col_k] = P->idx2.size();
-                    P->idx2.emplace_back(col_k);
-                    P->vals.emplace_back(0); // Aij is 0
-                    row_coarse[col_k] = 1;
-                } 
+                    pos[col] = P->idx2.size();
+                    P->idx2.push_back(col);
+                    P->vals.push_back(val);
+                }
+                else
+                {
+                    P->vals[pos[col]] = val;
+                }
+            }
+            else if (states[col] == Unselected)
+            {
+                start_k = S->idx1[col]+1;
+                end_k = S->idx1[col+1];
+                for (int k = start_k; k < end_k; k++)
+                {
+                    col_k = S->idx2[k];
+                    if (states[col_k] == Selected && pos[col_k] < row_start)
+                    {
+                        pos[col_k] = P->idx2.size();
+                        P->idx2.push_back(col_k);
+                        P->vals.push_back(0.0);
+                    }
+                }
             }
         }
+
         row_end = P->idx2.size();
 
 
@@ -195,7 +120,7 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
             }
             else
             {
-                if (states[col] == Unselected || pos[col] == -1)
+                if (states[col] == Unselected || pos[col] < row_start)
                 {
                     if (num_variables == 1 || variables[i] == variables[col])
                     {
@@ -205,112 +130,66 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
             }
         } 
 
-        // Find row coarse sums 
-        for (int j = startSU; j < endSU; j++)
+        for (int j = startS; j < endS; j++)
         {
-            col = SU->idx2[j];
-            coarse_sum[col] = 0;
-            start_k = NS->idx1[col];
-            end_k = NS->idx1[col+1];
-            for (int k = start_k; k < end_k; k++)
+            col = S->idx2[j];
+            val = S->vals[S->idx1[col]]; // A_(col,col)
+            sign = 1;
+            if (val < 0) sign = -1;
+
+            if (states[col] == Unselected)
             {
-                col_k = NS->idx2[k];
-                val = NS->vals[k] * row_coarse[col_k];
-                if (val * sign < 0)
+                coarse_sum = 0;
+                start_k = A->idx1[col];
+                end_k = A->idx1[col+1];
+                for (int k = start_k; k < end_k; k++)
                 {
-                    coarse_sum[col] += val;
+                    col_k = A->idx2[k];
+                    if (pos[col_k] >= row_start || col_k == i)
+                    {
+                        val = A->vals[k];
+                        if (val * sign < 0)
+                        {
+                            coarse_sum += val;
+                        }
+                    }
+                }
+
+                if (fabs(coarse_sum) < zero_tol)
+                {
+                    weak_sum += S->vals[j];
+                }
+                else
+                {
+                    coarse_sum = S->vals[j] / coarse_sum;
+                }
+
+                start_k = A->idx1[col]+1;
+                end_k = A->idx1[col+1];
+                for (int k = start_k; k < end_k; k++)
+                {
+                    col_k = A->idx2[k];
+                    val = A->vals[k];
+                    if (states[col_k] == Selected)
+                    {
+                        idx = pos[col_k];
+                        if (val * sign < 0 && idx >= row_start)
+                        {
+                            P->vals[idx] += (coarse_sum * val);
+                        }
+                    }
+                    else if (col_k == i)
+                    {
+                        weak_sum += (coarse_sum * val);
+                    }
                 }
             }
-            start_k = SS->idx1[col];
-            end_k = SS->idx1[col+1];
-            for (int k = start_k; k < end_k; k++)
-            {
-                col_k = SS->idx2[k];
-                val = SS->vals[k] * row_coarse[col_k];
-                if (val * sign < 0)
-                {
-                    coarse_sum[col] += val;
-                }
-            }
-        }
-
-        // Add column i 
-        startNU = U_csc->idx1[i];
-        endNU = U_csc->idx1[i+1];
-        for (int j = startNU; j < endNU; j++)
-        {
-            int row = U_csc->idx2[j];
-            val = U_csc->vals[j];
-            if (val * sign < 0)
-                coarse_sum[row] += val;
-        }
-
-        for (int j = startSU; j < endSU; j++)
-        {
-            col = SU->idx2[j];
-            if (fabs(coarse_sum[col]) < zero_tol)
-            {
-                weak_sum += SU->vals[j];
-                row_strong[col] = 0;
-            }
-            else
-            {
-                row_strong[col] /= coarse_sum[col];
-            }
-        }
-
-        for (int j = startSU; j < endSU; j++)
-        {
-            col = SU->idx2[j];
-            start_k = NS->idx1[col];
-            end_k = NS->idx1[col+1];
-            for (int k = start_k; k < end_k; k++)
-            {
-                col_k = NS->idx2[k];
-                val = NS->vals[k];
-                idx = pos[col_k];
-                if (val * sign < 0 && idx >= 0)
-                {
-                    P->vals[idx] += (row_strong[col] * val);
-                }
-            }
-            start_k = SS->idx1[col];
-            end_k = SS->idx1[col+1];
-            for (int k = start_k; k < end_k; k++)
-            {
-                col_k = SS->idx2[k];
-                val = SS->vals[k];
-                idx = pos[col_k];
-                if (val * sign < 0 && idx >= 0)
-                {
-                    P->vals[idx] += (row_strong[col] * val);
-                }
-            }
-        }
-
-        // Go through column i and add to weak sum
-        startNU = U_csc->idx1[i];
-        endNU = U_csc->idx1[i+1];
-        for (int j = startNU; j < endNU; j++)
-        {
-            int row = U_csc->idx2[j];
-            val = U_csc->vals[j];
-            weak_sum += (row_strong[row] * val);
         }
 
         for (int j = row_start; j < row_end; j++)
         {
             P->vals[j] /= -weak_sum;
-            col = P->idx2[j];
-            row_coarse[col] = 0;
-            row_strong[col] = 0;
-            pos[col] = -1;
         }
-
-        row_coarse[i] = 0;
-
-        for (int i = 0; i < A->n_rows; i++)
-            row_strong[i] = 0;
 
         P->idx1[i+1] = P->idx2.size();
 
@@ -321,11 +200,6 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
     {
         *it = col_to_new[*it];
     }
-
-    delete NS;
-    delete SS;
-    delete SU;
-    delete U_csc;
 
     return P;
 }

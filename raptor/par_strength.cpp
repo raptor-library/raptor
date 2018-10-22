@@ -38,19 +38,16 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
     // A and S will be sorted 
     A->sort();
     A->on_proc->move_diag();
-
-    S->on_proc->vals.clear();
-    S->on_proc->vals.shrink_to_fit();
-    S->off_proc->vals.clear();
-    S->off_proc->vals.shrink_to_fit();
     
     if (A->on_proc->nnz)
     {
         S->on_proc->idx2.resize(A->on_proc->nnz);
+        S->on_proc->vals.resize(A->on_proc->nnz);
     }
     if (A->off_proc->nnz)
     {
         S->off_proc->idx2.resize(A->off_proc->nnz);
+        S->off_proc->vals.resize(A->off_proc->nnz);
     }
 
     S->on_proc->idx1[0] = 0;
@@ -185,7 +182,9 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
             threshold = row_scale * theta;
 
             // Always add diagonal
-            S->on_proc->idx2[S->on_proc->nnz++] = i;
+            S->on_proc->idx2[S->on_proc->nnz] = i;
+            S->on_proc->vals[S->on_proc->nnz] = diag;
+            S->on_proc->nnz++;
 
             // Add all off-diagonal entries to strength
             // if magnitude greater than equal to 
@@ -200,7 +199,9 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                         if (val > threshold)
                         {
                             col = A->on_proc->idx2[j];
-                            S->on_proc->idx2[S->on_proc->nnz++] = col;
+                            S->on_proc->idx2[S->on_proc->nnz] = col;
+                            S->on_proc->vals[S->on_proc->nnz] = val;
+                            S->on_proc->nnz++;
                         }
                     }
                     for (int j = row_start_off; j < row_end_off; j++)
@@ -209,7 +210,9 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                         if (val > threshold)
                         {
                             col = A->off_proc->idx2[j];
-                            S->off_proc->idx2[S->off_proc->nnz++] = col;
+                            S->off_proc->idx2[S->off_proc->nnz] = col;
+                            S->off_proc->vals[S->off_proc->nnz] = val;
+                            S->off_proc->nnz++;
                         }
                     }
                 }
@@ -221,7 +224,9 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                         if (val < threshold)
                         {
                             col = A->on_proc->idx2[j];
-                            S->on_proc->idx2[S->on_proc->nnz++] = col;
+                            S->on_proc->idx2[S->on_proc->nnz] = col;
+                            S->on_proc->vals[S->on_proc->nnz] = val;
+                            S->on_proc->nnz++;
                         }
                     }
                     for (int j = row_start_off; j < row_end_off; j++)
@@ -230,7 +235,9 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                         if (val < threshold)
                         {
                             col = A->off_proc->idx2[j];
-                            S->off_proc->idx2[S->off_proc->nnz++] = col;
+                            S->off_proc->idx2[S->off_proc->nnz] = col;
+                            S->off_proc->vals[S->off_proc->nnz] = val;
+                            S->off_proc->nnz++;
                         }
                     }
                 }
@@ -247,7 +254,9 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                             val = A->on_proc->vals[j];
                             if (val > threshold)
                             {
-                                S->on_proc->idx2[S->on_proc->nnz++] = col;
+                                S->on_proc->idx2[S->on_proc->nnz] = col;
+                                S->on_proc->vals[S->on_proc->nnz] = val;
+                                S->on_proc->nnz++;
                             }
                         }
                     }
@@ -259,7 +268,9 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                             val = A->off_proc->vals[j];
                             if (val > threshold)
                             {
-                                S->off_proc->idx2[S->off_proc->nnz++] = col;
+                                S->off_proc->idx2[S->off_proc->nnz] = col;
+                                S->off_proc->vals[S->off_proc->nnz] = val;
+                                S->off_proc->nnz++;
                             }
                         }
                     }
@@ -274,7 +285,9 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                             val = A->on_proc->vals[j];
                             if (val < threshold)
                             {
-                                S->on_proc->idx2[S->on_proc->nnz++] = col;
+                                S->on_proc->idx2[S->on_proc->nnz] = col;
+                                S->on_proc->vals[S->on_proc->nnz] = val;
+                                S->on_proc->nnz++;
                             }
                         }
                     }
@@ -286,7 +299,9 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                             val = A->off_proc->vals[j];
                             if (val < threshold)
                             {
-                                S->off_proc->idx2[S->off_proc->nnz++] = col;
+                                S->off_proc->idx2[S->off_proc->nnz] = col;
+                                S->off_proc->vals[S->off_proc->nnz] = val;
+                                S->off_proc->nnz++;
                             }
                         }
                     }
@@ -301,6 +316,12 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
     S->on_proc->idx2.shrink_to_fit();
     S->off_proc->idx2.resize(S->off_proc->nnz);
     S->off_proc->idx2.shrink_to_fit();
+
+    S->on_proc->vals.resize(S->on_proc->nnz);
+    S->on_proc->vals.shrink_to_fit();
+    S->off_proc->vals.resize(S->off_proc->nnz);
+    S->off_proc->vals.shrink_to_fit();
+
     S->local_nnz = S->on_proc->nnz + S->off_proc->nnz;
 
     S->on_proc_column_map = A->get_on_proc_column_map();
@@ -347,19 +368,16 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, da
     A->sort();
     A->on_proc->move_diag();
 
-    S->on_proc->vals.clear();
-    S->on_proc->vals.shrink_to_fit();
-    S->off_proc->vals.clear();
-    S->off_proc->vals.shrink_to_fit();
-    
     if (A->on_proc->nnz)
     {
         S->on_proc->idx2.resize(A->on_proc->nnz);
+        S->on_proc->vals.resize(A->on_proc->nnz);
         S->on_proc->nnz = 0;
     }
     if (A->off_proc->nnz)
     {
         S->off_proc->idx2.resize(A->off_proc->nnz);
+        S->off_proc->vals.resize(A->off_proc->nnz);
         S->off_proc->nnz = 0;
     }
 
@@ -449,7 +467,9 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, da
             threshold = row_scales[i];
 
             // Always add diagonal
-            S->on_proc->idx2[S->on_proc->nnz++] = i;
+            S->on_proc->idx2[S->on_proc->nnz] = i;
+            S->on_proc->vals[S->on_proc->nnz] = A->on_proc->vals[row_start_on++];
+            S->on_proc->nnz++;
 
             // Add all off-diagonal entries to strength
             // if magnitude greater than equal to 
@@ -462,7 +482,9 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, da
                         || (neg_diags[col] && val > row_scales[col])
                         || (!neg_diags[col] && val < row_scales[col]))
                 {
-                    S->on_proc->idx2[S->on_proc->nnz++] = col;
+                    S->on_proc->idx2[S->on_proc->nnz] = col;
+                    S->on_proc->vals[S->on_proc->nnz] = val;
+                    S->on_proc->nnz++;
                 }
             }
             for (int j = row_start_off; j < row_end_off; j++)
@@ -473,7 +495,9 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, da
                         || (off_proc_neg_diags[col] && val > off_proc_row_scales[col])
                         || (!off_proc_neg_diags[col] && val < off_proc_row_scales[col]))
                 {
-                    S->off_proc->idx2[S->off_proc->nnz++] = col;
+                    S->off_proc->idx2[S->off_proc->nnz] = col;
+                    S->off_proc->vals[S->off_proc->nnz] = val;
+                    S->off_proc->nnz++;
                 }
             }                    
         }
@@ -484,6 +508,12 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, da
     S->on_proc->idx2.shrink_to_fit();
     S->off_proc->idx2.resize(S->off_proc->nnz);
     S->off_proc->idx2.shrink_to_fit();
+
+    S->on_proc->vals.resize(S->on_proc->nnz);
+    S->on_proc->vals.shrink_to_fit();
+    S->off_proc->vals.resize(S->off_proc->nnz);
+    S->off_proc->vals.shrink_to_fit();
+
     S->local_nnz = S->on_proc->nnz + S->off_proc->nnz;
 
     S->on_proc_column_map = A->get_on_proc_column_map();
