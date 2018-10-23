@@ -84,14 +84,14 @@ TEST(TestHypreInterpolation, TestsInRuge_Stuben)
     compare_states(A->local_num_rows, states, states_hypre);
     
     // Modified Classical Interpolation
-/*    hypre_BoomerAMGCoarseParms(MPI_COMM_WORLD, A->local_num_rows, 1, NULL, states_hypre,
+    hypre_BoomerAMGCoarseParms(MPI_COMM_WORLD, A->local_num_rows, 1, NULL, states_hypre,
             &coarse_dof_func, &coarse_pnts_gbl);
     P = mod_classical_interpolation(A, S, states, off_proc_states, false);
     hypre_BoomerAMGBuildInterp(A_hyp, states_hypre, S_hyp, coarse_pnts_gbl, 1, NULL, 0, 0.0, 0.0, NULL, &P_hyp);
     compare(P, P_hyp);
     hypre_ParCSRMatrixDestroy(P_hyp);
     delete P;
-    */
+    
     // Extended+i Interpolation
     hypre_BoomerAMGCoarseParms(MPI_COMM_WORLD, A->local_num_rows, 1, NULL, states_hypre,
             &coarse_dof_func, &coarse_pnts_gbl);
@@ -120,7 +120,7 @@ TEST(TestHypreInterpolation, TestsInRuge_Stuben)
     hypre_BoomerAMGCoarsenPMIS(S_hyp, A_hyp, 0, 0, &states_hypre);
     
     // Modified Classical Interpolation
-/*    hypre_BoomerAMGCoarseParms(MPI_COMM_WORLD, A->local_num_rows, 1, NULL, states_hypre,
+    hypre_BoomerAMGCoarseParms(MPI_COMM_WORLD, A->local_num_rows, 1, NULL, states_hypre,
             &coarse_dof_func, &coarse_pnts_gbl);
     P = mod_classical_interpolation(A, S, states, off_proc_states, false);
     hypre_BoomerAMGBuildInterp(A_hyp, states_hypre, S_hyp, coarse_pnts_gbl, 1, NULL, 0, 0.0, 0.0, NULL, &P_hyp);
@@ -136,7 +136,6 @@ TEST(TestHypreInterpolation, TestsInRuge_Stuben)
     compare(P, P_hyp);
     hypre_ParCSRMatrixDestroy(P_hyp);
     delete P;
-*/
 
     hypre_TFree(states_hypre, HYPRE_MEMORY_HOST);
     HYPRE_IJMatrixDestroy(Aij);

@@ -128,9 +128,6 @@ void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h)
         }
     }
 
-    MPI_Barrier(MPI_COMM_WORLD);
-    printf("HERE\n");
-
     // Check that values are correct
     for (int i = 0; i < A->local_num_rows; i++)
     {
@@ -142,11 +139,7 @@ void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h)
         {
             if (ctrA < endA && A->on_proc->idx2[ctrA] == diag_j[j])
             {
-                //if (rank == 15) 
-                if (fabs(A->on_proc->vals[ctrA] - diag_data[j]) > 1e-06) 
-                    printf("RANK %d: Row %d, Col %d, Val %e instead of %e\n", rank, i, A->on_proc->idx2[ctrA],
-                            A->on_proc->vals[ctrA], diag_data[j]);
-                //ASSERT_NEAR(A->on_proc->vals[ctrA], diag_data[j], 1e-06);
+                ASSERT_NEAR(A->on_proc->vals[ctrA], diag_data[j], 1e-06);
                 ctrA++;
             }
             else
@@ -164,7 +157,7 @@ void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h)
             if (ctrA < endA && new_off_proc_map[A->off_proc->idx2[ctrA]]
                     == col_map_offd[offd_j[j]])
             {
-                //ASSERT_NEAR(A->off_proc->vals[ctrA], offd_data[j], 1e-06);
+                ASSERT_NEAR(A->off_proc->vals[ctrA], offd_data[j], 1e-06);
                 ctrA++;
             }
             else

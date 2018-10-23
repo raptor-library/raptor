@@ -469,8 +469,6 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     P->off_proc->idx2.resize(nnz_off);
     P->off_proc->vals.resize(nnz_off);
 
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     nnz_on = 0;
     nnz_off = 0;
     for (int i = 0; i < A->local_num_rows; i++)
@@ -597,7 +595,6 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         start = A->on_proc->idx1[i];
         end = A->on_proc->idx1[i+1];
         weak_sum = A->on_proc->vals[start++]; // Add a_ii to weak sum
-if (rank == 15 && i == 0) printf("Weak Sum = %e\n", weak_sum);
         ctr = S->on_proc->idx1[i]+1;
         end_S = S->on_proc->idx1[i+1];
 
@@ -661,7 +658,6 @@ if (rank == 15 && i == 0) printf("Weak Sum = %e\n", weak_sum);
                 if (fabs(col_sum) < zero_tol)
                 {
                     weak_sum += val;
-if (rank == 15 && i == 0) printf("1. Weak Sum += %e\n", val);
                 }
                 else // Otherwise, add products to P
                 {
@@ -680,7 +676,6 @@ if (rank == 15 && i == 0) printf("1. Weak Sum += %e\n", val);
                             if (col_k == i) // if j == i, add to weak sum
                             {
                                 weak_sum += (col_sum * val_k);
-if (rank == 15 && i == 0) printf("2. Weak Sum += %e\n", col_sum * val_k);
                             }
                             else // Otherwise, add to w_ij
                             {
@@ -716,7 +711,6 @@ if (rank == 15 && i == 0) printf("2. Weak Sum += %e\n", col_sum * val_k);
                     if (states[col] != NoNeighbors)
                     {
                         weak_sum += val;
-if (rank == 15 && i == 0) printf("3. Weak Sum += %e\n", val);
                     }
                 }
             }
@@ -729,7 +723,9 @@ if (rank == 15 && i == 0) printf("3. Weak Sum += %e\n", val);
         {
             col = A->off_proc->idx2[j];
             val = A->off_proc->vals[j];
-            idx = off_proc_pos[off_proc_A_to_P[col]];
+            col_P = off_proc_A_to_P[col];
+            idx = -1;
+            if (col_P > -1) idx = off_proc_pos[col_P];
             if (idx >= row_start_off)
             {
                 P->off_proc->vals[idx] += val;
@@ -774,7 +770,6 @@ if (rank == 15 && i == 0) printf("3. Weak Sum += %e\n", val);
                 if (fabs(col_sum) < zero_tol)
                 {
                     weak_sum += val;
-if (rank == 15 && i == 0) printf("4. Weak Sum += %e\n", val);
                 }
                 else
                 {
@@ -793,7 +788,6 @@ if (rank == 15 && i == 0) printf("4. Weak Sum += %e\n", val);
                             if (col_k == i)
                             {
                                 weak_sum += (col_sum * val_k);
-if (rank == 15 && i == 0) printf("5. Weak Sum += %e\n", col_sum * val_k);
                             }
                             else
                             {
@@ -823,14 +817,12 @@ if (rank == 15 && i == 0) printf("5. Weak Sum += %e\n", col_sum * val_k);
                 {
                     if (off_proc_states[col] != NoNeighbors)
                     {
-if (rank == 15 && i == 0) printf("6. Weak Sum += %e\n", val);
                         weak_sum += val;
                     }
                 }
             }
         }
 
-if (rank == 15 && i == 0) printf("Weak Sum %e\n", weak_sum);
         // Divide by weak sum and clear row values
         if (fabs(weak_sum) > zero_tol)
         {
