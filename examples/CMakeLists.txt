@@ -47,6 +47,9 @@ if (WITH_MPI)
 
     add_executable(benchmark_setup_sweeps benchmark_setup_sweeps.cpp)
     target_link_libraries(benchmark_setup_sweeps raptor ${MPI_LIBRARIES})
+
+    add_executable(compare_hypre compare_hypre.cpp)
+    target_link_libraries(compare_hypre raptor ${MPI_LIBRARIES})
 endif()
 
 
