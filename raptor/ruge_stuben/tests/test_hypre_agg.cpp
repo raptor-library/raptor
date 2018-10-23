@@ -96,15 +96,17 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
         // C/F Splitting (PMIS)
         split_pmis(Sl, states, off_proc_states, false, weights);
         hypre_BoomerAMGCoarsenPMIS(S_hyp, A_hyp, 0, 0, &states_hypre);
-        for (int i = 0; i < Al->local_num_rows; i++)
+        compare_states(Al->local_num_rows, states, states_hypre);
+        /*for (int i = 0; i < Al->local_num_rows; i++)
         {
-            if (states[i] == 1) ASSERT_EQ(states[i], states_hypre[i]);
-            else 
-            {
-                ASSERT_EQ(states[i], 0);
+            if (states[i] == Selected)
+                ASSERT_EQ(states_hypre[i], 1);
+            else if (states[i] == Unselected)
                 ASSERT_EQ(states_hypre[i], -1);
-            }
-        }
+            else if (states[i] == NoNeighbors)
+                ASSERT_EQ(states_hypre[i], -3);
+
+        }*/
 
         // Extended Interpolation
         ParCSRMatrix* Pl = extended_interpolation(Al, Sl, states, off_proc_states, false);

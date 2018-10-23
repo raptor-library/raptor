@@ -75,7 +75,7 @@ void compare_dimensions(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h,
     ASSERT_EQ(A->on_proc_num_cols, diag_cols);
 }
 
-void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h)
+void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h, double tol = 1e-05)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -104,14 +104,32 @@ void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h)
         offd_data = hypre_CSRMatrixData(A_h_offd);
     }
 
-    A->on_proc->sorted = false;
-    A->off_proc->sorted = false;
     A->sort();
+    if (A->local_num_rows == A->on_proc_num_cols)
+    {
+        A->on_proc->move_diag();
+    }
 
     for (int i = 0; i < A->local_num_rows; i++)
     {
         start = diag_i[i];
         end = diag_i[i+1];
+        if (A->local_num_rows == A->on_proc_num_cols)
+        {
+            for (int j = start; j < end; j++)
+            {
+                if (diag_j[j] == i)
+                {
+                    double tmp = diag_data[j];
+                    diag_j[j] = diag_j[start];
+                    diag_data[j] = diag_data[start];
+                    diag_j[start] = i;
+                    diag_data[start] = tmp;
+                    start++;
+                    break;
+                }
+            }
+        }
         if (end - start)
         {
             hypre_qsort1(diag_j, diag_data, start, end - 1);
@@ -139,7 +157,7 @@ void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h)
         {
             if (ctrA < endA && A->on_proc->idx2[ctrA] == diag_j[j])
             {
-                ASSERT_NEAR(A->on_proc->vals[ctrA], diag_data[j], 1e-06);
+                ASSERT_NEAR(A->on_proc->vals[ctrA], diag_data[j], tol);
                 ctrA++;
             }
             else
@@ -157,7 +175,7 @@ void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h)
             if (ctrA < endA && new_off_proc_map[A->off_proc->idx2[ctrA]]
                     == col_map_offd[offd_j[j]])
             {
-                ASSERT_NEAR(A->off_proc->vals[ctrA], offd_data[j], 1e-06);
+                ASSERT_NEAR(A->off_proc->vals[ctrA], offd_data[j], tol);
                 ctrA++;
             }
             else
@@ -255,14 +273,12 @@ void compare_states(int n, aligned_vector<int>& states, int* states_hypre)
 {
     for (int i = 0; i < n; i++)
     {
-        if (states[i])
-        {
-            ASSERT_EQ(states[i], states_hypre[i]);
-        }
-        else
-        {
+        if (states[i] == Selected)
+            ASSERT_EQ(states_hypre[i], 1);
+        else if (states[i] == Unselected)
             ASSERT_EQ(states_hypre[i], -1);
-        }
+        else if (states[i] == NoNeighbors)
+            ASSERT_EQ(states_hypre[i], -3);
     }
 }
 
