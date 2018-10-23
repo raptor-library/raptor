@@ -16,7 +16,6 @@
 #include "gallery/diffusion.hpp"
 #include "gallery/par_matrix_IO.hpp"
 #include "ruge_stuben/par_ruge_stuben_solver.hpp"
-#include "tests/hypre_compare.hpp"
 #include "gallery/external/hypre_wrapper.hpp"
 #include "krylov/par_cg.hpp"
 

@@ -17,7 +17,6 @@
 #include "gallery/par_matrix_IO.hpp"
 #include "multilevel/par_multilevel.hpp"
 #include "ruge_stuben/par_ruge_stuben_solver.hpp"
-#include "tests/hypre_compare.hpp"
 #include "gallery/external/hypre_wrapper.hpp"
 
 #ifdef USING_MFEM

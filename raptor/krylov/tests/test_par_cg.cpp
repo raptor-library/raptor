@@ -1,4 +1,8 @@
-#include <assert.h>
+// Copyright (c) 2015-2017, RAPtor Developer Team
+// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
+
+#include "gtest/gtest.h"
+
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
@@ -8,10 +12,17 @@
 
 using namespace raptor;
 
-int main(int argc, char* argv[])
+int main(int argc, char** argv)
 {
     MPI_Init(&argc, &argv);
+    ::testing::InitGoogleTest(&argc, argv);
+    int temp=RUN_ALL_TESTS();
+    MPI_Finalize();
+    return temp;
+} // end of main() //
 
+TEST(ParCGTest, TestsInKrylov)
+{
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
@@ -27,6 +38,7 @@ int main(int argc, char* argv[])
     A->mult(x, b);
     x.set_const_value(0.0);
 
+    double b_norm = b.norm(2);
     CG(A, x, b, residuals);
 
     FILE* f = fopen("../../../../test_data/cg_res.txt", "r");
@@ -34,15 +46,15 @@ int main(int argc, char* argv[])
     for (int i = 0; i < residuals.size(); i++)
     {
         fscanf(f, "%lf\n", &res);
-        assert(fabs(res - residuals[i]) < 1e-06);
+        ASSERT_NEAR(res, residuals[i] * b_norm, 1e-06);
     }
     fclose(f);
 
 
     delete[] stencil;
     delete A;
+    
+} // end of TEST(ParCGTest, TestsInKrylov) //
 
-    MPI_Finalize();
 
-    return 0;
-}
+
