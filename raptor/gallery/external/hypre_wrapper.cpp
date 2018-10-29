@@ -57,6 +57,14 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, MPI_Comm comm_mat)
         local_col_start += col_sizes[i];
     }
 
+    // Send new rows for off_proc_cols
+    aligned_vector<int> rows(A_rap->local_num_rows);
+    for (int i = 0; i < A_rap->local_num_rows; i++)
+    {
+        rows[i] = i + local_row_start;
+    }
+    aligned_vector<int>& off_rows = A_rap->comm->communicate(rows);
+
     n_rows = A_rap->local_num_rows;
     if (n_rows)
     {
@@ -78,10 +86,10 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, MPI_Comm comm_mat)
     {
         row_start = A_rap->on_proc->idx1[i];
         row_end = A_rap->on_proc->idx1[i+1];
-        global_row = A_rap->local_row_map[i];
+        global_row = i + local_row_start;
         for (int j = row_start; j < row_end; j++)
         {
-            global_col = A_rap->on_proc_column_map[A_rap->on_proc->idx2[j]];
+            global_col = A_rap->on_proc->idx2[j] + local_col_start;
             value = A_rap->on_proc->vals[j];
             HYPRE_IJMatrixSetValues(A, 1, &one, &global_row, &global_col, &value);
         }
@@ -90,10 +98,10 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, MPI_Comm comm_mat)
     {
         row_start = A_rap->off_proc->idx1[i];
         row_end = A_rap->off_proc->idx1[i+1];
-        global_row = A_rap->local_row_map[i];
+        global_row = i + local_row_start;
         for (int j = row_start; j < row_end; j++)
         {
-            global_col = A_rap->off_proc_column_map[A_rap->off_proc->idx2[j]];
+            global_col = off_rows[A_rap->off_proc->idx2[j]];
             value = A_rap->off_proc->vals[j];
             HYPRE_IJMatrixSetValues(A, 1, &one, &global_row, &global_col, &value);
         }
@@ -202,7 +210,7 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
     HYPRE_BoomerAMGSetRelaxOrder(amg_data, 0);
 //    HYPRE_BoomerAMGSetRelaxWt(amg_data, 3.0/4); // set omega for SOR
     HYPRE_BoomerAMGSetNumFunctions(amg_data, num_functions);
-    HYPRE_BoomerAMGSetRAP2(amg_data, 1);
+    //HYPRE_BoomerAMGSetRAP2(amg_data, 1);
 
     HYPRE_BoomerAMGSetPrintLevel(amg_data, 0);
     HYPRE_BoomerAMGSetMaxIter(amg_data, 1000);

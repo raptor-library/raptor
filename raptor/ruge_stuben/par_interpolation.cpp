@@ -904,6 +904,9 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         bool tap_interp, int num_variables, int* variables, 
         data_t* comm_t, data_t* comm_mat_t)
 {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
     int start, end;
     int start_k, end_k;
     int end_S;
@@ -1215,9 +1218,12 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
                     }
                 }
             }
-            else if (num_variables == 1 || variables[i] == variables[col])
+            else if (states[col] != NoNeighbors)
             {
-                weak_sum += val;
+                if (num_variables == 1 || variables[i] == variables[col])
+                {
+                    weak_sum += val;
+                }
             }
         }
 
@@ -1294,9 +1300,12 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
                     }
                 }
             }
-            else if (num_variables == 1 || variables[i] == off_variables[col])
+            else if (off_proc_states[col] != NoNeighbors)
             {
-                weak_sum += val;
+                if (num_variables == 1 || variables[i] == off_variables[col])
+                {
+                    weak_sum += val;
+                }
             }
         }
 

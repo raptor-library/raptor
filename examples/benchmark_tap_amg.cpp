@@ -147,7 +147,7 @@ int main(int argc, char* argv[])
         A = readParMatrix(file);
     }
 
-    if (system != 2)
+/*    if (system != 2)
     {
         A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
                 A->on_proc_column_map);
@@ -326,10 +326,15 @@ int main(int argc, char* argv[])
     }
     delete ml;
 
-    delete A;
     HYPRE_IJMatrixDestroy(A_h_ij);
     HYPRE_IJVectorDestroy(x_h_ij);
     HYPRE_IJVectorDestroy(b_h_ij);
+
+    */
+        printf("%d\n", A->global_num_rows);
+//    write_par_mm(A, "grad_div.mtx");
+    delete A;
+
 
     MPI_Finalize();
     return 0;

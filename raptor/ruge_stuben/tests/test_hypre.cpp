@@ -4,13 +4,7 @@
 
 #include "gtest/gtest.h"
 #include "mpi.h"
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "gallery/par_stencil.hpp"
-#include "gallery/laplacian27pt.hpp"
-#include "gallery/external/hypre_wrapper.hpp"
-#include "ruge_stuben/par_cf_splitting.hpp"
-#include "ruge_stuben/par_interpolation.hpp"
+#include "raptor.hpp"
 #include "tests/hypre_compare.hpp"
 #include <iostream>
 #include <fstream>
@@ -44,108 +38,125 @@ int main(int argc, char** argv)
     return temp;
 } // end of main() //
 
-TEST(TestHypreAgg, TestsInRuge_Stuben)
+TEST(TestHypre, TestsInRuge_Stuben)
 { 
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     FILE* f;
-    double* weights;
     int cf;
 
-    int n = 25;
-    aligned_vector<int> grid(3, n);
-    double* stencil = laplace_stencil_27pt();
-
-    std::vector<ParCSRMatrix*> A_array;
-    std::vector<ParCSRMatrix*> P_array;
-
-    ParCSRMatrix* A = par_stencil_grid(stencil, grid.data(), 3);
-    A_array.push_back(A);
-    delete[] stencil;
-    form_hypre_weights(&weights, A->local_num_rows);
-
+    double strong_threshold = 0.25;
+    int hyp_coarsen_type = 0; // CLJP 
+    int hyp_interp_type = 0; // ModClassical 
+    int p_max_elmts = 0;
+    int agg_num_levels = 0;
+    ParCSRMatrix* A;
+    ParVector x, b;
+    ParMultilevel* ml;
     HYPRE_IJMatrix Aij;
     hypre_ParCSRMatrix* A_hyp;
+    int n;
+    aligned_vector<int> grid;
+    double* stencil;
+
+
+    /************************************
+     **** Test Laplacian 
+     ***********************************/
+    n = 25;
+    grid.resize(3);
+    std::fill(grid.begin(), grid.end(), n);
+    stencil = laplace_stencil_27pt();
+    A = par_stencil_grid(stencil, grid.data(), 3);
+    x = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    b = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    delete[] stencil;
+
+    ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
+    form_hypre_weights(&ml->weights, A->local_num_rows);
+    ml->setup(A);
+
     Aij = convert(A);
     HYPRE_IJMatrixGetObject(Aij, (void**) &A_hyp);
     compare(A, A_hyp);
 
-    hypre_ParCSRMatrix* S_hyp;
-    hypre_ParCSRMatrix* P_hyp;
-    hypre_ParCSRMatrix* Ac_hyp;
-    int* states_hypre;
-    int* coarse_dof_func;
-    int* coarse_pnts_gbl;
+    // Convert vectors... needed for Hypre Setup
+    hypre_ParVector* x_hyp;
+    hypre_ParVector* b_hyp;
+    HYPRE_IJVector x_h_ij = convert(x);
+    HYPRE_IJVector b_h_ij = convert(b);
+    HYPRE_IJVectorGetObject(x_h_ij, (void **) &x_hyp);
+    HYPRE_IJVectorGetObject(b_h_ij, (void **) &b_hyp);
 
-    aligned_vector<int> states;
-    aligned_vector<int> off_proc_states;
+    // Setup Hypre Hierarchy
+    HYPRE_Solver solver_data = hypre_create_hierarchy(A_hyp, x_hyp, b_hyp, 
+            hyp_coarsen_type, hyp_interp_type, p_max_elmts, agg_num_levels, 
+            strong_threshold);
 
-    int nrows = A_array[0]->global_num_rows;
-    int level = 0;
-    while (nrows > 50)
+    hypre_ParCSRMatrix** A_array = hypre_ParAMGDataAArray((hypre_ParAMGData*) solver_data);
+    hypre_ParCSRMatrix** P_array = hypre_ParAMGDataPArray((hypre_ParAMGData*) solver_data);
+
+    for (int level = 0; level < ml->num_levels - 1; level++) 
     {
-        ParCSRMatrix* Al = A_array[level];
-
-        // Create Strength of Connection Matrix
-        ParCSRMatrix* Sl = Al->strength(Classical, 0.25);
-        hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, 1, NULL, &S_hyp);
-        compareS(Sl, S_hyp);
-
-        // C/F Splitting (PMIS)
-        split_cljp(Sl, states, off_proc_states, false, weights);
-        hypre_BoomerAMGCoarsen(S_hyp, A_hyp, 0, 0, &states_hypre);
-        compare_states(Al->local_num_rows, states, states_hypre);
-
-        // Extended Interpolation
-        ParCSRMatrix* Pl = mod_classical_interpolation(Al, Sl, states, off_proc_states, false);
-        P_array.push_back(Pl);
-        hypre_BoomerAMGCoarseParms(MPI_COMM_WORLD, Al->local_num_rows, 1, NULL, states_hypre,
-                &coarse_dof_func, &coarse_pnts_gbl);
-        hypre_BoomerAMGBuildInterp(A_hyp, states_hypre, S_hyp, coarse_pnts_gbl, 1, NULL, 
-                0, 0.0, 0.0, NULL, &P_hyp);
-        compare(Pl, P_hyp);
-
-        // SpGEMM (Form Ac)
-        ParCSRMatrix* APl = Al->mult(Pl);
-	    ParCSCMatrix* Pcsc = Pl->to_ParCSC();
-	    APl->comm = new ParComm(APl->partition, APl->off_proc_column_map, APl->on_proc_column_map);
-        ParCSRMatrix* Ac = APl->mult_T(Pcsc);
-        Ac->comm = new ParComm(Ac->partition, Ac->off_proc_column_map, Ac->on_proc_column_map);
-        A_array.push_back(Ac);
-        hypre_BoomerAMGBuildCoarseOperator(P_hyp, A_hyp, P_hyp, &Ac_hyp);
-        compare(Ac, Ac_hyp);
-                
-        if (level > 0)
-            hypre_ParCSRMatrixDestroy(A_hyp);
-        A_hyp = Ac_hyp;
-
-        nrows = Ac->global_num_rows;
-        level++;
-
-        hypre_TFree(states_hypre, HYPRE_MEMORY_HOST);
-        hypre_ParCSRMatrixDestroy(P_hyp);
-        hypre_ParCSRMatrixDestroy(S_hyp);
-
-        delete APl;
-        delete Pcsc;
-        delete Sl;
+        compare(ml->levels[level]->P, P_array[level]);
+        compare(ml->levels[level+1]->A, A_array[level+1]);
     }
-    hypre_ParCSRMatrixDestroy(Ac_hyp);
 
-    for (std::vector<ParCSRMatrix*>::iterator it = A_array.begin(); it != A_array.end(); ++it)
-        delete *it;
-
-    for (std::vector<ParCSRMatrix*>::iterator it = P_array.begin(); it != P_array.end(); ++it)
-        delete *it;
-
-    delete[] weights;
-
+    hypre_BoomerAMGDestroy(solver_data);    
     HYPRE_IJMatrixDestroy(Aij);
+    delete ml;
+    delete A;
 
 
-} // end of TEST(TestParSplitting, TestsInRuge_Stuben) //
+    /************************************
+     **** Test Anisotropic Diffusion 
+     ***********************************/
+    n = 100;
+    grid.resize(2);
+    std::fill(grid.begin(), grid.end(), n);
+    stencil = diffusion_stencil_2d(0.001, M_PI/4.0);
+    A = par_stencil_grid(stencil, grid.data(), 2);
+    x = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    b = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    delete[] stencil;
+
+    ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
+    form_hypre_weights(&ml->weights, A->local_num_rows);
+    ml->setup(A);
+
+    Aij = convert(A);
+    HYPRE_IJMatrixGetObject(Aij, (void**) &A_hyp);
+    compare(A, A_hyp);
+
+    // Convert vectors... needed for Hypre Setup
+    x_h_ij = convert(x);
+    b_h_ij = convert(b);
+    HYPRE_IJVectorGetObject(x_h_ij, (void **) &x_hyp);
+    HYPRE_IJVectorGetObject(b_h_ij, (void **) &b_hyp);
+
+    // Setup Hypre Hierarchy
+    solver_data = hypre_create_hierarchy(A_hyp, x_hyp, b_hyp, 
+            hyp_coarsen_type, hyp_interp_type, p_max_elmts, agg_num_levels, 
+            strong_threshold);
+
+    A_array = hypre_ParAMGDataAArray((hypre_ParAMGData*) solver_data);
+    P_array = hypre_ParAMGDataPArray((hypre_ParAMGData*) solver_data);
+
+    for (int level = 0; level < ml->num_levels - 1; level++) 
+    {
+        compare(ml->levels[level]->P, P_array[level]);
+        compare(ml->levels[level+1]->A, A_array[level+1]);
+    }
+
+    hypre_BoomerAMGDestroy(solver_data);    
+    HYPRE_IJMatrixDestroy(Aij);
+    delete ml;
+    delete A;
+
+
+} // end of TEST(TestHypre, TestsInRuge_Stuben) //
 
 
 
