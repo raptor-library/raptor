@@ -80,7 +80,9 @@ TEST(ParCommTest, TestsInCore)
         }
     }
 
-    delete A;
     delete recv_mat;
+    delete[] stencil;
+    delete A;
+    delete A_seq;
 
 } // end of TEST(ParCommTest, TestsInCore) //
