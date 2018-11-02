@@ -113,22 +113,22 @@ void rs_first_pass(const CSRMatrix* S,
         weight = weights[col];
         weight_sizes[weight]--;
 
-        if (states[col] != -1)
+        if (states[col] != Unassigned)
         {
             continue;
         }
         else
         {
-            states[col] = 1;
+            states[col] = Selected;
 
             start = col_ptr[col];
             end = col_ptr[col+1];
             for (int j = start; j < end; j++)
             {
                 idx = col_indices[j];
-                if (states[idx] == -1)
+                if (states[idx] == Unassigned)
                 {
-                    states[idx] = 0;
+                    states[idx] = Unselected;
 
                     idx_start = S->idx1[idx];
                     idx_end = S->idx1[idx+1];
@@ -139,7 +139,7 @@ void rs_first_pass(const CSRMatrix* S,
                     for (int k = idx_start; k < idx_end; k++)
                     {
                         idx_k = S->idx2[k];
-                        if (states[idx_k] == -1)
+                        if (states[idx_k] == Unassigned)
                         {
                             // Increment weight
                             weight_k = weights[idx_k];
@@ -177,7 +177,7 @@ void rs_first_pass(const CSRMatrix* S,
             {
                 idx = S->idx2[j];
 
-                if (states[idx] == -1)
+                if (states[idx] == Unassigned)
                 {
                     // If no weight to decrement, continue
                     weight = weights[idx];
@@ -220,21 +220,21 @@ void rs_second_pass(const CSRMatrix* S,
 
     for (int i = 0; i < S->n_rows; i++)
     {
-        if (states[i] == 1) continue;
+        if (states[i] == Selected) continue;
 
         start = S->idx1[i];
         end = S->idx1[i+1];
         for (int j = start; j < end; j++)
         {
             col = S->idx2[j];
-            if (states[col] == 1) 
+            if (states[col] == Selected) 
                 row_coarse[col] = i;
         }
 
         for (int j = start; j < end; j++)
         {
             col = S->idx2[j];
-            if (states[col] == 0)
+            if (states[col] == Unselected)
             {
                 start_k = S->idx1[col];
                 end_k = S->idx1[col+1];
@@ -253,7 +253,7 @@ void rs_second_pass(const CSRMatrix* S,
                 if (!connection)
                 {
                     row_coarse[col] = i;
-                    states[col] = 1;
+                    states[col] = Selected;
                 }
             }
         }
@@ -298,7 +298,7 @@ void split_rs(CSRMatrix* S,
         states.resize(S->n_rows);
         for (int i = 0; i < S->n_rows; i++)
         {
-            states[i] = -1;
+            states[i] = Unassigned;
         }
     }
 
@@ -370,7 +370,7 @@ int select_independent_set(CSRMatrix* S, aligned_vector<int>& col_ptr,
             continue;
         }
         
-        states[u] = 2;
+        states[u] = NewSelection;
         new_coarse_list[num_new_coarse++] = u;
     }
 
@@ -399,7 +399,7 @@ void update_weights(CSRMatrix* S, aligned_vector<int>& col_ptr, aligned_vector<i
         for (int j = start; j < end; j++)
         {
             idx = S->idx2[j];
-            if (states[idx] == -1 && edgemark[j])
+            if (states[idx] == Unassigned && edgemark[j])
             {
                 edgemark[j] = 0;
                 weights[idx]--;
@@ -415,7 +415,7 @@ void update_weights(CSRMatrix* S, aligned_vector<int>& col_ptr, aligned_vector<i
         for (int j = start; j < end; j++)
         {
             idx = col_indices[j];
-            if (states[idx] == -1)
+            if (states[idx] == Unassigned)
             {
                 c_dep_cache[idx] = c;
             }
@@ -424,7 +424,7 @@ void update_weights(CSRMatrix* S, aligned_vector<int>& col_ptr, aligned_vector<i
         for (int j = start; j < end; j++)
         {
             idx = col_indices[j];
-            if (states[idx] == 1) continue;
+            if (states[idx] == Selected) continue;
 
             idx_start = S->idx1[idx];
             idx_end = S->idx1[idx+1];
@@ -435,7 +435,7 @@ void update_weights(CSRMatrix* S, aligned_vector<int>& col_ptr, aligned_vector<i
             for (int k = idx_start; k < idx_end; k++)
             {
                 idx_k = S->idx2[k];
-                if (states[idx_k] == -1 && edgemark[k] && c_dep_cache[idx_k] == c)
+                if (states[idx_k] == Unassigned && edgemark[k] && c_dep_cache[idx_k] == c)
                 {
                     edgemark[k] = 0;
                     weights[idx_k]--;
@@ -457,15 +457,15 @@ int update_states(int remaining, aligned_vector<int>& unassigned, aligned_vector
     for (int i = 0; i < remaining; i++)
     {
         u = unassigned[i];
-        if (states[u] == 2)
+        if (states[u] == NewSelection)
         {
             weights[u] = 0.0;
-            states[u] = 1;
+            states[u] = Selected;
         }
         else if (weights[u] < 1.0)
         {
             weights[u] = 0.0;
-            states[u] = 0;
+            states[u] = Unselected;
         }
         else
         {
@@ -612,7 +612,7 @@ void pmis_main_loop(CSRMatrix* S, aligned_vector<int>& col_ptr, aligned_vector<i
     {
         if (weights[i] < 1)
         {
-            states[i] = 0;
+            states[i] = Unselected;
         }
         else
         {
@@ -634,9 +634,9 @@ void pmis_main_loop(CSRMatrix* S, aligned_vector<int>& col_ptr, aligned_vector<i
             for (int j = start; j < end; j++)
             {
                 row = col_indices[j];
-                if (states[row] == -1)
+                if (states[row] == Unassigned)
                 {
-                    states[row] = 0;
+                    states[row] = Unselected;
                     weights[row] = 0;
                 }
             }
@@ -669,7 +669,7 @@ void split_cljp(CSRMatrix* S,
     // Set initial states to undecided (-1)
     for (int i = 0; i < S->n_rows; i++)
     {
-        states[i] = -1;
+        states[i] = Unassigned;
     }
 
     cljp_main_loop(S, col_ptr, col_indices, states, rand_vals);
@@ -695,7 +695,7 @@ void split_pmis(CSRMatrix* S, aligned_vector<int>& states, double* rand_vals)
 
     for (int i = 0; i < S->n_rows; i++)
     {
-        states[i] = -1;
+        states[i] = Unassigned;
     }
 
     pmis_main_loop(S, col_ptr, col_indices, states, rand_vals);

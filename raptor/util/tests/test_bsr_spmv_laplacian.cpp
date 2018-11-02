@@ -18,7 +18,7 @@ int main(int argc, char** argv)
 
 TEST(LaplacianBSRSpMVTest, TestsInUtil)
 {
-    double b_val;
+/*    double b_val;
     int grid[3] = {10, 10, 10};
     double* stencil = laplace_stencil_27pt();
     const CSRMatrix* A_sten = stencil_grid(stencil, grid, 3);
@@ -74,6 +74,6 @@ TEST(LaplacianBSRSpMVTest, TestsInUtil)
 
     delete[] stencil;
     delete A_sten;
-    delete B_sten;
+    delete B_sten;*/
 } // end of TEST(LaplacianSpMVTest, TestsInUtil) //
 

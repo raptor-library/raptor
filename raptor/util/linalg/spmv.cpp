@@ -1,365 +1,430 @@
 // Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#include "core/types.hpp"
+
 #include "core/matrix.hpp"
-#include "core/vector.hpp"
 
 using namespace raptor;
 
-/**************************************************************
-*****   Matrix-Vector Multiply (b = Ax)
-**************************************************************
-***** Multiplies the matrix times a vector x, and returns the
-***** result in vector b.
-*****
-***** Parameters
-***** -------------
-***** x : T*
-*****    Array containing vector data by which to multiply the matrix 
-***** b : U*
-*****    Array in which to place solution
-**************************************************************/
-void COOMatrix::mult(Vector& x, Vector& b)
-{    
-    for (int i = 0; i < n_rows; i++)
-        b[i] = 0.0;
-
-    mult_append(x, b);
-}
-
-void CSRMatrix::mult(Vector& x, Vector& b)
-{    
-    for (int i = 0; i < n_rows; i++)
-        b[i] = 0.0;
-
-    mult_append(x, b);
-}
-
-void CSCMatrix::mult(Vector& x, Vector& b)
-{    
-    for (int i = 0; i < n_rows; i++)
-        b[i] = 0.0;
-
-    mult_append(x, b);
-}
-
-/**************************************************************
-*****   Matrix-Vector Transpose Multiply (b = Ax)
-**************************************************************
-***** Multiplies the matrix times a vector x, and returns the
-***** result in vector b.
-*****
-***** Parameters
-***** -------------
-***** x : T*
-*****    Array containing vector data by which to multiply the matrix 
-***** b : U*
-*****    Array in which to place solution
-**************************************************************/
-void COOMatrix::mult_T(Vector& x, Vector& b)
-{    
-    for (int i = 0; i < n_cols; i++)
-        b[i] = 0.0;
-
-    mult_append_T(x, b);
-}
-void CSRMatrix::mult_T(Vector& x, Vector& b)
-{    
-    for (int i = 0; i < n_cols; i++)
-        b[i] = 0.0;
-
-    mult_append_T(x, b);
-}
-void CSCMatrix::mult_T(Vector& x, Vector& b)
-{    
-    for (int i = 0; i < n_cols; i++)
-        b[i] = 0.0;
-
-    mult_append_T(x, b);
-}
-
-/**************************************************************
-*****   Matrix-Vector Multiply Append (b += Ax)
-**************************************************************
-***** Multiplies the matrix times a vector x, and appends the
-***** result in vector b.
-*****
-***** Parameters
-***** -------------
-***** x : T*
-*****    Array containing vector data by which to multiply the matrix 
-***** b : U*
-*****    Array in which to place solution
-**************************************************************/
-void COOMatrix::mult_append(Vector& x, Vector& b)
-{    
-    for (int i = 0; i < nnz; i++)
+// COOMatrix SpMV Methods (or BCOO)
+template <typename T>
+void COO_append(const COOMatrix* A, const aligned_vector<T>& vals,
+        const double* x, double* b)
+{
+    for (int i = 0; i < A->nnz; i++)
     {
-        b[idx1[i]] += vals[i] * x[idx2[i]];
+        A->append(A->idx1[i], A->idx2[i], b, x, vals[i]);
+    }
+}
+template <typename T>
+void COO_append_T(const COOMatrix* A, const aligned_vector<T>& vals,
+        const double* x, double* b)
+{
+    for (int i = 0; i < A->nnz; i++)
+    {
+        A->append_T(A->idx2[i], A->idx1[i], b, x, vals[i]);
+    }
+}
+template <typename T>
+void COO_append_neg(const COOMatrix* A, const aligned_vector<T>& vals,
+        const double* x, double* b)
+{
+    for (int i = 0; i < A->nnz; i++)
+    {
+        A->append_neg(A->idx1[i], A->idx2[i], b, x, vals[i]);
+    }
+}
+template <typename T>
+void COO_append_neg_T(const COOMatrix* A, const aligned_vector<T>& vals,
+        const double* x, double* b)
+{
+    for (int i = 0; i < A->nnz; i++)
+    {
+        A->append_neg_T(A->idx1[i], A->idx2[i], b, x, vals[i]);
     }
 }
 
-void CSRMatrix::mult_append(Vector& x, Vector& b)
+
+
+
+
+// CSRMatrix SpMV Methods (or BSR)
+// Optimized CSR and BSR standard SpMVs
+void CSR_spmv(const CSRMatrix* A, const double* x, double* b)
 {
     int start, end;
+    double val;
+    for (int i = 0; i < A->n_rows; i++)
+    {
+        start = A->idx1[i];
+        end = A->idx1[i+1];
+        val = 0;
+        for (int j = start; j < end; j++)
+        {
+            val += A->vals[j] * x[A->idx2[j]];
+        }
+        b[i] = val;
+    }
+}
+
+void CSR_residual(const CSRMatrix* A, const double* x, 
+        const double* b, double* r)
+{
+    int start, end;
+    double val;
+    for (int i = 0; i < A->n_rows; i++)
+    {
+        start = A->idx1[i];
+        end = A->idx1[i+1];
+        val = b[i];
+        for (int j = start; j < end; j++)
+        {
+            val -= A->vals[j] * x[A->idx2[j]];
+        }
+        r[i] = val;
+    }
+}
+
+
+void CSR_append(const CSRMatrix* A, const double* x, double* b)
+{
+    int start, end;
+    double val;
+    for (int i = 0; i < A->n_rows; i++)
+    {
+        start = A->idx1[i];
+        end = A->idx1[i+1];
+        val = 0;
+        for (int j = start; j < end; j++)
+        {
+            val += A->vals[j] * x[A->idx2[j]];
+        }
+        b[i] += val;
+    }
+}
+
+template <typename T>
+void BSR_append(const CSRMatrix* A, const aligned_vector<T>& vals,
+        const double* x, double* b)
+{
+    int start, end;
+    for (int i = 0; i < A->n_rows; i++)
+    {
+        start = A->idx1[i];
+        end = A->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            A->append(i, A->idx2[j], b, x, vals[j]);
+        }
+    }
+}
+
+void BSR_spmv(const BSRMatrix* A, const double* x, double* b)
+{
+    int start, end, idx;
+    int first_row, first_col;
+    double val;
+    double* block_val;
+    for (int i = 0; i < A->n_rows; i++)
+    {
+        start = A->idx1[i];
+        end = A->idx1[i+1];
+        first_row = i*A->b_rows;
+        for (int row = 0; row < A->b_rows; row++)
+        {
+            val = 0;
+            idx = row * A->b_cols;
+            for (int j = start; j < end; j++)
+            {
+                first_col = A->idx2[j]*A->b_cols;
+                block_val = A->block_vals[j];
+                for (int col = 0; col < A->b_cols; col++)
+                {
+                    val += (block_val[idx + col] * x[first_col + col]);
+                }
+            }
+            b[first_row + row] = val;
+        }
+    }
+}
+template <typename T>
+void CSR_append_T(const CSRMatrix* A, const aligned_vector<T>& vals,
+        const double* x, double* b)
+{
+    int start, end;
+    for (int i = 0; i < A->n_rows; i++)
+    {
+        start = A->idx1[i];
+        end = A->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            A->append_T(i, A->idx2[j], b, x, vals[j]);
+        }
+    }
+}
+template <typename T>
+void CSR_append_neg(const CSRMatrix* A, const aligned_vector<T>& vals,
+        const double* x, double* b)
+{
+    int start, end;
+    for (int i = 0; i < A->n_rows; i++)
+    {
+        start = A->idx1[i];
+        end = A->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            A->append_neg(i, A->idx2[j], b, x, vals[j]);
+        }
+    }
+}
+template <typename T>
+void CSR_append_neg_T(const CSRMatrix* A, const aligned_vector<T>& vals,
+        const double* x, double* b)
+{
+    int start, end;
+    for (int i = 0; i < A->n_rows; i++)
+    {
+        start = A->idx1[i];
+        end = A->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            A->append_neg_T(i, A->idx2[j], b, x, vals[j]);
+        }
+    }
+}
+
+
+
+// CSCMatrix SpMV Methods (or BSC)
+template <typename T>
+void CSC_append(const CSCMatrix* A, const aligned_vector<T>& vals,
+        const double* x, double* b)
+{
+    int start, end;
+    for (int i = 0; i < A->n_cols; i++)
+    {
+        start = A->idx1[i];
+        end = A->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            A->append(A->idx2[j], i, b, x, vals[j]);
+        }
+    }
+}
+template <typename T>
+void CSC_append_T(const CSCMatrix* A, const aligned_vector<T>& vals,
+        const double* x, double* b)
+{
+    int start, end;
+    for (int i = 0; i < A->n_cols; i++)
+    {
+        start = A->idx1[i];
+        end = A->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            A->append_T(A->idx2[j], i, b, x, vals[j]);
+        }
+    }
+}
+template <typename T>
+void CSC_append_neg(const CSCMatrix* A, const aligned_vector<T>& vals,
+        const double* x, double* b)
+{
+    int start, end;
+    for (int i = 0; i < A->n_cols; i++)
+    {
+        start = A->idx1[i];
+        end = A->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            A->append_neg(A->idx2[j], i, b, x, vals[j]);
+        }
+    }
+}
+template <typename T>
+void CSC_append_neg_T(const CSCMatrix* A, const aligned_vector<T>& vals,
+        const double* x, double* b)
+{
+    int start, end;
+    for (int i = 0; i < A->n_cols; i++)
+    {
+        start = A->idx1[i];
+        end = A->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            A->append_neg_T(A->idx2[j], i, b, x, vals[j]);
+        }
+    }
+}
+
+
+void COOMatrix::spmv(const double* x, double* b) const
+{
     for (int i = 0; i < n_rows; i++)
-    {
-        start = idx1[i];
-        end = idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            b[i] += vals[j] * x[idx2[j]];
-        }
-    }
+        b[i] = 0;
+    COO_append(this, vals, x, b);
 }
-
-void CSCMatrix::mult_append(Vector& x, Vector& b)
+void COOMatrix::spmv_append(const double* x, double* b) const
 {
-    int start, end;
-    for (int i = 0; i < n_cols; i++)
-    {
-        start = idx1[i];
-        end = idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            b[idx2[j]] += vals[j] * x[i];
-        }
-    }
+    COO_append(this, vals, x, b);
 }
-
-/**************************************************************
-*****   Matrix-Vector Transpose Multiply Append (b += Ax)
-**************************************************************
-***** Multiplies the matrix times a vector x, and appends the
-***** result in vector b.
-*****
-***** Parameters
-***** -------------
-***** x : T*
-*****    Array containing vector data by which to multiply the matrix 
-***** b : U*
-*****    Array in which to place solution
-**************************************************************/
-void COOMatrix::mult_append_T(Vector& x, Vector& b)
-{    
-    for (int i = 0; i < nnz; i++)
-    {
-        b[idx2[i]] += vals[i] * x[idx1[i]];
-    }
-}
-
-void CSRMatrix::mult_append_T(Vector& x, Vector& b)
+void COOMatrix::spmv_append_T(const double* x, double* b) const
 {
-    int start, end;
-    for (int i = 0; i < n_rows; i++)
-    {
-        start = idx1[i];
-        end = idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            b[idx2[j]] += vals[j] * x[i];
-        }
-    }
+    COO_append_T(this, vals, x, b);
 }
-
-void CSCMatrix::mult_append_T(Vector& x, Vector& b)
+void COOMatrix::spmv_append_neg(const double* x, double* b) const
 {
-    int start, end;
-    for (int i = 0; i < n_cols; i++)
-    {
-        start = idx1[i];
-        end = idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            b[i] += vals[j] * x[idx2[j]];
-        }
-    }
+    COO_append_neg(this, vals, x, b);
 }
-
-void CSRMatrix::mult_append_T(Vector& x, Vector& b)
+void COOMatrix::spmv_append_neg_T(const double* x, double* b) const
 {
-    int start, end;
-    for (int i = 0; i < n_rows; i++)
-    {
-        start = idx1[i];
-        end = idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            b[idx2[j]] += vals[j] * x[i];
-        }
-    }
+    COO_append_neg_T(this, vals, x, b);
 }
-
-void CSCMatrix::mult_append_T(Vector& x, Vector& b)
-{
-    int start, end;
-    for (int i = 0; i < n_cols; i++)
-    {
-        start = idx1[i];
-        end = idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            b[i] += vals[j] * x[idx2[j]];
-        }
-    }
-}
-
-
-
-/**************************************************************
-*****   Matrix-Vector Multiply Append (Negative) (b -= Ax)
-**************************************************************
-***** Multiplies the matrix times a vector x, and appends the
-***** negated result in vector b.
-*****
-***** Parameters
-***** -------------
-***** x : T*
-*****    Array containing vector data by which to multiply the matrix 
-***** b : U*
-*****    Array in which to place solution
-**************************************************************/
-void COOMatrix::mult_append_neg(Vector& x, Vector& b)
-{    
-    for (int i = 0; i < nnz; i++)
-    {
-        b[idx1[i]] -= vals[i] * x[idx2[i]];
-    }
-}
-
-void CSRMatrix::mult_append_neg(Vector& x, Vector& b)
-{
-    int start, end;
-    for (int i = 0; i < n_rows; i++)
-    {
-        start = idx1[i];
-        end = idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            b[i] -= vals[j] * x[idx2[j]];
-        }
-    }
-}
-
-void CSCMatrix::mult_append_neg(Vector& x, Vector& b)
-{
-    int start, end;
-    for (int i = 0; i < n_cols; i++)
-    {
-        start = idx1[i];
-        end = idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            b[idx2[j]] -= vals[j] * x[i];
-        }
-    }
-}
-
-/**************************************************************
-*****   Matrix-Vector Transpose Multiply Append (Negative) (b -= Ax)
-**************************************************************
-***** Multiplies the matrix times a vector x, and appends the
-***** negated result in vector b.
-*****
-***** Parameters
-***** -------------
-***** x : T*
-*****    Array containing vector data by which to multiply the matrix 
-***** b : U*
-*****    Array in which to place solution
-**************************************************************/
-void COOMatrix::mult_append_neg_T(Vector& x, Vector& b)
-{    
-    for (int i = 0; i < nnz; i++)
-    {
-        b[idx2[i]] -= vals[i] * x[idx1[i]];
-    }
-}
-
-void CSRMatrix::mult_append_neg_T(Vector& x, Vector& b)
-{
-    int start, end;
-    for (int i = 0; i < n_rows; i++)
-    {
-        start = idx1[i];
-        end = idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            b[idx2[j]] -= vals[j] * x[i];
-        }
-    }
-}
-
-void CSCMatrix::mult_append_neg_T(Vector& x, Vector& b)
-{
-    int start, end;
-    for (int i = 0; i < n_cols; i++)
-    {
-        start = idx1[i];
-        end = idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            b[i] -= vals[j] * x[idx2[j]];
-        }
-    }
-}
-
-/**************************************************************
-*****   Matrix-Vector Residual Calculation (r = b - Ax)
-**************************************************************
-***** Finds the residual (b - Ax) and places the result
-***** into r
-*****
-***** Parameters
-***** -------------
-***** x : T*
-*****    Array containing vector data by which to multiply the matrix 
-***** b : U*
-*****    Array containing vector data from which to subtract Ax
-***** r : V*
-*****    Array in which double solution values are to be placed 
-**************************************************************/
-void COOMatrix::residual(const Vector& x, const Vector& b, Vector& r)
-{   
-    for (int i = 0; i < n_rows; i++)
-        r[i] = b[i];
- 
-    for (int i = 0; i < nnz; i++)
-    {
-        r[idx1[i]] -= vals[i] * x[idx2[i]];
-    }
-}
-void CSRMatrix::residual(const Vector& x, const Vector& b, Vector& r)
-{   
-    for (int i = 0; i < n_rows; i++)
-        r[i] = b[i];
- 
-    int start, end;
-    for (int i = 0; i < n_rows; i++)
-    {
-        start = idx1[i];
-        end = idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            r[i] -= vals[j] * x[idx2[j]];
-        }
-    }
-}
-void CSCMatrix::residual(const Vector& x, const Vector& b, Vector& r)
+void COOMatrix::spmv_residual(const double* x, const double* b, double* r) const
 {
     for (int i = 0; i < n_rows; i++)
         r[i] = b[i];
-
-    int start, end;
-    for (int i = 0; i < n_cols; i++)
-    {
-        start = idx1[i];
-        end = idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            r[idx2[j]] -= vals[j] * x[i];
-        }
-    }
+    COO_append_neg(this, vals, x, r);
 }
+void BCOOMatrix::spmv(const double* x, double* b) const 
+{
+    for (int i = 0; i < n_rows * b_rows; i++)
+        b[i] = 0;
+    COO_append(this, block_vals, x, b);
+}
+void BCOOMatrix::spmv_append(const double* x,double* b) const
+{
+    COO_append(this, block_vals, x, b);
+}
+void BCOOMatrix::spmv_append_T(const double* x,double* b) const
+{
+    COO_append_T(this, block_vals, x, b);
+}
+void BCOOMatrix::spmv_append_neg(const double* x,double* b) const
+{
+    COO_append_neg(this, block_vals, x, b);
+}
+void BCOOMatrix::spmv_append_neg_T(const double* x,double* b) const
+{
+    COO_append_neg_T(this, block_vals, x, b);
+}
+void BCOOMatrix::spmv_residual(const double* x, const double* b, double* r) const
+{
+    for (int i = 0; i < n_rows * b_rows; i++)
+        r[i] = b[i];
+    COO_append_neg(this, block_vals, x, r);
+}
+
+
+
+void CSRMatrix::spmv(const double* x, double* b) const
+{
+    CSR_spmv(this, x, b);
+}
+void CSRMatrix::spmv_append(const double* x, double* b) const
+{
+    CSR_append(this, x, b);
+}
+void CSRMatrix::spmv_append_T(const double* x, double* b) const
+{
+    CSR_append_T(this, vals, x, b);
+}
+void CSRMatrix::spmv_append_neg(const double* x, double* b) const
+{
+    CSR_append_neg(this, vals, x, b);
+}
+void CSRMatrix::spmv_append_neg_T(const double* x, double* b) const
+{
+    CSR_append_neg_T(this, vals, x, b);
+}
+void CSRMatrix::spmv_residual(const double* x, const double* b, double* r) const
+{
+    CSR_residual(this, x, b, r);
+}
+void BSRMatrix::spmv(const double* x, double* b) const
+{
+    BSR_spmv(this, x, b);
+}
+void BSRMatrix::spmv_append(const double* x,double* b) const
+{
+    BSR_append(this, block_vals, x, b);
+}
+void BSRMatrix::spmv_append_T(const double* x,double* b) const
+{
+    CSR_append_T(this, block_vals, x, b);
+}
+void BSRMatrix::spmv_append_neg(const double* x,double* b) const
+{
+    CSR_append_neg(this, block_vals, x, b);
+}
+void BSRMatrix::spmv_append_neg_T(const double* x,double* b) const
+{
+    CSR_append_neg_T(this, block_vals, x, b);
+}
+void BSRMatrix::spmv_residual(const double* x, const double* b, double* r) const
+{
+    for (int i = 0; i < n_rows * b_rows; i++)
+        r[i] = b[i];
+    CSR_append_neg(this, block_vals, x, r);
+}
+
+
+
+void CSCMatrix::spmv(const double* x, double* b) const
+{
+    for (int i = 0; i < n_rows; i++)
+        b[i] = 0;
+    CSC_append(this, vals, x, b);
+}
+void CSCMatrix::spmv_append(const double* x, double* b) const
+{
+    CSC_append(this, vals, x, b);
+}
+void CSCMatrix::spmv_append_T(const double* x, double* b) const
+{
+    CSC_append_T(this, vals, x, b);
+}
+void CSCMatrix::spmv_append_neg(const double* x, double* b) const
+{
+    CSC_append_neg(this, vals, x, b);
+}
+void CSCMatrix::spmv_append_neg_T(const double* x, double* b) const
+{
+    CSC_append_neg_T(this, vals, x, b);
+}
+void CSCMatrix::spmv_residual(const double* x, const double* b, double* r) const
+{
+    for (int i = 0; i < n_rows; i++)
+        r[i] = b[i];
+    CSC_append_neg(this, vals, x, r);
+}
+void BSCMatrix::spmv(const double* x, double* b) const
+{ 
+    for (int i = 0; i < n_rows * b_rows; i++)
+        b[i] = 0;
+    CSC_append(this, block_vals, x, b);
+}
+void BSCMatrix::spmv_append(const double* x,double* b) const
+{
+    CSC_append(this, block_vals, x, b);
+}
+void BSCMatrix::spmv_append_T(const double* x,double* b) const
+{
+    CSC_append_T(this, block_vals, x, b);
+}
+void BSCMatrix::spmv_append_neg(const double* x,double* b) const
+{
+    CSC_append_neg(this, block_vals, x, b);
+}
+void BSCMatrix::spmv_append_neg_T(const double* x,double* b) const
+{
+    CSC_append_neg_T(this, block_vals, x, b);
+}
+void BSCMatrix::spmv_residual(const double* x, const double* b, double* r) const
+{
+    for (int i = 0; i < n_rows * b_rows; i++)
+        r[i] = b[i];
+    CSC_append_neg(this, block_vals, x, r);
+}
+
 
 

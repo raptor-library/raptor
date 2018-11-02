@@ -17,7 +17,6 @@
 #include "gallery/par_matrix_IO.hpp"
 #include "multilevel/par_multilevel.hpp"
 #include "ruge_stuben/par_ruge_stuben_solver.hpp"
-#include "tests/hypre_compare.hpp"
 #include "gallery/external/hypre_wrapper.hpp"
 
 #ifdef USING_MFEM
@@ -381,7 +380,7 @@ int main(int argc, char *argv[])
         if (rank == 0) printf("TAP A mult P Time: %e\n", t0);
 
         // TIME P^T*(AP) on Level i
-        ParCSCMatrix* Pcsc = new ParCSCMatrix(Pl);
+        ParCSCMatrix* Pcsc = Pl->to_ParCSC();
         ParCSRMatrix* Actmp;
         clear_cache(cache_array);
         MPI_Barrier(MPI_COMM_WORLD);

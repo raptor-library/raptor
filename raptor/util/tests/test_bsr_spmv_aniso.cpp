@@ -19,7 +19,7 @@ int main(int argc, char** argv)
 
 TEST(AnisoBSRSpMVTest, TestsInUtil)
 {
-    double b_val;
+/*    double b_val;
     int grid[2] = {25, 25};
     double eps = 0.001;
     double theta = M_PI/8.0;
@@ -82,6 +82,6 @@ TEST(AnisoBSRSpMVTest, TestsInUtil)
 
     delete[] stencil;
     delete A_sten;
-    delete B_sten;
+    delete B_sten;*/
 } // end of TEST(AnisoSpMVTest, TestsInUtil) //
 

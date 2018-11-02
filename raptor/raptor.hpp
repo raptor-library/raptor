@@ -38,8 +38,10 @@
 
 // Matrix IO
 #include "gallery/matrix_IO.hpp"
+#include "gallery/matrix_market.hpp"
 #ifndef NO_MPI
     #include "gallery/par_matrix_IO.hpp"
+    #include "gallery/par_matrix_market.hpp"
 #endif
 
 // Matrix external gallery

@@ -17,6 +17,8 @@ namespace raptor
         public:
             ParLevel()
             {
+                A = NULL;
+                P = NULL;
                 AP = NULL;
                 I = NULL;
             }

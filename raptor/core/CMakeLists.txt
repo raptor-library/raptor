@@ -15,6 +15,7 @@ if (WITH_MPI)
         core/comm_data.cpp
         core/tap_comm.cpp
         core/comm_pkg.cpp
+        core/comm_mat.cpp
         core/par_vector.cpp
         core/par_matrix.cpp
         )
@@ -38,6 +39,7 @@ set(core_HEADERS
     core/types.hpp
     core/vector.hpp
     core/matrix.hpp
+    core/utilities.hpp
     ${par_core_HEADERS}
     PARENT_SCOPE
     )

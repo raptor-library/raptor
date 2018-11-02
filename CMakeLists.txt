@@ -7,6 +7,9 @@ enable_language(CXX)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_BUILD_TYPE Release)
 
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto -funroll-loops")
+
 include(FeatureSummary)
 
 option(CRAYXE "Running on Cray XE" OFF)
@@ -28,16 +31,13 @@ add_feature_info(ptscotch WITH_PTSCOTCH "Enable PTScotch Partitioning")
 include(options)
 include(testing)
 include(source)
-
-#add_feature_info(mpi WITH_MPI "Compile with MPI")
-#include(cxx11)
-#include(cxx_config)
+SET(MPIRUN "")
 
 if (WITH_MPI)
-#    include(mpi_config)
-add_definitions ( -DUSING_MPI )
+    add_definitions ( -DUSING_MPI )
     find_package(MPI REQUIRED)
     include_directories(${MPI_INCLUDE_PATH})
+    SET(MPIRUN mpirun)
 endif (WITH_MPI)
 
 include_directories("external")
@@ -51,6 +51,11 @@ SET(PTSCOTCH_DIR "" CACHE STRING "Directory of mfem")
 
 if (CRAYXE)
     set(EXTERNAL_LIBS "")
+    set(MPIRUN aprun)
+    set(CMAKE_AR  "gcc-ar-4.7")
+    set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
+    set(CMAKE_CXX_ARCHIVE_FINISH   true)
+
 elseif (BGQ)
     find_library(LAPACK_LIB NAMES liblapack lapack HINTS
         "/soft/libraries/alcf/current/xl/LAPACK/lib")
@@ -69,7 +74,7 @@ elseif (BGQ)
     find_library(XLSMP_LIB NAMES libxlomp_ser.a xlomp_ser HINTS
         "/soft/compilers/ibmcmp-may2016/xlsmp/bg/3.1/bglib64")
 
-    set(EXTERNAL_LIBS ${LAPACK_LIB} ${BLAS_LIB} ${ESSL_LIB} ${XLF_LIB} 
+    set(EXTERNAL_LIBS ${LAPACK_LIB} ${BLAS_LIB} ${ESSL_LIB} ${XLF_LIB}
         ${XLOPT_LIB} ${XLFMATH_LIB} ${XL_LIB} ${XLSMP_LIB})
 else()
 	find_library(LAPACK_LIB NAMES liblapack.so.3 lapack HINTS "/usr/lib/x86_64-linux-gnu/")
@@ -113,6 +118,7 @@ if(WITH_MFEM)
 		endif(HYPRE_FOUND)
 	endif(NOT HYPRE_FOUND)
 
+    add_definitions ( -DUSING_METIS )
 	find_package(Metis)
 	if(METIS_FOUND)
 		include_directories(${METIS_INCLUDE_DIRS})
@@ -124,7 +130,7 @@ if(WITH_MFEM)
 	if (MFEM_FOUND)
 		include_directories(${MFEM_INCLUDE_DIRS})
 	else()
-		message(FATAL_ERROR "Cannot find mfem. Try setting MFEM_DIR.")	
+		message(FATAL_ERROR "Cannot find mfem. Try setting MFEM_DIR.")
 	endif(MFEM_FOUND)
 endif(WITH_MFEM)
 

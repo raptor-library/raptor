@@ -74,7 +74,7 @@ TEST(TestCandidates, TestsInAggregation)
     // Test strength of connection
     S = A->strength(Symmetric, 0.25);
     S_py = readMatrix(S0_fn);
-    compare(S, S_py);
+    compare_pattern(S, S_py);
     delete S_py;
 
     // Test MIS2
@@ -140,7 +140,7 @@ TEST(TestCandidates, TestsInAggregation)
     // Test strength of connection
     S = A->strength(Symmetric, 0.25);
     S_py = readMatrix(S1_fn);
-    compare(S, S_py);
+    compare_pattern(S, S_py);
     delete S_py;
 
     // Test MIS2
@@ -179,12 +179,13 @@ TEST(TestCandidates, TestsInAggregation)
     // Test jacobi prolongation smoothing
     P_py = readMatrix(P1_fn);
     P = jacobi_prolongation(A, T);
+    P->sort();
+    P->move_diag();
     P_py->sort();
     P_py->move_diag();
     compare(P, P_py);
     delete P_py;
 
-    
 
 } // end of TEST(TestSplitting, TestsInRuge_Stuben) //
 

@@ -69,13 +69,13 @@ CSRMatrix* readMatrix(const char* filename)
         {
             ifs.read(reinterpret_cast<char *>(&idx), sizeof_int32);
             endian_swap(&idx);
-            A->idx2.push_back(idx);
+            A->idx2.emplace_back(idx);
         }
         for (size_t i = 0; i < nnz; i++)
         {
             ifs.read(reinterpret_cast<char *>(&val), sizeof_dbl);
             endian_swap(&val);
-            A->vals.push_back(val);
+            A->vals.emplace_back(val);
         }
     }
     else
@@ -89,13 +89,13 @@ CSRMatrix* readMatrix(const char* filename)
         for (size_t i = 0; i < nnz; i++)
         {
             ifs.read(reinterpret_cast<char *>(&idx), sizeof_int32);
-            A->idx2.push_back(idx);
+            A->idx2.emplace_back(idx);
         }
         for (size_t i = 0; i < nnz; i++)
         {
             ifs.read(reinterpret_cast<char *>(&val), sizeof_dbl);
             endian_swap(&val);
-            A->vals.push_back(val);
+            A->vals.emplace_back(val);
         }
     }
     A->nnz = A->idx2.size();

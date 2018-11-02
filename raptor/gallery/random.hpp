@@ -22,9 +22,9 @@ CSRMatrix* random(int rows, int cols, int nnz_per_row)
     int nnz = nnz_per_row * rows;
     for (int i = 0; i < nnz; i++)
     {
-        Atmp->idx1.push_back(rand() % rows);
-        Atmp->idx2.push_back(rand() % cols);
-        Atmp->vals.push_back(1.0);
+        Atmp->idx1.emplace_back(rand() % rows);
+        Atmp->idx2.emplace_back(rand() % cols);
+        Atmp->vals.emplace_back(1.0);
     }
     Atmp->nnz = nnz;
 

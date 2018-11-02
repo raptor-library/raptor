@@ -27,6 +27,16 @@ using namespace std;
 #define MPI_INDEX_T MPI_INT
 #define MPI_DATA_T MPI_DOUBLE
 
+// Defines for CF splitting and aggregation
+#define TmpSelection 4
+#define NewSelection 3
+#define NewUnselection 2
+#define Selected 1
+#define Unselected 0
+#define Unassigned -1
+#define NoNeighbors -2
+
+
 #ifdef WITH_MPI
 #include <mpi.h>
 #endif
@@ -81,7 +91,7 @@ public:
         {
                 void * const pv = static_cast<void *>(p);
 
-                new (pv) T(t);
+			new (pv) T(t);
         }
 
         void destroy(T * const p) const
@@ -149,7 +159,7 @@ namespace raptor
     template <typename T>
     using aligned_vector = std::vector<T, AlignAllocator<T, 16>>;
     enum strength_t {Classical, Symmetric};
-    enum format_t {BSR, CSR, CSC, COO};
+    enum format_t {COO, CSR, CSC, BCOO, BSR, BSC};
     enum coarsen_t {RS, CLJP, Falgout, PMIS, HMIS};
     enum interp_t {Direct, ModClassical, Extended};
     enum agg_t {MIS};

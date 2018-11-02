@@ -93,7 +93,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
             ASSERT_EQ(states_hypre[i], -1);
         }
     }
-    hypre_TFree(states_hypre);
+    hypre_TFree(states_hypre, HYPRE_MEMORY_HOST);
 
     // Falgout
     // TODO --Ruge stuben doesnt match hypre
@@ -111,7 +111,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
             ASSERT_EQ(states_hypre[i], -1);
         }
     }
-    hypre_TFree(states_hypre);
+    hypre_TFree(states_hypre, HYPRE_MEMORY_HOST);
     */
 
     // PMIS
@@ -129,7 +129,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
             ASSERT_EQ(states_hypre[i], -1);
         }
     }
-    hypre_TFree(states_hypre);
+    hypre_TFree(states_hypre, HYPRE_MEMORY_HOST);
 
     // HMIS -- TODO
     // TODO --Ruge stuben doesnt match hypre
@@ -147,7 +147,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
             ASSERT_EQ(states_hypre[i], -1);
         }
     }
-    hypre_TFree(states_hypre);
+    hypre_TFree(states_hypre, HYPRE_MEMORY_HOST);
 */
 
 
@@ -187,7 +187,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
             ASSERT_EQ(states_hypre[i], -1);
         }
     }
-    hypre_TFree(states_hypre);
+    hypre_TFree(states_hypre, HYPRE_MEMORY_HOST);
 
     // Falgout
     // TODO - RS implementation doesnt match hypre
@@ -208,7 +208,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
             ASSERT_EQ(states_hypre[i], -1);
         }
     }
-    hypre_TFree(states_hypre);
+    hypre_TFree(states_hypre, HYPRE_MEMORY_HOST);
 
     // HMIS
     // TODO - RS implementation doesnt match hypre

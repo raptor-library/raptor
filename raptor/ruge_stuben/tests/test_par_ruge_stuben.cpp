@@ -133,4 +133,5 @@ TEST(TestParRugeStuben, TestsInRuge_Stuben)
     delete P;
     delete S;
     delete A;
+
 } // end of TEST(TestParRugeStuben, TestsInRuge_Stuben) //

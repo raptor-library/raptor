@@ -7,14 +7,13 @@
 using namespace raptor;
 
 // TODO -- if in S, col is positive, otherwise col is -(col+1)
-void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<int>& states,
-        const aligned_vector<int>& off_proc_states, CommPkg* comm,
-        CSRMatrix** recv_on_ptr, CSRMatrix** recv_off_ptr)
+CSRMatrix* communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<int>& states,
+        const aligned_vector<int>& off_proc_states, CommPkg* comm)
 {
-    
     int start, end, col;
     int ctr_S, end_S, global_col;
-    int tmp_col;
+    int tmp_col, sign;
+    double diag, val;
 
     aligned_vector<int> rowptr(A->local_num_rows + 1);
     aligned_vector<int> col_indices;
@@ -27,26 +26,39 @@ void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<int>& st
     rowptr[0] = 0;
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        start = A->on_proc->idx1[i]+1;
+        start = A->on_proc->idx1[i];
         end = A->on_proc->idx1[i+1];
         ctr_S = S->on_proc->idx1[i]+1;
         end_S = S->on_proc->idx1[i+1];
+
+        diag = A->on_proc->vals[start++];
+        if (diag > 0) sign = 1;
+        else sign = -1;
+
         for (int j = start; j < end; j++)
         {
             col = A->on_proc->idx2[j];
-            if (states[col] == 1)
+            val = A->on_proc->vals[j];
+            if (states[col] == Selected)
             {
                 global_col = A->on_proc_column_map[col];
                 if (ctr_S < end_S && S->on_proc->idx2[ctr_S] == col)
                 {
-                    col_indices.push_back(global_col);
+                    if (val * sign < 0) // Only add needed cols
+                    {
+                        col_indices.emplace_back(-(global_col+1));
+                        values.emplace_back(val);
+                    }
                     ctr_S++;
                 }
                 else
                 {
-                    col_indices.push_back(-(global_col+1));
+                    if (val * sign < 0) // Only add needed cols
+                    {
+                        col_indices.emplace_back(global_col);
+                        values.emplace_back(val);
+                    }
                 }
-                values.push_back(A->on_proc->vals[j]);
             }
             else if (ctr_S < end_S && S->on_proc->idx2[ctr_S] == col)
             {
@@ -61,84 +73,58 @@ void communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<int>& st
         for (int j = start; j < end; j++)
         {
             col = A->off_proc->idx2[j];
-            if (off_proc_states[col] == -3) continue;
+            val = A->off_proc->vals[j];
+            if (off_proc_states[col] == NoNeighbors) continue;
+
             global_col = A->off_proc_column_map[col];
-            if (ctr_S < end_S && S->off_proc_column_map[S->off_proc->idx2[ctr_S]] == global_col)
+
+            if (off_proc_states[col] == Unselected) // Add for +i possibility
             {
-                if (off_proc_states[col] == 0)
+                if (val * sign < 0) // Only add needed cols
                 {
                     global_col += A->partition->global_num_cols;
+                    col_indices.emplace_back(global_col);
+                    values.emplace_back(val);
                 }
-                col_indices.push_back(global_col);
+                if (ctr_S < end_S && S->off_proc->idx2[ctr_S] == col)
+                {
+                    ctr_S++;
+                }
+            }
+            else if (ctr_S < end_S && S->off_proc->idx2[ctr_S] == col) 
+            {
+                // Selected and in S
+                if (val * sign < 0) //Only add needed cols 
+                {
+                    col_indices.emplace_back(-(global_col+1));
+                    values.emplace_back(val);
+                }
                 ctr_S++;
             }
             else
             {
-                if (off_proc_states[col] == 0)
+                // Selected weak connection
+                if (val * sign < 0)
                 {
-                    global_col += A->partition->global_num_cols;
+                    col_indices.emplace_back(global_col);
+                    values.emplace_back(val);
                 }
-                col_indices.push_back(-(global_col+1));
             }
-            values.push_back(A->off_proc->vals[j]);
         }
         rowptr[i+1] = col_indices.size();
     }
 
-    CSRMatrix* recv_mat = comm->communicate(rowptr, col_indices, values);
-    CSRMatrix* recv_on = new CSRMatrix(recv_mat->n_rows, -1, recv_mat->nnz);
-    CSRMatrix* recv_off = new CSRMatrix(recv_mat->n_rows, -1, recv_mat->nnz);
-    for (int i = 0; i < recv_mat->n_rows; i++)
-    {
-        start = recv_mat->idx1[i];
-        end = recv_mat->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col = recv_mat->idx2[j];
-            tmp_col = col;
-            if (tmp_col < 0) 
-            {
-                tmp_col = (-tmp_col) - 1;
-            }
-            if (tmp_col >= A->partition->global_num_cols)
-            {
-                tmp_col -= A->partition->global_num_cols;
-            }
-
-            if (tmp_col < A->partition->first_local_col || 
-                    tmp_col > A->partition->last_local_col)
-            {
-                if (col >= A->partition->global_num_cols || 
-                        col < -(A->partition->global_num_cols))
-                        continue; // Don't add fine points to off proc
-
-                recv_off->idx2.push_back(col);
-                recv_off->vals.push_back(recv_mat->vals[j]);
-            }
-            else
-            {
-                recv_on->idx2.push_back(col);
-                recv_on->vals.push_back(recv_mat->vals[j]);
-            }
-        }
-        recv_on->idx1[i+1] = recv_on->idx2.size();
-        recv_off->idx1[i+1] = recv_off->idx2.size();
-    }
-
-    recv_on->nnz = recv_on->idx2.size();
-    recv_off->nnz = recv_off->idx2.size();
-
-    delete recv_mat;
-    *recv_on_ptr = recv_on;
-    *recv_off_ptr = recv_off;    
+    return comm->communicate(rowptr, col_indices, values);
+   
 }
 
 
-void communicate(ParCSRMatrix* A, const aligned_vector<int>& states,
-        const aligned_vector<int>& off_proc_states, CommPkg* comm,
-        CSRMatrix** recv_on_ptr, CSRMatrix** recv_off_ptr)
+CSRMatrix*  communicate(ParCSRMatrix* A, const aligned_vector<int>& states,
+        const aligned_vector<int>& off_proc_states, CommPkg* comm)
 {
     int start, end, col;
+    int sign;
+    double val;
 
     aligned_vector<int> rowptr(A->local_num_rows + 1);
     aligned_vector<int> col_indices;
@@ -154,13 +140,18 @@ void communicate(ParCSRMatrix* A, const aligned_vector<int>& states,
     {
         start = A->on_proc->idx1[i];
         end = A->on_proc->idx1[i+1];
+        val = A->on_proc->vals[start++];
+        if (val > 0) sign = 1;
+        else sign = -1;
+
         for (int j = start; j < end; j++)
         {
             col = A->on_proc->idx2[j];
-            if (states[col] == 1)
+            val = A->on_proc->vals[j];
+            if (states[col] == 1 && val * sign < 0)
             {
-                col_indices.push_back(A->on_proc_column_map[col]);
-                values.push_back(A->on_proc->vals[j]);
+                col_indices.emplace_back(A->on_proc_column_map[col]);
+                values.emplace_back(A->on_proc->vals[j]);
             }
         }
         start = A->off_proc->idx1[i];
@@ -168,45 +159,17 @@ void communicate(ParCSRMatrix* A, const aligned_vector<int>& states,
         for (int j = start; j < end; j++)
         {
             col = A->off_proc->idx2[j];
-            if (off_proc_states[col] == 1)
+            val = A->off_proc->vals[j];
+            if (off_proc_states[col] == 1 && val * sign < 0)
             {
-                col_indices.push_back(A->off_proc_column_map[col]);
-                values.push_back(A->off_proc->vals[j]);
+                col_indices.emplace_back(A->off_proc_column_map[col]);
+                values.emplace_back(A->off_proc->vals[j]);
             }
         }
         rowptr[i+1] = col_indices.size();
     }
 
-    CSRMatrix* recv_mat = comm->communicate(rowptr, col_indices, values);
-    CSRMatrix* recv_on = new CSRMatrix(recv_mat->n_rows, -1, recv_mat->nnz);
-    CSRMatrix* recv_off = new CSRMatrix(recv_mat->n_rows, -1, recv_mat->nnz);
-    for (int i = 0; i < recv_mat->n_rows; i++)
-    {
-        start = recv_mat->idx1[i];
-        end = recv_mat->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col = recv_mat->idx2[j];
-            if (col < A->partition->first_local_col || col > A->partition->last_local_col)
-            {
-                recv_off->idx2.push_back(col);
-                recv_off->vals.push_back(recv_mat->vals[j]);
-            }
-            else
-            {
-                recv_on->idx2.push_back(col);
-                recv_on->vals.push_back(recv_mat->vals[j]);
-            }
-        }
-        recv_on->idx1[i+1] = recv_on->idx2.size();
-        recv_off->idx1[i+1] = recv_off->idx2.size();
-    }
-    recv_on->nnz = recv_on->idx2.size();
-    recv_off->nnz = recv_off->idx2.size();
-
-    delete recv_mat;
-    *recv_on_ptr = recv_on;
-    *recv_off_ptr = recv_off;
+    return comm->communicate(rowptr, col_indices, values);
 }
 
 ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
@@ -215,27 +178,25 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         bool tap_interp, int num_variables, int* variables, 
         data_t* comm_t, data_t* comm_mat_t)
 {
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    int start, end, idx;
-    int start_S, end_S;
+    int start, end, idx, idx_k;
+    int ctr, end_S;
     int start_k, end_k;
     int col, global_col;
-    int ctr, col_k, col_P;
-    int col_S, col_A;
+    int col_k, col_P;
     int global_num_cols;
     int on_proc_cols, off_proc_cols;
     int sign;
     int row_start_on, row_end_on;
     int row_start_off, row_end_off;
-    double coarse_sum;
-    double val, weak_sum;
+    double val, val_k, weak_sum;
+    double diag, col_sum;
 
     CommPkg* comm = A->comm;
+    CommPkg* mat_comm = A->comm;
     if (tap_interp)
     {
         comm = A->tap_comm;
+        mat_comm = A->tap_mat_comm;
     }
 
     std::set<int> global_set;
@@ -243,19 +204,15 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     aligned_vector<int> off_proc_column_map;
     aligned_vector<int> off_variables;
 
-    CSRMatrix* recv_on; // On Proc Block of Recvd A
-    CSRMatrix* recv_off; // Off Proc Block of Recvd A
-    CSRMatrix* A_recv_on;
-    CSRMatrix* S_recv_on;
-    CSRMatrix* D_recv_on;
-    CSRMatrix* A_recv_off;
-    CSRMatrix* S_recv_off;
+    CSRMatrix* recv_mat; // On Proc Block of Recvd A
 
+    // If not already sorted, sort A and S together (move diag first)
     A->sort();
     S->sort();
     A->on_proc->move_diag();
     S->on_proc->move_diag();
 
+    // Communicate off_variables if num_variables > 1
     if (A->off_proc_num_cols) off_variables.resize(A->off_proc_num_cols);
     if (num_variables > 1)
     {
@@ -265,174 +222,130 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         
         for (int i = 0; i < A->off_proc_num_cols; i++)
         {
-            off_variables[i] = comm->get_int_recv_buffer()[i];
+            off_variables[i] = comm->get_int_buffer()[i];
         }
     }
 
-    // Gather off_proc_states_A
-    aligned_vector<int> off_proc_states_A;
-    if (A->off_proc_num_cols) off_proc_states_A.resize(A->off_proc_num_cols);
-
-    if (comm_t) *comm_t -= MPI_Wtime();
-    aligned_vector<int>& recvbuf = comm->communicate(states);
-    if (comm_t) *comm_t += MPI_Wtime();
-    for (int i = 0; i < A->off_proc_num_cols; i++)
-    {
-        off_proc_states_A[i] = recvbuf[i];
-    } 
-
-    // Map off proc cols S to A
-    aligned_vector<int> off_proc_S_to_A;
-    if (S->off_proc_num_cols) off_proc_S_to_A.resize(S->off_proc_num_cols);
-    ctr = 0;
-    for (int i = 0; i < S->off_proc_num_cols; i++)
-    {
-        while (S->off_proc_column_map[i] != A->off_proc_column_map[ctr])
-        {
-            ctr++;
-        }
-        off_proc_S_to_A[i] = ctr;
-    }
-
-    // Communicate parallel matrix A (Costly!)
+    // Communicate parallel matrix A (portion needed)
     if (comm_mat_t) *comm_mat_t -= MPI_Wtime();
-    communicate(A, S, states, off_proc_states_A, comm, &recv_on, &recv_off);
+    recv_mat = communicate(A, S, states, off_proc_states, mat_comm);
     if (comm_mat_t) *comm_mat_t += MPI_Wtime();
 
-    // Change on_proc_cols to local
-    recv_on->n_cols = A->on_proc_num_cols;
+    int tmp_col = col;
     int* on_proc_partition_to_col = A->map_partition_to_local();
+    
+    aligned_vector<int> A_recv_on_ptr(recv_mat->n_rows + 1);
+    aligned_vector<int> S_recv_on_ptr(recv_mat->n_rows + 1);
+    aligned_vector<int> A_recv_off_ptr(recv_mat->n_rows + 1);
+    aligned_vector<int> S_recv_off_ptr(recv_mat->n_rows + 1);
+    aligned_vector<int> A_recv_on_idx(recv_mat->nnz);
+    aligned_vector<int> S_recv_on_idx(recv_mat->nnz);
+    aligned_vector<int> A_recv_off_idx(recv_mat->nnz);
+    aligned_vector<int> S_recv_off_idx(recv_mat->nnz);
 
-    A_recv_on = new CSRMatrix(recv_on->n_rows, recv_on->n_cols);
-    S_recv_on = new CSRMatrix(recv_on->n_rows, recv_on->n_cols);
-    D_recv_on = new CSRMatrix(recv_on->n_rows, recv_on->n_cols);
-    A_recv_on->idx1[0] = 0;
-    S_recv_on->idx1[0] = 0;
-    D_recv_on->idx1[0] = 0;
-    for (int i = 0; i < recv_on->n_rows; i++)
+    A_recv_on_ptr[0] = 0;
+    S_recv_on_ptr[0] = 0;
+    A_recv_off_ptr[0] = 0;
+    S_recv_off_ptr[0] = 0;
+
+    int A_recv_on_ctr = 0;
+    int S_recv_on_ctr = 0;
+    int A_recv_off_ctr = 0;
+    int S_recv_off_ctr = 0;
+    for (int i = 0; i < recv_mat->n_rows; i++)
     {
-        start = recv_on->idx1[i];
-        end = recv_on->idx1[i+1];
+        start = recv_mat->idx1[i];
+        end = recv_mat->idx1[i+1];
         for (int j = start; j < end; j++)
         {
-            col = recv_on->idx2[j];
-            val = recv_on->vals[j];
-            if (col >= 0)
+            col = recv_mat->idx2[j];
+            val = recv_mat->vals[j];
+
+            tmp_col = col;
+            if (col < 0) 
             {
-                if (col >= A->partition->global_num_cols)
+                col = (-col) - 1;
+            }
+            if (col >= A->partition->global_num_cols)
+            {
+                col -= A->partition->global_num_cols;
+                if (col >= A->partition->first_local_col &&
+                        col <= A->partition->last_local_col)
                 {
-                    col -= A->partition->global_num_cols;
+                    // Only add to A (for +i)
                     col = on_proc_partition_to_col[col - A->partition->first_local_row];
-                    D_recv_on->idx2.push_back(col);
-                    D_recv_on->vals.push_back(val);
+                    A_recv_on_idx[A_recv_on_ctr++] = j;
                 }
-                else
+            }
+            // Otherwise, add every value to A (and neg values also to S)
+            else if (col < A->partition->first_local_col || 
+                    col > A->partition->last_local_col)
+            {
+                if (tmp_col < 0) // Only add to S if neg
                 {
-                    col = on_proc_partition_to_col[col - A->partition->first_local_row];
-                    S_recv_on->idx2.push_back(col);
-                    S_recv_on->vals.push_back(val);
+                    S_recv_off_idx[S_recv_off_ctr++] = j;
                 }
+                A_recv_off_idx[A_recv_off_ctr++] = j;
             }
             else
             {
-                col = (-col)-1;
-                if (col >= A->partition->global_num_cols)
+                col = on_proc_partition_to_col[col - A->partition->first_local_row];
+                if (tmp_col < 0) // Only add to S if neg
                 {
-                    col -= A->partition->global_num_cols;
-                    col = on_proc_partition_to_col[col - A->partition->first_local_row];
-                    D_recv_on->idx2.push_back(col);
-                    D_recv_on->vals.push_back(val);
+                    S_recv_on_idx[S_recv_on_ctr++] = j;
                 }
-                else
-                {
-                    col = on_proc_partition_to_col[col - A->partition->first_local_row];
-                    A_recv_on->idx2.push_back(col);
-                    A_recv_on->vals.push_back(val);
-                }
+                A_recv_on_idx[A_recv_on_ctr++] = j;
             }
+            recv_mat->idx2[j] = col;
         }
-        A_recv_on->idx1[i+1] = A_recv_on->idx2.size();
-        S_recv_on->idx1[i+1] = S_recv_on->idx2.size();
-        D_recv_on->idx1[i+1] = D_recv_on->idx2.size();
+        A_recv_on_ptr[i+1] = A_recv_on_ctr;
+        S_recv_on_ptr[i+1] = S_recv_on_ctr;
+        A_recv_off_ptr[i+1] = A_recv_off_ctr;
+        S_recv_off_ptr[i+1] = S_recv_off_ctr;
     }
-    delete recv_on;
+    A_recv_on_idx.resize(A_recv_on_ctr);
+    A_recv_on_idx.shrink_to_fit();
+    S_recv_on_idx.resize(S_recv_on_ctr);
+    S_recv_on_idx.shrink_to_fit();
+    A_recv_off_idx.resize(A_recv_off_ctr);
+    A_recv_off_idx.shrink_to_fit();
+    S_recv_off_idx.resize(S_recv_off_ctr);
+    S_recv_off_idx.shrink_to_fit();
+
     delete[] on_proc_partition_to_col;
 
     // Change off_proc_cols to local (remove cols not on rank)
-    off_proc_cols = 0;
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
-        if (off_proc_states[i] == 1)
+        if (off_proc_states[i] == Selected)
         {
-            off_proc_cols++;
             global_set.insert(S->off_proc_column_map[i]);
         }
     }
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
-        if (off_proc_states[i] == 0)
+        if (off_proc_states[i] == Unselected)
         {
-            col_A = off_proc_S_to_A[i];
-            start = recv_off->idx1[col_A];
-            end = recv_off->idx1[col_A+1];
+            start = A_recv_off_ptr[i];
+            end = A_recv_off_ptr[i+1];
             for (int j = start; j < end; j++)
             {
-                global_col = recv_off->idx2[j];
-                if (global_col < 0)
-                    global_col = - (global_col - 1);
-                std::set<int>::iterator it = global_set.find(global_col);
-                if (it == global_set.end())
-                {
-                    global_set.insert(global_col);
-                    off_proc_cols++; // Recv off has only coarse points
-                }
+                global_set.insert(recv_mat->idx2[A_recv_off_idx[j]]);
             }
         }
     }
     for (std::set<int>::iterator it = global_set.begin(); it != global_set.end(); ++it)
     {
         global_to_local[*it] = off_proc_column_map.size();
-        off_proc_column_map.push_back(*it);
+        off_proc_column_map.emplace_back(*it);
     }
+    off_proc_cols = off_proc_column_map.size();
 
-    A_recv_off = new CSRMatrix(recv_off->n_rows, recv_off->n_cols);
-    S_recv_off = new CSRMatrix(recv_off->n_rows, recv_off->n_cols);
-    recv_off->n_cols = A->off_proc_num_cols;
-    A_recv_off->idx1[0] = 0;
-    S_recv_off->idx1[0] = 0;
-    for (int i = 0; i < recv_off->n_rows; i++)
+    for (aligned_vector<int>::iterator it = A_recv_off_idx.begin(); 
+            it != A_recv_off_idx.end(); ++it)
     {
-        start = recv_off->idx1[i];
-        end = recv_off->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            global_col = recv_off->idx2[j];
-            sign = 1.0;
-            if (global_col < 0)
-            {
-                sign = -1.0;
-                global_col = (-global_col) - 1;
-            }
-            std::map<int, int>::iterator it = global_to_local.find(global_col);
-            if (it != global_to_local.end())
-            {
-                if (sign > 0)
-                {
-                    // In S, add positive column
-                    S_recv_off->idx2.push_back(it->second);
-                    S_recv_off->vals.push_back(recv_off->vals[j]);
-                }
-                else
-                {
-                    A_recv_off->idx2.push_back(it->second);
-                    A_recv_off->vals.push_back(recv_off->vals[j]);
-                }
-            }
-        }
-        A_recv_off->idx1[i+1] = A_recv_off->idx2.size();
-        S_recv_off->idx1[i+1] = S_recv_off->idx2.size();
+        recv_mat->idx2[*it] = global_to_local[recv_mat->idx2[*it]];
     }
-    delete recv_off;
 
     // Initialize P
     aligned_vector<int> on_proc_col_to_new;
@@ -448,22 +361,26 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     on_proc_cols = 0;
     for (int i = 0; i < S->on_proc_num_cols; i++)
     {
-        if (states[i] == 1)
+        if (states[i] == Selected)
         {
             on_proc_cols++;
         }
     }
-    MPI_Allreduce(&(on_proc_cols), &global_num_cols, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    // Initialize AllReduce to determine global num cols
+    MPI_Request reduce_request;
+    int reduce_buf = on_proc_cols;
+    MPI_Iallreduce(&(reduce_buf), &global_num_cols, 1, MPI_INT, MPI_SUM, 
+            MPI_COMM_WORLD, &reduce_request);
    
-    ParCSRMatrix* P = new ParCSRMatrix(A->partition, A->global_num_rows, global_num_cols, 
+    ParCSRMatrix* P = new ParCSRMatrix(A->partition, A->global_num_rows, -1, 
             A->local_num_rows, on_proc_cols, off_proc_cols);
 
     for (int i = 0; i < S->on_proc_num_cols; i++)
     {
-        if (states[i] == 1)
+        if (states[i] == Selected)
         {
             on_proc_col_to_new[i] = P->on_proc_column_map.size();
-            P->on_proc_column_map.push_back(S->on_proc_column_map[i]);
+            P->on_proc_column_map.emplace_back(S->on_proc_column_map[i]);
         }
     }
     P->local_row_map = S->get_local_row_map();
@@ -476,102 +393,325 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     ctr = 0;
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
-        if (off_proc_states[i] != 1)
+        if (off_proc_states[i] != Selected)
         {
             continue; // Only for coarse points
         }
 
-        col_A = off_proc_S_to_A[i];
-        while (off_proc_column_map[ctr] < A->off_proc_column_map[col_A])
+        while (off_proc_column_map[ctr] < A->off_proc_column_map[i])
         {
             ctr++;
         }
-        off_proc_A_to_P[col_A] = ctr;
+        off_proc_A_to_P[i] = ctr;
     }
 
     // For each row, will calculate coarse sums and store 
     // strong connections in vector
     aligned_vector<int> pos;
     aligned_vector<int> off_proc_pos;
-    aligned_vector<int> recv_off_pos;
-    aligned_vector<int> row_coarse;
-    aligned_vector<int> off_proc_row_coarse;
-    aligned_vector<double> row_strong;
-    aligned_vector<double> off_proc_row_strong;
+    aligned_vector<double> coarse_sum;
+    aligned_vector<double> off_proc_coarse_sum;
     if (A->on_proc_num_cols)
     {
         pos.resize(A->on_proc_num_cols, -1);
-        row_coarse.resize(A->on_proc_num_cols, 0);
-        row_strong.resize(A->on_proc_num_cols, 0);
+        coarse_sum.resize(A->on_proc_num_cols);
     }
     if (A->off_proc_num_cols)
     {
-        off_proc_row_strong.resize(A->off_proc_num_cols, 0);
+        off_proc_coarse_sum.resize(A->off_proc_num_cols);
     }
     if (P->off_proc_num_cols)
     {
         off_proc_pos.resize(P->off_proc_num_cols, -1);
-        off_proc_row_coarse.resize(P->off_proc_num_cols, 0);
     }
+
+
+    // Find upperbound size of P->on_proc and P->off_proc
+    int nnz_on = 0;
+    int nnz_off = 0;
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        // If coarse row, add to P
-        if (states[i] != 0)
+        if (states[i] == Unselected)
         {
-            if (states[i] == 1)
+            nnz_on += (S->on_proc->idx1[i+1] - S->on_proc->idx1[i]);
+            nnz_off += (S->off_proc->idx1[i+1] - S->off_proc->idx1[i]);
+
+            start = S->on_proc->idx1[i]+1;
+            end = S->on_proc->idx1[i+1];
+            for (int j = start; j < end; j++)
             {
-                P->on_proc->idx2.push_back(on_proc_col_to_new[i]);
-                P->on_proc->vals.push_back(1);
+                col = S->on_proc->idx2[j];
+                if (states[col] == Unselected)
+                {
+                    nnz_on += (S->on_proc->idx1[col+1] - S->on_proc->idx1[col]);
+                    nnz_off += (S->off_proc->idx1[col+1] - S->off_proc->idx1[col]);
+                }
             }
-            P->on_proc->idx1[i+1] = P->on_proc->idx2.size();
-            P->off_proc->idx1[i+1] = P->off_proc->idx2.size();
-            continue;
-        }
-
-        // Store diagonal value
-        start = A->on_proc->idx1[i] + 1;
-        end = A->on_proc->idx1[i+1];
-        weak_sum = A->on_proc->vals[start-1];
-        row_start_on = P->on_proc->idx2.size();
-        row_start_off = P->off_proc->idx2.size();
-        row_coarse[i] = 1;
-
-        if (weak_sum < 0)
-        {
-            sign = -1.0;
+            start = S->off_proc->idx1[i];
+            end = S->off_proc->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                col = S->off_proc->idx2[j];
+                if (off_proc_states[col] == Unselected)
+                {
+                    nnz_on += (S_recv_on_ptr[col+1] - S_recv_on_ptr[col]);
+                    nnz_off += (S_recv_off_ptr[col+1] - S_recv_off_ptr[col]);
+                }
+            }
         }
         else
         {
-            sign = 1.0;
+            nnz_on++;
+        }
+    }
+    P->on_proc->idx2.resize(nnz_on);
+    P->on_proc->vals.resize(nnz_on);
+    P->off_proc->idx2.resize(nnz_off);
+    P->off_proc->vals.resize(nnz_off);
+
+    nnz_on = 0;
+    nnz_off = 0;
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        // If coarse row, add to P
+        if (states[i] != Unselected)
+        {
+            if (states[i] == Selected)
+            {
+                P->on_proc->idx2[nnz_on] = on_proc_col_to_new[i];
+                P->on_proc->vals[nnz_on++] = 1;
+            }
+            P->on_proc->idx1[i+1] = nnz_on;
+            P->off_proc->idx1[i+1] = nnz_off;
+            continue;
         }
 
-        // Determine weak sum for row and store coarse / strong columns
-        ctr = S->on_proc->idx1[i] + 1;
+        // Go through strong coarse points, 
+        // add to row coarse and create sparsity of P (dist1)
+        row_start_on = nnz_on;
+        row_start_off = nnz_off;
+
+        start = S->on_proc->idx1[i]+1;
+        end = S->on_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = S->on_proc->idx2[j];
+            val = S->on_proc->vals[j];
+            if (states[col] == Selected)
+            {
+                if (pos[col] < row_start_on)
+                {
+                    pos[col] = nnz_on;
+                    P->on_proc->idx2[nnz_on] = on_proc_col_to_new[col];
+                    P->on_proc->vals[nnz_on++] = 0.0;
+                }
+            }
+            else if (states[col] == Unselected)
+            {
+                start_k = S->on_proc->idx1[col]+1;
+                end_k = S->on_proc->idx1[col+1];
+                for (int k = start_k; k < end_k; k++)
+                {
+                    col_k = S->on_proc->idx2[k];
+                    if (states[col_k] == Selected && pos[col_k] < row_start_on)
+                    {
+                        pos[col_k] = nnz_on;
+                        P->on_proc->idx2[nnz_on] = on_proc_col_to_new[col_k];
+                        P->on_proc->vals[nnz_on++] = 0.0;
+                    }
+                }
+
+                start_k = S->off_proc->idx1[col];
+                end_k = S->off_proc->idx1[col+1];
+                for (int k = start_k; k < end_k; k++)
+                {
+                    col_k = S->off_proc->idx2[k];
+                    col_P = off_proc_A_to_P[col_k];
+                    if (off_proc_states[col_k] == Selected && off_proc_pos[col_P] < row_start_off)
+                    {
+                        col_exists[col_P] = true;
+                        off_proc_pos[col_P] = nnz_off;
+                        P->off_proc->idx2[nnz_off] = col_P;
+                        P->off_proc->vals[nnz_off++] = 0.0;
+                    }
+                }
+            }
+        }
+
+        start = S->off_proc->idx1[i];
+        end = S->off_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = S->off_proc->idx2[j];
+            val = S->off_proc->vals[j];
+            if (off_proc_states[col] == Selected)
+            {
+                col_P = off_proc_A_to_P[col];
+                if (off_proc_pos[col_P] < row_start_off)
+                {
+                    off_proc_pos[col_P] = nnz_off;
+                    col_exists[col_P] = true;
+                    P->off_proc->idx2[nnz_off] = col_P;
+                    P->off_proc->vals[nnz_off++] = 0.0;
+                }
+            }
+            else if (off_proc_states[col] == Unselected)
+            {
+                start_k = S_recv_on_ptr[col];
+                end_k = S_recv_on_ptr[col+1];
+                for (int k = start_k; k < end_k; k++)
+                {
+                    idx = S_recv_on_idx[k];
+                    col_k = recv_mat->idx2[idx];
+                    if (pos[col_k] < row_start_on)
+                    {
+                        pos[col_k] = nnz_on;
+                        P->on_proc->idx2[nnz_on] = on_proc_col_to_new[col_k];
+                        P->on_proc->vals[nnz_on++] = 0.0;
+                    }
+                }
+
+                start_k = S_recv_off_ptr[col];
+                end_k = S_recv_off_ptr[col+1];
+                for (int k = start_k; k < end_k; k++)
+                {
+                    idx = S_recv_off_idx[k];
+                    col_k = recv_mat->idx2[idx];
+                    if (off_proc_pos[col_k] < row_start_off)
+                    {
+                        off_proc_pos[col_k] = nnz_off;
+                        P->off_proc->idx2[nnz_off] = col_k;
+                        P->off_proc->vals[nnz_off++] = 0.0;
+                        col_exists[col_k] = true;
+                    }
+                }
+            }
+        }
+        pos[i] = nnz_on;
+        row_end_on = nnz_on;
+        row_end_off = nnz_off;
+
+
+        start = A->on_proc->idx1[i];
+        end = A->on_proc->idx1[i+1];
+        weak_sum = A->on_proc->vals[start++]; // Add a_ii to weak sum
+        ctr = S->on_proc->idx1[i]+1;
         end_S = S->on_proc->idx1[i+1];
+
         for (int j = start; j < end; j++)
         {
             col = A->on_proc->idx2[j];
             val = A->on_proc->vals[j];
-            if (ctr < end_S && S->on_proc->idx2[ctr] == col)
+            idx = pos[col];
+            if (idx >= row_start_on)
             {
-                if (states[col] == 1)
-                {
-                    pos[col] = P->on_proc->idx2.size();
-                    P->on_proc->idx2.push_back(on_proc_col_to_new[col]);
-                    P->on_proc->vals.push_back(val);
-                    row_coarse[col] = 1;               
-                }
-                else if (states[col] == 0)
-                {
-                    row_strong[col] = val;
-                }
-                ctr++;
+                P->on_proc->vals[idx] += val;
+                if (ctr < end_S && S->on_proc->idx2[ctr] == col)
+                    ctr++;
             }
-            else if (num_variables == 1 || variables[i] == variables[col])// weak connection
+            else if (ctr < end_S && S->on_proc->idx2[ctr] == col)
             {
-                if (states[col] != -3)
+                ctr++;
+
+                if (states[col] != Unselected) continue;
+                
+                // sum a_kl for k in F-points of S and l in C^_i U {i}
+                // k = col (unselected, in S)
+                col_sum = 0;
+
+                // Find sum of all coarse points in row k (with sign NOT equal to diag)
+                start_k = A->on_proc->idx1[col];
+                end_k = A->on_proc->idx1[col+1];
+
+                // Only add a_kl if sign(a_kl) != sign (a_kk)
+                diag = A->on_proc->vals[start_k++];
+                if (diag > 0) sign = 1;
+                else sign = -1;
+
+                for (int k = start_k; k < end_k; k++)
+                {
+                    col_k = A->on_proc->idx2[k]; // a_kl
+                    val_k = A->on_proc->vals[k];
+
+                    // sign(a_kl) != sign(a_kk) and a_kl in row of P (or == i)
+                    if (val_k * sign < 0 && pos[col_k] >= row_start_on)
+                    {
+                        col_sum += val_k;
+                    }
+                }
+
+                start_k = A->off_proc->idx1[col];
+                end_k = A->off_proc->idx1[col+1];
+                for (int k = start_k; k < end_k; k++)
+                {
+                    col_k = A->off_proc->idx2[k]; // a_kl
+                    val_k = A->off_proc->vals[k];
+                    col_P = off_proc_A_to_P[col_k];
+                    // sign(a_kl) != sign(a_kk) and a_kl in row of P
+                    if (col_P >= 0 && val_k * sign < 0 && off_proc_pos[col_P] >= row_start_off)
+                    {
+                        col_sum += val_k;
+                    }
+                }
+
+                // If no strong connections (col_sum == 0), add to weak_sum
+                if (fabs(col_sum) < zero_tol)
                 {
                     weak_sum += val;
+                }
+                else // Otherwise, add products to P
+                {
+                    col_sum = val / col_sum;  // product = a_ik / col_sum
+
+                    start_k = A->on_proc->idx1[col]+1; 
+                    end_k = A->on_proc->idx1[col+1];
+                    for (int k = start_k; k < end_k; k++)
+                    {
+                        col_k = A->on_proc->idx2[k]; // a_kj for some j
+                        val_k = A->on_proc->vals[k];
+                        idx = pos[col_k]; // Find idx of w_ij for j^^
+                        // if sign(a_kj) != sign(a_kk) and j in C^_{i} U {i}
+                        if (val_k * sign < 0 && idx >= row_start_on)
+                        {
+                            if (col_k == i) // if j == i, add to weak sum
+                            {
+                                weak_sum += (col_sum * val_k);
+                            }
+                            else // Otherwise, add to w_ij
+                            {
+                                P->on_proc->vals[idx] += (col_sum * val_k);
+                            }
+                        }
+                    }
+                
+                    start_k = A->off_proc->idx1[col];
+                    end_k = A->off_proc->idx1[col+1];
+                    for (int k = start_k; k < end_k; k++)
+                    {
+                        col_k = A->off_proc->idx2[k]; // a_kj for some j
+                        col_P = off_proc_A_to_P[col_k];
+                        if (col_P >= 0) // If column not in P, col not in C^_{i}
+                        {
+                            val_k = A->off_proc->vals[k];
+                            idx = off_proc_pos[col_P]; // Find idx of w_ij 
+                            // If sign(a_kj) != sign(a_kk) and j in C^_{i}
+                            if (val_k * sign < 0 && idx >= row_start_off)
+                            {
+                                // Add to w_ij
+                                P->off_proc->vals[idx] += (col_sum * val_k);
+                            }
+                        }
+                    } 
+                }
+            }
+            else // Weak connection, add to weak_sum if not in C^_{i}
+            {
+                if (num_variables == 1 || variables[i] == variables[col])// weak connection
+                {
+                    if (states[col] != NoNeighbors)
+                    {
+                        weak_sum += val;
+                    }
                 }
             }
         }
@@ -583,406 +723,136 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         {
             col = A->off_proc->idx2[j];
             val = A->off_proc->vals[j];
-            global_col = A->off_proc_column_map[col];
-            
-            // If strong connection
-            if (ctr < end_S && S->off_proc_column_map[S->off_proc->idx2[ctr]] == global_col)
+            col_P = off_proc_A_to_P[col];
+            idx = -1;
+            if (col_P > -1) idx = off_proc_pos[col_P];
+            if (idx >= row_start_off)
             {
-                if (off_proc_states_A[col] == 1)
-                {
-                    col_P = off_proc_A_to_P[col];
-                    off_proc_pos[col_P] = P->off_proc->idx2.size();
-                    col_exists[col_P] = true;
-                    P->off_proc->idx2.push_back(col_P);
-                    P->off_proc->vals.push_back(val);
-                    off_proc_row_coarse[col_P] = 1;
-                }
-                else if (off_proc_states_A[col] == 0)
-                {
-                    off_proc_row_strong[col] = val;
-                }
-                ctr++;
+                P->off_proc->vals[idx] += val;
+                if (ctr < end_S && S->off_proc->idx2[ctr] == col)
+                    ctr++;
             }
-            else if (num_variables == 1 || variables[i] == off_variables[col])
+            else if (ctr < end_S && S->off_proc->idx2[ctr] == col)
             {
-                if (off_proc_states_A[col] != -3)
+                ctr++;
+
+                if (off_proc_states[col] != Unselected) continue;
+
+                col_sum = 0;
+
+                // Add recvd values not in S
+                start_k = A_recv_on_ptr[col];
+                end_k = A_recv_on_ptr[col+1];
+                for (int k = start_k; k < end_k; k++)
+                {
+                    idx = A_recv_on_idx[k];
+                    col_k = recv_mat->idx2[idx];
+                    val_k = recv_mat->vals[idx];
+                    if (pos[col_k] >= row_start_on) // Checked val * sign before communication
+                    {
+                        col_sum += val_k;
+                    }
+                }
+
+                start_k = A_recv_off_ptr[col];
+                end_k = A_recv_off_ptr[col+1];
+                for (int k = start_k; k < end_k; k++)
+                {
+                    idx = A_recv_off_idx[k];
+                    col_k = recv_mat->idx2[idx];
+                    val_k = recv_mat->vals[idx];
+                    if (off_proc_pos[col_k] >= row_start_off) // Checked val * sign before communication
+                    {
+                        col_sum += val_k;
+                    }
+                }
+
+                if (fabs(col_sum) < zero_tol)
                 {
                     weak_sum += val;
                 }
-            }
-        }
-
-        // Add distance-2 processes to row_coarse
-        start = S->on_proc->idx1[i]+1;
-        end = S->on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col = S->on_proc->idx2[j];
-            if (states[col] == 0)
-            {
-                start_k = S->on_proc->idx1[col]+1;
-                end_k = S->on_proc->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    col_k = S->on_proc->idx2[k];
-                    if (states[col_k] == -3)
-                        continue;
-                    row_coarse[col_k] += states[col_k];
-                }
-                start_k = S->off_proc->idx1[col];
-                end_k = S->off_proc->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    col_k = S->off_proc->idx2[k];
-                    if (off_proc_states[col_k] == 1)
-                    {
-                        col_A = off_proc_S_to_A[col_k];
-                        col_P = off_proc_A_to_P[col_A];
-                        off_proc_row_coarse[col_P] = 1;
-                    }
-                }
-            }
-        }
-        start = S->off_proc->idx1[i];
-        end = S->off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col = S->off_proc->idx2[j];
-            if (off_proc_states[col] == 0)
-            {
-                col_A = off_proc_S_to_A[col];
-                start_k = S_recv_on->idx1[col_A];
-                end_k = S_recv_on->idx1[col_A+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    col_k = S_recv_on->idx2[k];
-                    row_coarse[col_k] = 1;
-                }
-                start_k = S_recv_off->idx1[col_A];
-                end_k = S_recv_off->idx1[col_A+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    col_k = S_recv_off->idx2[k];
-                    off_proc_row_coarse[col_k] = 1;
-                }
-            }
-        }
-
-        for (int j = 0; j < A->on_proc_num_cols; j++)
-        {
-            if (j == i) continue;
-            if (row_coarse[j] > 0)
-            {
-                row_coarse[j] = 1;
-                if (pos[j] == -1)
-                {
-                    pos[j] = P->on_proc->idx2.size();
-                    P->on_proc->idx2.push_back(on_proc_col_to_new[j]);
-                    P->on_proc->vals.push_back(0.0);
-                }
-            }
-        }
-        for (int j = 0; j < P->off_proc_num_cols; j++)
-        {
-            if (off_proc_row_coarse[j] && off_proc_pos[j] == -1)
-            {
-                off_proc_pos[j] = P->off_proc->idx2.size();
-                col_exists[j] = true;
-                P->off_proc->idx2.push_back(j);
-                P->off_proc->vals.push_back(0.0);
-            }
-        }
-
-        row_end_on = P->on_proc->idx2.size();
-        row_end_off = P->off_proc->idx2.size();
-
-        start = S->on_proc->idx1[i] + 1;
-        end = S->on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col = S->on_proc->idx2[j]; // k
-            if (states[col] == 0) // Not coarse: k in D_i^s
-            {
-                // Find sum of all coarse points in row k (with sign NOT equal to diag)
-                coarse_sum = 0;
-                start_k = A->on_proc->idx1[col] + 1;
-                end_k = A->on_proc->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    col_k = A->on_proc->idx2[k];  // m
-                    val = A->on_proc->vals[k] * row_coarse[col_k];
-                    if (val * sign < 0)
-                    {
-                        coarse_sum += val;
-                    }
-                }
-                start_k = A->off_proc->idx1[col];
-                end_k = A->off_proc->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    col_k = A->off_proc->idx2[k]; 
-                    col_P = off_proc_A_to_P[col_k];
-                    val = A->off_proc->vals[k];
-                    if (col_P >= 0 && val * sign < 0)
-                    {
-                        coarse_sum += (val * off_proc_row_coarse[col_P]);
-                    }
-                }
-                if (fabs(coarse_sum) < zero_tol)
-                {
-                    weak_sum += A->on_proc->vals[j];
-                    row_strong[col] = 0;
-                }
                 else
                 {
-                    row_strong[col] /= coarse_sum;  // holds val for a_ik/sum_C(a_km)
-                }
-            }
-        }
+                    col_sum = val / col_sum;
 
-        start = S->off_proc->idx1[i];
-        end = S->off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col = off_proc_S_to_A[S->off_proc->idx2[j]];
-            if (off_proc_states_A[col] == 0) // Not Coarse
-            {
-                // Strong connection... create 
-                coarse_sum = 0;
-
-                // Add diagonal values (recvd values with col == i)
-                start_k = D_recv_on->idx1[col];
-                end_k = D_recv_on->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    col_k = D_recv_on->idx2[k];
-                    val = D_recv_on->vals[k];
-                    if (col_k == i && val * sign < 0)
+                    start_k = A_recv_on_ptr[col];
+                    end_k = A_recv_on_ptr[col+1];
+                    for (int k = start_k; k < end_k; k++)
                     {
-                        coarse_sum += val;
-                    }
-                }
-
-                // Add recvd values not in S
-                start_k = A_recv_on->idx1[col];
-                end_k = A_recv_on->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    col_k = A_recv_on->idx2[k];
-                    val = A_recv_on->vals[k];
-                    if (val * sign < 0 && row_coarse[col_k])
-                    {
-                        coarse_sum += val;
-                    }
-                }
-
-                // Add recvd values in S
-                start_k = S_recv_on->idx1[col];
-                end_k = S_recv_on->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    col_k = S_recv_on->idx2[k];
-                    val = S_recv_on->vals[k];
-                    if (val * sign < 0 && row_coarse[col_k])
-                    {
-                        coarse_sum += val;
-                    }
-                }
-
-                start_k = A_recv_off->idx1[col];
-                end_k = A_recv_off->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    col_k = A_recv_off->idx2[k];
-                    val = A_recv_off->vals[k];
-                    if (val * sign < 0 && off_proc_row_coarse[col_k])
-                    {
-                        coarse_sum += val;
-                    }
-                }
-                start_k = S_recv_off->idx1[col];
-                end_k = S_recv_off->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    col_k = S_recv_off->idx2[k];
-                    val = S_recv_off->vals[k];
-                    if (val * sign < 0 && off_proc_row_coarse[col_k])
-                    {
-                        coarse_sum += val;
-                    }
-                }
-
-                if (fabs(coarse_sum) < zero_tol)
-                {
-                    weak_sum += A->off_proc->vals[j];
-                    off_proc_row_strong[col] = 0;
-                }
-                else
-                {
-                    off_proc_row_strong[col] /= coarse_sum; // holds val for a_ik/sum_C(a_km)
-                }
-            }
-        }
-
-        int idx;
-        // Find weight for each Sij
-        start = S->on_proc->idx1[i] + 1;
-        end = S->on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col = S->on_proc->idx2[j]; // k
-            if (states[col] == 0) // k in F_i^S
-            {
-                start_k = A->on_proc->idx1[col]+1;
-                end_k = A->on_proc->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    col_k = A->on_proc->idx2[k];
-                    val = A->on_proc->vals[k];
-                    idx = pos[col_k];
-                    if (val * sign < 0 && col_k == i)
-                    {
-                        weak_sum += (row_strong[col] * val);
-                    }
-                    else if (val * sign < 0 && idx >= 0)
-                    {
-                        P->on_proc->vals[idx] += (row_strong[col] * val);
-                    }
-                }
-
-                start_k = A->off_proc->idx1[col];
-                end_k = A->off_proc->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    col_k = A->off_proc->idx2[k];
-                    col_P = off_proc_A_to_P[col_k];
-                    if (col_P >= 0)
-                    {
-                        val = A->off_proc->vals[k];
-                        idx = off_proc_pos[col_P];
-                        if (val * sign < 0 && idx >= 0)
+                        idx = A_recv_on_idx[k];
+                        col_k = recv_mat->idx2[idx];
+                        val_k = recv_mat->vals[idx];
+                        idx = pos[col_k];
+                        if (idx >= row_start_on) // Checked val * sign before communication
                         {
-                            P->off_proc->vals[idx] += (row_strong[col] * val);
+                            if (col_k == i)
+                            {
+                                weak_sum += (col_sum * val_k);
+                            }
+                            else
+                            {
+                                P->on_proc->vals[idx] += (col_sum * val_k);
+                            }
+                        }
+                    }
+
+                    start_k = A_recv_off_ptr[col];
+                    end_k = A_recv_off_ptr[col+1];
+                    for (int k = start_k; k < end_k; k++)
+                    {
+                        idx = A_recv_off_idx[k];
+                        col_k = recv_mat->idx2[idx];
+                        val_k = recv_mat->vals[idx];
+                        idx = off_proc_pos[col_k];
+                        if (idx >= row_start_off) // Checked val * sign before communication
+                        {
+                            P->off_proc->vals[idx] += (col_sum * val_k);
                         }
                     }
                 }
             }
-        }
-
-        start = S->off_proc->idx1[i];
-        end = S->off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col_S = S->off_proc->idx2[j];
-            col = off_proc_S_to_A[col_S];
-            if (off_proc_states_A[col] == 0)
+            else // Weak connection, add to weak sum if not in C^_{i}
             {
-                start_k = D_recv_on->idx1[col];
-                end_k = D_recv_on->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
+                if (num_variables == 1 || variables[i] == off_variables[col])
                 {
-                    col_k = D_recv_on->idx2[k];
-                    val = D_recv_on->vals[k];
-                    if (col_k == i && val * sign < 0)
+                    if (off_proc_states[col] != NoNeighbors)
                     {
-                        weak_sum += (off_proc_row_strong[col] * val);
-                    }
-                }
-                start_k = A_recv_on->idx1[col];
-                end_k = A_recv_on->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    col_k = A_recv_on->idx2[k];
-                    val = A_recv_on->vals[k];
-                    idx = pos[col_k];
-                    if (val * sign < 0 && idx >= 0)
-                    {
-                        P->on_proc->vals[idx] += (off_proc_row_strong[col] * val);
-                    }
-                }
-                start_k = S_recv_on->idx1[col];
-                end_k = S_recv_on->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    col_k = S_recv_on->idx2[k];
-                    val = S_recv_on->vals[k];
-                    idx = pos[col_k];
-                    if (val * sign < 0 && idx >= 0)
-                    {
-                        P->on_proc->vals[idx] += (off_proc_row_strong[col] * val);
-                    }
-                }
-
-                start_k = A_recv_off->idx1[col];
-                end_k = A_recv_off->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    val = A_recv_off->vals[k];
-                    col_k = A_recv_off->idx2[k];
-                    idx = off_proc_pos[col_k];
-                    if (val * sign < 0 && idx >= 0)
-                    {
-                        P->off_proc->vals[idx] += (off_proc_row_strong[col] * val);
-                    }
-                }
-                start_k = S_recv_off->idx1[col];
-                end_k = S_recv_off->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    val = S_recv_off->vals[k];
-                    col_k = S_recv_off->idx2[k];
-                    idx = off_proc_pos[col_k];
-                    if (val * sign < 0 && idx >= 0)
-                    {
-                        P->off_proc->vals[idx] += (off_proc_row_strong[col] * val);
+                        weak_sum += val;
                     }
                 }
             }
         }
 
         // Divide by weak sum and clear row values
-        for (int j = row_start_on; j < row_end_on; j++)
+        if (fabs(weak_sum) > zero_tol)
         {
-            col = P->on_proc->idx2[j];
-            P->on_proc->vals[j] /= -weak_sum;
+            for (int j = row_start_on; j < row_end_on; j++)
+            {
+                P->on_proc->vals[j] /= -weak_sum;
+            }
+            for (int j = row_start_off; j < row_end_off; j++)
+            {
+                P->off_proc->vals[j] /= -weak_sum;
+            }
         }
-        for (int j = row_start_off; j < row_end_off; j++)
-        {
-            col = P->off_proc->idx2[j];
-            P->off_proc->vals[j] /= -weak_sum;
-        }
-        row_coarse[i] = 0;
+        pos[i] = -1;
 
-        for (int j = 0; j < A->on_proc_num_cols; j++)
-        {
-            row_coarse[j] = 0;
-            pos[j] = -1;
-        }
-        for (int j = 0; j < P->off_proc_num_cols; j++)
-        {
-            off_proc_row_coarse[j] = 0;
-            off_proc_pos[j] = -1;
-        }
-
-        start = S->on_proc->idx1[i];
-        end = S->on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col = S->on_proc->idx2[j];
-            row_strong[col] = 0;
-        }
-        start = S->off_proc->idx1[i];
-        end = S->off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col = off_proc_S_to_A[S->off_proc->idx2[j]];
-            off_proc_row_strong[col] = 0;
-        }
-        P->on_proc->idx1[i+1] = P->on_proc->idx2.size();
-        P->off_proc->idx1[i+1] = P->off_proc->idx2.size();
+        P->on_proc->idx1[i+1] = row_end_on;
+        P->off_proc->idx1[i+1] = row_end_off;
     }
-    P->on_proc->nnz = P->on_proc->idx2.size();
-    P->off_proc->nnz = P->off_proc->idx2.size();
+    P->on_proc->nnz = nnz_on;
+    P->off_proc->nnz = nnz_off;
+
+    P->on_proc->idx2.resize(nnz_on);
+    P->on_proc->idx2.shrink_to_fit();
+    P->on_proc->vals.resize(nnz_on);
+    P->on_proc->vals.shrink_to_fit();
+
+    P->off_proc->idx2.resize(nnz_off);
+    P->off_proc->idx2.shrink_to_fit();
+    P->off_proc->vals.resize(nnz_off);
+    P->off_proc->vals.shrink_to_fit();
+
     P->local_nnz = P->on_proc->nnz + P->off_proc->nnz;
 
     // Update off_proc columns in P (remove col j if col_exists[j] is false)
@@ -994,7 +864,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         	if (col_exists[i])
         	{
             	P_to_new[i] = P->off_proc_column_map.size();
-            	P->off_proc_column_map.push_back(off_proc_column_map[i]);
+            	P->off_proc_column_map.emplace_back(off_proc_column_map[i]);
         	}
     	}
         for (aligned_vector<int>::iterator it = P->off_proc->idx2.begin(); 
@@ -1009,23 +879,21 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     P->off_proc->n_cols = P->off_proc_num_cols;
     P->on_proc->n_cols = P->on_proc_num_cols;
 
-    if (S->comm)
+    if (tap_interp)
+    {
+        P->init_tap_communicators(MPI_COMM_WORLD, comm_t);
+    }
+    else
     {
         P->comm = new ParComm(P->partition, P->off_proc_column_map,
                 P->on_proc_column_map, 9243, MPI_COMM_WORLD, comm_t);
     }
 
-    if (S->tap_comm)
-    {
-        P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map,
-                P->on_proc_column_map);
-    }
-    
-    delete A_recv_on;
-    delete S_recv_on;
-    delete D_recv_on;
-    delete A_recv_off;
-    delete S_recv_off;
+    delete recv_mat;
+
+    // Finish Allreduce and set global number of columns
+    MPI_Wait(&reduce_request, MPI_STATUS_IGNORE);
+    P->global_num_cols = global_num_cols;
 
     return P;
 }
@@ -1036,27 +904,31 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         bool tap_interp, int num_variables, int* variables, 
         data_t* comm_t, data_t* comm_mat_t)
 {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
     int start, end;
     int start_k, end_k;
     int end_S;
-    int col, col_k, col_S;
-    int ctr;
-    int global_col;
+    int col, col_k;
+    int ctr, idx;
+    int global_col, sign;
     int global_num_cols;
-    double diag, val;
+    int row_start_on, row_start_off;
+    double diag, val, val_k;
     double weak_sum, coarse_sum;
-    double sign;
     aligned_vector<int> off_variables;
     if (A->off_proc_num_cols) off_variables.resize(A->off_proc_num_cols);
 
     CommPkg* comm = A->comm;
+    CommPkg* mat_comm = A->comm;
     if (tap_interp)
     {
         comm = A->tap_comm;
+        mat_comm = A->tap_mat_comm;
     }
 
-    CSRMatrix* recv_on; // On Proc Block of Recvd A
-    CSRMatrix* recv_off; // Off Proc Block of Recvd A
+    CSRMatrix* recv_mat; // On Proc Block of Recvd A
 
     A->sort();
     S->sort();
@@ -1071,7 +943,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
         for (int i = 0; i < A->off_proc_num_cols; i++)
         {
-            off_variables[i] = comm->get_int_recv_buffer()[i];
+            off_variables[i] = comm->get_int_buffer()[i];
         }
     }
 
@@ -1093,14 +965,14 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     int on_proc_cols = 0;
     for (int i = 0; i < S->on_proc_num_cols; i++)
     {
-        if (states[i] == 1)
+        if (states[i] == Selected)
         {
             on_proc_cols++;
         }
     }
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
-        if (off_proc_states[i] == 1)
+        if (off_proc_states[i] == Selected)
         {
             off_proc_cols++;
         }
@@ -1112,43 +984,46 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     for (int i = 0; i < A->on_proc_num_cols; i++)
     {
-        if (states[i] == 1)
+        if (states[i] == Selected)
         {
             on_proc_col_to_new[i] = P->on_proc_column_map.size();
-            P->on_proc_column_map.push_back(S->on_proc_column_map[i]);
+            P->on_proc_column_map.emplace_back(S->on_proc_column_map[i]);
         }
     }
     P->local_row_map = S->get_local_row_map();
 
-    // Need off_proc_states_A
-    aligned_vector<int> off_proc_states_A;
-    if (A->off_proc_num_cols) off_proc_states_A.resize(A->off_proc_num_cols);
-
-    if (comm_t) *comm_t -= MPI_Wtime();
-    aligned_vector<int>& recvbuf = comm->communicate(states);
-    if (comm_t) *comm_t += MPI_Wtime();
-    for (int i = 0; i < A->off_proc_num_cols; i++)
-    {
-        off_proc_states_A[i] = recvbuf[i];
-    } 
-
-    // Map off proc cols S to A
-    aligned_vector<int> off_proc_S_to_A;
-    if (S->off_proc_num_cols) off_proc_S_to_A.resize(S->off_proc_num_cols);
-    ctr = 0;
-    for (int i = 0; i < S->off_proc_num_cols; i++)
-    {
-        while (S->off_proc_column_map[i] != A->off_proc_column_map[ctr])
-        {
-            ctr++;
-        }
-        off_proc_S_to_A[i] = ctr;
-    }
-
     // Communicate parallel matrix A (Costly!)
     if (comm_mat_t) *comm_mat_t -= MPI_Wtime();
-    communicate(A, states, off_proc_states_A, comm, &recv_on, &recv_off);
+    recv_mat = communicate(A, states, off_proc_states, mat_comm);
     if (comm_mat_t) *comm_mat_t += MPI_Wtime();
+
+    CSRMatrix* recv_on = new CSRMatrix(recv_mat->n_rows, -1, recv_mat->nnz);
+    CSRMatrix* recv_off = new CSRMatrix(recv_mat->n_rows, -1, recv_mat->nnz);
+    for (int i = 0; i < recv_mat->n_rows; i++)
+    {
+        start = recv_mat->idx1[i];
+        end = recv_mat->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = recv_mat->idx2[j];
+            if (col < A->partition->first_local_col || col > A->partition->last_local_col)
+            {
+                recv_off->idx2.emplace_back(col);
+                recv_off->vals.emplace_back(recv_mat->vals[j]);
+            }
+            else
+            {
+                recv_on->idx2.emplace_back(col);
+                recv_on->vals.emplace_back(recv_mat->vals[j]);
+            }
+        }
+        recv_on->idx1[i+1] = recv_on->idx2.size();
+        recv_off->idx1[i+1] = recv_off->idx2.size();
+    }
+    recv_on->nnz = recv_on->idx2.size();
+    recv_off->nnz = recv_off->idx2.size();
+
+    delete recv_mat;
 
     // Change on_proc_cols to local
     recv_on->n_cols = A->on_proc_num_cols;
@@ -1195,75 +1070,160 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     // strong connections in vector
     aligned_vector<int> pos;
     aligned_vector<int> off_proc_pos;
-    aligned_vector<int> row_coarse;
-    aligned_vector<int> off_proc_row_coarse;
-    aligned_vector<double> row_strong;
-    aligned_vector<double> off_proc_row_strong;
     if (A->on_proc_num_cols)
     {
         pos.resize(A->on_proc_num_cols, -1);
-        row_coarse.resize(A->on_proc_num_cols, 0);
-        row_strong.resize(A->on_proc_num_cols, 0);
     }
     if (A->off_proc_num_cols)
     {
         off_proc_pos.resize(A->off_proc_num_cols, -1);
-        off_proc_row_coarse.resize(A->off_proc_num_cols, 0);
-        off_proc_row_strong.resize(A->off_proc_num_cols, 0);
     }
 
+    P->on_proc->idx1[0] = 0;
+    P->off_proc->idx1[0] = 0;
     for (int i = 0; i < A->local_num_rows; i++)
     {
         // If coarse row, add to P
-        if (states[i] == 1)
+        if (states[i] == Selected)
         {
-            P->on_proc->idx2.push_back(on_proc_col_to_new[i]);
-            P->on_proc->vals.push_back(1);
+            P->on_proc->idx2.emplace_back(on_proc_col_to_new[i]);
+            P->on_proc->vals.emplace_back(1);
             P->on_proc->idx1[i+1] = P->on_proc->idx2.size();
             P->off_proc->idx1[i+1] = P->off_proc->idx2.size();
             continue;
         }
-        // Store diagonal value
-        start = A->on_proc->idx1[i] + 1;
+
+        row_start_on = P->on_proc->idx1[i];
+        row_start_off = P->off_proc->idx1[i];
+
+        // Add selected states to P
+        start = S->on_proc->idx1[i] + 1;
+        end = S->on_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = S->on_proc->idx2[j];
+            if (states[col] == Selected)
+            {
+                val = S->on_proc->vals[j];
+                pos[col] = P->on_proc->idx2.size();
+                P->on_proc->idx2.push_back(on_proc_col_to_new[col]);
+                P->on_proc->vals.push_back(val);
+            }
+        }
+        start = S->off_proc->idx1[i];
+        end = S->off_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = S->off_proc->idx2[j];
+            if (off_proc_states[col] == Selected)
+            {
+                val = S->off_proc->vals[j];
+                off_proc_pos[col] = P->off_proc->idx2.size();
+                col_exists[col] = true;
+                P->off_proc->idx2.push_back(col);
+                P->off_proc->vals.push_back(val);
+            }
+        }
+
+        start = A->on_proc->idx1[i];
         end = A->on_proc->idx1[i+1];
-        diag = A->on_proc->vals[start-1];
-
-        if (diag < 0)
-        {
-            sign = -1.0;
-        }
-        else
-        {
-            sign = 1.0;
-        }
-
-        // Determine weak sum for row and store coarse / strong columns
-        ctr = S->on_proc->idx1[i] + 1;
+        ctr = S->on_proc->idx1[i]+1;
         end_S = S->on_proc->idx1[i+1];
-        weak_sum = diag;
+        weak_sum = A->on_proc->vals[start++];
         for (int j = start; j < end; j++)
         {
             col = A->on_proc->idx2[j];
             val = A->on_proc->vals[j];
             if (ctr < end_S && S->on_proc->idx2[ctr] == col)
             {
-                if (states[col] == 1)
+                ctr++;
+
+                if (states[col] == Selected) continue;
+
+                // Find sum of all coarse points in row k (with sign NOT equal to diag)
+                coarse_sum = 0;
+                start_k = A->on_proc->idx1[col];
+                end_k = A->on_proc->idx1[col+1];
+
+                diag = A->on_proc->vals[start_k++];
+                if (diag > 0) sign = 1;
+                else sign = -1;
+
+                for (int k = start_k; k < end_k; k++)
                 {
-                    pos[col] = P->on_proc->idx2.size();
-                    P->on_proc->idx2.push_back(on_proc_col_to_new[col]);
-                    P->on_proc->vals.push_back(val);
+                    col_k = A->on_proc->idx2[k];
+                    if (states[col_k] == Selected)
+                    {
+                        val_k = A->on_proc->vals[k];
+                        if (val_k * sign < 0 && pos[col_k] >= row_start_on)
+                        {
+                            coarse_sum += val_k;
+                        }
+                    }
                 }
 
-                if (states[col] != -3)
+                start_k = A->off_proc->idx1[col];
+                end_k = A->off_proc->idx1[col+1];
+                for (int k = start_k; k < end_k; k++)
                 {
-                    row_coarse[col] = states[col];
-                    row_strong[col] = (1 - states[col]) * val;
+                    col_k = A->off_proc->idx2[k];
+                    val_k = A->off_proc->vals[k];
+                    if (val_k * sign < 0 && off_proc_pos[col_k] >= row_start_off)
+                    {
+                        coarse_sum += val_k;
+                    }
                 }
-                ctr++;
+                        
+                if (fabs(coarse_sum) < zero_tol)
+                {
+                    weak_sum += val;
+                }
+                else
+                {
+                    coarse_sum = val / coarse_sum;
+                }
+
+                if (coarse_sum) // k in D_i^S
+                {
+                    start_k = A->on_proc->idx1[col]+1;
+                    end_k = A->on_proc->idx1[col+1];
+                    for (int k = start_k; k < end_k; k++)
+                    {
+                        col_k = A->on_proc->idx2[k];
+                        if (states[col_k] == Selected)
+                        {
+                            val_k = A->on_proc->vals[k];
+                            idx = pos[col_k];
+                            if (val_k * sign < 0 && idx >= row_start_on)
+                            {
+                                P->on_proc->vals[idx] += (coarse_sum * val_k);
+                            }
+                        }
+                    }
+
+                    start_k = A->off_proc->idx1[col];
+                    end_k = A->off_proc->idx1[col+1];
+                    for (int k = start_k; k < end_k; k++)
+                    {
+                        col_k = A->off_proc->idx2[k];
+                        if (off_proc_states[col_k] == Selected)
+                        {
+                            val_k = A->off_proc->vals[k];
+                            idx = off_proc_pos[col_k];
+                            if (val_k * sign < 0 && idx >= row_start_off)
+                            {
+                                P->off_proc->vals[idx] += (coarse_sum * val_k);
+                            }
+                        }
+                    }
+                }
             }
-            else if (num_variables == 1 || variables[i] == variables[col]) // weak connection
+            else if (states[col] != NoNeighbors)
             {
-                weak_sum += val;
+                if (num_variables == 1 || variables[i] == variables[col])
+                {
+                    weak_sum += val;
+                }
             }
         }
 
@@ -1275,186 +1235,55 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         {
             col = A->off_proc->idx2[j];
             val = A->off_proc->vals[j];
-            global_col = A->off_proc_column_map[col];
-            
-            // If strong connection
-            if (ctr < end_S && S->off_proc_column_map[S->off_proc->idx2[ctr]] == global_col)
+            if (ctr < end_S && S->off_proc->idx2[ctr] == col)
             {
-                col_S = S->off_proc->idx2[ctr];
-                if (off_proc_states_A[col] == 1)
-                {
-                    off_proc_pos[col] = P->off_proc->idx2.size();
-                    col_exists[col_S] = true;
-                    P->off_proc->idx2.push_back(col_S);
-                    P->off_proc->vals.push_back(val);
-                }
-                if (off_proc_states_A[col] != -3)
-                {
-                    off_proc_row_coarse[col] = off_proc_states_A[col];
-                    off_proc_row_strong[col] = (1 - off_proc_states_A[col]) * val;
-                }
                 ctr++;
-            }
-            else if (num_variables == 1 || variables[i] == off_variables[col])
-            {
-                weak_sum += val;
-            }
-        }
 
-        start = A->on_proc->idx1[i] + 1;
-        end = A->on_proc->idx1[i+1];
-        ctr = S->on_proc->idx1[i] + 1;
-        end_S = S->on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col = A->on_proc->idx2[j]; // k
-            if (ctr < end_S && S->on_proc->idx2[ctr] == col)
-            {
-                if (states[col] == 0) // Not coarse: k in D_i^s
-                {
-                    // Find sum of all coarse points in row k (with sign NOT equal to diag)
-                    coarse_sum = 0;
-                    start_k = A->on_proc->idx1[col] + 1;
-                    end_k = A->on_proc->idx1[col+1];
-                    for (int k = start_k; k < end_k; k++)
-                    {
-                        col_k = A->on_proc->idx2[k];  // m
-                        val = A->on_proc->vals[k] * row_coarse[col_k];
-                        if (val * sign < 0)
-                        {
-                            coarse_sum += val;
-                        }
-                    }
-                    start_k = A->off_proc->idx1[col];
-                    end_k = A->off_proc->idx1[col+1];
-                    for (int k = start_k; k < end_k; k++)
-                    {
-                        col_k = A->off_proc->idx2[k]; // m
-                        val = A->off_proc->vals[k] * off_proc_row_coarse[col_k];
-                        if (val * sign < 0)
-                        {
-                            coarse_sum += val;
-                        }
-                    }
-                    if (fabs(coarse_sum) < zero_tol)
-                    {
-                        weak_sum += A->on_proc->vals[j];
-                        row_strong[col] = 0;
-                    }
-                    else
-                    {
-                        row_strong[col] /= coarse_sum;  // holds val for a_ik/sum_C(a_km)
-                    }
-                }
-                ctr++;
-            }
-        }
+                if (off_proc_states[col] == Selected) continue;
 
-        start = A->off_proc->idx1[i];
-        end = A->off_proc->idx1[i+1];
-        ctr = S->off_proc->idx1[i];
-        end_S = S->off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col = A->off_proc->idx2[j];
-            if (ctr < end_S && S->off_proc_column_map[S->off_proc->idx2[ctr]] 
-                    == A->off_proc_column_map[col])
-            {
-                if (off_proc_states_A[col] == 0) // Not Coarse
-                {
-                    // Strong connection... create 
-                    coarse_sum = 0;
-                    start_k = recv_on->idx1[col];
-                    end_k = recv_on->idx1[col+1];
-                    for (int k = start_k; k < end_k; k++)
-                    {
-                        col_k = recv_on->idx2[k];
-                        val = recv_on->vals[k] * row_coarse[col_k];
-                        if (val * sign < 0)
-                        {
-                            coarse_sum += val;
-                        }
-                    }
-                    start_k = recv_off->idx1[col];
-                    end_k = recv_off->idx1[col+1];
-                    for (int k = start_k; k < end_k; k++)
-                    {
-                        col_k = recv_off->idx2[k];
-                        val = recv_off->vals[k] * off_proc_row_coarse[col_k];
-                        if (val * sign < 0)
-                        {
-                            coarse_sum += val;
-                        }
-                    }
-                    if (fabs(coarse_sum) < zero_tol)
-                    {
-                        weak_sum += A->off_proc->vals[j];
-                        off_proc_row_strong[col] = 0;
-                    }
-                    else
-                    {
-                        off_proc_row_strong[col] /= coarse_sum; // holds val for a_ik/sum_C(a_km)
-                    }
-                }
-                ctr++;
-            }
-        }
-
-        int idx;
-        // Find weight for each Sij
-        start = S->on_proc->idx1[i] + 1;
-        end = S->on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col = S->on_proc->idx2[j]; // k
-            if (states[col] == 0) // k in D_i^S
-            {
-                start_k = A->on_proc->idx1[col]+1;
-                end_k = A->on_proc->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    col_k = A->on_proc->idx2[k];
-                    val = A->on_proc->vals[k];
-                    idx = pos[col_k];
-                    if (val * sign < 0 && idx >= 0)
-                    {
-                        P->on_proc->vals[idx] += (row_strong[col] * val);
-                    }
-                }
-
-                start_k = A->off_proc->idx1[col];
-                end_k = A->off_proc->idx1[col+1];
-                for (int k = start_k; k < end_k; k++)
-                {
-                    col_k = A->off_proc->idx2[k];
-                    val = A->off_proc->vals[k];
-                    idx = off_proc_pos[col_k];
-                    if (val * sign < 0 && idx >= 0)
-                    {
-                        P->off_proc->vals[idx] += (row_strong[col] * val);
-                    }
-                }
-            }
-        }
-
-        start = S->off_proc->idx1[i];
-        end = S->off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col_S = S->off_proc->idx2[j];
-            col = off_proc_S_to_A[col_S];
-            if (off_proc_states_A[col] == 0)
-            {
+                // Strong connection... create 
+                coarse_sum = 0;
                 start_k = recv_on->idx1[col];
                 end_k = recv_on->idx1[col+1];
                 for (int k = start_k; k < end_k; k++)
                 {
-                    val = recv_on->vals[k];
+                    col_k = recv_on->idx2[k];
+                    val_k = recv_on->vals[k];
+                    if (pos[col_k] >= row_start_on)
+                    {
+                        coarse_sum += val_k;
+                    }
+                }
+                start_k = recv_off->idx1[col];
+                end_k = recv_off->idx1[col+1];
+                for (int k = start_k; k < end_k; k++)
+                {
+                    col_k = recv_off->idx2[k];
+                    val_k = recv_off->vals[k];
+                    if (off_proc_pos[col_k] >= row_start_off)
+                    {
+                        coarse_sum += val_k;
+                    }
+                }
+                if (fabs(coarse_sum) < zero_tol)
+                {
+                    weak_sum += val;
+                }
+                else
+                {
+                    coarse_sum = val / coarse_sum;
+                }
+
+                start_k = recv_on->idx1[col];
+                end_k = recv_on->idx1[col+1];
+                for (int k = start_k; k < end_k; k++)
+                {
+                    val_k = recv_on->vals[k];
                     col_k = recv_on->idx2[k];
                     idx = pos[col_k];
-                    if (val * sign < 0 && idx >= 0)
+                    if (idx >= row_start_on)
                     {
-                        P->on_proc->vals[idx] += (off_proc_row_strong[col] * val);
+                        P->on_proc->vals[idx] += (coarse_sum * val_k);
                     }
                 }
 
@@ -1462,64 +1291,40 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
                 end_k = recv_off->idx1[col+1];
                 for (int k = start_k; k < end_k; k++)
                 {
-                    val = recv_off->vals[k];
+                    val_k = recv_off->vals[k];
                     col_k = recv_off->idx2[k];
                     idx = off_proc_pos[col_k];
-                    if (val * sign < 0 && idx >= 0)
+                    if (idx >= row_start_off)
                     {
-                        P->off_proc->vals[idx] += (off_proc_row_strong[col] * val);
+                        P->off_proc->vals[idx] += (coarse_sum * val_k);
                     }
+                }
+            }
+            else if (off_proc_states[col] != NoNeighbors)
+            {
+                if (num_variables == 1 || variables[i] == off_variables[col])
+                {
+                    weak_sum += val;
                 }
             }
         }
 
-        start = S->on_proc->idx1[i]+1;
-        end = S->on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col = S->on_proc->idx2[j];
-            idx = pos[col];
-            if (states[col] == 1)
-            {
-                P->on_proc->vals[idx] /= -weak_sum;
-            }
-        }
-        start = S->off_proc->idx1[i];
-        end = S->off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col = off_proc_S_to_A[S->off_proc->idx2[j]];
-            idx = off_proc_pos[col];
-            if (off_proc_states_A[col] == 1)
-            {
-                P->off_proc->vals[idx] /= -weak_sum;
-            }
-        }
-
-
-
-        // Clear row values
-        start = S->on_proc->idx1[i];
-        end = S->on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col = S->on_proc->idx2[j];
-            pos[col] = -1;
-            row_coarse[col] = 0;
-            row_strong[col] = 0;
-        }
-        start = S->off_proc->idx1[i];
-        end = S->off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col = off_proc_S_to_A[S->off_proc->idx2[j]];
-            off_proc_pos[col] = -1;
-            off_proc_row_coarse[col] = 0;
-            off_proc_row_strong[col] = 0;
-        }
-
         P->on_proc->idx1[i+1] = P->on_proc->idx2.size();
         P->off_proc->idx1[i+1] = P->off_proc->idx2.size();
+
+        start = P->on_proc->idx1[i];
+        end = P->on_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            P->on_proc->vals[j] /= -weak_sum;
+        }
+        start = P->off_proc->idx1[i];
+        end = P->off_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            P->off_proc->vals[j] /= -weak_sum;
+
+        }
     }
     P->on_proc->nnz = P->on_proc->idx2.size();
     P->off_proc->nnz = P->off_proc->idx2.size();
@@ -1530,7 +1335,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         if (col_exists[i])
         {
             off_proc_col_to_new[i] = P->off_proc_column_map.size();
-            P->off_proc_column_map.push_back(S->off_proc_column_map[i]);
+            P->off_proc_column_map.emplace_back(S->off_proc_column_map[i]);
         }
     }
     for (aligned_vector<int>::iterator it = P->off_proc->idx2.begin(); 
@@ -1544,15 +1349,14 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     P->off_proc->n_cols = P->off_proc_num_cols;
     P->on_proc->n_cols = P->on_proc_num_cols;
 
-    if (S->comm)
+    if (tap_interp)
+    {
+        P->update_tap_comm(S, on_proc_col_to_new, off_proc_col_to_new, comm_t);
+    }
+    else
     {
         P->comm = new ParComm(S->comm, on_proc_col_to_new, off_proc_col_to_new,
                 comm_t);
-    }
-
-    if (S->tap_comm)
-    {
-        P->tap_comm = new TAPComm(S->tap_comm, on_proc_col_to_new, off_proc_col_to_new, comm_t);
     }
 
     delete recv_on;
@@ -1564,7 +1368,8 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
 ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const aligned_vector<int>& states,
-        const aligned_vector<int>& off_proc_states, data_t* comm_t)
+        const aligned_vector<int>& off_proc_states, 
+        bool tap_interp, data_t* comm_t)
 {
     int start, end, col;
     int global_num_cols;
@@ -1656,7 +1461,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         if (states[i])
         {
             on_proc_col_to_new[i] = P->on_proc_column_map.size();
-            P->on_proc_column_map.push_back(S->on_proc_column_map[i]);
+            P->on_proc_column_map.emplace_back(S->on_proc_column_map[i]);
         }
     }
     aligned_vector<bool> col_exists;
@@ -1670,8 +1475,8 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
     {
         if (states[i] == 1)
         {
-            P->on_proc->idx2.push_back(on_proc_col_to_new[i]);
-            P->on_proc->vals.push_back(1);
+            P->on_proc->idx2.emplace_back(on_proc_col_to_new[i]);
+            P->on_proc->vals.emplace_back(1);
         }
         else
         {
@@ -1790,15 +1595,15 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
                 if (states[col] == 1)
                 {
                     val = sa_on[j];
-                    P->on_proc->idx2.push_back(on_proc_col_to_new[col]);
+                    P->on_proc->idx2.emplace_back(on_proc_col_to_new[col]);
                     
                     if (val < 0)
                     {
-                        P->on_proc->vals.push_back(neg_coeff * val);
+                        P->on_proc->vals.emplace_back(neg_coeff * val);
                     }
                     else
                     {
-                        P->on_proc->vals.push_back(pos_coeff * val);
+                        P->on_proc->vals.emplace_back(pos_coeff * val);
                     }
                 }
             }
@@ -1811,15 +1616,15 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
                 {
                     val = sa_off[j];
                     col_exists[col] = true;
-                    P->off_proc->idx2.push_back(col);
+                    P->off_proc->idx2.emplace_back(col);
 
                     if (val < 0)
                     {
-                        P->off_proc->vals.push_back(neg_coeff * val);
+                        P->off_proc->vals.emplace_back(neg_coeff * val);
                     }
                     else
                     {
-                        P->off_proc->vals.push_back(pos_coeff * val);
+                        P->off_proc->vals.emplace_back(pos_coeff * val);
                     }
                 }
             }
@@ -1836,7 +1641,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         if (col_exists[i])
         {
             off_proc_col_to_new[i] = P->off_proc_column_map.size();
-            P->off_proc_column_map.push_back(S->off_proc_column_map[i]);
+            P->off_proc_column_map.emplace_back(S->off_proc_column_map[i]);
         }
     }
     for (aligned_vector<int>::iterator it = P->off_proc->idx2.begin(); 
@@ -1851,20 +1656,16 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
     P->off_proc->n_cols = P->off_proc_num_cols;
     P->on_proc->n_cols = P->on_proc_num_cols;
 
-    if (S->comm)
+    if (tap_interp)
+    {
+        P->update_tap_comm(S, on_proc_col_to_new, off_proc_col_to_new, comm_t);
+    }
+    else
     {
         P->comm = new ParComm(S->comm, on_proc_col_to_new, off_proc_col_to_new,
                 comm_t);
     }
 
-    if (S->tap_comm)
-    {
-        P->tap_comm = new TAPComm(S->tap_comm, on_proc_col_to_new,
-                off_proc_col_to_new, comm_t);
-    //    P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map, P->on_proc_column_map);
-    }
 
     return P;
 }
-
-

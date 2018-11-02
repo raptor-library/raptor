@@ -35,7 +35,7 @@ void BiCGStab(CSRMatrix* A, Vector& x, Vector& b, aligned_vector<double>& res, d
     A->residual(x, b, r);
     // Find initial residual
     norm_r = r.norm(2);
-    res.push_back(norm_r);
+    res.emplace_back(norm_r);
 
     // rstar0 = r0
     rstar.copy(r);
@@ -91,7 +91,7 @@ void BiCGStab(CSRMatrix* A, Vector& x, Vector& b, aligned_vector<double>& res, d
         p.scale(beta);
         p.axpy(r, 1.0);
         norm_r = r.norm(2);
-        res.push_back(norm_r);
+        res.emplace_back(norm_r);
 
 	if (norm_r < tol)
 	{

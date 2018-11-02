@@ -53,7 +53,6 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     
     S_rap = A->strength(Classical, 0.25);
     hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, 1, NULL, &S_hyp);
-    
     compareS(S_rap, S_hyp);
     
     HYPRE_IJMatrixDestroy(Aij);
@@ -71,8 +70,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     compare(A, A_hyp);
     
     S_rap = A->strength(Classical, 0.25);
-    hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, 1, NULL, &S_hyp);
-    
+    hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, 1, NULL, &S_hyp); 
     compareS(S_rap, S_hyp);
     
     HYPRE_IJMatrixDestroy(Aij);

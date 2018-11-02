@@ -184,13 +184,13 @@ ParCSRMatrix* readParMatrix(const char* filename,
             if ((int) idx >= A->partition->first_local_col &&
                     (int) idx <= A->partition->last_local_col)
             {
-                A->on_proc->idx2.push_back(idx - A->partition->first_local_col);
-                A->on_proc->vals.push_back(val);
+                A->on_proc->idx2.emplace_back(idx - A->partition->first_local_col);
+                A->on_proc->vals.emplace_back(val);
             }
             else
             {
-                A->off_proc->idx2.push_back(idx);
-                A->off_proc->vals.push_back(val);
+                A->off_proc->idx2.emplace_back(idx);
+                A->off_proc->vals.emplace_back(val);
             }
         } 
         A->on_proc->idx1[i+1] = A->on_proc->idx2.size();

@@ -10,7 +10,6 @@
 #include "util/linalg/par_relax.hpp"
 #include "ruge_stuben/par_interpolation.hpp"
 #include "ruge_stuben/par_cf_splitting.hpp"
-#include "multilevel/par_sparsify.hpp"
 
 #ifdef USING_HYPRE
 #include "_hypre_utilities.h"
@@ -81,6 +80,7 @@ namespace raptor
                     strength_t _strength_type,
                     relax_t _relax_type) // which level to start tap_amg (-1 == no TAP)
             {
+                num_levels = 0;
                 strong_threshold = _strong_threshold;
                 strength_type = _strength_type;
                 relax_type = _relax_type;
@@ -106,15 +106,22 @@ namespace raptor
 
             virtual ~ParMultilevel()
             {
-                if (levels[num_levels-1]->A->local_num_rows)
+                if (num_levels > 0)
                 {
-                    MPI_Comm_free(&coarse_comm);
+                    if (levels[num_levels-1]->A->local_num_rows)
+                    {
+                        MPI_Comm_free(&coarse_comm);
+                    }
                 }
+
                 for (std::vector<ParLevel*>::iterator it = levels.begin();
                         it != levels.end(); ++it)
                 {
                     delete *it;
                 }
+
+		delete[] weights;
+
                 delete[] setup_times;
                 delete[] solve_times;
                 delete[] setup_comm_times;
@@ -135,7 +142,7 @@ namespace raptor
                 t0 = MPI_Wtime();
 
                 // Add original, fine level to hierarchy
-                levels.push_back(new ParLevel());
+                levels.emplace_back(new ParLevel());
                 levels[0]->A = Af->copy();
                 levels[0]->A->sort();
                 levels[0]->A->on_proc->move_diag();
@@ -145,17 +152,29 @@ namespace raptor
                         Af->partition->first_local_row);
                 levels[0]->tmp.resize(Af->global_num_rows, Af->local_num_rows,
                         Af->partition->first_local_row);
-                if (tap_amg == 0 && !Af->tap_comm)
+                if (tap_amg == 0)
                 {
-                    levels[0]->A->tap_comm = new TAPComm(Af->partition,
-                            Af->off_proc_column_map, Af->on_proc_column_map);
+                    if (!Af->tap_comm && !Af->tap_mat_comm)
+                    {
+                        levels[0]->A->init_tap_communicators();
+                    }
+                    else if (!Af->tap_comm) // 3-step NAPComm
+                    {
+                        levels[0]->A->tap_comm = new TAPComm(Af->partition,
+                                Af->off_proc_column_map, Af->on_proc_column_map);
+                    }
+                    else if (!Af->tap_mat_comm) // 2-step NAPComm
+                    {
+                        levels[0]->A->tap_mat_comm = new TAPComm(Af->partition,
+                                Af->off_proc_column_map, Af->on_proc_column_map, false);
+                    }
                 }
 
                 for (int i = 0; i < n_setup_times; i++)
                 {
-                    setup_times[i].push_back(0.0);
-                    setup_comm_times[i].push_back(0.0);
-                    setup_mat_comm_times[i].push_back(0.0);
+                    setup_times[i].emplace_back(0.0);
+                    setup_comm_times[i].emplace_back(0.0);
+                    setup_mat_comm_times[i].emplace_back(0.0);
                 }
 
                 if (weights == NULL)
@@ -172,27 +191,18 @@ namespace raptor
 
                     for (int i = 0; i < n_setup_times; i++)
                     {
-                        setup_times[i].push_back(0.0);
-                        setup_comm_times[i].push_back(0.0);
-                        setup_mat_comm_times[i].push_back(0.0);
-                    }
-                }
-
-                if (sparsify_tol > 0.0)
-                {
-                    for (int i = 0; i < num_levels-1; i++)
-                    {
-                        ParLevel* l = levels[i];
-                        sparsify(l->A, l->P, l->I, l->AP, levels[i+1]->A, sparsify_tol);
-                        delete l->AP;
-                        delete l->I;
-                        l->AP = NULL;
-                        l->I = NULL;
+                        setup_times[i].emplace_back(0.0);
+                        setup_comm_times[i].emplace_back(0.0);
+                        setup_mat_comm_times[i].emplace_back(0.0);
                     }
                 }
 
                 num_levels = levels.size();
-                delete[] weights;
+                if (Af->local_num_rows) 
+                {
+                    delete[] weights;
+                    weights = NULL;
+		}
 
                 // Duplicate coarsest level across all processes that hold any
                 // rows of A_c
@@ -232,7 +242,7 @@ namespace raptor
                 {
                     if (proc_sizes[i])
                     {
-                        active_procs.push_back(i);
+                        active_procs.emplace_back(i);
                     }
                 }
                 MPI_Group world_group;
@@ -241,6 +251,8 @@ namespace raptor
                 MPI_Group_incl(world_group, active_procs.size(), active_procs.data(),
                         &active_group);
                 MPI_Comm_create_group(MPI_COMM_WORLD, active_group, 0, &coarse_comm);
+		MPI_Group_free(&active_group);
+
                 if (Ac->local_num_rows)
                 {
                     int num_active, active_rank;
@@ -343,6 +355,7 @@ namespace raptor
                     restrict_t = &solve_comm_times[3][level];
                     interp_t = &solve_comm_times[4][level];
                 }
+    
 
                 if (level == num_levels - 1)
                 {
@@ -408,20 +421,16 @@ namespace raptor
 
                     if (solve_times) solve_times[0][level] += MPI_Wtime();
 
-
-
                     cycle(levels[level+1]->x, levels[level+1]->b, level+1);
-
-
 
                     if (solve_times) solve_times[0][level] -= MPI_Wtime();
 
                     if (solve_times) solve_times[4][level] -= MPI_Wtime();
-                    P->mult(levels[level+1]->x, tmp, tap_level, interp_t);
-                    for (int i = 0; i < A->local_num_rows; i++)
-                    {
-                        x.local[i] += tmp.local[i];
-                    }
+                    P->mult_append(levels[level+1]->x, x, tap_level, interp_t);
+                    //for (int i = 0; i < A->local_num_rows; i++)
+                    //{
+                    //    x.local[i] += tmp.local[i];
+                    //}
                     if (solve_times) solve_times[4][level] += MPI_Wtime();
 
                     if (solve_times) solve_times[1][level] -= MPI_Wtime();
@@ -439,8 +448,12 @@ namespace raptor
                             ssor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
                                     tap_level, relax_t);
                             break;
+                     }
+                    if (solve_times)
+                    {
+                        solve_times[1][level] += MPI_Wtime();
+                        solve_times[0][level] += MPI_Wtime();
                     }
-                    if (solve_times) solve_times[1][level] += MPI_Wtime();
                 }
 
                 if (solve_times)
@@ -526,17 +539,17 @@ namespace raptor
                 if (rank == 0)
                 {
                     printf("Num Levels = %d\n", num_levels);
-	                printf("A\tNRow\tNCol\tNNZ\n");
+                    printf("A\tNRow\tNCol\tNNZ\n");
                 }
 
                 for (int i = 0; i < num_levels; i++)
                 {
                     ParCSRMatrix* Al = levels[i]->A;
-	                long lcl_nnz = Al->local_nnz;
-	                long nnz;
-	                MPI_Reduce(&lcl_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-	                if (rank == 0)
-	                {
+                    long lcl_nnz = Al->local_nnz;
+                    long nnz;
+                    MPI_Reduce(&lcl_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+                    if (rank == 0)
+                    {
                         printf("%d\t%d\t%d\t%lu\n", i, 
                                 Al->global_num_rows, Al->global_num_cols, nnz);
                     }

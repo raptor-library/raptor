@@ -18,15 +18,13 @@ int main(int argc, char** argv)
 
 TEST(LaplacianTest, TestsInGallery)
 {
-
-
     int start, end;
 
     int grid[3] = {10, 10, 10};
     double* stencil = laplace_stencil_27pt();
     CSRMatrix* A_sten = stencil_grid(stencil, grid, 3);
 
-    const char* mat_fn = "../../../../test_data/laplacian27.pm";
+    const char* mat_fn = "../../../../test_data/laplacian.pm";
     CSRMatrix* A_io = readMatrix(mat_fn);
 
     // Compare shapes

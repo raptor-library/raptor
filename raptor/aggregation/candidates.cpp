@@ -17,8 +17,8 @@ CSRMatrix* fit_candidates(const int n_aggs, const aligned_vector<int>& aggregate
     AggOp->idx1[0] = 0;
     for (int i = 0; i < n_rows; i++)
     {
-        AggOp->idx2.push_back(aggregates[i]);
-        AggOp->vals.push_back(1.0);
+        AggOp->idx2.emplace_back(aggregates[i]);
+        AggOp->vals.emplace_back(1.0);
         AggOp->idx1[i+1] = i+1;
     }
     AggOp->nnz = n_rows;
@@ -49,8 +49,8 @@ CSRMatrix* fit_candidates(const int n_aggs, const aligned_vector<int>& aggregate
                 row = AggOp_csc->idx2[k];
                 idx_B = (j*n_rows) + row;
                 val = B[idx_B];
-                T_csc->idx2.push_back(row);
-                T_csc->vals.push_back(val);
+                T_csc->idx2.emplace_back(row);
+                T_csc->vals.emplace_back(val);
             }
             T_csc->idx1[i*num_candidates + j + 1] = T_csc->idx2.size();
         }

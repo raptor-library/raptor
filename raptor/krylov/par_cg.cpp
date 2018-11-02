@@ -39,7 +39,7 @@ void CG(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res
 
     rr_inner = r.inner_product(r);
     norm_r = sqrt(rr_inner);
-    res.push_back(norm_r / b_norm);
+    res.emplace_back(norm_r / b_norm);
 
     if (norm_r != 0.0)
     {
@@ -89,7 +89,7 @@ void CG(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res
         // Update next inner product
         rr_inner = next_inner;
         norm_r = sqrt(rr_inner);
-        res.push_back(norm_r / b_norm);
+        res.emplace_back(norm_r / b_norm);
 
         iter++;
     }
@@ -163,7 +163,7 @@ void PCG(ParCSRMatrix* A, ParMultilevel* ml, ParVector& x, ParVector& b, aligned
     // <r, z>
     rz_inner = r.inner_product(z);
     norm_rz = sqrt(rz_inner);
-    res.push_back(norm_rz);
+    res.emplace_back(norm_rz);
 
     recompute_r = 8;
     iter = 0;
@@ -208,7 +208,7 @@ void PCG(ParCSRMatrix* A, ParMultilevel* ml, ParVector& x, ParVector& b, aligned
         next_inner = r.inner_product(z);
         beta = next_inner / rz_inner;
 
-        res.push_back(next_inner/b_inner);
+        res.emplace_back(next_inner/b_inner);
         if (next_inner < tol) break;
 
         // p_{i+1} = z_{i+1} + beta_i * p_i

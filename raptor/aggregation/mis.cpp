@@ -23,7 +23,7 @@ void mis2(CSRMatrix* A, aligned_vector<int>& states,
         V.resize(A->n_rows);
         std::iota(V.begin(), V.end(), 0);
         states.resize(A->n_rows);
-        std::fill(states.begin(), states.end(), -1);
+        std::fill(states.begin(), states.end(), Unassigned);
     }
 
     // Set random values
@@ -57,7 +57,7 @@ void mis2(CSRMatrix* A, aligned_vector<int>& states,
             col = A->idx2[j];
             if (r[i] > r[col])
             {
-                D->idx2.push_back(col);
+                D->idx2.emplace_back(col);
             }
         }
 
@@ -84,7 +84,7 @@ void mis2(CSRMatrix* A, aligned_vector<int>& states,
             for (int j = start; j < end; j++)
             {
                 w = D->idx2[j];
-                if (states[w] < 0)
+                if (states[w] == Unassigned || states[w] > Selected)
                 {
                     found = true;
                     break;
@@ -93,14 +93,14 @@ void mis2(CSRMatrix* A, aligned_vector<int>& states,
 
             if (!found)
             {
-                states[v] = -2;
+                states[v] = TmpSelection;
             }
         }
 
         for (int i = 0; i < remaining; i++)
         {
             v = V[i];
-            if (states[v] != -2)
+            if (states[v] != TmpSelection)
             {
                 continue;
             }
@@ -116,7 +116,7 @@ void mis2(CSRMatrix* A, aligned_vector<int>& states,
                 for (int k = start_k; k < end_k; k++)
                 {
                     u = A->idx2[k];
-                    if (states[u] < -1 && r[u] > r[v])
+                    if (states[u] > Selected && r[u] > r[v])
                     {
                         found = true;
                         break;
@@ -130,7 +130,7 @@ void mis2(CSRMatrix* A, aligned_vector<int>& states,
             }
             if (!found)
             {
-                states[v] = -3;
+                states[v] = NewSelection;
             }
         }
 
@@ -139,7 +139,7 @@ void mis2(CSRMatrix* A, aligned_vector<int>& states,
         for (int i = 0; i < remaining; i++)
         {
             v = V[i];
-            if (states[v] == -3)
+            if (states[v] == NewSelection)
             {
                 start = A_csc->idx1[v];
                 end = A_csc->idx1[v+1];
@@ -159,7 +159,7 @@ void mis2(CSRMatrix* A, aligned_vector<int>& states,
         for (int i = 0; i < remaining; i++)
         {
             v = V[i];
-            if (states[v] == -3)
+            if (states[v] == NewSelection)
             {
                 continue;
             }
@@ -170,7 +170,7 @@ void mis2(CSRMatrix* A, aligned_vector<int>& states,
             for (int j = start; j < end; j++)
             {
                 w = A->idx2[j];
-                if (states[w] == -3)
+                if (states[w] == NewSelection)
                 {
                     found = true;
                     break;
@@ -183,7 +183,7 @@ void mis2(CSRMatrix* A, aligned_vector<int>& states,
             }
             if (found) 
             {
-                states[v] = -4;
+                states[v] = NewUnselection;
             }
         }
         for (int i = 0; i < length; i++)
@@ -198,13 +198,13 @@ void mis2(CSRMatrix* A, aligned_vector<int>& states,
         for (int i = 0; i < remaining; i++)
         {
             v = V[i];
-            if (states[v] == -3)
+            if (states[v] == NewSelection)
             {
-                states[v] = 1;
+                states[v] = Selected;
             }
-            else if (states[v] == -4)
+            else if (states[v] == NewUnselection)
             {
-                states[v] = 0;
+                states[v] = Unselected;
             }
             else
             {

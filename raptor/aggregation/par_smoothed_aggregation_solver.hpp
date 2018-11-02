@@ -17,15 +17,17 @@ namespace raptor
         ParSmoothedAggregationSolver(double _strong_threshold = 0.0, agg_t _agg_type = MIS, 
                 prolong_t _prolong_type = JacobiProlongation,
                 strength_t _strength_type = Symmetric,
-                relax_t _relax_type = SOR) 
+                relax_t _relax_type = SOR,
+                int _prolong_smooth_steps = 1, 
+                double _prolong_weight = 4.0/3) 
             : ParMultilevel(_strong_threshold, _strength_type, _relax_type)
         {
             agg_type = _agg_type;
             prolong_type = _prolong_type;
             num_candidates = 1;
             interp_tol = 1e-10;
-            prolong_smooth_steps = 1;
-            prolong_weight = 4.0/3;
+            prolong_smooth_steps = _prolong_smooth_steps;
+            prolong_weight = _prolong_weight;
         }
 
         ~ParSmoothedAggregationSolver()
@@ -116,6 +118,17 @@ namespace raptor
             switch (agg_type)
             {
                 case MIS:
+                    /*aligned_vector<int> A_to_S(A->off_proc_num_cols, -1);
+                    int ctr = 0;
+                    for (int i = 0; i < S->off_proc_num_cols; i++)
+                    {
+                        int global_col = S->off_proc_column_map[i];
+                        while (A->off_proc_column_map[ctr] != global_col)
+                        ctr++;
+                        A_to_S[ctr] = i;
+                    }
+                    if (tap_level) S->update_tap_comm(A, A_to_S, agg_time);
+                    S->comm = new ParComm((ParComm*) A->comm, A_to_S, agg_time);*/
                     mis2(S, states, off_proc_states, tap_level, weights, agg_time);
                     n_aggs = aggregate(A, S, states, off_proc_states, 
                             aggregates, tap_level, NULL, agg_time);
@@ -127,7 +140,7 @@ namespace raptor
             if (setup_times) setup_times[3][level_ctr] -= MPI_Wtime();
             // Form tentative interpolation
             T = fit_candidates(A, n_aggs, aggregates, B, R, 
-                    num_candidates, tap_level, interp_tol, interp_time);
+                    num_candidates, false, interp_tol, interp_time);
             if (setup_times) setup_times[3][level_ctr] += MPI_Wtime();
             
 
@@ -144,7 +157,7 @@ namespace raptor
             levels[level_ctr]->P = P;
 
             // Form coarse grid operator
-            levels.push_back(new ParLevel());
+            levels.emplace_back(new ParLevel());
 
             if (setup_times) setup_times[5][level_ctr] -= MPI_Wtime();
             AP = A->mult(levels[level_ctr]->P, tap_level, AP_mat_time);
@@ -154,12 +167,11 @@ namespace raptor
             A = AP->mult_T(P, tap_level, PTAP_mat_time);
             if (setup_times) setup_times[6][level_ctr] += MPI_Wtime();
 
-
             level_ctr++;
             levels[level_ctr]->A = A;
             A->comm = new ParComm(A->partition, A->off_proc_column_map,
-                    A->on_proc_column_map, P->comm->key, P->comm->mpi_comm,
-                    total_time);
+                    A->on_proc_column_map, levels[level_ctr-1]->A->comm->key,
+                    levels[level_ctr-1]->A->comm->mpi_comm, total_time);
             levels[level_ctr]->x.resize(A->global_num_rows, A->local_num_rows,
                     A->partition->first_local_row);
             levels[level_ctr]->b.resize(A->global_num_rows, A->local_num_rows,
@@ -170,11 +182,13 @@ namespace raptor
 
             if (tap_amg >= 0 && tap_amg <= level_ctr)
             {
+                // Create 2-step node-aware communicator for setup phase
+                // will be changed to 3-step before solve phase
                 levels[level_ctr]->A->tap_comm = new TAPComm(
                         levels[level_ctr]->A->partition,
                         levels[level_ctr]->A->off_proc_column_map,
-                        levels[level_ctr]->A->on_proc_column_map, true, 
-                        A->comm->mpi_comm, total_time);
+                        levels[level_ctr]->A->on_proc_column_map, 
+                        true, A->comm->mpi_comm, total_time);
             }
 
             std::copy(R.begin(), R.end(), B.begin());

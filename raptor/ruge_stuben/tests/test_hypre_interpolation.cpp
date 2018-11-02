@@ -77,8 +77,11 @@ TEST(TestHypreInterpolation, TestsInRuge_Stuben)
     HYPRE_IJMatrixGetObject(Aij, (void**) &A_hyp);
     S = A->strength(Classical, 0.25);
     hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, 1, NULL, &S_hyp);
+    compareS(S, S_hyp);
+
     split_pmis(S, states, off_proc_states, false, weights);
     hypre_BoomerAMGCoarsenPMIS(S_hyp, A_hyp, 0, 0, &states_hypre);
+    compare_states(A->local_num_rows, states, states_hypre);
     
     // Modified Classical Interpolation
     hypre_BoomerAMGCoarseParms(MPI_COMM_WORLD, A->local_num_rows, 1, NULL, states_hypre,
@@ -98,7 +101,7 @@ TEST(TestHypreInterpolation, TestsInRuge_Stuben)
     hypre_ParCSRMatrixDestroy(P_hyp);
     delete P;
 
-    hypre_TFree(states_hypre);
+    hypre_TFree(states_hypre, HYPRE_MEMORY_HOST);
     HYPRE_IJMatrixDestroy(Aij);
     hypre_ParCSRMatrixDestroy(S_hyp);
     delete[] weights;
@@ -134,7 +137,7 @@ TEST(TestHypreInterpolation, TestsInRuge_Stuben)
     hypre_ParCSRMatrixDestroy(P_hyp);
     delete P;
 
-    hypre_TFree(states_hypre);
+    hypre_TFree(states_hypre, HYPRE_MEMORY_HOST);
     HYPRE_IJMatrixDestroy(Aij);
     hypre_ParCSRMatrixDestroy(S_hyp);
     delete[] weights;

@@ -18,7 +18,7 @@ int main(int argc, char** argv)
 
 TEST(RandomBSRSpMVTest, TestsInUtil)
 {
-    const char* rand_fn = "../../../../test_data/random.pm";
+/*    const char* rand_fn = "../../../../test_data/random.pm";
     const char* b_ones = "../../../../test_data/random_ones_b.txt";
     const char* b_T_ones = "../../../../test_data/random_ones_b_T.txt";
     const char* b_inc = "../../../../test_data/random_inc_b.txt";
@@ -82,6 +82,6 @@ TEST(RandomBSRSpMVTest, TestsInUtil)
     fclose(f);
     
     delete A;
-    delete B;
+    delete B;*/
 } // end of TEST(RandomSpMVTest, TestsInUtil) //
 

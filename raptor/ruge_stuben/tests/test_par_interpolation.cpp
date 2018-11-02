@@ -101,39 +101,38 @@ TEST(TestParInterpolation, TestsInRuge_Stuben)
     ParCSRMatrix* P;
     ParCSRMatrix* P_rap;
 
-    const char* A0_fn = "../../../../test_data/rss_A0.pm";
-    const char* A1_fn = "../../../../test_data/rss_A1.pm";
-    const char* S0_fn = "../../../../test_data/rss_S0.pm";
-    const char* S1_fn = "../../../../test_data/rss_S1.pm";
-    const char* P0_fn = "../../../../test_data/rss_P0.pm";
-    const char* P1_fn = "../../../../test_data/rss_P1.pm";
-    const char* cf0_fn = "../../../../test_data/rss_cf0.txt";
-    const char* cf1_fn = "../../../../test_data/rss_cf1.txt";
-    const char* P0_mc_fn = "../../../../test_data/rss_P0_mc.pm";
-    const char* P1_mc_fn = "../../../../test_data/rss_P1_mc.pm";
-    const char* P0_extend = "../../../../test_data/rss_P0_extend.pm";
-    const char* P1_extend = "../../../../test_data/rss_P1_extend.pm";
+    const char* Aniso_fn = "../../../../test_data/aniso.pm";
+    const char* Aniso_S_fn = "../../../../test_data/aniso_S.pm";
+    const char* Aniso_split_fn = "../../../../test_data/aniso_split.txt";
+    const char* Aniso_P_d_fn = "../../../../test_data/aniso_P_direct.pm";
+    const char* Aniso_P_mc_fn = "../../../../test_data/aniso_P_mod_class.pm";
+    const char* Aniso_P_e_fn = "../../../../test_data/aniso_P_extend.pm";
+    const char* Laplacian_fn = "../../../../test_data/laplacian.pm";
+    const char* Laplacian_S_fn = "../../../../test_data/laplacian_S.pm";
+    const char* Laplacian_split_fn = "../../../../test_data/laplacian_split.txt";
+    const char* Laplacian_P_d_fn = "../../../../test_data/laplacian_P_direct.pm";
+    const char* Laplacian_P_mc_fn = "../../../../test_data/laplacian_P_mod_class.pm";
+    const char* Laplacian_P_e_fn = "../../../../test_data/laplacian_P_extend.pm";
 
     // TEST LEVEL 0
-    A = readParMatrix(A0_fn);
-    S = readParMatrix(S0_fn);
-    P_rap = form_Prap(A, S, cf0_fn, 
-            &first_row, &first_col, 0);
-    P = readParMatrix(P0_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
+    A = readParMatrix(Aniso_fn);
+    S = readParMatrix(Aniso_S_fn);
+    P_rap = form_Prap(A, S, Aniso_split_fn, &first_row, &first_col, 0);
+    P = readParMatrix(Aniso_P_d_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
             first_row, first_col);
     compare(P, P_rap);
     delete P_rap;
     delete P;
 
-    P_rap = form_Prap(A, S, cf0_fn, &first_row, &first_col, 1);
-    P = readParMatrix(P0_mc_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
+    P_rap = form_Prap(A, S, Aniso_split_fn, &first_row, &first_col, 1);
+    P = readParMatrix(Aniso_P_mc_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
             first_row, first_col);
     compare(P, P_rap);
     delete P;
     delete P_rap;
 
-    P_rap = form_Prap(A, S, cf0_fn, &first_row, &first_col, 2);
-    P = readParMatrix(P0_extend, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
+    P_rap = form_Prap(A, S, Aniso_split_fn, &first_row, &first_col, 2);
+    P = readParMatrix(Aniso_P_e_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
             first_row, first_col);
     compare(P, P_rap);
     delete P;
@@ -143,25 +142,24 @@ TEST(TestParInterpolation, TestsInRuge_Stuben)
     delete A;
 
     // TEST LEVEL 1
-    A = readParMatrix(A1_fn);
-    S = readParMatrix(S1_fn);
-    P_rap = form_Prap(A, S, cf1_fn, &first_row, &first_col, 0);
-    P = readParMatrix(P1_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
+    A = readParMatrix(Laplacian_fn);
+    S = readParMatrix(Laplacian_S_fn);
+    P_rap = form_Prap(A, S, Laplacian_split_fn, &first_row, &first_col, 0);
+    P = readParMatrix(Laplacian_P_d_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
             first_row, first_col);
     compare(P, P_rap);
     delete P_rap;
     delete P;
 
-    P_rap = form_Prap(A, S, cf1_fn, &first_row, &first_col, 1);
-    P = readParMatrix(P1_mc_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
+    P_rap = form_Prap(A, S, Laplacian_split_fn, &first_row, &first_col, 1);
+    P = readParMatrix(Laplacian_P_mc_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
             first_row, first_col);
     compare(P, P_rap);
     delete P;
     delete P_rap;
 
-    P_rap = form_Prap(A, S, cf1_fn, &first_row, &first_col, 2);
-    P_rap->sort();
-    P = readParMatrix(P1_extend, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
+    P_rap = form_Prap(A, S, Laplacian_split_fn, &first_row, &first_col, 2);
+    P = readParMatrix(Laplacian_P_e_fn, P_rap->local_num_rows, P_rap->on_proc_num_cols, 
             first_row, first_col);
     compare(P, P_rap);
     delete P;

@@ -93,15 +93,15 @@ void make_contiguous(ParCSRMatrix* A)
 
     // Re-arrange on_proc cols, ordered by assumed proc
     send_size = 0;
-    send_ptr.push_back(send_size);
+    send_ptr.emplace_back(send_size);
     for (int i = 0; i < num_procs; i++)
     {
         if (proc_num_cols[i])
         {
             send_size += proc_num_cols[i];
             proc_num_cols[i] = send_procs.size();
-            send_procs.push_back(i);
-            send_ptr.push_back(send_size);
+            send_procs.emplace_back(i);
+            send_ptr.emplace_back(send_size);
         }
     }
     num_sends = send_procs.size();
@@ -195,15 +195,15 @@ void make_contiguous(ParCSRMatrix* A)
 
     // Create send_procs, send_ptr
     send_size = 0;
-    send_ptr.push_back(send_size);
+    send_ptr.emplace_back(send_size);
     for (int i = 0; i < num_procs; i++)
     {
         if (proc_num_cols[i])
         {
             send_size += proc_num_cols[i];
             proc_num_cols[i] = send_procs.size();
-            send_procs.push_back(i);
-            send_ptr.push_back(send_size);
+            send_procs.emplace_back(i);
+            send_ptr.emplace_back(send_size);
         }
     }
     num_sends = send_procs.size();
@@ -378,6 +378,12 @@ void make_contiguous(ParCSRMatrix* A)
         }
     }
 
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        A->on_proc_column_map[i] = A->partition->first_local_col + i;
+    }
+    A->local_row_map = A->get_on_proc_column_map();
+
     A->comm = new ParComm(A->partition, A->off_proc_column_map);
 
     // Sort rows, removing duplicate entries and moving diagonal 
@@ -434,15 +440,15 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
     // Create send_procs: procs to which I must send rows
     // and send_ptr: number of rows to send to each
     send_row_size = 0;
-    send_ptr.push_back(0);
+    send_ptr.emplace_back(0);
     for (int i = 0; i < num_procs; i++)
     {
         if (proc_sizes[i])
         {
             send_row_size += proc_sizes[i];
             proc_to_idx[i] = send_procs.size();
-            send_procs.push_back(i);
-            send_ptr.push_back(send_row_size);
+            send_procs.emplace_back(i);
+            send_ptr.emplace_back(send_row_size);
             proc_sizes[i] = 0;
         }
     }
@@ -481,7 +487,7 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
 
     // Dynamically receive rows and corresponding sizes  
     int recv_size = 0;
-    recv_ptr.push_back(0);
+    recv_ptr.emplace_back(0);
     if (num_sends)
     {
         MPI_Testall(num_sends, send_requests.data(), &finished, MPI_STATUSES_IGNORE);
@@ -500,12 +506,12 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
                         MPI_COMM_WORLD, &recv_status);
                 for (int i = 0; i < count; i += 2)
                 {
-                    recv_rows.push_back(recv_row_buffer[i]);
-                    recv_row_sizes.push_back(recv_row_buffer[i+1]);
+                    recv_rows.emplace_back(recv_row_buffer[i]);
+                    recv_row_sizes.emplace_back(recv_row_buffer[i+1]);
                     recv_size += recv_row_buffer[i+1];
                 }
-                recv_procs.push_back(proc);
-                recv_ptr.push_back(recv_size);
+                recv_procs.emplace_back(proc);
+                recv_ptr.emplace_back(recv_size);
             }
             MPI_Testall(num_sends, send_requests.data(), &finished, MPI_STATUSES_IGNORE);
         }
@@ -527,12 +533,12 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
                     MPI_COMM_WORLD, &recv_status);
             for (int i = 0; i < count; i += 2)
             {
-                recv_rows.push_back(recv_row_buffer[i]);
-                recv_row_sizes.push_back(recv_row_buffer[i+1]);
+                recv_rows.emplace_back(recv_row_buffer[i]);
+                recv_row_sizes.emplace_back(recv_row_buffer[i+1]);
                 recv_size += recv_row_buffer[i+1];
             }
-            recv_procs.push_back(proc);
-            recv_ptr.push_back(recv_size);
+            recv_procs.emplace_back(proc);
+            recv_ptr.emplace_back(recv_size);
         }
         MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
     }
@@ -630,7 +636,7 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
     for(int i = 0; i < num_rows; i++)
     {
        on_proc_to_local[recv_rows[i]] = i;
-       A_part->on_proc_column_map.push_back(recv_rows[i]);
+       A_part->on_proc_column_map.emplace_back(recv_rows[i]);
     }
     A_part->local_row_map = A_part->get_on_proc_column_map();
     A_part->on_proc_num_cols = A_part->on_proc_column_map.size();
@@ -648,13 +654,13 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
 
             if (on_proc_to_local.find(col) != on_proc_to_local.end())
             {
-                A_part->on_proc->idx2.push_back(on_proc_to_local[col]);
-                A_part->on_proc->vals.push_back(val);
+                A_part->on_proc->idx2.emplace_back(on_proc_to_local[col]);
+                A_part->on_proc->vals.emplace_back(val);
             }
             else
             {
-                A_part->off_proc->idx2.push_back(col);
-                A_part->off_proc->vals.push_back(val);
+                A_part->off_proc->idx2.emplace_back(col);
+                A_part->off_proc->vals.emplace_back(val);
             }
         }
         A_part->on_proc->idx1[i+1] = A_part->on_proc->idx2.size();
@@ -676,7 +682,7 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
         if (*it != prev_col)
         {
             global_to_local[*it] = A_part->off_proc_column_map.size();
-            A_part->off_proc_column_map.push_back(*it);
+            A_part->off_proc_column_map.emplace_back(*it);
             *it = prev_col;
         }
     }

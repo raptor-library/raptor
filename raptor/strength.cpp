@@ -21,8 +21,11 @@ CSRMatrix* classical_strength(CSRMatrix* A, double theta, int num_variables, int
         A->move_diag();
     }
 
-    CSRMatrix* S = new CSRMatrix(A->n_rows, A->n_cols, A->nnz);
+    CSRMatrix* S = new CSRMatrix(A->n_rows, A->n_cols);
+    S->idx2.resize(A->nnz);
+    S->vals.resize(A->nnz);
 
+    S->nnz = 0;
     S->idx1[0] = 0;
     for (int i = 0; i < A->n_rows; i++)
     {
@@ -34,6 +37,9 @@ CSRMatrix* classical_strength(CSRMatrix* A, double theta, int num_variables, int
             if (A->idx2[start] == i)
             {
                 diag = A->vals[start];
+                S->idx2[S->nnz] = A->idx2[start];
+                S->vals[S->nnz] = diag;
+                S->nnz++;
                 start++;
             }
             else
@@ -108,10 +114,6 @@ CSRMatrix* classical_strength(CSRMatrix* A, double theta, int num_variables, int
             // Multiply row magnitude by theta
             threshold = row_scale*theta;
 
-            // Always add diagonal
-            S->idx2.push_back(i);
-            S->vals.push_back(diag);
-
             // Add off-diagonals greater than threshold
             if (num_variables == 1)
             {
@@ -122,8 +124,9 @@ CSRMatrix* classical_strength(CSRMatrix* A, double theta, int num_variables, int
                         val = A->vals[j];
                         if (val > threshold)
                         {
-                            S->idx2.push_back(A->idx2[j]);
-                            S->vals.push_back(val);
+                            S->idx2[S->nnz] = A->idx2[j];
+                            S->vals[S->nnz] = val;
+                            S->nnz++;
                         }
                     }
                 }
@@ -134,8 +137,9 @@ CSRMatrix* classical_strength(CSRMatrix* A, double theta, int num_variables, int
                         val = A->vals[j];
                         if (val < threshold)
                         {
-                            S->idx2.push_back(A->idx2[j]);
-                            S->vals.push_back(val);
+                            S->idx2[S->nnz] = A->idx2[j];
+                            S->vals[S->nnz] = val;
+                            S->nnz++;
                         }
                     }
                 }
@@ -152,8 +156,9 @@ CSRMatrix* classical_strength(CSRMatrix* A, double theta, int num_variables, int
                             val = A->vals[j];
                             if (val > threshold)
                             {
-                                S->idx2.push_back(col);
-                                S->vals.push_back(val);
+                                S->idx2[S->nnz] = col;
+                                S->vals[S->nnz] = val;
+                                S->nnz++;
                             }
                         }
                     }
@@ -168,17 +173,21 @@ CSRMatrix* classical_strength(CSRMatrix* A, double theta, int num_variables, int
                             val = A->vals[j];
                             if (val < threshold)
                             {
-                                S->idx2.push_back(col);
-                                S->vals.push_back(val);
+                                S->idx2[S->nnz] = col;
+                                S->vals[S->nnz] = val;
+                                S->nnz++;
                             }
                         }
                     }
                 }
             }
         }
-        S->idx1[i+1] = S->idx2.size();
+        S->idx1[i+1] = S->nnz;
     }
-    S->nnz = S->idx2.size();
+    S->idx2.resize(S->nnz);
+    S->idx2.shrink_to_fit();
+    S->vals.resize(S->nnz);
+    S->vals.shrink_to_fit();
 
     return S;
 
@@ -209,7 +218,9 @@ CSRMatrix* symmetric_strength(CSRMatrix* A, double theta)
         A->move_diag();
     }
 
-    CSRMatrix* S = new CSRMatrix(A->n_rows, A->n_cols, A->nnz);
+    CSRMatrix* S = new CSRMatrix(A->n_rows, A->n_cols);
+    S->idx2.resize(A->nnz);
+    S->vals.resize(A->nnz);
 
     for (int i = 0; i < A->n_rows; i++)
     {
@@ -262,6 +273,7 @@ CSRMatrix* symmetric_strength(CSRMatrix* A, double theta)
         }
     }
 
+    S->nnz = 0;
     S->idx1[0] = 0;
     for (int i = 0; i < A->n_rows; i++)
     {
@@ -273,14 +285,13 @@ CSRMatrix* symmetric_strength(CSRMatrix* A, double theta)
             if (A->idx2[start] == i)
             {
                 diag = A->vals[start];
+                S->idx2[S->nnz] = A->idx2[start];
+                S->vals[S->nnz] = A->vals[start];
+                S->nnz++;
                 start++;
             }
             int neg_diag = neg_diags[i];
             threshold = row_scales[i];
-
-            // Always add diagonal
-            S->idx2.push_back(i);
-            S->vals.push_back(diag);
 
             // Add off-diagonals greater than threshold
             for (int j = start; j < end; j++)
@@ -291,14 +302,18 @@ CSRMatrix* symmetric_strength(CSRMatrix* A, double theta)
                         || (neg_diags[col] && val > row_scales[col]) 
                         || (!neg_diags[col] && val < row_scales[col]))
                 {
-                    S->idx2.push_back(col);
-                    S->vals.push_back(val);
+                    S->idx2[S->nnz] = col;
+                    S->vals[S->nnz] = val;
+                    S->nnz++;
                 }
             }
         }
-        S->idx1[i+1] = S->idx2.size();
+        S->idx1[i+1] = S->nnz;
     }
-    S->nnz = S->idx2.size();
+    S->idx2.resize(S->nnz);
+    S->idx2.shrink_to_fit();
+    S->vals.resize(S->nnz);
+    S->vals.shrink_to_fit();
 
     return S;
 
@@ -315,5 +330,7 @@ CSRMatrix* CSRMatrix::strength(strength_t strength_type,
         case Symmetric:
             return symmetric_strength(this, theta);
     }
+
+    return NULL;
 }
 

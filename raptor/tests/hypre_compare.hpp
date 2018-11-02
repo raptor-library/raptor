@@ -1,9 +1,9 @@
 #ifndef RAPTOR_TEST_HYPRE_COMPARE_HPP
 #define RAPTOR_TEST_HYPRE_COMPARE_HPP
-#include <assert.h>
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "gallery/external/hypre_wrapper.hpp"
+#include "gtest/gtest.h"
 
 void compare_dimensions(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h,
         aligned_vector<int>& new_off_proc_map)
@@ -67,15 +67,15 @@ void compare_dimensions(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h,
             new_off_proc_map.begin());
 
     // Make sure dimensions are correct
-    assert(A->global_num_rows == global_rows);
-    assert(A->global_num_cols == global_cols);
-    assert(first_row == first_local_row);
-    assert(first_col == first_local_col);
-    assert(A->local_num_rows == diag_rows);
-    assert(A->on_proc_num_cols == diag_cols);
+    ASSERT_EQ(A->global_num_rows, global_rows);
+    ASSERT_EQ(A->global_num_cols, global_cols);
+    ASSERT_EQ(first_row, first_local_row);
+    ASSERT_EQ(first_col, first_local_col);
+    ASSERT_EQ(A->local_num_rows, diag_rows);
+    ASSERT_EQ(A->on_proc_num_cols, diag_cols);
 }
 
-void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h)
+void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h, double tol = 1e-05)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -105,17 +105,33 @@ void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h)
     }
 
     A->sort();
-    if (A->global_num_rows == A->global_num_cols)
+    if (A->local_num_rows == A->on_proc_num_cols)
     {
         A->on_proc->move_diag();
     }
+
     for (int i = 0; i < A->local_num_rows; i++)
     {
         start = diag_i[i];
         end = diag_i[i+1];
+        if (A->local_num_rows == A->on_proc_num_cols)
+        {
+            for (int j = start; j < end; j++)
+            {
+                if (diag_j[j] == i)
+                {
+                    double tmp = diag_data[j];
+                    diag_j[j] = diag_j[start];
+                    diag_data[j] = diag_data[start];
+                    diag_j[start] = i;
+                    diag_data[start] = tmp;
+                    start++;
+                    break;
+                }
+            }
+        }
         if (end - start)
         {
-            if (diag_j[start] == i) start++;
             hypre_qsort1(diag_j, diag_data, start, end - 1);
         }
 
@@ -141,12 +157,12 @@ void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h)
         {
             if (ctrA < endA && A->on_proc->idx2[ctrA] == diag_j[j])
             {
-                assert(fabs(A->on_proc->vals[ctrA] - diag_data[j]) < 1e-06);
+                ASSERT_NEAR(A->on_proc->vals[ctrA], diag_data[j], tol);
                 ctrA++;
             }
             else
             {
-                assert(fabs(diag_data[j]) < 1e-15);
+                ASSERT_NEAR(diag_data[j], 0, 1e-15);
             }
         }
 
@@ -159,12 +175,12 @@ void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h)
             if (ctrA < endA && new_off_proc_map[A->off_proc->idx2[ctrA]]
                     == col_map_offd[offd_j[j]])
             {
-                assert(fabs(A->off_proc->vals[ctrA] - offd_data[j]) < 1e-06);
+                ASSERT_NEAR(A->off_proc->vals[ctrA], offd_data[j], tol);
                 ctrA++;
             }
             else
             {
-                assert(fabs(offd_data[j]) < 1e-15);
+                ASSERT_NEAR(offd_data[j], 0, 1e-15);
             }
         }
     }
@@ -199,11 +215,14 @@ void compareS(ParCSRMatrix* S, hypre_ParCSRMatrix* S_h)
         offd_data = hypre_CSRMatrixData(S_h_offd);
     }
 
+    // Sort and move diag first (to skip over during comparisons)
     S->sort();
     if (S->global_num_rows == S->global_num_cols)
     {
         S->on_proc->move_diag();
     }
+
+    // Sort Hypre S (for comparison)
     for (int i = 0; i < S->local_num_rows; i++)
     {
         start = diag_i[i];
@@ -221,29 +240,45 @@ void compareS(ParCSRMatrix* S, hypre_ParCSRMatrix* S_h)
         }
     }
 
+    // Compare indices in S
     for (int i = 0; i < S->local_num_rows; i++)
     {
         start = S->on_proc->idx1[i];
         end = S->on_proc->idx1[i+1];
+        // Skip over diagonal (no diagonals in Hypre S)
         if (S->on_proc->idx2[start] == i)
         {
             start++;
         }
         ctrA = diag_i[i];
-        assert(end - start == diag_i[i+1] - ctrA);
+        ASSERT_EQ(end - start, diag_i[i+1] - ctrA);
         for (int j = start; j < end; j++)
         {
-            assert(diag_j[ctrA++] == S->on_proc->idx2[j]);
+            ASSERT_EQ(diag_j[ctrA++], S->on_proc->idx2[j]);
         }
 
         start = S->off_proc->idx1[i];
         end = S->off_proc->idx1[i+1];
         ctrA = offd_i[i];
-        assert(end - start == offd_i[i+1] - ctrA);
+        ASSERT_EQ(end - start, offd_i[i+1] - ctrA);
         for (int j = start; j < end; j++)
         {
-            assert(col_map_offd[offd_j[ctrA++]] == new_off_proc_map[S->off_proc->idx2[j]]);
+            ASSERT_EQ(col_map_offd[offd_j[ctrA++]], new_off_proc_map[S->off_proc->idx2[j]]);
         }
+    }
+}
+
+
+void compare_states(int n, aligned_vector<int>& states, int* states_hypre)
+{
+    for (int i = 0; i < n; i++)
+    {
+        if (states[i] == Selected)
+            ASSERT_EQ(states_hypre[i], 1);
+        else if (states[i] == Unselected)
+            ASSERT_EQ(states_hypre[i], -1);
+        else if (states[i] == NoNeighbors)
+            ASSERT_EQ(states_hypre[i], -3);
     }
 }
 

@@ -44,6 +44,7 @@ set(linalg_SOURCES
     util/linalg/matmult.cpp
     util/linalg/relax.cpp
     util/linalg/add.cpp
+    util/linalg/spmv.cpp
     ${par_linalg_SOURCES}
     PARENT_SCOPE
     )
