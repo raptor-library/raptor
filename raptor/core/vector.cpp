@@ -164,4 +164,154 @@ data_t Vector::inner_product(Vector& x)
     return result;
 }
 
+/**************************************************************
+*****   BVector AXPY
+**************************************************************
+***** Multiplies the vector x by a constant, alpha, and then
+***** sums each element with corresponding local entry for
+***** each vector in the BVector 
+*****
+***** Parameters
+***** -------------
+***** x : Vector&
+*****    Vector to be summed with
+***** alpha : data_t
+*****    Constant value to multiply each element of vector by
+**************************************************************/
+void BVector::axpy(Vector& x, data_t alpha)
+{
+    index_t offset;
 
+    for (index_t j = 0; j < b_vecs; j++) {
+        offset = j * num_values;
+        for (index_t i = 0; i < num_values; i++)
+        {
+            values[i + offset] += x.values[i]*alpha;
+        }
+    }
+}
+
+/**************************************************************
+*****   BVector AXPY
+**************************************************************
+***** Multiplies each vector in y by a constant, alpha, and then
+***** sums each entry in each vector with corresponding local entry
+***** and vector in the BVector 
+*****
+***** Parameters
+***** -------------
+***** y : BVector&
+*****    BVector to be summed with
+***** alpha : data_t
+*****    Constant value to multiply each element of each vector by
+**************************************************************/
+void BVector::axpy(BVector& y, data_t alpha)
+{
+    index_t offset;
+
+    for (index_t j = 0; j < b_vecs; j++)
+    {
+        offset = j * num_values;
+        for (index_t i = 0; i < num_values; i++)
+        {
+            values[i + offset] += y.values[i + offset]*alpha;
+        }
+    }
+}
+
+/**************************************************************
+*****   BVector Norm
+**************************************************************
+***** Calculates the P norm of each vector (for a given P)
+***** in the block vector
+*****
+***** Parameters
+***** -------------
+***** p : index_t
+*****    Determines which p-norm to calculate
+**************************************************************/
+aligned_vector<data_t> BVector::norm(index_t p)
+{
+    aligned_vector<data_t> norms;
+
+    data_t result;
+    index_t offset;
+    double val;
+
+    for (index_t j = 0; j < b_vecs; j++)
+    {
+        result = 0.0;
+        offset = j * num_values;
+        for (index_t i = 0; i < num_values; i++)
+        {
+            val = values[i + offset];
+            if (fabs(val) > zero_tol)
+                result += pow(val, p);
+        }
+        norms.push_back(pow(result, 1.0/p));
+    }
+
+    return norms;
+}
+
+/**************************************************************
+*****   BVector Inner Product 
+**************************************************************
+***** Calculates the inner product of every vector in the
+***** block vector with the vector x
+*****
+***** Parameters
+***** -------------
+***** x : Vector&
+*****    Vector to calculate inner product with
+**************************************************************/
+aligned_vector<data_t> BVector::inner_product(Vector& x)
+{
+    aligned_vector<data_t> inner_prods;
+    data_t result;
+    index_t offset;
+
+    for (index_t j = 0; j < b_vecs; j++)
+    {
+        result = 0.0;
+        offset = j * num_values;
+        for (index_t i = 0; i < num_values; i++)
+        {
+            result += values[i + offset] * x[i];
+        }
+        inner_prods.push_back(result);
+    }
+
+    return inner_prods;
+}
+
+/**************************************************************
+*****   BVector Inner Product 
+**************************************************************
+***** Calculates the inner product of every vector in the
+***** block vector with each corresponding vector in y
+*****
+***** Parameters
+***** -------------
+***** y : BVector&
+*****    BVector to calculate inner product with
+**************************************************************/
+aligned_vector<data_t> BVector::inner_product(BVector& y)
+{
+    aligned_vector<data_t> inner_prods;
+    data_t result;
+    index_t offset;
+
+    for (index_t j = 0; j < b_vecs; j++)
+    {
+        result = 0.0;
+        offset = j * num_values;
+        for (index_t i = 0; i < num_values; i++)
+        {
+            result += values[i + offset] * y[i + offset];
+        }
+        inner_prods.push_back(result);
+    }
+
+    return inner_prods;
+}

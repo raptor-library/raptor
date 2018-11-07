@@ -61,8 +61,12 @@ namespace raptor
         ***** first_lcl : index_t
         *****    Position of local vector inside global vector
         **************************************************************/
-        ParVector(index_t glbl_n, int lcl_n, index_t first_lcl)
+        ParVector(index_t glbl_n, int lcl_n, index_t first_lcl, bool form_vec = true)
         {
+            if (form_vec)
+            {
+                local = new Vector(lcl_n);
+            }
             resize(glbl_n, lcl_n, first_lcl);
         }
 
@@ -95,7 +99,7 @@ namespace raptor
             global_n = glbl_n;
             local_n = lcl_n;
             first_local = first_lcl;
-            local.resize(local_n);
+            local->resize(local_n);
         }
 
         void copy(const ParVector& x)
@@ -103,7 +107,7 @@ namespace raptor
             global_n = x.global_n;
             local_n = x.local_n;
             first_local = x.first_local;
-            local.copy(x.local);
+            local->copy(*(x.local));
         }
 
         /**************************************************************
@@ -168,18 +172,42 @@ namespace raptor
 
         const data_t& operator[](const int index) const
         {
-            return local.values[index];
+            return local->values[index];
         }
 
         data_t& operator[](const int index)
         {
-            return local.values[index];
+            return local->values[index];
         }
 
-        Vector local;
+        Vector* local;
         int global_n;
         int local_n;
         int first_local;
+    };
+
+    class ParBVector : public ParVector
+    {
+
+    public:
+        ParBVector(index_t glbl_n, int lcl_n, index_t first_lcl, int vecs_in_block)
+            : ParVector(glbl_n * vecs_in_block, lcl_n, first_lcl, false)
+        {
+            local = new BVector(lcl_n, vecs_in_block);
+        }
+       
+        // FIX THIS
+        ParBVector() : ParVector()
+        {
+            //b_vecs = 1;
+        }
+
+        void axpy(ParVector& x, data_t alpha);
+        void axpy(ParBVector& y, data_t alpha);
+        aligned_vector<data_t> norm(index_t p);
+        aligned_vector<data_t> inner_product(ParVector& x);
+        aligned_vector<data_t> inner_product(ParBVector& y);
+
     };
 
 }

@@ -22,7 +22,7 @@ void ParVector::axpy(ParVector& x, data_t alpha)
 {
     if (local_n)
     {
-        local.axpy(x.local, alpha);
+        local->axpy(*(x.local), alpha);
     }
 }
 
@@ -40,7 +40,7 @@ void ParVector::scale(data_t alpha)
 {
     if (local_n)
     {
-        local.scale(alpha);
+        local->scale(alpha);
     }
 }
 
@@ -58,7 +58,7 @@ void ParVector::set_const_value(data_t alpha)
 {
     if (local_n)
     {
-        local.set_const_value(alpha);
+        local->set_const_value(alpha);
     }
 }
 
@@ -71,7 +71,7 @@ void ParVector::set_rand_values()
 {
     if (local_n)
     {
-        local.set_rand_values();
+        local->set_rand_values();
     }
 }
 
@@ -90,7 +90,7 @@ data_t ParVector::norm(index_t p)
     data_t result = 0.0;
     if (local_n)
     {
-        result = local.norm(p);
+        result = local->norm(p);
         result = pow(result, p); // undoing root of p from local operation
     }
     MPI_Allreduce(MPI_IN_PLACE, &result, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
@@ -112,7 +112,7 @@ data_t ParVector::inner_product(ParVector& x)
 
     if (local_n)
     {
-        inner_prod = local.inner_product(x.local);
+        inner_prod = local->inner_product(*(x.local));
     }
 
     MPI_Allreduce(MPI_IN_PLACE, &inner_prod, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);

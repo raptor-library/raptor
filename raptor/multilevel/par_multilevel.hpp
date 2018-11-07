@@ -371,7 +371,7 @@ namespace raptor
                         int info; // result
 
                         aligned_vector<double> b_data(coarse_n);
-                        MPI_Allgatherv(b.local.data(), b.local_n, MPI_DOUBLE, b_data.data(), 
+                        MPI_Allgatherv(b.local->data(), b.local_n, MPI_DOUBLE, b_data.data(), 
                                 coarse_sizes.data(), coarse_displs.data(), 
                                 MPI_DOUBLE, coarse_comm);
 

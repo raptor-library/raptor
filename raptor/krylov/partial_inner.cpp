@@ -28,7 +28,7 @@ data_t half_inner_contig(ParVector &x, ParVector &y, int half, int part_global){
             printf("Error. Dimensions do not match.\n");
 	    exit(-1);
 	}
-	inner_prod = x.local.inner_product(y.local);
+	inner_prod = x.local->inner_product(*(y.local));
 	return inner_prod;
     }
 
@@ -73,7 +73,7 @@ data_t half_inner_contig(ParVector &x, ParVector &y, int half, int part_global){
     // Perform Inner Product on Half
     if (!(color)){
         if (x.local_n){
-            inner_prod = x.local.inner_product(y.local);
+            inner_prod = x.local->inner_product(*(y.local));
         }
         if (inner_comm_size > 1) MPI_Allreduce(MPI_IN_PLACE, &inner_prod, 1, MPI_DATA_T, MPI_SUM, inner_comm);
     }
@@ -113,7 +113,7 @@ data_t sequential_inner(ParVector &x, ParVector &y){
             printf("Error. Dimensions do not match.\n");
 	    exit(-1);
 	}
-	inner_prod = x.local.inner_product(y.local);
+	inner_prod = x.local->inner_product(*(y.local));
 	return inner_prod;
     }
 
@@ -123,7 +123,7 @@ data_t sequential_inner(ParVector &x, ParVector &y){
     }
 
     for(int i=0; i<x.local_n; i++){
-        inner_prod += x.local[i] * y.local[i];
+        inner_prod += x.local->values[i] * y.local->values[i];
     }
 
     if (rank < num_procs-1)
@@ -227,7 +227,7 @@ data_t half_inner(MPI_Comm &inner_comm, ParVector &x, ParVector &y) {
                 printf("Error. Dimensions do not match.\n");
             exit(-1);
         }
-        inner_prod = x.local.inner_product(y.local);
+        inner_prod = x.local->inner_product(*(y.local));
         return inner_prod;
     }
     
@@ -241,7 +241,7 @@ data_t half_inner(MPI_Comm &inner_comm, ParVector &x, ParVector &y) {
     }
 
     // Perform your half of inner product
-    if (x.local_n) inner_prod = x.local.inner_product(y.local);
+    if (x.local_n) inner_prod = x.local->inner_product(*(y.local));
     if (inner_comm_size > 1) MPI_Allreduce(MPI_IN_PLACE, &inner_prod, 1, MPI_DATA_T, MPI_SUM, inner_comm);
 
     // Return partial inner_prod plus old half 
@@ -421,7 +421,7 @@ data_t partial_inner(MPI_Comm &inner_comm, MPI_Comm &root_comm, ParVector &x, Pa
     // and corresponds to the half performing the inner product this iteration
     if (my_color == send_color){
         if (x.local_n){
-            inner_prod = x.local.inner_product(y.local);
+            inner_prod = x.local->inner_product(*(y.local));
         }
         if (inner_comm_size > 1) MPI_Allreduce(MPI_IN_PLACE, &inner_prod, 1, MPI_DATA_T, MPI_SUM, inner_comm);
         // Scale inner product by global percentage before sending

@@ -16,6 +16,8 @@
 //    stl vector of vector values
 // size : index_t
 //    Dimension of vector
+// b_vecs : index_t
+//    Number of vectors in block
 //
 // Methods
 // -------
@@ -53,6 +55,7 @@ public:
     **************************************************************/
     Vector(int len)
     {
+        b_vecs = 1;
         resize(len);
     }
 
@@ -64,6 +67,7 @@ public:
     Vector()
     {
         num_values = 0;
+        b_vecs = 1;
     }
 
     Vector(const Vector& v)
@@ -73,8 +77,8 @@ public:
 
     void resize(int len)
     {
-        values.resize(len);
-        num_values = len;
+        values.resize(len * b_vecs);
+        num_values = len * b_vecs;
     }
 
     /**************************************************************
@@ -195,6 +199,30 @@ public:
 
     aligned_vector<double> values;
     index_t num_values;
+    index_t b_vecs;
+};
+
+class BVector : public Vector
+{
+
+public:
+    BVector(int len, int vecs_in_block) : Vector(len * vecs_in_block)
+    {
+        b_vecs = vecs_in_block;
+        num_values = len;
+    }
+
+    BVector() : Vector()
+    {
+        b_vecs = 1;
+    }
+
+    void axpy(Vector& x, data_t alpha);
+    void axpy(BVector& y, data_t alpha);
+    aligned_vector<data_t> norm(index_t p);
+    aligned_vector<data_t> inner_product(Vector& x);
+    aligned_vector<data_t> inner_product(BVector& y);
+
 };
 
 }

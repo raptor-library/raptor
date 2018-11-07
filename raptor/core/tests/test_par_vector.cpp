@@ -43,7 +43,7 @@ TEST(ParVectorTest, TestsInCore)
     v.set_const_value(1.0);
     v_par.set_const_value(1.0);
 
-    Vector& v_par_l = v_par.local;
+    Vector v_par_l = *(v_par.local);
     for (int i = 0; i < local_n; i++)
     {
         ASSERT_EQ( v[first_n+i], v_par_l[i] );
