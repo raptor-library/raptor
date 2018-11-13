@@ -53,9 +53,9 @@ public:
     ***** len : index_t
     *****    Size of the vector
     **************************************************************/
-    Vector(int len)
+    Vector(int len, int vecs_in_block = 1)
     {
-        b_vecs = 1;
+        b_vecs = vecs_in_block;
         resize(len);
     }
 
@@ -150,7 +150,21 @@ public:
     ***** p : index_t
     *****    Determines which p-norm to calculate
      **************************************************************/
-    data_t norm(index_t p);
+    data_t norm(index_t p, data_t* norms = NULL);
+    
+    /**************************************************************
+    *****   Vector Mult
+    **************************************************************
+    ***** Virtual - only defined in BVector class
+    *****
+    ***** Parameters
+    ***** -------------
+    ***** x : Vector&
+    *****    Vector to multiply with
+    ***** b : Vector&
+    *****    Vector to hold result
+    **************************************************************/
+    void mult(Vector& x, Vector& b);
 
     /**************************************************************
     *****   Print Vector
@@ -195,7 +209,7 @@ public:
         return num_values;
     }
 
-    data_t inner_product(Vector& x);
+    data_t inner_product(Vector& x, data_t* inner_prods = NULL);
 
     aligned_vector<double> values;
     index_t num_values;
@@ -206,7 +220,7 @@ class BVector : public Vector
 {
 
 public:
-    BVector(int len, int vecs_in_block) : Vector(len * vecs_in_block)
+    BVector(int len, int vecs_in_block) : Vector(len, vecs_in_block)
     {
         b_vecs = vecs_in_block;
         num_values = len;
@@ -219,10 +233,11 @@ public:
 
     void axpy(Vector& x, data_t alpha);
     void axpy(BVector& y, data_t alpha);
-    aligned_vector<data_t> norm(index_t p);
-    aligned_vector<data_t> inner_product(Vector& x);
-    aligned_vector<data_t> inner_product(BVector& y);
+    data_t norm(index_t p, data_t* norms = NULL);
+    data_t inner_product(Vector& x, data_t* inner_prods = NULL);
+    data_t inner_product(BVector& y, data_t* inner_prods = NULL);
 
+    void mult(Vector& x, Vector& b);
 };
 
 }

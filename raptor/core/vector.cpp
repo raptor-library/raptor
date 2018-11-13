@@ -16,7 +16,7 @@ using namespace raptor;
 **************************************************************/
 void Vector::set_const_value(data_t alpha)
 {
-    for (index_t i = 0; i < num_values; i++)
+    for (index_t i = 0; i < num_values*b_vecs; i++)
     {
         values[i] = alpha;
     }
@@ -31,7 +31,7 @@ void Vector::set_const_value(data_t alpha)
 void Vector::set_rand_values()
 {
     srand(time(NULL));
-    for (index_t i = 0; i < num_values; i++)
+    for (index_t i = 0; i < num_values*b_vecs; i++)
     {
         values[i] = ((double)rand()) / RAND_MAX;
     }
@@ -52,7 +52,7 @@ void Vector::set_rand_values()
 **************************************************************/
 void Vector::axpy(Vector& x, data_t alpha)
 {
-    for (index_t i = 0; i < num_values; i++)
+    for (index_t i = 0; i < num_values*b_vecs; i++)
     {
         values[i] += x.values[i]*alpha;
     }
@@ -72,7 +72,8 @@ void Vector::axpy(Vector& x, data_t alpha)
 void Vector::copy(const Vector& y)
 {
     num_values = y.num_values;
-    values.resize(num_values);
+    b_vecs = y.b_vecs;
+    values.resize(num_values * b_vecs);
     std::copy(y.values.begin(), y.values.end(), values.begin());
 }
 
@@ -104,17 +105,38 @@ void Vector::scale(data_t alpha)
 ***** p : index_t
 *****    Determines which p-norm to calculate
 **************************************************************/
-data_t Vector::norm(index_t p)
+data_t Vector::norm(index_t p, data_t* norms)
 {
     data_t result = 0.0;
     double val;
-    for (index_t i = 0; i < num_values; i++)
-    {
-        val = values[i];
-        if (fabs(val) > zero_tol)
-            result += pow(val, p);
+
+    if (norms == NULL)
+    {    
+        for (index_t i = 0; i < num_values; i++)
+        {
+            val = values[i];
+            if (fabs(val) > zero_tol)
+                result += pow(val, p);
+        }
+        return pow(result, 1.0/p);
     }
-    return pow(result, 1.0/p);
+    else
+    {
+        index_t offset;
+        for (index_t j = 0; j < b_vecs; j++)
+        {
+            result = 0.0;
+            offset = j * num_values;
+            for (index_t i = 0; i < num_values; i++)
+            {
+                val = values[i + offset];
+                if (fabs(val) > zero_tol)
+                    result += pow(val, p);
+            }
+            norms[j] = pow(result, 1.0/p);
+        }
+        return 0;
+    }
 }
 
 /**************************************************************
@@ -129,11 +151,16 @@ data_t Vector::norm(index_t p)
 **************************************************************/
 void Vector::print(const char* vec_name)
 {
+    index_t offset;
     printf("Size = %d\n", num_values);
-    for (int i = 0; i < num_values; i++)
+    for (int j = 0; j < b_vecs; j++)
     {
-        if (fabs(values[i]) > zero_tol)
-            printf("%s[%d] = %e\n", vec_name, i, values[i]);
+        offset = j * num_values;
+        for (int i = 0; i < num_values; i++)
+        {
+            if (fabs(values[i]) > zero_tol)
+                printf("%s[%d][%d] = %e\n", vec_name, j, i, values[i + offset]);
+        }
     }
 }
 
@@ -152,16 +179,33 @@ data_t& Vector::operator[](const int index)
 }
 
 
-data_t Vector::inner_product(Vector& x)
+data_t Vector::inner_product(Vector& x, data_t* inner_prods)
 {
     data_t result = 0.0;
 
-    for (int i = 0; i < num_values; i++)
+    if (inner_prods == NULL)
     {
-        result += values[i] * x[i];
+        for (int i = 0; i < num_values; i++)
+        {
+            result += values[i] * x[i];
+        }
+        return result;
     }
-
-    return result;
+    else
+    {
+        index_t offset; 
+        for (index_t j = 0; j < b_vecs; j++)
+        {
+            result = 0.0;
+            offset = j * num_values;
+            for (index_t i = 0; i < num_values; i++)
+            {
+                result += values[i + offset] * x[i];
+            }
+            inner_prods[j] = result;
+        }
+        return 0;
+    }
 }
 
 /**************************************************************
@@ -230,10 +274,8 @@ void BVector::axpy(BVector& y, data_t alpha)
 ***** p : index_t
 *****    Determines which p-norm to calculate
 **************************************************************/
-aligned_vector<data_t> BVector::norm(index_t p)
+data_t BVector::norm(index_t p, data_t* norms)
 {
-    aligned_vector<data_t> norms;
-
     data_t result;
     index_t offset;
     double val;
@@ -248,10 +290,10 @@ aligned_vector<data_t> BVector::norm(index_t p)
             if (fabs(val) > zero_tol)
                 result += pow(val, p);
         }
-        norms.push_back(pow(result, 1.0/p));
+        norms[j] = pow(result, 1.0/p);
     }
 
-    return norms;
+    return 0;
 }
 
 /**************************************************************
@@ -265,9 +307,8 @@ aligned_vector<data_t> BVector::norm(index_t p)
 ***** x : Vector&
 *****    Vector to calculate inner product with
 **************************************************************/
-aligned_vector<data_t> BVector::inner_product(Vector& x)
+data_t BVector::inner_product(Vector& x, data_t* inner_prods)
 {
-    aligned_vector<data_t> inner_prods;
     data_t result;
     index_t offset;
 
@@ -279,10 +320,10 @@ aligned_vector<data_t> BVector::inner_product(Vector& x)
         {
             result += values[i + offset] * x[i];
         }
-        inner_prods.push_back(result);
+        inner_prods[j] = result;
     }
 
-    return inner_prods;
+    return 0;
 }
 
 /**************************************************************
@@ -296,9 +337,8 @@ aligned_vector<data_t> BVector::inner_product(Vector& x)
 ***** y : BVector&
 *****    BVector to calculate inner product with
 **************************************************************/
-aligned_vector<data_t> BVector::inner_product(BVector& y)
+data_t BVector::inner_product(BVector& y, data_t* inner_prods)
 {
-    aligned_vector<data_t> inner_prods;
     data_t result;
     index_t offset;
 
@@ -310,8 +350,68 @@ aligned_vector<data_t> BVector::inner_product(BVector& y)
         {
             result += values[i + offset] * y[i + offset];
         }
-        inner_prods.push_back(result);
+        inner_prods[j] = result;
     }
 
-    return inner_prods;
+    return 0;
+}
+
+/**************************************************************
+*****   BVector Mult 
+**************************************************************
+***** Multiplies the BVector by the Vector x as if the 
+***** the BVector were a dense matrix
+*****
+***** Parameters
+***** -------------
+***** x : Vector&
+*****    Vector to multiply with
+***** b : Vector&
+*****    Vector to hold result
+**************************************************************/
+void BVector::mult(Vector& x, Vector& b)
+{
+    b.set_const_value(0.0);
+    data_t result;
+    index_t offset;
+
+    for (index_t j = 0; j < b_vecs; j++)
+    {
+        result = 0.0;
+        offset = j * num_values;
+        for (index_t i = 0; i < num_values; i++)
+        {
+            b[i] += values[i + offset] * x[j];
+        }
+    }
+}
+
+/**************************************************************
+*****   BVector Mult 
+**************************************************************
+***** Multiplies the BVector by the Vector x as if the 
+***** the BVector were a dense matrix
+*****
+***** Parameters
+***** -------------
+***** x : Vector&
+*****    Vector to multiply with
+***** b : Vector&
+*****    Vector to hold result
+**************************************************************/
+void Vector::mult(Vector& x, Vector& b)
+{
+    b.set_const_value(0.0);
+    data_t result;
+    index_t offset;
+
+    for (index_t j = 0; j < b_vecs; j++)
+    {
+        result = 0.0;
+        offset = j * num_values;
+        for (index_t i = 0; i < num_values; i++)
+        {
+            b[i] += values[i + offset] * x[j];
+        }
+    }
 }

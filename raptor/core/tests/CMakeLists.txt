@@ -34,6 +34,12 @@ if (WITH_MPI)
     add_test(ParBlockMatrixTest ${MPIRUN} -n 1 ./test_par_block_matrix)
     add_test(ParBlockMatrixTest ${MPIRUN} -n 4 ./test_par_block_matrix)
     add_test(ParBlockMatrixTest ${MPIRUN} -n 16 ./test_par_block_matrix)
+    
+    add_executable(test_par_block_vector test_par_block_vector.cpp)
+    target_link_libraries(test_par_block_vector raptor ${MPI_LIBRARIES} googletest pthread )
+    add_test(ParBlockVectorTest ${MPIRUN} -n 1 ./test_par_block_vector)
+    add_test(ParBlockVectorTest ${MPIRUN} -n 4 ./test_par_block_vector)
+    add_test(ParBlockVectorTest ${MPIRUN} -n 16 ./test_par_block_vector)
 
 endif ()
 

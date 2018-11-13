@@ -66,8 +66,8 @@ namespace raptor
             if (form_vec)
             {
                 local = new Vector(lcl_n);
+                resize(glbl_n, lcl_n, first_lcl);
             }
-            resize(glbl_n, lcl_n, first_lcl);
         }
 
         ParVector(const ParVector& x)
@@ -92,6 +92,7 @@ namespace raptor
         **************************************************************/
         ~ParVector()
         {
+            delete local;
         }
 
         void resize(index_t glbl_n, int lcl_n, index_t first_lcl)
@@ -166,9 +167,12 @@ namespace raptor
         ***** p : index_t
         *****    Determines which p-norm to calculate
         **************************************************************/
-        data_t norm(index_t p);
+        data_t norm(index_t p, data_t* norms = NULL);
 
-        data_t inner_product(ParVector& x);        
+        data_t inner_product(ParVector& x, data_t* inner_prods = NULL);        
+
+        //void mult_T(ParVector& x, Vector& b) = 0;
+        //void mult(Vector& x, Vector& b) = 0;
 
         const data_t& operator[](const int index) const
         {
@@ -191,22 +195,24 @@ namespace raptor
 
     public:
         ParBVector(index_t glbl_n, int lcl_n, index_t first_lcl, int vecs_in_block)
-            : ParVector(glbl_n * vecs_in_block, lcl_n, first_lcl, false)
+            : ParVector(glbl_n, lcl_n, first_lcl, false)
         {
             local = new BVector(lcl_n, vecs_in_block);
+            //resize(glbl_n, lcl_n, first_lcl);
         }
-       
+
         // FIX THIS
         ParBVector() : ParVector()
         {
             //b_vecs = 1;
         }
 
-        void axpy(ParVector& x, data_t alpha);
-        void axpy(ParBVector& y, data_t alpha);
-        aligned_vector<data_t> norm(index_t p);
-        aligned_vector<data_t> inner_product(ParVector& x);
-        aligned_vector<data_t> inner_product(ParBVector& y);
+        //void axpy(ParBVector& y, data_t alpha);
+        data_t norm(index_t p, data_t* norms = NULL);
+        data_t inner_product(ParBVector& x, data_t* inner_prods = NULL);
+        //aligned_vector<data_t> inner_product(ParBVector& y);
+        void mult_T(ParVector& x, data_t* b);
+        void mult(Vector& x, ParVector& b);
 
     };
 
