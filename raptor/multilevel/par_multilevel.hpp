@@ -379,7 +379,7 @@ namespace raptor
                                 LU_permute.data(), b_data.data(), &coarse_n, &info);
                         for (int i = 0; i < b.local_n; i++)
                         {
-                            x.local[i] = b_data[i + coarse_displs[active_rank]];
+                            x.local->values[i] = b_data[i + coarse_displs[active_rank]];
                         }
                     }
 

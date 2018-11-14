@@ -72,6 +72,7 @@ namespace raptor
 
         ParVector(const ParVector& x)
         {
+            local = new Vector();
             copy(x);
         }
 
@@ -83,6 +84,7 @@ namespace raptor
         ParVector()
         {
             local_n = 0;
+            local = new Vector(local_n);
         }
 
         /**************************************************************
