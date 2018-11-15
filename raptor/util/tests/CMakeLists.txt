@@ -78,6 +78,12 @@ if (WITH_MPI)
     add_test(ParBSRSpMVTest ${MPIRUN} -n 2 ./test_par_bsr_spmv)
     add_test(ParBSRSpMVTest ${MPIRUN} -n 3 ./test_par_bsr_spmv)
     add_test(ParBSRSpMVTest ${MPIRUN} -n 6 ./test_par_bsr_spmv)
+    
+    add_executable(test_par_block_vecops test_par_block_vecops.cpp)
+    target_link_libraries(test_par_block_vecops raptor ${MPI_LIBRARIES} googletest pthread )
+    add_test(ParBlockVectorOpsTest ${MPIRUN} -n 2 ./test_par_block_vecops)
+    add_test(ParBlockVectorOpsTest ${MPIRUN} -n 4 ./test_par_block_vecops)
+    add_test(ParBlockVectorOpsTest ${MPIRUN} -n 8 ./test_par_block_vecops)
 
     if (WITH_PTSCOTCH)
         add_executable(test_repartition test_repartition.cpp)

@@ -185,6 +185,8 @@ namespace raptor
         {
             return local->values[index];
         }
+        
+        void append(ParVector& P);
 
         Vector* local;
         int global_n;
@@ -208,6 +210,21 @@ namespace raptor
         {
             //b_vecs = 1;
         }
+        
+        /**************************************************************
+        *****   BVector Scale
+        **************************************************************
+        ***** Multiplies the local vector by a constant, alpha
+        *****
+        ***** Parameters
+        ***** -------------
+        ***** alpha : data_t
+        *****    Constant value to multiply each element of vector by
+        ***** alphas : data_t*
+        *****    Constant values to multiply element of each vector
+        *****    in block vector by  
+        **************************************************************/
+        void scale(data_t alpha, data_t* alphas = NULL);
 
         //void axpy(ParBVector& y, data_t alpha);
         data_t norm(index_t p, data_t* norms = NULL);

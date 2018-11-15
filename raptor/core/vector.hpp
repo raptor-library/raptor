@@ -136,9 +136,12 @@ public:
     ***** Parameters
     ***** -------------
     ***** alpha : data_t
-    *****    Constant value to set multiply element of vector by
+    *****    Constant value to multiply element of vector by
+    ***** alphas : data_t*
+    *****    Constant values to multiply element of each vector
+    *****    in block vector by  
     **************************************************************/
-    void scale(data_t alpha);
+    void scale(data_t alpha, data_t* alphas = NULL);
 
     /**************************************************************
     *****   Vector Norm
@@ -211,6 +214,8 @@ public:
 
     data_t inner_product(Vector& x, data_t* inner_prods = NULL);
 
+    void append(Vector& P);
+
     aligned_vector<double> values;
     index_t num_values;
     index_t b_vecs;
@@ -230,6 +235,21 @@ public:
     {
         b_vecs = 1;
     }
+    
+    /**************************************************************
+    *****   BVector Scale
+    **************************************************************
+    ***** Multiplies each element of the vector by a constant value
+    *****
+    ***** Parameters
+    ***** -------------
+    ***** alpha : data_t
+    *****    Constant value to multiply element of vector by
+    ***** alphas : data_t*
+    *****    Constant values to multiply element of each vector
+    *****    in block vector by  
+    **************************************************************/
+    void scale(data_t alpha, data_t* alphas = NULL);
 
     void axpy(Vector& x, data_t alpha);
     void axpy(BVector& y, data_t alpha);

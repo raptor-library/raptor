@@ -24,6 +24,7 @@ if (WITH_MPI)
         util/linalg/par_add.cpp
         util/linalg/par_relax.cpp
         util/linalg/repartition.cpp
+        util/linalg/par_vecops.cpp
         )
 else ()
     set(par_linalg_HEADERS
@@ -45,6 +46,7 @@ set(linalg_SOURCES
     util/linalg/relax.cpp
     util/linalg/add.cpp
     util/linalg/spmv.cpp
+    util/linalg/vecops.cpp
     ${par_linalg_SOURCES}
     PARENT_SCOPE
     )

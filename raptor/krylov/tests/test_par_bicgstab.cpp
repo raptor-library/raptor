@@ -32,15 +32,15 @@ TEST(ParBiCGStabTest, TestsInKrylov)
     //double* stencil = diffusion_stencil_2d(0.1, M_PI/4.0);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
 
-    ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    ParVector* x = new ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    ParVector* b = new ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     aligned_vector<double> residuals;
 
-    x.set_const_value(1.0);
-    A->mult(x, b);
-    x.set_const_value(0.0);
+    x->set_const_value(1.0);
+    A->mult(*x, *b);
+    x->set_const_value(0.0);
 
-    BiCGStab(A, x, b, residuals);
+    BiCGStab(A, *x, *b, residuals);
 
     // Just testing the first 10 residuals
     if(rank == 0){
@@ -58,6 +58,8 @@ TEST(ParBiCGStabTest, TestsInKrylov)
 
     delete[] stencil;
     delete A;
+    delete x;
+    delete b;
     
 } // end of TEST(ParBiCGStabTest, TestsInKrylov) //
 

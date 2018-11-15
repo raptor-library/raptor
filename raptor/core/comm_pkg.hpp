@@ -137,22 +137,30 @@ namespace raptor
 
         // Standard Communication
         template<typename T>
-        aligned_vector<T>& communicate(const aligned_vector<T>& values, const int block_size = 1)
+        aligned_vector<T>& communicate(const aligned_vector<T>& values, const int block_size = 1,
+                                       const int vblock_size = 1)
         {  
             return communicate(values.data(), block_size);
         }
         template<typename T>
-        void init_comm(const aligned_vector<T>& values, const int block_size = 1)
+        void init_comm(const aligned_vector<T>& values, const int block_size = 1, const int vblock_size = 1)
         {
             init_comm(values.data(), block_size);
         }
-        template<typename T> void init_comm(const T* values, const int block_size = 1);
-        template<typename T> aligned_vector<T>& complete_comm(const int block_size = 1);
-        template<typename T> aligned_vector<T>& communicate(const T* values, const int block_size = 1);
-        virtual void init_double_comm(const double* values, const int block_size) = 0;
-        virtual void init_int_comm(const int* values, const int block_size) = 0;
-        virtual aligned_vector<double>& complete_double_comm(const int block_size) = 0;
-        virtual aligned_vector<int>& complete_int_comm(const int block_size) = 0;
+        template<typename T> void init_comm(const T* values, const int block_size = 1,
+                                            const int vblock_size = 1);
+        template<typename T> aligned_vector<T>& complete_comm(const int block_size = 1,
+                                                              const int vblock_size = 1);
+        template<typename T> aligned_vector<T>& communicate(const T* values, const int block_size = 1,
+                                                            const int vblock_size = 1);
+        virtual void init_double_comm(const double* values, const int block_size,
+                                      const int vblock_size = 1) = 0;
+        virtual void init_int_comm(const int* values, const int block_size,
+                                   const int vblock_size = 1) = 0;
+        virtual aligned_vector<double>& complete_double_comm(const int block_size,
+                                                             const int vblock_size = 1) = 0;
+        virtual aligned_vector<int>& complete_int_comm(const int block_size,
+                                                       const int vblock_size = 1) = 0;
 
         // Transpose Communication
         template<typename T, typename U>
@@ -160,7 +168,8 @@ namespace raptor
                 const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0)
+                T init_result_func_val = 0,
+                const int vblock_size = 1)
         {  
             communicate_T(values.data(), result, block_size, result_func, 
                     init_result_func, init_result_func_val);
@@ -169,7 +178,8 @@ namespace raptor
         void communicate_T(const aligned_vector<T>& values,
                 const int block_size = 1, 
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0)
+                T init_result_func_val = 0,
+                const int vblock_size = 1)
         {  
             communicate_T(values.data(), block_size, init_result_func,
                     init_result_func_val);
@@ -178,67 +188,79 @@ namespace raptor
         void init_comm_T(const aligned_vector<T>& values,
                 const int block_size = 1, 
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0)
+                T init_result_func_val = 0,
+                const int vblock_size = 1)
         {
             init_comm_T(values.data(), block_size, init_result_func, init_result_func_val);
         }
         template<typename T> void init_comm_T(const T* values,
                 const int block_size = 1, 
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
-                T init_result_func_val = 0);
+                T init_result_func_val = 0,
+                const int vblock_size = 1);
         template<typename T, typename U> void complete_comm_T(aligned_vector<U>& result,
                 const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
-                T init_result_func_val = 0);
+                T init_result_func_val = 0,
+                const int vblock_size = 1);
         template<typename T> void complete_comm_T(
                 const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0);
+                T init_result_func_val = 0,
+                const int vblock_size = 1);
         template<typename T, typename U> void communicate_T(const T* values, 
                 aligned_vector<U>& result, const int block_size = 1, 
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
-                T init_result_func_val = 0);
+                T init_result_func_val = 0,
+                const int vblock_size = 1);
         template<typename T> void communicate_T(const T* values,
                 const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0);
+                T init_result_func_val = 0,
+                const int vblock_size = 1);
         virtual void init_double_comm_T(const double* values,
                 const int block_size,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>, 
-                    double init_result_func_val = 0) = 0;
+                    double init_result_func_val = 0,
+                const int vblock_size = 1) = 0;
         virtual void init_int_comm_T(const int* values,
                 const int block_size,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                int init_result_func_val = 0) = 0;
+                int init_result_func_val = 0,
+                const int vblock_size = 1) = 0;
         virtual void complete_double_comm_T(aligned_vector<double>& result,
                 const int block_size,
                 std::function<double(double, double)> result_func = &sum_func<double, double>,
                 std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>, double init_result_func_val = 0) = 0;
+                    &sum_func<double, double>, double init_result_func_val = 0,
+                const int vblock_size = 1) = 0;
         virtual void complete_double_comm_T(aligned_vector<int>& result,
                 const int block_size,
                 std::function<int(int, double)> result_func = &sum_func<double, int>,
                 std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>, double init_result_func_val = 0) = 0;
+                    &sum_func<double, double>, double init_result_func_val = 0,
+                const int vblock_size = 1) = 0;
         virtual void complete_int_comm_T(aligned_vector<int>& result,
                 const int block_size,
                 std::function<int(int, int)> result_func = &sum_func<int, int>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                int init_result_func_val = 0) = 0;
+                int init_result_func_val = 0,
+                const int vblock_size = 1) = 0;
         virtual void complete_int_comm_T(aligned_vector<double>& result,
                 const int block_size,
                 std::function<double(double, int)> result_func = &sum_func<int, double>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                int init_result_func_val = 0) = 0;
+                int init_result_func_val = 0, const int vblock_size = 1) = 0;
         virtual void complete_double_comm_T(const int block_size,
                 std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>, double init_result_func_val = 0) = 0;
+                    &sum_func<double, double>, double init_result_func_val = 0,
+                const int vblock_size = 1) = 0;
         virtual void complete_int_comm_T(const int block_size,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                int init_result_func_val = 0) = 0;
+                int init_result_func_val = 0, const int vblock_size = 1) = 0;
 
         // Helper methods
         template <typename T> aligned_vector<T>& get_buffer();
@@ -574,36 +596,36 @@ namespace raptor
         }
 
         // Standard Communication
-        void init_double_comm(const double* values, const int block_size = 1)
+        void init_double_comm(const double* values, const int block_size = 1, const int vblock_size = 1)
         {
             initialize(values, block_size);
         }
-        void init_int_comm(const int* values, const int block_size = 1)
+        void init_int_comm(const int* values, const int block_size = 1, const int vblock_size = 1)
         {
             initialize(values);
         }
-        aligned_vector<double>& complete_double_comm(const int block_size = 1)
+        aligned_vector<double>& complete_double_comm(const int block_size = 1, const int vblock_size = 1)
         {
             return complete<double>(block_size);
         }
-        aligned_vector<int>& complete_int_comm(const int block_size = 1)
+        aligned_vector<int>& complete_int_comm(const int block_size = 1, const int vblock_size = 1)
         {
             return complete<int>(block_size);
         }
         template<typename T>
         aligned_vector<T>& communicate(const aligned_vector<T>& values,
-                const int block_size = 1)
+                const int block_size = 1, const int vblock_size = 1)
         {
             return CommPkg::communicate(values.data(), block_size);
         }
         template<typename T>
-        aligned_vector<T>& communicate(const T* values, const int block_size = 1)
+        aligned_vector<T>& communicate(const T* values, const int block_size = 1, const int vblock_size = 1)
         {
             return CommPkg::communicate(values, block_size);
         }
 
         template<typename T>
-        void initialize(const T* values, const int block_size = 1)
+        void initialize(const T* values, const int block_size = 1, const int vblock_size = 1)
         {
             int start, end;
             int proc, pos, idx;
@@ -613,7 +635,7 @@ namespace raptor
         }
 
         template<typename T>
-        aligned_vector<T>& complete(const int block_size = 1)
+        aligned_vector<T>& complete(const int block_size = 1, const int vblock_size = 1)
         {
             send_data->waitall();
             recv_data->waitall();
@@ -630,7 +652,7 @@ namespace raptor
                 const int block_size = 1,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>, 
-                    double init_result_func_val = 0)
+                    double init_result_func_val = 0, const int vblock_size = 1)
         {
             initialize_T(values, block_size, init_result_func, init_result_func_val);
         }
@@ -638,7 +660,7 @@ namespace raptor
                 const int block_size = 1,
                 std::function<int(int, int)> init_result_func = 
                     &sum_func<int, int>, 
-                    int init_result_func_val = 0)
+                    int init_result_func_val = 0, const int vblock_size = 1)
         {
             initialize_T(values, block_size, init_result_func, init_result_func_val);
         }
@@ -647,7 +669,7 @@ namespace raptor
                 std::function<double(double, double)> result_func = &sum_func<double, double>,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>,
-                    double init_result_func_val = 0)
+                    double init_result_func_val = 0, const int vblock_size = 1)
         {
             complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
         }
@@ -656,7 +678,7 @@ namespace raptor
                 std::function<int(int, double)> result_func = &sum_func<double, int>,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>,
-                    double init_result_func_val = 0)
+                    double init_result_func_val = 0, const int vblock_size = 1)
         {
             complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
         }
@@ -664,7 +686,7 @@ namespace raptor
                 const int block_size = 1,
                 std::function<double(double, int)> result_func = &sum_func<int, double>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                int init_result_func_val = 0)
+                int init_result_func_val = 0, const int vblock_size = 1)
         {
             complete_T<int>(result, block_size, result_func, init_result_func, init_result_func_val);
         }
@@ -672,20 +694,20 @@ namespace raptor
                 const int block_size = 1,
                 std::function<int(int, int)> result_func = &sum_func<int, int>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                int init_result_func_val = 0)
+                int init_result_func_val = 0, const int vblock_size = 1)
         {
             complete_T<int>(result, block_size, result_func, init_result_func, init_result_func_val);
         }
         void complete_double_comm_T(const int block_size = 1,
                 std::function<double(double, double)> init_result_func =
                 &sum_func<double, double>, 
-                double init_result_func_val = 0)
+                double init_result_func_val = 0, const int vblock_size = 1)
         {
             complete_T<double>(block_size, init_result_func, init_result_func_val);
         }
         void complete_int_comm_T(const int block_size = 1,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                int init_result_func_val = 0)
+                int init_result_func_val = 0, const int vblock_size = 1)
         {
             complete_T<int>(block_size, init_result_func, init_result_func_val);
         }
@@ -694,7 +716,7 @@ namespace raptor
                 const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
-                T init_result_func_val = 0)
+                T init_result_func_val = 0, const int vblock_size = 1)
         {
             CommPkg::communicate_T(values.data(), result, block_size,
                     result_func, init_result_func, init_result_func_val);
@@ -704,7 +726,7 @@ namespace raptor
                 const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0)
+                T init_result_func_val = 0, const int vblock_size = 1)
         {
             CommPkg::communicate_T(values, result, block_size,
                     result_func, init_result_func, init_result_func_val);
@@ -713,7 +735,7 @@ namespace raptor
         void communicate_T(const aligned_vector<T>& values,
                 const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0)
+                T init_result_func_val = 0, const int vblock_size = 1)
         {
             CommPkg::communicate_T(values.data(), block_size, init_result_func,
                     init_result_func_val);
@@ -721,7 +743,7 @@ namespace raptor
         template<typename T>
         void communicate_T(const T* values, const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0)
+                T init_result_func_val = 0, const int vblock_size = 1)
         {
             CommPkg::communicate_T(values, block_size, init_result_func, init_result_func_val);
         }
@@ -729,7 +751,7 @@ namespace raptor
         template<typename T>
         void initialize_T(const T* values, const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
-                T init_result_func_val = 0)
+                T init_result_func_val = 0, const int vblock_size = 1)
         {
             int start, end;
             int proc, idx, pos;
@@ -743,7 +765,7 @@ namespace raptor
                 const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0)
+                T init_result_func_val = 0, const int vblock_size = 1)
         {
             // TODO - dont need to copy into sendbuf first
             complete_T<T>(block_size, init_result_func, init_result_func_val);
@@ -765,7 +787,7 @@ namespace raptor
         template<typename T>
         void complete_T(const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0)
+                T init_result_func_val = 0, const int vblock_size = 1)
         {
             send_data->waitall();
             recv_data->waitall();
@@ -781,7 +803,7 @@ namespace raptor
                 const aligned_vector<int>& states, 
                 const aligned_vector<int>& off_proc_states,
                 std::function<bool(int)> compare_func,
-                const int block_size = 1)
+                const int block_size = 1, const int vblock_size = 1)
         {
             int ctr, n_sends, n_recvs;
             int key = 325493;
@@ -835,7 +857,7 @@ namespace raptor
                 std::function<bool(int)> compare_func,
                 aligned_vector<U>& result, 
                 std::function<U(U, T)> result_func,
-                const int block_size = 1)
+                const int block_size = 1, const int vblock_size = 1)
         {
             int idx, ctr;
             int n_sends, n_recvs;
@@ -1454,38 +1476,38 @@ namespace raptor
                 const aligned_vector<int>& off_node_to_off_proc, bool update_L = true);
 
         // Class Methods
-        void init_double_comm(const double* values, const int block_size)
+        void init_double_comm(const double* values, const int block_size, const int vblock_size = 1)
         {
             initialize(values, block_size);
         }
-        void init_int_comm(const int* values, const int block_size)
+        void init_int_comm(const int* values, const int block_size, const int vblock_size = 1)
         {
             initialize(values, block_size);
         }
-        aligned_vector<double>& complete_double_comm(const int block_size)
+        aligned_vector<double>& complete_double_comm(const int block_size, const int vblock_size = 1)
         {
             return complete<double>(block_size);
         }
-        aligned_vector<int>& complete_int_comm(const int block_size)
+        aligned_vector<int>& complete_int_comm(const int block_size, const int vblock_size = 1)
         {
             return complete<int>(block_size);
         }
         
         template<typename T>
         aligned_vector<T>& communicate(const aligned_vector<T>& values, 
-                const int block_size = 1)
+                const int block_size = 1, const int vblock_size = 1)
         {
             return CommPkg::communicate<T>(values.data(), block_size);
         }
         template<typename T>
         aligned_vector<T>& communicate(const T* values,
-                const int block_size = 1)
+                const int block_size = 1, const int vblock_size = 1)
         {
             return CommPkg::communicate<T>(values, block_size);
         }
 
         template<typename T>
-        void initialize(const T* values, const int block_size = 1)
+        void initialize(const T* values, const int block_size = 1, const int vblock_size = 1)
         {
             // Messages with origin and final destination on node
             local_L_par_comm->communicate<T>(values, block_size);
@@ -1505,7 +1527,7 @@ namespace raptor
         }
 
         template<typename T>
-        aligned_vector<T>& complete(const int block_size = 1)
+        aligned_vector<T>& complete(const int block_size = 1, const int vblock_size = 1)
         {
             // Complete inter-node communication
             aligned_vector<T>& G_vals = global_par_comm->complete<T>(block_size);
@@ -1557,14 +1579,14 @@ namespace raptor
                 const int block_size,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>,
-                    double init_result_func_val = 0)
+                    double init_result_func_val = 0, const int vblock_size = 1)
         {
             initialize_T(values, block_size, init_result_func, init_result_func_val);
         }
         void init_int_comm_T(const int* values,
                 const int block_size,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                int init_result_func_val = 0)
+                int init_result_func_val = 0, const int vblock_size = 1)
         {
             initialize_T(values, block_size, init_result_func, init_result_func_val);
         }
@@ -1573,7 +1595,7 @@ namespace raptor
                 std::function<double(double, double)> result_func = &sum_func<double, double>,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>,
-                    double init_result_func_val = 0)
+                    double init_result_func_val = 0, const int vblock_size = 1)
         {
             complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
         }        
@@ -1582,7 +1604,7 @@ namespace raptor
                 std::function<int(int, double)> result_func = &sum_func<double, int>,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>,
-                    double init_result_func_val = 0)
+                    double init_result_func_val = 0, const int vblock_size = 1)
         {
             complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
         }
@@ -1590,7 +1612,7 @@ namespace raptor
                 const int block_size,
                 std::function<double(double, int)> result_func = &sum_func<int, double>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                int init_result_func_val = 0)
+                int init_result_func_val = 0, const int vblock_size = 1)
         {
             complete_T<int>(result, block_size, result_func, init_result_func, init_result_func_val);
         }
@@ -1598,7 +1620,7 @@ namespace raptor
                 const int block_size,
                 std::function<int(int, int)> result_func = &sum_func<int, int>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                int init_result_func_val = 0)
+                int init_result_func_val = 0, const int vblock_size = 1)
         {
             complete_T<int>(result, block_size, result_func, init_result_func, init_result_func_val);
         }
@@ -1606,14 +1628,14 @@ namespace raptor
         void complete_double_comm_T(const int block_size,
                 std::function<double(double, double)> init_result_func = 
                 &sum_func<double, double>,
-                double init_result_func_val = 0)
+                double init_result_func_val = 0, const int vblock_size = 1)
         {
             complete_T<double>(block_size, init_result_func, init_result_func_val);
         }
         void complete_int_comm_T(const int block_size,
                 std::function<int(int, int)> init_result_func = 
                     &sum_func<int, int>,
-                int init_result_func_val = 0)
+                int init_result_func_val = 0, const int vblock_size = 1)
         {
             complete_T<int>(block_size, init_result_func, init_result_func_val);
         }
@@ -1623,7 +1645,7 @@ namespace raptor
                 const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0)
+                T init_result_func_val = 0, const int vblock_size = 1)
         {
             CommPkg::communicate_T(values.data(), result, block_size, result_func, init_result_func,
                     init_result_func_val);
@@ -1633,7 +1655,7 @@ namespace raptor
                 const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0)
+                T init_result_func_val = 0, const int vblock_size = 1)
         {
             CommPkg::communicate_T(values, result, block_size, result_func, init_result_func,
                     init_result_func_val);
@@ -1642,14 +1664,14 @@ namespace raptor
         void communicate_T(const aligned_vector<T>& values,
                 const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0)
+                T init_result_func_val = 0, const int vblock_size = 1)
         {
             CommPkg::communicate_T(values.data(), block_size, init_result_func, init_result_func_val);
         }
         template<typename T>
         void communicate_T(const T* values, const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0)
+                T init_result_func_val = 0, const int vblock_size = 1)
         {
             CommPkg::communicate_T(values, block_size, init_result_func, init_result_func_val);
         }
@@ -1657,7 +1679,7 @@ namespace raptor
         template<typename T>
         void initialize_T(const T* values, const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0)
+                T init_result_func_val = 0, const int vblock_size = 1)
         {
             int idx;
 
@@ -1676,7 +1698,7 @@ namespace raptor
         void complete_T(aligned_vector<U>& result, const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0)
+                T init_result_func_val = 0, const int vblock_size = 1)
         {
             complete_T<T>(block_size, init_result_func, init_result_func_val);
             int idx, pos;
@@ -1722,7 +1744,7 @@ namespace raptor
         template<typename T>
         void complete_T(const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0)
+                T init_result_func_val = 0, const int vblock_size = 1)
         {
             // Complete inter-node communication
             global_par_comm->complete_comm_T<T>(block_size, init_result_func, init_result_func_val);

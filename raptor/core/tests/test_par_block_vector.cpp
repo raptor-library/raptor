@@ -43,79 +43,55 @@ TEST(ParBlockVectorTest, TestsInCore)
     
     v.set_const_value(1.0);
     v_par.set_const_value(1.0);
-
-    for (int i = 0; i < local_n*vecs_in_block; i++)
+    
+    for (int k = 0; k < vecs_in_block; k++)
     {
-        ASSERT_EQ( v.values[first_n*vecs_in_block+i], v_par.local->values[i] );
+        for (int i = 0; i < local_n; i++)
+        {
+            ASSERT_EQ( v.values[k*global_n+i], v_par.local->values[k*local_n+i] );
+        }
     }
-    for (int i = 0; i < global_n*vecs_in_block; i++)
+    for (int k = 0; k < vecs_in_block; k++)
     {
-        srand(i);
-        v.values[i] = ((double)rand()) / RAND_MAX;
+        for (int i = 0; i < local_n; i++)
+        {
+            srand(k*global_n+i);
+            v.values[k*global_n+i] = ((double)rand()) / RAND_MAX;
+        }
     }
-    for (int i = 0; i < local_n*vecs_in_block; i++)
+    for (int k = 0; k < vecs_in_block; k++)
     {
-        srand(i+first_n*vecs_in_block);
-        v_par.local->values[i] = ((double)rand()) / RAND_MAX;
+        for (int i = 0; i < local_n; i++)
+        {
+            srand(k*global_n+i);
+            v_par.local->values[k*local_n+i] = ((double)rand()) / RAND_MAX;
+        }
     }
-
-    for (int i = 0; i < local_n*vecs_in_block; i++)
+    for (int k = 0; k < vecs_in_block; k++)
     {
-        ASSERT_EQ(v.values[first_n*vecs_in_block+i], v_par.local->values[i]);
+        for (int i = 0; i < local_n; i++)
+        {
+            ASSERT_EQ( v.values[k*global_n+i], v_par.local->values[k*local_n+i] );
+        }
     }
     
-    v_par.set_const_value(1.0);
+    // Test ParVector Append
+    BVector p(global_n, vecs_in_block);
+    ParBVector p_par(global_n, local_n, first_n, vecs_in_block);
+    p.set_const_value(1.0);
     v.set_const_value(1.0);
-    
-    // Test ParBVector AXPY with ParBVector
-    v.axpy(v, 0.5);
-    v_par.axpy(v_par, 0.5);
-    
-    for (int i = 0; i < local_n*vecs_in_block; i++)
-    {
-        ASSERT_EQ( v[first_n*vecs_in_block+i], v_par.local->values[i] );
-    }
-
-    // Test ParBVector Norm
-    double *norms = new double[v.b_vecs];
-    double *norms_par = new double[v_par.local->b_vecs];
-    double temp = v.norm(2, norms); 
-    temp = v_par.norm(2, norms_par);
-    for (int i = 0; i < vecs_in_block; i++)
-    {
-        ASSERT_EQ( norms[i], norms_par[i] );
-    }
-
-    ParVector c_par(global_n, local_n, first_n);
-    c_par.set_const_value(1.0);
-
-    Vector c(global_n);
-    c.set_const_value(1.0);
-
-    // Test ParBVector Mult_T with ParVector
-    double *b = new double[v.b_vecs];
-    double *inner_prods = new double[v.b_vecs];
-    v_par.mult_T(c_par, b);
-    temp = v.inner_product(c, inner_prods);
-    for (int i = 0; i < vecs_in_block; i++)
-    {
-        ASSERT_EQ( inner_prods[i], b[i] );
-    }
-
-    // Test ParBVector Mult with Vector
     v_par.set_const_value(1.0);
-    v.set_const_value(1.0);
-    v_par.mult(c, c_par);
-    temp = v_par.local->values[0]*vecs_in_block;
-    for (int i = 0; i < local_n; i++)
-    {
-        ASSERT_EQ( temp, c_par.local->values[i] );
-    }
 
-    delete inner_prods;
-    delete norms;
-    delete norms_par;
-    delete b;
+    double *alphas = new double[4];
+    for (int i = 0; i < vecs_in_block; i++) alphas[i] = i + 1.0;
+    v.scale(1.0, alphas);
+    v_par.scale(1.0, alphas);
 
-} // end of TEST(ParVectorTest, TestsInCore) //
+    for (int i = 0; i < vecs_in_block; i++) alphas[i] += 1.0;
+    p.scale(1.0, alphas);
+    p_par.scale(1.0, alphas);
+
+    delete alphas;
+
+} // end of TEST(ParBlockVectorTest, TestsInCore) //
 
