@@ -49,7 +49,26 @@ void COO_append_neg_T(const COOMatrix* A, const aligned_vector<T>& vals,
 
 // CSRMatrix SpMV Methods (or BSR)
 // Optimized CSR and BSR standard SpMVs
-void CSR_spmv(const CSRMatrix* A, const double* x, double* b)
+void CSR_spmv(const CSRMatrix* A, const double* x, double* b, const int n_vecs = 1)
+{
+    int start, end;
+    double val;
+    for (int i = 0; i < A->n_rows; i++)
+    {
+        start = A->idx1[i];
+        end = A->idx1[i+1];
+        for (int v = 0; v < n_vecs; v++)
+        {
+            val = 0;
+            for (int j = start; j < end; j++)
+            {
+                val += A->vals[j] * x[A->idx2[j] + v*A->n_cols];
+            }
+            b[i + v*A->n_rows] = val;
+        }
+    }
+}
+/*void CSR_spmv(const CSRMatrix* A, const double* x, double* b)
 {
     int start, end;
     double val;
@@ -64,7 +83,7 @@ void CSR_spmv(const CSRMatrix* A, const double* x, double* b)
         }
         b[i] = val;
     }
-}
+}*/
 
 void CSR_residual(const CSRMatrix* A, const double* x, 
         const double* b, double* r)
@@ -85,7 +104,28 @@ void CSR_residual(const CSRMatrix* A, const double* x,
 }
 
 
-void CSR_append(const CSRMatrix* A, const double* x, double* b)
+void CSR_append(const CSRMatrix* A, const double* x, double* b, const int n_vecs = 1, const int xlen = 0)
+{
+    int start, end;
+    double val;
+    int v_offset = xlen / n_vecs;
+    for (int i = 0; i < A->n_rows; i++)
+    {
+        start = A->idx1[i];
+        end = A->idx1[i+1];
+        for (int v = 0; v < n_vecs; v++)
+        {
+            val = 0;
+            for (int j = start; j < end; j++)
+            {
+                val += A->vals[j] * x[A->idx2[j] + v*v_offset];
+                printf("A[%d][%d] * x[%d] = %lg * %lg\n", i, j, A->idx2[j] + v*v_offset, A->vals[j], x[A->idx2[j] + v*v_offset]);
+            }
+            b[i + v*A->n_rows] += val;
+        }
+    }
+}
+/*void CSR_append(const CSRMatrix* A, const double* x, double* b)
 {
     int start, end;
     double val;
@@ -100,7 +140,7 @@ void CSR_append(const CSRMatrix* A, const double* x, double* b)
         }
         b[i] += val;
     }
-}
+}*/
 
 template <typename T>
 void BSR_append(const CSRMatrix* A, const aligned_vector<T>& vals,
@@ -118,7 +158,7 @@ void BSR_append(const CSRMatrix* A, const aligned_vector<T>& vals,
     }
 }
 
-void BSR_spmv(const BSRMatrix* A, const double* x, double* b)
+void BSR_spmv(const BSRMatrix* A, const double* x, double* b, const int n_vecs = 1)
 {
     int start, end, idx;
     int first_row, first_col;
@@ -131,18 +171,21 @@ void BSR_spmv(const BSRMatrix* A, const double* x, double* b)
         first_row = i*A->b_rows;
         for (int row = 0; row < A->b_rows; row++)
         {
-            val = 0;
             idx = row * A->b_cols;
-            for (int j = start; j < end; j++)
+            for (int v = 0; v < n_vecs; v++)
             {
-                first_col = A->idx2[j]*A->b_cols;
-                block_val = A->block_vals[j];
-                for (int col = 0; col < A->b_cols; col++)
+                val = 0;
+                for (int j = start; j < end; j++)
                 {
-                    val += (block_val[idx + col] * x[first_col + col]);
+                    first_col = A->idx2[j]*A->b_cols;
+                    block_val = A->block_vals[j];
+                    for (int col = 0; col < A->b_cols; col++)
+                    {
+                        val += (block_val[idx + col] * x[first_col + col + v*(A->n_cols*A->b_cols)]);
+                    }
                 }
+                b[first_row + row + v*(A->n_rows*A->b_rows)] = val;
             }
-            b[first_row + row] = val;
         }
     }
 }
@@ -257,13 +300,13 @@ void CSC_append_neg_T(const CSCMatrix* A, const aligned_vector<T>& vals,
 }
 
 
-void COOMatrix::spmv(const double* x, double* b) const
+void COOMatrix::spmv(const double* x, double* b, const int n_vecs) const
 {
     for (int i = 0; i < n_rows; i++)
         b[i] = 0;
     COO_append(this, vals, x, b);
 }
-void COOMatrix::spmv_append(const double* x, double* b) const
+void COOMatrix::spmv_append(const double* x, double* b, const int n_vecs, const int xlen) const
 {
     COO_append(this, vals, x, b);
 }
@@ -285,13 +328,13 @@ void COOMatrix::spmv_residual(const double* x, const double* b, double* r) const
         r[i] = b[i];
     COO_append_neg(this, vals, x, r);
 }
-void BCOOMatrix::spmv(const double* x, double* b) const 
+void BCOOMatrix::spmv(const double* x, double* b, const int n_vecs) const 
 {
     for (int i = 0; i < n_rows * b_rows; i++)
         b[i] = 0;
     COO_append(this, block_vals, x, b);
 }
-void BCOOMatrix::spmv_append(const double* x,double* b) const
+void BCOOMatrix::spmv_append(const double* x,double* b, const int n_vecs, const int xlen) const
 {
     COO_append(this, block_vals, x, b);
 }
@@ -316,13 +359,13 @@ void BCOOMatrix::spmv_residual(const double* x, const double* b, double* r) cons
 
 
 
-void CSRMatrix::spmv(const double* x, double* b) const
+void CSRMatrix::spmv(const double* x, double* b, const int n_vecs) const
 {
-    CSR_spmv(this, x, b);
+    CSR_spmv(this, x, b, n_vecs);
 }
-void CSRMatrix::spmv_append(const double* x, double* b) const
+void CSRMatrix::spmv_append(const double* x, double* b, const int n_vecs, const int xlen) const
 {
-    CSR_append(this, x, b);
+    CSR_append(this, x, b, n_vecs, xlen);
 }
 void CSRMatrix::spmv_append_T(const double* x, double* b) const
 {
@@ -340,11 +383,11 @@ void CSRMatrix::spmv_residual(const double* x, const double* b, double* r) const
 {
     CSR_residual(this, x, b, r);
 }
-void BSRMatrix::spmv(const double* x, double* b) const
+void BSRMatrix::spmv(const double* x, double* b, const int n_vecs) const
 {
     BSR_spmv(this, x, b);
 }
-void BSRMatrix::spmv_append(const double* x,double* b) const
+void BSRMatrix::spmv_append(const double* x,double* b, const int n_vecs, const int xlen) const
 {
     BSR_append(this, block_vals, x, b);
 }
@@ -369,13 +412,13 @@ void BSRMatrix::spmv_residual(const double* x, const double* b, double* r) const
 
 
 
-void CSCMatrix::spmv(const double* x, double* b) const
+void CSCMatrix::spmv(const double* x, double* b, const int n_vecs) const
 {
     for (int i = 0; i < n_rows; i++)
         b[i] = 0;
     CSC_append(this, vals, x, b);
 }
-void CSCMatrix::spmv_append(const double* x, double* b) const
+void CSCMatrix::spmv_append(const double* x, double* b, const int n_vecs, const int xlen) const
 {
     CSC_append(this, vals, x, b);
 }
@@ -397,13 +440,13 @@ void CSCMatrix::spmv_residual(const double* x, const double* b, double* r) const
         r[i] = b[i];
     CSC_append_neg(this, vals, x, r);
 }
-void BSCMatrix::spmv(const double* x, double* b) const
+void BSCMatrix::spmv(const double* x, double* b, const int n_vecs) const
 { 
     for (int i = 0; i < n_rows * b_rows; i++)
         b[i] = 0;
     CSC_append(this, block_vals, x, b);
 }
-void BSCMatrix::spmv_append(const double* x,double* b) const
+void BSCMatrix::spmv_append(const double* x,double* b, const int n_vecs, const int xlen) const
 {
     CSC_append(this, block_vals, x, b);
 }

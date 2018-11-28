@@ -24,6 +24,10 @@ using namespace raptor;
  **************************************************************/
 void ParMatrix::mult(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
 {
+    int rank, num_procs;
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
     if (tap)
     {
         this->tap_mult(x, b, comm_t);
@@ -39,7 +43,7 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
     // Initialize Isends and Irecvs to communicate
     // values of x
     if (comm_t) *comm_t -= MPI_Wtime();
-    comm->init_comm(x, off_proc->b_cols);
+    comm->init_comm(x, off_proc->b_cols, x.local->b_vecs);
     if (comm_t) *comm_t += MPI_Wtime();
 
     // Multiply the diagonal portion of the matrix,
@@ -51,15 +55,32 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
 
     // Wait for Isends and Irecvs to complete
     if (comm_t) *comm_t -= MPI_Wtime();
-    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
+    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols, x.local->b_vecs);
     if (comm_t) *comm_t += MPI_Wtime();
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
     if (off_proc_num_cols)
     {
-        off_proc->mult_append(x_tmp, *(b.local));
+        off_proc->mult_append(x_tmp, *(b.local), b.local->b_vecs);
     }
+    
+    /*MPI_Barrier(MPI_COMM_WORLD);
+    for (int i = 0; i < num_procs; i++)
+    {
+        if (rank == i)
+        {
+            for (int k = 0; k < b.local->b_vecs; k++)
+            {
+                printf("rank %d Vector %d\n", rank, k);
+                for (int j = 0; j < b.local->num_values; j++)
+                {
+                    printf("[%d][%d] %lg \n", k, j+b.first_local, b.local->values[k*b.local->num_values + j]);
+                }
+            }
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }*/
 }
 
 void ParMatrix::tap_mult(ParVector& x, ParVector& b, data_t* comm_t)

@@ -135,8 +135,8 @@ namespace raptor
     virtual COOMatrix* to_COO() = 0;
     virtual Matrix* copy() = 0;
 
-    virtual void spmv(const double* x, double* b) const = 0;
-    virtual void spmv_append(const double* x, double* b) const = 0;
+    virtual void spmv(const double* x, double* b, const int n_vecs = 1) const = 0;
+    virtual void spmv_append(const double* x, double* b, const int n_vecs = 1, const int xlen = 0) const = 0;
     virtual void spmv_append_T(const double* x, double* b) const = 0;
     virtual void spmv_append_neg(const double* x, double* b) const = 0;
     virtual void spmv_append_neg_T(const double* x, double* b) const = 0;
@@ -157,6 +157,19 @@ namespace raptor
     template<typename T> T* get_values(T* x) const
     {
         return x;
+    }
+    
+    int get_size(Vector& x) const
+    {
+        return x.values.size();
+    }
+    template<typename T> int get_size(aligned_vector<T>& x) const
+    {
+        return x.size();
+    }
+    template<typename T> int get_size(T* x) const
+    {
+        return 0;
     }
     
     // Method for printing the value at one position
@@ -280,15 +293,24 @@ namespace raptor
     {
         b[idx2] -= val*x[idx1];
     }
-    void append(int idx1, int idx2, double* b, const double* x, const double* val) const
+    void append(int idx1, int idx2, double* b, const double* x, const double* val, int vecs = 1) const
     {
+        double temp_val;
+        int x_offset, b_offset;
         int first_row = idx1*b_rows;
         int first_col = idx2*b_cols;
         for (int row = 0; row < b_rows; row++)
         {
-            for (int col = 0; col < b_cols; col++)
+            for (int v = 0; v < vecs; v++)
             {
-                b[first_row + row] += (val[row * b_cols + col] * x[first_col + col]);
+                temp_val = 0;
+                x_offset = v * (n_cols * b_cols);
+                b_offset = v * (n_rows * b_rows);
+                for (int col = 0; col < b_cols; col++)
+                {
+                    temp_val += (val[row * b_cols + col] * x[first_col + col + x_offset]);
+                }
+                b[first_row + row + b_offset] += temp_val;
             }
         }
     }
@@ -333,7 +355,7 @@ namespace raptor
 
     template <typename T, typename U> void mult(T& x, U& b) const
     {
-        spmv(get_values(x), get_values(b));
+        spmv(get_values(x), get_values(b), x.b_vecs);
     }
     template <typename T, typename U> void mult_T(T& x, U& b) const
     {
@@ -342,9 +364,9 @@ namespace raptor
             b[i] = 0.0;
         spmv_append_T(get_values(x), get_values(b));
     }
-    template <typename T, typename U> void mult_append(T& x, U& b) const
+    template <typename T, typename U> void mult_append(T& x, U& b, const int n_vecs = 1) const
     {
-        spmv_append(get_values(x), get_values(b));
+        spmv_append(get_values(x), get_values(b), n_vecs, get_size(x));
     }
     template <typename T, typename U> void mult_append_T(T& x, U& b) const
     {
@@ -515,8 +537,8 @@ namespace raptor
     void move_diag();
     void remove_duplicates();
 
-    void spmv(const double* x, double* b) const;
-    void spmv_append(const double* x, double* b) const;
+    void spmv(const double* x, double* b, const int n_vecs = 1) const;
+    void spmv_append(const double* x, double* b, const int n_vecs = 1, const int xlen = 0) const;
     void spmv_append_T(const double* x, double* b) const;
     void spmv_append_neg(const double* x, double* b) const;
     void spmv_append_neg_T(const double* x, double* b) const;
@@ -692,8 +714,8 @@ namespace raptor
     void move_diag();
     void remove_duplicates();
 
-    void spmv(const double* x, double* b) const;
-    void spmv_append(const double* x, double* b) const;
+    void spmv(const double* x, double* b, const int n_vecs = 1) const;
+    void spmv_append(const double* x, double* b, const int n_vecs = 1, const int xlen = 0) const;
     void spmv_append_T(const double* x, double* b) const;
     void spmv_append_neg(const double* x, double* b) const;
     void spmv_append_neg_T(const double* x, double* b) const;
@@ -859,8 +881,8 @@ namespace raptor
     void move_diag();
     void remove_duplicates();
 
-    void spmv(const double* x, double* b) const;
-    void spmv_append(const double* x, double* b) const;
+    void spmv(const double* x, double* b, const int n_vecs = 1) const;
+    void spmv_append(const double* x, double* b, const int n_vecs = 1, const int xlen = 0) const;
     void spmv_append_T(const double* x, double* b) const;
     void spmv_append_neg(const double* x, double* b) const;
     void spmv_append_neg_T(const double* x, double* b) const;
@@ -995,8 +1017,8 @@ class BSRMatrix : public CSRMatrix
     BSRMatrix* spgemm(CSRMatrix* B, int* B_to_C = NULL);
     BSRMatrix* spgemm_T(CSCMatrix* A, int* C_map = NULL);
 
-    void spmv(const double* x, double* b) const;
-    void spmv_append(const double* x, double* b) const;
+    void spmv(const double* x, double* b, const int n_vecs = 1) const;
+    void spmv_append(const double* x, double* b, const int n_vecs = 1, const int xlen = 0) const;
     void spmv_append_T(const double* x, double* b) const;
     void spmv_append_neg(const double* x, double* b) const;
     void spmv_append_neg_T(const double* x, double* b) const;
@@ -1104,8 +1126,8 @@ class BCOOMatrix : public COOMatrix
     BSRMatrix* spgemm(CSRMatrix* B, int* B_to_C = NULL);
     BSRMatrix* spgemm_T(CSCMatrix* A, int* C_map = NULL);
 
-    void spmv(const double* x, double* b) const;
-    void spmv_append(const double* x, double* b) const;
+    void spmv(const double* x, double* b, const int n_vecs = 1) const;
+    void spmv_append(const double* x, double* b, const int n_vecs = 1, const int xlen = 0) const;
     void spmv_append_T(const double* x, double* b) const;
     void spmv_append_neg(const double* x, double* b) const;
     void spmv_append_neg_T(const double* x, double* b) const;
@@ -1218,8 +1240,8 @@ class BSCMatrix : public CSCMatrix
     BSRMatrix* spgemm(CSRMatrix* B, int* B_to_C = NULL);
     BSRMatrix* spgemm_T(CSCMatrix* A, int* C_map = NULL);
 
-    void spmv(const double* x, double* b) const;
-    void spmv_append(const double* x, double* b) const;
+    void spmv(const double* x, double* b, const int n_vecs = 1) const;
+    void spmv_append(const double* x, double* b, const int n_vecs = 1, const int xlen = 0) const;
     void spmv_append_T(const double* x, double* b) const;
     void spmv_append_neg(const double* x, double* b) const;
     void spmv_append_neg_T(const double* x, double* b) const;

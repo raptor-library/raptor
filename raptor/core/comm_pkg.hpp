@@ -133,7 +133,7 @@ namespace raptor
 
         // Vector Communication
         aligned_vector<double>& communicate(ParVector& v, const int block_size = 1);
-        void init_comm(ParVector& v, const int block_size = 1);
+        void init_comm(ParVector& v, const int block_size = 1, const int vblock_size = 1);
 
         // Standard Communication
         template<typename T>
@@ -145,7 +145,7 @@ namespace raptor
         template<typename T>
         void init_comm(const aligned_vector<T>& values, const int block_size = 1, const int vblock_size = 1)
         {
-            init_comm(values.data(), block_size);
+            init_comm(values.data(), block_size, vblock_size);
         }
         template<typename T> void init_comm(const T* values, const int block_size = 1,
                                             const int vblock_size = 1);
@@ -598,7 +598,8 @@ namespace raptor
         // Standard Communication
         void init_double_comm(const double* values, const int block_size = 1, const int vblock_size = 1)
         {
-            initialize(values, block_size);
+            // THIS IS THE INIT DOUBLE COMM BEING CALLED IN MULT
+            initialize(values, block_size, vblock_size);
         }
         void init_int_comm(const int* values, const int block_size = 1, const int vblock_size = 1)
         {
@@ -606,7 +607,7 @@ namespace raptor
         }
         aligned_vector<double>& complete_double_comm(const int block_size = 1, const int vblock_size = 1)
         {
-            return complete<double>(block_size);
+            return complete<double>(block_size, vblock_size);
         }
         aligned_vector<int>& complete_int_comm(const int block_size = 1, const int vblock_size = 1)
         {
@@ -627,11 +628,12 @@ namespace raptor
         template<typename T>
         void initialize(const T* values, const int block_size = 1, const int vblock_size = 1)
         {
+            // INITIALIZE CALLED IN MULT
             int start, end;
             int proc, pos, idx;
 
-            send_data->send(values, key, mpi_comm, block_size);
-            recv_data->recv<T>(key, mpi_comm, block_size);
+            send_data->send(values, key, mpi_comm, block_size, vblock_size);
+            recv_data->recv<T>(key, mpi_comm, block_size, vblock_size);
         }
 
         template<typename T>
@@ -751,12 +753,13 @@ namespace raptor
         template<typename T>
         void initialize_T(const T* values, const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
-                T init_result_func_val = 0, const int vblock_size = 1)
+                T init_result_func_val = 0, const int vblock_size = 1,
+                const int vblock_offset = 0)
         {
             int start, end;
             int proc, idx, pos;
 
-            recv_data->send(values, key, mpi_comm, block_size, init_result_func, init_result_func_val);
+            recv_data->send(values, key, mpi_comm, block_size, vblock_size, vblock_offset, init_result_func, init_result_func_val);
             send_data->recv<T>(key, mpi_comm, block_size);
         }
 
@@ -953,13 +956,15 @@ namespace raptor
 
 
         // Vector Communication
-        aligned_vector<double>& communicate(ParVector& v, const int block_size = 1)
+        aligned_vector<double>& communicate(ParVector& v, const int block_size = 1,
+                                            const int vblock_size = 1)
         {
             return CommPkg::communicate(v, block_size);
         }
-        void init_comm(ParVector& v, const int block_size = 1)
+        void init_comm(ParVector& v, const int block_size = 1, const int vblock_size = 1)
         {
-            CommPkg::init_comm(v, block_size);
+            // THIS INIT COMM CALLED IN MULT
+            CommPkg::init_comm(v, block_size, vblock_size);
         }
 
         // Helper Methods
@@ -1486,7 +1491,7 @@ namespace raptor
         }
         aligned_vector<double>& complete_double_comm(const int block_size, const int vblock_size = 1)
         {
-            return complete<double>(block_size);
+            return complete<double>(block_size, vblock_size);
         }
         aligned_vector<int>& complete_int_comm(const int block_size, const int vblock_size = 1)
         {
@@ -1818,9 +1823,9 @@ namespace raptor
             return CommPkg::communicate(v, block_size);
         }
 
-        void init_comm(ParVector& v, const int block_size = 1)
+        void init_comm(ParVector& v, const int block_size = 1, const int vblock_size = 1)
         {
-            CommPkg::init_comm(v, block_size);
+            CommPkg::init_comm(v, block_size, vblock_size);
         }
 
         // Helper Methods

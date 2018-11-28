@@ -202,6 +202,10 @@ namespace raptor
             : ParVector(glbl_n, lcl_n, first_lcl, false)
         {
             local = new BVector(lcl_n, vecs_in_block);
+            global_n = glbl_n;
+            local_n = lcl_n;
+            first_local = first_lcl;
+            //local->resize(local_n);
             //resize(glbl_n, lcl_n, first_lcl);
         }
 

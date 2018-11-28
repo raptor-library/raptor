@@ -94,17 +94,17 @@ public:
 
     template <typename T>
     void send(const T* values, int key, MPI_Comm mpi_comm, const int block_size = 1,
+            const int vblock_size = 1, const int vblock_offset = 0,
             std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-            T init_result_func_val = 0,
-            const int vblock_size = 1);
+            T init_result_func_val = 0);
     virtual void int_send(const int* values, int key, MPI_Comm mpi_comm, const int block_size,
             std::function<int(int, int)> init_result_func,
             int init_result_func_val,
-            const int vblock_size = 1) = 0;
+            const int vblock_size = 1, const int vblock_offset = 0) = 0;
     virtual void double_send(const double* values, int key, MPI_Comm mpi_comm, const int block_size,
             std::function<double(double, double)> init_result_func,
             double init_result_func_val,
-            const int vblock_size = 1) = 0;
+            const int vblock_size = 1, const int vblock_offset = 0) = 0;
 
     template <typename T>
     void send(const T* values, int key, MPI_Comm mpi_comm,
@@ -138,10 +138,11 @@ public:
     template <typename T>
     void recv(int key, MPI_Comm mpi_comm, const int block_size = 1, const int vblock_size = 1)
     {
+        // THIS RECEIVE CALLED IN MULT
         if (num_msgs == 0) return;
 
         int proc, start, end;
-        int size = size_msgs * block_size;
+        int size = size_msgs * block_size * vblock_size;
         MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
         if (buf.size() < size) buf.resize(size);
@@ -151,7 +152,7 @@ public:
             proc = procs[i];
             start = indptr[i];
             end = indptr[i+1];
-            MPI_Irecv(&(buf[start*block_size]), (end - start) * block_size, datatype,
+            MPI_Irecv(&(buf[start*block_size*vblock_size]), (end - start) * block_size * vblock_size, datatype,
                     proc, key, mpi_comm, &(requests[i]));
         }
     }   
@@ -392,18 +393,18 @@ public:
     void int_send(const int* values, int key, MPI_Comm mpi_comm, const int block_size,
             std::function<int(int, int)> init_result_func,
             int init_result_func_val,
-            const int vblock_size = 1)
+            const int vblock_size = 1, const int vblock_offset = 0)
     {
-        send(values, key, mpi_comm, block_size, init_result_func, 
-                init_result_func_val, vblock_size);
+        send(values, key, mpi_comm, block_size, vblock_size, vblock_offset, init_result_func, 
+                init_result_func_val);
     }
     void double_send(const double* values, int key, MPI_Comm mpi_comm, const int block_size,
             std::function<double(double, double)> init_result_func,
             double init_result_func_val,
-            const int vblock_size = 1)
+            const int vblock_size = 1, const int vblock_offset = 0)
     {
-        send(values, key, mpi_comm, block_size, init_result_func,
-                init_result_func_val, vblock_size);
+        send(values, key, mpi_comm, block_size, vblock_size, vblock_offset, init_result_func,
+                init_result_func_val);
     }
 
     void int_send(const int* values, int key, MPI_Comm mpi_comm,
@@ -421,15 +422,16 @@ public:
 
     template <typename T>
     void send(const T* values, int key, MPI_Comm mpi_comm, const int block_size = 1,
+            const int vblock_size = 1, const int vblock_offset = 0,
             std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-            T init_result_func_val = 0,
-            const int vblock_size = 1)
+            T init_result_func_val = 0)
     {
         if (num_msgs == 0) return;
 
         int start, end;
         int proc, idx;
-        int size = size_msgs * block_size;
+        //int size = size_msgs * block_size;
+        int size = size_msgs * block_size * vblock_size;
 
         MPI_Datatype datatype = get_type<T>();
 
@@ -438,7 +440,9 @@ public:
             proc = procs[i];
             start = indptr[i];
             end = indptr[i+1];
-            MPI_Isend(&(values[start*block_size]), (end - start) * block_size,
+            //MPI_Isend(&(values[start*block_size]), (end - start) * block_size,
+              //      datatype, proc, key, mpi_comm, &(requests[i]));
+            MPI_Isend(&(values[start*block_size*vblock_size]), (end - start) * block_size * vblock_size,
                     datatype, proc, key, mpi_comm, &(requests[i]));
         }
     }
@@ -778,18 +782,18 @@ public:
     void int_send(const int* values, int key, MPI_Comm mpi_comm, const int block_size,
             std::function<int(int, int)> init_result_func,
             int init_result_func_val,
-            const int vblock_size = 1)
+            const int vblock_size = 1, const int vblock_offset = 0)
     {
-        send(values, key, mpi_comm, block_size, init_result_func, 
-                init_result_func_val, vblock_size);
+        send(values, key, mpi_comm, block_size, vblock_size, vblock_offset, init_result_func, 
+                init_result_func_val);
     }
     void double_send(const double* values, int key, MPI_Comm mpi_comm, const int block_size,
             std::function<double(double, double)> init_result_func,
             double init_result_func_val,
-            const int vblock_size = 1)
+            const int vblock_size = 1, const int vblock_offset = 0)
     {
-        send(values, key, mpi_comm, block_size, init_result_func,
-                init_result_func_val, vblock_size);
+        send(values, key, mpi_comm, block_size, vblock_size, vblock_offset, init_result_func,
+                init_result_func_val);
     }
     void int_send(const int* values, int key, MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
@@ -806,16 +810,16 @@ public:
 
     template <typename T>
     void send(const T* values, int key, MPI_Comm mpi_comm, const int block_size = 1,
+            const int vblock_size = 1, const int vblock_offset = 0, 
             std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-            T init_result_func_val = 0,
-            const int vblock_size = 1)
+            T init_result_func_val = 0)
     {
+        // THIS SEND USED IN MULT
 	if (num_msgs == 0) return;
-
 
         int start, end;
         int proc, idx, pos;
-        int size = size_msgs * block_size;
+        int size = size_msgs * block_size * vblock_size;
 
         MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
@@ -826,16 +830,19 @@ public:
             proc = procs[i];
             start = indptr[i];
             end = indptr[i+1];
-            for (int j = start; j < end; j++)
+            for (int v = 0; v < vblock_size; v++)
             {
-                idx = indices[j] * block_size;
-                pos = j * block_size;
-                for (int k = 0; k < block_size; k++)
+                for (int j = start; j < end; j++)
                 {
-                    buf[pos + k] = values[idx + k];
+                    idx = indices[j] * block_size + vblock_size*vblock_offset;
+                    pos = j * block_size + vblock_size*vblock_offset;
+                    for (int k = 0; k < block_size; k++)
+                    {
+                        buf[pos + k] = values[idx + k];
+                    }
                 }
             }
-            MPI_Isend(&(buf[start*block_size]), (end - start) * block_size,
+            MPI_Isend(&(buf[start*block_size*vblock_size]), (end - start) * block_size * vblock_size,
                     datatype, proc, key, mpi_comm, &(requests[i]));
         }
     }
@@ -1151,18 +1158,18 @@ public:
     void int_send(const int* values, int key, MPI_Comm mpi_comm, const int block_size,
             std::function<int(int, int)> init_result_func,
             int init_result_func_val,
-            const int vblock_size = 1)
+            const int vblock_size = 1, const int vblock_offset = 0)
     {
-        send(values, key, mpi_comm, block_size, init_result_func, 
-                init_result_func_val, vblock_size);
+        send(values, key, mpi_comm, block_size, vblock_size, vblock_offset, init_result_func, 
+                init_result_func_val);
     }
     void double_send(const double* values, int key, MPI_Comm mpi_comm, const int block_size,
             std::function<double(double, double)> init_result_func,
             double init_result_func_val,
-            const int vblock_size = 1)
+            const int vblock_size = 1, const int vblock_offset = 0)
     {
-        send(values, key, mpi_comm, block_size, init_result_func,
-                init_result_func_val, vblock_size);
+        send(values, key, mpi_comm, block_size, vblock_size, vblock_offset, init_result_func,
+                init_result_func_val);
     }
     void int_send(const double* values, int key, MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
@@ -1179,9 +1186,9 @@ public:
 
     template <typename T>
     void send(const T* values, int key, MPI_Comm mpi_comm, const int block_size = 1,
+            const int vblock_size = 1, const int vblock_offset = 0,
             std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-            T init_result_func_val = 0,
-            const int vblock_size = 1)
+            T init_result_func_val = 0)
     {
         if (num_msgs == 0) return;
 
