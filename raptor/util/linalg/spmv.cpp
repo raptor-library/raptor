@@ -119,8 +119,9 @@ void CSR_append(const CSRMatrix* A, const double* x, double* b, const int n_vecs
             for (int j = start; j < end; j++)
             {
                 val += A->vals[j] * x[A->idx2[j] + v*v_offset];
-                printf("A[%d][%d] * x[%d] = %lg * %lg\n", i, j, A->idx2[j] + v*v_offset, A->vals[j], x[A->idx2[j] + v*v_offset]);
+                //printf("A[%d][%d] * x[%d] = %lg * %lg\n", i, j, A->idx2[j] + v*v_offset, A->vals[j], x[A->idx2[j] + v*v_offset]);
             }
+            //printf("b[%d] %lg\n", i + v*A->n_rows, val);
             b[i + v*A->n_rows] += val;
         }
     }

@@ -52,35 +52,37 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
     {
         on_proc->mult(*(x.local), *(b.local));
     }
+    
+    fflush(stdout);
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (rank == 0) printf("---------------------------\n");
 
     // Wait for Isends and Irecvs to complete
     if (comm_t) *comm_t -= MPI_Wtime();
     aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols, x.local->b_vecs);
     if (comm_t) *comm_t += MPI_Wtime();
 
+    fflush(stdout);
+    MPI_Barrier(MPI_COMM_WORLD);
+
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
     if (off_proc_num_cols)
     {
-        off_proc->mult_append(x_tmp, *(b.local), b.local->b_vecs);
+        for (int i = 0; i < num_procs; i++)
+        {
+            if (i == rank)
+            {
+                if (rank == 0) printf("---------------------------\n");
+                printf("-------------------------rank %d\n", rank);
+                for (int k = 0; k < x_tmp.size(); k++) printf("%lg ", x_tmp[k]);
+                printf("\n------------------------------\n");
+                off_proc->mult_append(x_tmp, *(b.local), b.local->b_vecs);
+            }
+            MPI_Barrier(MPI_COMM_WORLD);
+        }
     }
     
-    /*MPI_Barrier(MPI_COMM_WORLD);
-    for (int i = 0; i < num_procs; i++)
-    {
-        if (rank == i)
-        {
-            for (int k = 0; k < b.local->b_vecs; k++)
-            {
-                printf("rank %d Vector %d\n", rank, k);
-                for (int j = 0; j < b.local->num_values; j++)
-                {
-                    printf("[%d][%d] %lg \n", k, j+b.first_local, b.local->values[k*b.local->num_values + j]);
-                }
-            }
-        }
-        MPI_Barrier(MPI_COMM_WORLD);
-    }*/
 }
 
 void ParMatrix::tap_mult(ParVector& x, ParVector& b, data_t* comm_t)

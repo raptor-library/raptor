@@ -65,7 +65,8 @@ public:
     {
     };
 
-    virtual void add_msg(int proc, int msg_size, int* msg_indices = NULL) = 0;
+    virtual void add_msg(int proc, int msg_size, int* msg_indices = NULL,
+                         int num_procs = 1, int global_num_rows = 0) = 0;
 
     void finalize()
     {
@@ -155,6 +156,7 @@ public:
             MPI_Irecv(&(buf[start*block_size*vblock_size]), (end - start) * block_size * vblock_size, datatype,
                     proc, key, mpi_comm, &(requests[i]));
         }
+        
     }   
 
     template <typename T>
@@ -327,7 +329,7 @@ public:
     ContigData* copy(const aligned_vector<int>& col_to_new)
     {
         bool comm_proc;
-        int proc, start, end;
+        int proc, start, end, voffset;
         int new_idx;
 
         ContigData* data = new ContigData();
@@ -360,12 +362,13 @@ public:
         return data;
     }
 
-    void add_msg(int proc, int msg_size, int* msg_indices = NULL)
+    void add_msg(int proc, int msg_size, int* msg_indices = NULL,
+                 int num_procs = 1, int global_num_rows = 0)
     {
         int last_ptr = indptr[num_msgs];
         procs.emplace_back(proc);
         indptr.emplace_back(last_ptr + msg_size);
-
+        
         num_msgs++;
         size_msgs += msg_size;
     }
@@ -700,7 +703,7 @@ public:
     NonContigData* copy(const aligned_vector<int>& col_to_new)
     {
         bool comm_proc;
-        int proc, start, end;
+        int proc, start, end, voffset;
         int idx, new_idx;
 
         NonContigData* data = new NonContigData();
@@ -737,7 +740,9 @@ public:
 
     void add_msg(int proc,
             int msg_size,
-            int* msg_indices = NULL)
+            int* msg_indices = NULL,
+            int num_procs = 1,
+            int global_num_rows = 0)
     {
         int last_ptr = indptr[num_msgs];
         procs.emplace_back(proc);
@@ -817,7 +822,7 @@ public:
         // THIS SEND USED IN MULT
 	if (num_msgs == 0) return;
 
-        int start, end;
+        int start, end, buf_pos;
         int proc, idx, pos;
         int size = size_msgs * block_size * vblock_size;
 
@@ -825,25 +830,51 @@ public:
         aligned_vector<T>& buf = get_buffer<T>();
         if (buf.size() < size) buf.resize(size);
 
-        for (int i = 0; i < num_msgs; i++)
+        if (vblock_size > 1)
         {
-            proc = procs[i];
-            start = indptr[i];
-            end = indptr[i+1];
-            for (int v = 0; v < vblock_size; v++)
+            for (int i = 0; i < num_msgs; i++)
             {
+                proc = procs[i];
+                start = indptr[i];
+                end = indptr[i+1];
+                buf_pos = start * block_size * vblock_size;
                 for (int j = start; j < end; j++)
                 {
-                    idx = indices[j] * block_size + vblock_size*vblock_offset;
-                    pos = j * block_size + vblock_size*vblock_offset;
+                    idx = indices[j] * block_size;
+                    pos = buf_pos * block_size;
+                    for (int v = 0; v < vblock_size; v++)
+                    {
+                        for (int k = 0; k < block_size; k++)
+                        {
+                            buf[pos + v*(end-start) + k] = values[idx + v*vblock_offset + k];
+                        }
+                    }
+                    buf_pos++;
+                }
+
+                MPI_Isend(&(buf[start*block_size*vblock_size]), (end - start) * block_size * vblock_size,
+                        datatype, proc, key, mpi_comm, &(requests[i]));
+            }
+        }
+        else
+        {
+            for (int i = 0; i < num_msgs; i++)
+            {
+                proc = procs[i];
+                start = indptr[i];
+                end = indptr[i+1];
+                for (int j = start; j < end; j++)
+                {
+                    idx = indices[j] * block_size;
+                    pos = j * block_size;
                     for (int k = 0; k < block_size; k++)
                     {
                         buf[pos + k] = values[idx + k];
                     }
                 }
+                MPI_Isend(&(buf[start*block_size]), (end - start) * block_size,
+                        datatype, proc, key, mpi_comm, &(requests[i]));
             }
-            MPI_Isend(&(buf[start*block_size*vblock_size]), (end - start) * block_size * vblock_size,
-                    datatype, proc, key, mpi_comm, &(requests[i]));
         }
     }
 

@@ -47,6 +47,7 @@ namespace raptor
     template<>
     aligned_vector<double>& CommPkg::complete_comm<double>(const int block_size, const int vblock_size)
     {
+        // THIS COMPLETE COMM USED IN MULT
         return complete_double_comm(block_size, vblock_size);
     }
     template<>
@@ -199,6 +200,6 @@ aligned_vector<double>& CommPkg::communicate(ParVector& v, const int block_size)
 void CommPkg::init_comm(ParVector& v, const int block_size, const int vblock_size)
 {
     // THIS IS THE INIT COMM BEING CALLED BY MULT    
-    init_double_comm(v.local->data(), block_size, vblock_size);
+    init_double_comm(v.local->data(), block_size, vblock_size, v.local->num_values);
 }
 

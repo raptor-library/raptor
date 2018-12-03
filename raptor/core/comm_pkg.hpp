@@ -154,7 +154,7 @@ namespace raptor
         template<typename T> aligned_vector<T>& communicate(const T* values, const int block_size = 1,
                                                             const int vblock_size = 1);
         virtual void init_double_comm(const double* values, const int block_size,
-                                      const int vblock_size = 1) = 0;
+                                      const int vblock_size = 1, const int vblock_offset = 0) = 0;
         virtual void init_int_comm(const int* values, const int block_size,
                                    const int vblock_size = 1) = 0;
         virtual aligned_vector<double>& complete_double_comm(const int block_size,
@@ -454,12 +454,12 @@ namespace raptor
                     proc = off_proc_col_to_proc[i];
                     if (proc != prev_proc)
                     {
-                        recv_data->add_msg(prev_proc, i - prev_idx);
+                        recv_data->add_msg(prev_proc, i - prev_idx, NULL, num_procs, partition->global_num_rows);
                         prev_proc = proc;
                         prev_idx = i;
                     }
                 }
-                recv_data->add_msg(prev_proc, off_proc_num_cols - prev_idx);
+                recv_data->add_msg(prev_proc, off_proc_num_cols - prev_idx, NULL, num_procs, partition->global_num_rows);
                 recv_data->finalize();
             }
 
@@ -480,494 +480,523 @@ namespace raptor
             }
         }
 
-        ParComm(ParComm* comm) : CommPkg(comm->topology)
-        {
-            mpi_comm = comm->mpi_comm;
-            send_data = comm->send_data->copy();
-            recv_data = comm->recv_data->copy();
-            key = comm->key;
-        }
-
-        ParComm(ParComm* comm, const aligned_vector<int>& off_proc_col_to_new,
-                data_t* comm_t = NULL)
-            : CommPkg(comm->topology)
-        {
-            mpi_comm = comm->mpi_comm;
-            bool comm_proc;
-            int proc, start, end;
-            int idx, new_idx;
-
-            if (comm == NULL)
+            ParComm(ParComm* comm) : CommPkg(comm->topology)
             {
-                key = 0;
-                return;
+                mpi_comm = comm->mpi_comm;
+                send_data = comm->send_data->copy();
+                recv_data = comm->recv_data->copy();
+                key = comm->key;
             }
-            key = comm->key;
 
-            init_off_proc_new(comm, off_proc_col_to_new, comm_t);
-        }
-        
-        ParComm(ParComm* comm, const aligned_vector<int>& on_proc_col_to_new,
-                const aligned_vector<int>& off_proc_col_to_new, data_t* comm_t = NULL) 
-            : CommPkg(comm->topology)
-        {
-            mpi_comm = comm->mpi_comm;
-            bool comm_proc;
-            int proc, start, end;
-            int idx, new_idx;
-
-            if (comm == NULL)
+            ParComm(ParComm* comm, const aligned_vector<int>& off_proc_col_to_new,
+                    data_t* comm_t = NULL)
+                : CommPkg(comm->topology)
             {
-                key = 0;
-                return;
-            }
-            key = comm->key;
+                mpi_comm = comm->mpi_comm;
+                bool comm_proc;
+                int proc, start, end;
+                int idx, new_idx;
 
-            init_off_proc_new(comm, off_proc_col_to_new, comm_t);
-
-            for (int i = 0; i < send_data->size_msgs; i++)
-            {
-                idx = send_data->indices[i];
-                new_idx = on_proc_col_to_new[idx];
-                if (new_idx != -1)
+                if (comm == NULL)
                 {
-                    send_data->indices[i] = new_idx;
+                    key = 0;
+                    return;
                 }
+                key = comm->key;
+
+                init_off_proc_new(comm, off_proc_col_to_new, comm_t);
             }
-        }
-
-
-        void init_off_proc_new(ParComm* comm, const aligned_vector<int>& off_proc_col_to_new,
-                data_t* comm_t = NULL)
-        {
-            bool comm_proc, comm_idx;
-            int proc, start, end;
-            int idx, new_idx, ctr;
-            int idx_start, idx_end;
-
-            std::function<int(int, int)> compare_func = [](const int a, const int b)
+            
+            ParComm(ParComm* comm, const aligned_vector<int>& on_proc_col_to_new,
+                    const aligned_vector<int>& off_proc_col_to_new, data_t* comm_t = NULL) 
+                : CommPkg(comm->topology)
             {
-                if (b >= 0) return b;
-                else return a;
-            };
-            if (comm_t) *comm_t -= MPI_Wtime();
-            comm->communicate_T(off_proc_col_to_new, 1, compare_func, -1);
-            if (comm_t) *comm_t += MPI_Wtime();
+                mpi_comm = comm->mpi_comm;
+                bool comm_proc;
+                int proc, start, end;
+                int idx, new_idx;
 
-            recv_data = comm->recv_data->copy(off_proc_col_to_new);
-
-            send_data = new NonContigData();
-            for (int i = 0; i < comm->send_data->num_msgs; i++)
-            {
-                comm_proc = false;
-                proc = comm->send_data->procs[i];
-                start = comm->send_data->indptr[i];
-                end = comm->send_data->indptr[i+1];
-                for (int j = start; j < end; j++)
+                if (comm == NULL)
                 {
-                    if (comm->send_data->int_buffer[j] != -1)
+                    key = 0;
+                    return;
+                }
+                key = comm->key;
+
+                init_off_proc_new(comm, off_proc_col_to_new, comm_t);
+
+                for (int i = 0; i < send_data->size_msgs; i++)
+                {
+                    idx = send_data->indices[i];
+                    new_idx = on_proc_col_to_new[idx];
+                    if (new_idx != -1)
                     {
-                        comm_proc = true;
-                        send_data->indices.emplace_back(comm->send_data->indices[j]);
+                        send_data->indices[i] = new_idx;
                     }
                 }
-                if (comm_proc)
-                {
-                    send_data->procs.emplace_back(proc);
-                    send_data->indptr.emplace_back(send_data->indices.size());
-                }
             }
-            send_data->num_msgs = send_data->procs.size();
-            send_data->size_msgs = send_data->indices.size();
-            send_data->finalize();
 
-            
-        }
 
-        /**************************************************************
-        *****   ParComm Class Destructor
-        **************************************************************
-        ***** 
-        **************************************************************/
-        ~ParComm()
-        {
-            delete send_data;
-            delete recv_data;
-        }
+            void init_off_proc_new(ParComm* comm, const aligned_vector<int>& off_proc_col_to_new,
+                    data_t* comm_t = NULL)
+            {
+                bool comm_proc, comm_idx;
+                int proc, start, end;
+                int idx, new_idx, ctr;
+                int idx_start, idx_end;
 
-        // Standard Communication
-        void init_double_comm(const double* values, const int block_size = 1, const int vblock_size = 1)
-        {
-            // THIS IS THE INIT DOUBLE COMM BEING CALLED IN MULT
-            initialize(values, block_size, vblock_size);
-        }
-        void init_int_comm(const int* values, const int block_size = 1, const int vblock_size = 1)
-        {
-            initialize(values);
-        }
-        aligned_vector<double>& complete_double_comm(const int block_size = 1, const int vblock_size = 1)
-        {
-            return complete<double>(block_size, vblock_size);
-        }
-        aligned_vector<int>& complete_int_comm(const int block_size = 1, const int vblock_size = 1)
-        {
-            return complete<int>(block_size);
-        }
-        template<typename T>
-        aligned_vector<T>& communicate(const aligned_vector<T>& values,
-                const int block_size = 1, const int vblock_size = 1)
-        {
-            return CommPkg::communicate(values.data(), block_size);
-        }
-        template<typename T>
-        aligned_vector<T>& communicate(const T* values, const int block_size = 1, const int vblock_size = 1)
-        {
-            return CommPkg::communicate(values, block_size);
-        }
+                std::function<int(int, int)> compare_func = [](const int a, const int b)
+                {
+                    if (b >= 0) return b;
+                    else return a;
+                };
+                if (comm_t) *comm_t -= MPI_Wtime();
+                comm->communicate_T(off_proc_col_to_new, 1, compare_func, -1);
+                if (comm_t) *comm_t += MPI_Wtime();
 
-        template<typename T>
-        void initialize(const T* values, const int block_size = 1, const int vblock_size = 1)
-        {
-            // INITIALIZE CALLED IN MULT
-            int start, end;
-            int proc, pos, idx;
+                recv_data = comm->recv_data->copy(off_proc_col_to_new);
 
-            send_data->send(values, key, mpi_comm, block_size, vblock_size);
-            recv_data->recv<T>(key, mpi_comm, block_size, vblock_size);
-        }
+                send_data = new NonContigData();
+                for (int i = 0; i < comm->send_data->num_msgs; i++)
+                {
+                    comm_proc = false;
+                    proc = comm->send_data->procs[i];
+                    start = comm->send_data->indptr[i];
+                    end = comm->send_data->indptr[i+1];
+                    for (int j = start; j < end; j++)
+                    {
+                        if (comm->send_data->int_buffer[j] != -1)
+                        {
+                            comm_proc = true;
+                            send_data->indices.emplace_back(comm->send_data->indices[j]);
+                        }
+                    }
+                    if (comm_proc)
+                    {
+                        send_data->procs.emplace_back(proc);
+                        send_data->indptr.emplace_back(send_data->indices.size());
+                    }
+                }
+                send_data->num_msgs = send_data->procs.size();
+                send_data->size_msgs = send_data->indices.size();
+                send_data->finalize();
 
-        template<typename T>
-        aligned_vector<T>& complete(const int block_size = 1, const int vblock_size = 1)
-        {
-            send_data->waitall();
-            recv_data->waitall();
-            key++;
+                
+            }
 
-            // Extract packed data to appropriate buffer
-            aligned_vector<T>& buf = recv_data->get_buffer<T>();
+            /**************************************************************
+            *****   ParComm Class Destructor
+            **************************************************************
+            ***** 
+            **************************************************************/
+            ~ParComm()
+            {
+                delete send_data;
+                delete recv_data;
+            }
 
-            return buf;
-        }
+            // Standard Communication
+            void init_double_comm(const double* values, const int block_size = 1, const int vblock_size = 1,
+                                  const int vblock_offset = 0)
+            {
+                // THIS IS THE INIT DOUBLE COMM BEING CALLED IN MULT
+                initialize(values, block_size, vblock_size, vblock_offset);
+            }
+            void init_int_comm(const int* values, const int block_size = 1, const int vblock_size = 1)
+            {
+                initialize(values);
+            }
+            aligned_vector<double>& complete_double_comm(const int block_size = 1, const int vblock_size = 1)
+            {
+                // THIS COMPLETE DOUBLE COMM CALLED IN MULT
+                return complete<double>(block_size, vblock_size);
+            }
+            aligned_vector<int>& complete_int_comm(const int block_size = 1, const int vblock_size = 1)
+            {
+                return complete<int>(block_size);
+            }
+            template<typename T>
+            aligned_vector<T>& communicate(const aligned_vector<T>& values,
+                    const int block_size = 1, const int vblock_size = 1)
+            {
+                return CommPkg::communicate(values.data(), block_size);
+            }
+            template<typename T>
+            aligned_vector<T>& communicate(const T* values, const int block_size = 1, const int vblock_size = 1)
+            {
+                return CommPkg::communicate(values, block_size);
+            }
 
-        // Transpose Communication
-        void init_double_comm_T(const double* values,
-                const int block_size = 1,
-                std::function<double(double, double)> init_result_func = 
+            template<typename T>
+            void initialize(const T* values, const int block_size = 1, const int vblock_size = 1,
+                            const int vblock_offset = 0)
+            {
+                // THIS INITIALIZE CALLED IN MULT
+                int start, end;
+                int proc, pos, idx;
+
+                send_data->send(values, key, mpi_comm, block_size, vblock_size, vblock_offset);
+                recv_data->recv<T>(key, mpi_comm, block_size, vblock_size);
+            }
+
+            template<typename T>
+            aligned_vector<T>& complete(const int block_size = 1, const int vblock_size = 1)
+            {
+                send_data->waitall();
+                recv_data->waitall();
+                key++;
+
+                // THIS COMPLETE USED IN MULT
+                // Extract packed data to appropriate buffer
+                aligned_vector<T>& buf = recv_data->get_buffer<T>();
+                
+                // Reorder the buffer if receiving block vector
+                if (vblock_size > 1 && recv_data->procs.size() > 1)
+                {
+                    aligned_vector<T> temp;
+                    int vec_size, start, end, vec_start, vec_end;
+                    int total_vec_size = buf.size() / vblock_size;
+                    for (int v = 0; v < vblock_size; v++)
+                    {
+                        for (int i = 0; i < recv_data->num_msgs; i++)
+                        {
+                            start = recv_data->indptr[i];
+                            end = recv_data->indptr[i+1];
+                            vec_size = (end - start) * block_size;
+                            start = start * block_size * vblock_size;
+                            vec_start = start + v * vec_size;
+                            vec_end = vec_start + vec_size;
+                            for (int j = vec_start; j < vec_end; j++)
+                            {
+                                temp.emplace_back(buf[j]); 
+                            }
+                        }
+                    }
+                    std::copy(temp.begin(), temp.end(), buf.begin());
+                }
+
+                return buf;
+            }
+
+            // Transpose Communication
+            void init_double_comm_T(const double* values,
+                    const int block_size = 1,
+                    std::function<double(double, double)> init_result_func = 
+                        &sum_func<double, double>, 
+                        double init_result_func_val = 0, const int vblock_size = 1)
+            {
+                initialize_T(values, block_size, init_result_func, init_result_func_val);
+            }
+            void init_int_comm_T(const int* values,
+                    const int block_size = 1,
+                    std::function<int(int, int)> init_result_func = 
+                        &sum_func<int, int>, 
+                        int init_result_func_val = 0, const int vblock_size = 1)
+            {
+                initialize_T(values, block_size, init_result_func, init_result_func_val);
+            }
+            void complete_double_comm_T(aligned_vector<double>& result,
+                    const int block_size = 1,
+                    std::function<double(double, double)> result_func = &sum_func<double, double>,
+                    std::function<double(double, double)> init_result_func = 
+                        &sum_func<double, double>,
+                        double init_result_func_val = 0, const int vblock_size = 1)
+            {
+                complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
+            }
+            void complete_double_comm_T(aligned_vector<int>& result,
+                    const int block_size = 1,
+                    std::function<int(int, double)> result_func = &sum_func<double, int>,
+                    std::function<double(double, double)> init_result_func = 
+                        &sum_func<double, double>,
+                        double init_result_func_val = 0, const int vblock_size = 1)
+            {
+                complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
+            }
+            void complete_int_comm_T(aligned_vector<double>& result,
+                    const int block_size = 1,
+                    std::function<double(double, int)> result_func = &sum_func<int, double>,
+                    std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                    int init_result_func_val = 0, const int vblock_size = 1)
+            {
+                complete_T<int>(result, block_size, result_func, init_result_func, init_result_func_val);
+            }
+            void complete_int_comm_T(aligned_vector<int>& result,
+                    const int block_size = 1,
+                    std::function<int(int, int)> result_func = &sum_func<int, int>,
+                    std::function<int(int, int)> init_result_func = &sum_func<int, int>,
+                    int init_result_func_val = 0, const int vblock_size = 1)
+            {
+                complete_T<int>(result, block_size, result_func, init_result_func, init_result_func_val);
+            }
+            void complete_double_comm_T(const int block_size = 1,
+                    std::function<double(double, double)> init_result_func =
                     &sum_func<double, double>, 
                     double init_result_func_val = 0, const int vblock_size = 1)
-        {
-            initialize_T(values, block_size, init_result_func, init_result_func_val);
-        }
-        void init_int_comm_T(const int* values,
-                const int block_size = 1,
-                std::function<int(int, int)> init_result_func = 
-                    &sum_func<int, int>, 
+            {
+                complete_T<double>(block_size, init_result_func, init_result_func_val);
+            }
+            void complete_int_comm_T(const int block_size = 1,
+                    std::function<int(int, int)> init_result_func = &sum_func<int, int>,
                     int init_result_func_val = 0, const int vblock_size = 1)
-        {
-            initialize_T(values, block_size, init_result_func, init_result_func_val);
-        }
-        void complete_double_comm_T(aligned_vector<double>& result,
-                const int block_size = 1,
-                std::function<double(double, double)> result_func = &sum_func<double, double>,
-                std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>,
-                    double init_result_func_val = 0, const int vblock_size = 1)
-        {
-            complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
-        }
-        void complete_double_comm_T(aligned_vector<int>& result,
-                const int block_size = 1,
-                std::function<int(int, double)> result_func = &sum_func<double, int>,
-                std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>,
-                    double init_result_func_val = 0, const int vblock_size = 1)
-        {
-            complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
-        }
-        void complete_int_comm_T(aligned_vector<double>& result,
-                const int block_size = 1,
-                std::function<double(double, int)> result_func = &sum_func<int, double>,
-                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                int init_result_func_val = 0, const int vblock_size = 1)
-        {
-            complete_T<int>(result, block_size, result_func, init_result_func, init_result_func_val);
-        }
-        void complete_int_comm_T(aligned_vector<int>& result,
-                const int block_size = 1,
-                std::function<int(int, int)> result_func = &sum_func<int, int>,
-                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                int init_result_func_val = 0, const int vblock_size = 1)
-        {
-            complete_T<int>(result, block_size, result_func, init_result_func, init_result_func_val);
-        }
-        void complete_double_comm_T(const int block_size = 1,
-                std::function<double(double, double)> init_result_func =
-                &sum_func<double, double>, 
-                double init_result_func_val = 0, const int vblock_size = 1)
-        {
-            complete_T<double>(block_size, init_result_func, init_result_func_val);
-        }
-        void complete_int_comm_T(const int block_size = 1,
-                std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                int init_result_func_val = 0, const int vblock_size = 1)
-        {
-            complete_T<int>(block_size, init_result_func, init_result_func_val);
-        }
-        template<typename T, typename U>
-        void communicate_T(const aligned_vector<T>& values, aligned_vector<U>& result,
-                const int block_size = 1,
-                std::function<U(U, T)> result_func = &sum_func<T, U>,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
-                T init_result_func_val = 0, const int vblock_size = 1)
-        {
-            CommPkg::communicate_T(values.data(), result, block_size,
-                    result_func, init_result_func, init_result_func_val);
-        }
-        template<typename T, typename U>
-        void communicate_T(const T* values, aligned_vector<U>& result,
-                const int block_size = 1,
-                std::function<U(U, T)> result_func = &sum_func<T, U>,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0, const int vblock_size = 1)
-        {
-            CommPkg::communicate_T(values, result, block_size,
-                    result_func, init_result_func, init_result_func_val);
-        }
-        template<typename T>
-        void communicate_T(const aligned_vector<T>& values,
-                const int block_size = 1,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0, const int vblock_size = 1)
-        {
-            CommPkg::communicate_T(values.data(), block_size, init_result_func,
-                    init_result_func_val);
-        }
-        template<typename T>
-        void communicate_T(const T* values, const int block_size = 1,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0, const int vblock_size = 1)
-        {
-            CommPkg::communicate_T(values, block_size, init_result_func, init_result_func_val);
-        }
-
-        template<typename T>
-        void initialize_T(const T* values, const int block_size = 1,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
-                T init_result_func_val = 0, const int vblock_size = 1,
-                const int vblock_offset = 0)
-        {
-            int start, end;
-            int proc, idx, pos;
-
-            recv_data->send(values, key, mpi_comm, block_size, vblock_size, vblock_offset, init_result_func, init_result_func_val);
-            send_data->recv<T>(key, mpi_comm, block_size);
-        }
-
-        template<typename T, typename U>
-        void complete_T(aligned_vector<U>& result, 
-                const int block_size = 1,
-                std::function<U(U, T)> result_func = &sum_func<T, U>,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0, const int vblock_size = 1)
-        {
-            // TODO - dont need to copy into sendbuf first
-            complete_T<T>(block_size, init_result_func, init_result_func_val);
-
-            int idx, pos;
-            aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
-
-            for (int i = 0; i < send_data->size_msgs; i++)
             {
-                idx = send_data->indices[i] * block_size;
-                pos = i * block_size;
-                for (int j = 0; j < block_size; j++)
-                {
-                    result[idx + j]  = result_func(result[idx + j], sendbuf[pos + j]);
-                }
+                complete_T<int>(block_size, init_result_func, init_result_func_val);
             }
-        }
-
-        template<typename T>
-        void complete_T(const int block_size = 1,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0, const int vblock_size = 1)
-        {
-            send_data->waitall();
-            recv_data->waitall();
-            key++;
-            
-            aligned_vector<T>& buf = send_data->get_buffer<T>();
-        }
-
-        // Conditional communication
-        template <typename T>
-        aligned_vector<T>& conditional_comm(
-                const aligned_vector<T>& vals,  
-                const aligned_vector<int>& states, 
-                const aligned_vector<int>& off_proc_states,
-                std::function<bool(int)> compare_func,
-                const int block_size = 1, const int vblock_size = 1)
-        {
-            int ctr, n_sends, n_recvs;
-            int key = 325493;
-            bool comparison;
-            
-            send_data->send(vals.data(), key, mpi_comm, states, compare_func, &n_sends, block_size);
-            recv_data->recv<T>(key, mpi_comm, off_proc_states, 
-                    compare_func, &ctr, &n_recvs, block_size);
-
-            send_data->waitall(n_sends);
-            recv_data->waitall(n_recvs);
-
-            aligned_vector<T>& recvbuf = recv_data->get_buffer<T>();
-
-            ctr--;
-            for (int i = recv_data->size_msgs - 1; i >= 0; i--)
+            template<typename T, typename U>
+            void communicate_T(const aligned_vector<T>& values, aligned_vector<U>& result,
+                    const int block_size = 1,
+                    std::function<U(U, T)> result_func = &sum_func<T, U>,
+                    std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
+                    T init_result_func_val = 0, const int vblock_size = 1)
             {
-                int idx = i * block_size;
-                comparison = false;
-                for (int j = 0; j < block_size; j++)
-                {
-                    if (compare_func(off_proc_states[idx+j]))
-                    {
-                        comparison = true;
-                        break;
-                    }
-                }
-                if (comparison)
-                {
-                    for (int j = block_size - 1; j >= 0; j--)
-                    {
-                        recvbuf[idx+j] = recvbuf[ctr--];
-                    }
-                }
-                else
-                {
-                    for (int j = block_size - 1; j >= 0; j--)
-                    {
-                        recvbuf[idx+j] = 0.0;
-                    }
-                }
+                CommPkg::communicate_T(values.data(), result, block_size,
+                        result_func, init_result_func, init_result_func_val);
+            }
+            template<typename T, typename U>
+            void communicate_T(const T* values, aligned_vector<U>& result,
+                    const int block_size = 1,
+                    std::function<U(U, T)> result_func = &sum_func<T, U>,
+                    std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                    T init_result_func_val = 0, const int vblock_size = 1)
+            {
+                CommPkg::communicate_T(values, result, block_size,
+                        result_func, init_result_func, init_result_func_val);
+            }
+            template<typename T>
+            void communicate_T(const aligned_vector<T>& values,
+                    const int block_size = 1,
+                    std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                    T init_result_func_val = 0, const int vblock_size = 1)
+            {
+                CommPkg::communicate_T(values.data(), block_size, init_result_func,
+                        init_result_func_val);
+            }
+            template<typename T>
+            void communicate_T(const T* values, const int block_size = 1,
+                    std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                    T init_result_func_val = 0, const int vblock_size = 1)
+            {
+                CommPkg::communicate_T(values, block_size, init_result_func, init_result_func_val);
             }
 
-            return recvbuf;
-        }
-
-        template <typename T, typename U>
-        void conditional_comm_T(const aligned_vector<T>& vals,  
-                const aligned_vector<int>& states, 
-                const aligned_vector<int>& off_proc_states,
-                std::function<bool(int)> compare_func,
-                aligned_vector<U>& result, 
-                std::function<U(U, T)> result_func,
-                const int block_size = 1, const int vblock_size = 1)
-        {
-            int idx, ctr;
-            int n_sends, n_recvs;
-            int key = 453246;
-            bool comparison;
-
-            recv_data->send(vals.data(), key, mpi_comm, off_proc_states, compare_func,
-                    &n_sends, block_size);
-            send_data->recv<T>(key, mpi_comm, states, compare_func, &ctr, &n_recvs, block_size);
-            
-            recv_data->waitall(n_sends);
-            send_data->waitall(n_recvs);
-
-            aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
-
-            ctr = 0;
-            for (int i = 0; i < send_data->size_msgs; i++)
+            template<typename T>
+            void initialize_T(const T* values, const int block_size = 1,
+                    std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
+                    T init_result_func_val = 0, const int vblock_size = 1,
+                    const int vblock_offset = 0)
             {
-                idx = send_data->indices[i] * block_size;
-                comparison = false;
-                for (int j = 0; j < block_size; j++)
+                int start, end;
+                int proc, idx, pos;
+
+                recv_data->send(values, key, mpi_comm, block_size, vblock_size, vblock_offset, init_result_func, init_result_func_val);
+                send_data->recv<T>(key, mpi_comm, block_size);
+            }
+
+            template<typename T, typename U>
+            void complete_T(aligned_vector<U>& result, 
+                    const int block_size = 1,
+                    std::function<U(U, T)> result_func = &sum_func<T, U>,
+                    std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                    T init_result_func_val = 0, const int vblock_size = 1)
+            {
+                // TODO - dont need to copy into sendbuf first
+                complete_T<T>(block_size, init_result_func, init_result_func_val);
+
+                int idx, pos;
+                aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
+
+                for (int i = 0; i < send_data->size_msgs; i++)
                 {
-                    if (compare_func(states[idx + j]))
-                    {
-                        comparison = true;
-                        break;
-                    }
-                }
-                if (comparison)
-                {
+                    idx = send_data->indices[i] * block_size;
+                    pos = i * block_size;
                     for (int j = 0; j < block_size; j++)
                     {
-                        result[idx + j] = result_func(result[idx + j], sendbuf[ctr++]);
+                        result[idx + j]  = result_func(result[idx + j], sendbuf[pos + j]);
                     }
                 }
             }
-        }
+
+            template<typename T>
+            void complete_T(const int block_size = 1,
+                    std::function<T(T, T)> init_result_func = &sum_func<T, T>,
+                    T init_result_func_val = 0, const int vblock_size = 1)
+            {
+                send_data->waitall();
+                recv_data->waitall();
+                key++;
+                
+                aligned_vector<T>& buf = send_data->get_buffer<T>();
+            }
+
+            // Conditional communication
+            template <typename T>
+            aligned_vector<T>& conditional_comm(
+                    const aligned_vector<T>& vals,  
+                    const aligned_vector<int>& states, 
+                    const aligned_vector<int>& off_proc_states,
+                    std::function<bool(int)> compare_func,
+                    const int block_size = 1, const int vblock_size = 1)
+            {
+                int ctr, n_sends, n_recvs;
+                int key = 325493;
+                bool comparison;
+                
+                send_data->send(vals.data(), key, mpi_comm, states, compare_func, &n_sends, block_size);
+                recv_data->recv<T>(key, mpi_comm, off_proc_states, 
+                        compare_func, &ctr, &n_recvs, block_size);
+
+                send_data->waitall(n_sends);
+                recv_data->waitall(n_recvs);
+
+                aligned_vector<T>& recvbuf = recv_data->get_buffer<T>();
+
+                ctr--;
+                for (int i = recv_data->size_msgs - 1; i >= 0; i--)
+                {
+                    int idx = i * block_size;
+                    comparison = false;
+                    for (int j = 0; j < block_size; j++)
+                    {
+                        if (compare_func(off_proc_states[idx+j]))
+                        {
+                            comparison = true;
+                            break;
+                        }
+                    }
+                    if (comparison)
+                    {
+                        for (int j = block_size - 1; j >= 0; j--)
+                        {
+                            recvbuf[idx+j] = recvbuf[ctr--];
+                        }
+                    }
+                    else
+                    {
+                        for (int j = block_size - 1; j >= 0; j--)
+                        {
+                            recvbuf[idx+j] = 0.0;
+                        }
+                    }
+                }
+
+                return recvbuf;
+            }
+
+            template <typename T, typename U>
+            void conditional_comm_T(const aligned_vector<T>& vals,  
+                    const aligned_vector<int>& states, 
+                    const aligned_vector<int>& off_proc_states,
+                    std::function<bool(int)> compare_func,
+                    aligned_vector<U>& result, 
+                    std::function<U(U, T)> result_func,
+                    const int block_size = 1, const int vblock_size = 1)
+            {
+                int idx, ctr;
+                int n_sends, n_recvs;
+                int key = 453246;
+                bool comparison;
+
+                recv_data->send(vals.data(), key, mpi_comm, off_proc_states, compare_func,
+                        &n_sends, block_size);
+                send_data->recv<T>(key, mpi_comm, states, compare_func, &ctr, &n_recvs, block_size);
+                
+                recv_data->waitall(n_sends);
+                send_data->waitall(n_recvs);
+
+                aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
+
+                ctr = 0;
+                for (int i = 0; i < send_data->size_msgs; i++)
+                {
+                    idx = send_data->indices[i] * block_size;
+                    comparison = false;
+                    for (int j = 0; j < block_size; j++)
+                    {
+                        if (compare_func(states[idx + j]))
+                        {
+                            comparison = true;
+                            break;
+                        }
+                    }
+                    if (comparison)
+                    {
+                        for (int j = 0; j < block_size; j++)
+                        {
+                            result[idx + j] = result_func(result[idx + j], sendbuf[ctr++]);
+                        }
+                    }
+                }
+            }
 
 
-        // Matrix Communication
-        CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
-                const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
-        CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices, const aligned_vector<double*>& values,
-                const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
-        void init_mat_comm(aligned_vector<char>& send_buffer, const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
-                const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
-        void init_mat_comm(aligned_vector<char>& send_buffer, const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices, const aligned_vector<double*>& values,
-                const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
-        CSRMatrix* complete_mat_comm(const int b_rows = 1, const int b_cols = 1, 
-                const bool has_vals = true);
+            // Matrix Communication
+            CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
+                    const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
+                    const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
+            CSRMatrix* communicate(const aligned_vector<int>& rowptr, 
+                    const aligned_vector<int>& col_indices, const aligned_vector<double*>& values,
+                    const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
+            void init_mat_comm(aligned_vector<char>& send_buffer, const aligned_vector<int>& rowptr, 
+                    const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
+                    const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
+            void init_mat_comm(aligned_vector<char>& send_buffer, const aligned_vector<int>& rowptr, 
+                    const aligned_vector<int>& col_indices, const aligned_vector<double*>& values,
+                    const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
+            CSRMatrix* complete_mat_comm(const int b_rows = 1, const int b_cols = 1, 
+                    const bool has_vals = true);
 
-        CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
-                const int n_result_rows, const int b_rows = 1, const int b_cols = 1, 
-                const bool has_vals = true);
-        CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
-                const aligned_vector<int>& col_indices, const aligned_vector<double*>& values, 
-                const int n_result_rows, const int b_rows = 1, const int b_cols = 1, 
-                const bool has_vals = true);
-        void init_mat_comm_T(aligned_vector<char>& send_buffer, 
-                const aligned_vector<int>& rowptr, const aligned_vector<int>& col_indices, 
-                const aligned_vector<double>& values, const int b_rows = 1, 
-                const int b_cols = 1, const bool has_vals = true) ;
-        void init_mat_comm_T(aligned_vector<char>& send_buffer,
-                const aligned_vector<int>& rowptr, const aligned_vector<int>& col_indices, 
-                const aligned_vector<double*>& values, const int b_rows = 1, 
-                const int b_cols = 1, const bool has_vals = true) ;
-        CSRMatrix* complete_mat_comm_T(const int n_result_rows, 
-                const int b_rows = 1, const int b_cols = 1,
-                const bool has_vals = true) ;
-
-
-        CSRMatrix* communicate(ParCSRMatrix* A, const bool has_vals = true)
-        {
-            return CommPkg::communicate(A, has_vals);
-        }
-        CSRMatrix* communicate(ParBSRMatrix* A, const bool has_vals = true)
-        {
-            return CommPkg::communicate(A, has_vals);
-        }
-        CSRMatrix* communicate(CSRMatrix* A, const bool has_vals = true)
-        {
-            return CommPkg::communicate(A, has_vals);
-        }
-        CSRMatrix* communicate_T(CSRMatrix* A, const bool has_vals = true)
-        {
-            return CommPkg::communicate_T(A, has_vals);
-        }
+            CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
+                    const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
+                    const int n_result_rows, const int b_rows = 1, const int b_cols = 1, 
+                    const bool has_vals = true);
+            CSRMatrix* communicate_T(const aligned_vector<int>& rowptr, 
+                    const aligned_vector<int>& col_indices, const aligned_vector<double*>& values, 
+                    const int n_result_rows, const int b_rows = 1, const int b_cols = 1, 
+                    const bool has_vals = true);
+            void init_mat_comm_T(aligned_vector<char>& send_buffer, 
+                    const aligned_vector<int>& rowptr, const aligned_vector<int>& col_indices, 
+                    const aligned_vector<double>& values, const int b_rows = 1, 
+                    const int b_cols = 1, const bool has_vals = true) ;
+            void init_mat_comm_T(aligned_vector<char>& send_buffer,
+                    const aligned_vector<int>& rowptr, const aligned_vector<int>& col_indices, 
+                    const aligned_vector<double*>& values, const int b_rows = 1, 
+                    const int b_cols = 1, const bool has_vals = true) ;
+            CSRMatrix* complete_mat_comm_T(const int n_result_rows, 
+                    const int b_rows = 1, const int b_cols = 1,
+                    const bool has_vals = true) ;
 
 
-        // Vector Communication
-        aligned_vector<double>& communicate(ParVector& v, const int block_size = 1,
-                                            const int vblock_size = 1)
-        {
-            return CommPkg::communicate(v, block_size);
-        }
-        void init_comm(ParVector& v, const int block_size = 1, const int vblock_size = 1)
-        {
-            // THIS INIT COMM CALLED IN MULT
-            CommPkg::init_comm(v, block_size, vblock_size);
-        }
+            CSRMatrix* communicate(ParCSRMatrix* A, const bool has_vals = true)
+            {
+                return CommPkg::communicate(A, has_vals);
+            }
+            CSRMatrix* communicate(ParBSRMatrix* A, const bool has_vals = true)
+            {
+                return CommPkg::communicate(A, has_vals);
+            }
+            CSRMatrix* communicate(CSRMatrix* A, const bool has_vals = true)
+            {
+                return CommPkg::communicate(A, has_vals);
+            }
+            CSRMatrix* communicate_T(CSRMatrix* A, const bool has_vals = true)
+            {
+                return CommPkg::communicate_T(A, has_vals);
+            }
 
-        // Helper Methods
+
+            // Vector Communication
+            aligned_vector<double>& communicate(ParVector& v, const int block_size = 1,
+                                                const int vblock_size = 1)
+            {
+                return CommPkg::communicate(v, block_size);
+            }
+            void init_comm(ParVector& v, const int block_size = 1, const int vblock_size = 1)
+            {
+                // THIS INIT COMM CALLED IN MULT
+                CommPkg::init_comm(v, block_size, vblock_size);
+            }
+
+            // Helper Methods
         aligned_vector<double>& get_double_buffer()
         {
             return recv_data->buffer;
@@ -1481,7 +1510,8 @@ namespace raptor
                 const aligned_vector<int>& off_node_to_off_proc, bool update_L = true);
 
         // Class Methods
-        void init_double_comm(const double* values, const int block_size, const int vblock_size = 1)
+        void init_double_comm(const double* values, const int block_size, const int vblock_size = 1,
+                              const int vblock_offset = 0)
         {
             initialize(values, block_size);
         }
@@ -1512,7 +1542,8 @@ namespace raptor
         }
 
         template<typename T>
-        void initialize(const T* values, const int block_size = 1, const int vblock_size = 1)
+        void initialize(const T* values, const int block_size = 1, const int vblock_size = 1,
+                        const int vblock_offset = 0)
         {
             // Messages with origin and final destination on node
             local_L_par_comm->communicate<T>(values, block_size);

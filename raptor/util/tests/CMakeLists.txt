@@ -95,7 +95,7 @@ if (WITH_MPI)
     add_test(ParBVectorAnisoSpMVTest ${MPIRUN} -n 2 ./test_par_bvector_spmv_aniso)
     add_test(ParBVectorAnisoSpMVTest ${MPIRUN} -n 4 ./test_par_bvector_spmv_aniso)
     add_test(ParBVectorAnisoSpMVTest ${MPIRUN} -n 8 ./test_par_bvector_spmv_aniso)
-    #add_test(ParBVectorAnisoSpMVTest ${MPIRUN} -n 16 ./test_par_bvector_spmv_aniso)
+    add_test(ParBVectorAnisoSpMVTest ${MPIRUN} -n 16 ./test_par_bvector_spmv_aniso)
 
     if (WITH_PTSCOTCH)
         add_executable(test_repartition test_repartition.cpp)
