@@ -454,12 +454,12 @@ namespace raptor
                     proc = off_proc_col_to_proc[i];
                     if (proc != prev_proc)
                     {
-                        recv_data->add_msg(prev_proc, i - prev_idx, NULL, num_procs, partition->global_num_rows);
+                        recv_data->add_msg(prev_proc, i - prev_idx);
                         prev_proc = proc;
                         prev_idx = i;
                     }
                 }
-                recv_data->add_msg(prev_proc, off_proc_num_cols - prev_idx, NULL, num_procs, partition->global_num_rows);
+                recv_data->add_msg(prev_proc, off_proc_num_cols - prev_idx);
                 recv_data->finalize();
             }
 

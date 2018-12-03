@@ -65,8 +65,7 @@ public:
     {
     };
 
-    virtual void add_msg(int proc, int msg_size, int* msg_indices = NULL,
-                         int num_procs = 1, int global_num_rows = 0) = 0;
+    virtual void add_msg(int proc, int msg_size, int* msg_indices = NULL) = 0;
 
     void finalize()
     {
@@ -362,8 +361,7 @@ public:
         return data;
     }
 
-    void add_msg(int proc, int msg_size, int* msg_indices = NULL,
-                 int num_procs = 1, int global_num_rows = 0)
+    void add_msg(int proc, int msg_size, int* msg_indices = NULL)
     {
         int last_ptr = indptr[num_msgs];
         procs.emplace_back(proc);
@@ -740,9 +738,7 @@ public:
 
     void add_msg(int proc,
             int msg_size,
-            int* msg_indices = NULL,
-            int num_procs = 1,
-            int global_num_rows = 0)
+            int* msg_indices = NULL)
     {
         int last_ptr = indptr[num_msgs];
         procs.emplace_back(proc);
