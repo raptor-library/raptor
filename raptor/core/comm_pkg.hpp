@@ -417,7 +417,7 @@ namespace raptor
             aligned_vector<int> off_proc_col_to_proc(off_proc_num_cols);
             aligned_vector<int> tmp_send_buffer;
 
-            partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc, comm_t);
+            partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
 
             // Determine processes columns are received from,
             // and adds corresponding messages to recv data.
@@ -1337,7 +1337,7 @@ namespace raptor
 
             // Find process on which vector value associated with each column is
             // stored
-            partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc, comm_t);
+            partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
 
             // Partition off_proc cols into on_node and off_node
             split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
@@ -1398,7 +1398,7 @@ namespace raptor
 
             // Find process on which vector value associated with each column is
             // stored
-            partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc, comm_t);
+            partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
 
             // Partition off_proc cols into on_node and off_node
             split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,

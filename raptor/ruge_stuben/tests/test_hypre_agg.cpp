@@ -119,7 +119,7 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
     /************************************
      **** Test Anisotropic Diffusion 
      ***********************************/
-/*    n = 100;
+    n = 100;
     grid.resize(2);
     std::fill(grid.begin(), grid.end(), n);
     stencil = diffusion_stencil_2d(0.001, M_PI/4.0);
@@ -159,19 +159,18 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
     hypre_BoomerAMGDestroy(solver_data);    
     HYPRE_IJMatrixDestroy(Aij);
     delete ml;
-    delete A;*/
+    delete A;
 
 
 #ifdef USING_MFEM
     /************************************
-     **** Test Anisotropic Diffusion 
+     **** Test MFEM Grad Div 
      ***********************************/
-/*    const char* mesh_file = "/Users/bienz2/Documents/Parallel/mfem/data/star-surf.mesh";
+    std::string mesh_file = std::string(MFEM_MESH_DIR) + "/star-surf.mesh";
     int order = 3;
-    int seq_refines = 6;
+    int seq_refines = 4;
     int par_refines = 0;
-    A = mfem_grad_div(x, b, mesh_file, order, seq_refines, par_refines);
-    if (rank == 0) printf("A global rows %d\n", A->global_num_rows);
+    A = mfem_grad_div(x, b, mesh_file.c_str(), order, seq_refines, par_refines);
 
     ml = new ParRugeStubenSolver(strong_threshold, PMIS, Extended, Classical, SOR);
     form_hypre_weights(&ml->weights, A->local_num_rows);
@@ -195,7 +194,6 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
     A_array = hypre_ParAMGDataAArray((hypre_ParAMGData*) solver_data);
     P_array = hypre_ParAMGDataPArray((hypre_ParAMGData*) solver_data);
 
-    printf("Num Levels %d\n", ml->num_levels);
     for (int level = 0; level < ml->num_levels - 1; level++) 
     {
         compare(ml->levels[level]->P, P_array[level]);
@@ -205,9 +203,8 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
     hypre_BoomerAMGDestroy(solver_data);    
     HYPRE_IJMatrixDestroy(Aij);
     delete ml;
-    delete A;*/
+    delete A;
 #endif
-
 
 
 } // end of TEST(TestHypreAgg, TestsInRuge_Stuben) //

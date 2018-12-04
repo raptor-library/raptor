@@ -580,5 +580,8 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
             C->off_proc->idx2[j] = col_orig_to_new[col];
         }
     }
+
+    delete recv_on;
+    delete recv_off;
 }
 

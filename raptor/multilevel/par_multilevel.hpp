@@ -112,12 +112,16 @@ namespace raptor
                     {
                         MPI_Comm_free(&coarse_comm);
                     }
-                    for (std::vector<ParLevel*>::iterator it = levels.begin();
-                            it != levels.end(); ++it)
-                    {
-                        delete *it;
-                    }
                 }
+
+                for (std::vector<ParLevel*>::iterator it = levels.begin();
+                        it != levels.end(); ++it)
+                {
+                    delete *it;
+                }
+
+		delete[] weights;
+
                 delete[] setup_times;
                 delete[] solve_times;
                 delete[] setup_comm_times;
@@ -195,7 +199,10 @@ namespace raptor
 
                 num_levels = levels.size();
                 if (Af->local_num_rows) 
+                {
                     delete[] weights;
+                    weights = NULL;
+		}
 
                 // Duplicate coarsest level across all processes that hold any
                 // rows of A_c
@@ -244,6 +251,8 @@ namespace raptor
                 MPI_Group_incl(world_group, active_procs.size(), active_procs.data(),
                         &active_group);
                 MPI_Comm_create_group(MPI_COMM_WORLD, active_group, 0, &coarse_comm);
+		MPI_Group_free(&active_group);
+
                 if (Ac->local_num_rows)
                 {
                     int num_active, active_rank;
@@ -530,17 +539,17 @@ namespace raptor
                 if (rank == 0)
                 {
                     printf("Num Levels = %d\n", num_levels);
-	                printf("A\tNRow\tNCol\tNNZ\n");
+                    printf("A\tNRow\tNCol\tNNZ\n");
                 }
 
                 for (int i = 0; i < num_levels; i++)
                 {
                     ParCSRMatrix* Al = levels[i]->A;
-	                long lcl_nnz = Al->local_nnz;
-	                long nnz;
-	                MPI_Reduce(&lcl_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-	                if (rank == 0)
-	                {
+                    long lcl_nnz = Al->local_nnz;
+                    long nnz;
+                    MPI_Reduce(&lcl_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+                    if (rank == 0)
+                    {
                         printf("%d\t%d\t%d\t%lu\n", i, 
                                 Al->global_num_rows, Al->global_num_cols, nnz);
                     }

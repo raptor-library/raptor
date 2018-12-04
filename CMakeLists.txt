@@ -132,6 +132,7 @@ if(WITH_MFEM)
 	else()
 		message(FATAL_ERROR "Cannot find mfem. Try setting MFEM_DIR.")
 	endif(MFEM_FOUND)
+    add_definitions( -DMFEM_MESH_DIR=\"${MFEM_MESH_PATH}\" )
 endif(WITH_MFEM)
 
 if (WITH_AMPI)
