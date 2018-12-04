@@ -100,6 +100,12 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
 
     for (int level = 0; level < ml->num_levels - 1; level++) 
     {
+        HYPRE_IJMatrix Al_ij = convert(ml->levels[level]->A);
+        hypre_ParCSRMatrix* Al;
+        HYPRE_IJMatrixGetObject(Al_ij, (void**) &Al);
+        compare(ml->levels[level]->A, Al);
+        HYPRE_IJMatrixDestroy(Al_ij);
+
         compare(ml->levels[level]->P, P_array[level]);
         compare(ml->levels[level+1]->A, A_array[level+1]);
     }
@@ -113,7 +119,7 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
     /************************************
      **** Test Anisotropic Diffusion 
      ***********************************/
-    n = 100;
+/*    n = 100;
     grid.resize(2);
     std::fill(grid.begin(), grid.end(), n);
     stencil = diffusion_stencil_2d(0.001, M_PI/4.0);
@@ -153,14 +159,14 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
     hypre_BoomerAMGDestroy(solver_data);    
     HYPRE_IJMatrixDestroy(Aij);
     delete ml;
-    delete A;
+    delete A;*/
 
 
 #ifdef USING_MFEM
     /************************************
      **** Test Anisotropic Diffusion 
      ***********************************/
-    const char* mesh_file = "/Users/bienz2/Documents/Parallel/mfem/data/star-surf.mesh";
+/*    const char* mesh_file = "/Users/bienz2/Documents/Parallel/mfem/data/star-surf.mesh";
     int order = 3;
     int seq_refines = 6;
     int par_refines = 0;
@@ -199,7 +205,7 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
     hypre_BoomerAMGDestroy(solver_data);    
     HYPRE_IJMatrixDestroy(Aij);
     delete ml;
-    delete A;
+    delete A;*/
 #endif
 
 

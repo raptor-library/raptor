@@ -14,7 +14,8 @@ namespace raptor
     class ParSmoothedAggregationSolver : public ParMultilevel
     {
       public:
-        ParSmoothedAggregationSolver(double _strong_threshold = 0.0, agg_t _agg_type = MIS, 
+        ParSmoothedAggregationSolver(double _strong_threshold = 0.0, 
+                agg_t _agg_type = MIS, 
                 prolong_t _prolong_type = JacobiProlongation,
                 strength_t _strength_type = Symmetric,
                 relax_t _relax_type = SOR,
@@ -118,17 +119,6 @@ namespace raptor
             switch (agg_type)
             {
                 case MIS:
-                    /*aligned_vector<int> A_to_S(A->off_proc_num_cols, -1);
-                    int ctr = 0;
-                    for (int i = 0; i < S->off_proc_num_cols; i++)
-                    {
-                        int global_col = S->off_proc_column_map[i];
-                        while (A->off_proc_column_map[ctr] != global_col)
-                        ctr++;
-                        A_to_S[ctr] = i;
-                    }
-                    if (tap_level) S->update_tap_comm(A, A_to_S, agg_time);
-                    S->comm = new ParComm((ParComm*) A->comm, A_to_S, agg_time);*/
                     mis2(S, states, off_proc_states, tap_level, weights, agg_time);
                     n_aggs = aggregate(A, S, states, off_proc_states, 
                             aggregates, tap_level, NULL, agg_time);

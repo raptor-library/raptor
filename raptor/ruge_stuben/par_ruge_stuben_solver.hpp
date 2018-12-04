@@ -114,18 +114,6 @@ namespace raptor
             // Form CF Splitting
             if (setup_times) setup_times[2][level_ctr] -= MPI_Wtime();
 
-            /*aligned_vector<int> A_to_S(A->off_proc_num_cols, -1);
-            int ctr = 0;
-            for (int i = 0; i < S->off_proc_num_cols; i++)
-            {
-                int global_col = S->off_proc_column_map[i];
-                while (A->off_proc_column_map[ctr] != global_col)
-                ctr++;
-                A_to_S[ctr] = i;
-            }
-            if (tap_level) S->update_tap_comm(A, A_to_S, coarsen_time);
-            S->comm = new ParComm((ParComm*) A->comm, A_to_S, coarsen_time);*/
-
             switch (coarsen_type)
             {
                 case RS:

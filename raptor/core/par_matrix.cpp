@@ -336,6 +336,15 @@ void ParMatrix::default_copy_helper(ParMatrix* A)
     {
         tap_comm = NULL;
     }
+
+    if (A->tap_mat_comm)
+    {
+        tap_mat_comm = new TAPComm((TAPComm*) A->tap_mat_comm);
+    }
+    else
+    {
+        tap_mat_comm = NULL;
+    }
 }
 
 void ParMatrix::copy_helper(ParCOOMatrix* A)
@@ -834,7 +843,7 @@ void ParMatrix::init_tap_communicators(MPI_Comm comm, data_t* comm_t)
      * *******************************/
     // Find process on which vector value associated with each column is
     // stored
-    partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
+    partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc, comm_t);
 
     // Partition off_proc cols into on_node and off_node
     tap_comm->split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,

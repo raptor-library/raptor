@@ -417,7 +417,7 @@ namespace raptor
             aligned_vector<int> off_proc_col_to_proc(off_proc_num_cols);
             aligned_vector<int> tmp_send_buffer;
 
-            partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
+            partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc, comm_t);
 
             // Determine processes columns are received from,
             // and adds corresponding messages to recv data.
@@ -442,6 +442,7 @@ namespace raptor
             }
 
             // For each process I recv from, send the global column indices
+            if (comm_t) *comm_t -= MPI_Wtime();
             // for which I must recv corresponding rows 
             aligned_vector<int> recv_sizes(num_procs, 0);
             for (int i = 0; i < recv_data->num_msgs; i++)
@@ -456,6 +457,7 @@ namespace raptor
             {
                 send_data->indices[i] -= partition->first_local_col;
             }
+            if (comm_t) *comm_t += MPI_Wtime();
         }
 
         ParComm(ParComm* comm) : CommPkg(comm->topology)
@@ -1122,6 +1124,7 @@ namespace raptor
             {
                 local_S_par_comm = new ParComm(tap_comm->local_S_par_comm);
             }
+            else local_S_par_comm = NULL;
 
             global_par_comm = new ParComm(tap_comm->global_par_comm);
             local_R_par_comm = new ParComm(tap_comm->local_R_par_comm);
@@ -1334,7 +1337,7 @@ namespace raptor
 
             // Find process on which vector value associated with each column is
             // stored
-            partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
+            partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc, comm_t);
 
             // Partition off_proc cols into on_node and off_node
             split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
@@ -1395,7 +1398,7 @@ namespace raptor
 
             // Find process on which vector value associated with each column is
             // stored
-            partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
+            partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc, comm_t);
 
             // Partition off_proc cols into on_node and off_node
             split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,

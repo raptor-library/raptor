@@ -379,7 +379,7 @@ namespace raptor
     }
 
     void form_col_to_proc (const aligned_vector<int>& off_proc_column_map,
-            aligned_vector<int>& off_proc_col_to_proc) 
+            aligned_vector<int>& off_proc_col_to_proc, double* comm_t = NULL) 
     {
         int rank, num_procs;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -431,7 +431,6 @@ namespace raptor
         aligned_vector<int> sendbuf_starts;
         aligned_vector<int> sendbuf;
         aligned_vector<MPI_Request> send_requests;
-        MPI_Request barrier_request;
         MPI_Status status;
 
         if (col_ctr)
@@ -462,6 +461,7 @@ namespace raptor
             if (proc != rank)
                 send_p[proc] = 1;
         }
+        if (comm_t) *comm_t -= MPI_Wtime();
         MPI_Allreduce(MPI_IN_PLACE, send_p.data(), num_procs, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
         int recv_n = send_p[rank];
         int send_n = 0;
@@ -550,7 +550,8 @@ namespace raptor
 
         MPI_Waitall(n_sendbuf, sendbuf_requests.data(), MPI_STATUSES_IGNORE);
         MPI_Waitall(num_sends, send_requests.data(), MPI_STATUSES_IGNORE);
-
+        if (comm_t) *comm_t += MPI_Wtime();
+    
         ctr = 0;
         for (int i = 0; i < off_proc_num_cols; i++)
         {

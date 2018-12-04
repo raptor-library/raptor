@@ -47,6 +47,12 @@ if (WITH_MPI)
 
     add_executable(benchmark_setup_sweeps benchmark_setup_sweeps.cpp)
     target_link_libraries(benchmark_setup_sweeps raptor ${MPI_LIBRARIES})
+
+    add_executable(profile_tap_rss profile_tap_rss.cpp)
+    target_link_libraries(profile_tap_rss raptor ${MPI_LIBRARIES})
+
+    add_executable(profile_tap_sas profile_tap_sas.cpp)
+    target_link_libraries(profile_tap_sas raptor ${MPI_LIBRARIES})
 endif()
 
 
