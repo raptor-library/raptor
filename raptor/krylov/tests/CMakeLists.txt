@@ -13,7 +13,7 @@ if (WITH_MPI)
         
     add_executable(test_par_bicgstab test_par_bicgstab.cpp)
     target_link_libraries(test_par_bicgstab raptor ${MPI_LIBRARIES} googletest pthread)
-    add_test(TestParBiCGStab ${MPIRUN} -n 1 ./test_par_bicgstab)
+    #add_test(TestParBiCGStab ${MPIRUN} -n 1 ./test_par_bicgstab)
 
 endif()
 

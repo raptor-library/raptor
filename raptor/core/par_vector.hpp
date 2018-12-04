@@ -235,6 +235,7 @@ namespace raptor
         data_t inner_product(ParBVector& x, data_t* inner_prods = NULL);
         //aligned_vector<data_t> inner_product(ParBVector& y);
         void mult_T(ParVector& x, data_t* b);
+        void mult_T(ParBVector& x, BVector& b);
         void mult(Vector& x, ParVector& b);
 
     };

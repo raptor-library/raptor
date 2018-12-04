@@ -105,7 +105,7 @@ void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double
         // Update next inner product
         rr_inner = next_inner;
         norm_r = r.norm(2);
-        res.push_back(norm_r);
+        res.emplace_back(norm_r);
 
         iter++;
     }

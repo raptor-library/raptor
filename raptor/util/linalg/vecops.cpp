@@ -345,37 +345,41 @@ data_t BVector::inner_product(BVector& y, data_t* inner_prods)
 }
 
 /**************************************************************
-*****   BVector Mult 
+*****   BVector Mult_T 
 **************************************************************
-***** Multiplies the BVector by the Vector x as if the 
-***** the BVector were a dense matrix
+***** Multiplies the transpose of BVector by the BVector X - dense 
+***** matrix multiplication
 *****
 ***** Parameters
 ***** -------------
-***** x : Vector&
-*****    Vector to multiply with
-***** b : Vector&
-*****    Vector to hold result
+***** X : BVector&
+*****    BVector to multiply with
+***** B : BVector&
+*****    BVector to hold result
 **************************************************************/
-void BVector::mult(Vector& x, Vector& b)
+void Vector::mult_T(Vector& X, Vector& B)
 {
-    b.set_const_value(0.0);
-    data_t result;
-    index_t offset;
+    // Resize B
+    B.b_vecs = X.b_vecs;
+    B.resize(b_vecs);
 
-    for (index_t j = 0; j < b_vecs; j++)
+    data_t result;
+    for (index_t x = 0; x < X.b_vecs; x++)
     {
-        result = 0.0;
-        offset = j * num_values;
-        for (index_t i = 0; i < num_values; i++)
+        for (index_t v = 0; v < b_vecs; v++)
         {
-            b[i] += values[i + offset] * x[j];
+            result = 0.0;
+            for (index_t i = 0; i < num_values; i++)
+            {
+                result += values[v*num_values + i] * X[x*X.num_values + i];
+            }
+            B.values[x*B.num_values + v] = result;
         }
     }
 }
 
 /**************************************************************
-*****   BVector Mult 
+*****   Vector Mult 
 **************************************************************
 ***** Multiplies the BVector by the Vector x as if the 
 ***** the BVector were a dense matrix
@@ -389,17 +393,21 @@ void BVector::mult(Vector& x, Vector& b)
 **************************************************************/
 void Vector::mult(Vector& x, Vector& b)
 {
-    b.set_const_value(0.0);
+    // Resize B
+    b.b_vecs = x.b_vecs;
+    b.resize(num_values);
+    
     data_t result;
-    index_t offset;
-
-    for (index_t j = 0; j < b_vecs; j++)
+    for (index_t j = 0; j < x.b_vecs; j++)
     {
-        result = 0.0;
-        offset = j * num_values;
-        for (index_t i = 0; i < num_values; i++)
+        for (index_t v = 0; v < num_values; v++)
         {
-            b[i] += values[i + offset] * x[j];
+            result = 0.0;
+            for (index_t i = 0; i < b_vecs; i++)
+            {
+                result += values[i*num_values + v] * x.values[j*b_vecs + i];
+            }
+            b.values[j*num_values + v] = result;
         }
     }
 }

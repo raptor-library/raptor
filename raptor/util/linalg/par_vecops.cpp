@@ -194,7 +194,17 @@ void ParBVector::mult_T(ParVector& x, data_t* b)
     MPI_Allreduce(MPI_IN_PLACE, b, local->b_vecs, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
 }
 
+void ParBVector::mult_T(ParBVector& x, BVector& b)
+{
+    if (local_n)
+    {
+        local->mult_T(*(x.local), b);
+    }
+    MPI_Allreduce(MPI_IN_PLACE, &(b[0]), local->b_vecs*x.local->b_vecs, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
+}
+
 void ParBVector::mult(Vector& x, ParVector& b)
 {
+    b.resize(global_n, local_n, first_local);
     local->mult(x, *(b.local));
 }

@@ -78,7 +78,7 @@ public:
     void resize(int len)
     {
         values.resize(len * b_vecs);
-        num_values = len * b_vecs;
+        num_values = len;
     }
 
     /**************************************************************
@@ -158,7 +158,8 @@ public:
     /**************************************************************
     *****   Vector Mult
     **************************************************************
-    ***** Virtual - only defined in BVector class
+    ***** Multiply BVector by x as if performing dense matrix
+    ***** multiplication 
     *****
     ***** Parameters
     ***** -------------
@@ -215,6 +216,7 @@ public:
     data_t inner_product(Vector& x, data_t* inner_prods = NULL);
 
     void append(Vector& P);
+    void mult_T(Vector& X, Vector& B);
 
     aligned_vector<double> values;
     index_t num_values;
@@ -256,8 +258,6 @@ public:
     data_t norm(index_t p, data_t* norms = NULL);
     data_t inner_product(Vector& x, data_t* inner_prods = NULL);
     data_t inner_product(BVector& y, data_t* inner_prods = NULL);
-
-    void mult(Vector& x, Vector& b);
 };
 
 }

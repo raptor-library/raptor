@@ -32,9 +32,6 @@ TEST(AnisoBVectorSpMVTest, TestsInUtil)
     BVector *b = new BVector(A_sten->n_rows, vecs_in_block);
 
     const char* b_ones = "../../../../test_data/aniso_ones_b.txt";
-    //const char* b_T_ones = "../../../../test_data/aniso_ones_b_T.txt";
-    //const char* b_inc = "../../../../test_data/aniso_inc_b.txt";
-    //const char* b_T_inc = "../../../../test_data/aniso_inc_b_T.txt";
     
     // Test b <- A*ones
     x->set_const_value(1.0);
@@ -49,40 +46,6 @@ TEST(AnisoBVectorSpMVTest, TestsInUtil)
         }
     }
     fclose(f);
-
-    // Test b <- A_T*ones
-    /*A_sten->mult_T(x, b);
-    f = fopen(b_T_ones, "r");
-    for (int i = 0; i < A_sten->n_rows; i++)
-    {
-        fscanf(f, "%lg\n", &b_val);
-        ASSERT_NEAR(b[i], b_val, 1e-06);
-    } 
-    fclose(f);
-
-    // Tests b <- A*incr
-    for (int i = 0; i < A_sten->n_rows; i++)
-    {
-        x[i] = i;
-    }
-    A_sten->mult(x, b);
-    f = fopen(b_inc, "r");
-    for (int i = 0; i < A_sten->n_rows; i++)
-    {
-        fscanf(f, "%lg\n", &b_val);
-        ASSERT_NEAR(b[i],b_val, 1e-06);
-    } 
-    fclose(f);
-
-    // Tests b <- A_T*incr
-    A_sten->mult_T(x, b);
-    f = fopen(b_T_inc, "r");
-    for (int i = 0; i < A_sten->n_rows; i++)
-    {
-        fscanf(f, "%lg\n", &b_val);
-        ASSERT_NEAR(b[i], b_val,  1e-06);
-    } 
-    fclose(f);*/
 
     delete x;
     delete b;

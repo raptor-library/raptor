@@ -17,7 +17,7 @@ int main(int argc, char** argv)
     return temp;
 } // end of main() //
 
-TEST(ParBlockVectorOpsTest, TestsInCore)
+TEST(ParBVectorOpsTest, TestsInCore)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -56,7 +56,7 @@ TEST(ParBlockVectorOpsTest, TestsInCore)
     {
         for (int i = 0; i < local_n; i++)
         {
-            ASSERT_EQ( v->values[k*global_n+i], v_par->local->values[k*local_n+i] );
+            ASSERT_NEAR( v->values[k*global_n+i], v_par->local->values[k*local_n+i], 1e-06 );
         }
     }
     
@@ -67,7 +67,7 @@ TEST(ParBlockVectorOpsTest, TestsInCore)
     {
         for (int i = 0; i < local_n; i++)
         {
-            ASSERT_EQ( v->values[k*global_n+i], v_par->local->values[k*local_n+i] );
+            ASSERT_NEAR( v->values[k*global_n+i], v_par->local->values[k*local_n+i], 1e-06 );
         }
     }
 
@@ -90,8 +90,8 @@ TEST(ParBlockVectorOpsTest, TestsInCore)
     temp = v_par->inner_product(*v_par, par_inner_prods);
     for (int i = 0; i < vecs_in_block; i++)
     {
-        ASSERT_EQ( inner_prods[i], alphas[i] );
-        ASSERT_EQ( alphas[i], par_inner_prods[i] );
+        ASSERT_NEAR( inner_prods[i], alphas[i], 1e-06 );
+        ASSERT_NEAR( alphas[i], par_inner_prods[i], 1e-06 );
     }
 
     // Test ParBVector Norm
@@ -101,7 +101,7 @@ TEST(ParBlockVectorOpsTest, TestsInCore)
     temp = v_par->norm(2, norms_par);
     for (int i = 0; i < vecs_in_block; i++)
     {
-        ASSERT_EQ( norms[i], norms_par[i] );
+        ASSERT_NEAR( norms[i], norms_par[i], 1e-06 );
     }
 
     // Test ParBVector A-Norm
@@ -119,7 +119,7 @@ TEST(ParBlockVectorOpsTest, TestsInCore)
     temp = v->inner_product(*c, inner_prods);
     for (int i = 0; i < vecs_in_block; i++)
     {
-        ASSERT_EQ( inner_prods[i], b[i] );
+        ASSERT_NEAR( inner_prods[i], b[i], 1e-06 );
     }
 
     // Test ParBVector Mult with Vector
@@ -129,7 +129,7 @@ TEST(ParBlockVectorOpsTest, TestsInCore)
     temp = v_par->local->values[0]*vecs_in_block;
     for (int i = 0; i < local_n; i++)
     {
-        ASSERT_EQ( temp, c_par->local->values[i] );
+        ASSERT_NEAR( temp, c_par->local->values[i], 1e-06 );
     }
 
     delete inner_prods;
@@ -143,5 +143,5 @@ TEST(ParBlockVectorOpsTest, TestsInCore)
     delete c;
     delete c_par;
 
-} // end of TEST(ParBlockVectorOpsTest, TestsInCore) //
+} // end of TEST(ParBVectorOpsTest, TestsInCore) //
 
