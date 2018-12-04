@@ -10,6 +10,24 @@
 
 #include "raptor.hpp"
 
+void form_hypre_weights(double** weight_ptr, int n_rows)
+{
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    hypre_SeedRand(2747 + rank);
+    double* weights;
+    if (n_rows)
+    {
+        weights = new double[n_rows];
+        for (int i = 0; i < n_rows; i++)
+        {
+            weights[i] = hypre_Rand();
+        }
+    }
+
+    *weight_ptr = weights;
+}
+
 int main(int argc, char* argv[])
 {
     MPI_Init(&argc, &argv);
@@ -23,9 +41,9 @@ int main(int argc, char* argv[])
     int iter;
     int num_variables = 1;
 
-    coarsen_t coarsen_type = HMIS;
+    coarsen_t coarsen_type = PMIS;
     interp_t interp_type = Extended;
-    int hyp_coarsen_type = 10; // HMIS
+    int hyp_coarsen_type = 8; // PMIS
     int hyp_interp_type = 6; // Extended
     int p_max_elmts = 0;
     int agg_num_levels = 0;
@@ -109,7 +127,7 @@ int main(int argc, char* argv[])
             }
         }
 
-        coarsen_type = HMIS;
+        coarsen_type = PMIS;
         interp_type = Extended;
         strong_threshold = 0.5;
         switch (mfem_system)
@@ -118,7 +136,7 @@ int main(int argc, char* argv[])
                 A = mfem_laplacian(x, b, mesh_file, order, seq_refines, par_refines);
                 break;
             case 1:
-                strong_threshold = 0.0;
+                strong_threshold = 0.25;
                 A = mfem_grad_div(x, b, mesh_file, order, seq_refines, par_refines);
                 break;
             case 2:
@@ -146,8 +164,7 @@ int main(int argc, char* argv[])
         const char* file = "../../examples/LFAT5.pm";
         A = readParMatrix(file);
     }
-
-/*    if (system != 2)
+    if (system != 2)
     {
         A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
                 A->on_proc_column_map);
@@ -157,22 +174,18 @@ int main(int argc, char* argv[])
         A->mult(x, b);
         x.set_const_value(0.0);
     }
-    ParVector tmp(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
 
     // Create Hypre system
     HYPRE_IJMatrix A_h_ij = convert(A);
     HYPRE_IJVector x_h_ij = convert(x);
     HYPRE_IJVector b_h_ij = convert(b);
 
-    HYPRE_IJVector tmp_h_ij = convert(tmp);
     hypre_ParCSRMatrix* A_h;
     HYPRE_IJMatrixGetObject(A_h_ij, (void**) &A_h);
     hypre_ParVector* x_h;
     HYPRE_IJVectorGetObject(x_h_ij, (void **) &x_h);
     hypre_ParVector* b_h;
     HYPRE_IJVectorGetObject(b_h_ij, (void **) &b_h);
-    hypre_ParVector* tmp_h;
-    HYPRE_IJVectorGetObject(tmp_h_ij, (void **) &tmp_h);
     data_t* x_data = hypre_VectorData(hypre_ParVectorLocalVector(x_h));
     data_t* b_data = hypre_VectorData(hypre_ParVectorLocalVector(b_h));
     for (int i = 0; i < A->local_num_rows; i++)
@@ -189,6 +202,7 @@ int main(int argc, char* argv[])
             hyp_coarsen_type, hyp_interp_type, p_max_elmts, agg_num_levels, 
             strong_threshold);
     hypre_BoomerAMGDestroy(solver_data);
+
 
     // Hypre Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);
@@ -225,6 +239,7 @@ int main(int argc, char* argv[])
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
     ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, SOR);
+    form_hypre_weights(&ml->weights, A->local_num_rows);
     ml->max_iterations = 1000;
     ml->solve_tol = 1e-07;
     ml->num_variables = num_variables;
@@ -252,6 +267,7 @@ int main(int argc, char* argv[])
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
     ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, SOR);
+    form_hypre_weights(&ml->weights, A->local_num_rows);
     ml->max_iterations = 1000;
     ml->solve_tol = 1e-07;
     ml->num_variables = num_variables;
@@ -275,10 +291,20 @@ int main(int argc, char* argv[])
     }
     delete ml;
 
+
+    // Warm Up
+    ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation,
+            Symmetric, SOR);
+    ml->setup(A);
+    xtmp = ParVector(x);
+    ml->solve(xtmp, b);
+    delete ml;
+
     // Smoothed Aggregation AMG
     if (rank == 0) printf("\n\nSmoothed Aggregation Solver:\n");
     ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation, 
             Symmetric, SOR);
+    form_hypre_weights(&ml->weights, A->local_num_rows);
     ml->max_iterations = 1000;
     ml->solve_tol = 1e-07;
     ml->track_times = false;
@@ -304,6 +330,7 @@ int main(int argc, char* argv[])
     if (rank == 0) printf("\n\nTAP Smoothed Aggregation Solver:\n");
     ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation,
             Symmetric, SOR);
+    form_hypre_weights(&ml->weights, A->local_num_rows);
     ml->max_iterations = 1000;
     ml->solve_tol = 1e-07;
     ml->track_times = false;
@@ -330,11 +357,7 @@ int main(int argc, char* argv[])
     HYPRE_IJVectorDestroy(x_h_ij);
     HYPRE_IJVectorDestroy(b_h_ij);
 
-    */
-        printf("%d\n", A->global_num_rows);
-//    write_par_mm(A, "grad_div.mtx");
     delete A;
-
 
     MPI_Finalize();
     return 0;
