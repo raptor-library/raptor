@@ -41,7 +41,25 @@ void ParVector::set_rand_values()
 **************************************************************
 ***** Appends a ParVector to the ParVector
 **************************************************************/
-void ParVector::append(ParVector& P)
+void ParBVector::append(ParBVector& P)
 {
     local->append(*(P.local));
+}
+
+/**************************************************************
+*****   ParVector Split ParVector
+**************************************************************
+***** Splits a ParVector into t bvecs making a ParBVector
+***** Storing the local values in W at the appropriate bvec
+***** index
+**************************************************************/
+void ParVector::split(ParVector& W, int t)
+{
+    int rank, num_procs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+    if (t == num_procs) local->split(*(W.local), t, rank);
+    else local->split_range(*(W.local), t, rank % t);
+    //else if (t < num_procs) local->split(*(W.local), t, rank % t);
 }

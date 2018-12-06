@@ -1,10 +1,20 @@
 // Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#include "aorthonormalization/mgs.hpp"
+#include "aorthonormalization/cgs.hpp"
 
 using namespace raptor;
 
-void MGS(CSRMatrix* A, aligned_vector<Vector>& W, aligned_vector<aligned_vector<Vector>>& P_list)
+void BCGS(CSRMatrix* A, BVector& Q, BVector& P)
+{
+    return;
+}
+
+void CGS(CSRMatrix* A, BVector& P)
+{
+    return;
+}
+
+/*void MGS(CSRMatrix* A, aligned_vector<Vector>& W, aligned_vector<aligned_vector<Vector>>& P_list)
 {
     Vector Aw(A->n_rows);
     aligned_vector<Vector> Pi;
@@ -52,4 +62,4 @@ void MGS(CSRMatrix* A, aligned_vector<Vector>& P)
     }
 
     return;
-}
+}*/

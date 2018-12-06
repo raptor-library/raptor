@@ -3,10 +3,10 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 if (WITH_MPI)
     set(par_aorthonormalization_SOURCES
-        aorthonormalization/par_mgs.cpp
+        aorthonormalization/par_cgs.cpp
         )
     set(par_aorthonormalization_HEADERS
-        aorthonormalization/par_mgs.hpp
+        aorthonormalization/par_cgs.hpp
         )
 else()
     set(par_aorthonormalization_SOURCES
@@ -16,12 +16,12 @@ else()
 endif()
  
 set(aorthonormalization_HEADERS
-    aorthonormalization/mgs.cpp
+    aorthonormalization/cgs.cpp
     ${par_aorthonormalization_HEADERS}
     PARENT_SCOPE)
 # Create a variable called linalg_SOURCES containing all .cpp files:
 set(aorthonormalization_SOURCES 
-    aorthonormalization/mgs.hpp
+    aorthonormalization/cgs.hpp
     ${par_aorthonormalization_SOURCES}
 PARENT_SCOPE)
 

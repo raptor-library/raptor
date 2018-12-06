@@ -186,7 +186,7 @@ namespace raptor
             return local->values[index];
         }
         
-        void append(ParVector& P);
+        void split(ParVector& W, int t);
 
         Vector* local;
         int global_n;
@@ -234,9 +234,12 @@ namespace raptor
         data_t norm(index_t p, data_t* norms = NULL);
         data_t inner_product(ParBVector& x, data_t* inner_prods = NULL);
         //aligned_vector<data_t> inner_product(ParBVector& y);
-        void mult_T(ParVector& x, data_t* b);
+        //void mult_T(ParVector& x, data_t* b);
+        void mult_T(ParVector& x, Vector& b);
         void mult_T(ParBVector& x, BVector& b);
         void mult(Vector& x, ParVector& b);
+        
+        void append(ParBVector& P);
 
     };
 

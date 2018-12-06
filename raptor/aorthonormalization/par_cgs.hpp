@@ -8,8 +8,8 @@
 
 using namespace raptor;
 
-void MGS(ParCSRMatrix* A, aligned_vector<ParVector>& W, aligned_vector<aligned_vector<ParVector>>& P_list);
+void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& Q2, ParBVector& P);
 
-void MGS(ParCSRMatrix* A, aligned_vector<ParVector>& P);
+void QR(ParCSRMatrix* A, ParBVector& P);
 
 #endif

@@ -1,11 +1,12 @@
-add_executable(test_mgs test_mgs.cpp)
-target_link_libraries(test_mgs raptor)
-add_test(TestMGS ./test_mgs)
+add_executable(test_cgs test_cgs.cpp)
+target_link_libraries(test_cgs raptor googletest pthread )
+add_test(CGSTest ./test_cgs)
 
 if (WITH_MPI)
-    #add_executable(test_par_mgs test_par_mgs.cpp)
-    #target_link_libraries(test_par_mgs raptor ${MPI_LIBRARIES})
-    #add_test(TestParMGS ./test_par_mgs)
+    add_executable(test_par_cgs test_par_cgs.cpp)
+    target_link_libraries(test_par_cgs raptor ${MPI_LIBRARIES} googletest pthread )
+    add_test(ParCGSTest ${MPIRUN} -n 1 ./test_par_cgs)
+    add_test(ParCGSTest ${MPIRUN} -n 2 ./test_par_cgs)
+    add_test(ParCGSTest ${MPIRUN} -n 4 ./test_par_cgs)
+    add_test(ParCGSTest ${MPIRUN} -n 16 ./test_par_cgs)
 endif()
-
-

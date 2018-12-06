@@ -184,14 +184,15 @@ data_t ParBVector::inner_product(ParBVector& x, data_t* inner_prods)
     return 0;
 }
 
-void ParBVector::mult_T(ParVector& x, data_t* b)
+void ParBVector::mult_T(ParVector& x, Vector& b)
 {
     data_t temp;
     if (local_n)
     {
-        temp = local->inner_product(*(x.local), b);
+        //temp = local->inner_product(*(x.local), b);
+        local->mult_T(*(x.local), b);
     }
-    MPI_Allreduce(MPI_IN_PLACE, b, local->b_vecs, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &(b[0]), local->b_vecs * x.local->b_vecs, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
 }
 
 void ParBVector::mult_T(ParBVector& x, BVector& b)

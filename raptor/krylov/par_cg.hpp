@@ -13,5 +13,6 @@ void CG(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res
         double tol = 1e-05, int max_iter = -1);
 void PCG(ParCSRMatrix* A, ParMultilevel* ml, ParVector& x, ParVector& b, 
         aligned_vector<double>& res, double tol = 1e-05, int max_iter = -1);
-
+void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<double>& res,
+        double tol = 1e-05, int max_iter = -1);
 #endif

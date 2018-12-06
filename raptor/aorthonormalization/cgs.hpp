@@ -8,8 +8,8 @@
 
 using namespace raptor;
 
-void MGS(CSRMatrix* A, aligned_vector<Vector>& W, aligned_vector<aligned_vector<Vector>>& P_list);
+void BCGS(CSRMatrix* A, BVector& Q, BVector& P);
 
-void MGS(CSRMatrix* A, aligned_vector<Vector>& P);
+void CGS(CSRMatrix* A, BVector& P);
 
 #endif

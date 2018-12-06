@@ -216,6 +216,9 @@ public:
     data_t inner_product(Vector& x, data_t* inner_prods = NULL);
 
     void append(Vector& P);
+    void split(Vector& W, int t, int i);
+    void split_range(Vector& W, int t, int start);
+
     void mult_T(Vector& X, Vector& B);
 
     aligned_vector<double> values;

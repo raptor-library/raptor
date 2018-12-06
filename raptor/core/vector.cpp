@@ -108,9 +108,60 @@ data_t& Vector::operator[](const int index)
 **************************************************************/
 void Vector::append(Vector& P)
 {
-    index_t old_num_values = num_values;    
+    values.resize(num_values * (b_vecs + P.b_vecs));
+    std::copy(P.values.begin(), P.values.end(), values.begin() + num_values * b_vecs);
     b_vecs += P.b_vecs;
-    resize(num_values + P.num_values);
-    values.resize(num_values * b_vecs);
-    std::copy(P.values.begin(), P.values.end(), values.begin() + old_num_values);
+}
+
+/**************************************************************
+*****   Vector Split 
+**************************************************************
+***** Splits the vector into t bvecs
+*****
+***** Parameters 
+***** ------------
+***** W : Vector&
+*****    The Vector to contain the splitting of the vector 
+***** t : int
+*****    The number of bvecs to split the vector into
+***** i : int
+*****    The index of the vector in W that should contain
+*****    the calling vector's values.
+**************************************************************/
+void Vector::split(Vector& W, int t, int i)
+{
+    W.b_vecs = t;
+    W.resize(num_values);
+    W.set_const_value(0.0);
+    std::copy(values.begin(), values.end(), W.values.begin() + num_values * i);
+}
+
+/**************************************************************
+*****   Vector Split Range
+**************************************************************
+***** Splits the vector into t bvecs
+***** Splitting the values in the vector across the vectors
+***** from block index start to block index stop
+*****
+***** Parameters 
+***** ------------
+***** W : Vector&
+*****    The Vector to contain the splitting of the vector 
+***** t : int
+*****    The number of bvecs to split the vector into
+***** start : int
+*****    The index of the vector in W that should contain
+*****    the first portion of the calling vector's values.
+**************************************************************/
+void Vector::split_range(Vector& W, int t, int start)
+{
+    W.b_vecs = t;
+    W.resize(num_values);
+    W.set_const_value(0.0);
+
+    for (int i = 0; i < num_values; i++)
+    {
+        W.values[start*num_values + i] = values[i];
+        start = (start+1) % t;
+    }
 }

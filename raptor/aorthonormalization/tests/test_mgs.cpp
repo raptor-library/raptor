@@ -3,7 +3,7 @@
 #include "core/types.hpp"
 #include "core/matrix.hpp"
 #include "core/vector.hpp"
-#include "aorthonormalization/mgs.hpp"
+#include "aorthonormalization/cgs.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/stencil.hpp"
 
@@ -34,11 +34,11 @@ int main(int argc, char* argv[])
         P_list.push_back(P_sublist);
     }
 
-    MGS(A, W, P_list);
+    BCGS(A, W, P_list);
 
     // Insert check 
 
-    MGS(A, W);
+    CGS(A, W);
 
     // Check for correctness
     double one;

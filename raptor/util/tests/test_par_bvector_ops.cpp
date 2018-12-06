@@ -114,7 +114,7 @@ TEST(ParBVectorOpsTest, TestsInCore)
     c->set_const_value(1.0);
 
     // Test ParBVector Mult_T with ParVector
-    double *b = new double[v->b_vecs];
+    Vector b(v->b_vecs);
     v_par->mult_T(*c_par, b);
     temp = v->inner_product(*c, inner_prods);
     for (int i = 0; i < vecs_in_block; i++)
@@ -136,7 +136,6 @@ TEST(ParBVectorOpsTest, TestsInCore)
     delete par_inner_prods;
     delete norms;
     delete norms_par;
-    delete b;
     delete alphas;
     delete v;
     delete v_par;
