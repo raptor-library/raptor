@@ -79,6 +79,13 @@ if (WITH_MPI)
     add_test(ParBSRSpMVTest ${MPIRUN} -n 3 ./test_par_bsr_spmv)
     add_test(ParBSRSpMVTest ${MPIRUN} -n 6 ./test_par_bsr_spmv)
 
+    add_executable(test_par_scale_aniso test_par_scale_aniso.cpp)
+    target_link_libraries(test_par_scale_aniso raptor ${MPI_LIBRARIES} googletest pthread )
+    add_test(ParBSRSpMVTest ${MPIRUN} -n 1 ./test_par_scale_aniso)
+    add_test(ParBSRSpMVTest ${MPIRUN} -n 2 ./test_par_scale_aniso)
+    add_test(ParBSRSpMVTest ${MPIRUN} -n 3 ./test_par_scale_aniso)
+    add_test(ParBSRSpMVTest ${MPIRUN} -n 6 ./test_par_scale_aniso)
+
     if (WITH_PTSCOTCH)
         add_executable(test_repartition test_repartition.cpp)
         target_link_libraries(test_repartition raptor ${MPI_LIBRARIES} googletest pthread )

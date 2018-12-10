@@ -104,6 +104,11 @@
     #include "util/linalg/external/ptscotch.hpp"
 #endif
 
+// Preconditioning Methods
+#ifndef NO_MPI
+    #include "util/linalg/par_diag_scale.hpp"
+#endif
+
 
 #endif
 

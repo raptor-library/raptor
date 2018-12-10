@@ -17,6 +17,7 @@ if (WITH_MPI)
     set(par_linalg_HEADERS
         util/linalg/repartition.hpp
         util/linalg/par_relax.hpp
+        util/linalg/par_diag_scale.hpp
         )
     set(par_linalg_SOURCES
         util/linalg/par_spmv.cpp
