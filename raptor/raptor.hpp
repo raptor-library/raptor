@@ -101,7 +101,10 @@
 #include "util/linalg/repartition.hpp"
 #endif
 #ifdef USING_PTSCOTCH
-    #include "util/linalg/external/ptscotch.hpp"
+    #include "util/linalg/external/ptscotch_wrapper.hpp"
+#endif
+#ifdef USING_PARMETIS
+    #include "util/linalg/external/parmetis_wrapper.hpp"
 #endif
 
 // Preconditioning Methods

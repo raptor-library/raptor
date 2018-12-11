@@ -290,9 +290,10 @@ namespace raptor
         assumed_num_cols = global_num_cols / num_procs;
         if (global_num_cols % num_procs) assumed_num_cols++;
 
-        first_cols.resize(num_procs);
+        first_cols.resize(num_procs+1);
         MPI_Allgather(&(first_local_col), 1, MPI_INT, first_cols.data(), 1, MPI_INT,
                         MPI_COMM_WORLD);
+        first_cols[num_procs] = global_num_cols;
     }
 
     void form_col_to_proc (const aligned_vector<int>& off_proc_column_map,
