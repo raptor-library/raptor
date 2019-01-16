@@ -104,9 +104,6 @@ TEST(ParBVectorOpsTest, TestsInCore)
         ASSERT_NEAR( norms[i], norms_par[i], 1e-06 );
     }
 
-    // Test ParBVector A-Norm
-    // INSERT TEST HERE
-
     ParVector *c_par = new ParVector(global_n, local_n, first_n);
     c_par->set_const_value(1.0);
 
@@ -132,6 +129,43 @@ TEST(ParBVectorOpsTest, TestsInCore)
         ASSERT_NEAR( temp, c_par->local->values[i], 1e-06 );
     }
 
+    // Test ParBVector IJ Inner Product
+    ParBVector* t_par = new ParBVector(global_n, local_n, first_n, vecs_in_block);
+    t_par->set_const_value(1.0);
+    for (int i = 0; i < vecs_in_block; i++) 
+    {
+        alphas[i] = (i + 1);
+    }
+    v_par->scale(1, alphas);
+    t_par->scale(1, alphas);
+    for (int i = 0; i < vecs_in_block; i++)
+    {
+        for (int j = 0; j < vecs_in_block; j++)
+        {
+            temp = v_par->inner_product(*t_par, i, j);
+            ASSERT_NEAR( temp, v_par->local->values[i*local_n]*t_par->local->values[j*local_n]*global_n, 1e-06);
+        }
+    }
+
+    // Test ParBVector AXPY_IJ
+    Vector *t = new Vector(global_n);
+    for (int i = 0; i < vecs_in_block; i++)
+    {
+        for (int j = 0; j < vecs_in_block; j++)
+        {
+            c->set_const_value(alphas[i]);
+            t->set_const_value(alphas[j]);
+            c->axpy(*t, 1.0);
+            v_par->set_const_value(1.0);
+            v_par->scale(1, alphas);
+            v_par->axpy_ij(*t_par, i, j, 1.0);
+            for (int k = 0; k < local_n; k++)
+            {
+                ASSERT_NEAR( v_par->local->values[i*local_n + k], c->values[k], 1e-06);
+            }
+        }
+    }
+
     delete inner_prods;
     delete par_inner_prods;
     delete norms;
@@ -141,6 +175,8 @@ TEST(ParBVectorOpsTest, TestsInCore)
     delete v_par;
     delete c;
     delete c_par;
+    delete t;
+    delete t_par;
 
 } // end of TEST(ParBVectorOpsTest, TestsInCore) //
 

@@ -165,3 +165,45 @@ void Vector::split_range(Vector& W, int t, int start)
         start = (start+1) % t;
     }
 }
+
+/**************************************************************
+*****   Vector Split Contiguous 
+**************************************************************
+***** Splits the vector into t bvecs
+***** Splitting the values in the vector across the vectors
+***** in equal sized contiguous chunks
+*****
+***** Parameters 
+***** ------------
+***** W : Vector&
+*****    The Vector to contain the splitting of the vector 
+***** t : int
+*****    The number of bvecs to split the vector into
+***** first_global_index : int
+*****    The corresponding global index of the first index
+*****    in this vector
+**************************************************************/
+void Vector::split_contig(Vector& W, int t, int first_global_index, int glob_vals)
+{
+    int glob_index, bvec, pos_in_bvec, end;
+    int chunk_size = glob_vals / t;
+
+    W.b_vecs = t;
+    W.resize(num_values);
+    W.set_const_value(0.0);
+
+    for (int i = 0; i < num_values; i+= chunk_size)
+    {
+        glob_index = i + first_global_index;
+        bvec = glob_index / t;
+        //pos_in_bvec = i % t;
+        if (i + chunk_size > num_values) end = num_values;
+        else end = chunk_size;
+        for (int j = 0; j < chunk_size; j++)
+        {
+            W.values[bvec*num_values + bvec*chunk_size+j] = values[i+j];
+        }
+        //pos_in_bvec = i % t;
+        //W.values[bvec*num_values + pos_in_bvec] = values[i];
+    }
+}

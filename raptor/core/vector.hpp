@@ -214,10 +214,14 @@ public:
     }
 
     data_t inner_product(Vector& x, data_t* inner_prods = NULL);
+    data_t inner_product(Vector& x, index_t i, index_t j);
+
+    void axpy_ij(Vector& y, index_t i, index_t j, data_t alpha);
 
     void append(Vector& P);
     void split(Vector& W, int t, int i);
     void split_range(Vector& W, int t, int start);
+    void split_contig(Vector& W, int t, int first_global_index, int glob_vals);
 
     void mult_T(Vector& X, Vector& B);
 

@@ -187,6 +187,7 @@ namespace raptor
         }
         
         void split(ParVector& W, int t);
+        void split_contig(ParVector& W, int t);
 
         Vector* local;
         int global_n;
@@ -230,9 +231,10 @@ namespace raptor
         **************************************************************/
         void scale(data_t alpha, data_t* alphas = NULL);
 
-        //void axpy(ParBVector& y, data_t alpha);
+        void axpy_ij(ParBVector& y, index_t i, index_t j, data_t alpha);
         data_t norm(index_t p, data_t* norms = NULL);
         data_t inner_product(ParBVector& x, data_t* inner_prods = NULL);
+        data_t inner_product(ParBVector& x, index_t i, index_t j);
         //aligned_vector<data_t> inner_product(ParBVector& y);
         //void mult_T(ParVector& x, data_t* b);
         void mult_T(ParVector& x, Vector& b);
@@ -240,6 +242,7 @@ namespace raptor
         void mult(Vector& x, ParVector& b);
         
         void append(ParBVector& P);
+        void add_val(data_t val, index_t vec, index_t pos_in_vec);
 
     };
 

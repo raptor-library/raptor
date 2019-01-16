@@ -9,4 +9,7 @@ if (WITH_MPI)
     add_test(ParCGSTest ${MPIRUN} -n 2 ./test_par_cgs)
     add_test(ParCGSTest ${MPIRUN} -n 4 ./test_par_cgs)
     add_test(ParCGSTest ${MPIRUN} -n 16 ./test_par_cgs)
+    
+    add_executable(test_par_bcgs test_par_bcgs.cpp)
+    target_link_libraries(test_par_bcgs raptor ${MPI_LIBRARIES} googletest pthread )
 endif()

@@ -26,6 +26,32 @@ void Vector::axpy(Vector& x, data_t alpha)
 }
 
 /**************************************************************
+*****   Vector AXPY_ij
+**************************************************************
+***** Multiplies vector i in the bvector by a constant, 
+***** alpha, and then sums each element with corresponding entry 
+***** of column j in y
+*****
+***** Parameters
+***** -------------
+***** y : Vector& y
+*****    Vector to be summed with
+***** i : index_t
+*****    Column of local vector for axpy
+***** j : index_t
+*****    Column of y for axpy
+***** alpha : data_t
+*****    Constant value to multiply each element of column by
+**************************************************************/
+void Vector::axpy_ij(Vector& y, index_t i, index_t j, data_t alpha)
+{
+    for (index_t k = 0; k < num_values; k++)
+    {
+        values[i*num_values + k] += y.values[j*num_values + k] * alpha;
+    }
+}
+
+/**************************************************************
 *****   Vector Scale
 **************************************************************
 ***** Multiplies each element of the vector by a constant value
@@ -158,6 +184,49 @@ data_t Vector::inner_product(Vector& x, data_t* inner_prods)
         }
         return 0;
     }
+}
+
+/**************************************************************
+*****   Vector Inner Product 
+**************************************************************
+***** Calculates the inner product of the ith column of the
+***** Vector with the jth column of x 
+*****
+***** Parameters
+***** -------------
+***** x : Vector&
+*****   Vector with which to perform inner product
+***** i : index_t
+*****   Column of calling Vector for inner product
+***** j : index_t
+*****   Column of x for inner product
+**************************************************************/
+data_t Vector::inner_product(Vector& x, index_t i, index_t j)
+{
+    data_t result = 0.0;
+    
+    /*std::vector<double>::iterator it;
+    int index;
+    std::vector<double> t1(values.begin() + i*num_values, values.begin() + (i+1)*num_values);
+    std::vector<double> t1_sorted(values.begin() + i*num_values, values.begin() + (i+1)*num_values);
+    std::sort(t1_sorted.begin(), t1_sorted.end()); 
+    std::vector<double> t2(x.values.begin() + i*num_values, x.values.begin()+(i+1)*num_values);
+    for (int i = 0; i < num_values; i++)
+    {
+        it = std::find(t1.begin(), t1.end(), t1_sorted[i]);
+        index = std::distance(t1.begin(), it);
+        result += t1[index] * t2[index];
+    }*/
+
+    for (int k = 0; k < num_values; k++)
+    {
+        result += values[i*num_values + k] * x.values[j*num_values + k];
+    }
+    /*for (int k = num_values-1; k > -1; k--)
+    {
+        result += values[i*num_values + k] * x.values[j*num_values + k];
+    }*/
+    return result;
 }
 
 /**************************************************************

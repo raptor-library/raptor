@@ -47,6 +47,19 @@ void ParBVector::append(ParBVector& P)
 }
 
 /**************************************************************
+*****   ParBVector Add_Val ParVector
+**************************************************************
+***** Adds a Value to the ParVector to the ParVector
+**************************************************************/
+void ParBVector::add_val(data_t val, index_t vec, index_t pos_in_vec)
+{
+    if ((pos_in_vec >= first_local) && (pos_in_vec <= first_local + local_n))
+    {
+        local->values[vec*local_n + pos_in_vec] = val;
+    }
+}
+
+/**************************************************************
 *****   ParVector Split ParVector
 **************************************************************
 ***** Splits a ParVector into t bvecs making a ParBVector
@@ -62,4 +75,22 @@ void ParVector::split(ParVector& W, int t)
     if (t == num_procs) local->split(*(W.local), t, rank);
     else local->split_range(*(W.local), t, rank % t);
     //else if (t < num_procs) local->split(*(W.local), t, rank % t);
+}
+
+/**************************************************************
+*****   ParVector Split Contiguous ParVector
+**************************************************************
+***** Splits a ParVector into t bvecs making a ParBVector
+***** Storing the local values in equal sized contiguous blocks
+***** for each rank
+**************************************************************/
+void ParVector::split_contig(ParVector& W, int t)
+{
+    int rank, num_procs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+    if (num_procs == t) local->split(*(W.local), t, rank);
+    else if (global_n % t != 0) this->split(W, t);
+    else local->split_contig(*(W.local), t, first_local, global_n);
 }

@@ -92,24 +92,28 @@ data_t ParVector::inner_product(ParVector& x, data_t* inner_prods)
 /**************************************************************
 *****   ParBVector AXPY
 **************************************************************
-***** Multiplies each vector in the local bvector by a constant, 
+***** Multiplies vector i in the local bvector by a constant, 
 ***** alpha, and then sums each element with corresponding entry 
-***** of y
+***** of column j in y's local bvector
 *****
 ***** Parameters
 ***** -------------
 ***** y : ParBVector* y
 *****    ParBVector to be summed with
+***** i : index_t
+*****    Column of local bvector for axpy
+***** j : index_t
+*****    Column of y's local bvector for axpy
 ***** alpha : data_t
-*****    Constant value to multiply each element of bvector by
+*****    Constant value to multiply each element of column by
 **************************************************************/
-/*void ParBVector::axpy(ParBVector& y, data_t alpha)
+void ParBVector::axpy_ij(ParBVector& y, index_t i, index_t j, data_t alpha)
 {
     if (local_n)
     {
-        local->axpy(*(y.local), alpha);
+        local->axpy_ij(*(y.local), i, j, alpha);
     }
-}*/
+}
 
 /**************************************************************
 *****   ParBVector Scale
@@ -164,6 +168,20 @@ data_t ParBVector::norm(index_t p, data_t* norms)
     return 0;
 }
 
+/**************************************************************
+*****   ParBVector Inner Product 
+**************************************************************
+***** Calculates the inner product of every vector in the
+***** parbvector with every vector in x 
+*****
+***** Parameters
+***** -------------
+***** x : ParBVector&
+*****   ParBVector with which to calculate inner products
+***** inner_prods : data_t*
+*****   Inner products of every corresponding vector in each
+*****   ParBVector
+**************************************************************/
 data_t ParBVector::inner_product(ParBVector& x, data_t* inner_prods)
 {
     data_t temp;
@@ -184,17 +202,42 @@ data_t ParBVector::inner_product(ParBVector& x, data_t* inner_prods)
     return 0;
 }
 
+/**************************************************************
+*****   ParBVector Mult_T 
+**************************************************************
+***** Calculates the transpose multiplication of the ParBVector
+***** with the ParVector x - spmv with dense matrix
+*****
+***** Parameters
+***** -------------
+***** x : ParVector&
+*****   Perform transpose multiplication with this ParVector
+***** b : Vector&
+*****   Vector in which to store result
+**************************************************************/
 void ParBVector::mult_T(ParVector& x, Vector& b)
 {
     data_t temp;
     if (local_n)
     {
-        //temp = local->inner_product(*(x.local), b);
         local->mult_T(*(x.local), b);
     }
     MPI_Allreduce(MPI_IN_PLACE, &(b[0]), local->b_vecs * x.local->b_vecs, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
 }
 
+/**************************************************************
+*****   ParBVector Mult_T 
+**************************************************************
+***** Calculates the transpose multiplication of the ParBVector
+***** with the ParBVector x - dense matmult_T
+*****
+***** Parameters
+***** -------------
+***** x : ParBVector&
+*****   Perform transpose multiplication with this ParBVector
+***** b : Vector&
+*****   Vector in which to store result
+**************************************************************/
 void ParBVector::mult_T(ParBVector& x, BVector& b)
 {
     if (local_n)
@@ -204,8 +247,55 @@ void ParBVector::mult_T(ParBVector& x, BVector& b)
     MPI_Allreduce(MPI_IN_PLACE, &(b[0]), local->b_vecs*x.local->b_vecs, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
 }
 
+/**************************************************************
+*****   ParBVector Mult 
+**************************************************************
+***** Calculates the multiplication of the ParBVector
+***** with the Vector x on the local block
+*****
+***** Parameters
+***** -------------
+***** x : Vector&
+*****   Perform multiplication with this Vector on local block
+***** b : ParVector&
+*****   Store result in local portion of b
+**************************************************************/
 void ParBVector::mult(Vector& x, ParVector& b)
 {
     b.resize(global_n, local_n, first_local);
     local->mult(x, *(b.local));
+}
+
+/**************************************************************
+*****   ParBVector Inner Product 
+**************************************************************
+***** Calculates the inner product of the ith column of the
+***** ParBVector with the jth column of x 
+*****
+***** Parameters
+***** -------------
+***** x : ParBVector&
+*****   ParBVector with which to perform inner product
+***** i : index_t
+*****   Column of calling ParBVector for inner product
+***** j : index_t
+*****   Column of x for inner product
+**************************************************************/
+data_t ParBVector::inner_product(ParBVector& x, index_t i, index_t j)
+{
+    data_t temp;
+    if (local_n != x.local_n)
+    {
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        printf("Error.  Cannot perform inner product.  Dimensions do not match.\n");
+        exit(-1);
+    }
+    if (local_n)
+    {
+        temp = local->inner_product(*(x.local), i, j);
+    }
+    MPI_Allreduce(MPI_IN_PLACE, &temp, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
+   
+    return temp;
 }
