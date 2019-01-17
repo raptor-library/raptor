@@ -29,42 +29,9 @@ void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& Q2, ParBVector& P)
     Q.copy(Q1);
     Q.append(Q2);
     
-    /*for (int i = 0; i < num_procs; i++)
-    {
-        if (i == rank)
-        {
-            printf("rank %d\n", rank);
-            printf("---------------- Q ---------------------\n");
-            for (int j = 0; j < Q.local->b_vecs; j++)
-            {
-                for (int k = 0; k < Q.local->num_values; k++)
-                {
-                    printf("[%d][%d] %f\n", j, k, Q.local->values[j*Q.local->num_values + k]);
-                }
-                printf("-----\n");
-            }
-        }
-        MPI_Barrier(MPI_COMM_WORLD);
-    }*/
-    
     // Performed in SRE-CG?
     // W = A * P    
     A->mult(P, W);
-    
-    /*printf("---------------- W ---------------------\n");
-    for (int i = 0; i < num_procs; i++)
-    {
-        for (int j = 0; j < W.local->b_vecs; j++)
-        {
-            for (int k = 0; k < W.local->num_values; k++)
-            {
-                printf("[%d][%d] %f\n", j, k, W.local->values[j*W.local->num_values + k]);
-            }
-            printf("-----\n");
-        }
-    }*/
-
-    //W.copy(P);
     
     // P = P - Q * (Q^T * W)
     Q.mult_T(W, B);
@@ -108,47 +75,14 @@ void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& P)
     double temp;
     
     ParBVector W(P.global_n, P.local_n, P.first_local, t);
-    ParBVector Q(A->global_num_rows, A->local_num_rows, A->partition->first_local_row, t);
-    BVector B(Q.local->b_vecs, t);
-   
-    // Form Q
-    Q.copy(Q1);
+    BVector B(Q1.local->b_vecs, t);
     
-    /*printf("---------------- Q ---------------------\n");
-    for (int i = 0; i < num_procs; i++)
-    {
-        for (int j = 0; j < Q.local->b_vecs; j++)
-        {
-            for (int k = 0; k < Q.local->num_values; k++)
-            {
-                printf("[%d][%d] %f\n", j, k, Q.local->values[j*Q.local->num_values + k]);
-            }
-            printf("-----\n");
-        }
-    }*/
-
-    // Performed in SRE-CG?
-    // W = A * P    
+    // W = A * P
     A->mult(P, W);
     
-    /*printf("---------------- W ---------------------\n");
-    for (int i = 0; i < num_procs; i++)
-    {
-        for (int j = 0; j < W.local->b_vecs; j++)
-        {
-            for (int k = 0; k < W.local->num_values; k++)
-            {
-                printf("[%d][%d] %f\n", j, k, W.local->values[j*W.local->num_values + k]);
-            }
-            printf("-----\n");
-        }
-    }*/
-
-    //W.copy(P);
-    
     // P = P - Q * (Q^T * W)
-    Q.mult_T(W, B);
-    Q.mult(B, W);
+    Q1.mult_T(W, B);
+    Q1.mult(B, W);
     P.axpy(W, -1.0);
 
     // W = A * P
@@ -183,7 +117,6 @@ void CGS(ParCSRMatrix* A, ParBVector& P)
 {
     int t = P.local->b_vecs;
     double inner_prod;
-    double *inner_prods = new double[t];
     ParBVector W(A->global_num_rows, A->local_num_rows, A->partition->first_local_row, t);
     ParBVector T1(A->global_num_rows, A->local_num_rows, A->partition->first_local_row, t);
     ParBVector T2(A->global_num_rows, A->local_num_rows, A->partition->first_local_row, t);
@@ -191,16 +124,10 @@ void CGS(ParCSRMatrix* A, ParBVector& P)
     // W = A * P
     A->mult(P, W);
 
-    //printf("---------------------------\n");
-    //W.local->print();
-    //printf("---------------------------\n");
-
     for (int i = 0; i < t; i++)
     {
-        //printf("i %d\n", i);
         for (int j = 0; j < i; j++)
         {
-            //printf("i %d j %d\n", i, j);
             // P[:,i] = P[:,i] - (P[:,j]^T * A * P[:,i]) * P[:,j]
             inner_prod = P.inner_product(W, j, i);
             /*if (inner_prod < zero_tol)
@@ -223,8 +150,6 @@ void CGS(ParCSRMatrix* A, ParBVector& P)
         }
 
         A->mult(T1, T2);
-        //printf("---------A*P[:,i]\n");
-        //T2.local->print();
 
         // P[:,i]^T A P[:,i]
         //inner_prod = P.inner_product(T2, inner_prods);
@@ -237,17 +162,14 @@ void CGS(ParCSRMatrix* A, ParBVector& P)
         // P[:,i] = P[:,i] / ||P[:,i]||_A
         //P.scale(1, inner_prods);
         for (int k = 0; k < P.local_n; k++) P.local->values[i*P.local_n + k] *= 1.0/inner_prod;
-
-        //printf("---------P\n");
-        //P.local->print();
-
     }
     
-    /*inner_prod = P.inner_product(P, inner_prods);
+    /*double *inner_prods = new double[t];
+    inner_prod = P.inner_product(P, inner_prods);
     for (int i = 0; i < t; i++) inner_prods[i] = 1.0/inner_prods[i];
-    P.scale(1, inner_prods);*/
+    P.scale(1, inner_prods);
 
-    delete inner_prods;
+    delete inner_prods;*/
 
     return;
 }

@@ -46,6 +46,20 @@ void ParBVector::append(ParBVector& P)
     local->append(*(P.local));
 }
 
+
+/**************************************************************
+*****   ParVector Add_Val
+**************************************************************
+***** Adds a Value to the ParVector 
+**************************************************************/
+void ParVector::add_val(data_t val, index_t vec, index_t global_n)
+{
+    if ((global_n >= first_local) && (global_n < first_local + local_n))
+    {
+        local->values[vec*local_n + (global_n-first_local)] = val;
+    }
+}
+
 /**************************************************************
 *****   ParBVector Add_Val ParVector
 **************************************************************
@@ -91,6 +105,16 @@ void ParVector::split_contig(ParVector& W, int t)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     if (num_procs == t) local->split(*(W.local), t, rank);
-    else if (global_n % t != 0) this->split(W, t);
-    else local->split_contig(*(W.local), t, first_local, global_n);
+    else
+    {
+        int group_size = global_n / t;
+        int n;
+        for (int i = 0; i < local_n; i++)
+        {
+            n = first_local + i;
+            W.add_val(local->values[i], n/group_size, n); 
+        }
+    }    
+    //else local->split_contig(*(W.local), t, first_local, global_n);
+    //else if (global_n % t != 0) this->split(W, t);
 }

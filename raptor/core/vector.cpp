@@ -203,7 +203,5 @@ void Vector::split_contig(Vector& W, int t, int first_global_index, int glob_val
         {
             W.values[bvec*num_values + bvec*chunk_size+j] = values[i+j];
         }
-        //pos_in_bvec = i % t;
-        //W.values[bvec*num_values + pos_in_bvec] = values[i];
     }
 }

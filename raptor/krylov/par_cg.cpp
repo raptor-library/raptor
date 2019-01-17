@@ -301,6 +301,24 @@ void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<do
             // W = T(r0)
             r.split_contig(W, t);
 
+            /*for (int i = 0; i < num_procs; i++)
+            {
+                if (i == rank)
+                {
+                    printf("rank %d \n", rank);
+                    printf("--------------\n");
+                    for (int k = 0; k < W.local->b_vecs; k++)
+                    {
+                        for (int j = 0; j < W.local_n; j++)
+                        {
+                            printf("W[%d][%d] %f\n", k, j, W.local->values[k*W.local_n + j]);
+                        }
+                        printf("----\n");
+                    }
+                }
+                MPI_Barrier(MPI_COMM_WORLD);
+            }*/
+
             // A-orthonormalize W
             CGS(A, W);
         }

@@ -189,6 +189,8 @@ namespace raptor
         void split(ParVector& W, int t);
         void split_contig(ParVector& W, int t);
 
+        void add_val(data_t val, index_t vec, index_t global_n);
+
         Vector* local;
         int global_n;
         int local_n;
