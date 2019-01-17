@@ -242,7 +242,7 @@ namespace raptor
         void mult(Vector& x, ParVector& b);
         
         void append(ParBVector& P);
-        void add_val(data_t val, index_t vec, index_t pos_in_vec);
+        void add_val(data_t val, index_t vec, index_t global_n);
 
     };
 

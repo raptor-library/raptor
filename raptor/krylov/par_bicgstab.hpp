@@ -12,7 +12,7 @@ using namespace raptor;
 
 void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol = 1e-05, int max_iter = -1);
 
-void Pre_BiCGStab(ParCSRMatrix* A, ParMultilevel *ml, ParVector& x, ParVector& b, aligned_vector<double>& res,
+void Pre_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, ParMultilevel *ml, aligned_vector<double>& res,
                   double tol = 1e-05, int max_iter = -1);
 
 void SeqInner_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol = 1e-05, int max_iter = -1);

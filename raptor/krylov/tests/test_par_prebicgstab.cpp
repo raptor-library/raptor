@@ -43,7 +43,7 @@ int main(int argc, char* argv[])
 
     // AMG Preconditioned BiCGStab
     x.set_const_value(0.0);
-    Pre_BiCGStab(A, ml, x, b, pre_residuals);
+    Pre_BiCGStab(A, x, b, ml, pre_residuals);
 
     if (rank == 0) {
         FILE *f;

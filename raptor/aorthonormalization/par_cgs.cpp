@@ -13,8 +13,9 @@ using namespace raptor;
 ********************************************************/
 void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& Q2, ParBVector& P)
 {
-    int num_procs;
+    int num_procs, rank;
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     int t = P.local->b_vecs;
     double *inner_prods = new double[t];
@@ -28,19 +29,24 @@ void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& Q2, ParBVector& P)
     Q.copy(Q1);
     Q.append(Q2);
     
-    /*printf("---------------- Q ---------------------\n");
-    for (int i = 0; i < num_procs; i++)
+    /*for (int i = 0; i < num_procs; i++)
     {
-        for (int j = 0; j < Q.local->b_vecs; j++)
+        if (i == rank)
         {
-            for (int k = 0; k < Q.local->num_values; k++)
+            printf("rank %d\n", rank);
+            printf("---------------- Q ---------------------\n");
+            for (int j = 0; j < Q.local->b_vecs; j++)
             {
-                printf("[%d][%d] %f\n", j, k, Q.local->values[j*Q.local->num_values + k]);
+                for (int k = 0; k < Q.local->num_values; k++)
+                {
+                    printf("[%d][%d] %f\n", j, k, Q.local->values[j*Q.local->num_values + k]);
+                }
+                printf("-----\n");
             }
-            printf("-----\n");
         }
+        MPI_Barrier(MPI_COMM_WORLD);
     }*/
-
+    
     // Performed in SRE-CG?
     // W = A * P    
     A->mult(P, W);

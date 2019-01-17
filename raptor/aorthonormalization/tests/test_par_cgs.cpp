@@ -25,100 +25,107 @@ TEST(ParCGSTest, TestsInUtil)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
-    int num_vectors = 4;
-    //int grid[2] = {50, 50};
-    int grid[2] = {2, 2};
+    int grid[2] = {3, 3};
     double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
 
-    for (int i = 0; i < A->global_num_rows; i++)
-    {
-        int start = A->on_proc->idx1[i];
-        int stop = A->on_proc->idx1[i+1];
-        for (int j = start; j < stop; j++)
-        {
-            A->on_proc->vals[j] = 1.0;
-        }
-    }
-    //A->on_proc->print();
-
     double val;
-    //int Q_bvecs = 5;
-    int W_bvecs = 3;
+    int W_bvecs = 4;
     double *alphas = new double[W_bvecs];
-    /*int global_n = 100;
-    int local_n = global_n / num_procs;
-    int first_n = rank * ( global_n / num_procs);
-
-    if (global_n % num_procs > rank)
-    {
-        local_n++;
-        first_n += rank;
-    }
-    else
-    {
-        first_n += (global_n % num_procs);
-    }*/
     
     ParBVector *Q1_par = new ParBVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row, W_bvecs);
     ParBVector *Q2_par = new ParBVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row, W_bvecs);
     ParBVector *P_par = new ParBVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row, W_bvecs);
     ParBVector *T_par = new ParBVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row, W_bvecs);
-    Vector t(W_bvecs);
+    Vector T(W_bvecs, W_bvecs);
 
-    // Test CGS
-    for (int i = 0; i < W_bvecs; i++)
-    {
-        alphas[i] = i+1;
-    }
-    P_par->set_const_value(1.0);
-    P_par->scale(1, alphas);
-    for (int i = 0; i < W_bvecs; i++)
-    {
-        P_par->local->values[i*P_par->local_n + i] = i+2;
-        if (i < W_bvecs - 1) P_par->local->values[i*P_par->local_n + i + 1] = i+3;
-    }
+    // Set P_par
+    P_par->set_const_value(0.0);
 
-    CGS(A, *P_par);
+    P_par->add_val(4.0, 0, 0);
+    P_par->add_val(4.0, 0, 1);
+    P_par->add_val(4.0, 0, 2);
+
+    P_par->add_val(3.0, 1, 3);
+    P_par->add_val(2.0, 1, 4);
+    
+    P_par->add_val(3.0, 2, 5);
+    P_par->add_val(4.0, 2, 6);
+
+    P_par->add_val(1.0, 3, 7);
+    P_par->add_val(2.0, 3, 8);
+    
+    // Set Q1_par
+    Q1_par->set_const_value(0.0);
+    
+    Q1_par->add_val(3.0, 0, 0);
+    Q1_par->add_val(4.0, 0, 1);
+    Q1_par->add_val(3.0, 0, 2);
+
+    Q1_par->add_val(3.0, 1, 3);
+    Q1_par->add_val(1.0, 1, 4);
+    
+    Q1_par->add_val(1.0, 2, 5);
+    Q1_par->add_val(2.0, 2, 6);
+
+    Q1_par->add_val(1.0, 3, 7);
+    Q1_par->add_val(2.0, 3, 8);
+    
+    // Set Q2_par
+    Q2_par->set_const_value(0.0);
+    
+    Q2_par->add_val(2.0, 0, 0);
+    Q2_par->add_val(1.0, 0, 1);
+    Q2_par->add_val(2.0, 0, 2);
+
+    Q2_par->add_val(3.0, 1, 3);
+    Q2_par->add_val(1.0, 1, 4);
+    
+    Q2_par->add_val(1.0, 2, 5);
+    Q2_par->add_val(2.0, 2, 6);
+
+    Q2_par->add_val(4.0, 3, 7);
+    Q2_par->add_val(1.0, 3, 8);
+    
+    BCGS(A, *Q1_par, *Q2_par, *P_par);
+    
+    FILE* f = fopen("../../../../test_data/bcgs_soln.txt", "r");
+    for (int i = 0; i < P_par->first_local; i++)
+    {
+        for (int j = 0; j < W_bvecs; j++)
+        {
+            fscanf(f, "%lg\n", &val);
+        }
+    }
+    for (int i = 0; i < P_par->local_n; i++)
+    {
+        for (int j = 0; j < W_bvecs; j++)
+        {
+            fscanf(f, "%lg", &val);
+            ASSERT_NEAR(P_par->local->values[j*P_par->local_n + i], val, 1e-06);
+        }
+    }
+    fclose(f);
+
     CGS(A, *P_par);
     
-    // Check for Aortho of P_par columns
-    A->mult(*P_par, *T_par);
-    P_par->mult_T(*T_par, t);
-    for (int i = 0; i < W_bvecs; i++)
+    f = fopen("../../../../test_data/cgs_soln.txt", "r");
+    for (int i = 0; i < P_par->first_local; i++)
     {
-        printf("t[%d] %lg\n", i, t[i]);
-        //ASSERT_NEAR( t.values[i], 1.0, 1e-06);
+        for (int j = 0; j < W_bvecs; j++)
+        {
+            fscanf(f, "%lg\n", &val);
+        }
     }
-
-    // Test MGS
-    P_par->set_const_value(0.0); 
-    for (int i = 0; i < W_bvecs; i++)
+    for (int i = 0; i < P_par->local_n; i++)
     {
-        P_par->local->values[i*P_par->local_n + i] = i+2;
-        if (i < W_bvecs - 1) P_par->local->values[i*P_par->local_n + i + 1] = i+3;
+        for (int j = 0; j < W_bvecs; j++)
+        {
+            fscanf(f, "%lg", &val);
+            ASSERT_NEAR(P_par->local->values[j*P_par->local_n + i], val, 1e-06);
+        }
     }
-    //MGS(A, *P_par);
-
-    // Check for Aortho of P_par columns
-    A->mult(*P_par, *T_par);
-    P_par->mult_T(*T_par, t);
-    for (int i = 0; i < W_bvecs; i++)
-    {
-        printf("t[%d] %lg\n", i, t[i]);
-        //ASSERT_NEAR( t.values[i], 1.0, 1e-06);
-    }
-
-    // Test Aortho P against Q_par
-    Vector T(W_bvecs, W_bvecs);
-    A->mult(*P_par, *P_par);
-    BCGS(A, *Q1_par, *Q2_par, *P_par);
-
-    // Insert check
-    A->mult(*P_par, *T_par);
-    P_par->mult_T(*T_par, T);
-
-    if (rank == 0) T.print();   
+    fclose(f);
 
     delete[] stencil;
     delete A;

@@ -51,11 +51,11 @@ void ParBVector::append(ParBVector& P)
 **************************************************************
 ***** Adds a Value to the ParVector to the ParVector
 **************************************************************/
-void ParBVector::add_val(data_t val, index_t vec, index_t pos_in_vec)
+void ParBVector::add_val(data_t val, index_t vec, index_t global_n)
 {
-    if ((pos_in_vec >= first_local) && (pos_in_vec <= first_local + local_n))
+    if ((global_n >= first_local) && (global_n < first_local + local_n))
     {
-        local->values[vec*local_n + pos_in_vec] = val;
+        local->values[vec*local_n + (global_n-first_local)] = val;
     }
 }
 
