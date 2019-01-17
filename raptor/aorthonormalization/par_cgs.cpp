@@ -76,7 +76,7 @@ void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& P)
     
     ParBVector W(P.global_n, P.local_n, P.first_local, t);
     BVector B(Q1.local->b_vecs, t);
-    
+ 
     // W = A * P
     A->mult(P, W);
     

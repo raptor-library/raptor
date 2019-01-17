@@ -287,43 +287,51 @@ void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<do
     res.emplace_back(norm_r);
 
     // Adjust tolerance
-    /*if (norm_r != 0.0)
+    if (norm_r != 0.0)
     {
         tol = tol * norm_r;
-    }*/
+    }
+
+    // Perform first iteration outside loop
+    // to reduce control flow instructions
+    iter = 0;
+
+    // W = T(r0)
+    r.split_contig(W, t);
+
+    // A-orthonormalize W
+    CGS(A, W);
+    
+    // alpha = W^T * r
+    W.mult_T(r, alpha);
+
+    // x = x + W * alpha
+    W.mult(alpha, Wa);
+    x.axpy(Wa, 1.0);
+
+    // r = r - A * W * alpha
+    A->mult(Wa, T);
+    r.axpy(T, -1.0);
+
+    // Update norm of residual and iteration
+    rr_inner = r.inner_product(r);
+    norm_r = sqrt(rr_inner);
+    res.emplace_back(norm_r);
+    iter++;
     
     // Main SRECG Loop
-    iter = 0;
     while (norm_r > tol && iter < max_iter)
     {
-        if (iter == 0)
+        /*if (iter == 0)
         {
             // W = T(r0)
             r.split_contig(W, t);
-
-            /*for (int i = 0; i < num_procs; i++)
-            {
-                if (i == rank)
-                {
-                    printf("rank %d \n", rank);
-                    printf("--------------\n");
-                    for (int k = 0; k < W.local->b_vecs; k++)
-                    {
-                        for (int j = 0; j < W.local_n; j++)
-                        {
-                            printf("W[%d][%d] %f\n", k, j, W.local->values[k*W.local_n + j]);
-                        }
-                        printf("----\n");
-                    }
-                }
-                MPI_Barrier(MPI_COMM_WORLD);
-            }*/
 
             // A-orthonormalize W
             CGS(A, W);
         }
         else
-        {
+        {*/
             // Update Wk_1 and Wk_2
             Wk_2.copy(Wk_1);
             Wk_1.copy(W);
@@ -345,8 +353,7 @@ void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<do
 
             // A-orthonormalize W
             CGS(A, W);
-            //MGS(A, W);
-        }
+        //}
 
         // alpha = W^T * r
         W.mult_T(r, alpha);
@@ -382,128 +389,3 @@ void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<do
 
     return;
 }
-
-/*void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<double>& res, double tol, int max_iter)
-{
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    ParVector r;
-    ParBVector W;
-    ParBVector Wk_1;
-    ParBVector Wk_2;
-    ParVector Wa;
-    Vector alpha;
-
-    int iter, recompute_r;
-    data_t rr_inner;
-    double norm_r;
-    double b_norm = b.norm(2);
-    if (b_norm < zero_tol) b_norm = 1.0;
-
-    // Adjust max iterations
-    if (max_iter <= 0)
-    {
-        max_iter = ((int)(1.3*b.global_n)) + 2;
-    }
-
-    // Fixed Constructors
-    r.resize(b.global_n, b.local_n, b.first_local);
-    W.local->b_vecs = t;
-    W.resize(A->global_num_cols, A->local_num_rows, A->partition->first_local_row);
-    Wa.resize(x.global_n, x.local_n, x.first_local);
-    alpha.resize(t);
-
-    // r0 = b - A * x0
-    A->residual(x, b, r);
-
-    // Append norm of initial residual to res
-    rr_inner = r.inner_product(r);
-    norm_r = sqrt(rr_inner);
-    res.emplace_back(norm_r / b_norm);
-
-    // Adjust tolerance
-    if (norm_r != 0.0)
-    {
-        tol = tol * norm_r;
-    }
-    
-    // How often should r be recomputed
-    recompute_r = 8;
-    iter = 0;
-
-    // First iteration performed outside while loop to eliminate conditional
-    // W = T(r0)
-    r.split(W, t);
-
-    // A-orthonormalize W
-    ////CGS(A, W);
-
-    // alpha = W^T * r
-    W.mult_T(r, alpha);
-
-    // x = x + W * alpha
-    W.mult(alpha, Wa);
-    x.axpy(Wa, 1.0);
-
-    // r = r - A * W * alpha
-    A->mult(Wa, Wa);
-    r.axpy(Wa, -1.0);
-
-    // Update norm of residual and iteration
-    rr_inner = r.inner_product(r);
-    norm_r = sqrt(rr_inner);
-    res.emplace_back(norm_r / b_norm);
-    iter++;
-
-    // Main SRECG Loop
-    while (norm_r > tol && iter < max_iter)
-    {
-        // Update Wk_1 and Wk_2
-        Wk_2.copy(Wk_1);
-        Wk_1.copy(W);
-
-        // W = A * W
-        A->mult(W, W);
-
-        // A-orthonormalize W against previous vectors
-        BCGS(A, Wk_1, Wk_2, W);
-
-        // A-orthonormalize W
-        CGS(A, W);
-        //MGS(A, W);
-
-        // alpha = W^T * r
-        W.mult_T(r, alpha);
-
-        // x = x + W * alpha
-        W.mult(alpha, Wa);
-        x.axpy(Wa, 1.0);
-
-        // r = r - A * W * alpha
-        A->mult(Wa, Wa);
-        r.axpy(Wa, -1.0);
-
-        // Update norm of residual and iteration
-        rr_inner = r.inner_product(r);
-        norm_r = sqrt(rr_inner);
-        res.emplace_back(norm_r / b_norm);
-        iter++;
-    }
-
-    if (rank == 0)
-    {
-        if (iter == max_iter)
-        {
-            printf("Max Iterations Reached.\n");
-            printf("2 Norm of Residual: %lg\n\n", norm_r);
-        }
-        else
-        {
-            printf("%d Iteration required to converge\n", iter);
-            printf("2 Norm of Residual: %lg\n\n", norm_r);
-        }
-    }
-
-    return;
-}*/
