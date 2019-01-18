@@ -26,6 +26,9 @@ TEST(ParCGTest, TestsInKrylov)
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    
+    bool compare_res = false;
+    bool check_soln = true;
 
     int grid[2] = {50, 50};
     double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
@@ -40,16 +43,26 @@ TEST(ParCGTest, TestsInKrylov)
 
     double b_norm = b.norm(2);
     CG(A, x, b, residuals);
-
-    FILE* f = fopen("../../../../test_data/cg_res.txt", "r");
-    double res;
-    for (int i = 0; i < residuals.size(); i++)
+    
+    if (rank == 0 && compare_res)
     {
-        fscanf(f, "%lf\n", &res);
-        ASSERT_NEAR(res, residuals[i] * b_norm, 1e-06);
+        FILE* f = fopen("../../../../test_data/cg_res.txt", "r");
+        double res;
+        for (int i = 0; i < residuals.size(); i++)
+        {
+            fscanf(f, "%lf\n", &res);
+            ASSERT_NEAR(res, residuals[i] * b_norm, 1e-06);
+        }
+        fclose(f);
     }
-    fclose(f);
 
+    if (check_soln)
+    {
+        for (int i = 0; i < x.local_n; i++)
+        {
+            ASSERT_NEAR(x.local->values[i], 1.0, 1e-03);
+        }        
+    }
 
     delete[] stencil;
     delete A;
