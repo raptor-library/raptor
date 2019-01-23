@@ -19,7 +19,7 @@
 #include "ruge_stuben/par_ruge_stuben_solver.hpp"
 
 #ifdef USING_MFEM
-#include "gallery/external/mfem_wrapper.hpp"
+#include "external/mfem_wrapper.hpp"
 #endif
 
 #define eager_cutoff 1000

@@ -10,7 +10,7 @@
 
 #include "core/types.hpp"
 #include "multilevel/par_multilevel.hpp"
-#include "gallery/external/hypre_wrapper.hpp"
+#include "external/hypre_wrapper.hpp"
 
 int main(int argc, char *argv[])
 {

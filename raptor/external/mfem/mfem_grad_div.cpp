@@ -1,4 +1,4 @@
-#include "gallery/external/mfem_wrapper.hpp"
+#include "external/mfem_wrapper.hpp"
 
 using namespace mfem;
 

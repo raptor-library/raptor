@@ -16,11 +16,11 @@
 #include "gallery/diffusion.hpp"
 #include "gallery/par_matrix_IO.hpp"
 #include "ruge_stuben/par_ruge_stuben_solver.hpp"
-#include "gallery/external/hypre_wrapper.hpp"
+#include "external/hypre_wrapper.hpp"
 #include "krylov/par_cg.hpp"
 
 #ifdef USING_MFEM
-  #include "gallery/external/mfem_wrapper.hpp"
+  #include "external/mfem_wrapper.hpp"
 #endif
 
 //using namespace raptor;

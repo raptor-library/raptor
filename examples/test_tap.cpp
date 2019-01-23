@@ -17,7 +17,7 @@
 #include "gallery/par_matrix_IO.hpp"
 
 #ifdef USING_MFEM
-#include "gallery/external/mfem_wrapper.hpp"
+#include "external/mfem_wrapper.hpp"
 #endif
 
 //using namespace raptor;

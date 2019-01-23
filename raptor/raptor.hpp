@@ -46,10 +46,10 @@
 
 // Matrix external gallery
 #ifdef USING_HYPRE
-    #include "gallery/external/hypre_wrapper.hpp"
+    #include "external/hypre_wrapper.hpp"
 #endif
 #ifdef USING_MFEM
-    #include "gallery/external/mfem_wrapper.hpp"
+    #include "external/mfem_wrapper.hpp"
 #endif
 
 // RugeStuben classes

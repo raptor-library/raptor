@@ -4,7 +4,7 @@
 #ifndef RAPTOR_MFEM_WRAPPER_H
 #define RAPTOR_MFEM_WRAPPER_H
 
-#include "gallery/external/hypre_wrapper.hpp"
+#include "external/hypre_wrapper.hpp"
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
