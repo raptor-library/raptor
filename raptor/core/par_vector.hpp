@@ -172,6 +172,7 @@ namespace raptor
         data_t norm(index_t p, data_t* norms = NULL);
 
         data_t inner_product(ParVector& x, data_t* inner_prods = NULL);        
+        data_t inner_product_timed(ParVector& x, aligned_vector<double>& times, data_t* inner_prods = NULL);        
 
         //void mult_T(ParVector& x, Vector& b) = 0;
         //void mult(Vector& x, Vector& b) = 0;
@@ -241,6 +242,8 @@ namespace raptor
         //void mult_T(ParVector& x, data_t* b);
         void mult_T(ParVector& x, Vector& b);
         void mult_T(ParBVector& x, BVector& b);
+        void mult_T_timed(ParVector& x, Vector& b, aligned_vector<double>& times);
+        void mult_T_timed(ParBVector& x, BVector& b, aligned_vector<double>& times);
         void mult(Vector& x, ParVector& b);
         
         void append(ParBVector& P);

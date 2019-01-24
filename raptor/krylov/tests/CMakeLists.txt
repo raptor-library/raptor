@@ -35,6 +35,11 @@ if (WITH_MPI)
     add_test(TestParSRECG ${MPIRUN} -n 8 ./test_par_srecg)
     add_test(TestParSRECG ${MPIRUN} -n 16 ./test_par_srecg)
 
+    add_executable(timings_par_srecg timings_par_srecg.cpp)
+    target_link_libraries(timings_par_srecg raptor ${MPI_LIBRARIES} googletest pthread)
+    
+    add_executable(split_timings split_timings.cpp)
+    target_link_libraries(split_timings raptor ${MPI_LIBRARIES} pthread)
 endif()
 
 

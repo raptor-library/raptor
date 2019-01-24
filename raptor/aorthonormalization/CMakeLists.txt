@@ -4,9 +4,11 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 if (WITH_MPI)
     set(par_aorthonormalization_SOURCES
         aorthonormalization/par_cgs.cpp
+        aorthonormalization/par_cgs_timed.cpp
         )
     set(par_aorthonormalization_HEADERS
         aorthonormalization/par_cgs.hpp
+        aorthonormalization/par_cgs_timed.hpp
         )
 else()
     set(par_aorthonormalization_SOURCES

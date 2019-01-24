@@ -241,10 +241,13 @@ namespace raptor
     int* map_partition_to_local();
     void condense_off_proc();
 
-    void residual(ParVector& x, ParVector& b, ParVector& r, bool tap = false, 
-            data_t* comm_t = NULL);
+    void residual(ParVector& x, ParVector& b, ParVector& r, bool tap = false,
+            data_t* comm_t = NULL); 
+    void residual_timed(ParVector& x, ParVector& b, ParVector& r, aligned_vector<double>& times,
+            bool tap = false, data_t* comm_t = NULL);
     void tap_residual(ParVector& x, ParVector& b, ParVector& r, data_t* comm_t = NULL);
     void mult(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void mult_timed(ParVector& x, ParVector& b, aligned_vector<double>& times, bool tap = false, data_t* comm_t = NULL);
     void tap_mult(ParVector& x, ParVector& b, data_t* comm_t = NULL);
     void mult_append(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
     void tap_mult_append(ParVector& x, ParVector& b, data_t* comm_t = NULL);
@@ -410,6 +413,7 @@ namespace raptor
     void copy_helper(ParCOOMatrix* A);
 
     void mult(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void mult_timed(ParVector& x, ParVector& b, aligned_vector<double>& times, bool tap = false, data_t* comm_t = NULL);
     void tap_mult(ParVector& x, ParVector& b, data_t* comm_t = NULL);
     void mult_T(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
     void tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t = NULL);
@@ -573,6 +577,7 @@ namespace raptor
             aligned_vector<int>& off_proc_states, int max_iters = -1);
 
     void mult(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
+    void mult_timed(ParVector& x, ParVector& b, aligned_vector<double>& times, bool tap = false, data_t* comm_t = NULL);
     void tap_mult(ParVector& x, ParVector& b, data_t* comm_t = NULL);
     void mult_T(ParVector& x, ParVector& b, bool tap = false, data_t* comm_t = NULL);
     void tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t = NULL);
@@ -767,6 +772,7 @@ namespace raptor
     void copy_helper(ParCOOMatrix* A);
 
     void mult(ParVector& x, ParVector& b, bool tap, data_t* comm_t);
+    void mult_timed(ParVector& x, ParVector& b, aligned_vector<double>& times, bool tap, data_t* comm_t);
     void tap_mult(ParVector& x, ParVector& b, data_t* comm_t);
     void mult_T(ParVector& x, ParVector& b, bool tap, data_t* comm_t);
     void tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t);

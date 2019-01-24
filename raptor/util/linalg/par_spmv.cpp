@@ -63,6 +63,61 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
     
 }
 
+void ParMatrix::mult_timed(ParVector& x, ParVector& b, aligned_vector<double>& times, bool tap, data_t* comm_t)
+{
+    double start, stop;
+
+    if (tap)
+    {
+        this->tap_mult(x, b, comm_t);
+        return;
+    }
+
+    // Check that communication package has been initialized
+    if (comm == NULL)
+    {
+        comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
+    }
+
+    start = MPI_Wtime();
+    // Initialize Isends and Irecvs to communicate
+    // values of x
+    if (comm_t) *comm_t -= MPI_Wtime();
+    comm->init_comm(x, off_proc->b_cols, x.local->b_vecs);
+    if (comm_t) *comm_t += MPI_Wtime();
+    stop = MPI_Wtime();
+    times[1] += (stop - start);
+
+    start = MPI_Wtime();
+    // Multiply the diagonal portion of the matrix,
+    // setting b = A_diag*x_local
+    if (local_num_rows)
+    {
+        on_proc->mult(*(x.local), *(b.local));
+    }
+    stop = MPI_Wtime();
+    times[2] += (stop - start);
+
+    start = MPI_Wtime();
+    // Wait for Isends and Irecvs to complete
+    if (comm_t) *comm_t -= MPI_Wtime();
+    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols, x.local->b_vecs);
+    if (comm_t) *comm_t += MPI_Wtime();
+    stop = MPI_Wtime();
+    times[1] += (stop - start);
+
+    start = MPI_Wtime();
+    // Multiply remaining columns, appending to previous
+    // solution in b (b += A_offd * x_distant)
+    if (off_proc_num_cols)
+    {
+        off_proc->mult_append(x_tmp, *(b.local), b.local->b_vecs);
+    }
+    stop = MPI_Wtime();
+    times[2] += (stop - start);
+    
+}
+
 void ParMatrix::tap_mult(ParVector& x, ParVector& b, data_t* comm_t)
 {
     // Check that communication package has been initialized
@@ -281,6 +336,64 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap,
     }
 }
 
+void ParMatrix::residual_timed(ParVector& x, ParVector& b, ParVector& r, aligned_vector<double>& times, bool tap,
+        data_t* comm_t)
+{
+    double start, stop;
+
+    if (tap) 
+    {
+        this->tap_residual(x, b, r, comm_t);
+        return;
+    }
+
+    start = MPI_Wtime();
+    // Check that communication package has been initialized
+    if (comm == NULL)
+    {
+        comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
+    }
+
+    // Initialize Isends and Irecvs to communicate
+    // values of x
+    if (comm_t) *comm_t -= MPI_Wtime();
+    comm->init_comm(x, off_proc->b_cols);
+    if (comm_t) *comm_t += MPI_Wtime();
+    stop = MPI_Wtime();
+    times[1] += (stop - start);
+
+    start = MPI_Wtime();
+    std::copy(b.local->values.begin(), b.local->values.end(), 
+            r.local->values.begin());
+
+    // Multiply the diagonal portion of the matrix,
+    // setting b = A_diag*x_local
+    if (local_num_rows && on_proc_num_cols)
+    {
+        on_proc->residual(*(x.local), *(b.local), *(r.local));
+    }
+    stop = MPI_Wtime();
+    times[2] += (stop - start);
+
+    start = MPI_Wtime();
+    // Wait for Isends and Irecvs to complete
+    if (comm_t) *comm_t -= MPI_Wtime();
+    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
+    if (comm_t) *comm_t += MPI_Wtime();
+    stop = MPI_Wtime();
+    times[1] += (stop - start);
+
+    start = MPI_Wtime();
+    // Multiply remaining columns, appending to previous
+    // solution in b (b += A_offd * x_distant)
+    if (off_proc_num_cols)
+    {
+        off_proc->mult_append_neg(x_tmp, *(r.local));
+    }
+    stop = MPI_Wtime();
+    times[2] += (stop - start);
+}
+
 void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r, 
         data_t* comm_t)
 {
@@ -316,6 +429,24 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r,
     {
         off_proc->mult_append_neg(x_tmp, *(r.local));
     }
+}
+
+void ParCOOMatrix::mult_timed(ParVector& x, ParVector& b,
+        aligned_vector<double>& times, bool tap, data_t* comm_t)
+{
+    ParMatrix::mult_timed(x, b, times, tap, comm_t);
+}
+
+void ParCSRMatrix::mult_timed(ParVector& x, ParVector& b,
+        aligned_vector<double>& times, bool tap, data_t* comm_t)
+{
+    ParMatrix::mult_timed(x, b, times, tap, comm_t);
+}
+
+void ParCSCMatrix::mult_timed(ParVector& x, ParVector& b,
+        aligned_vector<double>& times, bool tap, data_t* comm_t)
+{
+    ParMatrix::mult_timed(x, b, times, tap, comm_t);
 }
 
 

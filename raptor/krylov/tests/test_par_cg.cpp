@@ -7,6 +7,8 @@
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
 #include "krylov/par_cg.hpp"
+#include "multilevel/par_multilevel.hpp"
+#include "aggregation/par_smoothed_aggregation_solver.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/par_stencil.hpp"
 
@@ -33,9 +35,11 @@ TEST(ParCGTest, TestsInKrylov)
     int grid[2] = {50, 50};
     double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
+    ParMultilevel *ml;
     ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     aligned_vector<double> residuals;
+    aligned_vector<double> pre_residuals;
 
     x.set_const_value(1.0);
     A->mult(x, b);
@@ -64,8 +68,26 @@ TEST(ParCGTest, TestsInKrylov)
         }        
     }
 
+    // Setup AMG hierarchy
+    ml = new ParSmoothedAggregationSolver(0.0);
+    ml->max_levels = 3;
+    ml->setup(A);
+
+    // AMG Preconditioned BiCGStab
+    x.set_const_value(0.0);
+    PCG(A, ml, x, b, pre_residuals);
+    
+    if (check_soln)
+    {
+        for (int i = 0; i < x.local_n; i++)
+        {
+            ASSERT_NEAR(x.local->values[i], 1.0, 1e-02);
+        }        
+    }
+
     delete[] stencil;
     delete A;
+    delete ml;
     
 } // end of TEST(ParCGTest, TestsInKrylov) //
 

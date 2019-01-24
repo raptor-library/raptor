@@ -95,7 +95,7 @@ void CG(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res
         iter++;
     }
 
-    if (rank == 0)
+    /*if (rank == 0)
     {
         if (iter == max_iter)
         {
@@ -107,7 +107,7 @@ void CG(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res
             printf("%d Iteration required to converge\n", iter);
             printf("2 Norm of Residual: %lg\n\n", norm_r);
         }
-    }
+    }*/
 
     return;
 }
@@ -227,7 +227,7 @@ void PCG(ParCSRMatrix* A, ParMultilevel* ml, ParVector& x, ParVector& b, aligned
         rz_inner = next_inner;
     }
 
-    if (rank == 0)
+    /*if (rank == 0)
     {
         if (iter == max_iter)
         {
@@ -238,7 +238,7 @@ void PCG(ParCSRMatrix* A, ParMultilevel* ml, ParVector& x, ParVector& b, aligned
             printf("%d Iteration required to converge\n", iter);
         }
         printf("Relative Residual: %lg\n\n", res[iter-1]);
-    }
+    }*/
 
     return;
 }
@@ -250,10 +250,10 @@ void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<do
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     ParVector r;
-    ParBVector W;
-    ParBVector W_temp;
-    ParBVector Wk_1;
-    ParBVector Wk_2;
+    ParBVector *W = new ParBVector(A->global_num_cols, A->local_num_rows, A->partition->first_local_row, t);
+    ParBVector *W_temp = new ParBVector(A->global_num_cols, A->local_num_rows, A->partition->first_local_row, t);
+    ParBVector *Wk_1 = new ParBVector(A->global_num_cols, A->local_num_rows, A->partition->first_local_row, t);
+    ParBVector *Wk_2 = new ParBVector(A->global_num_cols, A->local_num_rows, A->partition->first_local_row, t);
     ParVector Wa;
     ParVector T;
     Vector alpha;
@@ -270,10 +270,6 @@ void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<do
 
     // Fixed Constructors
     r.resize(b.global_n, b.local_n, b.first_local);
-    W.local->b_vecs = t;
-    W_temp.local->b_vecs = t;
-    W.resize(A->global_num_cols, A->local_num_rows, A->partition->first_local_row);
-    W_temp.resize(A->global_num_cols, A->local_num_rows, A->partition->first_local_row);
     Wa.resize(x.global_n, x.local_n, x.first_local);
     T.resize(x.global_n, x.local_n, x.first_local);
     alpha.resize(t);
@@ -297,16 +293,16 @@ void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<do
     iter = 0;
 
     // W = T(r0)
-    r.split_contig(W, t);
+    r.split_contig(*W, t);
 
     // A-orthonormalize W
-    CGS(A, W);
+    CGS(A, *W);
     
     // alpha = W^T * r
-    W.mult_T(r, alpha);
+    W->mult_T(r, alpha);
 
     // x = x + W * alpha
-    W.mult(alpha, Wa);
+    W->mult(alpha, Wa);
     x.axpy(Wa, 1.0);
 
     // r = r - A * W * alpha
@@ -333,33 +329,50 @@ void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<do
         else
         {*/
             // Update Wk_1 and Wk_2
-            Wk_2.copy(Wk_1);
+            /*Wk_2.copy(Wk_1);
             Wk_1.copy(W);
 
             // W = A * W
-            A->mult(W, W_temp);
+            A->mult(W, W_temp);*/
 
             // A-orthonormalize W against previous vectors
             if (iter > 1)
             {
-                BCGS(A, Wk_1, Wk_2, W_temp);
+                // Update Wk_1 and Wk_2
+                Wk_2->copy(*Wk_1);
+                //Wk_2 = Wk_1;
+                Wk_1->copy(*W);
+                //Wk_1 = W;
+
+                // W = A * W
+                A->mult(*W, *W_temp);
+
+                BCGS(A, *Wk_1, *Wk_2, *W_temp);
             }
             else
             {
-                BCGS(A, Wk_1, W_temp);
+                // Update Wk_1
+                Wk_1->copy(*W);
+                //Wk_1 = W;
+
+                // W = A * W
+                A->mult(*W, *W_temp);
+
+                BCGS(A, *Wk_1, *W_temp);
             }
 
-            W.copy(W_temp);            
+            W->copy(*W_temp);
+            //W = W_temp;
 
             // A-orthonormalize W
-            CGS(A, W);
+            CGS(A, *W);
         //}
 
         // alpha = W^T * r
-        W.mult_T(r, alpha);
+        W->mult_T(r, alpha);
 
         // x = x + W * alpha
-        W.mult(alpha, Wa);
+        W->mult(alpha, Wa);
         x.axpy(Wa, 1.0);
 
         // r = r - A * W * alpha
@@ -373,7 +386,7 @@ void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<do
         iter++;
     }
 
-    if (rank == 0)
+    /*if (rank == 0)
     {
         if (iter == max_iter)
         {
@@ -385,7 +398,11 @@ void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<do
             printf("%d Iteration required to converge\n", iter);
             printf("2 Norm of Residual: %lg\n\n", norm_r);
         }
-    }
+    }*/
 
+    delete W;
+    delete Wk_1;
+    delete Wk_2;
+    delete W_temp;
     return;
 }

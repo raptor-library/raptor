@@ -89,6 +89,35 @@ data_t ParVector::inner_product(ParVector& x, data_t* inner_prods)
     return inner_prod;
 }
 
+data_t ParVector::inner_product_timed(ParVector& x, aligned_vector<double>& times, data_t* inner_prods)
+{
+    double start, stop;
+    data_t inner_prod;
+
+    if (local_n != x.local_n)
+    {
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        printf("Error.  Cannot perform inner product.  Dimensions do not match.\n");
+        exit(-1);
+    }
+
+    start = MPI_Wtime();
+    if (local_n)
+    {
+        inner_prod = local->inner_product(*(x.local));
+    }
+    stop = MPI_Wtime();
+    times[2] += (stop - start);
+
+    start = MPI_Wtime();
+    MPI_Allreduce(MPI_IN_PLACE, &inner_prod, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
+    stop = MPI_Wtime();
+    times[0] += (stop - start);
+    
+    return inner_prod;
+}
+
 /**************************************************************
 *****   ParBVector AXPY
 **************************************************************
@@ -225,6 +254,25 @@ void ParBVector::mult_T(ParVector& x, Vector& b)
     MPI_Allreduce(MPI_IN_PLACE, &(b[0]), local->b_vecs * x.local->b_vecs, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
 }
 
+void ParBVector::mult_T_timed(ParVector& x, Vector& b, aligned_vector<double>& times)
+{
+    double start, stop;
+
+    start = MPI_Wtime();
+    data_t temp;
+    if (local_n)
+    {
+        local->mult_T(*(x.local), b);
+    }
+    stop = MPI_Wtime();
+    times[2] += (stop - start);
+
+    start = MPI_Wtime();
+    MPI_Allreduce(MPI_IN_PLACE, &(b[0]), local->b_vecs * x.local->b_vecs, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
+    stop = MPI_Wtime();
+    times[0] += (stop - start);
+}
+
 /**************************************************************
 *****   ParBVector Mult_T 
 **************************************************************
@@ -245,6 +293,24 @@ void ParBVector::mult_T(ParBVector& x, BVector& b)
         local->mult_T(*(x.local), b);
     }
     MPI_Allreduce(MPI_IN_PLACE, &(b[0]), local->b_vecs*x.local->b_vecs, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
+}
+
+void ParBVector::mult_T_timed(ParBVector& x, BVector& b, aligned_vector<double>& times)
+{
+    double start, stop;
+
+    start = MPI_Wtime();
+    if (local_n)
+    {
+        local->mult_T(*(x.local), b);
+    }
+    stop = MPI_Wtime();
+    times[2] += (stop - start);
+
+    start = MPI_Wtime();
+    MPI_Allreduce(MPI_IN_PLACE, &(b[0]), local->b_vecs*x.local->b_vecs, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
+    stop = MPI_Wtime();
+    times[0] += (stop - start);
 }
 
 /**************************************************************

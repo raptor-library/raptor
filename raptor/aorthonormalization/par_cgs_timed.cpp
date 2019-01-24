@@ -1,7 +1,7 @@
 // Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
-#include "aorthonormalization/par_cgs.hpp"
+#include "aorthonormalization/par_cgs_timed.hpp"
 
 using namespace raptor;
 
@@ -11,8 +11,12 @@ using namespace raptor;
 ***
 *** ALG 17 IN APPENDIX
 ********************************************************/
-void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& Q2, ParBVector& P)
+void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& Q2, ParBVector& P, aligned_vector<double>& times)
 {
+    double start, stop;
+
+    start = MPI_Wtime();
+
     int num_procs, rank;
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -28,20 +32,29 @@ void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& Q2, ParBVector& P)
     // Form Q
     Q.copy(Q1);
     Q.append(Q2);
+
+    stop = MPI_Wtime();
+    times[2] += (stop - start);
     
     // W = A * P    
-    A->mult(P, W);
+    A->mult_timed(P, W, times);
     
     // P = P - Q * (Q^T * W)
-    Q.mult_T(W, B);
-    Q.mult(B, W);
+    Q.mult_T_timed(W, B, times);
+    Q.mult_timed(B, W, times);
+
+    start = MPI_Wtime();
     P.axpy(W, -1.0);
+    stop = MPI_Wtime();
+    times[2] += (stop - start);
 
     // W = A * P
-    A->mult(P, W);
+    A->mult_timed(P, W, times);
     
     // P[:,i]^T W[:,i]
-    temp = P.inner_product(W, inner_prods);
+    temp = P.inner_product_timed(W, inner_prods, times);
+
+    start = MPI_Wtime();
 
     // sqrt(inner_prods[i])
     for (int i = 0; i < t; i++)
@@ -52,6 +65,9 @@ void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& Q2, ParBVector& P)
 
     // P[:,i] = P[:,i] / ||P[:,i]||_A
     P.scale(1, inner_prods);    
+    
+    stop = MPI_Wtime();
+    times[2] += (stop - start);
 
     delete inner_prods;
 
@@ -64,7 +80,7 @@ void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& Q2, ParBVector& P)
 ***
 *** ALG 17 IN APPENDIX
 ********************************************************/
-void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& P)
+void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& P, aligned_vector<double>& times)
 {
     int num_procs;
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
@@ -112,7 +128,7 @@ void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& P)
 ***
 *** ALG 20 IN APPENDIX
 ********************************************************/
-void CGS(ParCSRMatrix* A, ParBVector& P)
+void CGS(ParCSRMatrix* A, ParBVector& P, aligned_vector<double>& times)
 {
     int t = P.local->b_vecs;
     double inner_prod;
@@ -169,48 +185,6 @@ void CGS(ParCSRMatrix* A, ParBVector& P)
     P.scale(1, inner_prods);
 
     delete inner_prods;*/
-
-    return;
-}
-
-/*******************************************************
-*** Modified Gram-Schmidt for A-Orthonormaliztion
-*** of P's vectors 
-***
-********************************************************/
-void MGS(ParCSRMatrix* A, ParBVector& P)
-{
-    int t = P.local->b_vecs;
-    double *inner_prods = new double[t];
-    double inner_prod;
-    double temp;
-    
-    ParBVector W(A->global_num_rows, A->local_num_rows, A->partition->first_local_row, t);
-    ParBVector T1(A->global_num_rows, A->local_num_rows, A->partition->first_local_row, t);
-    ParBVector T2(A->global_num_rows, A->local_num_rows, A->partition->first_local_row, t);
-    A->mult(P, W);
-
-    for (int i = 0; i < t; i++)
-    {
-        inner_prod = P.inner_product(W, i, i);
-        inner_prod = pow(inner_prod, 1.0/2.0);
-        for (int k = 0; k < P.local_n; k++) P.local->values[i*P.local_n + k] *= 1/inner_prod;
-        for (int j = i+1; j < t; j++)
-        {
-            // Just multiply jth column of P by A
-            T1.set_const_value(0.0);
-            for (int k = 0; k < T1.local_n; k++)
-            {
-                T1.local->values[j*T1.local_n + k] = P.local->values[j*P.local_n + k];
-            }
-
-            A->mult(T1, T2);
-            inner_prod = P.inner_product(T2, i, j);
-            P.axpy_ij(P, j, i, -1.0*inner_prod);
-        }
-    }    
-
-    delete inner_prods;
 
     return;
 }
