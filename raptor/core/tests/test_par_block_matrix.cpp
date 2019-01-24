@@ -68,12 +68,9 @@ TEST(ParBlockMatrixTest, TestsInCore)
     ParCSRMatrix* A = par_stencil_grid(stencil, grid.data(), 2);
     ParBSRMatrix* A_bsr = A->to_ParBSR(block_n, block_n);
 
-    ParVector x(A->global_num_rows, A->local_num_rows, 
-            A->partition->first_local_row);
-    ParVector b(A->global_num_rows, A->local_num_rows, 
-            A->partition->first_local_row);
-    ParVector tmp(A->global_num_rows, A->local_num_rows, 
-            A->partition->first_local_row);
+    ParVector x(A->global_num_rows, A->local_num_rows);
+    ParVector b(A->global_num_rows, A->local_num_rows);
+    ParVector tmp(A->global_num_rows, A->local_num_rows);
     x.set_const_value(1.0);
 
     // Test Blocked Communication

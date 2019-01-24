@@ -30,8 +30,8 @@ TEST(ParCGTest, TestsInKrylov)
     int grid[2] = {50, 50};
     double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
-    ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    ParVector x(A->global_num_rows, A->local_num_rows);
+    ParVector b(A->global_num_rows, A->local_num_rows);
     aligned_vector<double> residuals;
 
     x.set_const_value(1.0);

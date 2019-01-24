@@ -31,8 +31,8 @@ TEST(ParAnisoSpMVTest, TestsInUtil)
     double* stencil = diffusion_stencil_2d(eps, theta);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
 
-    ParVector x(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
-    ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    ParVector x(A->global_num_cols, A->on_proc_num_cols);
+    ParVector b(A->global_num_rows, A->local_num_rows);
 
     x.set_const_value(1.0);
     A->mult(x, b);

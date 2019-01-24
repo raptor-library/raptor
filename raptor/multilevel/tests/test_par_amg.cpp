@@ -52,8 +52,8 @@ TEST(ParAMGTest, TestsInMultilevel)
     A = par_stencil_grid(stencil, grid, dim);
     delete[] stencil;
 
-    x.resize(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    b.resize(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    x.resize(A->global_num_rows, A->local_num_rows);
+    b.resize(A->global_num_rows, A->local_num_rows);
     
     ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
     ml->setup(A);

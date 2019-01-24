@@ -146,12 +146,9 @@ namespace raptor
                 levels[0]->A = Af->copy();
                 levels[0]->A->sort();
                 levels[0]->A->on_proc->move_diag();
-                levels[0]->x.resize(Af->global_num_rows, Af->local_num_rows,
-                        Af->partition->first_local_row);
-                levels[0]->b.resize(Af->global_num_rows, Af->local_num_rows,
-                        Af->partition->first_local_row);
-                levels[0]->tmp.resize(Af->global_num_rows, Af->local_num_rows,
-                        Af->partition->first_local_row);
+                levels[0]->x.resize(Af->global_num_rows, Af->local_num_rows);
+                levels[0]->b.resize(Af->global_num_rows, Af->local_num_rows);
+                levels[0]->tmp.resize(Af->global_num_rows, Af->local_num_rows);
                 if (tap_amg == 0)
                 {
                     if (!Af->tap_comm && !Af->tap_mat_comm)
@@ -492,7 +489,7 @@ namespace raptor
                 }
 
                 // Iterate until convergence or max iterations
-                ParVector resid(rhs.global_n, rhs.local_n, rhs.first_local);
+                ParVector resid(rhs.global_n, rhs.local_n);
                 levels[0]->A->residual(sol, rhs, resid);
                 if (fabs(b_norm) > zero_tol)
                 {
