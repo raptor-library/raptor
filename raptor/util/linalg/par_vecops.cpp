@@ -231,6 +231,35 @@ data_t ParBVector::inner_product(ParBVector& x, data_t* inner_prods)
     return 0;
 }
 
+data_t ParBVector::inner_product_timed(ParBVector& x, aligned_vector<double>& times, data_t* inner_prods)
+{
+    double start, stop;
+
+    start = MPI_Wtime();
+    data_t temp;
+    if (local_n != x.local_n)
+    {
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        printf("Error.  Cannot perform inner product.  Dimensions do not match.\n");
+        exit(-1);
+    }
+
+    if (local_n)
+    {
+        temp = local->inner_product(*(x.local), inner_prods);
+    }
+    stop = MPI_Wtime();
+    times[2] += (stop - start);
+
+    start = MPI_Wtime();
+    MPI_Allreduce(MPI_IN_PLACE, inner_prods, local->b_vecs, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
+    stop = MPI_Wtime();
+    times[0] += (stop - start);
+    
+    return 0;
+}
+
 /**************************************************************
 *****   ParBVector Mult_T 
 **************************************************************
@@ -363,5 +392,33 @@ data_t ParBVector::inner_product(ParBVector& x, index_t i, index_t j)
     }
     MPI_Allreduce(MPI_IN_PLACE, &temp, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
    
+    return temp;
+}
+
+data_t ParBVector::inner_product_timed(ParBVector& x, index_t i, index_t j, aligned_vector<double>& times)
+{
+    double start, stop;
+
+    start = MPI_Wtime();
+    data_t temp;
+    if (local_n != x.local_n)
+    {
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        printf("Error.  Cannot perform inner product.  Dimensions do not match.\n");
+        exit(-1);
+    }
+    if (local_n)
+    {
+        temp = local->inner_product(*(x.local), i, j);
+    }
+    stop = MPI_Wtime();
+    times[2] += (stop - start);
+
+    start = MPI_Wtime();
+    MPI_Allreduce(MPI_IN_PLACE, &temp, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
+    stop = MPI_Wtime();
+    times[0] += (stop - start);
+    
     return temp;
 }

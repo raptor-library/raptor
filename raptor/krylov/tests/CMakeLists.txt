@@ -38,8 +38,11 @@ if (WITH_MPI)
     add_executable(timings_par_srecg timings_par_srecg.cpp)
     target_link_libraries(timings_par_srecg raptor ${MPI_LIBRARIES} googletest pthread)
     
-    add_executable(split_timings split_timings.cpp)
-    target_link_libraries(split_timings raptor ${MPI_LIBRARIES} pthread)
+    add_executable(par_cg_profiling par_cg_profiling.cpp)
+    target_link_libraries(par_cg_profiling raptor ${MPI_LIBRARIES} pthread)
+    
+    add_executable(par_srecg_profiling par_srecg_profiling.cpp)
+    target_link_libraries(par_srecg_profiling raptor ${MPI_LIBRARIES} pthread)
 endif()
 
 

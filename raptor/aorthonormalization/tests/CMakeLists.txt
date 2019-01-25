@@ -9,4 +9,7 @@ if (WITH_MPI)
     add_test(ParCGSTest ${MPIRUN} -n 2 ./test_par_cgs)
     add_test(ParCGSTest ${MPIRUN} -n 4 ./test_par_cgs)
     add_test(ParCGSTest ${MPIRUN} -n 8 ./test_par_cgs)
+    
+    add_executable(aortho_timings aortho_timings.cpp)
+    target_link_libraries(aortho_timings raptor ${MPI_LIBRARIES} pthread )
 endif()
