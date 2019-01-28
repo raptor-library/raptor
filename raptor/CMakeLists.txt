@@ -31,7 +31,7 @@ add_library(raptor STATIC ${core_SOURCES} ${core_HEADERS}
         ${external_SOURCES} ${external_HEADERS})
 
 target_link_libraries(raptor ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
-    ${PTSCOTCH_LIBRARIES} ${PARMETIS_LIBRARIES} ${EXTERNAL_LIBS} )
+    ${PETSC_LIBRARIES} ${PTSCOTCH_LIBRARIES} ${PARMETIS_LIBRARIES} ${EXTERNAL_LIBS} )
 
 install(TARGETS raptor DESTINATION "lib")
 install(FILES raptor.hpp DESTINATION "include/raptor")
@@ -57,4 +57,5 @@ if(ENABLE_UNIT_TESTS)
     add_subdirectory(multilevel/tests)
     add_subdirectory(gallery/tests)
     add_subdirectory(krylov/tests)
+    add_subdirectory(external/tests)
 endif()

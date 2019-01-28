@@ -44,12 +44,15 @@
     #include "gallery/par_matrix_market.hpp"
 #endif
 
-// Matrix external gallery
+// External 
 #ifdef USING_HYPRE
     #include "external/hypre_wrapper.hpp"
 #endif
 #ifdef USING_MFEM
     #include "external/mfem_wrapper.hpp"
+#endif
+#ifdef USING_PETSC
+    #include "external/petsc_wrapper.hpp"
 #endif
 
 // RugeStuben classes
