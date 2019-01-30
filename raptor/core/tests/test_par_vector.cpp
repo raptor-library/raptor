@@ -38,7 +38,7 @@ TEST(ParVectorTest, TestsInCore)
     }
 
     Vector v(global_n);
-    ParVector v_par(global_n, local_n, first_n);
+    ParVector v_par(global_n, local_n);
 
     v.set_const_value(1.0);
     v_par.set_const_value(1.0);

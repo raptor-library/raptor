@@ -27,9 +27,9 @@ void CG(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res
     }
 
     // Fixed Constructors
-    r.resize(b.global_n, b.local_n, b.first_local);
-    p.resize(b.global_n, b.local_n, b.first_local);
-    Ap.resize(b.global_n, b.local_n, b.first_local);
+    r.resize(b.global_n, b.local_n);
+    p.resize(b.global_n, b.local_n);
+    Ap.resize(b.global_n, b.local_n);
 
     // r0 = b - A * x0
     A->residual(x, b, r);
@@ -141,10 +141,10 @@ void PCG(ParCSRMatrix* A, ParMultilevel* ml, ParVector& x, ParVector& b, aligned
     }
 
     // Fixed Constructors
-    r.resize(b.global_n, b.local_n, b.first_local);
-    z.resize(b.global_n, b.local_n, b.first_local);
-    p.resize(b.global_n, b.local_n, b.first_local);
-    Ap.resize(b.global_n, b.local_n, b.first_local);
+    r.resize(b.global_n, b.local_n);
+    z.resize(b.global_n, b.local_n);
+    p.resize(b.global_n, b.local_n);
+    Ap.resize(b.global_n, b.local_n);
 
     // Initial b_norm (preconditioned)
     z.set_const_value(0.0);

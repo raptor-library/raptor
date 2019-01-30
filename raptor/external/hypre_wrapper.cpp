@@ -6,10 +6,20 @@
 
 HYPRE_IJVector convert(raptor::ParVector& x_rap, MPI_Comm comm_mat)
 {
+    int num_procs, rank;
+    MPI_Comm_rank(comm_mat, &rank);
+    MPI_Comm_size(comm_mat, &num_procs);
+
     HYPRE_IJVector x;
 
-    HYPRE_Int first_local = x_rap.first_local;
     HYPRE_Int local_n = x_rap.local_n;
+    aligned_vector<int> first_n(num_procs);
+    MPI_Allgather(&local_n, 1, MPI_INT, first_n.data(), 1, MPI_INT, comm_mat);
+    HYPRE_Int first_local = 0;
+    for (int i = 0; i < rank; i++)
+    {
+        first_local += first_n[i];
+    }
     HYPRE_Int last_local = first_local + local_n - 1;
 
     HYPRE_IJVectorCreate(comm_mat, first_local, last_local, &x);

@@ -162,12 +162,9 @@ namespace raptor
             A->comm = new ParComm(A->partition, A->off_proc_column_map,
                     A->on_proc_column_map, levels[level_ctr-1]->A->comm->key,
                     levels[level_ctr-1]->A->comm->mpi_comm, total_time);
-            levels[level_ctr]->x.resize(A->global_num_rows, A->local_num_rows,
-                    A->partition->first_local_row);
-            levels[level_ctr]->b.resize(A->global_num_rows, A->local_num_rows,
-                    A->partition->first_local_row);
-            levels[level_ctr]->tmp.resize(A->global_num_rows, A->local_num_rows,
-                    A->partition->first_local_row);
+            levels[level_ctr]->x.resize(A->global_num_rows, A->local_num_rows);
+            levels[level_ctr]->b.resize(A->global_num_rows, A->local_num_rows);
+            levels[level_ctr]->tmp.resize(A->global_num_rows, A->local_num_rows);
             levels[level_ctr]->P = NULL;
 
             if (tap_amg >= 0 && tap_amg <= level_ctr)

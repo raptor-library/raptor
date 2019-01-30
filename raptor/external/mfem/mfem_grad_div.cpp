@@ -1,4 +1,4 @@
-#include "gallery/external/mfem_wrapper.hpp"
+#include "external/mfem_wrapper.hpp"
 
 using namespace mfem;
 
@@ -90,10 +90,8 @@ raptor::ParCSRMatrix* mfem_grad_div(raptor::ParVector& x_raptor,
     hypre_ParCSRMatrix* A_hypre = A.StealData();
 
     raptor::ParCSRMatrix* A_raptor = convert(A_hypre, comm);
-    x_raptor.resize(A_raptor->global_num_rows, A_raptor->local_num_rows,
-            A_raptor->partition->first_local_row);
-    b_raptor.resize(A_raptor->global_num_rows, A_raptor->local_num_rows,
-            A_raptor->partition->first_local_row);
+    x_raptor.resize(A_raptor->global_num_rows, A_raptor->local_num_rows);
+    b_raptor.resize(A_raptor->global_num_rows, A_raptor->local_num_rows);
     double* x_data = X.GetData();
     double* b_data = B.GetData();
     for (int i = 0; i < A_raptor->local_num_rows; i++)

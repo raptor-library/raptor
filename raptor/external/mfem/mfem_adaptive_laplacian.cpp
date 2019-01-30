@@ -1,4 +1,4 @@
-#include "gallery/external/mfem_wrapper.hpp"
+#include "external/mfem_wrapper.hpp"
 
 using namespace mfem;
 
@@ -96,10 +96,8 @@ raptor::ParCSRMatrix* mfem_adaptive_laplacian(raptor::ParVector& x_raptor,
             A.SetOwnerFlags(-1, -1, -1);
             hypre_ParCSRMatrix* A_hypre = A.StealData();
             A_raptor = convert(A_hypre, comm);
-            x_raptor.resize(A_raptor->global_num_rows, A_raptor->local_num_rows, 
-                    A_raptor->partition->first_local_row);
-            b_raptor.resize(A_raptor->global_num_rows, A_raptor->local_num_rows, 
-                    A_raptor->partition->first_local_row);
+            x_raptor.resize(A_raptor->global_num_rows, A_raptor->local_num_rows);
+            b_raptor.resize(A_raptor->global_num_rows, A_raptor->local_num_rows);
             double* x_data = X.GetData();
             double* b_data = B.GetData();
             for (int i = 0; i < A_raptor->local_num_rows; i++)

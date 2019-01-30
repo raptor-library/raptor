@@ -168,8 +168,8 @@ int main(int argc, char* argv[])
     {
         A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
                 A->on_proc_column_map);
-        x = ParVector(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
-        b = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+        x = ParVector(A->global_num_cols, A->on_proc_num_cols);
+        b = ParVector(A->global_num_rows, A->local_num_rows);
         x.set_rand_values();
         A->mult(x, b);
         x.set_const_value(0.0);

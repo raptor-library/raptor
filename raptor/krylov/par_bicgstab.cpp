@@ -41,11 +41,11 @@ void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double
     }
 
     // Fixed Constructors
-    r.resize(b.global_n, b.local_n, b.first_local);
-    r_star.resize(b.global_n, b.local_n, b.first_local);
-    p.resize(b.global_n, b.local_n, b.first_local);
-    Ap.resize(b.global_n, b.local_n, b.first_local);
-    As.resize(b.global_n, b.local_n, b.first_local);
+    r.resize(b.global_n, b.local_n);
+    r_star.resize(b.global_n, b.local_n);
+    p.resize(b.global_n, b.local_n);
+    Ap.resize(b.global_n, b.local_n);
+    As.resize(b.global_n, b.local_n);
 
     // r0 = b - A * x0
     A->residual(x, b, r);
@@ -150,11 +150,11 @@ void SeqInner_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vect
     }
 
     // Fixed Constructors
-    r.resize(b.global_n, b.local_n, b.first_local);
-    r_star.resize(b.global_n, b.local_n, b.first_local);
-    p.resize(b.global_n, b.local_n, b.first_local);
-    Ap.resize(b.global_n, b.local_n, b.first_local);
-    As.resize(b.global_n, b.local_n, b.first_local);
+    r.resize(b.global_n, b.local_n);
+    r_star.resize(b.global_n, b.local_n);
+    p.resize(b.global_n, b.local_n);
+    Ap.resize(b.global_n, b.local_n);
+    As.resize(b.global_n, b.local_n);
 
     // r0 = b - A * x0
     A->residual(x, b, r);
@@ -274,11 +274,11 @@ void Pre_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, ParMultilevel *ml
     }
 
     // Fixed Constructors
-    r.resize(b.global_n, b.local_n, b.first_local);
-    r_star.resize(b.global_n, b.local_n, b.first_local);
-    p.resize(b.global_n, b.local_n, b.first_local);
-    Ap.resize(b.global_n, b.local_n, b.first_local);
-    As.resize(b.global_n, b.local_n, b.first_local);
+    r.resize(b.global_n, b.local_n);
+    r_star.resize(b.global_n, b.local_n);
+    p.resize(b.global_n, b.local_n);
+    Ap.resize(b.global_n, b.local_n);
+    As.resize(b.global_n, b.local_n);
 
     // BEGIN ALGORITHM
     // r0 = b - A * x0
@@ -395,11 +395,11 @@ void SeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vecto
     }
 
     // Fixed Constructors
-    r.resize(b.global_n, b.local_n, b.first_local);
-    r_star.resize(b.global_n, b.local_n, b.first_local);
-    p.resize(b.global_n, b.local_n, b.first_local);
-    Ap.resize(b.global_n, b.local_n, b.first_local);
-    As.resize(b.global_n, b.local_n, b.first_local);
+    r.resize(b.global_n, b.local_n);
+    r_star.resize(b.global_n, b.local_n);
+    p.resize(b.global_n, b.local_n);
+    Ap.resize(b.global_n, b.local_n);
+    As.resize(b.global_n, b.local_n);
 
     // r0 = b - A * x0
     A->residual(x, b, r);
@@ -504,11 +504,11 @@ void SeqInnerSeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, align
     }
 
     // Fixed Constructors
-    r.resize(b.global_n, b.local_n, b.first_local);
-    r_star.resize(b.global_n, b.local_n, b.first_local);
-    p.resize(b.global_n, b.local_n, b.first_local);
-    Ap.resize(b.global_n, b.local_n, b.first_local);
-    As.resize(b.global_n, b.local_n, b.first_local);
+    r.resize(b.global_n, b.local_n);
+    r_star.resize(b.global_n, b.local_n);
+    p.resize(b.global_n, b.local_n);
+    Ap.resize(b.global_n, b.local_n);
+    As.resize(b.global_n, b.local_n);
 
     // r0 = b - A * x0
     A->residual(x, b, r);
@@ -638,11 +638,11 @@ void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<dou
     }
 
     // Fixed Constructors
-    r.resize(b.global_n, b.local_n, b.first_local);
-    r_star.resize(b.global_n, b.local_n, b.first_local);
-    p.resize(b.global_n, b.local_n, b.first_local);
-    Ap.resize(b.global_n, b.local_n, b.first_local);
-    As.resize(b.global_n, b.local_n, b.first_local);
+    r.resize(b.global_n, b.local_n);
+    r_star.resize(b.global_n, b.local_n);
+    p.resize(b.global_n, b.local_n);
+    Ap.resize(b.global_n, b.local_n);
+    As.resize(b.global_n, b.local_n);
 
     // BEGIN ALGORITHM
     // r0 = b - A * x0
@@ -790,11 +790,11 @@ void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<
     }
 
     // Fixed Constructors
-    r.resize(b.global_n, b.local_n, b.first_local);
-    r_star.resize(b.global_n, b.local_n, b.first_local);
-    p.resize(b.global_n, b.local_n, b.first_local);
-    Ap.resize(b.global_n, b.local_n, b.first_local);
-    As.resize(b.global_n, b.local_n, b.first_local);
+    r.resize(b.global_n, b.local_n);
+    r_star.resize(b.global_n, b.local_n);
+    p.resize(b.global_n, b.local_n);
+    Ap.resize(b.global_n, b.local_n);
+    As.resize(b.global_n, b.local_n);
 
     // BEGIN ALGORITHM
     // r0 = b - A * x0

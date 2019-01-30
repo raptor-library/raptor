@@ -1,9 +1,9 @@
-#include "gallery/external/mfem_wrapper.hpp"
+#include "external/mfem_wrapper.hpp"
 
 using namespace mfem;
 
 // Create MFEM Laplacian System and convert to RAPtor format
-raptor::ParCSRMatrix* mfem_dg_diffusion(raptor::ParVector& x_raptor, 
+raptor::ParCSRMatrix* mfem_laplacian(raptor::ParVector& x_raptor, 
         raptor::ParVector& b_raptor, const char* mesh_file, 
         const int order, const int seq_n_refines, const int par_n_refines,
         const MPI_Comm comm)
@@ -12,10 +12,8 @@ raptor::ParCSRMatrix* mfem_dg_diffusion(raptor::ParVector& x_raptor,
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &num_procs);
 
-    double sigma = -1.0;
-    double kappa = (order + 1) * (order + 1);
-
     int mesh_dim;
+    int par_mesh_n;
     int boundary_n;
 
     Mesh* mesh;
@@ -40,43 +38,45 @@ raptor::ParCSRMatrix* mfem_dg_diffusion(raptor::ParVector& x_raptor,
         par_mesh->UniformRefinement();
     }
 
-    // Form finite element collection / space
+    // Get dims
+    par_mesh_n = par_mesh->attributes.Max();
     boundary_n = par_mesh->bdr_attributes.Max();
-    collection = new DG_FECollection(order, mesh_dim);
+
+    // Form finite element collection / space
+    collection = new H1_FECollection(order, mesh_dim);
     space = new ParFiniteElementSpace(par_mesh, collection);
 
-    ParLinearForm* b = new ParLinearForm(space);
+    Array<int> dofs;
+    if (par_mesh->bdr_attributes.Size())
+    {
+        Array<int> bdry(boundary_n);
+        bdry = 1;
+        space->GetEssentialTrueDofs(bdry, dofs);
+    }
+
+    ParLinearForm *b = new ParLinearForm(space);
     ConstantCoefficient one(1.0);
-    ConstantCoefficient zero(0.0);
     b->AddDomainIntegrator(new DomainLFIntegrator(one));
-    b->AddBdrFaceIntegrator(new DGDirichletLFIntegrator(zero, one, sigma, kappa));
     b->Assemble();
 
     ParGridFunction x(space);
     x = 0.0;
 
-    ParBilinearForm* a = new ParBilinearForm(space);
+    ParBilinearForm *a = new ParBilinearForm(space);
     a->AddDomainIntegrator(new DiffusionIntegrator(one));
-    a->AddInteriorFaceIntegrator(new DGDiffusionIntegrator(one, sigma, kappa));
-    a->AddBdrFaceIntegrator(new DGDiffusionIntegrator(one, sigma, kappa));
     a->Assemble();
-    a->Finalize();
 
-    HypreParMatrix* A = a->ParallelAssemble();
-    HypreParVector* B = b->ParallelAssemble();
-    HypreParVector* X = x.ParallelProject();
+    HypreParMatrix A;
+    mfem::Vector B, X;
+    a->FormLinearSystem(dofs, x, *b, A, X, B);
+    A.SetOwnerFlags(-1, -1, -1);
+    hypre_ParCSRMatrix* A_hypre = A.StealData();
 
-    A->SetOwnerFlags(-1, -1, -1);
-    hypre_ParCSRMatrix* A_hypre = A->StealData();
     raptor::ParCSRMatrix* A_raptor = convert(A_hypre, comm);
-    x_raptor.resize(A_raptor->global_num_rows, A_raptor->local_num_rows,
-            A_raptor->partition->first_local_row);
-    b_raptor.resize(A_raptor->global_num_rows, A_raptor->local_num_rows,
-            A_raptor->partition->first_local_row);
-    hypre_ParVector* x_hypre = X->StealParVector();
-    hypre_ParVector* b_hypre = B->StealParVector();
-    double* x_data = hypre_VectorData(hypre_ParVectorLocalVector(x_hypre));
-    double* b_data = hypre_VectorData(hypre_ParVectorLocalVector(b_hypre));
+    x_raptor.resize(A_raptor->global_num_rows, A_raptor->local_num_rows);
+    b_raptor.resize(A_raptor->global_num_rows, A_raptor->local_num_rows);
+    double* x_data = X.GetData();
+    double* b_data = B.GetData();
     for (int i = 0; i < A_raptor->local_num_rows; i++)
     {
         x_raptor[i] = x_data[i];
@@ -91,5 +91,3 @@ raptor::ParCSRMatrix* mfem_dg_diffusion(raptor::ParVector& x_raptor,
 
     return A_raptor;
 }
-
-

@@ -44,8 +44,8 @@ int main(int argc, char *argv[])
     A = par_stencil_grid(stencil, grid.data(), dim);
     delete[] stencil;
 
-    x = ParVector(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
-    b = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    x = ParVector(A->global_num_cols, A->on_proc_num_cols);
+    b = ParVector(A->global_num_rows, A->local_num_rows);
 
     x.set_const_value(1.0);
     A->mult(x, b);

@@ -2,10 +2,6 @@
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 # Create a variable called gallery_SOURCES containing all .cpp files:
-if(WITH_HYPRE)
-    add_subdirectory(external)
-endif(WITH_HYPRE)
-
 if (WITH_MPI)
     set(par_gallery_HEADERS
         gallery/par_stencil.hpp
@@ -35,15 +31,11 @@ set(gallery_HEADERS
     gallery/matrix_market.hpp
     ${par_gallery_HEADERS}
     PARENT_SCOPE)
-set(ext_gallery_HEADERS
-    ${external_gallery_HEADERS}
-    PARENT_SCOPE)
 
 set(gallery_SOURCES
     gallery/matrix_IO.cpp
     gallery/matrix_market.cpp
     ${par_gallery_SOURCES}
-    ${external_gallery_SOURCES}
     PARENT_SCOPE)
 
 

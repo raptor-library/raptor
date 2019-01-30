@@ -1,11 +1,9 @@
-#include "gallery/external/mfem_wrapper.hpp"
+#include "external/mfem_wrapper.hpp"
 
 using namespace mfem;
 
-void displ_func(const mfem::Vector& x, mfem::Vector& u);
-
 // Create an MFEM Linear Elasticity Matrix and convert to Raptor format
-raptor::ParCSRMatrix* mfem_dg_elasticity(raptor::ParVector& x_raptor, 
+raptor::ParCSRMatrix* mfem_linear_elasticity(raptor::ParVector& x_raptor, 
         raptor::ParVector& b_raptor, int* num_variables,
         const char* mesh_file, int order, int seq_n_refines, 
         int par_n_refines, MPI_Comm comm)
@@ -17,8 +15,6 @@ raptor::ParCSRMatrix* mfem_dg_elasticity(raptor::ParVector& x_raptor,
     int mesh_dim;
     int par_mesh_n;
     int boundary_n;
-    double alpha = -1.0;
-    double kappa = (order+1)*(order+1);
 
     Mesh* mesh;
     ParMesh* par_mesh;
@@ -47,37 +43,44 @@ raptor::ParCSRMatrix* mfem_dg_elasticity(raptor::ParVector& x_raptor,
     boundary_n = par_mesh->bdr_attributes.Max();
 
     // Form finite element collection / space
-    collection = new DG_FECollection(order, mesh_dim, BasisType::GaussLobatto);
+    collection = new H1_FECollection(order, mesh_dim);
     space = new ParFiniteElementSpace(par_mesh, collection, mesh_dim, Ordering::byVDIM);
 
     Array<int> dofs;
     Array<int> bdry(boundary_n);
     bdry = 0;
     bdry[0] = 1;
-    bdry[1] = 1;
+    space->GetEssentialTrueDofs(bdry, dofs);
+
+    VectorArrayCoefficient force(mesh_dim);
+    for (int i = 0; i < mesh_dim-1; i++)
+    {
+        force.Set(i, new ConstantCoefficient(0.0));
+    }
+    mfem::Vector pull_force(boundary_n);
+    pull_force = 0.0;
+    pull_force(1) = -1.0e-2;
+    force.Set(mesh_dim-1, new PWConstCoefficient(pull_force));
+
+    ParLinearForm* b = new ParLinearForm(space);
+    b->AddBoundaryIntegrator(new VectorBoundaryLFIntegrator(force));
+    b->Assemble();
 
     ParGridFunction x(space);
-    VectorFunctionCoefficient init_x(mesh_dim, displ_func);
-    x.ProjectCoefficient(init_x);
+    x = 0.0;
 
     mfem::Vector lambda(par_mesh_n);
     lambda = 1.0;
-    lambda(0) = 50;
+    lambda(0) = lambda(1) * 50;
     PWConstCoefficient lambda_func(lambda);
     mfem::Vector mu(par_mesh_n);
     mu = 1.0;
     mu(0) = mu(1) * 50;
     PWConstCoefficient mu_func(mu);
 
-    ParLinearForm* b = new ParLinearForm(space);
-    b->AddBdrFaceIntegrator(new DGElasticityDirichletLFIntegrator(init_x, lambda_func, mu_func, alpha, kappa),
-            bdry);
-    b->Assemble();
-
     ParBilinearForm *a = new ParBilinearForm(space);
     a->AddDomainIntegrator(new ElasticityIntegrator(lambda_func, mu_func));
-    a->AddInteriorFaceIntegrator(new DGElasticityIntegrator(lambda_func, mu_func, alpha, kappa));
-    a->AddBdrFaceIntegrator(new DGElasticityIntegrator(lambda_func, mu_func, alpha, kappa), bdry);
+    a->EnableStaticCondensation();
     a->Assemble();
 
     HypreParMatrix A;
@@ -88,10 +91,8 @@ raptor::ParCSRMatrix* mfem_dg_elasticity(raptor::ParVector& x_raptor,
     hypre_ParCSRMatrix* A_hypre = A.StealData();
 
     raptor::ParCSRMatrix *A_raptor = convert(A_hypre, comm);
-    x_raptor.resize(A_raptor->global_num_rows, A_raptor->local_num_rows, 
-            A_raptor->partition->first_local_row);
-    b_raptor.resize(A_raptor->global_num_rows, A_raptor->local_num_rows, 
-            A_raptor->partition->first_local_row);
+    x_raptor.resize(A_raptor->global_num_rows, A_raptor->local_num_rows);
+    b_raptor.resize(A_raptor->global_num_rows, A_raptor->local_num_rows);
     double* x_data = X.GetData();
     double* b_data = B.GetData();
     for (int i = 0; i < A_raptor->local_num_rows; i++)
@@ -110,13 +111,4 @@ raptor::ParCSRMatrix* mfem_dg_elasticity(raptor::ParVector& x_raptor,
 
     return A_raptor;
 }
-
-void displ_func(const mfem::Vector& x, mfem::Vector& u)
-{
-    u = 0.0;
-    u(u.Size()-1) = -0.2*x(0);
-}
-
-
-
 
