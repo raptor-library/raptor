@@ -187,7 +187,7 @@ void ParMatrix::mult_T(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
     }
 
     aligned_vector<double>& x_tmp = comm->get_buffer<double>();
-    if (x_tmp.size() <= comm->recv_data->size_msgs * off_proc->b_cols)
+    if (x_tmp.size() < comm->recv_data->size_msgs * off_proc->b_cols)
         x_tmp.resize(comm->recv_data->size_msgs * off_proc->b_cols);
 
     off_proc->mult_T(x.local, x_tmp);

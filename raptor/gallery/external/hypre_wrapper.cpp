@@ -257,6 +257,9 @@ HYPRE_Solver hypre_create_GMRES(hypre_ParCSRMatrix* A,
     HYPRE_BoomerAMGSetPrintLevel(amg_data, 0);
     HYPRE_BoomerAMGSetMaxIter(amg_data, 1);
 
+    HYPRE_BoomerAMGSetRelaxOrder(amg_data, 1);
+    HYPRE_BoomerAMGSetTruncFactor(amg_data, 0.5);
+
     // Set GMRES Parameters
     HYPRE_GMRESSetMaxIter(gmres_data, 100);
     HYPRE_GMRESSetTol(gmres_data, 1e-6);
