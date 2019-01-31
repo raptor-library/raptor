@@ -117,6 +117,7 @@ PetscErrorCode RAPtorShellPCApply(PC pc,Vec y,Vec x)
   int global_n, local_n;
 
   ierr = PCShellGetContext(pc,(void**)&ctx);CHKERRQ(ierr);
+
   ierr = VecGetArray(x, &x_ptr);
   ierr = VecGetArrayRead(y, &y_ptr);
 

@@ -42,7 +42,6 @@ TEST(PetscWrapperTest, TestsInExternal)
     Mat pmat;
     Vec rhs, sol;
     KSP ksp;
-    PC pc;
 
     // Setup RAPtor Hierarchy
     ierr = petsc_create_preconditioner(A, &ksp, &pmat, &rhs, &sol);
