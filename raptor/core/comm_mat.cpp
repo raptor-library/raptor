@@ -586,8 +586,10 @@ void init_comm_helper(char* send_buffer, const int* rowptr,
         const int b_rows, const int b_cols)
 {
     int block_size = b_rows * b_cols;
+    if (profile) mat_t -= MPI_Wtime();
     send_comm->send(send_buffer, rowptr, col_indices, values,
             key, mpi_comm, block_size);
+    if (profile) mat_t += MPI_Wtime();
 }    
 CSRMatrix* complete_comm_helper(CommData* send_comm, CommData* recv_comm, int key, 
         RAPtor_MPI_Comm mpi_comm, const int b_rows, const int b_cols, const bool has_vals)
@@ -602,10 +604,12 @@ CSRMatrix* complete_comm_helper(CommData* send_comm, CommData* recv_comm, int ke
         recv_mat = new CSRMatrix(recv_comm->size_msgs, -1);
 
     // Recv contents of recv_mat
+    if (profile) mat_t -= MPI_Wtime();
     recv_comm->recv(recv_mat, key, mpi_comm, block_size, has_vals);
     if (send_comm->num_msgs)
         RAPtor_MPI_Waitall(send_comm->num_msgs, send_comm->requests.data(),
                 RAPtor_MPI_STATUSES_IGNORE);
+    if (profile) mat_t += MPI_Wtime();
     return recv_mat;
 }    
 

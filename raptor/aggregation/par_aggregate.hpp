@@ -11,7 +11,7 @@ using namespace raptor;
 
 int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
         aligned_vector<int>& off_proc_states, aligned_vector<int>& aggregates,
-        bool tap_comm = false, double* rand_vals = NULL, data_t* comm_t = NULL);
+        bool tap_comm = false, double* rand_vals = NULL);
 
 #endif
 

@@ -175,8 +175,7 @@ CSRMatrix*  communicate(ParCSRMatrix* A, const aligned_vector<int>& states,
 ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const aligned_vector<int>& states,
         const aligned_vector<int>& off_proc_states, 
-        bool tap_interp, int num_variables, int* variables, 
-        data_t* comm_t, data_t* comm_mat_t)
+        bool tap_interp, int num_variables, int* variables)
 {
     int start, end, idx, idx_k;
     int ctr, end_S;
@@ -216,9 +215,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     if (A->off_proc_num_cols) off_variables.resize(A->off_proc_num_cols);
     if (num_variables > 1)
     {
-        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         comm->communicate(variables);
-        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
         
         for (int i = 0; i < A->off_proc_num_cols; i++)
         {
@@ -227,9 +224,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     }
 
     // Communicate parallel matrix A (portion needed)
-    if (comm_mat_t) *comm_mat_t -= RAPtor_MPI_Wtime();
     recv_mat = communicate(A, S, states, off_proc_states, mat_comm);
-    if (comm_mat_t) *comm_mat_t += RAPtor_MPI_Wtime();
 
     int tmp_col = col;
     int* on_proc_partition_to_col = A->map_partition_to_local();
@@ -881,12 +876,12 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
 
     if (tap_interp)
     {
-        P->init_tap_communicators(MPI_COMM_WORLD, comm_t);
+        P->init_tap_communicators(MPI_COMM_WORLD);
     }
     else
     {
         P->comm = new ParComm(P->partition, P->off_proc_column_map,
-                P->on_proc_column_map, 9243, RAPtor_MPI_COMM_WORLD, comm_t);
+                P->on_proc_column_map, 9243, RAPtor_MPI_COMM_WORLD);
     }
 
     delete recv_mat;
@@ -901,8 +896,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
 ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const aligned_vector<int>& states,
         const aligned_vector<int>& off_proc_states, 
-        bool tap_interp, int num_variables, int* variables, 
-        data_t* comm_t, data_t* comm_mat_t)
+        bool tap_interp, int num_variables, int* variables)
 {
     int rank;
     RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -937,9 +931,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     if (num_variables > 1)
     {
-        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         comm->communicate(variables);
-        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
         for (int i = 0; i < A->off_proc_num_cols; i++)
         {
@@ -993,9 +985,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     P->local_row_map = S->get_local_row_map();
 
     // Communicate parallel matrix A (Costly!)
-    if (comm_mat_t) *comm_mat_t -= RAPtor_MPI_Wtime();
     recv_mat = communicate(A, states, off_proc_states, mat_comm);
-    if (comm_mat_t) *comm_mat_t += RAPtor_MPI_Wtime();
 
     CSRMatrix* recv_on = new CSRMatrix(recv_mat->n_rows, -1, recv_mat->nnz);
     CSRMatrix* recv_off = new CSRMatrix(recv_mat->n_rows, -1, recv_mat->nnz);
@@ -1351,12 +1341,11 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     if (tap_interp)
     {
-        P->update_tap_comm(S, on_proc_col_to_new, off_proc_col_to_new, comm_t);
+        P->update_tap_comm(S, on_proc_col_to_new, off_proc_col_to_new);
     }
     else
     {
-        P->comm = new ParComm(S->comm, on_proc_col_to_new, off_proc_col_to_new,
-                comm_t);
+        P->comm = new ParComm(S->comm, on_proc_col_to_new, off_proc_col_to_new);
     }
 
     delete recv_on;
@@ -1369,7 +1358,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const aligned_vector<int>& states,
         const aligned_vector<int>& off_proc_states, 
-        bool tap_interp, data_t* comm_t)
+        bool tap_interp)
 {
     int start, end, col;
     int global_num_cols;
@@ -1658,12 +1647,11 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
 
     if (tap_interp)
     {
-        P->update_tap_comm(S, on_proc_col_to_new, off_proc_col_to_new, comm_t);
+        P->update_tap_comm(S, on_proc_col_to_new, off_proc_col_to_new);
     }
     else
     {
-        P->comm = new ParComm(S->comm, on_proc_col_to_new, off_proc_col_to_new,
-                comm_t);
+        P->comm = new ParComm(S->comm, on_proc_col_to_new, off_proc_col_to_new);
     }
 
 

@@ -10,6 +10,7 @@
 
 #include "raptor.hpp"
 
+
 int main(int argc, char* argv[])
 {
     MPI_Init(&argc, &argv);
@@ -23,7 +24,7 @@ int main(int argc, char* argv[])
     int iter;
     int num_variables = 1;
 
-    coarsen_t coarsen_type = HMIS;
+    coarsen_t coarsen_type = PMIS;
     interp_t interp_type = Extended;
 
     ParMultilevel* ml;
@@ -102,7 +103,7 @@ int main(int argc, char* argv[])
             }
         }
 
-        coarsen_type = HMIS;
+        coarsen_type = PMIS;
         interp_type = Extended;
         strong_threshold = 0.5;
         switch (mfem_system)
@@ -111,7 +112,7 @@ int main(int argc, char* argv[])
                 A = mfem_laplacian(x, b, mesh_file, order, seq_refines, par_refines);
                 break;
             case 1:
-                strong_threshold = 0.0;
+                strong_threshold = 0.25;
                 A = mfem_grad_div(x, b, mesh_file, order, seq_refines, par_refines);
                 break;
             case 2:
@@ -139,144 +140,116 @@ int main(int argc, char* argv[])
         const char* file = "../../examples/LFAT5.pm";
         A = readParMatrix(file);
     }
-
     if (system != 2)
     {
         A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
                 A->on_proc_column_map);
-        x = ParVector(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
-        b = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+        x = ParVector(A->global_num_cols, A->on_proc_num_cols);
+        b = ParVector(A->global_num_rows, A->local_num_rows);
         x.set_rand_values();
         A->mult(x, b);
         x.set_const_value(0.0);
     }
-    ParVector tmp(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
 
-    int n_tests = 2;
-    int n_iter = 100;
-
+    // Warm Up
     ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, SOR);
+    ml->setup(A);
+    ParVector xtmp = ParVector(x);
+    ml->solve(xtmp, b);
+    delete ml;
+
+    // Ruge-Stuben AMG
+    if (rank == 0) printf("Ruge Stuben Solver: \n");
+    ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, SOR);
+    ml->track_times = true;
     ml->max_iterations = 1000;
     ml->solve_tol = 1e-07;
     ml->num_variables = num_variables;
-    ml->track_times = false;
+    ml->store_residuals = false;
+
+    MPI_Barrier(MPI_COMM_WORLD);
     ml->setup(A);
-    for (int i = 0; i < ml->num_levels - 1; i++)
-    {
-        if (rank == 0) printf("Level %d\n", i);
-        ParLevel* level = ml->levels[i];
 
-        // Time Strength of Connection
-        ParCSRMatrix* S = level->A->strength(Classical, strong_threshold);
-        for (int test = 0; test < n_tests; test++)
-        {
-            delete S;
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            S = level->A->strength(Classical, strong_threshold);
-            tfinal = (MPI_Wtime() - t0);
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor Form Strength Time: %e\n", t0);
-        }
+    ParVector rss_sol = ParVector(x);
+    MPI_Barrier(MPI_COMM_WORLD);
+    iter = ml->solve(rss_sol, b);
 
-        // Time C/F Splitting (HMIS)
-        aligned_vector<int> states;
-        aligned_vector<int> off_proc_states;
-        for (int test = 0; test < n_tests; test++)
-        {
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            split_hmis(S, states, off_proc_states);
-            tfinal = (MPI_Wtime() - t0);
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor HMIS Time: %e\n", t0);
-        }
-
-        ParCSRMatrix* P = extended_interpolation(level->A, S, states, off_proc_states);
-        for (int test = 0; test < n_tests; test++)
-        {
-            delete P;
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            P = extended_interpolation(level->A, S, states, off_proc_states);
-            tfinal = (MPI_Wtime() - t0);
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor Interpolation Time: %e\n", t0);
-        }
-
-        ParCSRMatrix* AP = level->A->mult(P);
-        ParCSRMatrix* Ac = AP->mult_T(P);
-        for (int test = 0; test < n_tests; test++)
-        {
-            delete AP;
-            delete Ac;
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            AP = level->A->mult(P);
-            Ac = AP->mult_T(P);
-            tfinal = (MPI_Wtime() - t0);
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor RAP Time: %e\n", t0);
-        }
-
-        delete S;
-        delete P;
-        delete AP;
-        delete Ac;
-
-        for (int test = 0; test < n_tests; test++)
-        {
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            for (int iter = 0; iter < n_iter; iter++)
-            {
-                sor(level->A, level->x, level->b, level->tmp, 1, 3.0/4, false, NULL);
-            }
-            tfinal = (MPI_Wtime() - t0) / n_iter;
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor Relax Time: %e\n", t0);
-        }
-
-        for (int test = 0; test < n_tests; test++)
-        {
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            for (int iter = 0; iter < n_iter; iter++)
-            {
-                level->A->residual(level->x, level->b, level->tmp);
-            }
-            tfinal = (MPI_Wtime() - t0) / n_iter;
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor Residual Time: %e\n", t0);
-        }
-
-        for (int test = 0; test < n_tests; test++)
-        {
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            for (int iter = 0; iter < n_iter; iter++)
-            {
-                level->P->mult_T(level->tmp, ml->levels[i+1]->b);
-            }
-            tfinal = (MPI_Wtime() - t0) / n_iter;
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor P^T*r Time: %e\n", t0);
-        }
-
-        for (int test = 0; test < n_tests; test++)
-        {
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            for (int iter = 0; iter < n_iter; iter++)
-            {
-                level->P->mult_append(ml->levels[i+1]->x, level->x);
-            }
-            tfinal = (MPI_Wtime() - t0) / n_iter;
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor x += P*e Time: %e\n", t0);
-        }
-    }
+    ml->print_setup_times();
+    ml->print_solve_times();
     delete ml;
+
+    // TAP Ruge-Stuben AMG
+    if (rank == 0) printf("\n\nTAP Ruge Stuben Solver: \n");
+    ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, SOR);
+    ml->track_times = true;
+    ml->max_iterations = 1000;
+    ml->solve_tol = 1e-07;
+    ml->num_variables = num_variables;
+    ml->store_residuals = false;
+    ml->tap_amg = 3;
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    ml->setup(A);
+
+    ParVector tap_rss_sol = ParVector(x);
+    MPI_Barrier(MPI_COMM_WORLD);
+    iter = ml->solve(tap_rss_sol, b);
+
+    ml->print_setup_times();
+    ml->print_solve_times();
+    delete ml;
+
+
+    // Warm Up
+    ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation,
+            Symmetric, SOR);
+    ml->setup(A);
+    xtmp = ParVector(x);
+    ml->solve(xtmp, b);
+    delete ml;
+
+    // Smoothed Aggregation AMG
+    if (rank == 0) printf("\n\nSmoothed Aggregation Solver:\n");
+    ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation, 
+            Symmetric, SOR);
+    ml->track_times = true;
+    ml->max_iterations = 1000;
+    ml->solve_tol = 1e-07;
+    ml->store_residuals = false;
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    ml->setup(A);
+
+    ParVector sas_sol = ParVector(x);
+    MPI_Barrier(MPI_COMM_WORLD);
+    iter = ml->solve(sas_sol, b);
+
+    ml->print_setup_times();
+    ml->print_solve_times();
+    delete ml;
+
+    // TAPSmoothed Aggregation AMG
+    if (rank == 0) printf("\n\nTAP Smoothed Aggregation Solver:\n");
+    ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation,
+            Symmetric, SOR);
+    ml->track_times = true;
+    ml->max_iterations = 1000;
+    ml->solve_tol = 1e-07;
+    ml->store_residuals = false;
+    ml->tap_amg = 3;
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    ml->setup(A);
+
+    ParVector tap_sas_sol = ParVector(x);
+    MPI_Barrier(MPI_COMM_WORLD);
+    iter = ml->solve(tap_sas_sol, b);
+
+    ml->print_setup_times();
+    ml->print_solve_times();
+    delete ml;
+
+    delete A;
 
     MPI_Finalize();
     return 0;

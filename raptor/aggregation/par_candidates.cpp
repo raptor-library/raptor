@@ -6,7 +6,7 @@
 ParCSRMatrix* fit_candidates(ParCSRMatrix* A, 
         const int n_aggs, const aligned_vector<int>& aggregates, 
         const aligned_vector<double>& B, aligned_vector<double>& R,
-        int num_candidates, bool tap_comm, double tol, data_t* comm_t)
+        int num_candidates, bool tap_comm, double tol)
 {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -163,20 +163,18 @@ ParCSRMatrix* fit_candidates(ParCSRMatrix* A,
     if (tap_comm)
     {
         T_csc->tap_comm = new TAPComm(T_csc->partition, T_csc->off_proc_column_map,
-                T_csc->on_proc_column_map, true, A->comm->mpi_comm, comm_t);
+                T_csc->on_proc_column_map, true, A->comm->mpi_comm);
         comm = T_csc->tap_comm;
     }
     else
     {
         T_csc->comm = new ParComm(T_csc->partition, T_csc->off_proc_column_map,
-                T_csc->on_proc_column_map, A->comm->key, A->comm->mpi_comm, comm_t);
+                T_csc->on_proc_column_map, A->comm->key, A->comm->mpi_comm);
         comm = T_csc->comm;
     }
 
     std::function<double(double, double)> func = &sum_func<double, double>;
-    if (comm_t) *comm_t -= MPI_Wtime();
     comm->communicate_T(off_proc_norms, R, 1, func, func);
-    if (comm_t) *comm_t += MPI_Wtime();
 
     for (int i = 0; i < n_aggs; i++)
     {
@@ -191,9 +189,7 @@ ParCSRMatrix* fit_candidates(ParCSRMatrix* A,
         }
     }
     
-    if (comm_t) *comm_t -= MPI_Wtime();
     aligned_vector<double>& off_proc_R = comm->communicate(R);
-    if (comm_t) *comm_t += MPI_Wtime();
 
     for (int i = 0; i < off_proc_num_cols; i++)
     {

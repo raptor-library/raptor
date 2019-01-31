@@ -203,7 +203,7 @@ void comm_coarse_dist1(const ParCSRMatrix* A,
 
 int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         aligned_vector<int>& off_proc_states, 
-        bool tap_comm, double* rand_vals, data_t* comm_t)
+        bool tap_comm, double* rand_vals)
 {
     // Get MPI Information
     int rank, num_procs;
@@ -278,9 +278,7 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         std::fill(off_proc_states.begin(), off_proc_states.end(), Unassigned);
         off_proc_r.resize(A->off_proc_num_cols);
     }
-    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     aligned_vector<double>& recvbuf = comm->communicate(r);
-    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     for (int i = 0; i < A->off_proc_num_cols; i++)
     {
@@ -385,9 +383,7 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         }
 
         // Communicate new (temporary) states
-        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         comm_states(A, comm, states, recv_indices, off_proc_states, first_pass);
-        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
         // Find max temp state random in each row
         for (int i = 0; i < A->local_num_rows; i++)
@@ -478,10 +474,8 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         // Finding max (if any proc has state[v] == TmpSelection, state[v] should
         // be TmpSelection. Else (all procs have state[v] == NewSelection), state[v] is NewSelection 
         // aka new coarse point)
-        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         comm_off_proc_states(A, comm, off_proc_states, recv_indices, states, first_pass);
         comm_states(A, comm, states, recv_indices, off_proc_states, first_pass);
-        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
         // Update states connecting to (dist1 or dist2) any
         // new coarse points (with state == NewSelection)
@@ -530,10 +524,8 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
 
         // Communicate updated states (if states[v] == NewUnselection, there exists 
         // and idx in row v such that states[idx] is new coarse)
-        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         comm_coarse_dist1(A, comm, active_sends, active_recvs, C, first_pass);
         aligned_vector<int>& recv_C = comm->get_int_buffer();
-        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
 
         for (int i = 0; i < remaining; i++)
@@ -594,9 +586,7 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         }
 
         // Communicate final updated states of iteration
-        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         comm_states(A, comm, states, recv_indices, off_proc_states, first_pass);
-        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
         // Update states
         ctr = 0;
@@ -640,9 +630,7 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         first_pass = false;
         comm = A->comm;
 
-        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         comm_finished(A, active_sends, active_recvs, remaining + off_remaining);
-        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
         iterate++;
     }

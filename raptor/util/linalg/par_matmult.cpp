@@ -70,11 +70,11 @@ ParCSRMatrix* init_matrix(T* A, U* B)
     return C;
 }
 
-ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap, data_t* mat_comm_t)
+ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap)
 {
     if (tap)
     {
-        return this->tap_mult(B, mat_comm_t);
+        return this->tap_mult(B);
     }
 
     // Check that communication package has been initialized
@@ -88,17 +88,13 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap, data_t* mat_comm_t)
     aligned_vector<char> send_buffer;
 
     // Communicate data and multiply
-    if (mat_comm_t) *mat_comm_t -= RAPtor_MPI_Wtime();
     comm->init_par_mat_comm(B, send_buffer);
-    if (mat_comm_t) *mat_comm_t += RAPtor_MPI_Wtime();
 
     // Fully Local Computation
     CSRMatrix* C_on_on = on_proc->mult((CSRMatrix*) B->on_proc);
     CSRMatrix* C_on_off = on_proc->mult((CSRMatrix*) B->off_proc);
 
-    if (mat_comm_t) *mat_comm_t -= RAPtor_MPI_Wtime();
     CSRMatrix* recv_mat = comm->complete_mat_comm();
-    if (mat_comm_t) *mat_comm_t += RAPtor_MPI_Wtime();
 
     mult_helper(B, C, recv_mat, C_on_on, C_on_off);
 
@@ -110,7 +106,7 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap, data_t* mat_comm_t)
     return C;
 }
 
-ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B, data_t* mat_comm_t)
+ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B)
 {
     // Check that communication package has been initialized
     if (tap_mat_comm == NULL)
@@ -125,17 +121,13 @@ ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B, data_t* mat_comm_t)
     aligned_vector<char> send_buffer;
 
     // Communicate data and multiply
-    if (mat_comm_t) *mat_comm_t -= RAPtor_MPI_Wtime();
     tap_mat_comm->init_par_mat_comm(B, send_buffer);
-    if (mat_comm_t) *mat_comm_t += RAPtor_MPI_Wtime();
 
     // Fully Local Computation
     CSRMatrix* C_on_on = on_proc->mult((CSRMatrix*) B->on_proc);
     CSRMatrix* C_on_off = on_proc->mult((CSRMatrix*) B->off_proc);
 
-    if (mat_comm_t) *mat_comm_t -= RAPtor_MPI_Wtime();
     CSRMatrix* recv_mat = tap_mat_comm->complete_mat_comm();
-    if (mat_comm_t) *mat_comm_t += RAPtor_MPI_Wtime();
 
     mult_helper(B, C, recv_mat, C_on_on, C_on_off);
     delete C_on_on;
@@ -146,27 +138,27 @@ ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B, data_t* mat_comm_t)
     return C;
 }
 
-ParCSRMatrix* ParCSRMatrix::mult_T(ParCSRMatrix* A, bool tap, data_t* mat_comm_t)
+ParCSRMatrix* ParCSRMatrix::mult_T(ParCSRMatrix* A, bool tap)
 {
     ParCSCMatrix* Acsc = A->to_ParCSC();
-    ParCSRMatrix* C = this->mult_T(Acsc, tap, mat_comm_t);
+    ParCSRMatrix* C = this->mult_T(Acsc, tap);
     delete Acsc;
     return C;
 }
 
-ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSRMatrix* A, data_t* mat_comm_t)
+ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSRMatrix* A)
 {
     ParCSCMatrix* Acsc = A->to_ParCSC();
-    ParCSRMatrix* C = this->tap_mult_T(Acsc, mat_comm_t);
+    ParCSRMatrix* C = this->tap_mult_T(Acsc);
     delete Acsc;
     return C;
 }
 
-ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap, data_t* mat_comm_t)
+ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap)
 {
     if (tap)
     {
-        return this->tap_mult_T(A, mat_comm_t);
+        return this->tap_mult_T(A);
     }
 
     int start, end;
@@ -183,17 +175,13 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap, data_t* mat_comm_t
     CSRMatrix* Ctmp = mult_T_partial(A);
     aligned_vector<char> send_buffer;
 
-    if (mat_comm_t) *mat_comm_t -= RAPtor_MPI_Wtime();
     A->comm->init_mat_comm_T(send_buffer, Ctmp->idx1, Ctmp->idx2, 
             Ctmp->vals);
-    if (mat_comm_t) *mat_comm_t += RAPtor_MPI_Wtime();
 
     CSRMatrix* C_on_on = on_proc->mult_T((CSCMatrix*) A->on_proc);
     CSRMatrix* C_off_on = off_proc->mult_T((CSCMatrix*) A->on_proc);
 
-    if (mat_comm_t) *mat_comm_t -= RAPtor_MPI_Wtime();
     CSRMatrix* recv_mat = A->comm->complete_mat_comm_T(A->on_proc_num_cols);
-    if (mat_comm_t) *mat_comm_t += RAPtor_MPI_Wtime();
 
     mult_T_combine(A, C, recv_mat, C_on_on, C_off_on);
 
@@ -207,7 +195,7 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap, data_t* mat_comm_t
     return C;
 }
 
-ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A, data_t* mat_comm_t)
+ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A)
 {
     int start, end;
     int row, col, idx;
@@ -224,17 +212,13 @@ ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A, data_t* mat_comm_t)
     CSRMatrix* Ctmp = mult_T_partial(A);
     aligned_vector<char> send_buffer;
 
-    if (mat_comm_t) *mat_comm_t -= RAPtor_MPI_Wtime();
     A->tap_mat_comm->init_mat_comm_T(send_buffer, Ctmp->idx1, Ctmp->idx2, 
             Ctmp->vals);
-    if (mat_comm_t) *mat_comm_t += RAPtor_MPI_Wtime();
 
     CSRMatrix* C_on_on = on_proc->mult_T((CSCMatrix*) A->on_proc);
     CSRMatrix* C_off_on = off_proc->mult_T((CSCMatrix*) A->on_proc);
 
-    if (mat_comm_t) *mat_comm_t -= RAPtor_MPI_Wtime();
     CSRMatrix* recv_mat = A->tap_mat_comm->complete_mat_comm_T(A->on_proc_num_cols);
-    if (mat_comm_t) *mat_comm_t += RAPtor_MPI_Wtime();
 
     mult_T_combine(A, C, recv_mat, C_on_on, C_off_on);
 
@@ -248,7 +232,7 @@ ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A, data_t* mat_comm_t)
     return C;
 }
 
-ParMatrix* ParMatrix::mult(ParCSRMatrix* B, bool tap, data_t* mat_comm_t)
+ParMatrix* ParMatrix::mult(ParCSRMatrix* B, bool tap)
 {
     int rank;
     RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);

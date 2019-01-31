@@ -10,9 +10,6 @@ if (WITH_HYPRE)
     add_executable(benchmark_rss benchmark_rss.cpp)
     target_link_libraries(benchmark_rss raptor ${MPI_LIBRARIES})
 
-    add_executable(profile_rss profile_rss.cpp)
-    target_link_libraries(profile_rss raptor ${MPI_LIBRARIES})
-     
     add_executable(benchmark_tap_amg benchmark_tap_amg.cpp)
     target_link_libraries(benchmark_tap_amg raptor ${MPI_LIBRARIES})
 
@@ -53,6 +50,9 @@ if (WITH_MPI)
 
     add_executable(profile_tap_sas profile_tap_sas.cpp)
     target_link_libraries(profile_tap_sas raptor ${MPI_LIBRARIES})
+
+    add_executable(profile_tap_amg profile_tap_amg.cpp)
+    target_link_libraries(profile_tap_amg raptor ${MPI_LIBRARIES})
 endif()
 
 

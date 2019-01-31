@@ -96,7 +96,7 @@ void TAPComm::split_off_proc_cols(const aligned_vector<int>& off_proc_column_map
 **************************************************************/
 void TAPComm::form_local_R_par_comm(const aligned_vector<int>& off_node_column_map,
         const aligned_vector<int>& off_node_col_to_proc,
-        aligned_vector<int>& orig_procs, data_t* comm_t)
+        aligned_vector<int>& orig_procs)
 {
     int local_rank;
     RAPtor_MPI_Comm_rank(topology->local_comm, &local_rank);
@@ -282,7 +282,6 @@ void TAPComm::form_local_R_par_comm(const aligned_vector<int>& off_node_column_m
         send_buffer.resize(2*local_R_recv->size_msgs);
     }
 
-    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
 
     ctr = 0;
     start_ctr = 0;
@@ -336,8 +335,6 @@ void TAPComm::form_local_R_par_comm(const aligned_vector<int>& off_node_column_m
                 RAPtor_MPI_STATUS_IGNORE);
     }
 
-    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
-
 }   
 
 /**************************************************************
@@ -355,8 +352,7 @@ void TAPComm::form_local_R_par_comm(const aligned_vector<int>& off_node_column_m
 ***** recv_procs : aligned_vector<int>&
 *****    Returns with all off_node process from which rank recvs
 **************************************************************/
-void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
-        data_t* comm_t)
+void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs)
 {
     int rank, num_procs;
     int local_rank;
@@ -495,7 +491,6 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
     global_recv->size_msgs = ctr;
     global_recv->finalize();
 
-    if (comm_t) *comm_t -= RAPtor_MPI_Wtime(); 
     aligned_vector<int> send_p(num_procs, 0);
     for (int i = 0; i < global_recv->num_msgs; i++)
     {
@@ -528,7 +523,6 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
     }
     RAPtor_MPI_Waitall(global_recv->num_msgs, global_recv->requests.data(),
             RAPtor_MPI_STATUSES_IGNORE);
-    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     // Gather all procs to which node must send 
     n_sends = sendbuf.size();
@@ -582,7 +576,6 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
     global_par_comm->send_data->requests.resize(global_par_comm->send_data->num_msgs);
 
 
-    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     for (int i = 0; i < global_par_comm->send_data->num_msgs; i++)
     {
         proc = global_par_comm->send_data->procs[i];
@@ -606,7 +599,6 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
                 global_par_comm->send_data->requests.data(), RAPtor_MPI_STATUSES_IGNORE);
 
     }
-    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
 
     for (int i = 0; i < global_recv->size_msgs; i++)
@@ -620,7 +612,6 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
     // origin for each recv idx
     ctr = 0;
     
-    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     for (int i = 0; i < global_recv->num_msgs; i++)
     {
         proc = global_recv->procs[i];
@@ -659,7 +650,6 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
                 global_recv->requests.data(),
                 RAPtor_MPI_STATUS_IGNORE);
     }
-    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 }
 
 
@@ -673,8 +663,7 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs,
 ***** Parameters
 ***** -------------
 **************************************************************/
-void TAPComm::form_local_S_par_comm(aligned_vector<int>& orig_procs,
-        data_t* comm_t)
+void TAPComm::form_local_S_par_comm(aligned_vector<int>& orig_procs)
 {
     int rank;
     int local_rank;
@@ -767,7 +756,6 @@ void TAPComm::form_local_S_par_comm(aligned_vector<int>& orig_procs,
     local_S_recv->finalize();
 
     // Send messages to local procs, informing of what data to send
-    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     for (int i = 0; i < local_S_recv->num_msgs; i++)
     {
         proc = local_S_recv->procs[i];
@@ -804,7 +792,6 @@ void TAPComm::form_local_S_par_comm(aligned_vector<int>& orig_procs,
                 local_S_recv->requests.data(),
                 RAPtor_MPI_STATUS_IGNORE);
     }
-    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 }
 
 
@@ -916,8 +903,7 @@ void TAPComm::adjust_send_indices(const int first_local_col)
 *****    First row local to rank 
 **************************************************************/
 void TAPComm::form_local_L_par_comm(const aligned_vector<int>& on_node_column_map,
-        const aligned_vector<int>& on_node_col_to_proc, const int first_local_col,
-        data_t* comm_t)
+        const aligned_vector<int>& on_node_col_to_proc, const int first_local_col)
 {
     int local_rank;
     RAPtor_MPI_Comm_rank(topology->local_comm, &local_rank);
@@ -961,7 +947,6 @@ void TAPComm::form_local_L_par_comm(const aligned_vector<int>& on_node_column_ma
             topology->local_comm);
     num_sends = recv_procs[local_rank];
 
-    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     for (int i = 0; i < local_L_recv->num_msgs; i++)
     {
         proc = local_L_recv->procs[i];
@@ -991,11 +976,10 @@ void TAPComm::form_local_L_par_comm(const aligned_vector<int>& on_node_column_ma
                 local_L_recv->requests.data(), 
                 RAPtor_MPI_STATUSES_IGNORE);
     }
-    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 }
 
 void TAPComm::form_simple_R_par_comm(aligned_vector<int>& off_node_column_map,
-        aligned_vector<int>& off_node_col_to_proc, data_t* comm_t)
+        aligned_vector<int>& off_node_col_to_proc)
 {
     int rank, local_rank;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
@@ -1055,15 +1039,12 @@ void TAPComm::form_simple_R_par_comm(aligned_vector<int>& off_node_column_map,
     RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, local_proc_sizes.data(), topology->PPN, RAPtor_MPI_INT,
             RAPtor_MPI_SUM, topology->local_comm);
 
-    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     local_R_par_comm->recv_data->send(off_node_column_map.data(), 6543, topology->local_comm);
     local_R_par_comm->send_data->probe(local_proc_sizes[local_rank], 6543, topology->local_comm);
     local_R_par_comm->recv_data->waitall();
-    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 }
 
-void TAPComm::form_simple_global_comm(aligned_vector<int>& off_proc_col_to_proc,
-        data_t* comm_t)
+void TAPComm::form_simple_global_comm(aligned_vector<int>& off_proc_col_to_proc)
 {
     int rank;
     int num_procs;
@@ -1085,10 +1066,8 @@ void TAPComm::form_simple_global_comm(aligned_vector<int>& off_proc_col_to_proc,
     NonContigData* global_recv = (NonContigData*) global_par_comm->recv_data;
 
     // Communicate processes on which each index originates
-    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     local_R_par_comm->communicate_T(off_proc_col_to_proc.data());
     aligned_vector<int>& int_buffer = local_R_par_comm->send_data->get_buffer<int>();
-    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
     {
@@ -1132,7 +1111,6 @@ void TAPComm::form_simple_global_comm(aligned_vector<int>& off_proc_col_to_proc,
         recv_sizes[global_recv->procs[i]] = global_recv->indptr[i+1] - global_recv->indptr[i];
     RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, recv_sizes.data(), num_procs, RAPtor_MPI_INT, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
 
-    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     for (int i = 0; i < global_recv->num_msgs; i++)
     {
         proc = global_recv->procs[i];
@@ -1143,7 +1121,6 @@ void TAPComm::form_simple_global_comm(aligned_vector<int>& off_proc_col_to_proc,
     }
     global_par_comm->send_data->probe(recv_sizes[rank], 6789, RAPtor_MPI_COMM_WORLD);
     global_par_comm->recv_data->waitall();
-    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 }
 
 void TAPComm::update_recv(const aligned_vector<int>& on_node_to_off_proc,

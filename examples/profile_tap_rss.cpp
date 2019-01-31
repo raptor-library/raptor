@@ -31,9 +31,6 @@ int main(int argc, char* argv[])
     ParVector x;
     ParVector b;
 
-    double t0, tfinal;
-    double comm_t, comm_mat_t;
-
     if (argc > 1)
     {
         system = atoi(argv[1]);
@@ -180,26 +177,18 @@ int main(int argc, char* argv[])
 
             // Time to create ParComm (standard) for A
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_t = 0;
+            init_profile();
             level->A->comm = new ParComm(level->A->partition, level->A->off_proc_column_map,
-                    level->A->on_proc_column_map, 9243, MPI_COMM_WORLD, &comm_t);
-            tfinal = (MPI_Wtime() - t0);
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor Form A ParComm Time: %e\n", t0);
-            MPI_Reduce(&comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor Form A ParComm Comm Time: %e\n", t0);
+                    level->A->on_proc_column_map, 9243, MPI_COMM_WORLD);
+            finalize_profile();
+            print_profile("Form A ParComm");
 
             // Time to create TAP communicators for A
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_t = 0;
-            level->A->init_tap_communicators(MPI_COMM_WORLD, &comm_t);
-            tfinal = (MPI_Wtime() - t0);
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor Form A TAPComm Time: %e\n", t0);
-            MPI_Reduce(&comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor Form A TAPComm Comm Time: %e\n", t0);
+            init_profile();
+            level->A->init_tap_communicators(MPI_COMM_WORLD);
+            finalize_profile();
+            print_profile("Form A TAPComm");
         }
 
         if (!level->A->comm) 
@@ -231,27 +220,18 @@ int main(int argc, char* argv[])
             // Standard Comm
             delete S;
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_t = 0;
-            S = level->A->strength(Classical, strong_threshold, false, 1, NULL, &comm_t);
-            tfinal = (MPI_Wtime() - t0);
-
-            // Print Strength Time
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor Form Strength Time: %e\n", t0);
-
+            init_profile();
+            S = level->A->strength(Classical, strong_threshold, false, 1);
+            finalize_profile();
+            print_profile("Form Strength");
 
             // Node-Aware Comm
             delete S;
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_t = 0;
-            S = level->A->strength(Classical, strong_threshold, true, 1, NULL, &comm_t);
-            tfinal = (MPI_Wtime() - t0);
-
-            // Print Strength Time
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor TAP Form Strength Time: %e\n", t0);
+            init_profile();
+            S = level->A->strength(Classical, strong_threshold, true, 1);
+            finalize_profile();
+            print_profile("Form TAP Strength");
         }
 
 
@@ -264,38 +244,17 @@ int main(int argc, char* argv[])
         {
             // Standard HMIS
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_t = 0;
-            split_hmis(S, states, off_proc_states, false, NULL, &comm_t);
-            tfinal = (MPI_Wtime() - t0);
-
-            // Print HMIS Time
-            MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor HMIS Time: %e\n", t0);
-
-            // Print HMIS Communication Time Corresponding to Max HMIS Time           
-            if (fabs(t0 - tfinal) > zero_tol)
-                comm_t = 0;
-            MPI_Reduce(&comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor HMIS Comm Time: %e\n", t0);
+            init_profile();
+            split_hmis(S, states, off_proc_states, false, NULL);
+            finalize_profile();
+            print_profile("HMIS");
 
             // Node-Aware HMIS
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_t = 0;
-            split_hmis(S, states, off_proc_states, true, NULL, &comm_t);
-            tfinal = (MPI_Wtime() - t0);
-
-            // Print HMIS Time
-            MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor TAP HMIS Time: %e\n", t0);
-
-            // Print HMIS Communication Time Corresponding to Max HMIS Time           
-            if (fabs(t0 - tfinal) > zero_tol)
-                comm_t = 0;
-            MPI_Reduce(&comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor TAP HMIS Comm Time: %e\n", t0);
-
+            init_profile();
+            split_hmis(S, states, off_proc_states, true, NULL);
+            finalize_profile();
+            print_profile("TAP HMIS");
         }
 
 
@@ -308,56 +267,18 @@ int main(int argc, char* argv[])
             // Standard Interpolation
             delete P;
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_t = 0;
-            comm_mat_t = 0;
-            P = extended_interpolation(level->A, S, states, off_proc_states, false, 1, NULL,
-                    &comm_t, &comm_mat_t);
-            tfinal = (MPI_Wtime() - t0);
-
-            // Print Interpolation Time
-            MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor Interpolation Time: %e\n", t0);
-
-            // Print Interpolation Communication Time Corresponding to Max
-            // Interpolation Time
-            if (fabs(t0 - tfinal) > zero_tol)
-            {
-                comm_t = 0;
-                comm_mat_t = 0;
-            }
-            MPI_Reduce(&comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor Interpolation Comm Time: %e\n", t0);
-            MPI_Reduce(&comm_mat_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor Interpolation MATComm Time: %e\n", t0);
-
+            init_profile();
+            P = extended_interpolation(level->A, S, states, off_proc_states, false, 1);
+            finalize_profile();
+            print_profile("Extended Interpolation");
 
             // Node-Aware Interpolation
             delete P;
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_t = 0;
-            comm_mat_t = 0;
-            P = extended_interpolation(level->A, S, states, off_proc_states, true, 1, NULL,
-                    &comm_t, &comm_mat_t);
-            tfinal = (MPI_Wtime() - t0);
-
-            // Print Interpolation Time
-            MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor TAP Interpolation Time: %e\n", t0);
-
-            // Print Interpolation Communication Time Corresponding to Max
-            // Interpolation Time
-            if (fabs(t0 - tfinal) > zero_tol)
-            {
-                comm_t = 0;
-                comm_mat_t = 0;
-            }
-            MPI_Reduce(&comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor TAP Interpolation Comm Time: %e\n", t0);
-            MPI_Reduce(&comm_mat_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor TAP Interpolation MATComm Time: %e\n", t0);
-
+            init_profile();
+            P = extended_interpolation(level->A, S, states, off_proc_states, true, 1);
+            finalize_profile();
+            print_profile("TAP Extended Interpolation");
         }
 
 
@@ -372,21 +293,18 @@ int main(int argc, char* argv[])
 
             // Time to create ParComm (standard) for P
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
+            init_profile();
             P->comm = new ParComm(P->partition, P->off_proc_column_map,
                     P->on_proc_column_map);
-            tfinal = (MPI_Wtime() - t0);
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor Form P ParComm Time: %e\n", t0);
+            finalize_profile();
+            print_profile("Form P ParComm");
 
             // Time to create TAP communicators for P
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
+            init_profile();
             P->init_tap_communicators(MPI_COMM_WORLD);
-            tfinal = (MPI_Wtime() - t0);
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor Form P TAPComm Time: %e\n", t0);
-
+            finalize_profile();
+            print_profile("Form P TAPComm");
         }
 
         /*********************************
@@ -399,16 +317,10 @@ int main(int argc, char* argv[])
             AP = level->A->mult(P, false);
             delete AP;
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_mat_t = 0;
-            AP = level->A->mult(P, false, &comm_mat_t);
-            tfinal = (MPI_Wtime() - t0);
-            MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor AP Time: %e\n", t0);
-            if (fabs(t0 - tfinal) > zero_tol)
-                comm_mat_t = 0;
-            MPI_Reduce(&comm_mat_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor AP Comm Time: %e\n", t0);
+            init_profile();
+            AP = level->A->mult(P, false);
+            finalize_profile();
+            print_profile("AP");
             delete AP;
 
             
@@ -416,16 +328,10 @@ int main(int argc, char* argv[])
             AP = level->A->mult(P, true);
             delete AP;
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_mat_t = 0;
-            AP = level->A->mult(P, true, &comm_mat_t);
-            tfinal = (MPI_Wtime() - t0);
-            MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor TAP AP Time: %e\n", t0);
-            if (fabs(t0 - tfinal) > zero_tol)
-                comm_mat_t = 0;
-            MPI_Reduce(&comm_mat_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor TAP AP MATComm Time: %e\n", t0);
+            init_profile();
+            AP = level->A->mult(P, true);
+            finalize_profile();
+            print_profile("TAP AP");
             delete AP;
         }
 
@@ -437,35 +343,23 @@ int main(int argc, char* argv[])
         for (int test = 0; test < n_tests; test++)
         {
             // Standard PTAP
-            Ac = AP->mult_T(P, false, &comm_mat_t);
+            Ac = AP->mult_T(P, false);
             delete Ac;
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_mat_t = 0;
-            Ac = AP->mult_T(P, false, &comm_mat_t);
-            tfinal = (MPI_Wtime() - t0);
-            MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor PT(AP) Time: %e\n", t0);
-            if (fabs(t0 - tfinal) > zero_tol)
-                comm_mat_t = 0;
-            MPI_Reduce(&comm_mat_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor PT(AP) Comm Time: %e\n", t0);
+            init_profile();
+            Ac = AP->mult_T(P, false);
+            finalize_profile();
+            print_profile("PTAP");
             delete Ac;
 
             // Node-Aware PTAP
-            Ac = AP->mult_T(P, true, &comm_mat_t);
+            Ac = AP->mult_T(P, true);
             delete Ac;
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_mat_t = 0;
-            Ac = AP->mult_T(P, true, &comm_mat_t);
-            tfinal = (MPI_Wtime() - t0);
-            MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor TAP PT(AP) Time: %e\n", t0);
-            if (fabs(t0 - tfinal) > zero_tol)
-                comm_mat_t = 0;
-            MPI_Reduce(&comm_mat_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor TAP PT(AP) MATComm Time: %e\n", t0);
+            init_profile();
+            Ac = AP->mult_T(P, true);
+            finalize_profile();
+            print_profile("TAP PTAP");
             delete Ac;
         }
 
@@ -478,39 +372,27 @@ int main(int argc, char* argv[])
          *********************************/
         for (int test = 0; test < n_tests; test++)
         {
-            sor(level->A, level->x, level->b, level->tmp, 1, 3.0/4, false, &comm_t);
+            sor(level->A, level->x, level->b, level->tmp, 1, 3.0/4, false);
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_t = 0;
+            init_profile();
             for (int iter = 0; iter < n_iter; iter++)
             {
-                sor(level->A, level->x, level->b, level->tmp, 1, 3.0/4, false, &comm_t);
+                sor(level->A, level->x, level->b, level->tmp, 1, 3.0/4, false);
             }
-            tfinal = (MPI_Wtime() - t0) / n_iter;
-            comm_t /= n_iter;
-            MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor Relax Time: %e\n", t0);
-            if (fabs(t0 - tfinal) > zero_tol) comm_t = 0;
-            MPI_Reduce(&comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor Relax Comm Time: %e\n", t0);
+            finalize_profile();
+            average_profile(n_iter);
+            print_profile("SOR");
 
-
-
-            sor(level->A, level->x, level->b, level->tmp, 1, 3.0/4, true, &comm_t);
+            sor(level->A, level->x, level->b, level->tmp, 1, 3.0/4, true);
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_t = 0;
+            init_profile();
             for (int iter = 0; iter < n_iter; iter++)
             {
-                sor(level->A, level->x, level->b, level->tmp, 1, 3.0/4, true, &comm_t);
+                sor(level->A, level->x, level->b, level->tmp, 1, 3.0/4, true);
             }
-            tfinal = (MPI_Wtime() - t0) / n_iter;
-            comm_t /= n_iter;
-            MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor TAP Relax Time: %e\n", t0);
-            if (fabs(t0 - tfinal) > zero_tol) comm_t = 0;
-            MPI_Reduce(&comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor TAP Relax Comm Time: %e\n", t0);
+            finalize_profile();
+            average_profile(n_iter);
+            print_profile("TAP SOR");
         }
 
         /*********************************
@@ -518,39 +400,27 @@ int main(int argc, char* argv[])
          *********************************/
         for (int test = 0; test < n_tests; test++)
         {
-            level->A->residual(level->x, level->b, level->tmp, false, &comm_t);
+            level->A->residual(level->x, level->b, level->tmp, false);
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_t = 0;
+            init_profile();
             for (int iter = 0; iter < n_iter; iter++)
             {
-                level->A->residual(level->x, level->b, level->tmp, false, &comm_t);
+                level->A->residual(level->x, level->b, level->tmp, false);
             }
-            tfinal = (MPI_Wtime() - t0) / n_iter;
-            comm_t /= n_iter;
-            MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor Residual Time: %e\n", t0);
-            if (fabs(t0 - tfinal) > zero_tol) comm_t = 0;
-            MPI_Reduce(&comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor Residual Comm Time: %e\n", t0);
+            finalize_profile();
+            average_profile(n_iter);
+            print_profile("Residual");
 
-
-
-            level->A->residual(level->x, level->b, level->tmp, true, &comm_t);
+            level->A->residual(level->x, level->b, level->tmp, true);
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_t = 0;
+            init_profile();
             for (int iter = 0; iter < n_iter; iter++)
             {
-                level->A->residual(level->x, level->b, level->tmp, true, &comm_t);
+                level->A->residual(level->x, level->b, level->tmp, true);
             }
-            tfinal = (MPI_Wtime() - t0) / n_iter;
-            comm_t /= n_iter;
-            MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor TAP Residual Time: %e\n", t0);
-            if (fabs(t0 - tfinal) > zero_tol) comm_t = 0;
-            MPI_Reduce(&comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor TAP Residual Comm Time: %e\n", t0);
+            finalize_profile();
+            average_profile(n_iter);
+            print_profile("TAP Residual");
         }
 
         /*********************************
@@ -558,39 +428,27 @@ int main(int argc, char* argv[])
          *********************************/
         for (int test = 0; test < n_tests; test++)
         {
-            level->P->mult_T(level->tmp, ml->levels[i+1]->b, false, &comm_t);
+            level->P->mult_T(level->tmp, ml->levels[i+1]->b, false);
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_t = 0;
+            init_profile();
             for (int iter = 0; iter < n_iter; iter++)
             {
-                level->P->mult_T(level->tmp, ml->levels[i+1]->b, false, &comm_t);
+                level->P->mult_T(level->tmp, ml->levels[i+1]->b, false);
             }
-            tfinal = (MPI_Wtime() - t0) / n_iter;
-            comm_t /= n_iter;
-            MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor P^T*r Time: %e\n", t0);
-            if (fabs(t0 - tfinal) > zero_tol) comm_t = 0;
-            MPI_Reduce(&comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor P^T*r Comm Time: %e\n", t0);
+            finalize_profile();
+            average_profile(n_iter);
+            print_profile("P^Tr");
 
-
-
-            level->P->mult_T(level->tmp, ml->levels[i+1]->b, true, &comm_t);
+            level->P->mult_T(level->tmp, ml->levels[i+1]->b, true);
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_t = 0;
+            init_profile();
             for (int iter = 0; iter < n_iter; iter++)
             {
-                level->P->mult_T(level->tmp, ml->levels[i+1]->b, true, &comm_t);
+                level->P->mult_T(level->tmp, ml->levels[i+1]->b, true);
             }
-            tfinal = (MPI_Wtime() - t0) / n_iter;
-            comm_t /= n_iter;
-            MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor TAP P^T*r Time: %e\n", t0);
-            if (fabs(t0 - tfinal) > zero_tol) comm_t = 0;
-            MPI_Reduce(&comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor TAP P^T*r Comm Time: %e\n", t0);
+            finalize_profile();
+            average_profile(n_iter);
+            print_profile("TAP P^Tr");
         }
 
         /*********************************
@@ -598,39 +456,27 @@ int main(int argc, char* argv[])
          *********************************/
         for (int test = 0; test < n_tests; test++)
         {
-            level->P->mult_append(ml->levels[i+1]->x, level->x, false, &comm_t);
+            level->P->mult_append(ml->levels[i+1]->x, level->x, false);
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_t = 0;
+            init_profile();
             for (int iter = 0; iter < n_iter; iter++)
             {
-                level->P->mult_append(ml->levels[i+1]->x, level->x, false, &comm_t);
+                level->P->mult_append(ml->levels[i+1]->x, level->x, false);
             }
-            tfinal = (MPI_Wtime() - t0) / n_iter;
-            comm_t /= n_iter;
-            MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor x += P*e Time: %e\n", t0);
-            if (fabs(t0 - tfinal) > zero_tol) comm_t = 0;
-            MPI_Reduce(&comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor x += P*e Comm Time: %e\n", t0);
+            finalize_profile();
+            average_profile(n_iter);
+            print_profile("x+=Pe");
 
-
-
-            level->P->mult_append(ml->levels[i+1]->x, level->x, true, &comm_t);
+            level->P->mult_append(ml->levels[i+1]->x, level->x, true);
             MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            comm_t = 0;
+            init_profile();
             for (int iter = 0; iter < n_iter; iter++)
             {
-                level->P->mult_append(ml->levels[i+1]->x, level->x, true, &comm_t);
+                level->P->mult_append(ml->levels[i+1]->x, level->x, true);
             }
-            tfinal = (MPI_Wtime() - t0) / n_iter;
-            comm_t /= n_iter;
-            MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor TAP x += P*e Time: %e\n", t0);
-            if (fabs(t0 - tfinal) > zero_tol) comm_t = 0;
-            MPI_Reduce(&comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("RAPtor TAP x += P*e Comm Time: %e\n", t0);
+            finalize_profile();
+            average_profile(n_iter);
+            print_profile("TAP x+=Pe");
         }
     }
     delete ml;

@@ -8,10 +8,18 @@
 
 // Global Timing Variables
 extern bool profile;
-extern double total_t;
 extern double collective_t;
 extern double p2p_t;
 extern double* current_t;
+extern double mat_t;
+extern double vec_t;
+extern double total_t;
+
+extern void init_profile();
+extern void reset_profile();
+extern void finalize_profile();
+extern void print_profile(const char* string);
+extern void average_profile(int n_iter);
 
 #define RAPtor_MPI_COMM_WORLD        MPI_COMM_WORLD
 #define RAPtor_MPI_COMM_NULL         MPI_COMM_NULL
@@ -108,7 +116,7 @@ extern int RAPtor_MPI_Pack_size(int incount, RAPtor_MPI_Datatype datatype,
         RAPtor_MPI_Comm comm, int *size);
 
 // Timing Data
-extern int RAPtor_MPI_Wtime();
+extern double RAPtor_MPI_Wtime();
 
 // Creating Communicators
 extern int RAPtor_MPI_Comm_free(RAPtor_MPI_Comm *comm);
