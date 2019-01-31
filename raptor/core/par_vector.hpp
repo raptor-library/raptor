@@ -8,7 +8,7 @@
 #include <mpi.h>
 #include <math.h>
 
-#include "types.hpp"
+#include "mpi_types.hpp"
 #include "vector.hpp"
 
 /**************************************************************

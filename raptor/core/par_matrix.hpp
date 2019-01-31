@@ -10,7 +10,7 @@
 #include "matrix.hpp"
 #include "par_vector.hpp"
 #include "comm_pkg.hpp"
-#include "types.hpp"
+#include "mpi_types.hpp"
 #include "partition.hpp"
 
 // Making Par Matrix an abstract Class

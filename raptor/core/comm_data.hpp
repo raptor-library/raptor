@@ -6,7 +6,7 @@
 #define WITH_RAPtor_MPI 1
 
 #include <mpi.h>
-#include "types.hpp"
+#include "mpi_types.hpp"
 #include "vector.hpp"
 #include "matrix.hpp"
 #include "utilities.hpp"

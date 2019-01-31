@@ -4,6 +4,7 @@ double collective_t;
 double p2p_t;
 double* current_t;
 
+#include <mpi.h>
 #include "mpi_types.hpp"
 
 int RAPtor_MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, 

@@ -36,9 +36,6 @@ using namespace std;
 #define Unassigned -1
 #define NoNeighbors -2
 
-#ifdef USING_MPI
-#include "mpi_types.hpp"
-#endif
 
 // Global Timing Variables
 struct PairData 

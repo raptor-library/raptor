@@ -1,5 +1,5 @@
 add_executable(test_strength test_strength.cpp)
-target_link_libraries(test_strength raptor googletest pthread )
+target_link_libraries(test_strength raptor ${MPI_LIBRARIES} googletest pthread )
 add_test(StrengthTest ./test_strength)
 
 if (WITH_MPI)
