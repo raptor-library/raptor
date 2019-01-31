@@ -8,11 +8,11 @@ void displ_func(const mfem::Vector& x, mfem::Vector& u);
 raptor::ParCSRMatrix* mfem_dg_elasticity(raptor::ParVector& x_raptor, 
         raptor::ParVector& b_raptor, int* num_variables,
         const char* mesh_file, int order, int seq_n_refines, 
-        int par_n_refines, MPI_Comm comm)
+        int par_n_refines, RAPtor_MPI_Comm comm)
 {
     int rank, num_procs;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &num_procs);
+    RAPtor_MPI_Comm_rank(comm, &rank);
+    RAPtor_MPI_Comm_size(comm, &num_procs);
 
     int mesh_dim;
     int par_mesh_n;

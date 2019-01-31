@@ -2,11 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
-#include "core/types.hpp"
-#include "core/matrix.hpp"
-#include "gallery/laplacian27pt.hpp"
-#include "gallery/stencil.hpp"
-#include "gallery/matrix_IO.hpp"
+#include "raptor.hpp"
 
 using namespace raptor;
 

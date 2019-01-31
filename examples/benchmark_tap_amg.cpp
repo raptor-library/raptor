@@ -175,6 +175,11 @@ int main(int argc, char* argv[])
         x.set_const_value(0.0);
     }
 
+long nnz;
+long local_nnz = A->local_nnz;
+MPI_Reduce(&local_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+if (rank == 0) printf("A global n %d, nnz %lu\n", A->global_num_rows, nnz);
+
     // Create Hypre system
     HYPRE_IJMatrix A_h_ij = convert(A);
     HYPRE_IJVector x_h_ij = convert(x);

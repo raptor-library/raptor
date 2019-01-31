@@ -63,11 +63,11 @@ ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, bool tap_com
                 scaled_A->tap_mat_comm = new TAPComm(scaled_A->partition, 
                         scaled_A->off_proc_column_map,
                         scaled_A->on_proc_column_map, 
-                        false, MPI_COMM_WORLD, comm_t);
+                        false, RAPtor_MPI_COMM_WORLD, comm_t);
             }
-            if (comm_mat_t) *comm_mat_t -= MPI_Wtime();
+            if (comm_mat_t) *comm_mat_t -= RAPtor_MPI_Wtime();
             AP_tmp = scaled_A->tap_mult(P);
-            if (comm_mat_t) *comm_mat_t += MPI_Wtime();
+            if (comm_mat_t) *comm_mat_t += RAPtor_MPI_Wtime();
         }
         else
         {
@@ -76,12 +76,12 @@ ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, bool tap_com
                 scaled_A->comm = new ParComm(scaled_A->partition, 
                         scaled_A->off_proc_column_map,
                         scaled_A->on_proc_column_map, 
-                        9283, MPI_COMM_WORLD, comm_t);
+                        9283, RAPtor_MPI_COMM_WORLD, comm_t);
             }
 
-            if (comm_mat_t) *comm_mat_t -= MPI_Wtime();
+            if (comm_mat_t) *comm_mat_t -= RAPtor_MPI_Wtime();
             AP_tmp = scaled_A->mult(P);
-            if (comm_mat_t) *comm_mat_t += MPI_Wtime();
+            if (comm_mat_t) *comm_mat_t += RAPtor_MPI_Wtime();
         }
 
         P_tmp = P->subtract(AP_tmp);
@@ -98,7 +98,7 @@ ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, bool tap_com
     else
     {
         P->comm = new ParComm(P->partition, P->off_proc_column_map, 
-                P->on_proc_column_map, 9283, MPI_COMM_WORLD, comm_t);
+                P->on_proc_column_map, 9283, RAPtor_MPI_COMM_WORLD, comm_t);
     }
 
     delete scaled_A;

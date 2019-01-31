@@ -3,12 +3,7 @@
 
 
 #include "gtest/gtest.h"
-#include "mpi.h"
-#include "gallery/stencil.hpp"
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "gallery/par_matrix_IO.hpp"
-#include "ruge_stuben/par_cf_splitting.hpp"
+#include "raptor.hpp"
 #include <iostream>
 #include <fstream>
 

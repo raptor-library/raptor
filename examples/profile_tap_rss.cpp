@@ -153,7 +153,7 @@ int main(int argc, char* argv[])
     }
     ParVector tmp(A->global_num_rows, A->local_num_rows);
 
-    int n_tests = 2;
+    int n_tests = 4;
     int n_iter = 100;
 
     ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, SOR);
@@ -200,9 +200,27 @@ int main(int argc, char* argv[])
             if (rank == 0) printf("RAPtor Form A TAPComm Time: %e\n", t0);
             MPI_Reduce(&comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
             if (rank == 0) printf("RAPtor Form A TAPComm Comm Time: %e\n", t0);
-
         }
 
+        if (!level->A->comm) 
+            level->A->comm = new ParComm(level->A->partition, level->A->off_proc_column_map,
+                    level->A->on_proc_column_map);
+        if (!level->A->tap_comm) 
+            level->A->tap_comm = new TAPComm(level->A->partition, level->A->off_proc_column_map,
+                    level->A->on_proc_column_map);
+        if (!level->A->tap_mat_comm) 
+            level->A->tap_mat_comm = new TAPComm(level->A->partition, level->A->off_proc_column_map,
+                    level->A->on_proc_column_map, false);
+
+        if (!level->P->comm) 
+            level->P->comm = new ParComm(level->P->partition, level->P->off_proc_column_map,
+                    level->P->on_proc_column_map);
+        if (!level->P->tap_comm) 
+            level->P->tap_comm = new TAPComm(level->P->partition, level->P->off_proc_column_map,
+                    level->P->on_proc_column_map);
+        if (!level->P->tap_mat_comm) 
+            level->P->tap_mat_comm = new TAPComm(level->P->partition, level->P->off_proc_column_map,
+                    level->P->on_proc_column_map, false);
 
         /*********************************
          * Profile Time to Form Strength
@@ -371,7 +389,6 @@ int main(int argc, char* argv[])
 
         }
 
-
         /*********************************
          * Profile Time to AP
          *********************************/
@@ -459,17 +476,18 @@ int main(int argc, char* argv[])
         /*********************************
          * Profile Time to Relax
          *********************************/
-        sor(level->A, level->x, level->b, level->tmp, 1, 3.0/4);        
         for (int test = 0; test < n_tests; test++)
         {
+            sor(level->A, level->x, level->b, level->tmp, 1, 3.0/4, false, &comm_t);
             MPI_Barrier(MPI_COMM_WORLD);
             t0 = MPI_Wtime();
+            comm_t = 0;
             for (int iter = 0; iter < n_iter; iter++)
             {
-                comm_t = 0;
                 sor(level->A, level->x, level->b, level->tmp, 1, 3.0/4, false, &comm_t);
             }
             tfinal = (MPI_Wtime() - t0) / n_iter;
+            comm_t /= n_iter;
             MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
             if (rank == 0) printf("RAPtor Relax Time: %e\n", t0);
             if (fabs(t0 - tfinal) > zero_tol) comm_t = 0;
@@ -477,14 +495,17 @@ int main(int argc, char* argv[])
             if (rank == 0) printf("RAPtor Relax Comm Time: %e\n", t0);
 
 
+
+            sor(level->A, level->x, level->b, level->tmp, 1, 3.0/4, true, &comm_t);
             MPI_Barrier(MPI_COMM_WORLD);
             t0 = MPI_Wtime();
+            comm_t = 0;
             for (int iter = 0; iter < n_iter; iter++)
             {
-                comm_t = 0;
                 sor(level->A, level->x, level->b, level->tmp, 1, 3.0/4, true, &comm_t);
             }
             tfinal = (MPI_Wtime() - t0) / n_iter;
+            comm_t /= n_iter;
             MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
             if (rank == 0) printf("RAPtor TAP Relax Time: %e\n", t0);
             if (fabs(t0 - tfinal) > zero_tol) comm_t = 0;
@@ -495,31 +516,36 @@ int main(int argc, char* argv[])
         /*********************************
          * Profile Residual Time
          *********************************/
-        level->A->residual(level->x, level->b, level->tmp);
         for (int test = 0; test < n_tests; test++)
         {
+            level->A->residual(level->x, level->b, level->tmp, false, &comm_t);
             MPI_Barrier(MPI_COMM_WORLD);
             t0 = MPI_Wtime();
+            comm_t = 0;
             for (int iter = 0; iter < n_iter; iter++)
             {
-                comm_t = 0;
                 level->A->residual(level->x, level->b, level->tmp, false, &comm_t);
             }
             tfinal = (MPI_Wtime() - t0) / n_iter;
+            comm_t /= n_iter;
             MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
             if (rank == 0) printf("RAPtor Residual Time: %e\n", t0);
             if (fabs(t0 - tfinal) > zero_tol) comm_t = 0;
             MPI_Reduce(&comm_t, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
             if (rank == 0) printf("RAPtor Residual Comm Time: %e\n", t0);
 
+
+
+            level->A->residual(level->x, level->b, level->tmp, true, &comm_t);
             MPI_Barrier(MPI_COMM_WORLD);
             t0 = MPI_Wtime();
+            comm_t = 0;
             for (int iter = 0; iter < n_iter; iter++)
             {
-                comm_t = 0;
                 level->A->residual(level->x, level->b, level->tmp, true, &comm_t);
             }
             tfinal = (MPI_Wtime() - t0) / n_iter;
+            comm_t /= n_iter;
             MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
             if (rank == 0) printf("RAPtor TAP Residual Time: %e\n", t0);
             if (fabs(t0 - tfinal) > zero_tol) comm_t = 0;
@@ -530,17 +556,18 @@ int main(int argc, char* argv[])
         /*********************************
          * Profile P^Tr Time
          *********************************/
-        level->P->mult_T(level->tmp, ml->levels[i+1]->b);
         for (int test = 0; test < n_tests; test++)
         {
+            level->P->mult_T(level->tmp, ml->levels[i+1]->b, false, &comm_t);
             MPI_Barrier(MPI_COMM_WORLD);
             t0 = MPI_Wtime();
+            comm_t = 0;
             for (int iter = 0; iter < n_iter; iter++)
             {
-                comm_t = 0;
                 level->P->mult_T(level->tmp, ml->levels[i+1]->b, false, &comm_t);
             }
             tfinal = (MPI_Wtime() - t0) / n_iter;
+            comm_t /= n_iter;
             MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
             if (rank == 0) printf("RAPtor P^T*r Time: %e\n", t0);
             if (fabs(t0 - tfinal) > zero_tol) comm_t = 0;
@@ -548,14 +575,17 @@ int main(int argc, char* argv[])
             if (rank == 0) printf("RAPtor P^T*r Comm Time: %e\n", t0);
 
 
+
+            level->P->mult_T(level->tmp, ml->levels[i+1]->b, true, &comm_t);
             MPI_Barrier(MPI_COMM_WORLD);
             t0 = MPI_Wtime();
+            comm_t = 0;
             for (int iter = 0; iter < n_iter; iter++)
             {
-                comm_t = 0;
                 level->P->mult_T(level->tmp, ml->levels[i+1]->b, true, &comm_t);
             }
             tfinal = (MPI_Wtime() - t0) / n_iter;
+            comm_t /= n_iter;
             MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
             if (rank == 0) printf("RAPtor TAP P^T*r Time: %e\n", t0);
             if (fabs(t0 - tfinal) > zero_tol) comm_t = 0;
@@ -566,17 +596,18 @@ int main(int argc, char* argv[])
         /*********************************
          * Profile x += Pe time
          *********************************/
-        level->P->mult_append(ml->levels[i+1]->x, level->x);
         for (int test = 0; test < n_tests; test++)
         {
+            level->P->mult_append(ml->levels[i+1]->x, level->x, false, &comm_t);
             MPI_Barrier(MPI_COMM_WORLD);
             t0 = MPI_Wtime();
+            comm_t = 0;
             for (int iter = 0; iter < n_iter; iter++)
             {
-                comm_t = 0;
                 level->P->mult_append(ml->levels[i+1]->x, level->x, false, &comm_t);
             }
             tfinal = (MPI_Wtime() - t0) / n_iter;
+            comm_t /= n_iter;
             MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
             if (rank == 0) printf("RAPtor x += P*e Time: %e\n", t0);
             if (fabs(t0 - tfinal) > zero_tol) comm_t = 0;
@@ -584,14 +615,17 @@ int main(int argc, char* argv[])
             if (rank == 0) printf("RAPtor x += P*e Comm Time: %e\n", t0);
 
 
+
+            level->P->mult_append(ml->levels[i+1]->x, level->x, true, &comm_t);
             MPI_Barrier(MPI_COMM_WORLD);
             t0 = MPI_Wtime();
+            comm_t = 0;
             for (int iter = 0; iter < n_iter; iter++)
             {
-                comm_t = 0;
                 level->P->mult_append(ml->levels[i+1]->x, level->x, true, &comm_t);
             }
             tfinal = (MPI_Wtime() - t0) / n_iter;
+            comm_t /= n_iter;
             MPI_Allreduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
             if (rank == 0) printf("RAPtor TAP x += P*e Time: %e\n", t0);
             if (fabs(t0 - tfinal) > zero_tol) comm_t = 0;

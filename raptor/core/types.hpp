@@ -24,8 +24,8 @@
 using namespace std;
 
 #define zero_tol 1e-16
-#define MPI_INDEX_T MPI_INT
-#define MPI_DATA_T MPI_DOUBLE
+#define RAPtor_MPI_INDEX_T MPI_INT
+#define RAPtor_MPI_DATA_T MPI_DOUBLE
 
 // Defines for CF splitting and aggregation
 #define TmpSelection 4
@@ -36,11 +36,11 @@ using namespace std;
 #define Unassigned -1
 #define NoNeighbors -2
 
-
-#ifdef WITH_MPI
-#include <mpi.h>
+#ifdef USING_MPI
+#include "mpi_types.hpp"
 #endif
 
+// Global Timing Variables
 struct PairData 
 {
     double val;
@@ -184,8 +184,6 @@ namespace raptor
             return b;
         }
     }
-
-
 }
 
 #endif

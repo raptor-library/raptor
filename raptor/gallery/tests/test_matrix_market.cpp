@@ -2,12 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
-#include <stdlib.h>
-
-#include "core/types.hpp"
-#include "core/matrix.hpp"
-#include "gallery/matrix_market.hpp"
-#include "gallery/matrix_IO.hpp"
+#include "raptor.hpp"
 #include "tests/compare.hpp"
 
 using namespace raptor;

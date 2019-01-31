@@ -2,9 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
-#include "core/types.hpp"
-#include "core/vector.hpp"
-#include "core/par_vector.hpp"
+#include "raptor.hpp"
 
 using namespace raptor;
 

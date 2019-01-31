@@ -2,7 +2,6 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "raptor.hpp"
-#include "util/linalg/external/ptscotch.hpp"
 
 using namespace raptor;
 

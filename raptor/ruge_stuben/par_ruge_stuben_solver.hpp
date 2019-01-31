@@ -81,7 +81,7 @@ namespace raptor
             double* PTAP_mat_time = NULL;
             if (setup_times) 
             {
-                setup_times[0][level_ctr] -= MPI_Wtime();
+                setup_times[0][level_ctr] -= RAPtor_MPI_Wtime();
                 total_time = &setup_comm_times[0][level_ctr];
                 strength_time = &setup_comm_times[1][level_ctr];
                 coarsen_time = &setup_comm_times[2][level_ctr];
@@ -106,13 +106,13 @@ namespace raptor
             aligned_vector<int> off_proc_states;
 
             // Form strength of connection
-            if (setup_times) setup_times[1][level_ctr] -= MPI_Wtime();
+            if (setup_times) setup_times[1][level_ctr] -= RAPtor_MPI_Wtime();
             S = A->strength(strength_type, strong_threshold, tap_level, 
                     num_variables, variables, strength_time);
-            if (setup_times) setup_times[1][level_ctr] += MPI_Wtime();
+            if (setup_times) setup_times[1][level_ctr] += RAPtor_MPI_Wtime();
 
             // Form CF Splitting
-            if (setup_times) setup_times[2][level_ctr] -= MPI_Wtime();
+            if (setup_times) setup_times[2][level_ctr] -= RAPtor_MPI_Wtime();
 
             switch (coarsen_type)
             {
@@ -144,10 +144,10 @@ namespace raptor
                             weights, coarsen_time);
                     break;
             }
-            if (setup_times) setup_times[2][level_ctr] += MPI_Wtime();
+            if (setup_times) setup_times[2][level_ctr] += RAPtor_MPI_Wtime();
 
             // Form modified classical interpolation
-            if (setup_times) setup_times[3][level_ctr] -= MPI_Wtime();
+            if (setup_times) setup_times[3][level_ctr] -= RAPtor_MPI_Wtime();
             switch (interp_type)
             {
                 case Direct:
@@ -165,7 +165,7 @@ namespace raptor
                             interp_mat_time);
                     break;
             }
-            if (setup_times) setup_times[3][level_ctr] += MPI_Wtime();
+            if (setup_times) setup_times[3][level_ctr] += RAPtor_MPI_Wtime();
             levels[level_ctr]->P = P;
 
             if (num_variables > 1)
@@ -184,13 +184,13 @@ namespace raptor
             levels.emplace_back(new ParLevel());
 
 
-            if (setup_times) setup_times[4][level_ctr] -= MPI_Wtime();
+            if (setup_times) setup_times[4][level_ctr] -= RAPtor_MPI_Wtime();
             AP = A->mult(levels[level_ctr]->P, tap_level, AP_mat_time);
-            if (setup_times) setup_times[4][level_ctr] += MPI_Wtime();
+            if (setup_times) setup_times[4][level_ctr] += RAPtor_MPI_Wtime();
 
-            if (setup_times) setup_times[5][level_ctr] -= MPI_Wtime();
+            if (setup_times) setup_times[5][level_ctr] -= RAPtor_MPI_Wtime();
             A = AP->mult_T(P, tap_level, PTAP_mat_time);
-            if (setup_times) setup_times[5][level_ctr] += MPI_Wtime();
+            if (setup_times) setup_times[5][level_ctr] += RAPtor_MPI_Wtime();
 
             A->sort();
             A->on_proc->move_diag();
@@ -216,7 +216,7 @@ namespace raptor
 
             if (setup_times) 
             {
-                setup_times[0][level_ctr-1] += MPI_Wtime();
+                setup_times[0][level_ctr-1] += RAPtor_MPI_Wtime();
                 *total_time += (*strength_time + *coarsen_time + *interp_time + 
                         *AP_time + *PTAP_time);
                 *total_mat_time += (*strength_mat_time + *coarsen_mat_time + 
@@ -229,83 +229,83 @@ namespace raptor
             if (setup_times == NULL) return;
 
             int rank;
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
             double max_t;
             for (int i = 0; i < num_levels; i++)
             {
                 if (rank == 0) printf("Level %d\n", i);
 
-                MPI_Reduce(&setup_times[0][i], &max_t, 1, MPI_DOUBLE, 
-                        MPI_MAX, 0, MPI_COMM_WORLD);
+                RAPtor_MPI_Reduce(&setup_times[0][i], &max_t, 1, RAPtor_MPI_DOUBLE, 
+                        RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
                 if (rank == 0 && max_t > 0) printf("Setup Time: %e\n", max_t);
 
-                MPI_Reduce(&setup_comm_times[0][i], &max_t, 1, MPI_DOUBLE, 
-                        MPI_MAX, 0, MPI_COMM_WORLD);
+                RAPtor_MPI_Reduce(&setup_comm_times[0][i], &max_t, 1, RAPtor_MPI_DOUBLE, 
+                        RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
                 if (rank == 0 && max_t > 0) printf("Setup Vec Comm Time: %e\n", max_t);
 
-                MPI_Reduce(&setup_mat_comm_times[0][i], &max_t, 1, MPI_DOUBLE, 
-                        MPI_MAX, 0, MPI_COMM_WORLD);
+                RAPtor_MPI_Reduce(&setup_mat_comm_times[0][i], &max_t, 1, RAPtor_MPI_DOUBLE, 
+                        RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
                 if (rank == 0 && max_t > 0) printf("Setup Mat Comm Time: %e\n", max_t);
 
-                MPI_Reduce(&setup_times[1][i], &max_t, 1, MPI_DOUBLE, 
-                        MPI_MAX, 0, MPI_COMM_WORLD);
+                RAPtor_MPI_Reduce(&setup_times[1][i], &max_t, 1, RAPtor_MPI_DOUBLE, 
+                        RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
                 if (rank == 0 && max_t > 0) printf("Strength: %e\n", max_t);
 
-                MPI_Reduce(&setup_comm_times[1][i], &max_t, 1, MPI_DOUBLE, 
-                        MPI_MAX, 0, MPI_COMM_WORLD);
+                RAPtor_MPI_Reduce(&setup_comm_times[1][i], &max_t, 1, RAPtor_MPI_DOUBLE, 
+                        RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
                 if (rank == 0 && max_t > 0) printf("Strength Vec Comm: %e\n", max_t);
 
-                MPI_Reduce(&setup_mat_comm_times[1][i], &max_t, 1, MPI_DOUBLE, 
-                        MPI_MAX, 0, MPI_COMM_WORLD);
+                RAPtor_MPI_Reduce(&setup_mat_comm_times[1][i], &max_t, 1, RAPtor_MPI_DOUBLE, 
+                        RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
                 if (rank == 0 && max_t > 0) printf("Strength Mat Comm: %e\n", max_t);
 
-                MPI_Reduce(&setup_times[2][i], &max_t, 1, MPI_DOUBLE, 
-                        MPI_MAX, 0, MPI_COMM_WORLD);
+                RAPtor_MPI_Reduce(&setup_times[2][i], &max_t, 1, RAPtor_MPI_DOUBLE, 
+                        RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
                 if (rank == 0 && max_t > 0) printf("C/F Splitting: %e\n", max_t);
 
-                MPI_Reduce(&setup_comm_times[2][i], &max_t, 1, MPI_DOUBLE, 
-                        MPI_MAX, 0, MPI_COMM_WORLD);
+                RAPtor_MPI_Reduce(&setup_comm_times[2][i], &max_t, 1, RAPtor_MPI_DOUBLE, 
+                        RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
                 if (rank == 0 && max_t > 0) printf("C/F Splitting Vec Comm: %e\n", max_t);
 
-                MPI_Reduce(&setup_mat_comm_times[2][i], &max_t, 1, MPI_DOUBLE, 
-                        MPI_MAX, 0, MPI_COMM_WORLD);
+                RAPtor_MPI_Reduce(&setup_mat_comm_times[2][i], &max_t, 1, RAPtor_MPI_DOUBLE, 
+                        RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
                 if (rank == 0 && max_t > 0) printf("C/F Splitting Mat Comm: %e\n", max_t);
 
-                MPI_Reduce(&setup_times[3][i], &max_t, 1, MPI_DOUBLE, 
-                        MPI_MAX, 0, MPI_COMM_WORLD);
+                RAPtor_MPI_Reduce(&setup_times[3][i], &max_t, 1, RAPtor_MPI_DOUBLE, 
+                        RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
                 if (rank == 0 && max_t > 0) printf("Form Interp: %e\n", max_t);
 
-                MPI_Reduce(&setup_comm_times[3][i], &max_t, 1, MPI_DOUBLE, 
-                        MPI_MAX, 0, MPI_COMM_WORLD);
+                RAPtor_MPI_Reduce(&setup_comm_times[3][i], &max_t, 1, RAPtor_MPI_DOUBLE, 
+                        RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
                 if (rank == 0 && max_t > 0) printf("Form Interp Vec Comm: %e\n", max_t);
 
-                MPI_Reduce(&setup_mat_comm_times[3][i], &max_t, 1, MPI_DOUBLE, 
-                        MPI_MAX, 0, MPI_COMM_WORLD);
+                RAPtor_MPI_Reduce(&setup_mat_comm_times[3][i], &max_t, 1, RAPtor_MPI_DOUBLE, 
+                        RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
                 if (rank == 0 && max_t > 0) printf("Form Interp Mat Comm: %e\n", max_t);
 
-                MPI_Reduce(&setup_times[4][i], &max_t, 1, MPI_DOUBLE, 
-                        MPI_MAX, 0, MPI_COMM_WORLD);
+                RAPtor_MPI_Reduce(&setup_times[4][i], &max_t, 1, RAPtor_MPI_DOUBLE, 
+                        RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
                 if (rank == 0 && max_t > 0) printf("A*P: %e\n", max_t);
 
-                MPI_Reduce(&setup_comm_times[4][i], &max_t, 1, MPI_DOUBLE, 
-                        MPI_MAX, 0, MPI_COMM_WORLD);
+                RAPtor_MPI_Reduce(&setup_comm_times[4][i], &max_t, 1, RAPtor_MPI_DOUBLE, 
+                        RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
                 if (rank == 0 && max_t > 0) printf("A*P Vec Comm: %e\n", max_t);
 
-                MPI_Reduce(&setup_mat_comm_times[4][i], &max_t, 1, MPI_DOUBLE, 
-                        MPI_MAX, 0, MPI_COMM_WORLD);
+                RAPtor_MPI_Reduce(&setup_mat_comm_times[4][i], &max_t, 1, RAPtor_MPI_DOUBLE, 
+                        RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
                 if (rank == 0 && max_t > 0) printf("A*P Mat Comm: %e\n", max_t);
 
-                MPI_Reduce(&setup_times[5][i], &max_t, 1, MPI_DOUBLE, 
-                        MPI_MAX, 0, MPI_COMM_WORLD);
+                RAPtor_MPI_Reduce(&setup_times[5][i], &max_t, 1, RAPtor_MPI_DOUBLE, 
+                        RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
                 if (rank == 0 && max_t > 0) printf("P.T*AP: %e\n", max_t);
 
-                MPI_Reduce(&setup_comm_times[5][i], &max_t, 1, MPI_DOUBLE, 
-                        MPI_MAX, 0, MPI_COMM_WORLD);
+                RAPtor_MPI_Reduce(&setup_comm_times[5][i], &max_t, 1, RAPtor_MPI_DOUBLE, 
+                        RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
                 if (rank == 0 && max_t > 0) printf("P.T*AP Vec Comm: %e\n", max_t);
 
-                MPI_Reduce(&setup_mat_comm_times[5][i], &max_t, 1, MPI_DOUBLE, 
-                        MPI_MAX, 0, MPI_COMM_WORLD);
+                RAPtor_MPI_Reduce(&setup_mat_comm_times[5][i], &max_t, 1, RAPtor_MPI_DOUBLE, 
+                        RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
                 if (rank == 0 && max_t > 0) printf("P.T*AP Mat Comm: %e\n", max_t);
 
             }

@@ -301,10 +301,10 @@ namespace raptor
         ***** Parameters
         ***** -------------
         ***** _key : int (optional)
-        *****    Tag to be used in MPI Communication (default 0)
+        *****    Tag to be used in RAPtor_MPI Communication (default 0)
         **************************************************************/
         ParComm(Partition* partition, int _key = 0, 
-                MPI_Comm _comm = MPI_COMM_WORLD,
+                RAPtor_MPI_Comm _comm = RAPtor_MPI_COMM_WORLD,
                 CommData* r_data = NULL) : CommPkg(partition)
         {
             mpi_comm = _comm;
@@ -317,7 +317,7 @@ namespace raptor
         }
 
         ParComm(Topology* topology, int _key = 0, 
-                MPI_Comm _comm = MPI_COMM_WORLD,
+                RAPtor_MPI_Comm _comm = RAPtor_MPI_COMM_WORLD,
                 CommData* r_data = NULL) : CommPkg(topology)
         {
             mpi_comm = _comm;
@@ -339,12 +339,12 @@ namespace raptor
         ***** off_proc_column_map : aligned_vector<int>&
         *****    Maps local off_proc columns indices to global
         ***** _key : int (optional)
-        *****    Tag to be used in MPI Communication (default 9999)
+        *****    Tag to be used in RAPtor_MPI Communication (default 9999)
         **************************************************************/
         ParComm(Partition* partition,
                 const aligned_vector<int>& off_proc_column_map,
                 int _key = 9999,
-                MPI_Comm comm = MPI_COMM_WORLD,
+                RAPtor_MPI_Comm comm = RAPtor_MPI_COMM_WORLD,
                 data_t* comm_t = NULL,
                 CommData* r_data = NULL) : CommPkg(partition)
         {
@@ -356,7 +356,7 @@ namespace raptor
                 const aligned_vector<int>& off_proc_column_map,
                 const aligned_vector<int>& on_proc_column_map,
                 int _key = 9999, 
-                MPI_Comm comm = MPI_COMM_WORLD,
+                RAPtor_MPI_Comm comm = RAPtor_MPI_COMM_WORLD,
                 data_t* comm_t = NULL,
                 CommData* r_data = NULL) : CommPkg(partition)
         {
@@ -388,13 +388,13 @@ namespace raptor
 
         void init_par_comm(Partition* partition,
                 const aligned_vector<int>& off_proc_column_map,
-                int _key, MPI_Comm comm, data_t* comm_t = NULL,
+                int _key, RAPtor_MPI_Comm comm, data_t* comm_t = NULL,
                 CommData* r_data = NULL)
         {
-            // Get MPI Information
+            // Get RAPtor_MPI Information
             int rank, num_procs;
-            MPI_Comm_rank(comm, &rank);
-            MPI_Comm_size(comm, &num_procs);
+            RAPtor_MPI_Comm_rank(comm, &rank);
+            RAPtor_MPI_Comm_size(comm, &num_procs);
 
             // Initialize class variables
             key = _key;
@@ -412,7 +412,7 @@ namespace raptor
             int count;
             int tag = 12345;  // TODO -- switch this to key?
             int off_proc_num_cols = off_proc_column_map.size();
-            MPI_Status recv_status;
+            RAPtor_MPI_Status recv_status;
 
             aligned_vector<int> off_proc_col_to_proc(off_proc_num_cols);
             aligned_vector<int> tmp_send_buffer;
@@ -442,14 +442,14 @@ namespace raptor
             }
 
             // For each process I recv from, send the global column indices
-            if (comm_t) *comm_t -= MPI_Wtime();
+            if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
             // for which I must recv corresponding rows 
             aligned_vector<int> recv_sizes(num_procs, 0);
             for (int i = 0; i < recv_data->num_msgs; i++)
                 recv_sizes[recv_data->procs[i]] = 
                     recv_data->indptr[i+1] - recv_data->indptr[i];
-            MPI_Allreduce(MPI_IN_PLACE, recv_sizes.data(), num_procs, MPI_INT,
-                    MPI_SUM, MPI_COMM_WORLD);
+            RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, recv_sizes.data(), num_procs, RAPtor_MPI_INT,
+                    RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
             recv_data->send(off_proc_column_map.data(), tag, comm);
             send_data->probe(recv_sizes[rank], tag, comm);
             recv_data->waitall();
@@ -457,7 +457,7 @@ namespace raptor
             {
                 send_data->indices[i] -= partition->first_local_col;
             }
-            if (comm_t) *comm_t += MPI_Wtime();
+            if (comm_t) *comm_t += RAPtor_MPI_Wtime();
         }
 
         ParComm(ParComm* comm) : CommPkg(comm->topology)
@@ -530,9 +530,9 @@ namespace raptor
                 if (b >= 0) return b;
                 else return a;
             };
-            if (comm_t) *comm_t -= MPI_Wtime();
+            if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
             comm->communicate_T(off_proc_col_to_new, 1, compare_func, -1);
-            if (comm_t) *comm_t += MPI_Wtime();
+            if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
             recv_data = comm->recv_data->copy(off_proc_col_to_new);
 
@@ -955,7 +955,7 @@ namespace raptor
         int key;
         NonContigData* send_data;
         CommData* recv_data;
-        MPI_Comm mpi_comm;
+        RAPtor_MPI_Comm mpi_comm;
     };
 
 
@@ -1005,7 +1005,7 @@ namespace raptor
 
             local_R_par_comm = new ParComm(partition, 3456, partition->topology->local_comm,
                     new NonContigData());
-            global_par_comm = new ParComm(partition, 5678, MPI_COMM_WORLD,
+            global_par_comm = new ParComm(partition, 5678, RAPtor_MPI_COMM_WORLD,
                     new DuplicateData());
 
             if (L_comm)
@@ -1041,7 +1041,7 @@ namespace raptor
         TAPComm(Partition* partition, 
                 const aligned_vector<int>& off_proc_column_map,
                 bool form_S = true,
-                MPI_Comm comm = MPI_COMM_WORLD,
+                RAPtor_MPI_Comm comm = RAPtor_MPI_COMM_WORLD,
                 data_t* comm_t = NULL) : CommPkg(partition)
         {
             if (form_S)
@@ -1060,7 +1060,7 @@ namespace raptor
                 const aligned_vector<int>& off_proc_column_map,
                 const aligned_vector<int>& on_proc_column_map,
                 bool form_S = true,
-                MPI_Comm comm = MPI_COMM_WORLD,
+                RAPtor_MPI_Comm comm = RAPtor_MPI_COMM_WORLD,
                 data_t* comm_t = NULL) : CommPkg(partition)
         {
             aligned_vector<int> on_proc_to_new;
@@ -1306,12 +1306,12 @@ namespace raptor
 
         void init_tap_comm(Partition* partition,
                 const aligned_vector<int>& off_proc_column_map,
-                MPI_Comm comm, data_t* comm_t = NULL)
+                RAPtor_MPI_Comm comm, data_t* comm_t = NULL)
         {
-            // Get MPI Information
+            // Get RAPtor_MPI Information
             int rank, num_procs;
-            MPI_Comm_rank(comm, &rank);
-            MPI_Comm_size(comm, &num_procs);
+            RAPtor_MPI_Comm_rank(comm, &rank);
+            RAPtor_MPI_Comm_size(comm, &num_procs);
 
             // Initialize class variables
             local_S_par_comm = new ParComm(partition, 2345, partition->topology->local_comm, 
@@ -1371,12 +1371,12 @@ namespace raptor
 
         void init_tap_comm_simple(Partition* partition,
                 const aligned_vector<int>& off_proc_column_map,
-                MPI_Comm comm, data_t* comm_t = NULL)
+                RAPtor_MPI_Comm comm, data_t* comm_t = NULL)
         {
-            // Get MPI Information
+            // Get RAPtor_MPI Information
             int rank, num_procs;
-            MPI_Comm_rank(comm, &rank);
-            MPI_Comm_size(comm, &num_procs);
+            RAPtor_MPI_Comm_rank(comm, &rank);
+            RAPtor_MPI_Comm_size(comm, &num_procs);
 
             // Initialize class variables
             local_S_par_comm = NULL;

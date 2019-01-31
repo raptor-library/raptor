@@ -216,9 +216,9 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     if (A->off_proc_num_cols) off_variables.resize(A->off_proc_num_cols);
     if (num_variables > 1)
     {
-        if (comm_t) *comm_t -= MPI_Wtime();
+        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         comm->communicate(variables);
-        if (comm_t) *comm_t += MPI_Wtime();
+        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
         
         for (int i = 0; i < A->off_proc_num_cols; i++)
         {
@@ -227,9 +227,9 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     }
 
     // Communicate parallel matrix A (portion needed)
-    if (comm_mat_t) *comm_mat_t -= MPI_Wtime();
+    if (comm_mat_t) *comm_mat_t -= RAPtor_MPI_Wtime();
     recv_mat = communicate(A, S, states, off_proc_states, mat_comm);
-    if (comm_mat_t) *comm_mat_t += MPI_Wtime();
+    if (comm_mat_t) *comm_mat_t += RAPtor_MPI_Wtime();
 
     int tmp_col = col;
     int* on_proc_partition_to_col = A->map_partition_to_local();
@@ -367,10 +367,10 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         }
     }
     // Initialize AllReduce to determine global num cols
-    MPI_Request reduce_request;
+    RAPtor_MPI_Request reduce_request;
     int reduce_buf = on_proc_cols;
-    MPI_Iallreduce(&(reduce_buf), &global_num_cols, 1, MPI_INT, MPI_SUM, 
-            MPI_COMM_WORLD, &reduce_request);
+    RAPtor_MPI_Iallreduce(&(reduce_buf), &global_num_cols, 1, RAPtor_MPI_INT, RAPtor_MPI_SUM, 
+            RAPtor_MPI_COMM_WORLD, &reduce_request);
    
     ParCSRMatrix* P = new ParCSRMatrix(A->partition, A->global_num_rows, -1, 
             A->local_num_rows, on_proc_cols, off_proc_cols);
@@ -886,13 +886,13 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     else
     {
         P->comm = new ParComm(P->partition, P->off_proc_column_map,
-                P->on_proc_column_map, 9243, MPI_COMM_WORLD, comm_t);
+                P->on_proc_column_map, 9243, RAPtor_MPI_COMM_WORLD, comm_t);
     }
 
     delete recv_mat;
 
     // Finish Allreduce and set global number of columns
-    MPI_Wait(&reduce_request, MPI_STATUS_IGNORE);
+    RAPtor_MPI_Wait(&reduce_request, RAPtor_MPI_STATUS_IGNORE);
     P->global_num_cols = global_num_cols;
 
     return P;
@@ -905,7 +905,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         data_t* comm_t, data_t* comm_mat_t)
 {
     int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     int start, end;
     int start_k, end_k;
@@ -937,9 +937,9 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     if (num_variables > 1)
     {
-        if (comm_t) *comm_t -= MPI_Wtime();
+        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         comm->communicate(variables);
-        if (comm_t) *comm_t += MPI_Wtime();
+        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
         for (int i = 0; i < A->off_proc_num_cols; i++)
         {
@@ -977,7 +977,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
             off_proc_cols++;
         }
     }
-    MPI_Allreduce(&(on_proc_cols), &global_num_cols, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    RAPtor_MPI_Allreduce(&(on_proc_cols), &global_num_cols, 1, RAPtor_MPI_INT, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
    
     ParCSRMatrix* P = new ParCSRMatrix(A->partition, A->global_num_rows, global_num_cols, 
             A->local_num_rows, on_proc_cols, off_proc_cols);
@@ -993,9 +993,9 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     P->local_row_map = S->get_local_row_map();
 
     // Communicate parallel matrix A (Costly!)
-    if (comm_mat_t) *comm_mat_t -= MPI_Wtime();
+    if (comm_mat_t) *comm_mat_t -= RAPtor_MPI_Wtime();
     recv_mat = communicate(A, states, off_proc_states, mat_comm);
-    if (comm_mat_t) *comm_mat_t += MPI_Wtime();
+    if (comm_mat_t) *comm_mat_t += RAPtor_MPI_Wtime();
 
     CSRMatrix* recv_on = new CSRMatrix(recv_mat->n_rows, -1, recv_mat->nnz);
     CSRMatrix* recv_off = new CSRMatrix(recv_mat->n_rows, -1, recv_mat->nnz);
@@ -1451,7 +1451,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
             off_proc_cols++;
         }
     }
-    MPI_Allreduce(&(on_proc_cols), &global_num_cols, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    RAPtor_MPI_Allreduce(&(on_proc_cols), &global_num_cols, 1, RAPtor_MPI_INT, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
    
     ParCSRMatrix* P = new ParCSRMatrix(S->partition, S->global_num_rows, global_num_cols, 
             S->local_num_rows, on_proc_cols, off_proc_cols);

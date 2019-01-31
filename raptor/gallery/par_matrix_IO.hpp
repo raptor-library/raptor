@@ -20,7 +20,7 @@ using namespace raptor;
 ParCSRMatrix* readParMatrix(const char* filename, 
         int local_num_rows = -1, int local_num_cols = -1,
         int first_local_row = -1, int first_local_col = -1, 
-        MPI_Comm comm = MPI_COMM_WORLD);
+        RAPtor_MPI_Comm comm = RAPtor_MPI_COMM_WORLD);
 
 #endif
 

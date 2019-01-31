@@ -19,8 +19,8 @@ void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double
      */
 
     int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     ParVector r;
     ParVector r_star;
@@ -128,8 +128,8 @@ void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double
 void SeqInner_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol, int max_iter)
 {
     int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     ParVector r;
     ParVector r_star;
@@ -249,8 +249,8 @@ void Pre_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, ParMultilevel *ml
      */
 
     int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     ParVector r;
     ParVector r_star;
@@ -373,8 +373,8 @@ void Pre_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, ParMultilevel *ml
 void SeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol, int max_iter)
 {
     int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     ParVector r;
     ParVector r_star;
@@ -482,8 +482,8 @@ void SeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vecto
 void SeqInnerSeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol, int max_iter)
 {
     int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     ParVector r;
     ParVector r_star;
@@ -591,8 +591,8 @@ void SeqInnerSeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, align
 /**************************************************************************************
  BiCGStab with some inner products replaced with partial inner product approximations
  **************************************************************************************/
-void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, MPI_Comm &inner_comm,
-                 MPI_Comm &root_comm, double frac, int inner_color, int root_color, int inner_root, int procs_in_group,
+void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, RAPtor_MPI_Comm &inner_comm,
+                 RAPtor_MPI_Comm &root_comm, double frac, int inner_color, int root_color, int inner_root, int procs_in_group,
                  int part_global, double tol, int max_iter)
 {
     /*              A : ParCSRMatrix for system to solve
@@ -611,8 +611,8 @@ void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<dou
      */
 
     int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
     // Create communicators for partial inner products
     create_partial_inner_comm(inner_comm, root_comm, frac, x, inner_color, root_color, inner_root, procs_in_group, part_global);
@@ -736,8 +736,8 @@ void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<dou
 /**************************************************************************************
  Preconditioned BiCGStab with some inner products replaced with partial inner product approximations
  **************************************************************************************/
-void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, MPI_Comm &inner_comm,
-                 MPI_Comm &root_comm, double frac, int inner_color, int root_color, int inner_root, int procs_in_group,
+void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, RAPtor_MPI_Comm &inner_comm,
+                 RAPtor_MPI_Comm &root_comm, double frac, int inner_color, int root_color, int inner_root, int procs_in_group,
                  int part_global, double tol, int max_iter)
 {
     /*              A : ParCSRMatrix for system to solve
@@ -756,8 +756,8 @@ void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<
      */
 
     int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
     // Create communicators for partial inner products
     create_partial_inner_comm(inner_comm, root_comm, frac, x, inner_color, root_color, inner_root, procs_in_group, part_global);

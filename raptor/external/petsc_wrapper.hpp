@@ -56,8 +56,8 @@ PetscErrorCode petsc_create_preconditioner(ParCSRMatrix* A, KSP* ksp_ptr, Mat* m
 /*static PetscErrorCode MatConvert_RAPtor(Mat A, ParCSRMatrix** A_rap_ptr)
 {
   int rank, num_procs;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+  RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
   PetscErrorCode ierr;
   Mat_MPIAIJ     *mpimat  = (Mat_MPIAIJ*)A->data;
@@ -77,8 +77,8 @@ PetscErrorCode petsc_create_preconditioner(ParCSRMatrix* A, KSP* ksp_ptr, Mat* m
   PetscInt global_num_rows, global_num_cols;
   aligned_vector<int> row_size(num_procs);
   aligned_vector<int> col_size(num_procs);
-  MPI_Allgather(&local_num_rows, 1, MPI_INT, row_size.data(), 1, MPI_INT, MPI_COMM_WORLD);  
-  MPI_Allgather(&local_num_cols, 1, MPI_INT, col_size.data(), 1, MPI_INT, MPI_COMM_WORLD);  
+  RAPtor_MPI_Allgather(&local_num_rows, 1, RAPtor_MPI_INT, row_size.data(), 1, RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD);  
+  RAPtor_MPI_Allgather(&local_num_cols, 1, RAPtor_MPI_INT, col_size.data(), 1, RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD);  
   PetscInt first_local_row = 0;
   PetscInt first_local_col = 0;
   for (int i = 0; i < rank; i++)

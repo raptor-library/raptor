@@ -2,10 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
-#include "core/types.hpp"
-#include "core/matrix.hpp"
-#include "gallery/matrix_IO.hpp"
-#include "aggregation/prolongation.hpp"
+#include "raptor.hpp"
 #include "tests/compare.hpp"
 
 #include <iostream>

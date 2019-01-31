@@ -43,8 +43,8 @@ namespace raptor
         int avg_num;
         int extra;
 
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+        RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+        RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
         global_num_rows = _global_num_rows;
         global_num_cols = _global_num_cols;
@@ -115,8 +115,8 @@ namespace raptor
         int avg_num_blocks, global_num_row_blocks, global_num_col_blocks;
         int extra;
 
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+        RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+        RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
         global_num_rows = _global_num_rows;
         global_num_cols = _global_num_cols;
@@ -282,17 +282,17 @@ namespace raptor
 
     void create_assumed_partition()
     {
-        // Get MPI Information
+        // Get RAPtor_MPI Information
         int rank, num_procs;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+        RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+        RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
         
         assumed_num_cols = global_num_cols / num_procs;
         if (global_num_cols % num_procs) assumed_num_cols++;
 
         first_cols.resize(num_procs+1);
-        MPI_Allgather(&(first_local_col), 1, MPI_INT, first_cols.data(), 1, MPI_INT,
-                        MPI_COMM_WORLD);
+        RAPtor_MPI_Allgather(&(first_local_col), 1, RAPtor_MPI_INT, first_cols.data(), 1, RAPtor_MPI_INT,
+                        RAPtor_MPI_COMM_WORLD);
         first_cols[num_procs] = global_num_cols;
     }
 
@@ -300,8 +300,8 @@ namespace raptor
             aligned_vector<int>& off_proc_col_to_proc) 
     {
         int rank, num_procs;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+        RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+        RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
         int global_col, assumed_proc;
         int ctr = 0;
