@@ -6,11 +6,11 @@ using namespace mfem;
 raptor::ParCSRMatrix* mfem_laplacian(raptor::ParVector& x_raptor, 
         raptor::ParVector& b_raptor, const char* mesh_file, 
         const int order, const int seq_n_refines, const int par_n_refines,
-        const MPI_Comm comm)
+        const RAPtor_MPI_Comm comm)
 {
     int rank, num_procs;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &num_procs);
+    RAPtor_MPI_Comm_rank(comm, &rank);
+    RAPtor_MPI_Comm_size(comm, &num_procs);
 
     int mesh_dim;
     int par_mesh_n;

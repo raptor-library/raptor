@@ -4,17 +4,17 @@
 
 #include "hypre_wrapper.hpp"
 
-HYPRE_IJVector convert(raptor::ParVector& x_rap, MPI_Comm comm_mat)
+HYPRE_IJVector convert(raptor::ParVector& x_rap, RAPtor_MPI_Comm comm_mat)
 {
     int num_procs, rank;
-    MPI_Comm_rank(comm_mat, &rank);
-    MPI_Comm_size(comm_mat, &num_procs);
+    RAPtor_MPI_Comm_rank(comm_mat, &rank);
+    RAPtor_MPI_Comm_size(comm_mat, &num_procs);
 
     HYPRE_IJVector x;
 
     HYPRE_Int local_n = x_rap.local_n;
     aligned_vector<int> first_n(num_procs);
-    MPI_Allgather(&local_n, 1, MPI_INT, first_n.data(), 1, MPI_INT, comm_mat);
+    RAPtor_MPI_Allgather(&local_n, 1, RAPtor_MPI_INT, first_n.data(), 1, RAPtor_MPI_INT, comm_mat);
     HYPRE_Int first_local = 0;
     for (int i = 0; i < rank; i++)
     {
@@ -41,7 +41,7 @@ HYPRE_IJVector convert(raptor::ParVector& x_rap, MPI_Comm comm_mat)
     return x;
 }
 
-HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, MPI_Comm comm_mat)
+HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, RAPtor_MPI_Comm comm_mat)
 {
     HYPRE_IJMatrix A;
 
@@ -52,15 +52,15 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, MPI_Comm comm_mat)
     HYPRE_Int rank, num_procs;
     HYPRE_Int one = 1;
 
-    MPI_Comm_rank(comm_mat, &rank);
-    MPI_Comm_size(comm_mat, &num_procs);
+    RAPtor_MPI_Comm_rank(comm_mat, &rank);
+    RAPtor_MPI_Comm_size(comm_mat, &num_procs);
 
     aligned_vector<int> row_sizes(num_procs);
     aligned_vector<int> col_sizes(num_procs);
-    MPI_Allgather(&(A_rap->local_num_rows), 1, MPI_INT, row_sizes.data(), 1, MPI_INT,
-            MPI_COMM_WORLD);
-    MPI_Allgather(&(A_rap->on_proc_num_cols), 1, MPI_INT, col_sizes.data(), 1, MPI_INT,
-            MPI_COMM_WORLD);
+    RAPtor_MPI_Allgather(&(A_rap->local_num_rows), 1, RAPtor_MPI_INT, row_sizes.data(), 1, RAPtor_MPI_INT,
+            RAPtor_MPI_COMM_WORLD);
+    RAPtor_MPI_Allgather(&(A_rap->on_proc_num_cols), 1, RAPtor_MPI_INT, col_sizes.data(), 1, RAPtor_MPI_INT,
+            RAPtor_MPI_COMM_WORLD);
     for (int i = 0; i < rank; i++)
     {
         local_row_start += row_sizes[i];
@@ -127,12 +127,12 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, MPI_Comm comm_mat)
     return A;
 }
 
-raptor::ParCSRMatrix* convert(hypre_ParCSRMatrix* A_hypre, MPI_Comm comm_mat)
+raptor::ParCSRMatrix* convert(hypre_ParCSRMatrix* A_hypre, RAPtor_MPI_Comm comm_mat)
 {
     int num_procs;
     int rank;
-    MPI_Comm_size(comm_mat, &num_procs);
-    MPI_Comm_rank(comm_mat, &rank);
+    RAPtor_MPI_Comm_size(comm_mat, &num_procs);
+    RAPtor_MPI_Comm_rank(comm_mat, &rank);
 
     hypre_CSRMatrix* A_hypre_diag = hypre_ParCSRMatrixDiag(A_hypre);
     HYPRE_Real* diag_data = hypre_CSRMatrixData(A_hypre_diag);

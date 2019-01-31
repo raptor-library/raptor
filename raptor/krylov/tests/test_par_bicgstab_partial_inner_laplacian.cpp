@@ -1,10 +1,5 @@
 #include <assert.h>
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "core/par_vector.hpp"
-#include "krylov/par_bicgstab.hpp"
-#include "gallery/laplacian27pt.hpp"
-#include "gallery/par_stencil.hpp"
+#include "raptor.hpp"
 
 using namespace raptor;
 

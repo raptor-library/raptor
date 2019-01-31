@@ -115,9 +115,9 @@ void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
-        if (comm_t) *comm_t -= MPI_Wtime();
+        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         comm->communicate(x);
-        if (comm_t) *comm_t += MPI_Wtime();
+        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
         aligned_vector<double>& dist_x = comm->get_buffer<double>();
         for (int i = 0; i < A->local_num_rows; i++)
         {
@@ -162,9 +162,9 @@ void sor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
-        if (comm_t) *comm_t -= MPI_Wtime();
+        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         comm->communicate(x);
-        if (comm_t) *comm_t += MPI_Wtime();
+        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
         SOR_forward(A, x, b, comm->get_buffer<double>(), omega);
     }
 }
@@ -179,9 +179,9 @@ void ssor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
-        if (comm_t) *comm_t -= MPI_Wtime();
+        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         comm->communicate(x);
-        if (comm_t) *comm_t += MPI_Wtime();
+        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
         SOR_forward(A, x, b, comm->get_buffer<double>(), omega);
         SOR_backward(A, x, b, comm->get_buffer<double>(), omega);
     }

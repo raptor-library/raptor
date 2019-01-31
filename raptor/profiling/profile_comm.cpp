@@ -3,7 +3,7 @@ void ParCSRMatrix::print_mult(const aligned_vector<int>& proc_distances,
 {
     int rank, rank_node, rank_socket;
     int ranks_per_socket;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     int num_short = 0;
     int num_eager = 0;
@@ -126,7 +126,7 @@ void ParCSRMatrix::print_mult(const aligned_vector<int>& proc_distances,
     long nl;
     n = num_short + num_eager + num_rend + num_short_node + num_eager_node + num_rend_node
             + num_short_socket + num_eager_socket + num_rend_socket;
-    MPI_Allreduce(&n, &max_n, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+    RAPtor_MPI_Allreduce(&n, &max_n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Max Num Msgs: %d\n", max_n);
     if (n < max_n)
     {
@@ -143,12 +143,12 @@ void ParCSRMatrix::print_mult(const aligned_vector<int>& proc_distances,
 
     long bytes;
     bytes = size_short + size_eager + size_rend;
-    MPI_Reduce(&bytes, &nl, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&bytes, &nl, 1, RAPtor_MPI_LONG, RAPtor_MPI_SUM, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Total Bytes = %ld\n", nl);
 
     n = size_short + size_eager + size_rend + size_short_node + size_eager_node
             + size_rend_node + size_short_socket + size_eager_socket + size_rend_socket;
-    MPI_Allreduce(&n, &max_s, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+    RAPtor_MPI_Allreduce(&n, &max_s, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, RAPtor_MPI_COMM_WORLD);
     if (n < max_s)
     {
         size_short = 0;
@@ -163,48 +163,48 @@ void ParCSRMatrix::print_mult(const aligned_vector<int>& proc_distances,
     }
 
 
-    MPI_Reduce(&num_short, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_short, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Short: %d\n", n);
-    MPI_Reduce(&num_eager, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_eager, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Eager: %d\n", n);
-    MPI_Reduce(&num_rend, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_rend, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Rend: %d\n", n);
-    MPI_Reduce(&size_short, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_short, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Short: %d\n", n);
-    MPI_Reduce(&size_eager, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_eager, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Eager: %d\n", n);
-    MPI_Reduce(&size_rend, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_rend, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Rend: %d\n", n);
 
-    MPI_Reduce(&num_short_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_short_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Short Node: %d\n", n);
-    MPI_Reduce(&num_eager_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_eager_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Eager Node: %d\n", n);
-    MPI_Reduce(&num_rend_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_rend_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Rend Node: %d\n", n);
-    MPI_Reduce(&size_short_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_short_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Short Node: %d\n", n);
-    MPI_Reduce(&size_eager_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_eager_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Eager Node: %d\n", n);
-    MPI_Reduce(&size_rend_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_rend_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Rend Node: %d\n", n);
 
-    MPI_Reduce(&num_short_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_short_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Short Socket: %d\n", n);
-    MPI_Reduce(&num_eager_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_eager_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Eager Socket: %d\n", n);
-    MPI_Reduce(&num_rend_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_rend_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Rend Socket: %d\n", n);
-    MPI_Reduce(&size_short_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_short_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Short Socket: %d\n", n);
-    MPI_Reduce(&size_eager_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_eager_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Eager Socket: %d\n", n);
-    MPI_Reduce(&size_rend_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_rend_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Rend Socket: %d\n", n);
     
-    MPI_Reduce(&byte_hops, &nl, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&byte_hops, &nl, 1, RAPtor_MPI_LONG, RAPtor_MPI_SUM, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Byte Hops = %ld\n", nl);
-    MPI_Reduce(&worst_byte_hops, &nl, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&worst_byte_hops, &nl, 1, RAPtor_MPI_LONG, RAPtor_MPI_SUM, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Worst Byte Hops = %ld\n", nl);
 }
 
@@ -213,7 +213,7 @@ void ParCSRMatrix::print_mult_T(const aligned_vector<int>& proc_distances,
 {
     int rank, rank_node, rank_socket;
     int ranks_per_socket;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     int num_short = 0;
     int num_eager = 0;
@@ -336,7 +336,7 @@ void ParCSRMatrix::print_mult_T(const aligned_vector<int>& proc_distances,
     long nl;
     n = num_short + num_eager + num_rend + num_short_node + num_eager_node + num_rend_node
             + num_short_socket + num_eager_socket + num_rend_socket;
-    MPI_Allreduce(&n, &max_n, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+    RAPtor_MPI_Allreduce(&n, &max_n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Max Num Msgs: %d\n", max_n);
     if (n < max_n)
     {
@@ -353,12 +353,12 @@ void ParCSRMatrix::print_mult_T(const aligned_vector<int>& proc_distances,
 
     long bytes;
     bytes = size_short + size_eager + size_rend;
-    MPI_Reduce(&bytes, &nl, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&bytes, &nl, 1, RAPtor_MPI_LONG, RAPtor_MPI_SUM, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Total Bytes = %ld\n", nl);
 
     n = size_short + size_eager + size_rend + size_short_node + size_eager_node
             + size_rend_node + size_short_socket + size_eager_socket + size_rend_socket;
-    MPI_Allreduce(&n, &max_s, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+    RAPtor_MPI_Allreduce(&n, &max_s, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, RAPtor_MPI_COMM_WORLD);
     if (n < max_s)
     {
         size_short = 0;
@@ -372,49 +372,49 @@ void ParCSRMatrix::print_mult_T(const aligned_vector<int>& proc_distances,
         size_rend_socket = 0;
     }
 
-    MPI_Reduce(&num_short, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&num_short, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_short, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_short, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Short: %d\n", n);
-    MPI_Reduce(&num_eager, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_eager, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Eager: %d\n", n);
-    MPI_Reduce(&num_rend, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_rend, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Rend: %d\n", n);
-    MPI_Reduce(&size_short, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_short, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Short: %d\n", n);
-    MPI_Reduce(&size_eager, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_eager, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Eager: %d\n", n);
-    MPI_Reduce(&size_rend, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_rend, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Rend: %d\n", n);
 
-    MPI_Reduce(&num_short_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_short_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Short Node: %d\n", n);
-    MPI_Reduce(&num_eager_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_eager_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Eager Node: %d\n", n);
-    MPI_Reduce(&num_rend_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_rend_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Rend Node: %d\n", n);
-    MPI_Reduce(&size_short_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_short_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Short Node: %d\n", n);
-    MPI_Reduce(&size_eager_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_eager_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Eager Node: %d\n", n);
-    MPI_Reduce(&size_rend_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_rend_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Rend Node: %d\n", n);
 
-    MPI_Reduce(&num_short_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_short_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Short Socket: %d\n", n);
-    MPI_Reduce(&num_eager_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_eager_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Eager Socket: %d\n", n);
-    MPI_Reduce(&num_rend_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_rend_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Rend Socket: %d\n", n);
-    MPI_Reduce(&size_short_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_short_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Short Socket: %d\n", n);
-    MPI_Reduce(&size_eager_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_eager_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Eager Socket: %d\n", n);
-    MPI_Reduce(&size_rend_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_rend_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Rend Socket: %d\n", n);
     
-    MPI_Reduce(&byte_hops, &nl, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&byte_hops, &nl, 1, RAPtor_MPI_LONG, RAPtor_MPI_SUM, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Byte Hops = %ld\n", nl);
-    MPI_Reduce(&worst_byte_hops, &nl, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&worst_byte_hops, &nl, 1, RAPtor_MPI_LONG, RAPtor_MPI_SUM, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Worst Byte Hops = %ld\n", nl);
 }
 
@@ -426,7 +426,7 @@ void ParCSRMatrix::print_mult(ParCSRMatrix* B, const aligned_vector<int>& proc_d
 {
     int rank, rank_node, rank_socket;
     int ranks_per_socket;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     int num_short = 0;
     int num_eager = 0;
@@ -556,7 +556,7 @@ void ParCSRMatrix::print_mult(ParCSRMatrix* B, const aligned_vector<int>& proc_d
     long nl;
     n = num_short + num_eager + num_rend + num_short_node + num_eager_node + num_rend_node
             + num_short_socket + num_eager_socket + num_rend_socket;
-    MPI_Allreduce(&n, &max_n, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+    RAPtor_MPI_Allreduce(&n, &max_n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Max Num Msgs: %d\n", max_n);
     if (n < max_n)
     {
@@ -573,12 +573,12 @@ void ParCSRMatrix::print_mult(ParCSRMatrix* B, const aligned_vector<int>& proc_d
 
     long bytes;
     bytes = size_short + size_eager + size_rend;
-    MPI_Reduce(&bytes, &nl, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&bytes, &nl, 1, RAPtor_MPI_LONG, RAPtor_MPI_SUM, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Total Bytes = %ld\n", nl);
 
     n = size_short + size_eager + size_rend + size_short_node + size_eager_node
             + size_rend_node + size_short_socket + size_eager_socket + size_rend_socket;
-    MPI_Allreduce(&n, &max_s, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+    RAPtor_MPI_Allreduce(&n, &max_s, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, RAPtor_MPI_COMM_WORLD);
     if (n < max_s)
     {
         size_short = 0;
@@ -592,48 +592,48 @@ void ParCSRMatrix::print_mult(ParCSRMatrix* B, const aligned_vector<int>& proc_d
         size_rend_socket = 0;
     }
 
-    MPI_Reduce(&num_short, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_short, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Short: %d\n", n);
-    MPI_Reduce(&num_eager, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_eager, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Eager: %d\n", n);
-    MPI_Reduce(&num_rend, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_rend, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Rend: %d\n", n);
-    MPI_Reduce(&size_short, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_short, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Short: %d\n", n);
-    MPI_Reduce(&size_eager, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_eager, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Eager: %d\n", n);
-    MPI_Reduce(&size_rend, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_rend, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Rend: %d\n", n);
 
-    MPI_Reduce(&num_short_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_short_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Short Node: %d\n", n);
-    MPI_Reduce(&num_eager_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_eager_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Eager Node: %d\n", n);
-    MPI_Reduce(&num_rend_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_rend_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Rend Node: %d\n", n);
-    MPI_Reduce(&size_short_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_short_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Short Node: %d\n", n);
-    MPI_Reduce(&size_eager_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_eager_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Eager Node: %d\n", n);
-    MPI_Reduce(&size_rend_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_rend_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Rend Node: %d\n", n);
 
-    MPI_Reduce(&num_short_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_short_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Short Socket: %d\n", n);
-    MPI_Reduce(&num_eager_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_eager_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Eager Socket: %d\n", n);
-    MPI_Reduce(&num_rend_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_rend_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Rend Socket: %d\n", n);
-    MPI_Reduce(&size_short_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_short_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Short Socket: %d\n", n);
-    MPI_Reduce(&size_eager_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_eager_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Eager Socket: %d\n", n);
-    MPI_Reduce(&size_rend_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_rend_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Rend Socket: %d\n", n);
     
-    MPI_Reduce(&byte_hops, &nl, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&byte_hops, &nl, 1, RAPtor_MPI_LONG, RAPtor_MPI_SUM, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Byte Hops = %ld\n", nl);
-    MPI_Reduce(&worst_byte_hops, &nl, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&worst_byte_hops, &nl, 1, RAPtor_MPI_LONG, RAPtor_MPI_SUM, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Worst Byte Hops = %ld\n", nl);
 }
 
@@ -642,7 +642,7 @@ void ParCSRMatrix::print_mult_T(ParCSCMatrix* A, const aligned_vector<int>& proc
 {
     int rank, rank_node, rank_socket;
     int ranks_per_socket;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     int num_short = 0;
     int num_eager = 0;
@@ -771,7 +771,7 @@ void ParCSRMatrix::print_mult_T(ParCSCMatrix* A, const aligned_vector<int>& proc
     long nl;
     n = num_short + num_eager + num_rend + num_short_node + num_eager_node + num_rend_node
             + num_short_socket + num_eager_socket + num_rend_socket;
-    MPI_Allreduce(&n, &max_n, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+    RAPtor_MPI_Allreduce(&n, &max_n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Max Num Msgs: %d\n", max_n);
     if (n < max_n)
     {
@@ -788,12 +788,12 @@ void ParCSRMatrix::print_mult_T(ParCSCMatrix* A, const aligned_vector<int>& proc
 
     long bytes;
     bytes = size_short + size_eager + size_rend;
-    MPI_Reduce(&bytes, &nl, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&bytes, &nl, 1, RAPtor_MPI_LONG, RAPtor_MPI_SUM, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Total Bytes = %ld\n", nl);
 
     n = size_short + size_eager + size_rend + size_short_node + size_eager_node
             + size_rend_node + size_short_socket + size_eager_socket + size_rend_socket;
-    MPI_Allreduce(&n, &max_s, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+    RAPtor_MPI_Allreduce(&n, &max_s, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, RAPtor_MPI_COMM_WORLD);
     if (n < max_s)
     {
         size_short = 0;
@@ -807,48 +807,48 @@ void ParCSRMatrix::print_mult_T(ParCSCMatrix* A, const aligned_vector<int>& proc
         size_rend_socket = 0;
     }
 
-    MPI_Reduce(&num_short, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_short, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Short: %d\n", n);
-    MPI_Reduce(&num_eager, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_eager, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Eager: %d\n", n);
-    MPI_Reduce(&num_rend, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_rend, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Rend: %d\n", n);
-    MPI_Reduce(&size_short, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_short, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Short: %d\n", n);
-    MPI_Reduce(&size_eager, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_eager, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Eager: %d\n", n);
-    MPI_Reduce(&size_rend, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_rend, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Rend: %d\n", n);
 
-    MPI_Reduce(&num_short_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_short_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Short Node: %d\n", n);
-    MPI_Reduce(&num_eager_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_eager_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Eager Node: %d\n", n);
-    MPI_Reduce(&num_rend_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_rend_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Rend Node: %d\n", n);
-    MPI_Reduce(&size_short_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_short_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Short Node: %d\n", n);
-    MPI_Reduce(&size_eager_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_eager_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Eager Node: %d\n", n);
-    MPI_Reduce(&size_rend_node, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_rend_node, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Rend Node: %d\n", n);
 
-    MPI_Reduce(&num_short_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_short_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Short Socket: %d\n", n);
-    MPI_Reduce(&num_eager_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_eager_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Eager Socket: %d\n", n);
-    MPI_Reduce(&num_rend_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&num_rend_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Num Rend Socket: %d\n", n);
-    MPI_Reduce(&size_short_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_short_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Short Socket: %d\n", n);
-    MPI_Reduce(&size_eager_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_eager_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Eager Socket: %d\n", n);
-    MPI_Reduce(&size_rend_socket, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&size_rend_socket, &n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Size Rend Socket: %d\n", n);
     
-    MPI_Reduce(&byte_hops, &nl, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&byte_hops, &nl, 1, RAPtor_MPI_LONG, RAPtor_MPI_SUM, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Byte Hops = %ld\n", nl);
-    MPI_Reduce(&worst_byte_hops, &nl, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&worst_byte_hops, &nl, 1, RAPtor_MPI_LONG, RAPtor_MPI_SUM, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("Worst Byte Hops = %ld\n", nl);
 
     delete Ctmp;

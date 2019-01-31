@@ -1,9 +1,5 @@
 #include <assert.h>
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "core/par_vector.hpp"
-#include "krylov/par_bicgstab.hpp"
-#include "gallery/par_matrix_IO.hpp"
+#include "raptor.hpp"
 
 using namespace raptor;
 

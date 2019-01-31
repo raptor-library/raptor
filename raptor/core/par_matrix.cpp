@@ -114,8 +114,8 @@ void ParMatrix::finalize(bool create_comm)
     off_proc->sort();
 
     int rank, num_procs;
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
 
     // Assume nonzeros in each on_proc column
     if (on_proc_num_cols > on_proc_column_map.size())
@@ -524,7 +524,7 @@ ParCSRMatrix* ParCSRMatrix::transpose()
     int col_count, count;
     int col_size;
     int idx, row;
-    MPI_Status recv_status;
+    RAPtor_MPI_Status recv_status;
 
     Partition* part_T;
     Matrix* on_proc_T;
@@ -575,7 +575,7 @@ ParCSRMatrix* ParCSRMatrix::transpose()
         proc = comm->recv_data->procs[i];
         start = send_ptr[i];
         end = send_ptr[i+1];
-        MPI_Isend(&(send_buffer[start]), end - start, MPI_DOUBLE_INT, proc,
+        RAPtor_MPI_Isend(&(send_buffer[start]), end - start, RAPtor_MPI_DOUBLE_INT, proc,
                 comm->key, comm->mpi_comm, &(comm->recv_data->requests[i]));
     }
     col_count = 0;
@@ -586,13 +586,13 @@ ParCSRMatrix* ParCSRMatrix::transpose()
         start = comm->send_data->indptr[i];
         end = comm->send_data->indptr[i+1];
         size = end - start;
-        MPI_Probe(proc, comm->key, comm->mpi_comm, &recv_status);
-        MPI_Get_count(&recv_status, MPI_DOUBLE_INT, &count);
+        RAPtor_MPI_Probe(proc, comm->key, comm->mpi_comm, &recv_status);
+        RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_DOUBLE_INT, &count);
         if (count > recv_buffer.size())
         {
             recv_buffer.resize(count);
         }
-        MPI_Recv(&(recv_buffer[0]), count, MPI_DOUBLE_INT, proc,
+        RAPtor_MPI_Recv(&(recv_buffer[0]), count, RAPtor_MPI_DOUBLE_INT, proc,
                 comm->key, comm->mpi_comm, &recv_status);
         ctr = 0;
         for (int j = 0; j < size; j++)
@@ -608,7 +608,7 @@ ParCSRMatrix* ParCSRMatrix::transpose()
         }
     }
     recv_mat->nnz = recv_mat->idx2.size();
-    MPI_Waitall(comm->recv_data->num_msgs, comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
+    RAPtor_MPI_Waitall(comm->recv_data->num_msgs, comm->recv_data->requests.data(), RAPtor_MPI_STATUSES_IGNORE);
 
     off_proc_T = new CSRMatrix(on_proc_num_cols, -1);
     aligned_vector<int> off_T_sizes(on_proc_num_cols, 0);
@@ -801,15 +801,15 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
     return A;
 }
 
-void ParMatrix::init_tap_communicators(MPI_Comm comm, data_t* comm_t)
+void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm comm, data_t* comm_t)
 {
     /*********************************
      * Initialize 
      * *******************************/
-    // Get MPI Information
+    // Get RAPtor_MPI Information
     int rank, num_procs;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &num_procs);
+    RAPtor_MPI_Comm_rank(comm, &rank);
+    RAPtor_MPI_Comm_size(comm, &num_procs);
 
     // Initialize standard tap_comm
     tap_comm = new TAPComm(partition, true);    

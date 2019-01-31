@@ -6,6 +6,7 @@
 
 #include <mpi.h>
 #include "core/types.hpp"
+#include "core/mpi_types.hpp"
 #include <unistd.h>
 #include <set>
 #include "core/par_matrix.hpp"

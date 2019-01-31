@@ -3,7 +3,7 @@
 #ifndef RAPTOR_CORE_COMMDATA_HPP
 #define RAPTOR_CORE_COMMDATA_HPP
 
-#define WITH_MPI 1
+#define WITH_RAPtor_MPI 1
 
 #include <mpi.h>
 #include "types.hpp"
@@ -80,37 +80,37 @@ public:
         }
     }
 
-    virtual void probe(int size, int key, MPI_Comm mpi_comm) = 0;
+    virtual void probe(int size, int key, RAPtor_MPI_Comm mpi_comm) = 0;
 
     virtual CommData* copy() = 0;
     virtual CommData* copy(const aligned_vector<int>& col_to_new) = 0;
 
     template <typename T>
-    static MPI_Datatype get_type();
+    static RAPtor_MPI_Datatype get_type();
 
 
     template <typename T>
     aligned_vector<T>& get_buffer(const int block_size = 1);
 
     template <typename T>
-    void send(const T* values, int key, MPI_Comm mpi_comm, const int block_size = 1,
+    void send(const T* values, int key, RAPtor_MPI_Comm mpi_comm, const int block_size = 1,
             std::function<T(T, T)> init_result_func = &sum_func<T, T>,
             T init_result_func_val = 0);
-    virtual void int_send(const int* values, int key, MPI_Comm mpi_comm, const int block_size,
+    virtual void int_send(const int* values, int key, RAPtor_MPI_Comm mpi_comm, const int block_size,
             std::function<int(int, int)> init_result_func,
             int init_result_func_val) = 0;
-    virtual void double_send(const double* values, int key, MPI_Comm mpi_comm, const int block_size,
+    virtual void double_send(const double* values, int key, RAPtor_MPI_Comm mpi_comm, const int block_size,
             std::function<double(double, double)> init_result_func,
             double init_result_func_val) = 0;
 
     template <typename T>
-    void send(const T* values, int key, MPI_Comm mpi_comm,
+    void send(const T* values, int key, RAPtor_MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size = 1);
-    virtual void int_send(const int* values, int key, MPI_Comm mpi_comm,
+    virtual void int_send(const int* values, int key, RAPtor_MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size) = 0;
-    virtual void double_send(const double* values, int key, MPI_Comm mpi_comm,
+    virtual void double_send(const double* values, int key, RAPtor_MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size) = 0;
 
@@ -119,27 +119,27 @@ public:
             const int* rowptr, 
             const int* col_indices,
             const double* values, 
-            int key, MPI_Comm mpi_comm, 
+            int key, RAPtor_MPI_Comm mpi_comm, 
             const int block_size = 1) = 0;
     virtual void send(char* send_buffer,
             const int* rowptr, 
             const int* col_indices,
             double const* const* values, 
-            int key, MPI_Comm mpi_comm, 
+            int key, RAPtor_MPI_Comm mpi_comm, 
             const int block_size = 1) = 0;
     virtual int get_msg_size(const int* rowptr, 
-            const bool has_vals, MPI_Comm mpi_comm, 
+            const bool has_vals, RAPtor_MPI_Comm mpi_comm, 
             const int block_size = 1) = 0;
 
 
     template <typename T>
-    void recv(int key, MPI_Comm mpi_comm, const int block_size = 1)
+    void recv(int key, RAPtor_MPI_Comm mpi_comm, const int block_size = 1)
     {
         if (num_msgs == 0) return;
 
         int proc, start, end;
         int size = size_msgs * block_size;
-        MPI_Datatype datatype = get_type<T>();
+        RAPtor_MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
         if (buf.size() < size) buf.resize(size);
 
@@ -148,26 +148,26 @@ public:
             proc = procs[i];
             start = indptr[i];
             end = indptr[i+1];
-            MPI_Irecv(&(buf[start*block_size]), (end - start) * block_size, datatype,
+            RAPtor_MPI_Irecv(&(buf[start*block_size]), (end - start) * block_size, datatype,
                     proc, key, mpi_comm, &(requests[i]));
         }
     }   
 
     template <typename T>
-    void recv(int key, MPI_Comm mpi_comm, 
+    void recv(int key, RAPtor_MPI_Comm mpi_comm, 
             const aligned_vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1);
-    virtual void int_recv(int key, MPI_Comm mpi_comm, 
+    virtual void int_recv(int key, RAPtor_MPI_Comm mpi_comm, 
             const aligned_vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1) = 0;
-    virtual void double_recv(int key, MPI_Comm mpi_comm, 
+    virtual void double_recv(int key, RAPtor_MPI_Comm mpi_comm, 
             const aligned_vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1) = 0;
 
-    void recv(CSRMatrix* recv_mat, int key, MPI_Comm mpi_comm, const int block_size = 1,
+    void recv(CSRMatrix* recv_mat, int key, RAPtor_MPI_Comm mpi_comm, const int block_size = 1,
             const bool vals = true)
     {
         if (num_msgs == 0) return;
@@ -175,7 +175,7 @@ public:
         int proc, start, end, size;
         int ctr, row_size, row_count;
         int count, recv_size;
-        MPI_Status recv_status;
+        RAPtor_MPI_Status recv_status;
         aligned_vector<char> recv_buffer;
 
         recv_size = 0;
@@ -188,28 +188,28 @@ public:
             size = end - start;
             
             // Recv message of any size from proc
-            MPI_Probe(proc, key, mpi_comm, &recv_status);
-            MPI_Get_count(&recv_status, MPI_PACKED, &count);
+            RAPtor_MPI_Probe(proc, key, mpi_comm, &recv_status);
+            RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_PACKED, &count);
 
             // Resize recv_buffer as needed
             if (count > recv_buffer.size())
             {
                 recv_buffer.resize(count);
             }
-            MPI_Recv(&(recv_buffer[0]), count, MPI_PACKED, proc, key,
+            RAPtor_MPI_Recv(&(recv_buffer[0]), count, RAPtor_MPI_PACKED, proc, key,
                     mpi_comm, &recv_status);
 
             // Go through recv, adding indices to matrix recv_mat
             ctr = 0;
             for (int j = 0; j < size; j++)
             {
-                MPI_Unpack(recv_buffer.data(), count, &ctr, &row_size, 1, MPI_INT,
+                RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr, &row_size, 1, RAPtor_MPI_INT,
                         mpi_comm);
                 recv_mat->idx1[row_count + 1] = recv_size + row_size;
                 row_count++;
                 recv_mat->idx2.resize(recv_size + row_size);
-                MPI_Unpack(recv_buffer.data(), count, &ctr, &recv_mat->idx2[recv_size],
-                        row_size, MPI_INT, mpi_comm);
+                RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr, &recv_mat->idx2[recv_size],
+                        row_size, RAPtor_MPI_INT, mpi_comm);
                 
                 if (vals)
                 {
@@ -220,16 +220,16 @@ public:
                         for (int i = 0; i < row_size; i++)
                         {
                             recv_mat_bsr->block_vals[recv_size + i] = new double[block_size];
-                            MPI_Unpack(recv_buffer.data(), count, &ctr, 
+                            RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr, 
                                     recv_mat_bsr->block_vals[recv_size + i],
-                                    block_size, MPI_DOUBLE, mpi_comm);
+                                    block_size, RAPtor_MPI_DOUBLE, mpi_comm);
                         }
                     }
                     else
                     {
                         recv_mat->vals.resize(recv_size + row_size);
-                        MPI_Unpack(recv_buffer.data(), count, &ctr, &recv_mat->vals[recv_size],
-                                row_size, MPI_DOUBLE, mpi_comm);
+                        RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr, &recv_mat->vals[recv_size],
+                                row_size, RAPtor_MPI_DOUBLE, mpi_comm);
                     }
                 }
                 recv_size += row_size;
@@ -243,43 +243,43 @@ public:
     {
         if (num_msgs)
         {
-            MPI_Waitall(num_msgs, requests.data(), MPI_STATUSES_IGNORE);
+            RAPtor_MPI_Waitall(num_msgs, requests.data(), RAPtor_MPI_STATUSES_IGNORE);
         }
     }
     void waitall(int n_msgs)
     {
         if (n_msgs)
         {
-            MPI_Waitall(n_msgs, requests.data(), MPI_STATUSES_IGNORE);
+            RAPtor_MPI_Waitall(n_msgs, requests.data(), RAPtor_MPI_STATUSES_IGNORE);
         }
     }
 
     void pack_values(const double* values, int row_start, int size, char* send_buffer,
-           int bytes, int* ctr, MPI_Comm mpi_comm, int block_size)
+           int bytes, int* ctr, RAPtor_MPI_Comm mpi_comm, int block_size)
     {
-        MPI_Pack(&(values[row_start]), size, MPI_DOUBLE, send_buffer, 
+        RAPtor_MPI_Pack(&(values[row_start]), size, RAPtor_MPI_DOUBLE, send_buffer, 
                 bytes, ctr, mpi_comm);
     }
     void pack_values(double const* const* values, int row_start, int size, 
-            char* send_buffer, int bytes, int* ctr, MPI_Comm mpi_comm, int block_size)
+            char* send_buffer, int bytes, int* ctr, RAPtor_MPI_Comm mpi_comm, int block_size)
     {
         for (int i = 0; i < size; i++)
         {
-            MPI_Pack(values[row_start + i], block_size, MPI_DOUBLE, send_buffer,
+            RAPtor_MPI_Pack(values[row_start + i], block_size, RAPtor_MPI_DOUBLE, send_buffer,
                     bytes, ctr, mpi_comm);
         }
     }
 
     template <typename T>
-    void unpack(aligned_vector<T>& buffer, MPI_Comm mpi_comm, const int block_size = 1)
+    void unpack(aligned_vector<T>& buffer, RAPtor_MPI_Comm mpi_comm, const int block_size = 1)
     {
         if (num_msgs == 0) return;
 
         int position = 0;
         int flat_size = size_msgs * block_size;
         if (buffer.size() < flat_size) buffer.resize(flat_size);
-        MPI_Datatype datatype = get_type<T>();
-        MPI_Unpack(pack_buffer.data(), pack_buffer.size(), &position,
+        RAPtor_MPI_Datatype datatype = get_type<T>();
+        RAPtor_MPI_Unpack(pack_buffer.data(), pack_buffer.size(), &position,
                 buffer.data(), flat_size, datatype, mpi_comm);
     }
 
@@ -292,7 +292,7 @@ public:
     int size_msgs;
     aligned_vector<int> procs;
     aligned_vector<int> indptr;
-    aligned_vector<MPI_Request> requests;
+    aligned_vector<RAPtor_MPI_Request> requests;
     aligned_vector<double> buffer;
     aligned_vector<int> int_buffer;
     aligned_vector<char> pack_buffer;
@@ -365,18 +365,18 @@ public:
         size_msgs += msg_size;
     }
 
-    void probe(int n_recv, int key, MPI_Comm mpi_comm)
+    void probe(int n_recv, int key, RAPtor_MPI_Comm mpi_comm)
     {
         int proc, count, size;
-        MPI_Status recv_status;
+        RAPtor_MPI_Status recv_status;
 
         size_msgs = 0;
         indptr[0] = 0;
         for (int i = 0; i < n_recv; i++)
         {
-            MPI_Recv(&size, 1, MPI_INT, MPI_ANY_SOURCE, key,
+            RAPtor_MPI_Recv(&size, 1, RAPtor_MPI_INT, RAPtor_MPI_ANY_SOURCE, key,
                     mpi_comm, &recv_status);
-            procs.emplace_back(recv_status.MPI_SOURCE);
+            procs.emplace_back(recv_status.RAPtor_MPI_SOURCE);
             size_msgs += size;
             indptr.emplace_back(size_msgs);
         }
@@ -385,14 +385,14 @@ public:
     }
 
 
-    void int_send(const int* values, int key, MPI_Comm mpi_comm, const int block_size,
+    void int_send(const int* values, int key, RAPtor_MPI_Comm mpi_comm, const int block_size,
             std::function<int(int, int)> init_result_func,
             int init_result_func_val)
     {
         send(values, key, mpi_comm, block_size, init_result_func, 
                 init_result_func_val);
     }
-    void double_send(const double* values, int key, MPI_Comm mpi_comm, const int block_size,
+    void double_send(const double* values, int key, RAPtor_MPI_Comm mpi_comm, const int block_size,
             std::function<double(double, double)> init_result_func,
             double init_result_func_val)
     {
@@ -400,13 +400,13 @@ public:
                 init_result_func_val);
     }
 
-    void int_send(const int* values, int key, MPI_Comm mpi_comm,
+    void int_send(const int* values, int key, RAPtor_MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size)
     {
         send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
     }
-    void double_send(const double* values, int key, MPI_Comm mpi_comm,
+    void double_send(const double* values, int key, RAPtor_MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size)
     {
@@ -414,7 +414,7 @@ public:
     }        
 
     template <typename T>
-    void send(const T* values, int key, MPI_Comm mpi_comm, const int block_size = 1,
+    void send(const T* values, int key, RAPtor_MPI_Comm mpi_comm, const int block_size = 1,
             std::function<T(T, T)> init_result_func = &sum_func<T, T>,
             T init_result_func_val = 0)
     {
@@ -424,21 +424,21 @@ public:
         int proc, idx;
         int size = size_msgs * block_size;
 
-        MPI_Datatype datatype = get_type<T>();
+        RAPtor_MPI_Datatype datatype = get_type<T>();
 
         for (int i = 0; i < num_msgs; i++)
         {
             proc = procs[i];
             start = indptr[i];
             end = indptr[i+1];
-            MPI_Isend(&(values[start*block_size]), (end - start) * block_size,
+            RAPtor_MPI_Isend(&(values[start*block_size]), (end - start) * block_size,
                     datatype, proc, key, mpi_comm, &(requests[i]));
         }
     }
 
 
     template <typename T>
-    void send(const T* values, int key, MPI_Comm mpi_comm,
+    void send(const T* values, int key, RAPtor_MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size = 1)
     {
@@ -454,7 +454,7 @@ public:
         bool comparison;
         int size = size_msgs * block_size; 
 
-        MPI_Datatype datatype = get_type<T>();
+        RAPtor_MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
         if (buf.size() < size) buf.resize(size);
 
@@ -489,7 +489,7 @@ public:
             size = ctr - prev_ctr;
             if (size)
             {
-                MPI_Isend(&(buf[prev_ctr]), size, datatype, 
+                RAPtor_MPI_Isend(&(buf[prev_ctr]), size, datatype, 
                         proc, key, mpi_comm, &(requests[n_sends++]));
                 prev_ctr = ctr;
             }
@@ -501,7 +501,7 @@ public:
             const int* rowptr, 
             const int* col_indices,
             const double* values, 
-            int key, MPI_Comm mpi_comm, 
+            int key, RAPtor_MPI_Comm mpi_comm, 
             const int block_size = 1)
     {
         send_helper(send_buffer, rowptr, col_indices, values, key,
@@ -512,14 +512,14 @@ public:
         const int* rowptr,
         const int* col_indices,
         double const* const* values,
-        int key, MPI_Comm mpi_comm,
+        int key, RAPtor_MPI_Comm mpi_comm,
         const int block_size = 1)     
     {
         send_helper(send_buffer, rowptr, col_indices, values, key,
                 mpi_comm, block_size);
     }
 
-    int get_msg_size(const int* rowptr, const bool has_vals, MPI_Comm mpi_comm, 
+    int get_msg_size(const int* rowptr, const bool has_vals, RAPtor_MPI_Comm mpi_comm, 
             const int block_size = 1)
     {
         int start, end;
@@ -534,11 +534,11 @@ public:
         row_end = rowptr[end];
         num_ints = (row_end - row_start) + (end - start);
         num_doubles = (row_end - row_start) * block_size;
-        MPI_Pack_size(num_ints, MPI_INT, mpi_comm, &bytes);
+        RAPtor_MPI_Pack_size(num_ints, RAPtor_MPI_INT, mpi_comm, &bytes);
 
         if (has_vals)
         {
-            MPI_Pack_size(num_doubles, MPI_DOUBLE, mpi_comm, &double_bytes);
+            RAPtor_MPI_Pack_size(num_doubles, RAPtor_MPI_DOUBLE, mpi_comm, &double_bytes);
             bytes += double_bytes;
         }
 
@@ -551,7 +551,7 @@ public:
         const int* rowptr,
         const int* col_indices,
         const T& values,
-        int key, MPI_Comm mpi_comm,
+        int key, RAPtor_MPI_Comm mpi_comm,
         const int block_size = 1)
     {   
         if (num_msgs == 0) return;
@@ -575,9 +575,9 @@ public:
                 row_start = rowptr[j];
                 row_end = rowptr[j+1];
                 size = row_end - row_start;
-                MPI_Pack(&size, 1, MPI_INT, send_buffer, bytes, 
+                RAPtor_MPI_Pack(&size, 1, RAPtor_MPI_INT, send_buffer, bytes, 
                         &ctr, mpi_comm);
-                MPI_Pack(&(col_indices[row_start]), size, MPI_INT,
+                RAPtor_MPI_Pack(&(col_indices[row_start]), size, RAPtor_MPI_INT,
                         send_buffer, bytes, &ctr, mpi_comm);
                 if (values)
                 {
@@ -585,13 +585,13 @@ public:
                             &ctr, mpi_comm, block_size);
                 }
             }
-            MPI_Isend(&(send_buffer[prev_ctr]), ctr - prev_ctr, MPI_PACKED, proc, 
+            RAPtor_MPI_Isend(&(send_buffer[prev_ctr]), ctr - prev_ctr, RAPtor_MPI_PACKED, proc, 
                     key, mpi_comm, &(requests[i]));
             prev_ctr = ctr;
         }
     } 
 
-    void int_recv(int key, MPI_Comm mpi_comm, 
+    void int_recv(int key, RAPtor_MPI_Comm mpi_comm, 
             const aligned_vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
@@ -599,7 +599,7 @@ public:
         cond_recv<int>(key, mpi_comm, off_proc_states, compare_func, s_recv_ptr,
                 n_recv_ptr, block_size);
     }
-    void double_recv(int key, MPI_Comm mpi_comm, 
+    void double_recv(int key, RAPtor_MPI_Comm mpi_comm, 
             const aligned_vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
@@ -609,7 +609,7 @@ public:
     }
 
     template <typename T>
-    void cond_recv(int key, MPI_Comm mpi_comm, 
+    void cond_recv(int key, RAPtor_MPI_Comm mpi_comm, 
             const aligned_vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
@@ -625,7 +625,7 @@ public:
         int proc, start, end, idx;
         int size = size_msgs * block_size;
 
-        MPI_Datatype datatype = get_type<T>();
+        RAPtor_MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
         if (buf.size() < size) buf.resize(size);
 
@@ -651,7 +651,7 @@ public:
             }
             if (ctr - prev_ctr)
             {
-                MPI_Irecv(&(buf[prev_ctr]), ctr - prev_ctr, datatype,
+                RAPtor_MPI_Irecv(&(buf[prev_ctr]), ctr - prev_ctr, datatype,
                         proc, key, mpi_comm, &(requests[n_recvs++]));
                 prev_ctr = ctr;
             }
@@ -742,11 +742,11 @@ public:
         size_msgs += msg_size;
     }
 
-    void probe(int size, int key, MPI_Comm mpi_comm)
+    void probe(int size, int key, RAPtor_MPI_Comm mpi_comm)
     {
         int proc, count;
         int size_recvd;
-        MPI_Status recv_status;
+        RAPtor_MPI_Status recv_status;
 
         size_msgs = size;
         indices.resize(size_msgs);
@@ -754,10 +754,10 @@ public:
         size_recvd = 0;
         while (size_recvd < size_msgs)
         {
-            MPI_Probe(MPI_ANY_SOURCE, key, mpi_comm, &recv_status);
-            proc = recv_status.MPI_SOURCE;
-            MPI_Get_count(&recv_status, MPI_INT, &count);
-            MPI_Recv(&(indices[size_recvd]), count, MPI_INT, proc, 
+            RAPtor_MPI_Probe(RAPtor_MPI_ANY_SOURCE, key, mpi_comm, &recv_status);
+            proc = recv_status.RAPtor_MPI_SOURCE;
+            RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_INT, &count);
+            RAPtor_MPI_Recv(&(indices[size_recvd]), count, RAPtor_MPI_INT, proc, 
                     key, mpi_comm, &recv_status);
             size_recvd += count;
             procs.emplace_back(proc);
@@ -767,27 +767,27 @@ public:
         finalize();
     }
 
-    void int_send(const int* values, int key, MPI_Comm mpi_comm, const int block_size,
+    void int_send(const int* values, int key, RAPtor_MPI_Comm mpi_comm, const int block_size,
             std::function<int(int, int)> init_result_func,
             int init_result_func_val)
     {
         send(values, key, mpi_comm, block_size, init_result_func, 
                 init_result_func_val);
     }
-    void double_send(const double* values, int key, MPI_Comm mpi_comm, const int block_size,
+    void double_send(const double* values, int key, RAPtor_MPI_Comm mpi_comm, const int block_size,
             std::function<double(double, double)> init_result_func,
             double init_result_func_val)
     {
         send(values, key, mpi_comm, block_size, init_result_func,
                 init_result_func_val);
     }
-    void int_send(const int* values, int key, MPI_Comm mpi_comm,
+    void int_send(const int* values, int key, RAPtor_MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size)
     {
         send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
     }
-    void double_send(const double* values, int key, MPI_Comm mpi_comm,
+    void double_send(const double* values, int key, RAPtor_MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size)
     {
@@ -795,7 +795,7 @@ public:
     }     
 
     template <typename T>
-    void send(const T* values, int key, MPI_Comm mpi_comm, const int block_size = 1,
+    void send(const T* values, int key, RAPtor_MPI_Comm mpi_comm, const int block_size = 1,
             std::function<T(T, T)> init_result_func = &sum_func<T, T>,
             T init_result_func_val = 0)
     {
@@ -806,7 +806,7 @@ public:
         int proc, idx, pos;
         int size = size_msgs * block_size;
 
-        MPI_Datatype datatype = get_type<T>();
+        RAPtor_MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
         if (buf.size() < size) buf.resize(size);
 
@@ -824,13 +824,13 @@ public:
                     buf[pos + k] = values[idx + k];
                 }
             }
-            MPI_Isend(&(buf[start*block_size]), (end - start) * block_size,
+            RAPtor_MPI_Isend(&(buf[start*block_size]), (end - start) * block_size,
                     datatype, proc, key, mpi_comm, &(requests[i]));
         }
     }
 
     template <typename T>
-    void send(const T* values, int key, MPI_Comm mpi_comm,
+    void send(const T* values, int key, RAPtor_MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size = 1)
     {
@@ -847,7 +847,7 @@ public:
         bool comparison;
         int size = size_msgs * block_size; 
 
-        MPI_Datatype datatype = get_type<T>();
+        RAPtor_MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
         if (buf.size() < size) buf.resize(size);
 
@@ -883,7 +883,7 @@ public:
             }
             if (ctr - prev_ctr)
             {
-                MPI_Isend(&(buf[prev_ctr]), ctr - prev_ctr, datatype, 
+                RAPtor_MPI_Isend(&(buf[prev_ctr]), ctr - prev_ctr, datatype, 
                         proc, key, mpi_comm, &(requests[n_sends++]));
                 prev_ctr = ctr;
             }
@@ -896,7 +896,7 @@ public:
             const int* rowptr, 
             const int* col_indices,
             const double* values, 
-            int key, MPI_Comm mpi_comm, 
+            int key, RAPtor_MPI_Comm mpi_comm, 
             const int block_size = 1)
     {
         send_helper(send_buffer, rowptr, col_indices, values, key,
@@ -907,14 +907,14 @@ public:
         const int* rowptr,
         const int* col_indices,
         double const* const* values,
-        int key, MPI_Comm mpi_comm,
+        int key, RAPtor_MPI_Comm mpi_comm,
         const int block_size = 1)     
     {
         send_helper(send_buffer, rowptr, col_indices, values, key,
                 mpi_comm, block_size);
     }
 
-    int get_msg_size(const int* rowptr, const bool has_vals, MPI_Comm mpi_comm,
+    int get_msg_size(const int* rowptr, const bool has_vals, RAPtor_MPI_Comm mpi_comm,
             const int block_size = 1)
     {
         int start, end;
@@ -931,11 +931,11 @@ public:
             num_doubles += (rowptr[*it+1] - rowptr[*it]);
         }
         num_ints += num_doubles;
-        MPI_Pack_size(num_ints, MPI_INT, mpi_comm, &bytes);
+        RAPtor_MPI_Pack_size(num_ints, RAPtor_MPI_INT, mpi_comm, &bytes);
 
         if (has_vals)
         {
-            MPI_Pack_size(num_doubles * block_size, MPI_DOUBLE, mpi_comm, &double_bytes);
+            RAPtor_MPI_Pack_size(num_doubles * block_size, RAPtor_MPI_DOUBLE, mpi_comm, &double_bytes);
             bytes += double_bytes;
         }
 
@@ -947,7 +947,7 @@ public:
         const int* rowptr,
         const int* col_indices,
         const T& values,
-        int key, MPI_Comm mpi_comm,
+        int key, RAPtor_MPI_Comm mpi_comm,
         const int block_size = 1)     
     {
         if (num_msgs == 0) return;
@@ -974,9 +974,9 @@ public:
                 row_start = rowptr[row];
                 row_end = rowptr[row+1];
                 size = (row_end - row_start);
-                MPI_Pack(&size, 1, MPI_INT, send_buffer, bytes, 
+                RAPtor_MPI_Pack(&size, 1, RAPtor_MPI_INT, send_buffer, bytes, 
                         &ctr, mpi_comm);
-                MPI_Pack(&(col_indices[row_start]), size, MPI_INT, 
+                RAPtor_MPI_Pack(&(col_indices[row_start]), size, RAPtor_MPI_INT, 
                         send_buffer, bytes, &ctr, mpi_comm);
                 if (values)
                 {                    
@@ -984,14 +984,14 @@ public:
                             mpi_comm, block_size);
                 }
             }
-            MPI_Isend(&(send_buffer[prev_ctr]), ctr - prev_ctr, MPI_PACKED, proc, 
+            RAPtor_MPI_Isend(&(send_buffer[prev_ctr]), ctr - prev_ctr, RAPtor_MPI_PACKED, proc, 
                     key, mpi_comm, &(requests[i]));
             prev_ctr = ctr;
         }
     }
 
  
-    void int_recv(int key, MPI_Comm mpi_comm, 
+    void int_recv(int key, RAPtor_MPI_Comm mpi_comm, 
             const aligned_vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
@@ -999,7 +999,7 @@ public:
         cond_recv<int>(key, mpi_comm, off_proc_states, compare_func, s_recv_ptr,
                 n_recv_ptr, block_size);
     }
-    void double_recv(int key, MPI_Comm mpi_comm, 
+    void double_recv(int key, RAPtor_MPI_Comm mpi_comm, 
             const aligned_vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
@@ -1009,7 +1009,7 @@ public:
     }
 
     template <typename T>
-    void cond_recv(int key, MPI_Comm mpi_comm, 
+    void cond_recv(int key, RAPtor_MPI_Comm mpi_comm, 
             const aligned_vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
@@ -1025,7 +1025,7 @@ public:
         int proc, start, end, idx;
         int size = size_msgs * block_size;
 
-        MPI_Datatype datatype = get_type<T>();
+        RAPtor_MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
         if (buf.size() < size) buf.resize(size);
 
@@ -1051,7 +1051,7 @@ public:
             }
             if (ctr - prev_ctr)
             {
-                MPI_Irecv(&(buf[prev_ctr]), ctr - prev_ctr, datatype, proc,
+                RAPtor_MPI_Irecv(&(buf[prev_ctr]), ctr - prev_ctr, datatype, proc,
                         key, mpi_comm, &(requests[n_recvs++]));
                 prev_ctr = ctr;
             }
@@ -1136,27 +1136,27 @@ public:
         return data;
     }
 
-    void int_send(const int* values, int key, MPI_Comm mpi_comm, const int block_size,
+    void int_send(const int* values, int key, RAPtor_MPI_Comm mpi_comm, const int block_size,
             std::function<int(int, int)> init_result_func,
             int init_result_func_val)
     {
         send(values, key, mpi_comm, block_size, init_result_func, 
                 init_result_func_val);
     }
-    void double_send(const double* values, int key, MPI_Comm mpi_comm, const int block_size,
+    void double_send(const double* values, int key, RAPtor_MPI_Comm mpi_comm, const int block_size,
             std::function<double(double, double)> init_result_func,
             double init_result_func_val)
     {
         send(values, key, mpi_comm, block_size, init_result_func,
                 init_result_func_val);
     }
-    void int_send(const double* values, int key, MPI_Comm mpi_comm,
+    void int_send(const double* values, int key, RAPtor_MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size)
     {
         send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
     }
-    void double_send(const double* values, int key, MPI_Comm mpi_comm,
+    void double_send(const double* values, int key, RAPtor_MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size)
     {
@@ -1164,7 +1164,7 @@ public:
     }     
 
     template <typename T>
-    void send(const T* values, int key, MPI_Comm mpi_comm, const int block_size = 1,
+    void send(const T* values, int key, RAPtor_MPI_Comm mpi_comm, const int block_size = 1,
             std::function<T(T, T)> init_result_func = &sum_func<T, T>,
             T init_result_func_val = 0)
     {
@@ -1177,7 +1177,7 @@ public:
         int size = size_msgs * block_size;
         int pos;
 
-        MPI_Datatype datatype = get_type<T>();
+        RAPtor_MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
         if (buf.size() < size) buf.resize(size);
 
@@ -1207,13 +1207,13 @@ public:
                     buf[pos + k] = tmp[k];
                 }
             }
-            MPI_Isend(&(buf[start * block_size]), (end - start) * block_size,
+            RAPtor_MPI_Isend(&(buf[start * block_size]), (end - start) * block_size,
                    datatype, proc, key, mpi_comm, &(requests[i]));
         }
     }
 
     template <typename T>
-    void send(const T* values, int key, MPI_Comm mpi_comm,
+    void send(const T* values, int key, RAPtor_MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size = 1)
     {
@@ -1328,7 +1328,7 @@ public:
             const int* rowptr, 
             const int* col_indices,
             const double* values, 
-            int key, MPI_Comm mpi_comm, 
+            int key, RAPtor_MPI_Comm mpi_comm, 
             const int block_size = 1)
     {
         send_helper(send_buffer, rowptr, col_indices, values, key, mpi_comm, block_size);
@@ -1337,13 +1337,13 @@ public:
             const int* rowptr, 
             const int* col_indices,
             double const* const* values, 
-            int key, MPI_Comm mpi_comm, 
+            int key, RAPtor_MPI_Comm mpi_comm, 
             const int block_size = 1)
     {
         send_helper(send_buffer, rowptr, col_indices, values, key, mpi_comm, block_size);
     }
 
-    int get_msg_size(const int* rowptr, const bool has_vals, MPI_Comm mpi_comm, 
+    int get_msg_size(const int* rowptr, const bool has_vals, RAPtor_MPI_Comm mpi_comm, 
             const int block_size = 1)
     {
         int start, end;
@@ -1360,10 +1360,10 @@ public:
             num_doubles += (rowptr[*it+1] - rowptr[*it]);
         }
         num_ints += num_doubles;
-        MPI_Pack_size(num_ints, MPI_INT, mpi_comm, &bytes);
+        RAPtor_MPI_Pack_size(num_ints, RAPtor_MPI_INT, mpi_comm, &bytes);
         if (has_vals)
         {
-            MPI_Pack_size(num_doubles * block_size, MPI_DOUBLE, mpi_comm, &double_bytes);
+            RAPtor_MPI_Pack_size(num_doubles * block_size, RAPtor_MPI_DOUBLE, mpi_comm, &double_bytes);
             bytes += double_bytes;
         }
 
@@ -1375,7 +1375,7 @@ public:
             const int* rowptr, 
             const int* col_indices,
             const T& values, 
-            int key, MPI_Comm mpi_comm, 
+            int key, RAPtor_MPI_Comm mpi_comm, 
             const int block_size = 1)
     {
         if (num_msgs == 0) return;
@@ -1410,8 +1410,8 @@ public:
                 {
                     combine_entries(j, rowptr, col_indices, send_indices, &size);
                 }
-                MPI_Pack(&size, 1, MPI_INT, send_buffer, bytes, &ctr, mpi_comm);
-                MPI_Pack(send_indices.data(), size, MPI_INT, send_buffer,
+                RAPtor_MPI_Pack(&size, 1, RAPtor_MPI_INT, send_buffer, bytes, &ctr, mpi_comm);
+                RAPtor_MPI_Pack(send_indices.data(), size, RAPtor_MPI_INT, send_buffer,
                     bytes, &ctr, mpi_comm);
 
                 if (values)
@@ -1420,7 +1420,7 @@ public:
                             mpi_comm, block_size);
                 }
             }
-            MPI_Isend(&(send_buffer[prev_ctr]), ctr - prev_ctr, MPI_PACKED, proc, 
+            RAPtor_MPI_Isend(&(send_buffer[prev_ctr]), ctr - prev_ctr, RAPtor_MPI_PACKED, proc, 
                     key, mpi_comm, &(requests[i]));
             prev_ctr = ctr;
         }

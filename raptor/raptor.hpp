@@ -8,6 +8,7 @@
 
 // Data about topology and matrix partitions
 #ifndef NO_MPI
+    #include "core/mpi_types.hpp"
     #include "core/partition.hpp"
     #include "core/topology.hpp"
 #endif 

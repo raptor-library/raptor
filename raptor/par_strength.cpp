@@ -28,9 +28,9 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
     int* off_variables;
     if (num_variables > 1)
     {
-        if (comm_t) *comm_t -= MPI_Wtime();
+        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         aligned_vector<int>& recvbuf = comm->communicate(variables);
-        if (comm_t) *comm_t += MPI_Wtime();
+        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
         off_variables = recvbuf.data();
     }
@@ -448,10 +448,10 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, da
         }
     }
 
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     aligned_vector<double>& off_proc_row_scales = comm->communicate(row_scales);
     aligned_vector<int>& off_proc_neg_diags = comm->communicate(neg_diags);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
     
     S->on_proc->idx1[0] = 0;
     S->off_proc->idx1[0] = 0;

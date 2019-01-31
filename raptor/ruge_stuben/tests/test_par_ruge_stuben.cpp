@@ -2,16 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
-
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "gallery/par_matrix_IO.hpp"
-#include "ruge_stuben/par_cf_splitting.hpp"
-#include "ruge_stuben/par_interpolation.hpp"
-#include "multilevel/par_multilevel.hpp"
-#include "gallery/diffusion.hpp"
-#include "gallery/laplacian27pt.hpp"
-#include "gallery/par_stencil.hpp"
+#include "raptor.hpp"
 #include "tests/par_compare.hpp"
 #include <iostream>
 #include <fstream>

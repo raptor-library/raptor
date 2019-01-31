@@ -38,9 +38,9 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
 
     // Initialize Isends and Irecvs to communicate
     // values of x
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     comm->init_comm(x, off_proc->b_cols);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
@@ -50,9 +50,9 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
     }
 
     // Wait for Isends and Irecvs to complete
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -72,9 +72,9 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b, data_t* comm_t)
 
     // Initialize Isends and Irecvs to communicate
     // values of x
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     tap_comm->init_comm(x, off_proc->b_cols);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
@@ -84,9 +84,9 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b, data_t* comm_t)
     }
 
     // Wait for Isends and Irecvs to complete
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -112,9 +112,9 @@ void ParMatrix::mult_append(ParVector& x, ParVector& b, bool tap, data_t* comm_t
 
     // Initialize Isends and Irecvs to communicate
     // values of x
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     comm->init_comm(x, off_proc->b_cols);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
@@ -124,9 +124,9 @@ void ParMatrix::mult_append(ParVector& x, ParVector& b, bool tap, data_t* comm_t
     }
 
     // Wait for Isends and Irecvs to complete
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -146,9 +146,9 @@ void ParMatrix::tap_mult_append(ParVector& x, ParVector& b, data_t* comm_t)
 
     // Initialize Isends and Irecvs to communicate
     // values of x
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     tap_comm->init_comm(x, off_proc->b_cols);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
@@ -158,9 +158,9 @@ void ParMatrix::tap_mult_append(ParVector& x, ParVector& b, data_t* comm_t)
     }
 
     // Wait for Isends and Irecvs to complete
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -192,18 +192,18 @@ void ParMatrix::mult_T(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
 
     off_proc->mult_T(x.local, x_tmp);
 
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     comm->init_comm_T(x_tmp, off_proc->b_cols);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     if (local_num_rows)
     {
         on_proc->mult_T(x.local, b.local);
     }
 
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     comm->complete_comm_T<double>(b.local.values, off_proc->b_cols);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 }
 
 void ParMatrix::tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t)
@@ -222,18 +222,18 @@ void ParMatrix::tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t)
 
     off_proc->mult_T(x.local, x_tmp);
 
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     tap_comm->init_comm_T(x_tmp, off_proc->b_cols);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     if (local_num_rows)
     {
         on_proc->mult_T(x.local, b.local);
     }
 
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     tap_comm->complete_comm_T<double>(b.local.values, off_proc->b_cols);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 }
 
 void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap,
@@ -253,9 +253,9 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap,
 
     // Initialize Isends and Irecvs to communicate
     // values of x
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     comm->init_comm(x, off_proc->b_cols);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     std::copy(b.local.values.begin(), b.local.values.end(), 
             r.local.values.begin());
@@ -268,9 +268,9 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap,
     }
 
     // Wait for Isends and Irecvs to complete
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -291,9 +291,9 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r,
 
     // Initialize Isends and Irecvs to communicate
     // values of x
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     tap_comm->init_comm(x, off_proc->b_cols);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     std::copy(b.local.values.begin(), b.local.values.end(), r.local.values.begin());
 
@@ -305,9 +305,9 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r,
     }
 
     // Wait for Isends and Irecvs to complete
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)

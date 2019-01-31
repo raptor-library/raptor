@@ -3,7 +3,6 @@
 
 
 #include "gtest/gtest.h"
-#include "mpi.h"
 #include "raptor.hpp"
 #include "tests/hypre_compare.hpp"
 #include <iostream>

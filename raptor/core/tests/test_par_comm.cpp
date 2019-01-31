@@ -3,12 +3,7 @@
 
 #include "gtest/gtest.h"
 
-#include "core/types.hpp"
-#include "core/matrix.hpp"
-#include "core/par_matrix.hpp"
-#include "gallery/stencil.hpp"
-#include "gallery/par_stencil.hpp"
-#include "gallery/diffusion.hpp"
+#include "raptor.hpp"
 
 using namespace raptor;
 

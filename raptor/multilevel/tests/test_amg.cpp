@@ -2,15 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
-#include "core/types.hpp"
-#include "core/matrix.hpp"
-#include "multilevel/multilevel.hpp"
-#include "ruge_stuben/ruge_stuben_solver.hpp"
-#include "aggregation/smoothed_aggregation_solver.hpp"
-#include "gallery/matrix_IO.hpp"
-#include "gallery/diffusion.hpp"
-#include "gallery/laplacian27pt.hpp"
-#include "gallery/stencil.hpp"
+#include "raptor.hpp"
 
 using namespace raptor;
 

@@ -30,10 +30,8 @@ TEST(ParMetisTest, TestsInUtil)
 
     // Create RowWise Partition 
     ParCSRMatrix* A_orig = readParMatrix(filename);
-    ParVector x_orig(A_orig->global_num_rows, A_orig->local_num_rows, 
-            A_orig->partition->first_local_row);
-    ParVector b_orig(A_orig->global_num_rows, A_orig->local_num_rows, 
-            A_orig->partition->first_local_row);
+    ParVector x_orig(A_orig->global_num_rows, A_orig->local_num_rows);
+    ParVector b_orig(A_orig->global_num_rows, A_orig->local_num_rows);
     A_orig->tap_comm = new TAPComm(A_orig->partition, A_orig->off_proc_column_map);
     for (int i = 0; i < A_orig->local_num_rows; i++)
     {
@@ -48,10 +46,8 @@ TEST(ParMetisTest, TestsInUtil)
         proc_part[i] = i % num_procs;
     }
     ParCSRMatrix* A_rr = repartition_matrix(A_orig, proc_part, new_local_rows);
-    ParVector x_rr(A_rr->global_num_rows, A_rr->local_num_rows, 
-            A_rr->partition->first_local_row);
-    ParVector b_rr(A_rr->global_num_rows, A_rr->local_num_rows, 
-            A_rr->partition->first_local_row);
+    ParVector x_rr(A_rr->global_num_rows, A_rr->local_num_rows);
+    ParVector b_rr(A_rr->global_num_rows, A_rr->local_num_rows);
     A_rr->tap_comm = new TAPComm(A_rr->partition, A_rr->off_proc_column_map);
     for (int i = 0; i < A_rr->local_num_rows; i++)
     {
@@ -64,8 +60,8 @@ TEST(ParMetisTest, TestsInUtil)
     proc_part = ptscotch_partition(A_orig);
     ParCSRMatrix* A = repartition_matrix(A_orig, proc_part, new_local_rows);
     delete[] proc_part;
-    ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    ParVector x(A->global_num_rows, A->local_num_rows);
+    ParVector b(A->global_num_rows, A->local_num_rows);
     for (int i = 0; i < A->local_num_rows; i++)
     {
         x[i] = new_local_rows[i];

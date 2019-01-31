@@ -8,7 +8,7 @@ using namespace raptor;
 void CG(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol, int max_iter, double* comm_t)
 {
     int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     ParVector r;
     ParVector p;
@@ -37,9 +37,9 @@ void CG(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res
     // p0 = r0
     p.copy(r);
 
-if (comm_t) *comm_t -= MPI_Wtime();
+if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     rr_inner = r.inner_product(r);
-if (comm_t) *comm_t += MPI_Wtime();
+if (comm_t) *comm_t += RAPtor_MPI_Wtime();
     norm_r = sqrt(rr_inner);
     res.emplace_back(norm_r / b_norm);
 
@@ -57,9 +57,9 @@ if (comm_t) *comm_t += MPI_Wtime();
     {
         // alpha_i = (r_i, r_i) / (A*p_i, p_i)
         A->mult(p, Ap);
-if (comm_t) *comm_t -= MPI_Wtime();
+if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         App_inner = Ap.inner_product(p);
-if (comm_t) *comm_t += MPI_Wtime();
+if (comm_t) *comm_t += RAPtor_MPI_Wtime();
         if (App_inner < 0.0)
         {
             if (rank == 0)
@@ -83,9 +83,9 @@ if (comm_t) *comm_t += MPI_Wtime();
         }
 
         // beta_i = (r_{i+1}, r_{i+1}) / (r_i, r_i)
-if (comm_t) *comm_t -= MPI_Wtime();
+if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         next_inner = r.inner_product(r);
-if (comm_t) *comm_t += MPI_Wtime();
+if (comm_t) *comm_t += RAPtor_MPI_Wtime();
         beta = next_inner / rr_inner;
 
         // p_{i+1} = r_{i+1} + beta_i * p_i
@@ -121,7 +121,7 @@ if (comm_t) *comm_t += MPI_Wtime();
 void PCG(ParCSRMatrix* A, ParMultilevel* ml, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol, int max_iter, double* precond_t, double* comm_t)
 {
     int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     ParVector r;
     ParVector z;
@@ -148,12 +148,12 @@ void PCG(ParCSRMatrix* A, ParMultilevel* ml, ParVector& x, ParVector& b, aligned
 
     // Initial b_norm (preconditioned)
     z.set_const_value(0.0);
-if (precond_t) *precond_t -= MPI_Wtime();
+if (precond_t) *precond_t -= RAPtor_MPI_Wtime();
     ml->cycle(z, b);
-if (precond_t) *precond_t += MPI_Wtime();
-if (comm_t) *comm_t -= MPI_Wtime();
+if (precond_t) *precond_t += RAPtor_MPI_Wtime();
+if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     b_inner = b.inner_product(z);
-if (comm_t) *comm_t += MPI_Wtime();
+if (comm_t) *comm_t += RAPtor_MPI_Wtime();
     norm_b = sqrt(b_inner);
     if (norm_b > zero_tol)
     {
@@ -165,17 +165,17 @@ if (comm_t) *comm_t += MPI_Wtime();
 
     // z = M^{-1}r0
     z.set_const_value(0.0);
-if (precond_t) *precond_t -= MPI_Wtime();
+if (precond_t) *precond_t -= RAPtor_MPI_Wtime();
     ml->cycle(z, r);
-if (precond_t) *precond_t += MPI_Wtime();
+if (precond_t) *precond_t += RAPtor_MPI_Wtime();
 
     // p0 = z0
     p.copy(z);
 
     // <r, z>
-if (comm_t) *comm_t -= MPI_Wtime();
+if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     rz_inner = r.inner_product(z);
-if (comm_t) *comm_t += MPI_Wtime();
+if (comm_t) *comm_t += RAPtor_MPI_Wtime();
     norm_rz = sqrt(rz_inner);
     res.emplace_back(norm_rz);
 
@@ -189,9 +189,9 @@ if (comm_t) *comm_t += MPI_Wtime();
 
         // alpha_i = (r_i, z_i) / (A*p_i, p_i)
         A->mult(p, Ap);
-if (comm_t) *comm_t -= MPI_Wtime();
+if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         App_inner = Ap.inner_product(p);
-if (comm_t) *comm_t += MPI_Wtime();
+if (comm_t) *comm_t += RAPtor_MPI_Wtime();
         if (App_inner < 0.0)
         {
             if (rank == 0)
@@ -218,14 +218,14 @@ if (comm_t) *comm_t += MPI_Wtime();
 
         // z_{j+1} = M^{-1}r_{j+1}
         z.set_const_value(0.0);
-if (precond_t) *precond_t -= MPI_Wtime();
+if (precond_t) *precond_t -= RAPtor_MPI_Wtime();
         ml->cycle(z, r);
-if (precond_t) *precond_t += MPI_Wtime();
+if (precond_t) *precond_t += RAPtor_MPI_Wtime();
 
         // beta_i = (r_{i+1}, z_{i+1}) / (r_i, z_i)
-if (comm_t) *comm_t -= MPI_Wtime();
+if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         next_inner = r.inner_product(z);
-if (comm_t) *comm_t += MPI_Wtime();
+if (comm_t) *comm_t += RAPtor_MPI_Wtime();
         beta = next_inner / rz_inner;
 
         res.emplace_back(next_inner/b_inner);

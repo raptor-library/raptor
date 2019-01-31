@@ -24,9 +24,9 @@ void split_rs(ParCSRMatrix* S, aligned_vector<int>& states,
         off_proc_states.resize(S->off_proc_num_cols);
     }
 
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     aligned_vector<int>& recvbuf = comm->communicate(states);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     std::copy(recvbuf.begin(), recvbuf.end(), off_proc_states.begin());
 }
@@ -953,7 +953,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
     int global_col;
     int n_sends = 0;
     int msg_avail;
-    MPI_Status recv_status;
+    RAPtor_MPI_Status recv_status;
 
     aligned_vector<int> send_ptr;
     aligned_vector<int> send_buffer;
@@ -1100,8 +1100,8 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
             end = send_ptr[i+1];
             if (end - start)
             {
-                MPI_Isend(&(send_buffer[start]), end - start, MPI_INT, proc,
-                        tag, MPI_COMM_WORLD, &(S->comm->send_data->requests[n_sends++]));
+                RAPtor_MPI_Isend(&(send_buffer[start]), end - start, RAPtor_MPI_INT, proc,
+                        tag, RAPtor_MPI_COMM_WORLD, &(S->comm->send_data->requests[n_sends++]));
             }
         }
 
@@ -1124,14 +1124,14 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
             }
             if (msg_avail)
             {
-                MPI_Probe(proc, tag, MPI_COMM_WORLD, &recv_status);
-                MPI_Get_count(&recv_status, MPI_INT, &count);
+                RAPtor_MPI_Probe(proc, tag, RAPtor_MPI_COMM_WORLD, &recv_status);
+                RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_INT, &count);
 
                 if ((int) recv_buffer.size() < count)
                 {
                     recv_buffer.resize(count);
                 }
-                MPI_Recv(&recv_buffer[0], count, MPI_INT, proc, tag, MPI_COMM_WORLD,
+                RAPtor_MPI_Recv(&recv_buffer[0], count, RAPtor_MPI_INT, proc, tag, RAPtor_MPI_COMM_WORLD,
                         &recv_status);
             }
             ctr = 0;
@@ -1167,7 +1167,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
         // Wait for sends to complete
         if (n_sends)
         {
-            MPI_Waitall(n_sends, S->comm->send_data->requests.data(), MPI_STATUSES_IGNORE);
+            RAPtor_MPI_Waitall(n_sends, S->comm->send_data->requests.data(), RAPtor_MPI_STATUSES_IGNORE);
         }
     }
 }
@@ -1270,9 +1270,9 @@ void pmis_main_loop(ParCSRMatrix* S,
 
     transpose(S, on_col_ptr, off_col_ptr, on_col_indices, off_col_indices);
 
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     initial_weights(S, comm, weights, rand_vals);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     // Find remaining vertices in on and off proc matrices
     num_remaining = 0;
@@ -1310,9 +1310,9 @@ void pmis_main_loop(ParCSRMatrix* S,
         }
     }   
     
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     aligned_vector<int>& recvbuf = comm->communicate(states);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     num_remaining_off = 0;
     for (int i = 0; i < S->off_proc_num_cols; i++)
@@ -1327,27 +1327,27 @@ void pmis_main_loop(ParCSRMatrix* S,
     // Find off_proc_weights
     bool first_pass = true;
 
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     find_off_proc_weights(comm, states, off_proc_states, 
             weights, off_proc_weights, first_pass);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     while (num_remaining || num_remaining_off || first_pass)
     {
         // Find max unassigned weight in each row / column
-        if (comm_t) *comm_t -= MPI_Wtime();
+        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         find_max_off_weights(comm, off_col_ptr, off_col_indices, 
                 states, off_proc_states, weights, max_weights, first_pass);
-        if (comm_t) *comm_t += MPI_Wtime();
+        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
         
         // For each vertex, if max in neighborhood, add to C
         num_new_coarse = select_independent_set(S, num_remaining, unassigned,
                 weights, off_proc_weights, max_weights, on_col_ptr,
                 on_col_indices, states, off_proc_states, new_coarse_list);
 
-        if (comm_t) *comm_t -= MPI_Wtime();
+        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         find_off_proc_states(comm, states, off_proc_states, first_pass);
-        if (comm_t) *comm_t += MPI_Wtime();
+        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
         // For each row, if new C point in row, add row to F
         for (int i = 0; i < num_new_coarse; i++)
@@ -1382,9 +1382,9 @@ void pmis_main_loop(ParCSRMatrix* S,
             }       
         }
 
-        if (comm_t) *comm_t -= MPI_Wtime();
+        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         find_off_proc_states(comm, states, off_proc_states, first_pass);
-        if (comm_t) *comm_t += MPI_Wtime();
+        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
         num_remaining = update_states(weights, states, num_remaining, unassigned);
         num_remaining_off = update_states(off_proc_weights,
@@ -1445,7 +1445,7 @@ void cljp_main_loop(ParCSRMatrix* S,
     int n_sends, n_recvs;
     int prev_ctr;
     int msg_avail;
-    MPI_Status recv_status;
+    RAPtor_MPI_Status recv_status;
 
     int* part_to_col = S->map_partition_to_local();
 
@@ -1473,9 +1473,9 @@ void cljp_main_loop(ParCSRMatrix* S,
         off_edgemark.resize(S->off_proc->nnz, 1);
     }
 
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     aligned_vector<int>& recvbuf = comm->communicate(states);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
@@ -1488,9 +1488,9 @@ void cljp_main_loop(ParCSRMatrix* S,
         global_to_local[S->off_proc_column_map[i]] = i;
     }
 
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     initial_weights(S, comm, weights, rand_vals);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     transpose(S, on_col_ptr, off_col_ptr, on_col_indices, off_col_indices);
 
@@ -1528,10 +1528,10 @@ void cljp_main_loop(ParCSRMatrix* S,
     /**********************************************
      * Find weights of unassigned neighbors (off proc cols)
      **********************************************/
-    if (comm_t) *comm_t -= MPI_Wtime();
+    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     find_off_proc_weights(comm, states, off_proc_states, 
             weights, off_proc_weights, first_pass);
-    if (comm_t) *comm_t += MPI_Wtime();
+    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
 
     for (int i = 0; i < S->off_proc_num_cols; i++)
@@ -1557,10 +1557,10 @@ void cljp_main_loop(ParCSRMatrix* S,
         * For each local row i, find max weight in 
         * column i on all other processors (max_weights)
         **********************************************/
-        if (comm_t) *comm_t -= MPI_Wtime();
+        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         find_max_off_weights(comm, off_col_ptr, off_col_indices, 
                 states, off_proc_states, weights, max_weights, first_pass);
-        if (comm_t) *comm_t += MPI_Wtime();
+        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
         /**********************************************
         * Selectedt independent set: all indices with
@@ -1572,9 +1572,9 @@ void cljp_main_loop(ParCSRMatrix* S,
 
         // Communicate updated states to neighbors
         // Only communicating previously unassigned states
-        if (comm_t) *comm_t -= MPI_Wtime();
+        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         off_num_new_coarse = find_off_proc_states(comm, states, off_proc_states, first_pass);
-        if (comm_t) *comm_t += MPI_Wtime();
+        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
         ctr = 0;
         for (int i = 0; i < S->off_proc_num_cols; i++)
@@ -1587,10 +1587,10 @@ void cljp_main_loop(ParCSRMatrix* S,
 
         // Find new coarse influenced by each off_proc col
         // TODO -- Add first pass option
-        if (comm_mat_t) *comm_mat_t -= MPI_Wtime();
+        if (comm_mat_t) *comm_mat_t -= RAPtor_MPI_Wtime();
         find_off_proc_new_coarse(S, mat_comm, global_to_local, states, off_proc_states, 
                 part_to_col, off_proc_col_ptr, off_proc_col_coarse, first_pass);
-        if (comm_mat_t) *comm_mat_t += MPI_Wtime();
+        if (comm_mat_t) *comm_mat_t += RAPtor_MPI_Wtime();
 
         // Update Weights
         for (int i = 0; i < S->off_proc_num_cols; i++)
@@ -1611,16 +1611,16 @@ void cljp_main_loop(ParCSRMatrix* S,
 
         // Communicate off proc weight updates and
         // add recv'd updates to local weights
-        if (comm_t) *comm_t -= MPI_Wtime();
+        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         combine_weight_updates(comm, states, off_proc_states,
                 off_proc_weight_updates, weights, first_pass);
-        if (comm_t) *comm_t += MPI_Wtime();
+        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
         // Find weights of unassigned neighbors (off proc cols)
-        if (comm_t) *comm_t -= MPI_Wtime();
+        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         find_off_proc_weights(comm, states, off_proc_states, 
                 weights, off_proc_weights, first_pass);
-        if (comm_t) *comm_t += MPI_Wtime();
+        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
         // Update states, changing any new coarse states
         // from 2 to 1 (and changes weight to 0) and

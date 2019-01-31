@@ -93,7 +93,7 @@ data_t ParVector::norm(index_t p)
         result = local.norm(p);
         result = pow(result, p); // undoing root of p from local operation
     }
-    MPI_Allreduce(MPI_IN_PLACE, &result, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
+    RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &result, 1, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
     return pow(result, 1./p);
 }
 
@@ -105,7 +105,7 @@ data_t ParVector::inner_product(ParVector& x)
     if (local_n != x.local_n)
     {
         int rank;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
         printf("Error.  Cannot perform inner product.  Dimensions do not match.\n");
         exit(-1);
     }
@@ -115,7 +115,7 @@ data_t ParVector::inner_product(ParVector& x)
         inner_prod = local.inner_product(x.local);
     }
 
-    MPI_Allreduce(MPI_IN_PLACE, &inner_prod, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
+    RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &inner_prod, 1, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
     
     return inner_prod;
 }
