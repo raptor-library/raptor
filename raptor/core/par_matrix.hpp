@@ -582,14 +582,10 @@ namespace raptor
     ParCSRMatrix* add(ParCSRMatrix* A);
     ParCSRMatrix* subtract(ParCSRMatrix* B);
 
-    void print_mult(ParCSRMatrix* B, const aligned_vector<int>& proc_distances, 
-                const aligned_vector<int>& worst_proc_distances);
-    void print_mult_T(ParCSCMatrix* A, const aligned_vector<int>& proc_distances,
-                const aligned_vector<int>& worst_proc_distances);
-    void print_mult(const aligned_vector<int>& proc_distances,
-                const aligned_vector<int>& worst_proc_distances);
-    void print_mult_T(const aligned_vector<int>& proc_distances,
-                const aligned_vector<int>& worst_proc_distances);
+    void print_mult(ParCSRMatrix* B);
+    void print_mult_T(ParCSCMatrix* A);
+    void print_mult();
+    void print_mult_T();
     
     void mult_helper(ParCSRMatrix* B, ParCSRMatrix* C, CSRMatrix* recv,
             CSRMatrix* C_on_on, CSRMatrix* C_on_off);

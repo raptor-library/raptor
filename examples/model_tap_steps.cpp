@@ -99,6 +99,7 @@ void time_steps(ParMultilevel* ml)
          * Profile Time to AP
          *********************************/
         if (rank == 0) printf("AP\n");
+        Al->print_mult(Pl);
         tap_two_comm = Al->tap_mat_comm;
         tap_three_comm = Al->tap_comm;
         time_AP(Al, Pl, n_tests, false, "Standard");
@@ -113,6 +114,8 @@ void time_steps(ParMultilevel* ml)
          *********************************/
         if (rank == 0) printf("PTAP\n");
         ParCSRMatrix* AP = Al->mult(Pl);
+        ParCSCMatrix* P_csc = Pl->to_ParCSC();
+        AP->print_mult_T(P_csc);
         tap_two_comm = Pl->tap_mat_comm;
         tap_three_comm = Pl->tap_comm;
         time_PTAP(AP, Pl, n_tests, false, "Standard");
@@ -121,12 +124,14 @@ void time_steps(ParMultilevel* ml)
         Pl->tap_mat_comm = tap_three_comm;
         time_PTAP(AP, Pl, n_tests, true, "Three-Step");
         Pl->tap_mat_comm = tap_two_comm;
+        delete P_csc;
         delete AP;
         
         /*********************************
          * Profile Time to Residal
          *********************************/
         if (rank == 0) printf("Ax\n");
+        Al->print_mult();
         tap_two_comm = Al->tap_mat_comm;
         tap_three_comm = Al->tap_comm;
         time_Ax(Al, xl, bl, n_tests, false, "Standard");
