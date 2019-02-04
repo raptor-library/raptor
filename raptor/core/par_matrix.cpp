@@ -801,7 +801,7 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
     return A;
 }
 
-void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm comm, data_t* comm_t)
+void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm comm)
 {
     /*********************************
      * Initialize 
@@ -853,7 +853,7 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm comm, data_t* comm_t)
     // Form local_L_par_comm: fully local communication (origin and
     // destination processes both local to node)
     tap_comm->form_local_L_par_comm(on_node_column_map, on_node_col_to_proc,
-            partition->first_local_col, comm_t);
+            partition->first_local_col);
     for (aligned_vector<int>::iterator it = tap_comm->local_L_par_comm->send_data->indices.begin();
             it != tap_comm->local_L_par_comm->send_data->indices.end(); ++it)
     {
@@ -867,14 +867,14 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm comm, data_t* comm_t)
      * *******************************/
     // Gather all nodes with which any local process must communication
     tap_comm->form_local_R_par_comm(off_node_column_map, off_node_col_to_proc, 
-            orig_procs, comm_t);
+            orig_procs);
 
     // Find global processes with which rank communications
-    tap_comm->form_global_par_comm(orig_procs, comm_t);
+    tap_comm->form_global_par_comm(orig_procs);
 
     // Form local_S_par_comm: initial distribution of values among local
     // processes, before inter-node communication
-    tap_comm->form_local_S_par_comm(orig_procs, comm_t);
+    tap_comm->form_local_S_par_comm(orig_procs);
 
     // Adjust send indices (currently global vector indices) to be index 
     // of global vector value from previous recv
@@ -901,11 +901,11 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm comm, data_t* comm_t)
     // corresponding to global rank on which data originates.  E.g. if
     // data is on rank r = (p, n), and my rank is s = (q, m), I will
     // recv data from (p, m).
-    tap_mat_comm->form_simple_R_par_comm(off_node_column_map, off_node_col_to_proc, comm_t);
+    tap_mat_comm->form_simple_R_par_comm(off_node_column_map, off_node_col_to_proc);
 
     // Form global par comm.. Will recv from proc on which data
     // originates
-    tap_mat_comm->form_simple_global_comm(off_node_col_to_proc, comm_t);
+    tap_mat_comm->form_simple_global_comm(off_node_col_to_proc);
 
     // Adjust send indices (currently global vector indices) to be
     // index of global vector value from previous recv (only updating

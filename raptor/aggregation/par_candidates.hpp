@@ -12,6 +12,5 @@ using namespace raptor;
 ParCSRMatrix* fit_candidates(ParCSRMatrix* A, const int n_aggs, 
         const aligned_vector<int>& aggregates, 
         const aligned_vector<double>& B, aligned_vector<double>& R,
-        int num_candidates, bool tag_comm = false, double tol = 1e-10,
-        data_t* comm_t = NULL);
+        int num_candidates, bool tag_comm = false, double tol = 1e-10);
 #endif

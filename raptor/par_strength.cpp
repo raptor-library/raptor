@@ -6,7 +6,7 @@
 using namespace raptor;
 
 ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, int num_variables,
-        int* variables, data_t* comm_t)
+        int* variables)
 {
     int row_start_on, row_end_on;
     int row_start_off, row_end_off;
@@ -28,9 +28,7 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
     int* off_variables;
     if (num_variables > 1)
     {
-        if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         aligned_vector<int>& recvbuf = comm->communicate(variables);
-        if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
         off_variables = recvbuf.data();
     }
@@ -338,7 +336,7 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
 }
 
 // TODO -- currently this assumes all diags are same sign...
-ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, data_t* comm_t)
+ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg)
 {
     int row_start_on, row_end_on;
     int row_start_off, row_end_off;
@@ -448,10 +446,8 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, da
         }
     }
 
-    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     aligned_vector<double>& off_proc_row_scales = comm->communicate(row_scales);
     aligned_vector<int>& off_proc_neg_diags = comm->communicate(neg_diags);
-    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
     
     S->on_proc->idx1[0] = 0;
     S->off_proc->idx1[0] = 0;
@@ -532,15 +528,14 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg, da
 // Assumes ParCSRMatrix is previously sorted
 // TODO -- have ParCSRMatrix bool sorted (and sort if not previously)
 ParCSRMatrix* ParCSRMatrix::strength(strength_t strength_type,
-        double theta, bool tap_amg, int num_variables, int* variables,
-        data_t* comm_t)
+        double theta, bool tap_amg, int num_variables, int* variables)
 {
     switch (strength_type)
     {
         case Classical:
-            return classical_strength(this, theta, tap_amg, num_variables, variables, comm_t);
+            return classical_strength(this, theta, tap_amg, num_variables, variables);
         case Symmetric:
-            return symmetric_strength(this, theta, tap_amg, comm_t);
+            return symmetric_strength(this, theta, tap_amg);
     }
 }
 

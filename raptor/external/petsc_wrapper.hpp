@@ -56,8 +56,8 @@ PetscErrorCode petsc_create_preconditioner(ParCSRMatrix* A, KSP* ksp_ptr, Mat* m
 /*static PetscErrorCode MatConvert_RAPtor(Mat A, ParCSRMatrix** A_rap_ptr)
 {
   int rank, num_procs;
-  RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+  RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+  RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
   PetscErrorCode ierr;
   Mat_MPIAIJ     *mpimat  = (Mat_MPIAIJ*)A->data;

@@ -10,6 +10,6 @@ using namespace raptor;
 
 int mis2(const ParCSRMatrix* A, aligned_vector<int>& states, 
         aligned_vector<int>& off_proc_states, bool tap_comm = false, 
-        double* rand_vals = NULL, data_t* comm_t = NULL);
+        double* rand_vals = NULL);
 
 #endif

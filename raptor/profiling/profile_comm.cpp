@@ -72,8 +72,8 @@ void calc_mult(Topology* topology, CommData* comm_data, aligned_vector<int>& num
     }
 
     // Number of nodes each node talks to
-    RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, node_size_msgs.data(), num_nodes, MPI_INT,
-            MPI_SUM, comm_data->topology->local_comm);
+    RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, node_size_msgs.data(), num_nodes, RAPtor_MPI_INT,
+            RAPtor_MPI_SUM, comm_data->topology->local_comm);
     for (int i = 0; i < num_nodes; i++)
     {
         if (i == rank_node) continue;
@@ -180,8 +180,8 @@ void calc_mult(CSRMatrix* A, CSRMatrix* B, Topology* topology, CommData* comm_da
     }
 
     // Number of nodes each node talks to
-    RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, node_size_msgs.data(), num_nodes, MPI_INT,
-            MPI_SUM, comm_data->topology->local_comm);
+    RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, node_size_msgs.data(), num_nodes, RAPtor_MPI_INT,
+            RAPtor_MPI_SUM, comm_data->topology->local_comm);
     for (int i = 0; i < num_nodes; i++)
     {
         if (i == rank_node) continue;

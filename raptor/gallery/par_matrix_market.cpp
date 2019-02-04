@@ -153,8 +153,8 @@ void write_par_data(FILE* f, int n, int* rowptr, int* col_idx,
 void write_par_mm(ParCSRMatrix* A, const char *fname)
 {
     int rank, num_procs;
-    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
     FILE *f;
     MM_typecode matcode;

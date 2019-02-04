@@ -4,11 +4,11 @@
 
 int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
         aligned_vector<int>& off_proc_states, aligned_vector<int>& aggregates,
-        bool tap_comm, double* rand_vals, data_t* comm_t)
+        bool tap_comm, double* rand_vals)
 {
     int rank, num_procs;
-    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
     S->sort();
     S->on_proc->move_diag();
@@ -52,10 +52,8 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
             r[i] = rand_vals[i];
         }
     }
-    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     aligned_vector<double>& rands = comm->communicate(r);
     std::copy(rands.begin(), rands.end(), off_proc_r.begin());
-    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     if (S->off_proc_num_cols)
     {
@@ -85,9 +83,7 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
         }
     }
 
-    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     aligned_vector<int>& init_aggs = comm->communicate(aggregates);
-    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
@@ -128,9 +124,7 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
     }
 
     // Communicate aggregates (global rows)
-    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     aligned_vector<int>& recvbuf = comm->communicate(aggregates);
-    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 
     std::copy(recvbuf.begin(), recvbuf.end(), off_proc_aggregates.begin());
 
