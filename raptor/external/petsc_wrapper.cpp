@@ -168,7 +168,7 @@ PetscErrorCode petsc_create_preconditioner(ParCSRMatrix* A, KSP* ksp_ptr, Mat* m
     RAPtorShellPC* shell;
 
     // Create RAPtor Shell
-    ierr = KSPCreate(MPI_COMM_WORLD, &ksp);CHKERRQ(ierr);
+    ierr = KSPCreate(RAPtor_MPI_COMM_WORLD, &ksp);CHKERRQ(ierr);
     ierr = KSPSetFromOptions(ksp);CHKERRQ(ierr);
     ierr = KSPGetPC(ksp, &pc);CHKERRQ(ierr);
     ierr = PCSetType(pc, PCSHELL);CHKERRQ(ierr);
@@ -186,12 +186,12 @@ PetscErrorCode petsc_create_preconditioner(ParCSRMatrix* A, KSP* ksp_ptr, Mat* m
     mat_ctx->sol = new ParVector(A->global_num_rows, A->local_num_rows);
 
     // Initialize Matrix Shell
-    ierr = MatCreateShell(MPI_COMM_WORLD, A->local_num_rows, A->on_proc_num_cols, 
+    ierr = MatCreateShell(RAPtor_MPI_COMM_WORLD, A->local_num_rows, A->on_proc_num_cols, 
             A->global_num_rows, A->global_num_cols, mat_ctx, &pmat);CHKERRQ(ierr);
     ierr = MatShellSetOperation(pmat, MATOP_MULT, (void(*)(void)) RAPtorMult);CHKERRQ(ierr);
 
-    ierr = VecCreate(MPI_COMM_WORLD, &rhs);CHKERRQ(ierr);
-    ierr = VecCreate(MPI_COMM_WORLD, &sol);CHKERRQ(ierr);
+    ierr = VecCreate(RAPtor_MPI_COMM_WORLD, &rhs);CHKERRQ(ierr);
+    ierr = VecCreate(RAPtor_MPI_COMM_WORLD, &sol);CHKERRQ(ierr);
     ierr = VecSetType(rhs, VECMPI);CHKERRQ(ierr);
     ierr = VecSetType(sol, VECMPI);CHKERRQ(ierr);
     ierr = VecSetSizes(rhs, A->local_num_rows, A->global_num_rows);CHKERRQ(ierr);

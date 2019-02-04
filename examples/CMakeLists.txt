@@ -53,6 +53,12 @@ if (WITH_MPI)
 
     add_executable(profile_tap_amg profile_tap_amg.cpp)
     target_link_libraries(profile_tap_amg raptor ${MPI_LIBRARIES})
+
+    add_executable(profile_tap_steps profile_tap_steps.cpp)
+    target_link_libraries(profile_tap_steps raptor ${MPI_LIBRARIES})
+
+    add_executable(model_tap_steps model_tap_steps.cpp)
+    target_link_libraries(model_tap_steps raptor ${MPI_LIBRARIES})
 endif()
 
 

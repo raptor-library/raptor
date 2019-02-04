@@ -235,7 +235,7 @@ ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A)
 ParMatrix* ParMatrix::mult(ParCSRMatrix* B, bool tap)
 {
     int rank;
-    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
     if (rank == 0) 
         printf("Multiplication is not implemented for these ParMatrix types.\n");
     return NULL;

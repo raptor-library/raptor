@@ -447,11 +447,11 @@ namespace raptor
                     recv_data->indptr[i+1] - recv_data->indptr[i];
             RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, recv_sizes.data(), num_procs, RAPtor_MPI_INT,
                     RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
-            if (profile) vec_t -= MPI_Wtime();
+            if (profile) vec_t -= RAPtor_MPI_Wtime();
             recv_data->send(off_proc_column_map.data(), tag, comm);
             send_data->probe(recv_sizes[rank], tag, comm);
             recv_data->waitall();
-            if (profile) vec_t += MPI_Wtime();
+            if (profile) vec_t += RAPtor_MPI_Wtime();
             for (int i = 0; i < send_data->size_msgs; i++)
             {
                 send_data->indices[i] -= partition->first_local_col;
@@ -604,19 +604,19 @@ namespace raptor
             int start, end;
             int proc, pos, idx;
 
-            if (profile) vec_t -= MPI_Wtime();
+            if (profile) vec_t -= RAPtor_MPI_Wtime();
             send_data->send(values, key, mpi_comm, block_size);
             recv_data->recv<T>(key, mpi_comm, block_size);
-            if (profile) vec_t += MPI_Wtime();
+            if (profile) vec_t += RAPtor_MPI_Wtime();
         }
 
         template<typename T>
         aligned_vector<T>& complete(const int block_size = 1)
         {
-            if (profile) vec_t -= MPI_Wtime();
+            if (profile) vec_t -= RAPtor_MPI_Wtime();
             send_data->waitall();
             recv_data->waitall();
-            if (profile) vec_t += MPI_Wtime();
+            if (profile) vec_t += RAPtor_MPI_Wtime();
             key++;
 
             // Extract packed data to appropriate buffer
@@ -734,10 +734,10 @@ namespace raptor
             int start, end;
             int proc, idx, pos;
 
-            if (profile) vec_t -= MPI_Wtime();
+            if (profile) vec_t -= RAPtor_MPI_Wtime();
             recv_data->send(values, key, mpi_comm, block_size, init_result_func, init_result_func_val);
             send_data->recv<T>(key, mpi_comm, block_size);
-            if (profile) vec_t += MPI_Wtime();
+            if (profile) vec_t += RAPtor_MPI_Wtime();
         }
 
         template<typename T, typename U>
@@ -769,10 +769,10 @@ namespace raptor
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
-            if (profile) vec_t -= MPI_Wtime();
+            if (profile) vec_t -= RAPtor_MPI_Wtime();
             send_data->waitall();
             recv_data->waitall();
-            if (profile) vec_t += MPI_Wtime();
+            if (profile) vec_t += RAPtor_MPI_Wtime();
             key++;
             
             aligned_vector<T>& buf = send_data->get_buffer<T>();
@@ -791,14 +791,14 @@ namespace raptor
             int key = 325493;
             bool comparison;
             
-            if (profile) vec_t -= MPI_Wtime();
+            if (profile) vec_t -= RAPtor_MPI_Wtime();
             send_data->send(vals.data(), key, mpi_comm, states, compare_func, &n_sends, block_size);
             recv_data->recv<T>(key, mpi_comm, off_proc_states, 
                     compare_func, &ctr, &n_recvs, block_size);
 
             send_data->waitall(n_sends);
             recv_data->waitall(n_recvs);
-            if (profile) vec_t += MPI_Wtime();
+            if (profile) vec_t += RAPtor_MPI_Wtime();
 
             aligned_vector<T>& recvbuf = recv_data->get_buffer<T>();
 
@@ -848,14 +848,14 @@ namespace raptor
             int key = 453246;
             bool comparison;
 
-            if (profile) vec_t -= MPI_Wtime();
+            if (profile) vec_t -= RAPtor_MPI_Wtime();
             recv_data->send(vals.data(), key, mpi_comm, off_proc_states, compare_func,
                     &n_sends, block_size);
             send_data->recv<T>(key, mpi_comm, states, compare_func, &ctr, &n_recvs, block_size);
             
             recv_data->waitall(n_sends);
             send_data->waitall(n_recvs);
-            if (profile) vec_t += MPI_Wtime();
+            if (profile) vec_t += RAPtor_MPI_Wtime();
 
             aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
 

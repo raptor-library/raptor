@@ -18,7 +18,7 @@ void sparsify(ParCSRMatrix* A, ParCSRMatrix* P, ParCSRMatrix* I,
 
     int nnz;
     int rank;
-    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
     RAPtor_MPI_Reduce(&M->local_nnz, &nnz, 1, RAPtor_MPI_INT, RAPtor_MPI_SUM, 0, RAPtor_MPI_COMM_WORLD);
     if (rank == 0) printf("NNZ %d\n", nnz);
 

@@ -207,8 +207,8 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
 {
     // Get MPI Information
     int rank, num_procs;
-    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
     // Declare Variables
     int start, end, col;

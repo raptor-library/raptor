@@ -153,7 +153,7 @@ namespace raptor
 
             if (tap_amg >= 0 && tap_amg <= level_ctr)
             {
-                levels[level_ctr]->A->init_tap_communicators(MPI_COMM_WORLD);
+                levels[level_ctr]->A->init_tap_communicators(RAPtor_MPI_COMM_WORLD);
             }
 
             delete AP;

@@ -249,7 +249,7 @@ HYPRE_Solver hypre_create_GMRES(hypre_ParCSRMatrix* A,
 {
     // Create AMG solver struct
     HYPRE_Solver gmres_data;
-    HYPRE_ParCSRGMRESCreate(MPI_COMM_WORLD, &gmres_data);
+    HYPRE_ParCSRGMRESCreate(RAPtor_MPI_COMM_WORLD, &gmres_data);
     HYPRE_Solver amg_data;
     HYPRE_BoomerAMGCreate(&amg_data);
 
@@ -297,7 +297,7 @@ HYPRE_Solver hypre_create_BiCGSTAB(hypre_ParCSRMatrix* A,
 {
     // Create AMG solver struct
     HYPRE_Solver bicgstab_data;
-    HYPRE_ParCSRBiCGSTABCreate(MPI_COMM_WORLD, &bicgstab_data);
+    HYPRE_ParCSRBiCGSTABCreate(RAPtor_MPI_COMM_WORLD, &bicgstab_data);
     HYPRE_Solver amg_data;
     HYPRE_BoomerAMGCreate(&amg_data);
 

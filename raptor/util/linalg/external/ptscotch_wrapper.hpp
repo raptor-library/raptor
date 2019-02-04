@@ -17,8 +17,8 @@ using namespace raptor;
 int* ptscotch_partition(ParCSRMatrix* A)
 {
     int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
     // Variables for Graph Partitioning
     SCOTCH_Num* partition = new SCOTCH_Num[A->local_num_rows + 2];
@@ -77,8 +77,8 @@ int* ptscotch_partition(ParCSRMatrix* A)
     SCOTCH_Strat stratdata;
     SCOTCH_Arch archdata;
 
-    MPI_Comm comm;
-    MPI_Comm_dup(MPI_COMM_WORLD, &comm);
+    RAPtor_MPI_Comm comm;
+    RAPtor_MPI_Comm_dup(RAPtor_MPI_COMM_WORLD, &comm);
 
     SCOTCH_dgraphInit(&dgraphdata, comm);
     SCOTCH_dgraphBuild(&dgraphdata, baseval, vertlocnbr, vertlocmax,
@@ -95,7 +95,7 @@ int* ptscotch_partition(ParCSRMatrix* A)
     delete[] vertloctab;
     delete[] edgeloctab;
 
-    MPI_Comm_free(&comm);
+    RAPtor_MPI_Comm_free(&comm);
 
     return partition;
 }

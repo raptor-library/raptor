@@ -3,7 +3,7 @@ void ParCSRMatrix::print_mult(const aligned_vector<int>& proc_distances,
 {
     int rank, rank_node, rank_socket;
     int ranks_per_socket;
-    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
 
     int num_short = 0;
     int num_eager = 0;
@@ -213,7 +213,7 @@ void ParCSRMatrix::print_mult_T(const aligned_vector<int>& proc_distances,
 {
     int rank, rank_node, rank_socket;
     int ranks_per_socket;
-    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
 
     int num_short = 0;
     int num_eager = 0;
@@ -426,7 +426,7 @@ void ParCSRMatrix::print_mult(ParCSRMatrix* B, const aligned_vector<int>& proc_d
 {
     int rank, rank_node, rank_socket;
     int ranks_per_socket;
-    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
 
     int num_short = 0;
     int num_eager = 0;
@@ -642,7 +642,7 @@ void ParCSRMatrix::print_mult_T(ParCSCMatrix* A, const aligned_vector<int>& proc
 {
     int rank, rank_node, rank_socket;
     int ranks_per_socket;
-    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
 
     int num_short = 0;
     int num_eager = 0;

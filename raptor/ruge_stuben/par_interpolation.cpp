@@ -876,7 +876,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
 
     if (tap_interp)
     {
-        P->init_tap_communicators(MPI_COMM_WORLD);
+        P->init_tap_communicators(RAPtor_MPI_COMM_WORLD);
     }
     else
     {
@@ -899,7 +899,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         bool tap_interp, int num_variables, int* variables)
 {
     int rank;
-    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
 
     int start, end;
     int start_k, end_k;

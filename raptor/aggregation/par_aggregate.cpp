@@ -7,8 +7,8 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
         bool tap_comm, double* rand_vals)
 {
     int rank, num_procs;
-    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
     S->sort();
     S->on_proc->move_diag();

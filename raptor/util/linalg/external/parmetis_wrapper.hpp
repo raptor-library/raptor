@@ -12,14 +12,14 @@ using namespace raptor;
 int* parmetis_partition(ParCSRMatrix* A)
 {
     int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
     int start, end;
     int col, global_col;
 
     // ParMetis Partitioner Variables
-    MPI_Comm comm = MPI_COMM_WORLD;
+    RAPtor_MPI_Comm comm = RAPtor_MPI_COMM_WORLD;
     
     // How vertices of graph are distributed among processes;
     // Array size num_procs+1

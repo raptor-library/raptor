@@ -17,8 +17,8 @@ data_t half_inner_contig(ParVector &x, ParVector &y, int half, int part_global){
      */
 
     int rank, num_procs, comm_rank, inner_root, recv_root, color;
-    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
     data_t inner_prod = 0.0;
 
@@ -57,11 +57,11 @@ data_t half_inner_contig(ParVector &x, ParVector &y, int half, int part_global){
     RAPtor_MPI_Comm inner_comm, recv_comm;
     int inner_comm_size, recv_comm_size;
     if (!(color)){
-	MPI_Comm_split(MPI_COMM_WORLD, color, rank, &inner_comm);
+	MPI_Comm_split(RAPtor_MPI_COMM_WORLD, color, rank, &inner_comm);
         RAPtor_MPI_Comm_size(inner_comm, &inner_comm_size);
     }
     else{
-	MPI_Comm_split(MPI_COMM_WORLD, color, rank, &recv_comm);
+	MPI_Comm_split(RAPtor_MPI_COMM_WORLD, color, rank, &recv_comm);
         RAPtor_MPI_Comm_size(recv_comm, &recv_comm_size);
     }
 
@@ -75,7 +75,7 @@ data_t half_inner_contig(ParVector &x, ParVector &y, int half, int part_global){
         if (x.local_n){
             inner_prod = x.local.inner_product(y.local);
         }
-        if (inner_comm_size > 1) RAPtor_MPI_Allreduce(MPI_IN_PLACE, &inner_prod, 1, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, inner_comm);
+        if (inner_comm_size > 1) RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &inner_prod, 1, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, inner_comm);
     }
 
     //printf("rank %d inner_prod %lg\n", rank, inner_prod);
@@ -102,8 +102,8 @@ data_t half_inner_contig(ParVector &x, ParVector &y, int half, int part_global){
  ****************************************************************/
 data_t sequential_inner(ParVector &x, ParVector &y){
     int rank, num_procs;
-    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
     data_t inner_prod = 0.0;
 
@@ -142,8 +142,8 @@ data_t sequential_inner(ParVector &x, ParVector &y){
  ****************************************************************/
 data_t sequential_norm(ParVector &x, index_t p){
     int rank, num_procs;
-    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
     data_t norm;
 
@@ -153,7 +153,7 @@ data_t sequential_norm(ParVector &x, index_t p){
 }
 
 
-void create_partial_inner_comm(MPI_Comm &inner_comm, RAPtor_MPI_Comm &root_comm, double frac, ParVector &x, int &my_inner_color,
+void create_partial_inner_comm(RAPtor_MPI_Comm &inner_comm, RAPtor_MPI_Comm &root_comm, double frac, ParVector &x, int &my_inner_color,
                                int &my_root_color, int &inner_root, int &procs_in_group, int &part_global)
 {
     /*     inner_comm : MPI communicator containing the processes performing the partial inner product
@@ -168,8 +168,8 @@ void create_partial_inner_comm(MPI_Comm &inner_comm, RAPtor_MPI_Comm &root_comm,
      */
 
     int rank, num_procs;
-    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
     if (num_procs <= 1) 
     {
@@ -192,14 +192,14 @@ void create_partial_inner_comm(MPI_Comm &inner_comm, RAPtor_MPI_Comm &root_comm,
     else my_root_color = 1;
 
     // Split processes into communicators for inner products
-    RAPtor_MPI_Comm_split(MPI_COMM_WORLD, my_inner_color, rank, &inner_comm);
+    RAPtor_MPI_Comm_split(RAPtor_MPI_COMM_WORLD, my_inner_color, rank, &inner_comm);
 
     // Split processes into root communicator
-    RAPtor_MPI_Comm_split(MPI_COMM_WORLD, my_root_color, rank, &root_comm);
+    RAPtor_MPI_Comm_split(RAPtor_MPI_COMM_WORLD, my_root_color, rank, &root_comm);
 
     // Get number of values being used in the inner product calculation
     part_global = x.local_n;
-    RAPtor_MPI_Allreduce(MPI_IN_PLACE, &part_global, 1, RAPtor_MPI_INT, RAPtor_MPI_SUM, inner_comm);
+    RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &part_global, 1, RAPtor_MPI_INT, RAPtor_MPI_SUM, inner_comm);
 
     return;
 }
@@ -207,7 +207,7 @@ void create_partial_inner_comm(MPI_Comm &inner_comm, RAPtor_MPI_Comm &root_comm,
 /***************************************************************** 
  Performs approximate inner product using half of the processes
  ****************************************************************/
-data_t half_inner(MPI_Comm &inner_comm, ParVector &x, ParVector &y, int &my_color, int send_color, int &inner_root,
+data_t half_inner(RAPtor_MPI_Comm &inner_comm, ParVector &x, ParVector &y, int &my_color, int send_color, int &inner_root,
                   int &recv_root, int part_global) {
     /*  inner_comm : MPI communicator containing the processes to use in the inner product 
      *           x : ParVector for calculating inner product
@@ -220,8 +220,8 @@ data_t half_inner(MPI_Comm &inner_comm, ParVector &x, ParVector &y, int &my_colo
      */
 
     int rank, num_procs, inner_comm_size, comm_rank;
-    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
     RAPtor_MPI_Request req;
     RAPtor_MPI_Status stat;
 
@@ -252,7 +252,7 @@ data_t half_inner(MPI_Comm &inner_comm, ParVector &x, ParVector &y, int &my_colo
         if (x.local_n){
             inner_prod = x.local.inner_product(y.local);
         }
-        if (inner_comm_size > 1) RAPtor_MPI_Allreduce(MPI_IN_PLACE, &inner_prod, 1, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, inner_comm);
+        if (inner_comm_size > 1) RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &inner_prod, 1, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, inner_comm);
         // Scale inner product by global percentage before sending
         inner_prod = ((1.0*x.global_n)/part_global) * inner_prod;
     }
@@ -280,7 +280,7 @@ data_t half_inner(MPI_Comm &inner_comm, ParVector &x, ParVector &y, int &my_colo
 /***************************************************************** 
  Performs approximate inner product using part of the processes
  ****************************************************************/
-data_t partial_inner(MPI_Comm &inner_comm, RAPtor_MPI_Comm &root_comm, ParVector &x, ParVector &y, int my_color,
+data_t partial_inner(RAPtor_MPI_Comm &inner_comm, RAPtor_MPI_Comm &root_comm, ParVector &x, ParVector &y, int my_color,
                      int send_color, int inner_root, int procs_in_group, int part_global) {
     /*     inner_comm : MPI communicator containing the processes to use in the inner product 
      *      root_comm : MPI communicator containing the root processes for each inner_comm communicator
@@ -294,8 +294,8 @@ data_t partial_inner(MPI_Comm &inner_comm, RAPtor_MPI_Comm &root_comm, ParVector
      */
 
     int rank, num_procs, inner_comm_size, comm_rank;
-    RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
     RAPtor_MPI_Request req;
     RAPtor_MPI_Status stat;
 
@@ -320,7 +320,7 @@ data_t partial_inner(MPI_Comm &inner_comm, RAPtor_MPI_Comm &root_comm, ParVector
         if (x.local_n){
             inner_prod = x.local.inner_product(y.local);
         }
-        if (inner_comm_size > 1) RAPtor_MPI_Allreduce(MPI_IN_PLACE, &inner_prod, 1, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, inner_comm);
+        if (inner_comm_size > 1) RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &inner_prod, 1, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, inner_comm);
         // Scale inner product by global percentage before sending
         inner_prod = ((1.0*x.global_n)/part_global) * inner_prod;
     }

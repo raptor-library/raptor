@@ -126,13 +126,13 @@ namespace raptor
             void setup_helper(ParCSRMatrix* Af)
             {
                 int rank, num_procs;
-                RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-                RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+                RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+                RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
                 int last_level = 0;
 
                 if (track_times)
                 {
-                    setup_times = new double[5 * max_levels];
+                    setup_times = new double[5 * max_levels]();
                     init_profile();
                 }
 
@@ -192,7 +192,7 @@ namespace raptor
                 {
                     delete[] weights;
                     weights = NULL;
-        }
+                }
 
                 // Duplicate coarsest level across all processes that hold any
                 // rows of A_c
@@ -229,8 +229,8 @@ namespace raptor
             void duplicate_coarse()
             {
                 int rank, num_procs;
-                RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-                RAPtor_MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+                RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+                RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
                 int last_level = num_levels - 1;
                 ParCSRMatrix* Ac = levels[last_level]->A;
@@ -246,12 +246,12 @@ namespace raptor
                     }
                 }
                 RAPtor_MPI_Group world_group;
-                RAPtor_MPI_Comm_group(MPI_COMM_WORLD, &world_group);                
+                RAPtor_MPI_Comm_group(RAPtor_MPI_COMM_WORLD, &world_group);                
                 RAPtor_MPI_Group active_group;
                 RAPtor_MPI_Group_incl(world_group, active_procs.size(), active_procs.data(),
                         &active_group);
-                RAPtor_MPI_Comm_create_group(MPI_COMM_WORLD, active_group, 0, &coarse_comm);
-                MPI_Group_free(&active_group);
+                RAPtor_MPI_Comm_create_group(RAPtor_MPI_COMM_WORLD, active_group, 0, &coarse_comm);
+                RAPtor_MPI_Group_free(&active_group);
 
                 if (Ac->local_num_rows)
                 {
@@ -490,7 +490,6 @@ namespace raptor
 
                 if (track_times)
                 {
-printf("%e, %e, %e, %e\n", collective_t, p2p_t, vec_t, mat_t);
                     finalize_profile();
                     solve_times[0] += total_t;
                     solve_times[1] += collective_t;
@@ -540,7 +539,7 @@ printf("%e, %e, %e, %e\n", collective_t, p2p_t, vec_t, mat_t);
             void print_hierarchy()
             {
                 int rank;
-                RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+                RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
 
                 if (rank == 0)
                 {
@@ -565,7 +564,7 @@ printf("%e, %e, %e, %e\n", collective_t, p2p_t, vec_t, mat_t);
             void print_residuals(int iter)
             {
                 int rank;
-                RAPtor_MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+                RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
                 if (rank == 0) 
                 {
                     for (int i = 0; i < iter + 1; i++)

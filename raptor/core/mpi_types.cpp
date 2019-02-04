@@ -5,6 +5,7 @@ double* current_t;
 double mat_t = 0.0;
 double vec_t = 0.0;
 double total_t = 0.0;
+double new_comm_t = 0.0;
 
 #include <mpi.h>
 #include "mpi_types.hpp"
@@ -20,6 +21,7 @@ void reset_profile()
     p2p_t = 0.0;
     mat_t = 0.0;
     vec_t = 0.0;
+    new_comm_t = 0.0;
     if (profile) total_t = -MPI_Wtime();
     else total_t = 0.0;
 }
@@ -35,6 +37,7 @@ void average_profile(int n_iter)
     p2p_t /= n_iter;
     vec_t /= n_iter;
     mat_t /= n_iter;
+    new_comm_t /= n_iter;
 }
 void print_profile(const char* string)
 {
@@ -56,6 +59,8 @@ void print_profile(const char* string)
     if (rank == 0 && t0 > 0) printf("%s Mat Comm Time: %e\n", string, t0);
 }
 
+
+// Collective Methods
 int RAPtor_MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, 
         RAPtor_MPI_Datatype datatype, RAPtor_MPI_Op op, RAPtor_MPI_Comm comm)
 {
@@ -64,7 +69,6 @@ int RAPtor_MPI_Allreduce(const void *sendbuf, void *recvbuf, int count,
     if (profile) collective_t += RAPtor_MPI_Wtime();
     return val;
 }
-
 int RAPtor_MPI_Reduce(const void *sendbuf, void *recvbuf, int count, 
         RAPtor_MPI_Datatype datatype, RAPtor_MPI_Op op, int root, RAPtor_MPI_Comm comm)
 {
@@ -73,7 +77,6 @@ int RAPtor_MPI_Reduce(const void *sendbuf, void *recvbuf, int count,
     if (profile) collective_t += RAPtor_MPI_Wtime();
     return val;
 }
-
 int RAPtor_MPI_Gather(const void *sendbuf, int sendcount, RAPtor_MPI_Datatype sendtype,
         void *recvbuf, int recvcount, RAPtor_MPI_Datatype recvtype, int root, RAPtor_MPI_Comm comm)
 {
@@ -83,7 +86,6 @@ int RAPtor_MPI_Gather(const void *sendbuf, int sendcount, RAPtor_MPI_Datatype se
     if (profile) collective_t += RAPtor_MPI_Wtime();
     return val;
 }
-
 int RAPtor_MPI_Allgather(const void* sendbuf, int sendcount, RAPtor_MPI_Datatype sendtype,
         void *recvbuf, int recvcount, RAPtor_MPI_Datatype recvtype, RAPtor_MPI_Comm comm)
 {
@@ -93,7 +95,6 @@ int RAPtor_MPI_Allgather(const void* sendbuf, int sendcount, RAPtor_MPI_Datatype
     if (profile) collective_t += RAPtor_MPI_Wtime();
     return val;
 }
-
 int RAPtor_MPI_Allgatherv(const void* sendbuf, int sendcount, RAPtor_MPI_Datatype sendtype,
         void *recvbuf, const int *recvcounts, const int* displs, 
         RAPtor_MPI_Datatype recvtype, RAPtor_MPI_Comm comm)
@@ -104,7 +105,6 @@ int RAPtor_MPI_Allgatherv(const void* sendbuf, int sendcount, RAPtor_MPI_Datatyp
     if (profile) collective_t += RAPtor_MPI_Wtime();
     return val;
 }
-
 int RAPtor_MPI_Iallreduce(const void *sendbuf, void *recvbuf, int count,
         RAPtor_MPI_Datatype datatype, RAPtor_MPI_Op op, RAPtor_MPI_Comm comm, RAPtor_MPI_Request* request)
 {
@@ -114,7 +114,6 @@ int RAPtor_MPI_Iallreduce(const void *sendbuf, void *recvbuf, int count,
     if (profile) current_t = &collective_t;
     return val;
 }
-
 int RAPtor_MPI_Bcast(void *buffer, int count, RAPtor_MPI_Datatype datatype,
         int root, RAPtor_MPI_Comm comm)
 {
@@ -123,7 +122,6 @@ int RAPtor_MPI_Bcast(void *buffer, int count, RAPtor_MPI_Datatype datatype,
     if (profile) collective_t += RAPtor_MPI_Wtime();
     return val;
 }
-
 int RAPtor_MPI_Ibarrier(RAPtor_MPI_Comm comm, RAPtor_MPI_Request *request)
 {
     if (profile) collective_t -= RAPtor_MPI_Wtime();
@@ -132,7 +130,6 @@ int RAPtor_MPI_Ibarrier(RAPtor_MPI_Comm comm, RAPtor_MPI_Request *request)
     if (profile) current_t = &collective_t;
     return val;
 }
-
 int RAPtor_MPI_Barrier(RAPtor_MPI_Comm comm)
 {
     if (profile) collective_t -= RAPtor_MPI_Wtime();
@@ -141,6 +138,9 @@ int RAPtor_MPI_Barrier(RAPtor_MPI_Comm comm)
     return val;
 }
 
+
+
+// Point-to-Point Methods
 int RAPtor_MPI_Send(const void *buf, int count, RAPtor_MPI_Datatype datatype, int dest,
         int tag, RAPtor_MPI_Comm comm)
 {
@@ -149,7 +149,6 @@ int RAPtor_MPI_Send(const void *buf, int count, RAPtor_MPI_Datatype datatype, in
     if (profile) p2p_t += RAPtor_MPI_Wtime();
     return val;
 }
-
 int RAPtor_MPI_Isend(const void *buf, int count, RAPtor_MPI_Datatype datatype, int dest, int tag,
         RAPtor_MPI_Comm comm, RAPtor_MPI_Request * request)
 {
@@ -159,7 +158,6 @@ int RAPtor_MPI_Isend(const void *buf, int count, RAPtor_MPI_Datatype datatype, i
     if (profile) current_t = &p2p_t;
     return val;
 }
-
 int RAPtor_MPI_Issend(const void *buf, int count, RAPtor_MPI_Datatype datatype, int dest, int tag,
         RAPtor_MPI_Comm comm, RAPtor_MPI_Request * request)
 {
@@ -169,7 +167,6 @@ int RAPtor_MPI_Issend(const void *buf, int count, RAPtor_MPI_Datatype datatype, 
     if (profile) current_t = &p2p_t;
     return val;
 }
-
 int RAPtor_MPI_Recv(void *buf, int count, RAPtor_MPI_Datatype datatype, int source, int tag,
         RAPtor_MPI_Comm comm, RAPtor_MPI_Status * status)
 {
@@ -178,7 +175,6 @@ int RAPtor_MPI_Recv(void *buf, int count, RAPtor_MPI_Datatype datatype, int sour
     if (profile) p2p_t += RAPtor_MPI_Wtime();
     return val;
 }
-
 int RAPtor_MPI_Irecv(void *buf, int count, RAPtor_MPI_Datatype datatype, int source,
         int tag, RAPtor_MPI_Comm comm, RAPtor_MPI_Request * request)
 {
@@ -188,24 +184,6 @@ int RAPtor_MPI_Irecv(void *buf, int count, RAPtor_MPI_Datatype datatype, int sou
     if (profile) current_t = &p2p_t;
     return val;
 }
-
-
-int RAPtor_MPI_Wait(RAPtor_MPI_Request *request, RAPtor_MPI_Status *status)
-{
-    if (profile) *current_t -= RAPtor_MPI_Wtime();
-    int val = MPI_Wait(request, status);
-    if (profile) *current_t += RAPtor_MPI_Wtime();
-    return val;
-}
-
-int RAPtor_MPI_Waitall(int count, RAPtor_MPI_Request array_of_requests[], RAPtor_MPI_Status array_of_statuses[])
-{
-    if (profile) *current_t -= RAPtor_MPI_Wtime();
-    int val = MPI_Waitall(count, array_of_requests, array_of_statuses);
-    if (profile) *current_t += RAPtor_MPI_Wtime();
-    return val;
-}
-
 int RAPtor_MPI_Probe(int source, int tag, RAPtor_MPI_Comm comm, RAPtor_MPI_Status* status)
 {
     if (profile) p2p_t -= RAPtor_MPI_Wtime();
@@ -213,7 +191,6 @@ int RAPtor_MPI_Probe(int source, int tag, RAPtor_MPI_Comm comm, RAPtor_MPI_Statu
     if (profile) p2p_t += RAPtor_MPI_Wtime();
     return val;
 }
-
 int RAPtor_MPI_Iprobe(int source, int tag, RAPtor_MPI_Comm comm,
         int *flag, RAPtor_MPI_Status *status)
 {
@@ -224,6 +201,23 @@ int RAPtor_MPI_Iprobe(int source, int tag, RAPtor_MPI_Comm comm,
     return val;
 }
 
+
+
+// Waiting for completion
+int RAPtor_MPI_Wait(RAPtor_MPI_Request *request, RAPtor_MPI_Status *status)
+{
+    if (profile) *current_t -= RAPtor_MPI_Wtime();
+    int val = MPI_Wait(request, status);
+    if (profile) *current_t += RAPtor_MPI_Wtime();
+    return val;
+}
+int RAPtor_MPI_Waitall(int count, RAPtor_MPI_Request array_of_requests[], RAPtor_MPI_Status array_of_statuses[])
+{
+    if (profile) *current_t -= RAPtor_MPI_Wtime();
+    int val = MPI_Waitall(count, array_of_requests, array_of_statuses);
+    if (profile) *current_t += RAPtor_MPI_Wtime();
+    return val;
+}
 int RAPtor_MPI_Test(MPI_Request *request, int *flag, MPI_Status *status)
 {
     if (profile) *current_t -= RAPtor_MPI_Wtime();
@@ -231,7 +225,6 @@ int RAPtor_MPI_Test(MPI_Request *request, int *flag, MPI_Status *status)
     if (profile) *current_t += RAPtor_MPI_Wtime();
     return val;
 }
-
 int RAPtor_MPI_Testall(int count, MPI_Request array_of_requests[],
         int* flag, MPI_Status array_of_statuses[])
 {
@@ -241,37 +234,36 @@ int RAPtor_MPI_Testall(int count, MPI_Request array_of_requests[],
     return val;
 }
 
+
+// Packing/Unpacking Data
 int RAPtor_MPI_Pack(const void *inbuf, int incount, 
         RAPtor_MPI_Datatype datatype, void *outbuf, int outside, int *position, 
         RAPtor_MPI_Comm comm)
 {
     return MPI_Pack(inbuf, incount, datatype, outbuf, outside, position, comm);
 }
-
 int RAPtor_MPI_Unpack(const void *inbuf, int insize, int *position, 
         void *outbuf, int outcount, RAPtor_MPI_Datatype datatype, RAPtor_MPI_Comm comm)
 {
     return MPI_Unpack(inbuf, insize, position, outbuf, outcount, datatype, comm);
 }
-
-double RAPtor_MPI_Wtime()
-{
-    return MPI_Wtime();
-}
-
-
-int RAPtor_MPI_Get_count(const RAPtor_MPI_Status *status, 
-        RAPtor_MPI_Datatype datatype, int *count)
-{
-    return MPI_Get_count(status, datatype, count);
-}
-
 int RAPtor_MPI_Pack_size(int incount, RAPtor_MPI_Datatype datatype, 
         RAPtor_MPI_Comm comm, int *size)
 {
     return MPI_Pack_size(incount, datatype, comm, size);
 }
 
+
+// Other utilities (no communication)
+double RAPtor_MPI_Wtime()
+{
+    return MPI_Wtime();
+}
+int RAPtor_MPI_Get_count(const RAPtor_MPI_Status *status, 
+        RAPtor_MPI_Datatype datatype, int *count)
+{
+    return MPI_Get_count(status, datatype, count);
+}
 int RAPtor_MPI_Comm_rank(RAPtor_MPI_Comm comm, int* rank)
 {
     return MPI_Comm_rank(comm, rank);
@@ -281,31 +273,59 @@ int RAPtor_MPI_Comm_size(RAPtor_MPI_Comm comm, int* size)
     return MPI_Comm_size(comm, size);
 }
 
-int RAPtor_MPI_Comm_free(RAPtor_MPI_Comm *comm)
-{
-    return MPI_Comm_free(comm);
-}
 
+
+// Creating New Communicator
 int RAPtor_MPI_Comm_split(RAPtor_MPI_Comm comm, int color, int key,
         RAPtor_MPI_Comm* new_comm)
 {
-    return MPI_Comm_split(comm, color, key, new_comm);
+    if (profile) new_comm_t -= RAPtor_MPI_Wtime();
+    int val = MPI_Comm_split(comm, color, key, new_comm);
+    if (profile) new_comm_t += RAPtor_MPI_Wtime();
+    return val;
 }
-
 int RAPtor_MPI_Comm_group(RAPtor_MPI_Comm comm, RAPtor_MPI_Group *group)
 {
-    return MPI_Comm_group(comm, group);
+    if (profile) new_comm_t -= RAPtor_MPI_Wtime();
+    int val = MPI_Comm_group(comm, group);
+    if (profile) new_comm_t += RAPtor_MPI_Wtime();
+    return val;
 }
-
 int RAPtor_MPI_Comm_create_group(RAPtor_MPI_Comm comm, RAPtor_MPI_Group group,
         int tag, RAPtor_MPI_Comm* newcomm)
 {
-    return MPI_Comm_create_group(comm, group, tag, newcomm);
+    if (profile) new_comm_t -= RAPtor_MPI_Wtime();
+    int val = MPI_Comm_create_group(comm, group, tag, newcomm);
+    if (profile) new_comm_t += RAPtor_MPI_Wtime();
+    return val;
 }
-
 int RAPtor_MPI_Group_incl(RAPtor_MPI_Group group, int n, const int ranks[],
         RAPtor_MPI_Group *newgroup)
 {
-    return MPI_Group_incl(group, n, ranks, newgroup);
+    if (profile) new_comm_t -= RAPtor_MPI_Wtime();
+    int val = MPI_Group_incl(group, n, ranks, newgroup);
+    if (profile) new_comm_t += RAPtor_MPI_Wtime();
+    return val;
+}
+int RAPtor_MPI_Comm_free(RAPtor_MPI_Comm *comm)
+{
+    if (profile) new_comm_t -= RAPtor_MPI_Wtime();
+    int val = MPI_Comm_free(comm);
+    if (profile) new_comm_t += RAPtor_MPI_Wtime();
+    return val;
+}
+int RAPtor_MPI_Group_free(RAPtor_MPI_Group* group)
+{
+    if (profile) new_comm_t -= RAPtor_MPI_Wtime();
+    int val = MPI_Group_free(group);
+    if (profile) new_comm_t += RAPtor_MPI_Wtime();
+    return val;
+}
+int RAPtor_MPI_Comm_dup(MPI_Comm comm, MPI_Comm* new_comm)
+{
+    if (profile) new_comm_t -= RAPtor_MPI_Wtime();
+    int val = MPI_Comm_dup(comm, new_comm);
+    if (profile) new_comm_t += RAPtor_MPI_Wtime();
+    return val;
 }
 

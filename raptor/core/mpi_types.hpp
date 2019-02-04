@@ -127,5 +127,7 @@ extern int RAPtor_MPI_Comm_create_group(RAPtor_MPI_Comm comm, RAPtor_MPI_Group g
         int tag, RAPtor_MPI_Comm* newcomm);
 extern int RAPtor_MPI_Group_incl(RAPtor_MPI_Group group, int n, const int ranks[],
         RAPtor_MPI_Group *newgroup);
+extern int RAPtor_MPI_Group_free(RAPtor_MPI_Group* group);
+extern int RAPtor_MPI_Comm_dup(MPI_Comm comm, MPI_Comm* new_comm);
 
 #endif
