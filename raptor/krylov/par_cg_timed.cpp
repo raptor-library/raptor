@@ -2,7 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "krylov/par_cg_timed.hpp"
 #include "multilevel/par_multilevel.hpp"
-#include "aorthonormalization/par_cgs.hpp"
+#include "aorthonormalization/par_cgs_timed.hpp"
 
 using namespace raptor;
 
@@ -195,13 +195,13 @@ void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<do
     times[2] += (stop - start);
 
     // A-orthonormalize W
-    start = MPI_Wtime();        
-    CGS(A, *W);
-    stop = MPI_Wtime();
-    times[3] += (stop - start);
+    //start = MPI_Wtime();        
+    CGS(A, *W, times);
+    //stop = MPI_Wtime();
+    //times[3] += (stop - start);
     
     // alpha = W^T * r
-    W->mult_T(r, alpha);     /* ------------ Profile comm and comp in method ----------- */
+    W->mult_T_timed(r, alpha, times);     /* ------------ Profile comm and comp in method ----------- */
 
     start = MPI_Wtime();        
     // x = x + W * alpha
@@ -245,10 +245,10 @@ void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<do
             // W = A * W
             A->mult_timed(*W, *W_temp, times);
 
-            start = MPI_Wtime();        
-            BCGS(A, *Wk_1, *Wk_2, *W_temp);
-            stop = MPI_Wtime();
-            times[3] += (stop - start);
+            //start = MPI_Wtime();        
+            BCGS(A, *Wk_1, *Wk_2, *W_temp, times);
+            //stop = MPI_Wtime();
+            //times[3] += (stop - start);
         }
         else
         {
@@ -259,23 +259,23 @@ void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<do
             // W = A * W
             A->mult_timed(*W, *W_temp, times);
 
-            start = MPI_Wtime();        
-            BCGS(A, *Wk_1, *W_temp);
-            stop = MPI_Wtime();
-            times[3] += (stop - start);
+            //start = MPI_Wtime();        
+            BCGS(A, *Wk_1, *W_temp, times);
+            //stop = MPI_Wtime();
+            //times[3] += (stop - start);
         }
 
         W->copy(*W_temp);
         //W = W_temp;
 
         // A-orthonormalize W
-        start = MPI_Wtime();        
-        CGS(A, *W);
-        stop = MPI_Wtime();
-        times[3] += (stop - start);
+        //start = MPI_Wtime();        
+        CGS(A, *W, times);
+        //stop = MPI_Wtime();
+        //times[3] += (stop - start);
 
         // alpha = W^T * r
-        W->mult_T(r, alpha); /* ------------ Profile comm and comp in method ----------- */
+        W->mult_T_timed(r, alpha, times); /* ------------ Profile comm and comp in method ----------- */
 
         start = MPI_Wtime();        
         // x = x + W * alpha
