@@ -34,13 +34,24 @@ if (WITH_PETSC)
         )
 endif()
 
+if (WITH_MUELU)
+    set(trilinos_HEADERS
+        external/trilinos_wrapper.hpp
+        )
+    set(trilinos_SOURCES
+        external/trilinos_wrapper.cpp
+        )
+endif()
+
 set(external_HEADERS
     ${mfem_HEADERS}
     ${hypre_HEADERS}
     ${petsc_HEADERS}
+    ${trilinos_HEADERS}
     PARENT_SCOPE)
 set(external_SOURCES
     ${mfem_SOURCES}
     ${hypre_SOURCES}
     ${petsc_SOURCES}
+    ${trilinos_SOURCES}
     PARENT_SCOPE)
