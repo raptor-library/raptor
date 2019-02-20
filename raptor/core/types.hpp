@@ -162,6 +162,7 @@ namespace raptor
     enum agg_t {MIS};
     enum prolong_t {JacobiProlongation};
     enum relax_t {Jacobi, SOR, SSOR};
+    enum comm_t {Standard, NAP2, NAP3};
 
     template<typename T, typename U> 
     U sum_func(const U& a, const T&b)

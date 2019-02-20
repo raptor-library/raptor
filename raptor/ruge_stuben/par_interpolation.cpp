@@ -874,15 +874,17 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     P->off_proc->n_cols = P->off_proc_num_cols;
     P->on_proc->n_cols = P->on_proc_num_cols;
 
-    if (tap_interp)
-    {
-        P->init_tap_communicators(RAPtor_MPI_COMM_WORLD);
-    }
-    else
-    {
-        P->comm = new ParComm(P->partition, P->off_proc_column_map,
-                P->on_proc_column_map, 9243, RAPtor_MPI_COMM_WORLD);
-    }
+    //if (tap_interp)
+    //{
+    //    P->init_tap_communicators(RAPtor_MPI_COMM_WORLD);
+    //}
+    //else
+    //{
+    //    P->comm = new ParComm(P->partition, P->off_proc_column_map,
+    //            P->on_proc_column_map, 9243, RAPtor_MPI_COMM_WORLD);
+    //}
+
+    P->init_communicators(9243, RAPtor_MPI_COMM_WORLD);
 
     delete recv_mat;
 
@@ -1339,14 +1341,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     P->off_proc->n_cols = P->off_proc_num_cols;
     P->on_proc->n_cols = P->on_proc_num_cols;
 
-    if (tap_interp)
-    {
-        P->update_tap_comm(S, on_proc_col_to_new, off_proc_col_to_new);
-    }
-    else
-    {
-        P->comm = new ParComm(S->comm, on_proc_col_to_new, off_proc_col_to_new);
-    }
+    P->update_comm(S, on_proc_col_to_new, off_proc_col_to_new);
 
     delete recv_on;
     delete recv_off;
@@ -1645,15 +1640,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
     P->off_proc->n_cols = P->off_proc_num_cols;
     P->on_proc->n_cols = P->on_proc_num_cols;
 
-    if (tap_interp)
-    {
-        P->update_tap_comm(S, on_proc_col_to_new, off_proc_col_to_new);
-    }
-    else
-    {
-        P->comm = new ParComm(S->comm, on_proc_col_to_new, off_proc_col_to_new);
-    }
-
+    P->update_comm(S, on_proc_col_to_new, off_proc_col_to_new);
 
     return P;
 }

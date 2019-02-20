@@ -326,10 +326,23 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
     S->local_row_map = A->get_local_row_map();
     S->off_proc_column_map = A->get_off_proc_column_map();
 
-    S->comm = A->comm;
-    S->tap_comm = A->tap_comm;
-    S->tap_mat_comm = A->tap_mat_comm;
-    S->shared_comm = true;
+    if (A->comm)
+    {
+        S->comm = A->comm;
+        S->comm->n_shared++;
+    }
+
+    if (A->tap_comm)
+    {
+        S->tap_comm = A->tap_comm;
+        S->tap_comm->n_shared++;
+    }
+
+    if (A->tap_mat_comm)
+    {
+        S->tap_mat_comm = A->tap_mat_comm;
+        S->tap_mat_comm->n_shared++;
+    }
 
     return S;
 
@@ -516,10 +529,23 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg)
     S->local_row_map = A->get_local_row_map();
     S->off_proc_column_map = A->get_off_proc_column_map();
 
-    S->comm = A->comm;
-    S->tap_comm = A->tap_comm;
-    S->tap_mat_comm = A->tap_mat_comm;
-    S->shared_comm = true;
+    if (A->comm)
+    {
+        S->comm = A->comm;
+        S->comm->n_shared++;
+    }
+
+    if (A->tap_comm)
+    {
+        S->tap_comm = A->tap_comm;
+        S->tap_comm->n_shared++;
+    }
+
+    if (A->tap_mat_comm)
+    {
+        S->tap_mat_comm = A->tap_mat_comm;
+        S->tap_mat_comm->n_shared++;
+    }
 
     return S;
 }

@@ -89,9 +89,10 @@ namespace raptor
         local_num_rows = partition->local_num_rows;
 
         comm = NULL;
+        two_step = NULL;
+        three_step = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
-        shared_comm = false;
     }
 
     ParMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows, 
@@ -106,9 +107,10 @@ namespace raptor
         local_num_rows = local_rows;
 
         comm = NULL;
+        two_step = NULL;
+        three_step = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
-        shared_comm = false;
     }
 
     ParMatrix(index_t glob_rows, index_t glob_cols)
@@ -121,9 +123,10 @@ namespace raptor
         local_num_rows = partition->local_num_rows;
 
         comm = NULL;
+        two_step = NULL;
+        three_step = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
-        shared_comm = false;
     }
 
     ParMatrix(index_t glob_rows, 
@@ -143,9 +146,10 @@ namespace raptor
         local_num_rows = partition->local_num_rows;
 
         comm = NULL;
+        two_step = NULL;
+        three_step = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
-        shared_comm = false;
     }
        
     ParMatrix()
@@ -157,9 +161,10 @@ namespace raptor
         on_proc_num_cols = 0;
 
         comm = NULL;
+        two_step = NULL;
+        three_step = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
-        shared_comm = false;
 
         on_proc = NULL;
         off_proc = NULL;
@@ -172,12 +177,11 @@ namespace raptor
         delete off_proc;
         delete on_proc;
 
-        if (!shared_comm)
-        {
-            delete comm;
-            delete tap_mat_comm;
-            delete tap_comm;
-        }
+        delete_comm(comm);
+        delete_comm(two_step);
+        delete_comm(three_step);
+        delete_comm(tap_comm);
+        delete_comm(tap_mat_comm);
 
         if (partition)
         {
@@ -192,6 +196,15 @@ namespace raptor
         }
     }
 
+    void delete_comm(CommPkg* comm_pkg)
+    {
+        if (comm_pkg)
+        {
+            if (comm_pkg->n_shared) comm_pkg->n_shared--;
+            else delete comm_pkg;
+            comm_pkg = NULL;
+        }
+    }
 
     /**************************************************************
     *****   ParMatrix Add Value
@@ -258,23 +271,65 @@ namespace raptor
     ParMatrix* add(ParCSRMatrix* A);
     ParMatrix* subtract(ParCSRMatrix* A);
 
+    void init_communicators(int key, RAPtor_MPI_Comm comm = RAPtor_MPI_COMM_WORLD);
     void init_tap_communicators(RAPtor_MPI_Comm comm = RAPtor_MPI_COMM_WORLD);
-    void update_tap_comm(ParMatrix* old, const aligned_vector<int>& old_to_new)
+    void init_tap_communicators(aligned_vector<int>& off_proc_col_to_proc,
+            aligned_vector<int>& on_node_column_map, 
+            aligned_vector<int>& on_node_col_to_proc,
+            aligned_vector<int>& on_node_to_off_proc, 
+            aligned_vector<int>& off_node_column_map,
+            aligned_vector<int>& off_node_col_to_proc, 
+            aligned_vector<int>& off_node_to_off_proc,
+            RAPtor_MPI_Comm comm = RAPtor_MPI_COMM_WORLD);
+
+    void update_comm(ParMatrix* old, const aligned_vector<int>& old_to_new)
     {
-        tap_comm = new TAPComm((TAPComm*) old->tap_comm, old_to_new, NULL);
-        tap_mat_comm = new TAPComm((TAPComm*) old->tap_mat_comm, old_to_new, 
-                tap_comm->local_L_par_comm);
+        if (old->comm)
+        {
+            comm = new ParComm(old->comm, old_to_new);
+        }
+
+        if (old->tap_comm)
+        {
+            tap_comm = new TAPComm((TAPComm*) old->tap_comm, old_to_new, NULL);
+        }
+        
+        if (old->tap_mat_comm)
+        {
+            tap_mat_comm = new TAPComm((TAPComm*) old->tap_mat_comm, old_to_new, 
+                    tap_comm->local_L_par_comm);
+        }
+
+        if (!old->comm || !old->tap_comm || !old->tap_mat_comm)
+            init_communicators(9238);
     }
-    void update_tap_comm(ParMatrix* old, const aligned_vector<int>& on_old_to_new,
+    void update_comm(ParMatrix* old, const aligned_vector<int>& on_old_to_new,
             const aligned_vector<int>& off_old_to_new)
     {
-        tap_comm = new TAPComm((TAPComm*) old->tap_comm, on_old_to_new, off_old_to_new, 
-                NULL);
-        tap_mat_comm = new TAPComm((TAPComm*) old->tap_mat_comm, on_old_to_new, 
-                off_old_to_new, tap_comm->local_L_par_comm);
+        if (old->comm)
+        {
+            comm = new ParComm(old->comm, on_old_to_new, off_old_to_new);
+        }
+
+        if (old->tap_comm)
+        {
+            tap_comm = new TAPComm((TAPComm*) old->tap_comm, on_old_to_new, off_old_to_new, 
+                    NULL);
+        }
+
+        if (old->tap_mat_comm)
+        {
+            tap_mat_comm = new TAPComm((TAPComm*) old->tap_mat_comm, on_old_to_new, 
+                    off_old_to_new, tap_comm->local_L_par_comm);
+        }
+
+        if (!old->comm || !old->tap_comm || !old->tap_mat_comm)
+            init_communicators(9238);
     }
 
-
+    comm_t model_comm(ContigData* comm_data, CSRMatrix* B_on, CSRMatrix* B_off = NULL);
+    comm_t model_comm(NonContigData* comm_data, CSRMatrix* B_on, CSRMatrix* B_off = NULL);
+    comm_t model_comm(aligned_vector<int>& off_proc_col_to_proc);
 
     void sort()
     {
@@ -338,7 +393,9 @@ namespace raptor
     ParComm* comm;
     TAPComm* tap_comm;
     TAPComm* tap_mat_comm;
-    bool shared_comm;
+    TAPComm* two_step;
+    TAPComm* three_step;
+    comm_t comm_type;
   };
 
   class ParCOOMatrix : public ParMatrix

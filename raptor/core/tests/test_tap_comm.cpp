@@ -31,8 +31,6 @@ TEST(TAPCommTest, TestsInCore)
     aligned_vector<double> tap_simp_recv;
 
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
-    //A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
-    //TAPComm* simple_tap = new TAPComm(A->partition, A->off_proc_column_map, false);
     A->init_tap_communicators(MPI_COMM_WORLD);
 
     ParVector x(A->global_num_rows, A->local_num_rows);

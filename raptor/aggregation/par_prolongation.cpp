@@ -56,30 +56,7 @@ ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, bool tap_com
     // P = P - (scaled_A*P)
     for (int i = 0; i < num_smooth_steps; i++)
     {
-        if (tap_comm)
-        {
-            if (scaled_A->tap_mat_comm == NULL)
-            {
-                scaled_A->tap_mat_comm = new TAPComm(scaled_A->partition, 
-                        scaled_A->off_proc_column_map,
-                        scaled_A->on_proc_column_map, 
-                        false, RAPtor_MPI_COMM_WORLD);
-            }
-            AP_tmp = scaled_A->tap_mult(P);
-        }
-        else
-        {
-            if (P->comm == NULL)
-            {
-                scaled_A->comm = new ParComm(scaled_A->partition, 
-                        scaled_A->off_proc_column_map,
-                        scaled_A->on_proc_column_map, 
-                        9283, RAPtor_MPI_COMM_WORLD);
-            }
-
-            AP_tmp = scaled_A->mult(P);
-        }
-
+        AP_tmp = scaled_A->mult(P, tap_comm);
         P_tmp = P->subtract(AP_tmp);
         delete AP_tmp;
         delete P;

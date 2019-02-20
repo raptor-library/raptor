@@ -24,21 +24,33 @@ using namespace raptor;
  **************************************************************/
 void ParMatrix::mult(ParVector& x, ParVector& b, bool tap)
 {
-    if (tap)
-    {
-        this->tap_mult(x, b);
-        return;
-    }
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    CommPkg* comm_pkg;
     // Check that communication package has been initialized
-    if (comm == NULL)
+    if (tap && tap_comm)
     {
-        comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
+        comm_pkg = tap_comm;
+    }   
+    else
+    {
+        if (tap)
+        {
+            if (rank == 0) printf("Not using TAPComm because no communicator exists\n");
+        }
+
+        if (!comm)
+        {
+            if (rank == 0) printf("Creating ParComm Pkg... SpMV Times will be inaccurate\n");
+            comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
+        }
+        comm_pkg = comm;
     }
 
     // Initialize Isends and Irecvs to communicate
     // values of x
-    comm->init_comm(x, off_proc->b_cols);
+    comm_pkg->init_comm(x, off_proc->b_cols);
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
@@ -48,7 +60,7 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap)
     }
 
     // Wait for Isends and Irecvs to complete
-    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
+    aligned_vector<double>& x_tmp = comm_pkg->complete_comm<double>(off_proc->b_cols);
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -60,51 +72,38 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap)
 
 void ParMatrix::tap_mult(ParVector& x, ParVector& b)
 {
-    // Check that communication package has been initialized
-    if (tap_comm == NULL)
-    {
-        tap_comm = new TAPComm(partition, off_proc_column_map, on_proc_column_map);
-    }
-
-    // Initialize Isends and Irecvs to communicate
-    // values of x
-    tap_comm->init_comm(x, off_proc->b_cols);
-
-    // Multiply the diagonal portion of the matrix,
-    // setting b = A_diag*x_local
-    if (local_num_rows)
-    {
-        on_proc->mult(x.local, b.local);
-    }
-
-    // Wait for Isends and Irecvs to complete
-    aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols);
-
-    // Multiply remaining columns, appending to previous
-    // solution in b (b += A_offd * x_distant)
-    if (off_proc_num_cols)
-    {
-        off_proc->mult_append(x_tmp, b.local);
-    }
+    mult(x, b, true);
 }
 
 void ParMatrix::mult_append(ParVector& x, ParVector& b, bool tap)
 {
-    if (tap)
-    {
-        this->tap_mult_append(x, b);
-        return;
-    }
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    // Check that communication package has been initialized
-    if (comm == NULL)
+    CommPkg* comm_pkg;
+    if (tap && tap_comm)
     {
-        comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
+        comm_pkg = tap_comm;
+    }
+    else
+    {
+        if (tap)
+        {
+            if (rank == 0) printf("Not using TAPComm because no communicator exists\n");
+        }
+
+        if (!comm)
+        {
+            if (rank == 0) printf("Creating ParComm Pkg... SpMV times will be inaccurate\n");
+            comm = new ParComm(partition, off_proc_column_map,
+                    on_proc_column_map);
+        }
+        comm_pkg = comm;
     }
 
     // Initialize Isends and Irecvs to communicate
     // values of x
-    comm->init_comm(x, off_proc->b_cols);
+    comm_pkg->init_comm(x, off_proc->b_cols);
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
@@ -114,7 +113,7 @@ void ParMatrix::mult_append(ParVector& x, ParVector& b, bool tap)
     }
 
     // Wait for Isends and Irecvs to complete
-    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
+    aligned_vector<double>& x_tmp = comm_pkg->complete_comm<double>(off_proc->b_cols);
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -126,109 +125,86 @@ void ParMatrix::mult_append(ParVector& x, ParVector& b, bool tap)
 
 void ParMatrix::tap_mult_append(ParVector& x, ParVector& b)
 {
-    // Check that communication package has been initialized
-    if (tap_comm == NULL)
-    {
-        tap_comm = new TAPComm(partition, off_proc_column_map, on_proc_column_map);
-    }
-
-    // Initialize Isends and Irecvs to communicate
-    // values of x
-    tap_comm->init_comm(x, off_proc->b_cols);
-
-    // Multiply the diagonal portion of the matrix,
-    // setting b = A_diag*x_local
-    if (local_num_rows)
-    {
-        on_proc->mult_append(x.local, b.local);
-    }
-
-    // Wait for Isends and Irecvs to complete
-    aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols);
-
-    // Multiply remaining columns, appending to previous
-    // solution in b (b += A_offd * x_distant)
-    if (off_proc_num_cols)
-    {
-        off_proc->mult_append(x_tmp, b.local);
-    }
+    mult_append(x, b, true);
 }
 
 void ParMatrix::mult_T(ParVector& x, ParVector& b, bool tap)
 {
-    if (tap)
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    CommPkg* comm_pkg;
+    if (tap && tap_comm)
     {
-        this->tap_mult_T(x, b);
-        return;
+        comm_pkg = tap_comm;
+    }
+    else
+    {
+        if (tap)
+        {
+            if (rank == 0) printf("Not using TAPComm because no communicator exists\n");
+        }
+
+        if (!comm)
+        {
+            if (rank == 0) printf("Creating ParComm Pkg... SpMV times will be inaccurate\n");
+            comm = new ParComm(partition, off_proc_column_map,
+                    on_proc_column_map);
+        }
+        comm_pkg = comm;
     }
 
     int idx, pos;
-
-    // Check that communication package has been initialized
-    if (comm == NULL)
-    {
-        comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
-    }
-
     aligned_vector<double>& x_tmp = comm->get_buffer<double>();
     if (x_tmp.size() < comm->recv_data->size_msgs * off_proc->b_cols)
         x_tmp.resize(comm->recv_data->size_msgs * off_proc->b_cols);
 
     off_proc->mult_T(x.local, x_tmp);
 
-    comm->init_comm_T(x_tmp, off_proc->b_cols);
+    comm_pkg->init_comm_T(x_tmp, off_proc->b_cols);
 
     if (local_num_rows)
     {
         on_proc->mult_T(x.local, b.local);
     }
 
-    comm->complete_comm_T<double>(b.local.values, off_proc->b_cols);
+    comm_pkg->complete_comm_T<double>(b.local.values, off_proc->b_cols);
 }
 
 void ParMatrix::tap_mult_T(ParVector& x, ParVector& b)
 {
-    int idx, pos;
-
-    // Check that communication package has been initialized
-    if (tap_comm == NULL)
-    {
-        tap_comm = new TAPComm(partition, off_proc_column_map, on_proc_column_map);
-    }
-
-    aligned_vector<double>& x_tmp = tap_comm->get_buffer<double>();
-    if (x_tmp.size() < tap_comm->recv_size * off_proc->b_cols)
-        x_tmp.resize(tap_comm->recv_size * off_proc->b_cols);
-
-    off_proc->mult_T(x.local, x_tmp);
-
-    tap_comm->init_comm_T(x_tmp, off_proc->b_cols);
-
-    if (local_num_rows)
-    {
-        on_proc->mult_T(x.local, b.local);
-    }
-
-    tap_comm->complete_comm_T<double>(b.local.values, off_proc->b_cols);
+    mult_T(x, b, true);
 }
 
 void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap)
 {
-    if (tap) 
-    {
-        this->tap_residual(x, b, r);
-        return;
-    }
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    // Check that communication package has been initialized
-    if (comm == NULL)
+    CommPkg* comm_pkg;
+    if (tap && tap_comm)
     {
-        comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
+        comm_pkg = tap_comm;
+    }
+    else
+    {
+        if (tap)
+        {
+            if (rank == 0) printf("Not using TAPComm because no communicator exists\n");
+        }
+
+        if (!comm)
+        {
+            if (rank == 0) printf("Creating ParComm Pkg... SpMV times will be inaccurate\n");
+            comm = new ParComm(partition, off_proc_column_map,
+                    on_proc_column_map);
+        }
+        comm_pkg = comm;
     }
 
     // Initialize Isends and Irecvs to communicate
     // values of x
-    comm->init_comm(x, off_proc->b_cols);
+    comm_pkg->init_comm(x, off_proc->b_cols);
 
     std::copy(b.local.values.begin(), b.local.values.end(), 
             r.local.values.begin());
@@ -241,7 +217,7 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap)
     }
 
     // Wait for Isends and Irecvs to complete
-    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
+    aligned_vector<double>& x_tmp = comm_pkg->complete_comm<double>(off_proc->b_cols);
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -253,34 +229,7 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap)
 
 void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r)
 {
-    // Check that communication package has been initialized
-    if (tap_comm == NULL)
-    {
-        tap_comm = new TAPComm(partition, off_proc_column_map, on_proc_column_map);
-    }
-
-    // Initialize Isends and Irecvs to communicate
-    // values of x
-    tap_comm->init_comm(x, off_proc->b_cols);
-
-    std::copy(b.local.values.begin(), b.local.values.end(), r.local.values.begin());
-
-    // Multiply the diagonal portion of the matrix,
-    // setting b = A_diag*x_local
-    if (local_num_rows && on_proc_num_cols)
-    {
-        on_proc->mult_append_neg(x.local, r.local);
-    }
-
-    // Wait for Isends and Irecvs to complete
-    aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols);
-
-    // Multiply remaining columns, appending to previous
-    // solution in b (b += A_offd * x_distant)
-    if (off_proc_num_cols)
-    {
-        off_proc->mult_append_neg(x_tmp, r.local);
-    }
+    residual(x, b, r, true);
 }
 
 

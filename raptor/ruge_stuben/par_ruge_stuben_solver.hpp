@@ -56,12 +56,12 @@ namespace raptor
         void extend_hierarchy()
         {
             int level_ctr = levels.size() - 1;
-            bool tap_level = tap_amg >= 0 && tap_amg <= level_ctr;
 
             ParCSRMatrix* A = levels[level_ctr]->A;
             ParCSRMatrix* S;
             ParCSRMatrix* P;
             ParCSRMatrix* AP;
+            bool tap_level = A->comm_type != Standard && tap_amg <= level_ctr;
 
             aligned_vector<int> states;
             aligned_vector<int> off_proc_states;
@@ -143,17 +143,30 @@ namespace raptor
 
             level_ctr++;
             levels[level_ctr]->A = A;
-            A->comm = new ParComm(A->partition, A->off_proc_column_map,
-                    A->on_proc_column_map, levels[level_ctr-1]->A->comm->key,
-                    levels[level_ctr-1]->A->comm->mpi_comm);
             levels[level_ctr]->x.resize(A->global_num_rows, A->local_num_rows);
             levels[level_ctr]->b.resize(A->global_num_rows, A->local_num_rows);
             levels[level_ctr]->tmp.resize(A->global_num_rows, A->local_num_rows);
             levels[level_ctr]->P = NULL;
 
-            if (tap_amg >= 0 && tap_amg <= level_ctr)
+            //A->comm = new ParComm(A->partition, A->off_proc_column_map,
+            //        A->on_proc_column_map, levels[level_ctr-1]->A->comm->key,
+            //        levels[level_ctr-1]->A->comm->mpi_comm);
+            //if (tap_amg >= 0 && tap_amg <= level_ctr)
+            //{
+            //    levels[level_ctr]->A->init_tap_communicators(
+            //            levels[level_ctr-1]->A->comm->key, RAPtor_MPI_COMM_WORLD);
+            //}
+
+            if (tap_amg <= level_ctr)
             {
-                levels[level_ctr]->A->init_tap_communicators(RAPtor_MPI_COMM_WORLD);
+                A->init_communicators(levels[level_ctr-1]->A->comm->key,
+                        levels[level_ctr-1]->A->comm->mpi_comm);
+            }
+            else
+            {
+                A->comm = new ParComm(A->partition, A->off_proc_column_map, 
+                        A->on_proc_column_map, levels[level_ctr-1]->A->comm->key,
+                        levels[level_ctr-1]->A->comm->mpi_comm);
             }
 
             delete AP;

@@ -51,13 +51,13 @@ namespace raptor
         void extend_hierarchy()
         {
             int level_ctr = levels.size() - 1;
-            bool tap_level = tap_amg >= 0 && tap_amg <= level_ctr;
 
             ParCSRMatrix* A = levels[level_ctr]->A;
             ParCSRMatrix* S;
             ParCSRMatrix* T;
             ParCSRMatrix* P;
             ParCSRMatrix* AP;
+            bool tap_level = A->comm_type != Standard && tap_amg <= level_ctr;
 
             aligned_vector<int> states;
             aligned_vector<int> off_proc_states;
@@ -102,24 +102,36 @@ namespace raptor
 
             level_ctr++;
             levels[level_ctr]->A = A;
-            A->comm = new ParComm(A->partition, A->off_proc_column_map,
-                    A->on_proc_column_map, levels[level_ctr-1]->A->comm->key,
-                    levels[level_ctr-1]->A->comm->mpi_comm);
             levels[level_ctr]->x.resize(A->global_num_rows, A->local_num_rows);
             levels[level_ctr]->b.resize(A->global_num_rows, A->local_num_rows);
             levels[level_ctr]->tmp.resize(A->global_num_rows, A->local_num_rows);
             levels[level_ctr]->P = NULL;
 
-            if (tap_amg >= 0 && tap_amg <= level_ctr)
+            if (tap_amg <= level_ctr)
             {
-                // Create 2-step node-aware communicator for setup phase
-                // will be changed to 3-step before solve phase
-                levels[level_ctr]->A->tap_comm = new TAPComm(
-                        levels[level_ctr]->A->partition,
-                        levels[level_ctr]->A->off_proc_column_map,
-                        levels[level_ctr]->A->on_proc_column_map, 
-                        true, A->comm->mpi_comm);
+                A->init_communicators(levels[level_ctr-1]->A->comm->key,
+                        levels[level_ctr-1]->A->comm->mpi_comm);
             }
+            else 
+            {
+                A->comm = new ParComm(A->partition, A->off_proc_column_map,
+                        A->on_proc_column_map, levels[level_ctr-1]->A->comm->key,
+                        levels[level_ctr-1]->A->comm->mpi_comm);
+            }
+
+            //A->comm = new ParComm(A->partition, A->off_proc_column_map,
+            //        A->on_proc_column_map, levels[level_ctr-1]->A->comm->key,
+            //        levels[level_ctr-1]->A->comm->mpi_comm);
+            //if (tap_amg >= 0 && tap_amg <= level_ctr)
+            //{
+            //    // Create 2-step node-aware communicator for setup phase
+            //    // will be changed to 3-step before solve phase
+            //    levels[level_ctr]->A->tap_comm = new TAPComm(
+            //            levels[level_ctr]->A->partition,
+            //            levels[level_ctr]->A->off_proc_column_map,
+            //            levels[level_ctr]->A->on_proc_column_map, 
+            //            true, A->comm->mpi_comm);
+            //}
 
             std::copy(R.begin(), R.end(), B.begin());
 

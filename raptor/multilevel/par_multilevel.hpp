@@ -78,7 +78,7 @@ namespace raptor
 
             ParMultilevel(double _strong_threshold, 
                     strength_t _strength_type,
-                    relax_t _relax_type) // which level to start tap_amg (-1 == no TAP)
+                    relax_t _relax_type) // which level to start tap_amg (max_levels == no TAP)
             {
                 num_levels = 0;
                 strong_threshold = _strong_threshold;
@@ -88,7 +88,7 @@ namespace raptor
                 relax_weight = 1.0;
                 max_coarse = 50;
                 max_levels = 25;
-                tap_amg = -1;
+                tap_amg = max_levels;
                 weights = NULL;
                 store_residuals = true;
                 track_times = false;
@@ -144,23 +144,8 @@ namespace raptor
                 levels[0]->x.resize(Af->global_num_rows, Af->local_num_rows);
                 levels[0]->b.resize(Af->global_num_rows, Af->local_num_rows);
                 levels[0]->tmp.resize(Af->global_num_rows, Af->local_num_rows);
-                if (tap_amg == 0)
-                {
-                    if (!Af->tap_comm && !Af->tap_mat_comm)
-                    {
-                        levels[0]->A->init_tap_communicators();
-                    }
-                    else if (!Af->tap_comm) // 3-step NAPComm
-                    {
-                        levels[0]->A->tap_comm = new TAPComm(Af->partition,
-                                Af->off_proc_column_map, Af->on_proc_column_map);
-                    }
-                    else if (!Af->tap_mat_comm) // 2-step NAPComm
-                    {
-                        levels[0]->A->tap_mat_comm = new TAPComm(Af->partition,
-                                Af->off_proc_column_map, Af->on_proc_column_map, false);
-                    }
-                }
+
+                levels[0]->A->init_communicators(9348);
 
                 if (weights == NULL)
                 {
@@ -347,7 +332,7 @@ namespace raptor
                 ParCSRMatrix* A = levels[level]->A;
                 ParCSRMatrix* P = levels[level]->P;
                 ParVector& tmp = levels[level]->tmp;
-                bool tap_level = tap_amg >= 0 && tap_amg <= level;
+                bool tap_level = tap_amg <= level;
 
                 if (level == num_levels - 1)
                 {

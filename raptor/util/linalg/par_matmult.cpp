@@ -70,17 +70,43 @@ ParCSRMatrix* init_matrix(T* A, U* B)
     return C;
 }
 
+ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B)
+{
+    return mult(B, true);
+}
+
 ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap)
 {
-    if (tap)
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    CommPkg* comm_pkg;
+    if (!comm)
     {
-        return this->tap_mult(B);
+        if (rank == 0) printf("Creating ParComm Pkg... SpGEMM timings will be inaccurate\n");
+        comm = new ParComm(partition, off_proc_column_map,
+                on_proc_column_map);
     }
 
-    // Check that communication package has been initialized
-    if (comm == NULL)
+    if (tap)
     {
-        comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
+        comm_t comm_type = model_comm((NonContigData*)comm->send_data, 
+                (CSRMatrix*) B->on_proc, (CSRMatrix*) B->off_proc);
+        if (comm_type == Standard) comm_pkg = comm;
+        else
+        {
+            if (!two_step || !three_step) 
+            {
+                if (rank == 0) printf("Creating TAPComm Pkgs... SpGEMM timings will be inaccurate\n");
+                init_tap_communicators();
+            }
+            if (comm_type == NAP2) comm_pkg = two_step;
+            else comm_pkg = three_step;
+        }
+    }
+    else
+    {
+        comm_pkg = comm;
     }
 
     // Initialize C (matrix to be returned)
@@ -88,13 +114,13 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap)
     aligned_vector<char> send_buffer;
 
     // Communicate data and multiply
-    comm->init_par_mat_comm(B, send_buffer);
+    comm_pkg->init_par_mat_comm(B, send_buffer);
 
     // Fully Local Computation
     CSRMatrix* C_on_on = on_proc->mult((CSRMatrix*) B->on_proc);
     CSRMatrix* C_on_off = on_proc->mult((CSRMatrix*) B->off_proc);
 
-    CSRMatrix* recv_mat = comm->complete_mat_comm();
+    CSRMatrix* recv_mat = comm_pkg->complete_mat_comm();
 
     mult_helper(B, C, recv_mat, C_on_on, C_on_off);
 
@@ -106,36 +132,9 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap)
     return C;
 }
 
-ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B)
+ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSRMatrix* A)
 {
-    // Check that communication package has been initialized
-    if (tap_mat_comm == NULL)
-    {
-        // Always 2-step
-        tap_mat_comm = new TAPComm(partition, off_proc_column_map, 
-                on_proc_column_map, false);
-    }
-
-    // Initialize C (matrix to be returned)
-    ParCSRMatrix* C = init_matrix(this, B);;
-    aligned_vector<char> send_buffer;
-
-    // Communicate data and multiply
-    tap_mat_comm->init_par_mat_comm(B, send_buffer);
-
-    // Fully Local Computation
-    CSRMatrix* C_on_on = on_proc->mult((CSRMatrix*) B->on_proc);
-    CSRMatrix* C_on_off = on_proc->mult((CSRMatrix*) B->off_proc);
-
-    CSRMatrix* recv_mat = tap_mat_comm->complete_mat_comm();
-
-    mult_helper(B, C, recv_mat, C_on_on, C_on_off);
-    delete C_on_on;
-    delete C_on_off;
-    delete recv_mat;
-
-    // Return matrix containing product
-    return C;
+    return mult_T(A, true);
 }
 
 ParCSRMatrix* ParCSRMatrix::mult_T(ParCSRMatrix* A, bool tap)
@@ -146,25 +145,21 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSRMatrix* A, bool tap)
     return C;
 }
 
-ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSRMatrix* A)
+
+ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A)
 {
-    ParCSCMatrix* Acsc = A->to_ParCSC();
-    ParCSRMatrix* C = this->tap_mult_T(Acsc);
-    delete Acsc;
-    return C;
+    return mult_T(A, true);
 }
 
 ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap)
 {
-    if (tap)
-    {
-        return this->tap_mult_T(A);
-    }
-
     int start, end;
     int row, col, idx;
 
-    if (A->comm == NULL)
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    CommPkg* comm_pkg;
+    if (!A->comm)
     {
         A->comm = new ParComm(A->partition, A->off_proc_column_map, A->on_proc_column_map);
     }
@@ -173,15 +168,35 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap)
     ParCSRMatrix* C = init_matrix(this, A);;
 
     CSRMatrix* Ctmp = mult_T_partial(A);
-    aligned_vector<char> send_buffer;
+    if (tap)
+    {
+        comm_t comm_type = A->model_comm((ContigData*) A->comm->recv_data, Ctmp, NULL);
+        if (comm_type == Standard) comm_pkg = A->comm;
+        else
+        {
+            if (!A->two_step || !A->three_step)
+            {
+                if (rank == 0) printf("Creating TAPComm Pkgs... SpGEMM timings will be inaccurate\n");
+                A->init_tap_communicators();
+            }
+            if (comm_type == NAP2) comm_pkg = A->two_step;
+            else comm_pkg = A->three_step;
+        }
+    }
+    else
+    {
+        comm_pkg = A->comm;
+    }
 
-    A->comm->init_mat_comm_T(send_buffer, Ctmp->idx1, Ctmp->idx2, 
+
+    aligned_vector<char> send_buffer;
+    comm_pkg->init_mat_comm_T(send_buffer, Ctmp->idx1, Ctmp->idx2, 
             Ctmp->vals);
 
     CSRMatrix* C_on_on = on_proc->mult_T((CSCMatrix*) A->on_proc);
     CSRMatrix* C_off_on = off_proc->mult_T((CSCMatrix*) A->on_proc);
 
-    CSRMatrix* recv_mat = A->comm->complete_mat_comm_T(A->on_proc_num_cols);
+    CSRMatrix* recv_mat = comm_pkg->complete_mat_comm_T(A->on_proc_num_cols);
 
     mult_T_combine(A, C, recv_mat, C_on_on, C_off_on);
 
@@ -195,41 +210,10 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap)
     return C;
 }
 
-ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A)
+
+ParMatrix* ParMatrix::tap_mult(ParCSRMatrix* B)
 {
-    int start, end;
-    int row, col, idx;
-
-    if (A->tap_mat_comm == NULL)
-    {
-        A->tap_mat_comm = new TAPComm(A->partition, A->off_proc_column_map, 
-                A->on_proc_column_map, false);
-    }
-
-    // Initialize C (matrix to be returned)
-    ParCSRMatrix* C = init_matrix(this, A);
-
-    CSRMatrix* Ctmp = mult_T_partial(A);
-    aligned_vector<char> send_buffer;
-
-    A->tap_mat_comm->init_mat_comm_T(send_buffer, Ctmp->idx1, Ctmp->idx2, 
-            Ctmp->vals);
-
-    CSRMatrix* C_on_on = on_proc->mult_T((CSCMatrix*) A->on_proc);
-    CSRMatrix* C_off_on = off_proc->mult_T((CSCMatrix*) A->on_proc);
-
-    CSRMatrix* recv_mat = A->tap_mat_comm->complete_mat_comm_T(A->on_proc_num_cols);
-
-    mult_T_combine(A, C, recv_mat, C_on_on, C_off_on);
-
-    // Clean up
-    delete Ctmp;
-    delete recv_mat;
-    delete C_on_on;
-    delete C_off_on;
-
-    // Return matrix containing product
-    return C;
+    return mult(B, true);
 }
 
 ParMatrix* ParMatrix::mult(ParCSRMatrix* B, bool tap)

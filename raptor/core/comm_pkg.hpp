@@ -39,12 +39,14 @@ namespace raptor
         {
             topology = partition->topology;
             topology->num_shared++;
+            n_shared = 0;
         }
         
         CommPkg(Topology* _topology)
         {
             topology = _topology;
             topology->num_shared++;
+            n_shared = 0;
         }
 
         virtual ~CommPkg()
@@ -249,6 +251,7 @@ namespace raptor
         Topology* topology;
         aligned_vector<double> buffer;
         aligned_vector<int> int_buffer;
+        int n_shared;
     };
 
 
@@ -1344,7 +1347,7 @@ namespace raptor
             partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
 
             // Partition off_proc cols into on_node and off_node
-            split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
+            partition->split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
                    on_node_column_map, on_node_col_to_proc, on_node_to_off_proc,
                    off_node_column_map, off_node_col_to_node, off_node_to_off_proc);
 
@@ -1405,7 +1408,7 @@ namespace raptor
             partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
 
             // Partition off_proc cols into on_node and off_node
-            split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
+            partition->split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
                    on_node_column_map, on_node_col_to_proc, on_node_to_off_proc,
                    off_node_column_map, off_node_col_to_proc, off_node_to_off_proc);
 
@@ -1436,14 +1439,6 @@ namespace raptor
         }
 
         // Helper methods for forming TAPComm:
-        void split_off_proc_cols(const aligned_vector<int>& off_proc_column_map,
-                const aligned_vector<int>& off_proc_col_to_proc,
-                aligned_vector<int>& on_node_column_map,
-                aligned_vector<int>& on_node_col_to_proc,
-                aligned_vector<int>& on_node_to_off_proc,
-                aligned_vector<int>& off_node_column_map,
-                aligned_vector<int>& off_node_col_to_node,
-                aligned_vector<int>& off_node_to_off_proc);
         void form_local_R_par_comm(const aligned_vector<int>& off_node_column_map,
                 const aligned_vector<int>& off_node_col_to_node,
                 aligned_vector<int>& orig_procs);

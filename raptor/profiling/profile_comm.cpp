@@ -361,3 +361,194 @@ void ParCSRMatrix::print_mult_T(ParCSCMatrix* A)
 
 
 
+// Model Tests used in determining standard, two-step, or three-step node-aware
+// communication packages (for both vector and matrix communication)
+double model_local_t(int n, int s)
+{
+    s = s * sizeof(int);
+    if (s < short_cutoff)
+    {
+        return (alpha_short_l * n) + (beta_short_l * s);
+    }
+    else if (s < eager_cutoff)
+    {
+        return (alpha_eager_l * n) + (beta_eager_l * s);
+    }
+    else
+    {
+        return (alpha_rend_l * n) + (beta_rend_l * s);
+    }
+}
+double model_t(int n, int s, int node_s)
+{
+    s = s * sizeof(int);
+    if (s < short_cutoff)
+    {
+        return (alpha_short * n) + (beta_short * s);
+    }
+    else if (s < eager_cutoff)
+    {
+        return (alpha_eager * n) + (beta_eager * s);
+    }
+    else
+    {
+        double t = beta_rend * s;
+        double tN = beta_N * node_s;
+        if (tN > t) t = tN;
+        return (alpha_rend * n) + t;
+    }
+}
+
+comm_t model(aligned_vector<int>& msg_data, aligned_vector<int>& node_s, 
+        const Topology* topology)
+{
+    for (int i = 0; i < topology->num_nodes; i++)
+    {
+        if (node_s[i]) 
+        {
+            msg_data[1]++;      // N_proc2node
+            msg_data[4] += node_s[i];
+        }
+    }
+    MPI_Allreduce(MPI_IN_PLACE, node_s.data(), topology->num_nodes,
+            MPI_INT, MPI_SUM, topology->local_comm);
+    for (int i = 0; i < topology->num_nodes; i++)
+    {
+        if (node_s[i]) 
+        {
+            msg_data[2]++;                 // N_node2node
+            if (node_s[i] > msg_data[5]) 
+                msg_data[5] = node_s[i];   // S_node2node
+            msg_data[6] += node_s[i];      // S_nodewise
+        }
+    }
+
+
+    // TODO -- Currently using Allreduce so all nodes have same comm type (but
+    // this is not necessary)
+    MPI_Allreduce(MPI_IN_PLACE, msg_data.data(), msg_data.size(), MPI_INT,
+            MPI_MAX, MPI_COMM_WORLD);
+
+    // TODO  -- Currently using Blue Waters parameters...
+    int s_procwise = msg_data[3];
+    int s_proc2node = msg_data[4];
+    int s_node2node = msg_data[5];
+    int s_nodewise = msg_data[6];
+
+    double local_t = model_local_t(topology->PPN - 1, s_node2node);
+
+    double standard_t = model_t(msg_data[0], s_procwise, s_nodewise);
+    double two_t = model_t(msg_data[1], s_procwise, s_nodewise)
+        + model_local_t(topology->PPN-1, s_proc2node);
+    double three_t = model_t(((msg_data[2]-1) / topology->PPN) + 1, 
+            s_node2node, s_nodewise) 
+        + 2*model_local_t(topology->PPN-1, s_node2node);
+   
+    if (standard_t < three_t) // Not ThreeStep
+    {
+        if (standard_t < two_t)
+            return Standard; // Standard
+        else 
+            return NAP2; // Two-Step
+    }
+    else // Not Standard
+    {
+        if (two_t < three_t)
+            return NAP2; // Two-Step
+        else
+            return NAP3; // Three-Step
+    }
+
+}
+
+comm_t ParMatrix::model_comm(aligned_vector<int>& off_proc_col_to_proc)
+{
+    int proc;
+    int prev_proc = -1;
+    int node = -1;
+
+    aligned_vector<int> node_s(partition->topology->num_nodes, 0);
+    aligned_vector<int> msg_data(7, 0);
+
+    for (int i = 0; i < off_proc_num_cols; i++)
+    {
+        proc = off_proc_col_to_proc[i];
+        if (proc != prev_proc)
+        {
+            msg_data[0]++;                 // N_proc2proc
+            prev_proc = proc;
+            node = partition->topology->get_node(proc);
+        }
+        node_s[node]++;
+    }
+
+    msg_data[3] = off_proc_num_cols;       // S_procwise
+    return model(msg_data, node_s, partition->topology);
+}
+
+
+comm_t ParMatrix::model_comm(NonContigData* comm_data, CSRMatrix* B_on, CSRMatrix* B_off)
+{
+    int start, end, proc, node;
+    int size, idx;
+    aligned_vector<int> node_size_msgs(partition->topology->num_nodes, 0);
+    aligned_vector<int> msg_data(7, 0);
+
+    for (int i = 0; i < comm_data->num_msgs; i++)
+    {
+        start = comm_data->indptr[i];
+        end = comm_data->indptr[i+1];
+        proc = comm_data->procs[i];
+        node = partition->topology->get_node(proc);
+
+        size = 0;
+        for (int j = start; j < end; j++)
+        {
+            idx = comm_data->indices[j];
+            size += (B_on->idx1[idx+1] - B_on->idx1[idx]);
+            if (B_off) size += (B_off->idx1[idx+1] - B_off->idx1[idx]);
+        }
+        size = size * (2*sizeof(int) + sizeof(double));
+
+        // Add to node size
+        node_size_msgs[node] += size;
+    }
+    msg_data[0] = comm_data->num_msgs;
+    msg_data[3] = comm_data->size_msgs;
+
+    return model(msg_data, node_size_msgs, partition->topology);
+}
+
+comm_t ParMatrix::model_comm(ContigData* comm_data, CSRMatrix* B_on, CSRMatrix* B_off)
+{
+    int start, end, proc, node;
+    int size, idx;
+    aligned_vector<int> node_size_msgs(partition->topology->num_nodes, 0);
+    aligned_vector<int> msg_data(7, 0);
+
+    for (int i = 0; i < comm_data->num_msgs; i++)
+    {
+        start = comm_data->indptr[i];
+        end = comm_data->indptr[i+1];
+        proc = comm_data->procs[i];
+        node = partition->topology->get_node(proc);
+
+        size = 0;
+        for (int j = start; j < end; j++)
+        {
+            idx = j;
+            size += (B_on->idx1[idx+1] - B_on->idx1[idx]);
+            if (B_off) size += (B_off->idx1[idx+1] - B_off->idx1[idx]);
+        }
+        size = size * (2*sizeof(int) + sizeof(double));
+
+        // Add to node size
+        node_size_msgs[node] += size;
+    }
+    msg_data[0] = comm_data->num_msgs;
+    msg_data[3] = comm_data->size_msgs;
+
+    return model(msg_data, node_size_msgs, partition->topology);
+}
+
+
