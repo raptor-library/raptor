@@ -1,5 +1,5 @@
 add_executable(test_amg test_amg.cpp)
-target_link_libraries(test_amg raptor googletest pthread )
+target_link_libraries(test_amg raptor ${MPI_LIBRARIES} googletest pthread )
 add_test(AMGTest ./test_amg)
 
 if (WITH_MPI)

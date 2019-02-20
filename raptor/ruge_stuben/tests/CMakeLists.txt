@@ -1,17 +1,17 @@
 add_executable(test_rap test_rap.cpp)
-target_link_libraries(test_rap raptor googletest pthread )
+target_link_libraries(test_rap raptor ${MPI_LIBRARIES} googletest pthread )
 add_test(TestRAP ./test_rap)
 
 add_executable(test_splitting test_splitting.cpp)
-target_link_libraries(test_splitting raptor googletest pthread )
+target_link_libraries(test_splitting raptor ${MPI_LIBRARIES} googletest pthread )
 add_test(TestSplitting ./test_splitting)
 
 add_executable(test_interpolation test_interpolation.cpp)
-target_link_libraries(test_interpolation raptor googletest pthread )
+target_link_libraries(test_interpolation raptor ${MPI_LIBRARIES} googletest pthread )
 add_test(TestInterpolation ./test_interpolation)
 
 add_executable(test_ruge_stuben test_ruge_stuben.cpp)
-target_link_libraries(test_ruge_stuben raptor googletest pthread )
+target_link_libraries(test_ruge_stuben raptor ${MPI_LIBRARIES} googletest pthread )
 add_test(TestRugeStuben ./test_ruge_stuben)
 
 if (WITH_MPI)

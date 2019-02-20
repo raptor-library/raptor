@@ -11,18 +11,16 @@ using namespace raptor;
 ParCSRMatrix* direct_interpolation(ParCSRMatrix* A, 
         ParCSRMatrix* S, const aligned_vector<int>& states,
         const aligned_vector<int>& off_proc_states,
-        bool tap_amg = false, data_t* comm_t = NULL);
+        bool tap_amg = false);
 
 ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const aligned_vector<int>& states,
         const aligned_vector<int>& off_proc_states,
-        bool tap_amg = false, int num_variables = 1, int* variables = NULL,
-        data_t* comm_t = NULL, data_t* comm_mat_t = NULL);
+        bool tap_amg = false, int num_variables = 1, int* variables = NULL);
 
 ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const aligned_vector<int>& states,
         const aligned_vector<int>& off_proc_states,
-        bool tap_amg = false, int num_variables = 1, int* variables = NULL,
-        data_t* comm_t = NULL, data_t* comm_mat_t = NULL);
+        bool tap_amg = false, int num_variables = 1, int* variables = NULL);
 
 #endif

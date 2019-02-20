@@ -35,12 +35,12 @@ namespace raptor
     Topology(int _PPN = 16, int _standard_rank_ordering = 1)
     {     
         int rank, num_procs;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+        RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+        RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
         int rank_node;
 
-        char* proc_layout_c = getenv("MPICH_RANK_REORDER_METHOD");
+        char* proc_layout_c = getenv("RAPtor_MPICH_RANK_REORDER_METHOD");
         char* PPN_c = getenv("PPN");
         if (PPN_c) 
         {
@@ -65,13 +65,13 @@ namespace raptor
         rank_node = get_node(rank);
 
         // Create intra-node communicator
-        MPI_Comm_split(MPI_COMM_WORLD, rank_node, rank, &local_comm);
+        RAPtor_MPI_Comm_split(RAPtor_MPI_COMM_WORLD, rank_node, rank, &local_comm);
         num_shared = 0;
     }
 
     ~Topology()
     {
-        MPI_Comm_free(&local_comm);
+        RAPtor_MPI_Comm_free(&local_comm);
     }
 
     int get_node(int proc)
@@ -98,10 +98,10 @@ namespace raptor
         else
         { 
             int rank;
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
             if (rank == 0)
             {
-                printf("This MPI rank ordering is not supported!\n");
+                printf("This RAPtor_MPI rank ordering is not supported!\n");
             }
             return -1;
         }
@@ -120,10 +120,10 @@ namespace raptor
         else
         { 
             int rank;
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
             if (rank == 0)
             {
-                printf("This MPI rank ordering is not supported!\n");
+                printf("This RAPtor_MPI rank ordering is not supported!\n");
             }
             return -1;
         }
@@ -153,10 +153,10 @@ namespace raptor
         else
         { 
             int rank;
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
             if (rank == 0)
             {
-                printf("This MPI rank ordering is not supported!\n");
+                printf("This RAPtor_MPI rank ordering is not supported!\n");
             }
             return -1;
         }
@@ -167,7 +167,7 @@ namespace raptor
     int num_shared;
     int num_nodes;
 
-    MPI_Comm local_comm;
+    RAPtor_MPI_Comm local_comm;
   };
 }
 

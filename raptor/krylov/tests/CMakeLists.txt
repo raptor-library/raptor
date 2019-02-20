@@ -1,9 +1,9 @@
 add_executable(test_cg test_cg.cpp)
-target_link_libraries(test_cg raptor googletest pthread)
+target_link_libraries(test_cg raptor ${MPI_LIBRARIES} googletest pthread)
 add_test(TestCG ./test_cg)
 
 add_executable(test_bicgstab test_bicgstab.cpp)
-target_link_libraries(test_bicgstab raptor googletest pthread)
+target_link_libraries(test_bicgstab raptor ${MPI_LIBRARIES} googletest pthread)
 add_test(TestBiCGStab ./test_bicgstab)
 
 if (WITH_MPI)

@@ -2,15 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "multilevel/par_multilevel.hpp"
-#include "ruge_stuben/par_ruge_stuben_solver.hpp"
-#include "aggregation/par_smoothed_aggregation_solver.hpp"
-#include "gallery/par_matrix_IO.hpp"
-#include "gallery/diffusion.hpp"
-#include "gallery/laplacian27pt.hpp"
-#include "gallery/par_stencil.hpp"
+#include "raptor.hpp"
 
 using namespace raptor;
 
@@ -52,8 +44,8 @@ TEST(ParAMGTest, TestsInMultilevel)
     A = par_stencil_grid(stencil, grid, dim);
     delete[] stencil;
 
-    x.resize(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    b.resize(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    x.resize(A->global_num_rows, A->local_num_rows);
+    b.resize(A->global_num_rows, A->local_num_rows);
     
     ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
     ml->setup(A);

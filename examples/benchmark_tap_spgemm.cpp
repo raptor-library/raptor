@@ -19,7 +19,7 @@
 #include "ruge_stuben/par_ruge_stuben_solver.hpp"
 
 #ifdef USING_MFEM
-#include "gallery/external/mfem_wrapper.hpp"
+#include "external/mfem_wrapper.hpp"
 #endif
 
 #define eager_cutoff 1000
@@ -58,19 +58,18 @@ void time_spgemm(ParCSRMatrix* A, ParCSRMatrix* P, bool tap)
     int cache_len = 10000;
     aligned_vector<double> cache_array(cache_len);
 
-    double comm_t = 0;
-    double t0, tfinal;
-
-    t0 = MPI_Wtime();
+    init_profile();
     for (int i = 1; i < n_tests; i++)
     {
         clear_cache(cache_array);
         MPI_Barrier(MPI_COMM_WORLD);
-        ParCSRMatrix* C = A->mult(P, tap, &comm_t);
+        ParCSRMatrix* C = A->mult(P, tap);
         delete C;
     }
-    tfinal = (MPI_Wtime() - t0) / n_tests;
-    comm_t /= n_tests;
+    finalize_profile();
+    average_profile(n_tests);
+    double tfinal = total_t / n_tests;
+    double comm_t = p2p_t / n_tests;
 
     if (tap)
     {
@@ -96,16 +95,18 @@ void time_spgemm_T(ParCSRMatrix* A, ParCSCMatrix* P, bool tap)
     double t0, tfinal;
     double comm_t = 0;
 
-    t0 = MPI_Wtime();
+    init_profile();
     for (int i = 1; i < n_tests; i++)
     {
         clear_cache(cache_array);
         MPI_Barrier(MPI_COMM_WORLD);
-        ParCSRMatrix* C = A->mult_T(P, tap, &comm_t);
+        ParCSRMatrix* C = A->mult_T(P, tap);
         delete C;
     }
-    tfinal = (MPI_Wtime() - t0) / n_tests;
-    comm_t /= n_tests;
+    finalize_profile();
+    average_profile(n_tests);
+    tfinal = total_t / n_tests;
+    comm_t = p2p_t / n_tests;
 
     if (tap)
     {
@@ -253,8 +254,8 @@ int main(int argc, char *argv[])
     {
         A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
                 A->on_proc_column_map);
-        x = ParVector(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
-        b = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+        x = ParVector(A->global_num_cols, A->on_proc_num_cols);
+        b = ParVector(A->global_num_rows, A->local_num_rows);
         x.set_rand_values();
         A->mult(x, b);
     }

@@ -104,7 +104,7 @@ void SOR_backward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
 }
 
 void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, CommPkg* comm, data_t* comm_t)
+        int num_sweeps, double omega, CommPkg* comm)
 {
     A->on_proc->sort();
     A->off_proc->sort();
@@ -115,9 +115,7 @@ void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
-        if (comm_t) *comm_t -= MPI_Wtime();
         comm->communicate(x);
-        if (comm_t) *comm_t += MPI_Wtime();
         aligned_vector<double>& dist_x = comm->get_buffer<double>();
         for (int i = 0; i < A->local_num_rows; i++)
         {
@@ -154,7 +152,7 @@ void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 }
 
 void sor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, CommPkg* comm, data_t* comm_t)
+        int num_sweeps, double omega, CommPkg* comm)
 {
     A->on_proc->sort();
     A->off_proc->sort();
@@ -162,16 +160,14 @@ void sor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
-        if (comm_t) *comm_t -= MPI_Wtime();
         comm->communicate(x);
-        if (comm_t) *comm_t += MPI_Wtime();
         SOR_forward(A, x, b, comm->get_buffer<double>(), omega);
     }
 }
 
 
 void ssor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, CommPkg* comm, data_t* comm_t)
+        int num_sweeps, double omega, CommPkg* comm)
 {
     A->on_proc->sort();
     A->off_proc->sort();
@@ -179,9 +175,7 @@ void ssor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
-        if (comm_t) *comm_t -= MPI_Wtime();
         comm->communicate(x);
-        if (comm_t) *comm_t += MPI_Wtime();
         SOR_forward(A, x, b, comm->get_buffer<double>(), omega);
         SOR_backward(A, x, b, comm->get_buffer<double>(), omega);
     }
@@ -200,7 +194,7 @@ void ssor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
  *****    Number of relaxation sweeps to perform
  **************************************************************/
 void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, bool tap, data_t* comm_t)
+        int num_sweeps, double omega, bool tap)
 {
     CommPkg* comm;
     if (tap)
@@ -222,10 +216,10 @@ void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
         comm = A->comm;
     }
 
-    jacobi_helper(A, x, b, tmp, num_sweeps, omega, comm, comm_t);
+    jacobi_helper(A, x, b, tmp, num_sweeps, omega, comm);
 }
 void sor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, bool tap, data_t* comm_t)
+        int num_sweeps, double omega, bool tap)
 {
     CommPkg* comm;
     if (tap)
@@ -247,10 +241,10 @@ void sor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
         comm = A->comm;
     }
 
-    sor_helper(A, x, b, tmp, num_sweeps, omega, comm, comm_t);
+    sor_helper(A, x, b, tmp, num_sweeps, omega, comm);
 }
 void ssor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, bool tap, data_t* comm_t)
+        int num_sweeps, double omega, bool tap)
 {
     CommPkg* comm;
     if (tap)
@@ -272,7 +266,7 @@ void ssor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
         comm = A->comm;
     }
 
-    ssor_helper(A, x, b, tmp, num_sweeps, omega, comm, comm_t);
+    ssor_helper(A, x, b, tmp, num_sweeps, omega, comm);
 }
 
 

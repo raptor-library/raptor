@@ -2,7 +2,7 @@
 #define RAPTOR_TEST_HYPRE_COMPARE_HPP
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
-#include "gallery/external/hypre_wrapper.hpp"
+#include "external/hypre_wrapper.hpp"
 #include "gtest/gtest.h"
 
 void compare_dimensions(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h,

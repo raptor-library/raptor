@@ -8,7 +8,7 @@
 #include <mpi.h>
 #include <math.h>
 
-#include "types.hpp"
+#include "mpi_types.hpp"
 #include "vector.hpp"
 
 /**************************************************************
@@ -25,8 +25,6 @@
  *****    Number of entries in the global vector
  ***** local_n : index_t
  *****    Dimension of the local portion of the vector
- ***** first_local : index_t
- *****    Position of local vector inside the global vector
  ***** 
  ***** Methods
  ***** -------
@@ -58,12 +56,10 @@ namespace raptor
         *****    Number of entries in global vector
         ***** lcl_n : index_t
         *****    Number of entries of global vector stored locally
-        ***** first_lcl : index_t
-        *****    Position of local vector inside global vector
         **************************************************************/
-        ParVector(index_t glbl_n, int lcl_n, index_t first_lcl)
+        ParVector(index_t glbl_n, int lcl_n)
         {
-            resize(glbl_n, lcl_n, first_lcl);
+            resize(glbl_n, lcl_n);
         }
 
         ParVector(const ParVector& x)
@@ -90,11 +86,10 @@ namespace raptor
         {
         }
 
-        void resize(index_t glbl_n, int lcl_n, index_t first_lcl)
+        void resize(index_t glbl_n, int lcl_n)
         {
             global_n = glbl_n;
             local_n = lcl_n;
-            first_local = first_lcl;
             local.resize(local_n);
         }
 
@@ -102,7 +97,6 @@ namespace raptor
         {
             global_n = x.global_n;
             local_n = x.local_n;
-            first_local = x.first_local;
             local.copy(x.local);
         }
 
@@ -179,7 +173,6 @@ namespace raptor
         Vector local;
         int global_n;
         int local_n;
-        int first_local;
     };
 
 }

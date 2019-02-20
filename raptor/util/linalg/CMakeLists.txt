@@ -5,7 +5,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 if (WITH_PTSCOTCH)
     set(external_linalg_HEADERS
-        util/linalg/external/ptscotch.hpp
+        util/linalg/external/ptscotch_wrapper.hpp
         )
 else()
     set(external_linalg_HEADERS

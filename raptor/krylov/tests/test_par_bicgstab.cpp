@@ -2,13 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
-
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "core/par_vector.hpp"
-#include "krylov/par_bicgstab.hpp"
-#include "gallery/diffusion.hpp"
-#include "gallery/par_stencil.hpp"
+#include "raptor.hpp"
 
 using namespace raptor;
 
@@ -32,8 +26,8 @@ TEST(ParBiCGStabTest, TestsInKrylov)
     //double* stencil = diffusion_stencil_2d(0.1, M_PI/4.0);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
 
-    ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    ParVector x(A->global_num_rows, A->local_num_rows);
+    ParVector b(A->global_num_rows, A->local_num_rows);
     aligned_vector<double> residuals;
 
     x.set_const_value(1.0);

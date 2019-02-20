@@ -2,9 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
-#include "core/types.hpp"
-#include "core/vector.hpp"
-#include "core/par_vector.hpp"
+#include "raptor.hpp"
 
 using namespace raptor;
 
@@ -38,7 +36,7 @@ TEST(ParVectorTest, TestsInCore)
     }
 
     Vector v(global_n);
-    ParVector v_par(global_n, local_n, first_n);
+    ParVector v_par(global_n, local_n);
 
     v.set_const_value(1.0);
     v_par.set_const_value(1.0);

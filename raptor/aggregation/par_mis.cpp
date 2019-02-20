@@ -76,8 +76,8 @@ void comm_finished(const ParCSRMatrix* A,
         if (active_sends[i])
         {
             A->comm->send_data->int_buffer[start] = remaining;
-            MPI_Isend(&(A->comm->send_data->int_buffer[start]), 1, MPI_INT, proc,
-                    finish_tag, MPI_COMM_WORLD, 
+            RAPtor_MPI_Isend(&(A->comm->send_data->int_buffer[start]), 1, RAPtor_MPI_INT, proc,
+                    finish_tag, RAPtor_MPI_COMM_WORLD, 
                     &(A->comm->send_data->requests[n_sends++]));
         }
     }
@@ -88,19 +88,19 @@ void comm_finished(const ParCSRMatrix* A,
         start = A->comm->recv_data->indptr[i];
         if (active_recvs[i])
         {
-            MPI_Irecv(&(A->comm->recv_data->int_buffer[start]), 1, MPI_INT, proc,
-                    finish_tag, MPI_COMM_WORLD, 
+            RAPtor_MPI_Irecv(&(A->comm->recv_data->int_buffer[start]), 1, RAPtor_MPI_INT, proc,
+                    finish_tag, RAPtor_MPI_COMM_WORLD, 
                     &(A->comm->recv_data->requests[n_recvs++]));
         }
     }
 
     if (n_sends)
     {
-        MPI_Waitall(n_sends, A->comm->send_data->requests.data(), MPI_STATUSES_IGNORE);
+        RAPtor_MPI_Waitall(n_sends, A->comm->send_data->requests.data(), RAPtor_MPI_STATUSES_IGNORE);
     }
     if (n_recvs)
     {
-        MPI_Waitall(n_recvs, A->comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
+        RAPtor_MPI_Waitall(n_recvs, A->comm->recv_data->requests.data(), RAPtor_MPI_STATUSES_IGNORE);
     }
 
     n_sends = 0;
@@ -109,8 +109,8 @@ void comm_finished(const ParCSRMatrix* A,
         proc = A->comm->send_data->procs[i];
         if (active_sends[i])
         {
-            MPI_Irecv(&(active_sends[i]), 1, MPI_INT, proc,
-                    finish_tag_T, MPI_COMM_WORLD, 
+            RAPtor_MPI_Irecv(&(active_sends[i]), 1, RAPtor_MPI_INT, proc,
+                    finish_tag_T, RAPtor_MPI_COMM_WORLD, 
                     &(A->comm->send_data->requests[n_sends++]));
         }
     }
@@ -124,19 +124,19 @@ void comm_finished(const ParCSRMatrix* A,
         {
             active_recvs[i] = A->comm->recv_data->int_buffer[start];
             A->comm->recv_data->int_buffer[start] = remaining;
-            MPI_Isend(&(A->comm->recv_data->int_buffer[start]), 1, MPI_INT, proc,
-                    finish_tag_T, MPI_COMM_WORLD, 
+            RAPtor_MPI_Isend(&(A->comm->recv_data->int_buffer[start]), 1, RAPtor_MPI_INT, proc,
+                    finish_tag_T, RAPtor_MPI_COMM_WORLD, 
                     &(A->comm->recv_data->requests[n_recvs++]));
         }
     }
 
     if (n_sends)
     {
-        MPI_Waitall(n_sends, A->comm->send_data->requests.data(), MPI_STATUSES_IGNORE);
+        RAPtor_MPI_Waitall(n_sends, A->comm->send_data->requests.data(), RAPtor_MPI_STATUSES_IGNORE);
     }
     if (n_recvs)
     {
-        MPI_Waitall(n_recvs, A->comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
+        RAPtor_MPI_Waitall(n_recvs, A->comm->recv_data->requests.data(), RAPtor_MPI_STATUSES_IGNORE);
     }
 }
 
@@ -171,8 +171,8 @@ void comm_coarse_dist1(const ParCSRMatrix* A,
             }
             if (active_sends[i])
             {
-                MPI_Isend(&(A->comm->send_data->int_buffer[start]), end - start, MPI_INT, proc,
-                        tag, MPI_COMM_WORLD, &(A->comm->send_data->requests[n_sends++]));
+                RAPtor_MPI_Isend(&(A->comm->send_data->int_buffer[start]), end - start, RAPtor_MPI_INT, proc,
+                        tag, RAPtor_MPI_COMM_WORLD, &(A->comm->send_data->requests[n_sends++]));
             }
         }
 
@@ -184,31 +184,31 @@ void comm_coarse_dist1(const ParCSRMatrix* A,
             end = A->comm->recv_data->indptr[i+1];
             if (active_recvs[i])
             {
-                MPI_Irecv(&(A->comm->recv_data->int_buffer[start]), end - start, MPI_INT,
-                        proc, tag, MPI_COMM_WORLD, &(A->comm->recv_data->requests[n_recvs++]));
+                RAPtor_MPI_Irecv(&(A->comm->recv_data->int_buffer[start]), end - start, RAPtor_MPI_INT,
+                        proc, tag, RAPtor_MPI_COMM_WORLD, &(A->comm->recv_data->requests[n_recvs++]));
             }
         }
 
         if (n_sends)
         {
-            MPI_Waitall(n_sends, A->comm->send_data->requests.data(), MPI_STATUSES_IGNORE);
+            RAPtor_MPI_Waitall(n_sends, A->comm->send_data->requests.data(), RAPtor_MPI_STATUSES_IGNORE);
         }
 
         if (n_recvs)
         {
-            MPI_Waitall(n_recvs, A->comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
+            RAPtor_MPI_Waitall(n_recvs, A->comm->recv_data->requests.data(), RAPtor_MPI_STATUSES_IGNORE);
         }
     }
 }
 
 int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         aligned_vector<int>& off_proc_states, 
-        bool tap_comm, double* rand_vals, data_t* comm_t)
+        bool tap_comm, double* rand_vals)
 {
     // Get MPI Information
     int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
     // Declare Variables
     int start, end, col;
@@ -278,9 +278,7 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         std::fill(off_proc_states.begin(), off_proc_states.end(), Unassigned);
         off_proc_r.resize(A->off_proc_num_cols);
     }
-    if (comm_t) *comm_t -= MPI_Wtime();
     aligned_vector<double>& recvbuf = comm->communicate(r);
-    if (comm_t) *comm_t += MPI_Wtime();
 
     for (int i = 0; i < A->off_proc_num_cols; i++)
     {
@@ -385,9 +383,7 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         }
 
         // Communicate new (temporary) states
-        if (comm_t) *comm_t -= MPI_Wtime();
         comm_states(A, comm, states, recv_indices, off_proc_states, first_pass);
-        if (comm_t) *comm_t += MPI_Wtime();
 
         // Find max temp state random in each row
         for (int i = 0; i < A->local_num_rows; i++)
@@ -478,10 +474,8 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         // Finding max (if any proc has state[v] == TmpSelection, state[v] should
         // be TmpSelection. Else (all procs have state[v] == NewSelection), state[v] is NewSelection 
         // aka new coarse point)
-        if (comm_t) *comm_t -= MPI_Wtime();
         comm_off_proc_states(A, comm, off_proc_states, recv_indices, states, first_pass);
         comm_states(A, comm, states, recv_indices, off_proc_states, first_pass);
-        if (comm_t) *comm_t += MPI_Wtime();
 
         // Update states connecting to (dist1 or dist2) any
         // new coarse points (with state == NewSelection)
@@ -530,10 +524,8 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
 
         // Communicate updated states (if states[v] == NewUnselection, there exists 
         // and idx in row v such that states[idx] is new coarse)
-        if (comm_t) *comm_t -= MPI_Wtime();
         comm_coarse_dist1(A, comm, active_sends, active_recvs, C, first_pass);
         aligned_vector<int>& recv_C = comm->get_int_buffer();
-        if (comm_t) *comm_t += MPI_Wtime();
 
 
         for (int i = 0; i < remaining; i++)
@@ -594,9 +586,7 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         }
 
         // Communicate final updated states of iteration
-        if (comm_t) *comm_t -= MPI_Wtime();
         comm_states(A, comm, states, recv_indices, off_proc_states, first_pass);
-        if (comm_t) *comm_t += MPI_Wtime();
 
         // Update states
         ctr = 0;
@@ -640,9 +630,7 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         first_pass = false;
         comm = A->comm;
 
-        if (comm_t) *comm_t -= MPI_Wtime();
         comm_finished(A, active_sends, active_recvs, remaining + off_remaining);
-        if (comm_t) *comm_t += MPI_Wtime();
 
         iterate++;
     }

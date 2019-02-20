@@ -1,10 +1,7 @@
 // Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "gtest/gtest.h"
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "gallery/laplacian27pt.hpp"
-#include "gallery/par_stencil.hpp"
+#include "raptor.hpp"
 
 using namespace raptor;
 
@@ -29,8 +26,8 @@ TEST(ParLaplacianSpMVTest, TestsInUtil)
     double* stencil = laplace_stencil_27pt();
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 3);
 
-    ParVector x(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
-    ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    ParVector x(A->global_num_cols, A->on_proc_num_cols);
+    ParVector b(A->global_num_rows, A->local_num_rows);
 
     x.set_const_value(1.0);
     A->mult(x, b);

@@ -21,11 +21,11 @@ void SeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vecto
 
 void SeqInnerSeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol = 1e-05, int max_iter = -1);
 
-void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, MPI_Comm &inner_comm,
-                 MPI_Comm &root_comm, double frac, int inner_color, int root_color, int inner_root, int procs_in_group,
+void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, RAPtor_MPI_Comm &inner_comm,
+                 RAPtor_MPI_Comm &root_comm, double frac, int inner_color, int root_color, int inner_root, int procs_in_group,
                  int part_global, double tol = 1e-05, int max_iter = -1);
 
-void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, MPI_Comm &inner_comm,
-                 MPI_Comm &root_comm, double frac, int inner_color, int root_color, int inner_root, int procs_in_group,
+void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, RAPtor_MPI_Comm &inner_comm,
+                 RAPtor_MPI_Comm &root_comm, double frac, int inner_color, int root_color, int inner_root, int procs_in_group,
                  int part_global, double tol = 1e-05, int max_iter = -1);
 #endif

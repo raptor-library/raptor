@@ -15,13 +15,13 @@
 using namespace raptor;
 
 HYPRE_IJVector convert(raptor::ParVector& x_rap,
-                       MPI_Comm comm_mat = MPI_COMM_WORLD);
+                       RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
 HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap,
-                       MPI_Comm comm_mat = MPI_COMM_WORLD);
+                       RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
 raptor::ParCSRMatrix* convert(hypre_ParCSRMatrix* A_hypre,
-                           MPI_Comm comm_mat = MPI_COMM_WORLD);
+                           RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
 //raptor::Hierarchy* convert(hypre_ParAMGData* amg_data, 
-//                           MPI_Comm comm_mat = MPI_COMM_WORLD);
+//                           RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
 //void remove_shared_ptrs(hypre_ParCSRMatrix* A_hypre);
 //void remove_shared_ptrs(hypre_ParAMGData* amg_data);
 HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
@@ -59,6 +59,6 @@ HYPRE_Solver hypre_create_BiCGSTAB(hypre_ParCSRMatrix* A,
 //                                int p_max_elmts = 0,
 //                                int agg_num_levels = 0,
 //                                double strong_threshold = 0.25,
-//                                MPI_Comm comm_mat = MPI_COMM_WORLD);
+//                                RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
 
 #endif

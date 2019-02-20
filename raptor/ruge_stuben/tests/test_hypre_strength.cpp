@@ -3,11 +3,7 @@
 
 
 #include "gtest/gtest.h"
-#include "mpi.h"
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "gallery/par_matrix_IO.hpp"
-#include "gallery/external/hypre_wrapper.hpp"
+#include "raptor.hpp"
 #include "tests/hypre_compare.hpp"
 #include <iostream>
 #include <fstream>

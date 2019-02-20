@@ -8,6 +8,7 @@
 
 // Data about topology and matrix partitions
 #ifndef NO_MPI
+    #include "core/mpi_types.hpp"
     #include "core/partition.hpp"
     #include "core/topology.hpp"
 #endif 
@@ -44,12 +45,15 @@
     #include "gallery/par_matrix_market.hpp"
 #endif
 
-// Matrix external gallery
+// External 
 #ifdef USING_HYPRE
-    #include "gallery/external/hypre_wrapper.hpp"
+    #include "external/hypre_wrapper.hpp"
 #endif
 #ifdef USING_MFEM
-    #include "gallery/external/mfem_wrapper.hpp"
+    #include "external/mfem_wrapper.hpp"
+#endif
+#ifdef USING_PETSC
+    #include "external/petsc_wrapper.hpp"
 #endif
 
 // RugeStuben classes
@@ -101,7 +105,10 @@
 #include "util/linalg/repartition.hpp"
 #endif
 #ifdef USING_PTSCOTCH
-    #include "util/linalg/external/ptscotch.hpp"
+    #include "util/linalg/external/ptscotch_wrapper.hpp"
+#endif
+#ifdef USING_PARMETIS
+    #include "util/linalg/external/parmetis_wrapper.hpp"
 #endif
 
 // Preconditioning Methods

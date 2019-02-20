@@ -6,8 +6,8 @@ void make_contiguous(ParCSRMatrix* A)
 {
     int rank;
     int num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
     
     int assumed_num_cols, assumed_first_col, assumed_last_col;
@@ -21,7 +21,7 @@ void make_contiguous(ParCSRMatrix* A)
     int start, end;
     int assumed_col, local_col;
     int msg_avail, finished, count;
-    MPI_Request barrier_request;
+    RAPtor_MPI_Request barrier_request;
     
 
     aligned_vector<int> assumed_col_to_new;
@@ -45,8 +45,8 @@ void make_contiguous(ParCSRMatrix* A)
     }
 
     // Find how many columns are local to each process
-    MPI_Allgather(&(A->on_proc_num_cols), 1, MPI_INT, proc_num_cols.data(), 1, MPI_INT,
-            MPI_COMM_WORLD);
+    RAPtor_MPI_Allgather(&(A->on_proc_num_cols), 1, RAPtor_MPI_INT, proc_num_cols.data(), 1, RAPtor_MPI_INT,
+            RAPtor_MPI_COMM_WORLD);
 
     // Determine the new first local row / first local col of rank
     A->partition->first_local_col = 0;
@@ -132,8 +132,8 @@ void make_contiguous(ParCSRMatrix* A)
         end = 2*send_ptr[i+1];
         if (proc != rank)
         {
-            MPI_Issend(&(send_buffer[start]), (end - start), MPI_INT, proc, 
-                    send_key, MPI_COMM_WORLD, &(send_requests[n_sent++]));
+            RAPtor_MPI_Issend(&(send_buffer[start]), (end - start), RAPtor_MPI_INT, proc, 
+                    send_key, RAPtor_MPI_COMM_WORLD, &(send_requests[n_sent++]));
         }
         else
         {
@@ -148,14 +148,14 @@ void make_contiguous(ParCSRMatrix* A)
         }
     }
 
-    MPI_Status recv_status;
+    RAPtor_MPI_Status recv_status;
     while (size_recvs < local_assumed_num_cols)
     {
-        MPI_Probe(MPI_ANY_SOURCE, send_key, MPI_COMM_WORLD, &recv_status);
-        MPI_Get_count(&recv_status, MPI_INT, &count);
+        RAPtor_MPI_Probe(RAPtor_MPI_ANY_SOURCE, send_key, RAPtor_MPI_COMM_WORLD, &recv_status);
+        RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_INT, &count);
         proc = recv_status.MPI_SOURCE;
         int recvbuf[count];
-        MPI_Recv(recvbuf, count, MPI_INT, proc, send_key, MPI_COMM_WORLD, &recv_status);
+        RAPtor_MPI_Recv(recvbuf, count, RAPtor_MPI_INT, proc, send_key, RAPtor_MPI_COMM_WORLD, &recv_status);
         for (int i = 0; i < count; i+= 2)
         {
             orig_col = recvbuf[i];
@@ -168,7 +168,7 @@ void make_contiguous(ParCSRMatrix* A)
 
     if (n_sent)
     {
-        MPI_Waitall(n_sent, send_requests.data(), MPI_STATUS_IGNORE);
+        RAPtor_MPI_Waitall(n_sent, send_requests.data(), RAPtor_MPI_STATUS_IGNORE);
     }
 
 
@@ -240,10 +240,10 @@ void make_contiguous(ParCSRMatrix* A)
 
         if (proc != rank)
         {
-            MPI_Issend(&(send_buffer[start]), end - start, MPI_INT, proc, send_key, 
-                    MPI_COMM_WORLD, &(send_requests[n_sent]));
-            MPI_Irecv(&(recv_buffer[start]), end - start, MPI_INT, proc, recv_key, 
-                    MPI_COMM_WORLD, &(recv_requests[n_sent++]));
+            RAPtor_MPI_Issend(&(send_buffer[start]), end - start, RAPtor_MPI_INT, proc, send_key, 
+                    RAPtor_MPI_COMM_WORLD, &(send_requests[n_sent]));
+            RAPtor_MPI_Irecv(&(recv_buffer[start]), end - start, RAPtor_MPI_INT, proc, recv_key, 
+                    RAPtor_MPI_COMM_WORLD, &(recv_requests[n_sent++]));
         }
         else
         {
@@ -261,16 +261,16 @@ void make_contiguous(ParCSRMatrix* A)
     // Recv columns corresponding to my assumed cols, and return their new cols
     if (n_sent)
     {
-        MPI_Testall(n_sent, send_requests.data(), &finished, MPI_STATUSES_IGNORE);
+        RAPtor_MPI_Testall(n_sent, send_requests.data(), &finished, RAPtor_MPI_STATUSES_IGNORE);
         while (!finished)
         {
-            MPI_Iprobe(MPI_ANY_SOURCE, send_key, MPI_COMM_WORLD, &msg_avail, &recv_status);
+            RAPtor_MPI_Iprobe(RAPtor_MPI_ANY_SOURCE, send_key, RAPtor_MPI_COMM_WORLD, &msg_avail, &recv_status);
             if (msg_avail)
             {
-                MPI_Get_count(&recv_status, MPI_INT, &count);
+                RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_INT, &count);
                 proc = recv_status.MPI_SOURCE;
                 int recvbuf[count];
-                MPI_Recv(recvbuf, count, MPI_INT, proc, send_key, MPI_COMM_WORLD, 
+                RAPtor_MPI_Recv(recvbuf, count, RAPtor_MPI_INT, proc, send_key, RAPtor_MPI_COMM_WORLD, 
                         &recv_status);
                 for (int i = 0; i < count; i++)
                 {
@@ -279,22 +279,22 @@ void make_contiguous(ParCSRMatrix* A)
                     new_col = assumed_col_to_new[assumed_col];
                     recvbuf[i] = new_col;
                 }
-                MPI_Send(recvbuf, count, MPI_INT, proc, recv_key, MPI_COMM_WORLD);
+                RAPtor_MPI_Send(recvbuf, count, RAPtor_MPI_INT, proc, recv_key, RAPtor_MPI_COMM_WORLD);
             }
-            MPI_Testall(n_sent, send_requests.data(), &finished, MPI_STATUSES_IGNORE);
+            RAPtor_MPI_Testall(n_sent, send_requests.data(), &finished, RAPtor_MPI_STATUSES_IGNORE);
         }
     }
-    MPI_Ibarrier(MPI_COMM_WORLD, &barrier_request);
-    MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
+    RAPtor_MPI_Ibarrier(RAPtor_MPI_COMM_WORLD, &barrier_request);
+    RAPtor_MPI_Test(&barrier_request, &finished, RAPtor_MPI_STATUS_IGNORE);
     while (!finished)
     {
-        MPI_Iprobe(MPI_ANY_SOURCE, send_key, MPI_COMM_WORLD, &msg_avail, &recv_status);
+        RAPtor_MPI_Iprobe(RAPtor_MPI_ANY_SOURCE, send_key, RAPtor_MPI_COMM_WORLD, &msg_avail, &recv_status);
         if (msg_avail)
         {
-            MPI_Get_count(&recv_status, MPI_INT, &count);
+            RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_INT, &count);
             proc = recv_status.MPI_SOURCE;
             int recvbuf[count];
-            MPI_Recv(recvbuf, count, MPI_INT, proc, send_key, MPI_COMM_WORLD, 
+            RAPtor_MPI_Recv(recvbuf, count, RAPtor_MPI_INT, proc, send_key, RAPtor_MPI_COMM_WORLD, 
                     &recv_status);
             for (int i = 0; i < count; i++)
             {
@@ -303,16 +303,16 @@ void make_contiguous(ParCSRMatrix* A)
                 new_col = assumed_col_to_new[assumed_col];
                 recvbuf[i] = new_col;
             }
-            MPI_Send(recvbuf, count, MPI_INT, proc, recv_key, MPI_COMM_WORLD);
+            RAPtor_MPI_Send(recvbuf, count, RAPtor_MPI_INT, proc, recv_key, RAPtor_MPI_COMM_WORLD);
         }
-        MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
+        RAPtor_MPI_Test(&barrier_request, &finished, RAPtor_MPI_STATUS_IGNORE);
     }
 
     // Wait for recvs to complete, and map original local cols to new global
     // columns
     if (n_sent)
     {
-        MPI_Waitall(n_sent, recv_requests.data(), MPI_STATUSES_IGNORE);
+        RAPtor_MPI_Waitall(n_sent, recv_requests.data(), RAPtor_MPI_STATUSES_IGNORE);
     }
     for (int i = 0; i < num_sends; i++)
     {
@@ -396,8 +396,8 @@ void make_contiguous(ParCSRMatrix* A)
 ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector<int>& new_local_rows)
 {
     int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
     ParCSRMatrix* A_part;
     aligned_vector<int> send_row_buffer;
@@ -417,8 +417,8 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
     int msg_avail, finished;
     int count;
     double val;
-    MPI_Status recv_status;
-    MPI_Request barrier_request;
+    RAPtor_MPI_Status recv_status;
+    RAPtor_MPI_Request barrier_request;
     aligned_vector<int> send_procs;
     aligned_vector<int> send_ptr;
     aligned_vector<int> proc_sizes(num_procs, 0);
@@ -474,6 +474,18 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
             (A->off_proc->idx1[i+1] - A->off_proc->idx1[i]);
         send_row_buffer[2*idx+1] = row_size;
     }
+   
+    aligned_vector<int> send_sizes(num_procs, 0);
+    for (int i = 0; i < num_sends; i++)
+    {
+        proc = send_procs[i];
+        start = send_ptr[i];
+        end = send_ptr[i+1];
+        send_sizes[proc] = 2*(end - start);
+    }
+    RAPtor_MPI_Allreduce(MPI_IN_PLACE, send_sizes.data(), num_procs, MPI_INT,
+            MPI_SUM, MPI_COMM_WORLD);
+    int size_recvs = send_sizes[rank];
 
     // Send to proc p the rows and row sizes that will be sent next
     for (int i = 0; i < num_sends; i++)
@@ -481,66 +493,38 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
         proc = send_procs[i];
         start = send_ptr[i];
         end = send_ptr[i+1];
-        MPI_Issend(&(send_row_buffer[2*start]), 2*(end - start), MPI_INT, proc,
-                row_key, MPI_COMM_WORLD, &send_requests[i]);
+        RAPtor_MPI_Isend(&(send_row_buffer[2*start]), 2*(end - start), RAPtor_MPI_INT, proc,
+                row_key, RAPtor_MPI_COMM_WORLD, &send_requests[i]);
     }
 
-    // Dynamically receive rows and corresponding sizes  
     int recv_size = 0;
-    recv_ptr.emplace_back(0);
+    ctr = 0;
+    row_size = 0;
+    recv_ptr.push_back(0);
+    recv_row_buffer.resize(size_recvs);
+    while (ctr < size_recvs)
+    {
+        RAPtor_MPI_Probe(RAPtor_MPI_ANY_SOURCE, row_key, RAPtor_MPI_COMM_WORLD, &recv_status);
+        proc = recv_status.MPI_SOURCE;
+        RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_INT, &count);
+        RAPtor_MPI_Recv(recv_row_buffer.data(), count, RAPtor_MPI_INT, proc, row_key,
+            RAPtor_MPI_COMM_WORLD, &recv_status);
+        ctr += count;
+        for (int i = 0; i < count; i+= 2)
+        {
+            row_size = recv_row_buffer[i+1];
+            recv_rows.push_back(recv_row_buffer[i]);
+            recv_row_sizes.push_back(row_size);
+            recv_size += row_size;
+        }
+        recv_procs.push_back(proc);
+        recv_ptr.push_back(recv_size);
+    }
+   
     if (num_sends)
     {
-        MPI_Testall(num_sends, send_requests.data(), &finished, MPI_STATUSES_IGNORE);
-        while (!finished)
-        {
-            MPI_Iprobe(MPI_ANY_SOURCE, row_key, MPI_COMM_WORLD, &msg_avail, &recv_status);
-            if (msg_avail)
-            {
-                proc = recv_status.MPI_SOURCE;
-                MPI_Get_count(&recv_status, MPI_INT, &count);
-                if (count > (int) recv_row_buffer.size())
-                {
-                    recv_row_buffer.resize(count);
-                }
-                MPI_Recv(recv_row_buffer.data(), count, MPI_INT, proc, row_key,
-                        MPI_COMM_WORLD, &recv_status);
-                for (int i = 0; i < count; i += 2)
-                {
-                    recv_rows.emplace_back(recv_row_buffer[i]);
-                    recv_row_sizes.emplace_back(recv_row_buffer[i+1]);
-                    recv_size += recv_row_buffer[i+1];
-                }
-                recv_procs.emplace_back(proc);
-                recv_ptr.emplace_back(recv_size);
-            }
-            MPI_Testall(num_sends, send_requests.data(), &finished, MPI_STATUSES_IGNORE);
-        }
-    }
-    MPI_Ibarrier(MPI_COMM_WORLD, &barrier_request);
-    MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
-    while (!finished)
-    {
-        MPI_Iprobe(MPI_ANY_SOURCE, row_key, MPI_COMM_WORLD, &msg_avail, &recv_status);
-        if (msg_avail)
-        {
-            proc = recv_status.MPI_SOURCE;
-            MPI_Get_count(&recv_status, MPI_INT, &count);
-            if (count > (int) recv_row_buffer.size())
-            {
-                recv_row_buffer.resize(count);
-            }
-            MPI_Recv(recv_row_buffer.data(), count, MPI_INT, proc, row_key,
-                    MPI_COMM_WORLD, &recv_status);
-            for (int i = 0; i < count; i += 2)
-            {
-                recv_rows.emplace_back(recv_row_buffer[i]);
-                recv_row_sizes.emplace_back(recv_row_buffer[i+1]);
-                recv_size += recv_row_buffer[i+1];
-            }
-            recv_procs.emplace_back(proc);
-            recv_ptr.emplace_back(recv_size);
-        }
-        MPI_Test(&barrier_request, &finished, MPI_STATUS_IGNORE);
+        RAPtor_MPI_Waitall(num_sends, send_requests.data(), 
+                RAPtor_MPI_STATUSES_IGNORE);
     }
     int num_recvs = recv_procs.size();
     num_rows = recv_rows.size();
@@ -602,8 +586,8 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
         proc = send_procs[i];
         start = send_ptr[i];
         end = send_ptr[i+1];
-        MPI_Isend(&send_buffer[start], end - start, MPI_DOUBLE_INT, proc, key,
-                MPI_COMM_WORLD, &send_requests[i]);
+        RAPtor_MPI_Isend(&send_buffer[start], end - start, RAPtor_MPI_DOUBLE_INT, proc, key,
+                RAPtor_MPI_COMM_WORLD, &send_requests[i]);
     }
 
     for (int i = 0; i < num_recvs; i++)
@@ -611,16 +595,16 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
         proc = recv_procs[i];
         start = recv_ptr[i];
         end = recv_ptr[i+1];
-        MPI_Irecv(&recv_buffer[start], end - start, MPI_DOUBLE_INT, proc, key,
-                MPI_COMM_WORLD, &recv_requests[i]);
+        RAPtor_MPI_Irecv(&recv_buffer[start], end - start, RAPtor_MPI_DOUBLE_INT, proc, key,
+                RAPtor_MPI_COMM_WORLD, &recv_requests[i]);
     }
     
-    MPI_Waitall(num_sends, send_requests.data(), MPI_STATUSES_IGNORE);
-    MPI_Waitall(num_recvs, recv_requests.data(), MPI_STATUSES_IGNORE);
+    RAPtor_MPI_Waitall(num_sends, send_requests.data(), RAPtor_MPI_STATUSES_IGNORE);
+    RAPtor_MPI_Waitall(num_recvs, recv_requests.data(), RAPtor_MPI_STATUSES_IGNORE);
 
 
     // Assuming local num cols == num_rows (square)
-    MPI_Allgather(&(num_rows), 1, MPI_INT, proc_sizes.data(), 1, MPI_INT, MPI_COMM_WORLD);
+    RAPtor_MPI_Allgather(&(num_rows), 1, RAPtor_MPI_INT, proc_sizes.data(), 1, RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD);
     first_row = 0;
     for (int i = 0; i < rank; i++)
     {

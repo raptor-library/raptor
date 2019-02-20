@@ -17,8 +17,8 @@ ParCSRMatrix* par_stencil_grid(data_t* stencil, int* grid, int dim)
 {
     // Get MPI Information
     int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
     aligned_vector<int> diags;
     aligned_vector<double> nonzero_stencil;

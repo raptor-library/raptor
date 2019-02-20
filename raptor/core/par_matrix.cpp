@@ -114,8 +114,8 @@ void ParMatrix::finalize(bool create_comm)
     off_proc->sort();
 
     int rank, num_procs;
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
 
     // Assume nonzeros in each on_proc column
     if (on_proc_num_cols > on_proc_column_map.size())
@@ -524,7 +524,7 @@ ParCSRMatrix* ParCSRMatrix::transpose()
     int col_count, count;
     int col_size;
     int idx, row;
-    MPI_Status recv_status;
+    RAPtor_MPI_Status recv_status;
 
     Partition* part_T;
     Matrix* on_proc_T;
@@ -575,7 +575,7 @@ ParCSRMatrix* ParCSRMatrix::transpose()
         proc = comm->recv_data->procs[i];
         start = send_ptr[i];
         end = send_ptr[i+1];
-        MPI_Isend(&(send_buffer[start]), end - start, MPI_DOUBLE_INT, proc,
+        RAPtor_MPI_Isend(&(send_buffer[start]), end - start, RAPtor_MPI_DOUBLE_INT, proc,
                 comm->key, comm->mpi_comm, &(comm->recv_data->requests[i]));
     }
     col_count = 0;
@@ -586,13 +586,13 @@ ParCSRMatrix* ParCSRMatrix::transpose()
         start = comm->send_data->indptr[i];
         end = comm->send_data->indptr[i+1];
         size = end - start;
-        MPI_Probe(proc, comm->key, comm->mpi_comm, &recv_status);
-        MPI_Get_count(&recv_status, MPI_DOUBLE_INT, &count);
+        RAPtor_MPI_Probe(proc, comm->key, comm->mpi_comm, &recv_status);
+        RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_DOUBLE_INT, &count);
         if (count > recv_buffer.size())
         {
             recv_buffer.resize(count);
         }
-        MPI_Recv(&(recv_buffer[0]), count, MPI_DOUBLE_INT, proc,
+        RAPtor_MPI_Recv(&(recv_buffer[0]), count, RAPtor_MPI_DOUBLE_INT, proc,
                 comm->key, comm->mpi_comm, &recv_status);
         ctr = 0;
         for (int j = 0; j < size; j++)
@@ -608,7 +608,7 @@ ParCSRMatrix* ParCSRMatrix::transpose()
         }
     }
     recv_mat->nnz = recv_mat->idx2.size();
-    MPI_Waitall(comm->recv_data->num_msgs, comm->recv_data->requests.data(), MPI_STATUSES_IGNORE);
+    RAPtor_MPI_Waitall(comm->recv_data->num_msgs, comm->recv_data->requests.data(), RAPtor_MPI_STATUSES_IGNORE);
 
     off_proc_T = new CSRMatrix(on_proc_num_cols, -1);
     aligned_vector<int> off_T_sizes(on_proc_num_cols, 0);
@@ -801,15 +801,15 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
     return A;
 }
 
-void ParMatrix::init_tap_communicators(MPI_Comm comm, data_t* comm_t)
+void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm comm)
 {
     /*********************************
      * Initialize 
      * *******************************/
-    // Get MPI Information
+    // Get RAPtor_MPI Information
     int rank, num_procs;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &num_procs);
+    RAPtor_MPI_Comm_rank(comm, &rank);
+    RAPtor_MPI_Comm_size(comm, &num_procs);
 
     // Initialize standard tap_comm
     tap_comm = new TAPComm(partition, true);    
@@ -853,7 +853,7 @@ void ParMatrix::init_tap_communicators(MPI_Comm comm, data_t* comm_t)
     // Form local_L_par_comm: fully local communication (origin and
     // destination processes both local to node)
     tap_comm->form_local_L_par_comm(on_node_column_map, on_node_col_to_proc,
-            partition->first_local_col, comm_t);
+            partition->first_local_col);
     for (aligned_vector<int>::iterator it = tap_comm->local_L_par_comm->send_data->indices.begin();
             it != tap_comm->local_L_par_comm->send_data->indices.end(); ++it)
     {
@@ -867,14 +867,14 @@ void ParMatrix::init_tap_communicators(MPI_Comm comm, data_t* comm_t)
      * *******************************/
     // Gather all nodes with which any local process must communication
     tap_comm->form_local_R_par_comm(off_node_column_map, off_node_col_to_proc, 
-            orig_procs, comm_t);
+            orig_procs);
 
     // Find global processes with which rank communications
-    tap_comm->form_global_par_comm(orig_procs, comm_t);
+    tap_comm->form_global_par_comm(orig_procs);
 
     // Form local_S_par_comm: initial distribution of values among local
     // processes, before inter-node communication
-    tap_comm->form_local_S_par_comm(orig_procs, comm_t);
+    tap_comm->form_local_S_par_comm(orig_procs);
 
     // Adjust send indices (currently global vector indices) to be index 
     // of global vector value from previous recv
@@ -901,11 +901,11 @@ void ParMatrix::init_tap_communicators(MPI_Comm comm, data_t* comm_t)
     // corresponding to global rank on which data originates.  E.g. if
     // data is on rank r = (p, n), and my rank is s = (q, m), I will
     // recv data from (p, m).
-    tap_mat_comm->form_simple_R_par_comm(off_node_column_map, off_node_col_to_proc, comm_t);
+    tap_mat_comm->form_simple_R_par_comm(off_node_column_map, off_node_col_to_proc);
 
     // Form global par comm.. Will recv from proc on which data
     // originates
-    tap_mat_comm->form_simple_global_comm(off_node_col_to_proc, comm_t);
+    tap_mat_comm->form_simple_global_comm(off_node_col_to_proc);
 
     // Adjust send indices (currently global vector indices) to be
     // index of global vector value from previous recv (only updating

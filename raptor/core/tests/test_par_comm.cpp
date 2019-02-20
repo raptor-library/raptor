@@ -3,12 +3,7 @@
 
 #include "gtest/gtest.h"
 
-#include "core/types.hpp"
-#include "core/matrix.hpp"
-#include "core/par_matrix.hpp"
-#include "gallery/stencil.hpp"
-#include "gallery/par_stencil.hpp"
-#include "gallery/diffusion.hpp"
+#include "raptor.hpp"
 
 using namespace raptor;
 
@@ -41,7 +36,7 @@ TEST(ParCommTest, TestsInCore)
 
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
 
-    ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    ParVector x(A->global_num_rows, A->local_num_rows);
     if (A->local_num_rows)
     {
         sendbuf.resize(A->local_num_rows);

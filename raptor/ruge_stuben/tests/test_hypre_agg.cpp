@@ -3,7 +3,6 @@
 
 
 #include "gtest/gtest.h"
-#include "mpi.h"
 #include "raptor.hpp"
 #include "tests/hypre_compare.hpp"
 #include <iostream>
@@ -70,8 +69,8 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
     std::fill(grid.begin(), grid.end(), n);
     stencil = laplace_stencil_27pt();
     A = par_stencil_grid(stencil, grid.data(), 3);
-    x = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    b = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    x = ParVector(A->global_num_rows, A->local_num_rows);
+    b = ParVector(A->global_num_rows, A->local_num_rows);
     delete[] stencil;
 
     ml = new ParRugeStubenSolver(strong_threshold, PMIS, Extended, Classical, SOR);
@@ -124,8 +123,8 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
     std::fill(grid.begin(), grid.end(), n);
     stencil = diffusion_stencil_2d(0.001, M_PI/4.0);
     A = par_stencil_grid(stencil, grid.data(), 2);
-    x = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    b = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    x = ParVector(A->global_num_rows, A->local_num_rows);
+    b = ParVector(A->global_num_rows, A->local_num_rows);
     delete[] stencil;
 
     ml = new ParRugeStubenSolver(strong_threshold, PMIS, Extended, Classical, SOR);

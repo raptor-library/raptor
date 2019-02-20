@@ -2,13 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
-#include "core/types.hpp"
-#include "core/matrix.hpp"
-#include "core/par_matrix.hpp"
-#include "core/comm_pkg.hpp"
-#include "gallery/stencil.hpp"
-#include "gallery/par_stencil.hpp"
-#include "gallery/diffusion.hpp"
+#include "raptor.hpp"
 #include "tests/compare.hpp"
 
 using namespace raptor;
@@ -41,7 +35,7 @@ TEST(TAPCommTest, TestsInCore)
     //TAPComm* simple_tap = new TAPComm(A->partition, A->off_proc_column_map, false);
     A->init_tap_communicators(MPI_COMM_WORLD);
 
-    ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    ParVector x(A->global_num_rows, A->local_num_rows);
     ParCSRMatrix* B = A->copy();
 
     for (int i = 0; i < A->local_num_rows; i++)

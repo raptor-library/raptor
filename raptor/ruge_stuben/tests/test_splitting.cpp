@@ -2,12 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
-#include "core/types.hpp"
-#include "core/matrix.hpp"
-#include "gallery/matrix_IO.hpp"
-#include "ruge_stuben/cf_splitting.hpp"
-#include "gallery/diffusion.hpp"
-#include "gallery/stencil.hpp"
+#include "raptor.hpp"
 
 #include <iostream>
 #include <fstream>

@@ -1,17 +1,17 @@
 add_executable(test_stencil test_stencil.cpp)
-target_link_libraries(test_stencil raptor googletest pthread )
+target_link_libraries(test_stencil raptor ${MPI_LIBRARIES} googletest pthread )
 add_test(StencilTest ./test_stencil)
 
 add_executable(test_laplacian test_laplacian.cpp)
-target_link_libraries(test_laplacian raptor googletest pthread )
+target_link_libraries(test_laplacian raptor ${MPI_LIBRARIES} googletest pthread )
 add_test(LaplacianTest ./test_laplacian)
 
 add_executable(test_aniso test_aniso.cpp)
-target_link_libraries(test_aniso raptor googletest pthread )
+target_link_libraries(test_aniso raptor ${MPI_LIBRARIES} googletest pthread )
 add_test(AnisoTest ./test_aniso)
 
 add_executable(test_matrix_market test_matrix_market.cpp)
-target_link_libraries(test_matrix_market raptor googletest pthread )
+target_link_libraries(test_matrix_market raptor ${MPI_LIBRARIES} googletest pthread )
 add_test(MatrixMarketTest ./test_matrix_market)
 
 

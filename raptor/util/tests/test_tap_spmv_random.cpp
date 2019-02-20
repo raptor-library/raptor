@@ -1,9 +1,7 @@
 // Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "gtest/gtest.h"
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "gallery/par_matrix_IO.hpp"
+#include "raptor.hpp"
 
 using namespace raptor;
 
@@ -34,8 +32,8 @@ TEST(TAPRandomSpMVTest, TestsInUtil)
     A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
             A->on_proc_column_map, true);
 
-    ParVector x(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
-    ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    ParVector x(A->global_num_cols, A->on_proc_num_cols);
+    ParVector b(A->global_num_rows, A->local_num_rows);
 
     x.set_const_value(1.0);
     A->tap_mult(x, b);

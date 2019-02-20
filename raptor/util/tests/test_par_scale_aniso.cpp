@@ -33,11 +33,11 @@ TEST(ParAnisoSpMVTest, TestsInUtil)
 
     aligned_vector<double> scales;
 
-    ParVector x(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
-    ParVector x_scale(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
-    ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    ParVector b_scale(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    ParVector r(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    ParVector x(A->global_num_cols, A->on_proc_num_cols);
+    ParVector x_scale(A->global_num_cols, A->on_proc_num_cols);
+    ParVector b(A->global_num_rows, A->local_num_rows);
+    ParVector b_scale(A->global_num_rows, A->local_num_rows);
+    ParVector r(A->global_num_rows, A->local_num_rows);
 
     ParMultilevel* ml;
 
@@ -61,7 +61,6 @@ TEST(ParAnisoSpMVTest, TestsInUtil)
     delete ml;
     A->residual(x, b, r);
     r_norm = r.norm(2);
-    if (rank == 0) printf("Original Rnorm: %e (%d iterations)\n", r_norm, iter);
 
     // Diagonally Scale System
     diagonally_scale(A_scale, b_scale, scales);
@@ -74,13 +73,12 @@ TEST(ParAnisoSpMVTest, TestsInUtil)
     delete ml;
     A_scale->residual(x_scale, b_scale, r);
     r_norm_scaled = r.norm(2);
-    if (rank == 0) printf("Scaled Rnorm: %e (%d iterations)\n", r_norm_scaled, iter);
 
     // Unscale solution
     diagonally_unscale(x_scale, scales);
     A->residual(x_scale, b, r);
     r_norm_scaled = r.norm(2);
-    if (rank == 0) printf("Unscaled Rnorm: %e (%d iterations)\n", r_norm_scaled, iter);
+    ASSERT_NEAR(r_norm, r_norm_scaled, 1e-07);
 
     delete A;
     delete[] stencil;

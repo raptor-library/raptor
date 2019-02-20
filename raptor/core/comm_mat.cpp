@@ -13,14 +13,14 @@ template <typename T> aligned_vector<T>& create_mat(int n, int m, int b_n, int b
         CSRMatrix** mat_ptr);
 template <typename T> CSRMatrix* communication_helper(const int* rowptr,
         const int* col_indices, const T& values,
-        CommData* send_comm, CommData* recv_comm, int key, MPI_Comm mpi_comm, 
+        CommData* send_comm, CommData* recv_comm, int key, RAPtor_MPI_Comm mpi_comm, 
         const int b_rows, const int b_cols, const bool has_vals = true);
 template <typename T> void init_comm_helper(char* send_buffer,
         const int* rowptr, const int* col_indices, const T& values,
-        CommData* send_comm, int key, MPI_Comm mpi_comm, const int b_rows, 
+        CommData* send_comm, int key, RAPtor_MPI_Comm mpi_comm, const int b_rows, 
         const int b_cols);
 CSRMatrix* complete_comm_helper(CommData* send_comm, 
-        CommData* recv_comm, int key, MPI_Comm mpi_comm, const int b_rows, 
+        CommData* recv_comm, int key, RAPtor_MPI_Comm mpi_comm, const int b_rows, 
         const int b_cols, const bool has_vals = true);
 
 template <typename T> CSRMatrix* transpose_recv(CSRMatrix* recv_mat_T, 
@@ -568,7 +568,7 @@ template<> aligned_vector<double*>& create_mat<double*>(int n, int m, int b_n, i
 template <typename T> // double* or double**
 CSRMatrix* communication_helper(const int* rowptr,
         const int* col_indices, const T& values,
-        CommData* send_comm, CommData* recv_comm, int key, MPI_Comm mpi_comm, 
+        CommData* send_comm, CommData* recv_comm, int key, RAPtor_MPI_Comm mpi_comm, 
         const int b_rows, const int b_cols, const bool has_vals)
 {
     aligned_vector<char> send_buffer;
@@ -582,15 +582,17 @@ CSRMatrix* communication_helper(const int* rowptr,
 template <typename T> // double* or double**
 void init_comm_helper(char* send_buffer, const int* rowptr,
         const int* col_indices, const T& values,
-        CommData* send_comm, int key, MPI_Comm mpi_comm, 
+        CommData* send_comm, int key, RAPtor_MPI_Comm mpi_comm, 
         const int b_rows, const int b_cols)
 {
     int block_size = b_rows * b_cols;
+    if (profile) mat_t -= RAPtor_MPI_Wtime();
     send_comm->send(send_buffer, rowptr, col_indices, values,
             key, mpi_comm, block_size);
+    if (profile) mat_t += RAPtor_MPI_Wtime();
 }    
 CSRMatrix* complete_comm_helper(CommData* send_comm, CommData* recv_comm, int key, 
-        MPI_Comm mpi_comm, const int b_rows, const int b_cols, const bool has_vals)
+        RAPtor_MPI_Comm mpi_comm, const int b_rows, const int b_cols, const bool has_vals)
 {
     CSRMatrix* recv_mat;
 
@@ -602,10 +604,12 @@ CSRMatrix* complete_comm_helper(CommData* send_comm, CommData* recv_comm, int ke
         recv_mat = new CSRMatrix(recv_comm->size_msgs, -1);
 
     // Recv contents of recv_mat
+    if (profile) mat_t -= RAPtor_MPI_Wtime();
     recv_comm->recv(recv_mat, key, mpi_comm, block_size, has_vals);
     if (send_comm->num_msgs)
-        MPI_Waitall(send_comm->num_msgs, send_comm->requests.data(),
-                MPI_STATUSES_IGNORE);
+        RAPtor_MPI_Waitall(send_comm->num_msgs, send_comm->requests.data(),
+                RAPtor_MPI_STATUSES_IGNORE);
+    if (profile) mat_t += RAPtor_MPI_Wtime();
     return recv_mat;
 }    
 

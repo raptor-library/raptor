@@ -2,12 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
-#include "mpi.h"
-#include "gallery/stencil.hpp"
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "gallery/par_matrix_IO.hpp"
-#include "aggregation/par_mis.hpp"
+#include "raptor.hpp"
 #include <iostream>
 #include <fstream>
 

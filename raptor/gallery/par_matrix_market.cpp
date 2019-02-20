@@ -153,8 +153,8 @@ void write_par_data(FILE* f, int n, int* rowptr, int* col_idx,
 void write_par_mm(ParCSRMatrix* A, const char *fname)
 {
     int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
     FILE *f;
     MM_typecode matcode;
@@ -167,7 +167,7 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
 
     int nnz = A->local_nnz;
     int global_nnz;
-    MPI_Reduce(&nnz, &global_nnz, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Reduce(&nnz, &global_nnz, 1, RAPtor_MPI_INT, RAPtor_MPI_SUM, 0, RAPtor_MPI_COMM_WORLD);
 
     std::vector<int> proc_dims(5*num_procs);
     int dims[5];
@@ -176,7 +176,7 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
     dims[2] = A->off_proc_num_cols; 
     dims[3] = A->on_proc->nnz;
     dims[4] = A->off_proc->nnz;
-    MPI_Gather(dims, 5, MPI_INT, proc_dims.data(), 5, MPI_INT, 0, MPI_COMM_WORLD);
+    RAPtor_MPI_Gather(dims, 5, RAPtor_MPI_INT, proc_dims.data(), 5, RAPtor_MPI_INT, 0, RAPtor_MPI_COMM_WORLD);
 
     if (rank == 0) // RANK 0 IS ONLY ONE WRITING TO FILE
     {
@@ -214,8 +214,8 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
             int* i_dims = &proc_dims[i*5];
             num_ints = i_dims[0] * 2 + i_dims[1] + i_dims[3] + i_dims[3] + i_dims[4];
             num_doubles = i_dims[3] + i_dims[4];
-            MPI_Pack_size(num_ints, MPI_INT, MPI_COMM_WORLD, &int_bytes);
-            MPI_Pack_size(num_doubles, MPI_DOUBLE, MPI_COMM_WORLD, &double_bytes);
+            RAPtor_MPI_Pack_size(num_ints, RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD, &int_bytes);
+            RAPtor_MPI_Pack_size(num_doubles, RAPtor_MPI_DOUBLE, RAPtor_MPI_COMM_WORLD, &double_bytes);
             comm_size = int_bytes + double_bytes;
             if (buffer.size() < comm_size) buffer.resize(comm_size);
 
@@ -234,30 +234,30 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
             }
 
             // Recv Packed Buffer
-            MPI_Recv(buffer.data(), comm_size, MPI_PACKED, i, 1234, MPI_COMM_WORLD,
-                    MPI_STATUS_IGNORE);
+            RAPtor_MPI_Recv(buffer.data(), comm_size, RAPtor_MPI_PACKED, i, 1234, RAPtor_MPI_COMM_WORLD,
+                    RAPtor_MPI_STATUS_IGNORE);
 
             // Unpack On Proc Data
             pos = 0;
-            MPI_Unpack(buffer.data(), comm_size, &pos, col_map.data(), i_dims[1],
-                    MPI_INT, MPI_COMM_WORLD);
-            MPI_Unpack(buffer.data(), comm_size, &pos, idx1.data(), i_dims[0],
-                    MPI_INT, MPI_COMM_WORLD);
-            MPI_Unpack(buffer.data(), comm_size, &pos, idx2.data(), i_dims[3],
-                    MPI_INT, MPI_COMM_WORLD);
-            MPI_Unpack(buffer.data(), comm_size, &pos, vals.data(), i_dims[3],
-                    MPI_DOUBLE, MPI_COMM_WORLD);
+            RAPtor_MPI_Unpack(buffer.data(), comm_size, &pos, col_map.data(), i_dims[1],
+                    RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD);
+            RAPtor_MPI_Unpack(buffer.data(), comm_size, &pos, idx1.data(), i_dims[0],
+                    RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD);
+            RAPtor_MPI_Unpack(buffer.data(), comm_size, &pos, idx2.data(), i_dims[3],
+                    RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD);
+            RAPtor_MPI_Unpack(buffer.data(), comm_size, &pos, vals.data(), i_dims[3],
+                    RAPtor_MPI_DOUBLE, RAPtor_MPI_COMM_WORLD);
             write_par_data(f, i_dims[0] - 1, idx1.data(), idx2.data(), 
                     vals.data(), first_row, col_map.data());
 
-            MPI_Unpack(buffer.data(), comm_size, &pos, col_map.data(), i_dims[2],
-                    MPI_INT, MPI_COMM_WORLD);
-            MPI_Unpack(buffer.data(), comm_size, &pos, idx1.data(), i_dims[0],
-                    MPI_INT, MPI_COMM_WORLD);
-            MPI_Unpack(buffer.data(), comm_size, &pos, idx2.data(), i_dims[4],
-                    MPI_INT, MPI_COMM_WORLD);
-            MPI_Unpack(buffer.data(), comm_size, &pos, vals.data(), i_dims[4],
-                    MPI_DOUBLE, MPI_COMM_WORLD);
+            RAPtor_MPI_Unpack(buffer.data(), comm_size, &pos, col_map.data(), i_dims[2],
+                    RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD);
+            RAPtor_MPI_Unpack(buffer.data(), comm_size, &pos, idx1.data(), i_dims[0],
+                    RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD);
+            RAPtor_MPI_Unpack(buffer.data(), comm_size, &pos, idx2.data(), i_dims[4],
+                    RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD);
+            RAPtor_MPI_Unpack(buffer.data(), comm_size, &pos, vals.data(), i_dims[4],
+                    RAPtor_MPI_DOUBLE, RAPtor_MPI_COMM_WORLD);
             write_par_data(f, i_dims[0] - 1, idx1.data(), idx2.data(), 
                     vals.data(), first_row, col_map.data());
 
@@ -271,33 +271,33 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
         // Determine send size (in bytes)
         num_ints = dims[0] * 2 + dims[1] + dims[3] + dims[3] + dims[4];
         num_doubles = dims[3] + dims[4];
-        MPI_Pack_size(num_ints, MPI_INT, MPI_COMM_WORLD, &int_bytes);
-        MPI_Pack_size(num_doubles, MPI_DOUBLE, MPI_COMM_WORLD, &double_bytes);
+        RAPtor_MPI_Pack_size(num_ints, RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD, &int_bytes);
+        RAPtor_MPI_Pack_size(num_doubles, RAPtor_MPI_DOUBLE, RAPtor_MPI_COMM_WORLD, &double_bytes);
         comm_size = int_bytes + double_bytes;
         buffer.resize(comm_size);
 
         // Pack Data
         pos = 0;
-        MPI_Pack(A->on_proc_column_map.data(), dims[1], MPI_INT, buffer.data(), comm_size, 
-               &pos, MPI_COMM_WORLD); 
-        MPI_Pack(A->on_proc->idx1.data(), dims[0], MPI_INT, buffer.data(), comm_size,
-                &pos, MPI_COMM_WORLD);
-        MPI_Pack(A->on_proc->idx2.data(), dims[3], MPI_INT, buffer.data(), comm_size,
-                &pos, MPI_COMM_WORLD);
-        MPI_Pack(A->on_proc->vals.data(), dims[3], MPI_DOUBLE, buffer.data(), comm_size,
-                &pos, MPI_COMM_WORLD);
+        RAPtor_MPI_Pack(A->on_proc_column_map.data(), dims[1], RAPtor_MPI_INT, buffer.data(), comm_size, 
+               &pos, RAPtor_MPI_COMM_WORLD); 
+        RAPtor_MPI_Pack(A->on_proc->idx1.data(), dims[0], RAPtor_MPI_INT, buffer.data(), comm_size,
+                &pos, RAPtor_MPI_COMM_WORLD);
+        RAPtor_MPI_Pack(A->on_proc->idx2.data(), dims[3], RAPtor_MPI_INT, buffer.data(), comm_size,
+                &pos, RAPtor_MPI_COMM_WORLD);
+        RAPtor_MPI_Pack(A->on_proc->vals.data(), dims[3], RAPtor_MPI_DOUBLE, buffer.data(), comm_size,
+                &pos, RAPtor_MPI_COMM_WORLD);
         
-        MPI_Pack(A->off_proc_column_map.data(), dims[2], MPI_INT, buffer.data(), comm_size, 
-               &pos, MPI_COMM_WORLD); 
-        MPI_Pack(A->off_proc->idx1.data(), dims[0], MPI_INT, buffer.data(), comm_size,
-                &pos, MPI_COMM_WORLD);
-        MPI_Pack(A->off_proc->idx2.data(), dims[4], MPI_INT, buffer.data(), comm_size,
-                &pos, MPI_COMM_WORLD);
-        MPI_Pack(A->off_proc->vals.data(), dims[4], MPI_DOUBLE, buffer.data(), comm_size,
-                &pos, MPI_COMM_WORLD);
+        RAPtor_MPI_Pack(A->off_proc_column_map.data(), dims[2], RAPtor_MPI_INT, buffer.data(), comm_size, 
+               &pos, RAPtor_MPI_COMM_WORLD); 
+        RAPtor_MPI_Pack(A->off_proc->idx1.data(), dims[0], RAPtor_MPI_INT, buffer.data(), comm_size,
+                &pos, RAPtor_MPI_COMM_WORLD);
+        RAPtor_MPI_Pack(A->off_proc->idx2.data(), dims[4], RAPtor_MPI_INT, buffer.data(), comm_size,
+                &pos, RAPtor_MPI_COMM_WORLD);
+        RAPtor_MPI_Pack(A->off_proc->vals.data(), dims[4], RAPtor_MPI_DOUBLE, buffer.data(), comm_size,
+                &pos, RAPtor_MPI_COMM_WORLD);
 
         // Send Packed Data
-        MPI_Send(buffer.data(), comm_size, MPI_PACKED, 0, 1234, MPI_COMM_WORLD);
+        RAPtor_MPI_Send(buffer.data(), comm_size, RAPtor_MPI_PACKED, 0, 1234, RAPtor_MPI_COMM_WORLD);
     }
 }
 

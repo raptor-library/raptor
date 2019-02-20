@@ -4,7 +4,7 @@
 #ifndef RAPTOR_MFEM_WRAPPER_H
 #define RAPTOR_MFEM_WRAPPER_H
 
-#include "gallery/external/hypre_wrapper.hpp"
+#include "external/hypre_wrapper.hpp"
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
@@ -18,36 +18,36 @@ raptor::ParCSRMatrix* mfem_linear_elasticity(raptor::ParVector& x_raptor,
         raptor::ParVector& b_raptor, int* num_variables,
         const char* mesh_file, 
         int order = 3, int seq_n_refines = 2, int par_n_refines = 2,
-        MPI_Comm comm_mat = MPI_COMM_WORLD);
+        RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
 
 raptor::ParCSRMatrix* mfem_dg_elasticity(raptor::ParVector& x_raptor, 
         raptor::ParVector& b_raptor, int* num_variables,
         const char* mesh_file, 
         int order = 3, int seq_n_refines = 2, int par_n_refines = 2,
-        MPI_Comm comm_mat = MPI_COMM_WORLD);
+        RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
 
 raptor::ParCSRMatrix* mfem_grad_div(raptor::ParVector& x_raptor, 
         raptor::ParVector& b_raptor,
         const char* mesh_file, 
         int order = 3, int seq_n_refines = 2, int par_n_refines = 2,
-        MPI_Comm comm_mat = MPI_COMM_WORLD);
+        RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
 
 raptor::ParCSRMatrix* mfem_adaptive_laplacian(raptor::ParVector& x_raptor, 
         raptor::ParVector& b_raptor,
         const char* mesh_file, 
         int order = 3, int max_dofs = 1000000,
-        MPI_Comm comm_mat = MPI_COMM_WORLD);
+        RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
 
 raptor::ParCSRMatrix* mfem_dg_diffusion(raptor::ParVector& x_raptor, 
         raptor::ParVector& b_raptor,
         const char* mesh_file, 
         int order = 3, int seq_n_refines = 2, int par_n_refines = 2,
-        MPI_Comm comm_mat = MPI_COMM_WORLD);
+        RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
 
 raptor::ParCSRMatrix* mfem_laplacian(raptor::ParVector& x_raptor, 
         raptor::ParVector& b_raptor,
         const char* mesh_file, 
         int order = 3, int seq_n_refines = 2, int par_n_refines = 2,
-        MPI_Comm comm_mat = MPI_COMM_WORLD);
+        RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
 
 #endif
