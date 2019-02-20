@@ -80,5 +80,10 @@ if (WITH_HYPRE)
     add_test(TestHypreUnknown ${MPIRUN} -n 2 ./test_hypre_unknown)
 endif()
 
+if (WITH_MFEM)
+    add_executable(test_mfem_amg test_mfem_amg.cpp)
+    target_link_libraries(test_mfem_amg raptor ${MPI_LIBRARIES} googletest pthread)
+    add_test(TestMFEM ${MPIRUN} -n 16 ./test_mfem_amg)
+endif()
 
 

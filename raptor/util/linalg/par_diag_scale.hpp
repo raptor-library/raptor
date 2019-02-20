@@ -11,6 +11,29 @@
 
 using namespace raptor;
 
+void row_scale(ParCSRMatrix* A, ParVector& rhs)
+{
+    int start, end, col;
+    double scale;
+    
+    A->on_proc->move_diag();
+
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        start = A->on_proc->idx1[i];
+	scale = 0.0;
+	if (A->on_proc->idx2[start] == i)
+	{
+	    scale = 1.0 / A->on_proc->vals[start];
+	}
+	for (int j = start; j < end; j++)
+	{
+	    A->on_proc->vals[j] *= scale;
+	}
+	rhs[i] *= scale;
+    }
+}
+
 void diagonally_scale(ParCSRMatrix* A, ParVector& rhs, aligned_vector<double>& row_scales)
 {
     int start, end, col;
@@ -24,7 +47,7 @@ void diagonally_scale(ParCSRMatrix* A, ParVector& rhs, aligned_vector<double>& r
         start = A->on_proc->idx1[i];
         if (A->on_proc->idx2[start] == i)
         {
-            row_scales[i] = sqrt(A->on_proc->vals[start]);
+            row_scales[i] = 1.0 / sqrt(fabs(A->on_proc->vals[start]));
         }
     }
 
