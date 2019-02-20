@@ -11,12 +11,14 @@ find_path(MFEM_INCLUDE_DIR mfem.hpp
 find_path(MFEM_MESH_PATH beam-tet.mesh
          HINTS ${PC_MFEM_INCLUDEDIR} ${PC_MFEM_INCLUDE_DIRS}
          ${MFEM_DIR} ${MFEM_DIR}/data ${MFEM_DIR}/../data
-         $ENV{MFEM_DIR} $ENV{MFEM_DIR}../data $ENV{MFEM_DIR}/../data)
+         $ENV{MFEM_DIR} $ENV{MFEM_DIR}../data $ENV{MFEM_DIR}/../data
+	 ${MFEM_MESH_DIR} ${MFEM_MESH_DIR}/data
+	 $ENV{MFEM_MESH_DIR} $ENV{MFEM_MESH_DIR}/data)
 
 find_library(MFEM_LIBRARY NAMES mfem
-             HINTS ${PC_MFEM_LIBDIR} ${PC_MFEM_LIBRARY_DIRS}
-             ${MFEM_DIR} ${MFEM_DIR}/lib
-				$ENV{MFEM_DIR} $ENV{MFEM_DIR}/lib)
+         HINTS ${PC_MFEM_LIBDIR} ${PC_MFEM_LIBRARY_DIRS}
+         ${MFEM_DIR} ${MFEM_DIR}/lib
+         $ENV{MFEM_DIR} $ENV{MFEM_DIR}/lib)
 
 set(MFEM_LIBRARIES ${MFEM_LIBRARY} )
 set(MFEM_INCLUDE_DIRS ${MFEM_INCLUDE_DIR} )
