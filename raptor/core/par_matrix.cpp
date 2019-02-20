@@ -883,15 +883,18 @@ void ParMatrix::init_communicators(int key, RAPtor_MPI_Comm mpi_comm)
             off_node_to_off_proc, mpi_comm);
 
     // TODO -- can reuse data from above method ^^^
-    if (!comm) comm = new ParComm(partition, off_proc_column_map, 
+    if (!comm)
+    {
+	comm = new ParComm(partition, off_proc_column_map, 
             on_proc_column_map, key, mpi_comm);
+    }
 
     // Change tap_comm method, if necessary (default was ThreeStep)
     if (comm_type == NAP2)
     {
         tap_comm->n_shared--;
         tap_comm = two_step;
-        two_step->n_shared++;
+        tap_comm->n_shared++;
     }
 }
 
@@ -949,9 +952,9 @@ void ParMatrix::init_tap_communicators(aligned_vector<int>& off_proc_col_to_proc
     }
 
     // Initialize three-step tap_comm
-    if (!two_step)
+    if (!three_step)
     {
-        two_step = new TAPComm(partition, true);
+        three_step = new TAPComm(partition, true);
 
         // Initialize Variables
         int idx;
@@ -964,10 +967,10 @@ void ParMatrix::init_tap_communicators(aligned_vector<int>& off_proc_col_to_proc
          * *******************************/
         // Form local_L_par_comm: fully local communication (origin and
         // destination processes both local to node)
-        two_step->form_local_L_par_comm(on_node_column_map, on_node_col_to_proc,
+        three_step->form_local_L_par_comm(on_node_column_map, on_node_col_to_proc,
                 partition->first_local_col);
-        for (aligned_vector<int>::iterator it = two_step->local_L_par_comm->send_data->indices.begin();
-                it != two_step->local_L_par_comm->send_data->indices.end(); ++it)
+        for (aligned_vector<int>::iterator it = three_step->local_L_par_comm->send_data->indices.begin();
+                it != three_step->local_L_par_comm->send_data->indices.end(); ++it)
         {
             *it = on_proc_to_new[*it];
         }
@@ -977,24 +980,24 @@ void ParMatrix::init_tap_communicators(aligned_vector<int>& off_proc_col_to_proc
          * node-aware communicator 
          * *******************************/
         // Gather all nodes with which any local process must communication
-        two_step->form_local_R_par_comm(off_node_column_map, off_node_col_to_proc, 
+        three_step->form_local_R_par_comm(off_node_column_map, off_node_col_to_proc, 
                 orig_procs);
 
         // Find global processes with which rank communications
-        two_step->form_global_par_comm(orig_procs);
+        three_step->form_global_par_comm(orig_procs);
 
         // Form local_S_par_comm: initial distribution of values among local
         // processes, before inter-node communication
-        two_step->form_local_S_par_comm(orig_procs);
+        three_step->form_local_S_par_comm(orig_procs);
 
         // Adjust send indices (currently global vector indices) to be index 
         // of global vector value from previous recv
-        two_step->adjust_send_indices(partition->first_local_col);
+        three_step->adjust_send_indices(partition->first_local_col);
 
 
-        two_step->update_recv(on_node_to_off_proc, off_node_to_off_proc);
-        for (aligned_vector<int>::iterator it = two_step->local_S_par_comm->send_data->indices.begin();
-                it != two_step->local_S_par_comm->send_data->indices.end(); ++it)
+        three_step->update_recv(on_node_to_off_proc, off_node_to_off_proc);
+        for (aligned_vector<int>::iterator it = three_step->local_S_par_comm->send_data->indices.begin();
+                it != three_step->local_S_par_comm->send_data->indices.end(); ++it)
         {
             *it = on_proc_to_new[*it];
         }
@@ -1006,30 +1009,30 @@ void ParMatrix::init_tap_communicators(aligned_vector<int>& off_proc_col_to_proc
      * *******************************/
     // Create simple (2-step) TAPComm for matrix communication
     // Copy local_L_par_comm from 3-step tap_comm
-    if (!three_step)
+    if (!two_step)
     {
-        three_step = new TAPComm(partition, false, two_step->local_L_par_comm);
+        two_step = new TAPComm(partition, false, three_step->local_L_par_comm);
 
         // Form local recv communicator.  Will recv from local rank
         // corresponding to global rank on which data originates.  E.g. if
         // data is on rank r = (p, n), and my rank is s = (q, m), I will
         // recv data from (p, m).
-        three_step->form_simple_R_par_comm(off_node_column_map, off_node_col_to_proc);
+        two_step->form_simple_R_par_comm(off_node_column_map, off_node_col_to_proc);
 
         // Form global par comm.. Will recv from proc on which data
         // originates
-        three_step->form_simple_global_comm(off_node_col_to_proc);
+        two_step->form_simple_global_comm(off_node_col_to_proc);
 
         // Adjust send indices (currently global vector indices) to be
         // index of global vector value from previous recv (only updating
         // local_R to match position in global)
-        three_step->adjust_send_indices(partition->first_local_col);
+        two_step->adjust_send_indices(partition->first_local_col);
 
-        three_step->update_recv(on_node_to_off_proc, off_node_to_off_proc, false);
+        two_step->update_recv(on_node_to_off_proc, off_node_to_off_proc, false);
 
         for (aligned_vector<int>::iterator it = 
-                three_step->global_par_comm->send_data->indices.begin();
-                it != three_step->global_par_comm->send_data->indices.end(); ++it)
+                two_step->global_par_comm->send_data->indices.begin();
+                it != two_step->global_par_comm->send_data->indices.end(); ++it)
         {
             *it = on_proc_to_new[*it];
         }
@@ -1037,10 +1040,13 @@ void ParMatrix::init_tap_communicators(aligned_vector<int>& off_proc_col_to_proc
 
     // By default, set tap_comm to three step
     // and tap_mat_comm to two_step
+    if (tap_comm) tap_comm->n_shared--;
     tap_comm = three_step;
-    three_step->n_shared++;
+    tap_comm->n_shared++;
+
+    if (tap_mat_comm) tap_mat_comm->n_shared--;
     tap_mat_comm = two_step;
-    two_step->n_shared++;
+    tap_mat_comm->n_shared++;
 }
 
 

@@ -93,6 +93,9 @@ namespace raptor
         three_step = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
+	comm_type = Standard;
+	comm_mat_type = Standard;
+	comm_mat_T_type = Standard;
     }
 
     ParMatrix(Partition* part, index_t glob_rows, index_t glob_cols, int local_rows, 
@@ -111,6 +114,9 @@ namespace raptor
         three_step = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
+	comm_type = Standard;
+	comm_mat_type = Standard;
+	comm_mat_T_type = Standard;
     }
 
     ParMatrix(index_t glob_rows, index_t glob_cols)
@@ -127,6 +133,9 @@ namespace raptor
         three_step = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
+	comm_type = Standard;
+	comm_mat_type = Standard;
+	comm_mat_T_type = Standard;
     }
 
     ParMatrix(index_t glob_rows, 
@@ -150,6 +159,9 @@ namespace raptor
         three_step = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
+	comm_type = Standard;
+	comm_mat_type = Standard;
+	comm_mat_T_type = Standard;
     }
        
     ParMatrix()
@@ -165,6 +177,9 @@ namespace raptor
         three_step = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
+	comm_type = Standard;
+	comm_mat_type = Standard;
+	comm_mat_T_type = Standard;
 
         on_proc = NULL;
         off_proc = NULL;
@@ -396,6 +411,8 @@ namespace raptor
     TAPComm* two_step;
     TAPComm* three_step;
     comm_t comm_type;
+    comm_t comm_mat_type;
+    comm_t comm_mat_T_type;
   };
 
   class ParCOOMatrix : public ParMatrix

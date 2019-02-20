@@ -112,26 +112,12 @@ namespace raptor
                 A->init_communicators(levels[level_ctr-1]->A->comm->key,
                         levels[level_ctr-1]->A->comm->mpi_comm);
             }
-            else 
+            else
             {
-                A->comm = new ParComm(A->partition, A->off_proc_column_map,
+                A->comm = new ParComm(A->partition, A->off_proc_column_map, 
                         A->on_proc_column_map, levels[level_ctr-1]->A->comm->key,
                         levels[level_ctr-1]->A->comm->mpi_comm);
             }
-
-            //A->comm = new ParComm(A->partition, A->off_proc_column_map,
-            //        A->on_proc_column_map, levels[level_ctr-1]->A->comm->key,
-            //        levels[level_ctr-1]->A->comm->mpi_comm);
-            //if (tap_amg >= 0 && tap_amg <= level_ctr)
-            //{
-            //    // Create 2-step node-aware communicator for setup phase
-            //    // will be changed to 3-step before solve phase
-            //    levels[level_ctr]->A->tap_comm = new TAPComm(
-            //            levels[level_ctr]->A->partition,
-            //            levels[level_ctr]->A->off_proc_column_map,
-            //            levels[level_ctr]->A->on_proc_column_map, 
-            //            true, A->comm->mpi_comm);
-            //}
 
             std::copy(R.begin(), R.end(), B.begin());
 

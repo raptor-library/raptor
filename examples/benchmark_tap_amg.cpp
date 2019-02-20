@@ -231,6 +231,10 @@ if (rank == 0) printf("A global n %d, nnz %lu\n", A->global_num_rows, nnz);
     }
     hypre_BoomerAMGDestroy(solver_data);
 
+    HYPRE_IJMatrixDestroy(A_h_ij);
+    HYPRE_IJVectorDestroy(x_h_ij);
+    HYPRE_IJVectorDestroy(b_h_ij);
+
 
     // Warm Up
     ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, SOR);
@@ -254,8 +258,8 @@ if (rank == 0) printf("A global n %d, nnz %lu\n", A->global_num_rows, nnz);
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Total Setup Time: %e\n", t0);
-    MPI_Barrier(MPI_COMM_WORLD);
     ParVector rss_sol = ParVector(x);
+    MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
     iter = ml->solve(rss_sol, b);
     tfinal = MPI_Wtime() - t0;
@@ -283,13 +287,14 @@ if (rank == 0) printf("A global n %d, nnz %lu\n", A->global_num_rows, nnz);
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Total Setup Time: %e\n", t0);
-    MPI_Barrier(MPI_COMM_WORLD);
     ParVector tap_rss_sol = ParVector(x);
+    MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
     iter = ml->solve(tap_rss_sol, b);
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Total Solve Time: %e\n", t0);
+    ml->print_comm_types();
     if (rank == 0) 
     {
         printf("Solved in %d iterations\n", iter);
@@ -307,6 +312,8 @@ if (rank == 0) printf("A global n %d, nnz %lu\n", A->global_num_rows, nnz);
 
     // Smoothed Aggregation AMG
     if (rank == 0) printf("\n\nSmoothed Aggregation Solver:\n");
+    MPI_Barrier(MPI_COMM_WORLD);
+    t0 = MPI_Wtime();
     ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation, 
             Symmetric, SOR);
     form_hypre_weights(&ml->weights, A->local_num_rows);
@@ -314,12 +321,12 @@ if (rank == 0) printf("A global n %d, nnz %lu\n", A->global_num_rows, nnz);
     ml->solve_tol = 1e-07;
     ml->track_times = false;
     ml->store_residuals = false;
-    t0 = MPI_Wtime();
     ml->setup(A);
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Total Setup Time: %e\n", t0);
     ParVector sas_sol = ParVector(x);
+    MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
     iter = ml->solve(sas_sol, b);
     tfinal = MPI_Wtime() - t0;
@@ -333,6 +340,8 @@ if (rank == 0) printf("A global n %d, nnz %lu\n", A->global_num_rows, nnz);
 
     // TAPSmoothed Aggregation AMG
     if (rank == 0) printf("\n\nTAP Smoothed Aggregation Solver:\n");
+    MPI_Barrier(MPI_COMM_WORLD);
+    t0 = MPI_Wtime();
     ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation,
             Symmetric, SOR);
     form_hypre_weights(&ml->weights, A->local_num_rows);
@@ -341,26 +350,23 @@ if (rank == 0) printf("A global n %d, nnz %lu\n", A->global_num_rows, nnz);
     ml->track_times = false;
     ml->store_residuals = false;
     ml->tap_amg = 0;
-    t0 = MPI_Wtime();
     ml->setup(A);
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Total Setup Time: %e\n", t0);
     ParVector tap_sas_sol = ParVector(x);
+    MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
     iter = ml->solve(tap_sas_sol, b);
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Total Solve Time: %e\n", t0);
+    ml->print_comm_types();
     if (rank == 0) 
     {
         printf("Solved in %d iterations\n", iter);
     }
     delete ml;
-
-    HYPRE_IJMatrixDestroy(A_h_ij);
-    HYPRE_IJVectorDestroy(x_h_ij);
-    HYPRE_IJVectorDestroy(b_h_ij);
 
     delete A;
 

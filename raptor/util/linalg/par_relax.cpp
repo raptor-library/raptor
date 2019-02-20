@@ -196,20 +196,24 @@ void ssor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
         int num_sweeps, double omega, bool tap)
 {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
     CommPkg* comm;
-    if (tap)
+    if (tap && A->tap_comm)
     {
-        if (!A->tap_comm) 
-        {
-            A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
-                    A->on_proc_column_map);
-        }
-        comm = A->tap_comm;
+	comm = A->tap_comm;
     }
     else
     {
+	if (!A->tap_comm)
+	{
+            if (rank == 0) printf("Not using TAP Relaxation because no commpkg\n");
+	}
+
         if (!A->comm) 
         {
+	    if (rank == 0) printf("Creating commpkg, relaxation times will be inaccurate\n");
             A->comm = new ParComm(A->partition, A->off_proc_column_map,
                     A->on_proc_column_map);
         }
@@ -218,23 +222,28 @@ void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 
     jacobi_helper(A, x, b, tmp, num_sweeps, omega, comm);
 }
+
 void sor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
         int num_sweeps, double omega, bool tap)
 {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
     CommPkg* comm;
-    if (tap)
+    if (tap && A->tap_comm)
     {
-        if (!A->tap_comm) 
-        {
-            A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
-                    A->on_proc_column_map);
-        }
-        comm = A->tap_comm;
+	comm = A->tap_comm;
     }
     else
     {
+	if (!A->tap_comm)
+	{
+            if (rank == 0) printf("Not using TAP Relaxation because no commpkg\n");
+	}
+
         if (!A->comm) 
         {
+	    if (rank == 0) printf("Creating commpkg, relaxation times will be inaccurate\n");
             A->comm = new ParComm(A->partition, A->off_proc_column_map,
                     A->on_proc_column_map);
         }
@@ -243,23 +252,28 @@ void sor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 
     sor_helper(A, x, b, tmp, num_sweeps, omega, comm);
 }
+
 void ssor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
         int num_sweeps, double omega, bool tap)
 {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
     CommPkg* comm;
-    if (tap)
+    if (tap && A->tap_comm)
     {
-        if (!A->tap_comm) 
-        {
-            A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
-                    A->on_proc_column_map);
-        }
-        comm = A->tap_comm;
+	comm = A->tap_comm;
     }
     else
     {
+	if (!A->tap_comm)
+	{
+            if (rank == 0) printf("Not using TAP Relaxation because no commpkg\n");
+	}
+
         if (!A->comm) 
         {
+	    if (rank == 0) printf("Creating commpkg, relaxation times will be inaccurate\n");
             A->comm = new ParComm(A->partition, A->off_proc_column_map,
                     A->on_proc_column_map);
         }

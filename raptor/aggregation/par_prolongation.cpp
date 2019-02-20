@@ -66,7 +66,7 @@ ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, bool tap_com
 
     if (tap_comm)
     {
-        P->init_tap_communicators();
+        P->init_communicators(9283, RAPtor_MPI_COMM_WORLD);
     }
     else
     {

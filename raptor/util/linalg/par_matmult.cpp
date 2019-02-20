@@ -90,9 +90,9 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap)
 
     if (tap)
     {
-        comm_t comm_type = model_comm((NonContigData*)comm->send_data, 
+        comm_mat_type = model_comm((NonContigData*)comm->send_data, 
                 (CSRMatrix*) B->on_proc, (CSRMatrix*) B->off_proc);
-        if (comm_type == Standard) comm_pkg = comm;
+        if (comm_mat_type == Standard) comm_pkg = comm;
         else
         {
             if (!two_step || !three_step) 
@@ -100,7 +100,7 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap)
                 if (rank == 0) printf("Creating TAPComm Pkgs... SpGEMM timings will be inaccurate\n");
                 init_tap_communicators();
             }
-            if (comm_type == NAP2) comm_pkg = two_step;
+            if (comm_mat_type == NAP2) comm_pkg = two_step;
             else comm_pkg = three_step;
         }
     }
@@ -161,6 +161,7 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap)
     CommPkg* comm_pkg;
     if (!A->comm)
     {
+        if (rank == 0) printf("Creating ParComm Pkg... SpGEMM timing will be inaccurate\n");
         A->comm = new ParComm(A->partition, A->off_proc_column_map, A->on_proc_column_map);
     }
 
@@ -170,8 +171,8 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap)
     CSRMatrix* Ctmp = mult_T_partial(A);
     if (tap)
     {
-        comm_t comm_type = A->model_comm((ContigData*) A->comm->recv_data, Ctmp, NULL);
-        if (comm_type == Standard) comm_pkg = A->comm;
+        comm_mat_T_type = A->model_comm((ContigData*) A->comm->recv_data, Ctmp, NULL);
+        if (comm_mat_T_type == Standard) comm_pkg = A->comm;
         else
         {
             if (!A->two_step || !A->three_step)
@@ -179,7 +180,7 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap)
                 if (rank == 0) printf("Creating TAPComm Pkgs... SpGEMM timings will be inaccurate\n");
                 A->init_tap_communicators();
             }
-            if (comm_type == NAP2) comm_pkg = A->two_step;
+            if (comm_mat_T_type == NAP2) comm_pkg = A->two_step;
             else comm_pkg = A->three_step;
         }
     }
@@ -187,7 +188,6 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap)
     {
         comm_pkg = A->comm;
     }
-
 
     aligned_vector<char> send_buffer;
     comm_pkg->init_mat_comm_T(send_buffer, Ctmp->idx1, Ctmp->idx2, 

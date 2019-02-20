@@ -145,7 +145,26 @@ namespace raptor
                 levels[0]->b.resize(Af->global_num_rows, Af->local_num_rows);
                 levels[0]->tmp.resize(Af->global_num_rows, Af->local_num_rows);
 
-                levels[0]->A->init_communicators(9348);
+		if (tap_amg == 0)
+		{
+		    MPI_Comm mpi_comm = MPI_COMM_WORLD;
+		    int key = 9648;
+	            if (levels[0]->A->comm)
+		    {
+			mpi_comm = levels[0]->A->comm->mpi_comm;
+			key = levels[0]->A->comm->key;
+		    }
+                    levels[0]->A->init_communicators(key, mpi_comm);
+                }
+		else
+		{
+                    if (!levels[0]->A->comm)
+		    {
+			levels[0]->A->comm = new ParComm(levels[0]->A->partition, 
+					levels[0]->A->off_proc_column_map,
+					levels[0]->A->on_proc_column_map);
+		    }
+		}
 
                 if (weights == NULL)
                 {
@@ -370,6 +389,7 @@ namespace raptor
                 }
                 else
                 {
+
                     levels[level+1]->x.set_const_value(0.0);
                     
                     // Relax
@@ -545,6 +565,30 @@ namespace raptor
                     }
                 }
             }
+
+	    void print_comm_types()
+	    {
+		int rank;
+		RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+
+		if (rank == 0) 
+		{
+	            printf("Level\tA vec\tA mat\n");
+		    for (int i = 0; i < num_levels-1; i++)
+		    {
+			ParCSRMatrix* Al = levels[i]->A;
+			printf("%d\t%d\t%d\n", i, Al->comm_type, Al->comm_mat_type);
+		    }
+		    printf("\n");
+
+	            printf("Level\tP vec\tP mat\tP mat_T\n");
+		    for (int i = 0; i < num_levels-1; i++)
+		    {
+			ParCSRMatrix* Pl = levels[i]->P;
+			printf("%d\t%d\t%d\t%d\n", i, Pl->comm_type, Pl->comm_mat_type, Pl->comm_mat_T_type);
+		    }
+		}
+	    }
 
             void print_residuals(int iter)
             {

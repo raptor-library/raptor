@@ -344,6 +344,18 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
         S->tap_mat_comm->n_shared++;
     }
 
+    if (A->two_step)
+    {
+	S->two_step = A->two_step;
+	S->two_step->n_shared++;
+    }
+
+    if (A->three_step)
+    {
+	S->three_step = A->three_step;
+	S->three_step->n_shared++;
+    }
+
     return S;
 
 }
@@ -545,6 +557,18 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg)
     {
         S->tap_mat_comm = A->tap_mat_comm;
         S->tap_mat_comm->n_shared++;
+    }
+
+    if (A->two_step)
+    {
+	S->two_step = A->two_step;
+	S->two_step->n_shared++;
+    }
+
+    if (A->three_step)
+    {
+	S->three_step = A->three_step;
+	S->three_step->n_shared++;
     }
 
     return S;

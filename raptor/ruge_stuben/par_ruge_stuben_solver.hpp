@@ -148,15 +148,6 @@ namespace raptor
             levels[level_ctr]->tmp.resize(A->global_num_rows, A->local_num_rows);
             levels[level_ctr]->P = NULL;
 
-            //A->comm = new ParComm(A->partition, A->off_proc_column_map,
-            //        A->on_proc_column_map, levels[level_ctr-1]->A->comm->key,
-            //        levels[level_ctr-1]->A->comm->mpi_comm);
-            //if (tap_amg >= 0 && tap_amg <= level_ctr)
-            //{
-            //    levels[level_ctr]->A->init_tap_communicators(
-            //            levels[level_ctr-1]->A->comm->key, RAPtor_MPI_COMM_WORLD);
-            //}
-
             if (tap_amg <= level_ctr)
             {
                 A->init_communicators(levels[level_ctr-1]->A->comm->key,
