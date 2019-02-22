@@ -88,7 +88,7 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap)
                 on_proc_column_map);
     }
 
-    if (tap)
+    if (tap && comm_type != Standard)
     {
         comm_mat_type = model_comm((NonContigData*)comm->send_data, 
                 (CSRMatrix*) B->on_proc, (CSRMatrix*) B->off_proc);
@@ -169,10 +169,10 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap)
     ParCSRMatrix* C = init_matrix(this, A);;
 
     CSRMatrix* Ctmp = mult_T_partial(A);
-    if (tap)
+    if (tap && A->comm_type != Standard)
     {
-        comm_mat_T_type = A->model_comm((ContigData*) A->comm->recv_data, Ctmp, NULL);
-        if (comm_mat_T_type == Standard) comm_pkg = A->comm;
+        comm_mat_type = A->model_comm((ContigData*) A->comm->recv_data, Ctmp, NULL);
+        if (comm_mat_type == Standard) comm_pkg = A->comm;
         else
         {
             if (!A->two_step || !A->three_step)
@@ -180,7 +180,7 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap)
                 if (rank == 0) printf("Creating TAPComm Pkgs... SpGEMM timings will be inaccurate\n");
                 A->init_tap_communicators();
             }
-            if (comm_mat_T_type == NAP2) comm_pkg = A->two_step;
+            if (comm_mat_type == NAP2) comm_pkg = A->two_step;
             else comm_pkg = A->three_step;
         }
     }

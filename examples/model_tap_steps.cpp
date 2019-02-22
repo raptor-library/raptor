@@ -11,7 +11,7 @@
 #include "raptor.hpp"
 
 
-void time_AP(ParCSRMatrix* A, ParCSRMatrix* P, int n_tests, bool tap, const char* name)
+void time_mult(ParCSRMatrix* A, ParCSRMatrix* P, int n_tests, bool tap, const char* name)
 {
     ParCSRMatrix* AP = A->mult(P, tap);
     delete AP;
@@ -25,7 +25,7 @@ void time_AP(ParCSRMatrix* A, ParCSRMatrix* P, int n_tests, bool tap, const char
     }
 }
 
-void time_PTAP(ParCSRMatrix* AP, ParCSRMatrix* P, int n_tests, bool tap, const char* name)
+void time_mult_T(ParCSRMatrix* AP, ParCSRMatrix* P, int n_tests, bool tap, const char* name)
 {
     ParCSRMatrix* PTAP = AP->mult_T(P, tap);
     delete PTAP;
@@ -39,7 +39,7 @@ void time_PTAP(ParCSRMatrix* AP, ParCSRMatrix* P, int n_tests, bool tap, const c
     }
 }
 
-void time_Ax(ParCSRMatrix* A, ParVector& x, ParVector& b, int n_tests, bool tap, const char* name)
+void time_mult(ParCSRMatrix* A, ParVector& x, ParVector& b, int n_tests, bool tap, const char* name)
 {
     int n_iter = 100;
     A->mult(x, b, tap);
@@ -49,6 +49,23 @@ void time_Ax(ParCSRMatrix* A, ParVector& x, ParVector& b, int n_tests, bool tap,
         for (int iter = 0; iter < n_iter; iter++)
         {
             A->mult(x, b, tap);
+        }
+        finalize_profile();
+        average_profile(n_iter);
+        print_profile(name);
+    }
+}
+
+void time_mult_T(ParCSRMatrix* A, ParVector& x, ParVector& b, int n_tests, bool tap, const char* name)
+{
+    int n_iter = 100;
+    A->mult_T(x, b, tap);
+    for (int test = 0; test < n_tests; test++)
+    {
+        init_profile();
+        for (int iter = 0; iter < n_iter; iter++)
+        {
+            A->mult_T(x, b, tap);
         }
         finalize_profile();
         average_profile(n_iter);
@@ -94,6 +111,7 @@ void time_steps(ParMultilevel* ml)
         ParCSRMatrix* Pl = level->P;
         ParVector& xl = level->x;
         ParVector& bl = level->b;
+        ParVector& xlp1 = ml->levels[i+1]->x;
 
         /*********************************
          * Profile Time to AP
@@ -102,11 +120,11 @@ void time_steps(ParMultilevel* ml)
         Al->print_mult(Pl);
         tap_two_comm = Al->tap_mat_comm;
         tap_three_comm = Al->tap_comm;
-        time_AP(Al, Pl, n_tests, false, "Standard");
+        time_mult(Al, Pl, n_tests, false, "Standard");
         Al->tap_mat_comm = tap_two_comm;
-        time_AP(Al, Pl, n_tests, true, "Two-Step");
+        time_mult(Al, Pl, n_tests, true, "Two-Step");
         Al->tap_mat_comm = tap_three_comm;
-        time_AP(Al, Pl, n_tests, true, "Three-Step");
+        time_mult(Al, Pl, n_tests, true, "Three-Step");
         Al->tap_mat_comm = tap_two_comm;
         
         /*********************************
@@ -118,11 +136,11 @@ void time_steps(ParMultilevel* ml)
         AP->print_mult_T(P_csc);
         tap_two_comm = Pl->tap_mat_comm;
         tap_three_comm = Pl->tap_comm;
-        time_PTAP(AP, Pl, n_tests, false, "Standard");
+        time_mult_T(AP, Pl, n_tests, false, "Standard");
         Pl->tap_mat_comm = tap_two_comm;
-        time_PTAP(AP, Pl, n_tests, true, "Two-Step");
+        time_mult_T(AP, Pl, n_tests, true, "Two-Step");
         Pl->tap_mat_comm = tap_three_comm;
-        time_PTAP(AP, Pl, n_tests, true, "Three-Step");
+        time_mult_T(AP, Pl, n_tests, true, "Three-Step");
         Pl->tap_mat_comm = tap_two_comm;
         delete P_csc;
         delete AP;
@@ -134,12 +152,42 @@ void time_steps(ParMultilevel* ml)
         Al->print_mult();
         tap_two_comm = Al->tap_mat_comm;
         tap_three_comm = Al->tap_comm;
-        time_Ax(Al, xl, bl, n_tests, false, "Standard");
+        time_mult(Al, xl, bl, n_tests, false, "Standard");
         Al->tap_comm = tap_two_comm;
-        time_Ax(Al, xl, bl, n_tests, true, "Two-Step");
+        time_mult(Al, xl, bl, n_tests, true, "Two-Step");
         Al->tap_comm = tap_three_comm;
-        time_Ax(Al, xl, bl, n_tests, true, "Three-Step");
+        time_mult(Al, xl, bl, n_tests, true, "Three-Step");
         Al->tap_comm = tap_three_comm;
+
+        /*********************************
+         * Profile Time P^T*r
+         *********************************/
+        if (rank == 0) printf("P^Tr\n");
+        Pl->print_mult_T();
+        tap_two_comm = Pl->tap_mat_comm;
+        tap_three_comm = Pl->tap_comm;
+        time_mult_T(Pl, xl, xlp1, n_tests, false, "Standard");
+        Pl->tap_comm = tap_two_comm;
+        time_mult_T(Pl, xl, xlp1, n_tests, true, "Two-Step");
+        Pl->tap_comm = tap_three_comm;
+        time_mult_T(Pl, xl, xlp1, n_tests, true, "Three-Step");
+        Pl->tap_comm = tap_three_comm;
+
+
+        /*********************************
+         * Profile Time to Residal
+         *********************************/
+        if (rank == 0) printf("Pe\n");
+        Pl->print_mult();
+        tap_two_comm = Pl->tap_mat_comm;
+        tap_three_comm = Pl->tap_comm;
+        time_mult(Pl, xlp1, bl, n_tests, false, "Standard");
+        Pl->tap_comm = tap_two_comm;
+        time_mult(Pl, xlp1, bl, n_tests, true, "Two-Step");
+        Pl->tap_comm = tap_three_comm;
+        time_mult(Pl, xlp1, bl, n_tests, true, "Three-Step");
+        Pl->tap_comm = tap_three_comm;
+
     }
 }
 

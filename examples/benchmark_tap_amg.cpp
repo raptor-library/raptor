@@ -166,8 +166,6 @@ int main(int argc, char* argv[])
     }
     if (system != 2)
     {
-        A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
-                A->on_proc_column_map);
         x = ParVector(A->global_num_cols, A->on_proc_num_cols);
         b = ParVector(A->global_num_rows, A->local_num_rows);
         x.set_rand_values();
@@ -175,10 +173,10 @@ int main(int argc, char* argv[])
         x.set_const_value(0.0);
     }
 
-long nnz;
-long local_nnz = A->local_nnz;
-MPI_Reduce(&local_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-if (rank == 0) printf("A global n %d, nnz %lu\n", A->global_num_rows, nnz);
+    long nnz;
+    long local_nnz = A->local_nnz;
+    MPI_Reduce(&local_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("A global n %d, nnz %lu\n", A->global_num_rows, nnz);
 
     // Create Hypre system
     HYPRE_IJMatrix A_h_ij = convert(A);
@@ -235,6 +233,9 @@ if (rank == 0) printf("A global n %d, nnz %lu\n", A->global_num_rows, nnz);
     HYPRE_IJVectorDestroy(x_h_ij);
     HYPRE_IJVectorDestroy(b_h_ij);
 
+    A->init_tap_communicators();
+if (rank == 0) printf("%d, %d, %d, %d, %d\n", A->comm->n_shared, A->tap_comm->n_shared,
+        A->tap_mat_comm->n_shared, A->two_step->n_shared, A->three_step->n_shared);
 
     // Warm Up
     ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, SOR);
@@ -258,6 +259,7 @@ if (rank == 0) printf("A global n %d, nnz %lu\n", A->global_num_rows, nnz);
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Total Setup Time: %e\n", t0);
+
     ParVector rss_sol = ParVector(x);
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
@@ -270,6 +272,8 @@ if (rank == 0) printf("A global n %d, nnz %lu\n", A->global_num_rows, nnz);
         printf("Solved in %d iterations\n", iter);
     }
     delete ml;
+if (rank == 0) printf("2. %d, %d, %d, %d, %d\n", A->comm->n_shared, A->tap_comm->n_shared,
+        A->tap_mat_comm->n_shared, A->two_step->n_shared, A->three_step->n_shared);
 
     // TAP Ruge-Stuben AMG
     if (rank == 0) printf("\n\nTAP Ruge Stuben Solver: \n");
@@ -287,6 +291,10 @@ if (rank == 0) printf("A global n %d, nnz %lu\n", A->global_num_rows, nnz);
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Total Setup Time: %e\n", t0);
+if (rank == 0) printf("3. %d, %d, %d, %d, %d\n", A->comm->n_shared, A->tap_comm->n_shared,
+        A->tap_mat_comm->n_shared, A->two_step->n_shared, A->three_step->n_shared);
+if (rank == 0) if (ml->levels[0]->A->tap_comm == NULL) printf("NULL tap_comm\n");
+
     ParVector tap_rss_sol = ParVector(x);
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
@@ -299,9 +307,11 @@ if (rank == 0) printf("A global n %d, nnz %lu\n", A->global_num_rows, nnz);
     {
         printf("Solved in %d iterations\n", iter);
     }
+if (rank == 0) printf("4. %d, %d, %d, %d, %d\n", A->comm->n_shared, A->tap_comm->n_shared,
+        A->tap_mat_comm->n_shared, A->two_step->n_shared, A->three_step->n_shared);
+if (rank == 0) if (ml->levels[0]->A->tap_comm == NULL) printf("NULL tap_comm\n");
     delete ml;
-
-
+/*
     // Warm Up
     ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation,
             Symmetric, SOR);
@@ -325,6 +335,7 @@ if (rank == 0) printf("A global n %d, nnz %lu\n", A->global_num_rows, nnz);
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Total Setup Time: %e\n", t0);
+
     ParVector sas_sol = ParVector(x);
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
@@ -354,6 +365,7 @@ if (rank == 0) printf("A global n %d, nnz %lu\n", A->global_num_rows, nnz);
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Total Setup Time: %e\n", t0);
+
     ParVector tap_sas_sol = ParVector(x);
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
@@ -367,7 +379,7 @@ if (rank == 0) printf("A global n %d, nnz %lu\n", A->global_num_rows, nnz);
         printf("Solved in %d iterations\n", iter);
     }
     delete ml;
-
+*/
     delete A;
 
     MPI_Finalize();

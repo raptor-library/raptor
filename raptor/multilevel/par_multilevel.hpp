@@ -145,6 +145,9 @@ namespace raptor
                 levels[0]->b.resize(Af->global_num_rows, Af->local_num_rows);
                 levels[0]->tmp.resize(Af->global_num_rows, Af->local_num_rows);
 
+
+if (rank == 0) printf("%d, %d, %d, %d, %d\n", Af->comm->n_shared, Af->tap_comm->n_shared,
+        Af->tap_mat_comm->n_shared, Af->two_step->n_shared, Af->three_step->n_shared);
 		if (tap_amg == 0)
 		{
 		    MPI_Comm mpi_comm = MPI_COMM_WORLD;
@@ -155,6 +158,8 @@ namespace raptor
 			key = levels[0]->A->comm->key;
 		    }
                     levels[0]->A->init_communicators(key, mpi_comm);
+if (rank == 0) if (levels[0]->A->tap_comm == NULL) printf("Null here also\n");
+else printf("%d\n", levels[0]->A->tap_comm->n_shared);
                 }
 		else
 		{
@@ -165,6 +170,8 @@ namespace raptor
 					levels[0]->A->on_proc_column_map);
 		    }
 		}
+if (rank == 0) printf("CommType %d\n", levels[0]->A->comm_type);
+if (levels[0]->A->tap_comm == NULL) printf("NULL TAP COMM\n");
 
                 if (weights == NULL)
                 {
@@ -479,7 +486,7 @@ namespace raptor
 
                 // Iterate until convergence or max iterations
                 ParVector resid(rhs.global_n, rhs.local_n);
-                levels[0]->A->residual(sol, rhs, resid);
+                levels[0]->A->residual(sol, rhs, resid, tap_amg == 0);
                 if (fabs(b_norm) > zero_tol)
                 {
                     r_norm = resid.norm(2) / b_norm;
@@ -513,7 +520,7 @@ namespace raptor
                     }
 
                     iter++;
-                    levels[0]->A->residual(sol, rhs, resid);
+                    levels[0]->A->residual(sol, rhs, resid, tap_amg == 0);
                     if (fabs(b_norm) > zero_tol)
                     {
                         r_norm = resid.norm(2) / b_norm;
@@ -581,11 +588,11 @@ namespace raptor
 		    }
 		    printf("\n");
 
-	            printf("Level\tP vec\tP mat\tP mat_T\n");
+	            printf("Level\tP vec\tP mat\n");
 		    for (int i = 0; i < num_levels-1; i++)
 		    {
 			ParCSRMatrix* Pl = levels[i]->P;
-			printf("%d\t%d\t%d\t%d\n", i, Pl->comm_type, Pl->comm_mat_type, Pl->comm_mat_T_type);
+			printf("%d\t%d\t%d\n", i, Pl->comm_type, Pl->comm_mat_type);
 		    }
 		}
 	    }
@@ -645,7 +652,7 @@ namespace raptor
             {
                 print_times(solve_times, "Solve");
             }
-
+ 
             aligned_vector<double>& get_residuals()
             {
                 return residuals;

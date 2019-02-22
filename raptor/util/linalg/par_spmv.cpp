@@ -35,9 +35,9 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap)
     }   
     else
     {
-        if (tap)
+        if (comm_type != Standard)
         {
-            if (rank == 0) printf("Not using TAPComm because no communicator exists\n");
+            if (rank == 0) printf("Not using TAPComm mult because no communicator exists\n");
         }
 
         if (!comm)
@@ -87,9 +87,9 @@ void ParMatrix::mult_append(ParVector& x, ParVector& b, bool tap)
     }
     else
     {
-        if (tap)
+        if (comm_type != Standard)
         {
-            if (rank == 0) printf("Not using TAPComm because no communicator exists\n");
+            if (rank == 0) printf("Not using TAPComm mult_append because no communicator exists\n");
         }
 
         if (!comm)
@@ -140,9 +140,9 @@ void ParMatrix::mult_T(ParVector& x, ParVector& b, bool tap)
     }
     else
     {
-        if (tap)
+        if (comm_type != Standard)
         {
-            if (rank == 0) printf("Not using TAPComm because no communicator exists\n");
+            if (rank == 0) printf("Not using TAPComm mult_T because no communicator exists\n");
         }
 
         if (!comm)
@@ -188,9 +188,10 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap)
     }
     else
     {
-        if (tap)
+        if (comm_type != Standard)
         {
-            if (rank == 0) printf("Not using TAPComm because no communicator exists\n");
+            if (rank == 0) printf("Not using TAPComm residual because no communicator exists\n");
+if (rank == 0) printf("%d, %d, %d, %d\n", tap_comm == NULL, tap_mat_comm == NULL, two_step == NULL, three_step == NULL);
         }
 
         if (!comm)

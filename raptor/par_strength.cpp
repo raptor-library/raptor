@@ -326,35 +326,11 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
     S->local_row_map = A->get_local_row_map();
     S->off_proc_column_map = A->get_off_proc_column_map();
 
-    if (A->comm)
-    {
-        S->comm = A->comm;
-        S->comm->n_shared++;
-    }
-
-    if (A->tap_comm)
-    {
-        S->tap_comm = A->tap_comm;
-        S->tap_comm->n_shared++;
-    }
-
-    if (A->tap_mat_comm)
-    {
-        S->tap_mat_comm = A->tap_mat_comm;
-        S->tap_mat_comm->n_shared++;
-    }
-
-    if (A->two_step)
-    {
-	S->two_step = A->two_step;
-	S->two_step->n_shared++;
-    }
-
-    if (A->three_step)
-    {
-	S->three_step = A->three_step;
-	S->three_step->n_shared++;
-    }
+    S->set_comm(A->comm);
+    S->set_tap_comm(A->tap_comm);
+    S->set_tap_mat_comm(A->tap_mat_comm);
+    S->set_two_step(A->two_step);
+    S->set_three_step(A->three_step);
 
     return S;
 
@@ -541,35 +517,11 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg)
     S->local_row_map = A->get_local_row_map();
     S->off_proc_column_map = A->get_off_proc_column_map();
 
-    if (A->comm)
-    {
-        S->comm = A->comm;
-        S->comm->n_shared++;
-    }
-
-    if (A->tap_comm)
-    {
-        S->tap_comm = A->tap_comm;
-        S->tap_comm->n_shared++;
-    }
-
-    if (A->tap_mat_comm)
-    {
-        S->tap_mat_comm = A->tap_mat_comm;
-        S->tap_mat_comm->n_shared++;
-    }
-
-    if (A->two_step)
-    {
-	S->two_step = A->two_step;
-	S->two_step->n_shared++;
-    }
-
-    if (A->three_step)
-    {
-	S->three_step = A->three_step;
-	S->three_step->n_shared++;
-    }
+    S->set_comm(A->comm);
+    S->set_tap_comm(A->tap_comm);
+    S->set_tap_mat_comm(A->tap_mat_comm);
+    S->set_two_step(A->two_step);
+    S->set_three_step(A->three_step);
 
     return S;
 }

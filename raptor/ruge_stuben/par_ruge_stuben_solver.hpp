@@ -107,7 +107,7 @@ namespace raptor
             {
                 case Direct:
                     P = direct_interpolation(A, S, states, off_proc_states, 
-                            tap_level);
+                           tap_level);
                     break;
                 case ModClassical:
                     P = mod_classical_interpolation(A, S, states, off_proc_states, 

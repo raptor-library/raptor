@@ -73,11 +73,11 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
     /************************************
      **** Test Anisotropic Diffusion 
      ***********************************/
-    const char* mesh_file = "/home/bienz2/shared/mfem/data/star-surf.mesh";
+    std::string mesh_file = std::string(MFEM_MESH_DIR) + "/star-surf.mesh";
     int order = 3;
     int seq_refines = 4;
     int par_refines = 0;
-    A = mfem_grad_div(x, b, mesh_file, order, seq_refines, par_refines);
+    A = mfem_grad_div(x, b, mesh_file.c_str(), order, seq_refines, par_refines);
 
     ml = new ParRugeStubenSolver(strong_threshold, PMIS, Extended, Classical, SOR);
     form_hypre_weights(&ml->weights, A->local_num_rows);

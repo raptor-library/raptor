@@ -400,7 +400,7 @@ double model_t(int n, int s, int node_s)
 }
 
 comm_t model(aligned_vector<int>& msg_data, aligned_vector<int>& node_s, 
-        const Topology* topology)
+        const Topology* topology, bool close = false)
 {
     for (int i = 0; i < topology->num_nodes; i++)
     {
@@ -435,11 +435,9 @@ comm_t model(aligned_vector<int>& msg_data, aligned_vector<int>& node_s,
     int s_node2node = msg_data[5];
     int s_nodewise = msg_data[6];
 
-    double local_t = model_local_t(topology->PPN - 1, s_node2node);
-
     double standard_t = model_t(msg_data[0], s_procwise, s_nodewise);
     double two_t = model_t(msg_data[1], s_procwise, s_nodewise)
-        + model_local_t(topology->PPN-1, s_proc2node);
+        + model_local_t(topology->PPN-1, s_procwise);
     double three_t = model_t(((msg_data[2]-1) / topology->PPN) + 1, 
             s_node2node, s_nodewise) 
         + 2*model_local_t(topology->PPN-1, s_node2node);
@@ -447,7 +445,16 @@ comm_t model(aligned_vector<int>& msg_data, aligned_vector<int>& node_s,
     if (standard_t < three_t) // Not ThreeStep
     {
         if (standard_t < two_t)
+        {
+            if (close)
+            {
+                if (two_t < three_t && (two_t - standard_t) / standard_t < 0.05)
+                    return NAP2;
+                else if (three_t < two_t && (three_t - standard_t) / standard_t < 0.05)
+                    return NAP3;
+            }
             return Standard; // Standard
+        }
         else 
             return NAP2; // Two-Step
     }
@@ -538,7 +545,7 @@ comm_t ParMatrix::model_comm(ContigData* comm_data, CSRMatrix* B_on, CSRMatrix* 
         {
             idx = j;
             size += (B_on->idx1[idx+1] - B_on->idx1[idx]);
-            if (B_off) size += (B_off->idx1[idx+1] - B_off->idx1[idx]);
+            if (B_off) size += (B_on->idx1[idx+1] - B_on->idx1[idx]);
         }
         size = size * (2*sizeof(int) + sizeof(double));
 
@@ -548,7 +555,7 @@ comm_t ParMatrix::model_comm(ContigData* comm_data, CSRMatrix* B_on, CSRMatrix* 
     msg_data[0] = comm_data->num_msgs;
     msg_data[3] = comm_data->size_msgs;
 
-    return model(msg_data, node_size_msgs, partition->topology);
+    return model(msg_data, node_size_msgs, partition->topology, true);
 }
 
 

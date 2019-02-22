@@ -319,55 +319,11 @@ void ParMatrix::default_copy_helper(ParMatrix* A)
     off_proc_num_cols = off_proc_column_map.size();
     on_proc_num_cols = on_proc_column_map.size();
 
-    if (A->comm)
-    {
-        comm = A->comm;
-        comm->n_shared++;
-    }
-    else
-    {
-        comm = NULL;
-    }
-
-    if (A->two_step)
-    {
-        two_step = A->two_step;
-        two_step->n_shared++;
-    }
-    else
-    {
-        two_step = NULL;
-    }
-
-    if (A->three_step)
-    {
-        three_step = A->three_step;
-        three_step->n_shared++;
-    }
-    else
-    {
-        three_step = NULL;
-    }
-
-    if (A->tap_comm)
-    {
-        tap_comm = A->tap_comm;
-        tap_comm->n_shared++;
-    }
-    else
-    {
-        tap_comm = NULL;
-    }
-
-    if (A->tap_mat_comm)
-    {
-        tap_mat_comm = A->tap_mat_comm;
-        tap_mat_comm->n_shared++;
-    }
-    else
-    {
-        tap_mat_comm = NULL;
-    }
+    set_comm(A->comm);
+    set_tap_comm(A->tap_comm);
+    set_tap_mat_comm(A->tap_mat_comm);
+    set_two_step(A->two_step);
+    set_three_step(A->three_step);
 }
 
 void ParMatrix::copy_helper(ParCOOMatrix* A)
@@ -826,9 +782,6 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
 
 
 
-
-
-
 // Use model to determine cheapest methods for communicating vectors/matrices
 //
 // Always create normal ParComm (TODO - only necessary for some methods e.g.
@@ -856,46 +809,360 @@ void ParMatrix::init_communicators(int key, RAPtor_MPI_Comm mpi_comm)
     aligned_vector<int> on_node_to_off_proc;
     aligned_vector<int> off_node_to_off_proc;
 
-    partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
-    partition->split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
-               on_node_column_map, on_node_col_to_proc, on_node_to_off_proc,
-               off_node_column_map, off_node_col_to_proc, off_node_to_off_proc);
+   // partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
+   // partition->split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
+   //            on_node_column_map, on_node_col_to_proc, on_node_to_off_proc,
+   //            off_node_column_map, off_node_col_to_proc, off_node_to_off_proc);
 
     // Determine which communicator type to use
-    comm_type = model_comm(off_proc_col_to_proc);
+   // comm_type = model_comm(off_proc_col_to_proc);
 
     // If using standard comm type, make only standard comm and return
     if (comm_type == Standard)
     {
         if (!comm) comm = new ParComm(partition, off_proc_column_map,
                 on_proc_column_map, key, mpi_comm);
-        if (tap_comm) delete_comm(tap_comm);
-        if (tap_mat_comm) delete_comm(tap_mat_comm);
-        if (two_step) delete_comm(two_step);
-        if (three_step) delete_comm(three_step);
+        delete_comm(tap_comm);
+        delete_comm(tap_mat_comm);
+        delete_comm(two_step);
+        delete_comm(three_step);
+if (rank == 0) if (this->tap_comm == NULL) printf("NULL tap comm\n");
         return;
     }
 
     // If using TAP comm of any type, make all three communicators (TODO - make
     // this more efficient, only making necessary communicators)
-    init_tap_communicators(off_proc_col_to_proc, on_node_column_map, on_node_col_to_proc,
+/*    init_tap_communicators(off_proc_col_to_proc, on_node_column_map, on_node_col_to_proc,
             on_node_to_off_proc, off_node_column_map, off_node_col_to_proc,
             off_node_to_off_proc, mpi_comm);
-
-    // TODO -- can reuse data from above method ^^^
-    if (!comm)
-    {
-	comm = new ParComm(partition, off_proc_column_map, 
-            on_proc_column_map, key, mpi_comm);
-    }
 
     // Change tap_comm method, if necessary (default was ThreeStep)
     if (comm_type == NAP2)
     {
-        tap_comm->n_shared--;
-        tap_comm = two_step;
-        tap_comm->n_shared++;
+        delete_comm(tap_comm);
+        set_tap_comm(two_step);
     }
+
+    if (!comm)
+    {
+//        comm = new ParComm(partition, off_proc_column_map,
+//                on_proc_column_map, key, mpi_comm);
+        init_par_communicator(off_proc_col_to_proc, key, mpi_comm);
+    }
+*/
+}
+
+
+void ParMatrix::init_par_communicator(aligned_vector<int>& off_proc_col_to_proc,
+        int key, RAPtor_MPI_Comm mpi_comm)
+{
+    // If communicator already exists, return
+    if (comm != NULL) return;
+ 
+    // If no tap communicator, create ParComm from constructor
+    if (!tap_comm) 
+    {
+        comm = new ParComm(partition, off_proc_column_map,
+                on_proc_column_map, key, mpi_comm);
+        return;
+    }
+
+    /************************************
+     * Use TAPComm* 'tap_comm' to create standard ParComm 'comm'
+     ***********************************/
+    int rank, num_procs;
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
+
+    int start, end, proc, global_proc;
+    int idx, idx_start, idx_end;
+    int proc_start, proc_end;
+    int rank_node = partition->topology->get_node(rank);
+    int count, pos, size;
+    int off_proc_num_cols = off_proc_column_map.size();
+    RAPtor_MPI_Status recv_status;
+
+    DuplicateData* send_data;
+    NonContigData* recv_data;
+    CommData* idx_data;
+
+    aligned_vector<int> sendbuf;
+    aligned_vector<int> sendptr;
+    aligned_vector<int> recvbuf;
+    aligned_vector<int> recv_idx_ptr;
+    aligned_vector<int> recv_idx_procs;
+
+    // Store destination processes (for global_recv to send)
+    idx_data = tap_comm->local_R_par_comm->send_data;
+    aligned_vector<int> idx_to_proc;
+    if (idx_data->size_msgs)
+        idx_to_proc.resize(idx_data->size_msgs);
+    for (int i = 0; i < idx_data->num_msgs; i++)
+    {
+        proc = idx_data->procs[i];
+        global_proc = partition->topology->get_global_proc(rank_node, proc);
+        start = idx_data->indptr[i];
+        end = idx_data->indptr[i+1];
+        for (int j = start; j < end; j++)
+            idx_to_proc[j] = global_proc;
+    }
+
+    // Fill sendbuf containing procs to send each idx, and sendptr
+    send_data = (DuplicateData*) tap_comm->global_par_comm->recv_data;
+    recv_data = tap_comm->global_par_comm->send_data;
+    sendptr.resize(send_data->num_msgs + 1);
+    sendptr[0] = 0;
+    for (int i = 0; i < send_data->num_msgs; i++)
+    {
+        start = send_data->indptr[i];
+        end = send_data->indptr[i+1];
+        for (int j = start; j < end; j++)   
+        {
+            idx_start = send_data->indptr_T[j];
+            idx_end = send_data->indptr_T[j+1];
+            sendbuf.push_back(idx_end - idx_start);
+            for (int k = idx_start; k < idx_end; k++)
+            {
+                idx = send_data->indices[k];
+                sendbuf.push_back(idx_to_proc[idx]);
+            }
+        }
+        sendptr[i+1] = sendbuf.size();
+    }
+
+
+    // Send procs associated with each idx
+    for (int i = 0; i < send_data->num_msgs; i++)
+    {
+        proc = send_data->procs[i];
+        start = sendptr[i];
+        end = sendptr[i+1];
+        RAPtor_MPI_Isend(&(sendbuf[start]), end - start, MPI_INT, proc, 
+            tap_comm->global_par_comm->key, tap_comm->global_par_comm->mpi_comm, 
+            &(send_data->requests[i]));
+    }
+
+    // Recv procs associated with each idx
+    recv_idx_ptr.resize(recv_data->size_msgs+1);
+    recv_idx_ptr[0] = 0;
+    for (int i = 0; i < recv_data->num_msgs; i++)
+    {
+        proc = recv_data->procs[i];
+        start = recv_data->indptr[i];
+        end = recv_data->indptr[i+1];
+        RAPtor_MPI_Probe(proc, tap_comm->global_par_comm->key, 
+               tap_comm->global_par_comm->mpi_comm, &recv_status);
+        MPI_Get_count(&recv_status, MPI_INT, &count);
+        if (count > recvbuf.size()) recvbuf.resize(count);
+        MPI_Recv(recvbuf.data(), count, MPI_INT, proc, 
+               tap_comm->global_par_comm->key,
+               tap_comm->global_par_comm->mpi_comm, &recv_status);
+        count = 0;
+        for (int j = start; j < end; j++)
+        {
+            size = recvbuf[count++];
+            recv_idx_ptr[j+1] = recv_idx_ptr[j] + size;
+            for (int k = 0; k < size; k++)
+            {
+                recv_idx_procs.push_back(recvbuf[count++]);
+            }
+        }
+    }
+
+    // Wait for sends to complete
+    if (send_data->num_msgs)
+    {
+        RAPtor_MPI_Waitall(send_data->num_msgs, send_data->requests.data(),
+                RAPtor_MPI_STATUSES_IGNORE);
+    }
+
+    // If three-step, repeat process with local_S_par_comm
+    if (tap_comm->local_S_par_comm)
+    {
+        send_data = (DuplicateData*) tap_comm->local_S_par_comm->recv_data;
+        recv_data = tap_comm->local_S_par_comm->send_data;
+        sendbuf.clear();
+        sendptr.resize(send_data->num_msgs+1);
+        sendptr[0] = 0;
+        for (int i = 0; i < send_data->num_msgs; i++)
+        {
+            start = send_data->indptr[i];
+            end = send_data->indptr[i+1];
+            for (int j = start; j < end; j++)
+            {
+                idx_start = send_data->indptr_T[j];
+                idx_end = send_data->indptr_T[j+1];
+                pos = sendbuf.size();
+                sendbuf.push_back(0);
+                for (int k = idx_start; k < idx_end; k++)
+                {
+                    idx = send_data->indices[k];
+                    proc_start = recv_idx_ptr[idx];
+                    proc_end = recv_idx_ptr[idx+1];
+                    sendbuf[pos] += (proc_end - proc_start);
+                    for (int l = proc_start; l < proc_end; l++)
+                    {
+                        sendbuf.push_back(recv_idx_procs[l]);
+                    }
+                }
+            }
+            sendptr[i+1] = sendbuf.size();
+        }
+        for (int i = 0; i < send_data->num_msgs; i++)
+        {
+            proc = send_data->procs[i];
+            start = sendptr[i];
+            end = sendptr[i+1];
+            RAPtor_MPI_Isend(&sendbuf[start], end - start, MPI_INT, proc,
+                tap_comm->local_S_par_comm->key, 
+                tap_comm->local_S_par_comm->mpi_comm, &(send_data->requests[i]));
+        }
+        
+        recv_idx_procs.clear();
+        recv_idx_ptr.resize(recv_data->size_msgs+1);
+        recv_idx_ptr[0] = 0;
+        for (int i = 0; i < recv_data->num_msgs; i++)
+        {
+            proc = recv_data->procs[i];
+            start = recv_data->indptr[i];
+            end = recv_data->indptr[i+1];
+            RAPtor_MPI_Probe(proc, tap_comm->local_S_par_comm->key, 
+                    tap_comm->local_S_par_comm->mpi_comm, &recv_status);
+            MPI_Get_count(&recv_status, MPI_INT, &count);
+            if (count > recvbuf.size()) recvbuf.resize(count);
+            MPI_Recv(recvbuf.data(), count, MPI_INT, proc, 
+                   tap_comm->local_S_par_comm->key,
+                   tap_comm->local_S_par_comm->mpi_comm, &recv_status);
+            count = 0;
+            for (int j = start; j < end; j++)
+            {
+                size = recvbuf[count++];
+                recv_idx_ptr[j+1] = recv_idx_ptr[j] + size;
+                for (int k = 0; k < size; k++)
+                {
+                    recv_idx_procs.push_back(recvbuf[count++]);
+                }
+            }
+        }
+
+        if (send_data->num_msgs)
+        {
+            RAPtor_MPI_Waitall(send_data->num_msgs, send_data->requests.data(),
+                    RAPtor_MPI_STATUSES_IGNORE);
+        }
+    }
+
+    // Now we hold two lists:
+    //    recv_idx_procs - processes to which must send idx
+    //    recv_idx_ptr   - ptr for each idx to position in recv_idx_procs
+    
+    // 1.) Initialize send and recv data
+    comm = new ParComm(partition, key, mpi_comm);
+       
+    // 2.) Form comm->recv_data
+    if (off_proc_num_cols)
+    {
+        int prev_proc = off_proc_col_to_proc[0];
+        int prev_idx = 0;
+        for (int i = 1; i < off_proc_num_cols; i++)
+        {
+            proc = off_proc_col_to_proc[i];
+            if (proc != prev_proc)
+            {
+                comm->recv_data->add_msg(prev_proc, i-prev_idx);
+                prev_proc = proc;
+                prev_idx = i;
+            }
+        }
+        comm->recv_data->add_msg(prev_proc, off_proc_num_cols - prev_idx);
+        comm->recv_data->finalize();
+    }
+    
+    aligned_vector<int> procs(num_procs, -1);
+    aligned_vector<int> sizes;
+    comm->send_data->indptr.push_back(0);
+    for (aligned_vector<int>::iterator it = recv_idx_procs.begin(); 
+            it != recv_idx_procs.end(); ++it)
+    {
+        if (procs[*it] == -1)
+        {
+            procs[*it] = comm->send_data->procs.size();
+            comm->send_data->procs.push_back(*it);
+            sizes.push_back(0);
+        }
+        idx = procs[*it];
+        sizes[idx]++;
+    }
+    comm->send_data->num_msgs = comm->send_data->procs.size();
+    comm->send_data->indptr.resize(comm->send_data->num_msgs+1);
+    comm->send_data->indptr[0] = 0;
+    for (int i = 0; i < comm->send_data->num_msgs; i++)
+    {
+        comm->send_data->indptr[i+1] = comm->send_data->indptr[i] + sizes[i];
+        sizes[i] = 0;
+    }
+    comm->send_data->size_msgs = comm->send_data->indptr[comm->send_data->num_msgs];
+    if (comm->send_data->size_msgs)
+        comm->send_data->indices.resize(comm->send_data->size_msgs);
+
+    if (tap_comm->local_S_par_comm)
+    {
+        recv_data = tap_comm->local_S_par_comm->send_data;
+    }
+    else
+    {
+        recv_data = tap_comm->global_par_comm->send_data;
+    }
+    for (int i = 0; i < recv_data->size_msgs; i++)
+    {
+        idx = recv_data->indices[i];
+        idx_start = recv_idx_ptr[i];
+        idx_end = recv_idx_ptr[i+1];
+        for (int j = idx_start; j < idx_end; j++)
+        {
+            proc = recv_idx_procs[j];
+            pos = procs[proc];
+            int p = comm->send_data->indptr[pos] + sizes[pos]++;
+            comm->send_data->indices[p] = idx;
+        }
+    }
+
+    // Add local_L_par_comm to comm->send_data
+    recv_data = tap_comm->local_L_par_comm->send_data;
+    int old_n = comm->send_data->num_msgs;
+    int old_s = comm->send_data->size_msgs;
+    comm->send_data->num_msgs += recv_data->num_msgs;
+    comm->send_data->indptr.resize(comm->send_data->num_msgs+1);
+    if (comm->send_data->num_msgs)
+    {
+        comm->send_data->procs.resize(comm->send_data->num_msgs);
+    }
+    for (int i = 0; i < recv_data->num_msgs; i++)
+    {
+        proc = recv_data->procs[i];
+        start = recv_data->indptr[i];
+        end = recv_data->indptr[i+1];
+        comm->send_data->procs[old_n] = partition->topology->get_global_proc(rank_node, proc);
+        comm->send_data->indptr[old_n+1] = comm->send_data->indptr[old_n]
+               + (end - start);
+        old_n++;
+    }
+    comm->send_data->size_msgs = comm->send_data->indptr[comm->send_data->num_msgs];
+    comm->send_data->indices.resize(comm->send_data->size_msgs);
+    for (int i = 0; i < recv_data->size_msgs; i++)
+    {
+        comm->send_data->indices[old_s++] = recv_data->indices[i];
+    }   
+
+    for (int i = 0; i < comm->send_data->num_msgs; i++)
+    {
+        start = comm->send_data->indptr[i];
+        end = comm->send_data->indptr[i+1];
+        std::sort(comm->send_data->indices.begin() + start,
+                comm->send_data->indices.begin() + end);
+    }
+
+    comm->send_data->finalize();
 }
 
 void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm mpi_comm)
@@ -916,6 +1183,14 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm mpi_comm)
     aligned_vector<int> on_node_to_off_proc;
     aligned_vector<int> off_node_to_off_proc;
 
+    delete_comm(tap_comm);
+    delete_comm(tap_mat_comm);
+    if (two_step && three_step)
+    {
+        set_tap_comm(three_step);
+        set_tap_mat_comm(two_step);
+        return;
+    }
     partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
     partition->split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
                on_node_column_map, on_node_col_to_proc, on_node_to_off_proc,
@@ -924,6 +1199,7 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm mpi_comm)
     init_tap_communicators(off_proc_col_to_proc, on_node_column_map, on_node_col_to_proc,
             on_node_to_off_proc, off_node_column_map, off_node_col_to_proc,
             off_node_to_off_proc, mpi_comm);
+
 }
 
 void ParMatrix::init_tap_communicators(aligned_vector<int>& off_proc_col_to_proc,
@@ -950,6 +1226,9 @@ void ParMatrix::init_tap_communicators(aligned_vector<int>& off_proc_col_to_proc
             on_proc_to_new[on_proc_column_map[i] - partition->first_local_col] = i;
         }
     }
+
+    delete_comm(tap_comm);
+    delete_comm(tap_mat_comm);
 
     // Initialize three-step tap_comm
     if (!three_step)
@@ -1040,13 +1319,8 @@ void ParMatrix::init_tap_communicators(aligned_vector<int>& off_proc_col_to_proc
 
     // By default, set tap_comm to three step
     // and tap_mat_comm to two_step
-    if (tap_comm) tap_comm->n_shared--;
-    tap_comm = three_step;
-    tap_comm->n_shared++;
-
-    if (tap_mat_comm) tap_mat_comm->n_shared--;
-    tap_mat_comm = two_step;
-    tap_mat_comm->n_shared++;
+    set_tap_comm(three_step);
+    set_tap_mat_comm(two_step);
 }
 
 
