@@ -187,11 +187,11 @@ namespace raptor
         delete off_proc;
         delete on_proc;
 
-        delete_comm(comm);
-        delete_comm(two_step);
-        delete_comm(three_step);
-        delete_comm(tap_comm);
-        delete_comm(tap_mat_comm);
+        delete_comm(&comm);
+        delete_comm(&two_step);
+        delete_comm(&three_step);
+        delete_comm(&tap_comm);
+        delete_comm(&tap_mat_comm);
 
         if (partition)
         {
@@ -206,8 +206,10 @@ namespace raptor
         }
     }
 
-    void delete_comm(CommPkg* comm_pkg)
+    template <typename T>
+    void delete_comm(T** comm_pkg_ptr)
     {
+	T* comm_pkg = *comm_pkg_ptr;
         if (comm_pkg)
         {
             if (comm_pkg->n_shared)
@@ -218,7 +220,7 @@ namespace raptor
             {
                 delete comm_pkg;
             }
-            comm_pkg = NULL;
+            *comm_pkg_ptr = NULL;
         }
     }
 

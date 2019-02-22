@@ -809,37 +809,36 @@ void ParMatrix::init_communicators(int key, RAPtor_MPI_Comm mpi_comm)
     aligned_vector<int> on_node_to_off_proc;
     aligned_vector<int> off_node_to_off_proc;
 
-   // partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
-   // partition->split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
-   //            on_node_column_map, on_node_col_to_proc, on_node_to_off_proc,
-   //            off_node_column_map, off_node_col_to_proc, off_node_to_off_proc);
+    partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
+    partition->split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
+               on_node_column_map, on_node_col_to_proc, on_node_to_off_proc,
+               off_node_column_map, off_node_col_to_proc, off_node_to_off_proc);
 
     // Determine which communicator type to use
-   // comm_type = model_comm(off_proc_col_to_proc);
+    comm_type = model_comm(off_proc_col_to_proc);
 
     // If using standard comm type, make only standard comm and return
     if (comm_type == Standard)
     {
         if (!comm) comm = new ParComm(partition, off_proc_column_map,
                 on_proc_column_map, key, mpi_comm);
-        delete_comm(tap_comm);
-        delete_comm(tap_mat_comm);
-        delete_comm(two_step);
-        delete_comm(three_step);
-if (rank == 0) if (this->tap_comm == NULL) printf("NULL tap comm\n");
+        delete_comm(&tap_comm);
+        delete_comm(&tap_mat_comm);
+        delete_comm(&two_step);
+        delete_comm(&three_step);
         return;
     }
 
     // If using TAP comm of any type, make all three communicators (TODO - make
     // this more efficient, only making necessary communicators)
-/*    init_tap_communicators(off_proc_col_to_proc, on_node_column_map, on_node_col_to_proc,
+    init_tap_communicators(off_proc_col_to_proc, on_node_column_map, on_node_col_to_proc,
             on_node_to_off_proc, off_node_column_map, off_node_col_to_proc,
             off_node_to_off_proc, mpi_comm);
 
     // Change tap_comm method, if necessary (default was ThreeStep)
     if (comm_type == NAP2)
     {
-        delete_comm(tap_comm);
+        delete_comm(&tap_comm);
         set_tap_comm(two_step);
     }
 
@@ -849,7 +848,6 @@ if (rank == 0) if (this->tap_comm == NULL) printf("NULL tap comm\n");
 //                on_proc_column_map, key, mpi_comm);
         init_par_communicator(off_proc_col_to_proc, key, mpi_comm);
     }
-*/
 }
 
 
@@ -1183,8 +1181,8 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm mpi_comm)
     aligned_vector<int> on_node_to_off_proc;
     aligned_vector<int> off_node_to_off_proc;
 
-    delete_comm(tap_comm);
-    delete_comm(tap_mat_comm);
+    delete_comm(&tap_comm);
+    delete_comm(&tap_mat_comm);
     if (two_step && three_step)
     {
         set_tap_comm(three_step);
@@ -1227,8 +1225,8 @@ void ParMatrix::init_tap_communicators(aligned_vector<int>& off_proc_col_to_proc
         }
     }
 
-    delete_comm(tap_comm);
-    delete_comm(tap_mat_comm);
+    delete_comm(&tap_comm);
+    delete_comm(&tap_mat_comm);
 
     // Initialize three-step tap_comm
     if (!three_step)

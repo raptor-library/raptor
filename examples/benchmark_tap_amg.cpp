@@ -234,8 +234,6 @@ int main(int argc, char* argv[])
     HYPRE_IJVectorDestroy(b_h_ij);
 
     A->init_tap_communicators();
-if (rank == 0) printf("%d, %d, %d, %d, %d\n", A->comm->n_shared, A->tap_comm->n_shared,
-        A->tap_mat_comm->n_shared, A->two_step->n_shared, A->three_step->n_shared);
 
     // Warm Up
     ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, SOR);
@@ -272,8 +270,6 @@ if (rank == 0) printf("%d, %d, %d, %d, %d\n", A->comm->n_shared, A->tap_comm->n_
         printf("Solved in %d iterations\n", iter);
     }
     delete ml;
-if (rank == 0) printf("2. %d, %d, %d, %d, %d\n", A->comm->n_shared, A->tap_comm->n_shared,
-        A->tap_mat_comm->n_shared, A->two_step->n_shared, A->three_step->n_shared);
 
     // TAP Ruge-Stuben AMG
     if (rank == 0) printf("\n\nTAP Ruge Stuben Solver: \n");
@@ -291,9 +287,6 @@ if (rank == 0) printf("2. %d, %d, %d, %d, %d\n", A->comm->n_shared, A->tap_comm-
     tfinal = MPI_Wtime() - t0;
     MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("Total Setup Time: %e\n", t0);
-if (rank == 0) printf("3. %d, %d, %d, %d, %d\n", A->comm->n_shared, A->tap_comm->n_shared,
-        A->tap_mat_comm->n_shared, A->two_step->n_shared, A->three_step->n_shared);
-if (rank == 0) if (ml->levels[0]->A->tap_comm == NULL) printf("NULL tap_comm\n");
 
     ParVector tap_rss_sol = ParVector(x);
     MPI_Barrier(MPI_COMM_WORLD);
@@ -307,11 +300,8 @@ if (rank == 0) if (ml->levels[0]->A->tap_comm == NULL) printf("NULL tap_comm\n")
     {
         printf("Solved in %d iterations\n", iter);
     }
-if (rank == 0) printf("4. %d, %d, %d, %d, %d\n", A->comm->n_shared, A->tap_comm->n_shared,
-        A->tap_mat_comm->n_shared, A->two_step->n_shared, A->three_step->n_shared);
-if (rank == 0) if (ml->levels[0]->A->tap_comm == NULL) printf("NULL tap_comm\n");
     delete ml;
-/*
+
     // Warm Up
     ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation,
             Symmetric, SOR);
@@ -379,7 +369,7 @@ if (rank == 0) if (ml->levels[0]->A->tap_comm == NULL) printf("NULL tap_comm\n")
         printf("Solved in %d iterations\n", iter);
     }
     delete ml;
-*/
+
     delete A;
 
     MPI_Finalize();

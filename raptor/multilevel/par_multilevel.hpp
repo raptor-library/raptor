@@ -146,8 +146,6 @@ namespace raptor
                 levels[0]->tmp.resize(Af->global_num_rows, Af->local_num_rows);
 
 
-if (rank == 0) printf("%d, %d, %d, %d, %d\n", Af->comm->n_shared, Af->tap_comm->n_shared,
-        Af->tap_mat_comm->n_shared, Af->two_step->n_shared, Af->three_step->n_shared);
 		if (tap_amg == 0)
 		{
 		    MPI_Comm mpi_comm = MPI_COMM_WORLD;
@@ -158,8 +156,6 @@ if (rank == 0) printf("%d, %d, %d, %d, %d\n", Af->comm->n_shared, Af->tap_comm->
 			key = levels[0]->A->comm->key;
 		    }
                     levels[0]->A->init_communicators(key, mpi_comm);
-if (rank == 0) if (levels[0]->A->tap_comm == NULL) printf("Null here also\n");
-else printf("%d\n", levels[0]->A->tap_comm->n_shared);
                 }
 		else
 		{
@@ -170,8 +166,6 @@ else printf("%d\n", levels[0]->A->tap_comm->n_shared);
 					levels[0]->A->on_proc_column_map);
 		    }
 		}
-if (rank == 0) printf("CommType %d\n", levels[0]->A->comm_type);
-if (levels[0]->A->tap_comm == NULL) printf("NULL TAP COMM\n");
 
                 if (weights == NULL)
                 {
