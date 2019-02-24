@@ -182,7 +182,8 @@ int main(int argc, char* argv[])
     int n_spmv_tests = 100;
 
     // Smoothed Aggregation AMG
-    for (int s = 0; s < 3; s++)
+    int s = 2;
+    //for (int s = 0; s < 3; s++)
     {
         if (rank == 0) printf("\n\nProlongation Smoothing Sweeps: %d:\n", s);
         ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation, 

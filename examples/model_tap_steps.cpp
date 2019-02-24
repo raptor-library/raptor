@@ -104,7 +104,7 @@ void time_steps(ParMultilevel* ml)
             level->P->tap_comm = new TAPComm(level->P->partition, level->P->off_proc_column_map,
                     level->P->on_proc_column_map);
         if (!level->P->tap_mat_comm) 
-            evel->P->tap_mat_comm = new TAPComm(level->P->partition, level->P->off_proc_column_map,
+            level->P->tap_mat_comm = new TAPComm(level->P->partition, level->P->off_proc_column_map,
                     level->P->on_proc_column_map, false);
 
         ParCSRMatrix* Al = level->A;

@@ -206,7 +206,7 @@ void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     }
     else
     {
-	if (A->comm_type != Standard)
+	if (tap && A->comm_type != Standard)
 	{
             if (rank == 0) printf("Not using TAP Relaxation because no commpkg\n");
 	}
@@ -236,7 +236,7 @@ void sor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     }
     else
     {
-	if (A->comm_type != Standard)
+	if (tap && A->comm_type != Standard)
 	{
             if (rank == 0) printf("Not using TAP Relaxation because no commpkg\n");
 	}
@@ -266,7 +266,7 @@ void ssor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     }
     else
     {
-	if (A->comm_type != Standard)
+	if (tap && A->comm_type != Standard)
 	{
             if (rank == 0) printf("Not using TAP Relaxation because no commpkg\n");
 	}

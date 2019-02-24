@@ -166,14 +166,16 @@ int main(int argc, char* argv[])
         ParLevel* level = ml->levels[i];
  
 
-        /*********************************
+        /********************************
          * Profile Time to Create CommPkg
          *********************************/
         for (int test = 0; test < n_tests; test++)
         {
-            if (level->A->comm) delete level->A->comm;
-            if (level->A->tap_mat_comm) delete level->A->tap_mat_comm;
-            if (level->A->tap_comm) delete level->A->tap_comm;
+            level->A->delete_comm(&(level->A->comm));
+            level->A->delete_comm(&(level->A->tap_comm));
+            level->A->delete_comm(&(level->A->tap_mat_comm));
+            level->A->delete_comm(&(level->A->three_step));
+            level->A->delete_comm(&(level->A->two_step));
 
             // Time to create ParComm (standard) for A
             MPI_Barrier(MPI_COMM_WORLD);
@@ -191,8 +193,7 @@ int main(int argc, char* argv[])
                 false);
             finalize_profile();
             print_profile("Form A 2-Step TAPComm");
-            delete level->A->tap_comm;
-            level->A->tap_comm = NULL;
+            level->A->delete_comm(&(level->A->tap_comm));
 
             MPI_Barrier(MPI_COMM_WORLD);
             init_profile();
@@ -201,30 +202,38 @@ int main(int argc, char* argv[])
                 true);
             finalize_profile();
             print_profile("Form A 3-Step TAPComm");
-            delete level->A->tap_comm;
-            level->A->tap_comm = NULL;
+            level->A->delete_comm(&(level->A->tap_comm));
         }
-        level->A->init_tap_communicators(MPI_COMM_WORLD);
 
-        if (!level->A->comm) 
-            level->A->comm = new ParComm(level->A->partition, level->A->off_proc_column_map,
-                    level->A->on_proc_column_map);
-        if (!level->A->tap_comm) 
-            level->A->tap_comm = new TAPComm(level->A->partition, level->A->off_proc_column_map,
-                    level->A->on_proc_column_map);
-        if (!level->A->tap_mat_comm) 
-            level->A->tap_mat_comm = new TAPComm(level->A->partition, level->A->off_proc_column_map,
-                    level->A->on_proc_column_map, false);
+        level->A->delete_comm(&(level->A->comm));
+        level->A->delete_comm(&(level->A->tap_comm));
+        level->A->delete_comm(&(level->A->tap_mat_comm));
+        level->A->delete_comm(&(level->A->two_step));
+        level->A->delete_comm(&(level->A->three_step));
 
-        if (!level->P->comm) 
-            level->P->comm = new ParComm(level->P->partition, level->P->off_proc_column_map,
-                    level->P->on_proc_column_map);
-        if (!level->P->tap_comm) 
-            level->P->tap_comm = new TAPComm(level->P->partition, level->P->off_proc_column_map,
-                    level->P->on_proc_column_map);
-        if (!level->P->tap_mat_comm) 
-            level->P->tap_mat_comm = new TAPComm(level->P->partition, level->P->off_proc_column_map,
-                    level->P->on_proc_column_map, false);
+        level->P->delete_comm(&(level->P->comm));
+        level->P->delete_comm(&(level->P->tap_comm));
+        level->P->delete_comm(&(level->P->tap_mat_comm));
+        level->P->delete_comm(&(level->P->two_step));
+        level->P->delete_comm(&(level->P->three_step));
+
+        level->A->comm = new ParComm(level->A->partition, level->A->off_proc_column_map,
+                level->A->on_proc_column_map);
+        level->A->two_step = new TAPComm(level->A->partition, level->A->off_proc_column_map,
+                level->A->on_proc_column_map, false);
+        level->A->three_step = new TAPComm(level->A->partition, level->A->off_proc_column_map,
+                level->A->on_proc_column_map, true);
+        level->A->set_tap_comm(level->A->three_step);
+        level->A->set_tap_mat_comm(level->A->three_step);
+        
+        level->P->comm = new ParComm(level->P->partition, level->P->off_proc_column_map,
+                level->P->on_proc_column_map);
+        level->P->two_step = new TAPComm(level->P->partition, level->P->off_proc_column_map,
+                level->P->on_proc_column_map, false);
+        level->P->three_step = new TAPComm(level->P->partition, level->P->off_proc_column_map,
+                level->P->on_proc_column_map, true);
+        level->P->set_tap_comm(level->P->three_step);
+        level->P->set_tap_mat_comm(level->P->three_step);
 
         /*********************************
          * Profile Time to Form Strength
@@ -302,9 +311,11 @@ int main(int argc, char* argv[])
          *********************************/
         for (int test = 0; test < n_tests; test++)
         {
-            delete P->comm;
-            delete P->tap_mat_comm;
-            delete P->tap_comm;
+            P->delete_comm(&(P->comm));
+            P->delete_comm(&(P->tap_comm));
+            P->delete_comm(&(P->tap_mat_comm));
+            P->delete_comm(&(P->three_step));
+            P->delete_comm(&(P->two_step));
 
             // Time to create ParComm (standard) for P
             MPI_Barrier(MPI_COMM_WORLD);
@@ -322,8 +333,7 @@ int main(int argc, char* argv[])
             P->init_tap_communicators(MPI_COMM_WORLD);
             finalize_profile();
             print_profile("Form P 2-Step TAPComm");
-            delete P->tap_comm;
-            P->tap_comm = NULL;
+            P->delete_comm(&(P->tap_comm));
 
             MPI_Barrier(MPI_COMM_WORLD);
             init_profile();
@@ -332,10 +342,20 @@ int main(int argc, char* argv[])
             P->init_tap_communicators(MPI_COMM_WORLD);
             finalize_profile();
             print_profile("Form P 3-Step TAPComm");
-            delete P->tap_comm;
-            P->tap_comm = NULL;
+            P->delete_comm(&(P->tap_comm));
         }
-        P->init_tap_communicators();
+        P->delete_comm(&(P->comm));
+        P->delete_comm(&(P->tap_comm));
+        P->delete_comm(&(P->tap_mat_comm));
+        P->delete_comm(&(P->two_step));
+        P->delete_comm(&(P->three_step));
+        P->comm = new ParComm(P->partition, P->off_proc_column_map, P->on_proc_column_map);
+        P->two_step = new TAPComm(P->partition, P->off_proc_column_map,
+                P->on_proc_column_map, false);
+        P->three_step = new TAPComm(P->partition, P->off_proc_column_map,
+                P->on_proc_column_map, true);
+        P->set_tap_comm(P->three_step);
+        P->set_tap_mat_comm(P->two_step);
 
         /*********************************
          * Profile Time to AP
