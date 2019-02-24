@@ -446,7 +446,7 @@ comm_t model(aligned_vector<int>& msg_data, aligned_vector<int>& node_s,
     {
         if (standard_t < two_t)
         {
-            if (close)
+            if (close && fabs(standard_t) > zero_tol)
             {
                 if (two_t < three_t && (two_t - standard_t) / standard_t < 0.05)
                     return NAP2;

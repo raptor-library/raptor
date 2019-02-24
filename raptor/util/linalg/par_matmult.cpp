@@ -70,43 +70,46 @@ ParCSRMatrix* init_matrix(T* A, U* B)
     return C;
 }
 
-ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B)
+ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B, CommPkg* _comm_pkg)
 {
-    return mult(B, true);
+    return mult(B, true, _comm_pkg);
 }
 
-ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap)
+ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap, CommPkg* _comm_pkg)
 {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    CommPkg* comm_pkg;
-    if (!comm)
+    CommPkg* comm_pkg = _comm_pkg;
+    if (!comm_pkg)
     {
-        if (rank == 0) printf("Creating ParComm Pkg... SpGEMM timings will be inaccurate\n");
-        comm = new ParComm(partition, off_proc_column_map,
-                on_proc_column_map);
-    }
+        if (!comm)
+        {
+            if (rank == 0) printf("Creating ParComm Pkg... SpGEMM timings will be inaccurate\n");
+            comm = new ParComm(partition, off_proc_column_map,
+                    on_proc_column_map);
+        }
 
-    if (tap && comm_type != Standard)
-    {
-        comm_mat_type = model_comm((NonContigData*)comm->send_data, 
-                (CSRMatrix*) B->on_proc, (CSRMatrix*) B->off_proc);
-        if (comm_mat_type == Standard) comm_pkg = comm;
+        if (tap && comm_type != Standard)
+        {
+            comm_mat_type = model_comm((NonContigData*)comm->send_data, 
+                    (CSRMatrix*) B->on_proc, (CSRMatrix*) B->off_proc);
+            if (comm_mat_type == Standard) comm_pkg = comm;
+            else
+            {
+                if (!two_step || !three_step) 
+                {
+                    if (rank == 0) printf("Creating TAPComm Pkgs... SpGEMM timings will be inaccurate\n");
+                    init_tap_communicators();
+                }
+                if (comm_mat_type == NAP2) comm_pkg = two_step;
+                else comm_pkg = three_step;
+            }
+        }
         else
         {
-            if (!two_step || !three_step) 
-            {
-                if (rank == 0) printf("Creating TAPComm Pkgs... SpGEMM timings will be inaccurate\n");
-                init_tap_communicators();
-            }
-            if (comm_mat_type == NAP2) comm_pkg = two_step;
-            else comm_pkg = three_step;
+            comm_pkg = comm;
         }
-    }
-    else
-    {
-        comm_pkg = comm;
     }
 
     // Initialize C (matrix to be returned)
@@ -132,61 +135,65 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap)
     return C;
 }
 
-ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSRMatrix* A)
+ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSRMatrix* A, CommPkg* _comm_pkg)
 {
-    return mult_T(A, true);
+    return mult_T(A, true, _comm_pkg);
 }
 
-ParCSRMatrix* ParCSRMatrix::mult_T(ParCSRMatrix* A, bool tap)
+ParCSRMatrix* ParCSRMatrix::mult_T(ParCSRMatrix* A, bool tap, CommPkg* _comm_pkg)
 {
     ParCSCMatrix* Acsc = A->to_ParCSC();
-    ParCSRMatrix* C = this->mult_T(Acsc, tap);
+    ParCSRMatrix* C = this->mult_T(Acsc, tap, _comm_pkg);
     delete Acsc;
     return C;
 }
 
 
-ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A)
+ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A, CommPkg* _comm_pkg)
 {
-    return mult_T(A, true);
+    return mult_T(A, true, _comm_pkg);
 }
 
-ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap)
+ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap, CommPkg* _comm_pkg)
 {
     int start, end;
     int row, col, idx;
 
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    CommPkg* comm_pkg;
-    if (!A->comm)
-    {
-        if (rank == 0) printf("Creating ParComm Pkg... SpGEMM timing will be inaccurate\n");
-        A->comm = new ParComm(A->partition, A->off_proc_column_map, A->on_proc_column_map);
-    }
+    CommPkg* comm_pkg = _comm_pkg;
 
     // Initialize C (matrix to be returned)
     ParCSRMatrix* C = init_matrix(this, A);;
 
     CSRMatrix* Ctmp = mult_T_partial(A);
-    if (tap && A->comm_type != Standard)
+
+    if (!comm_pkg)
     {
-        comm_mat_type = A->model_comm((ContigData*) A->comm->recv_data, Ctmp, NULL);
-        if (comm_mat_type == Standard) comm_pkg = A->comm;
+        if (!A->comm)
+        {
+            if (rank == 0) printf("Creating ParComm Pkg... SpGEMM timing will be inaccurate\n");
+            A->comm = new ParComm(A->partition, A->off_proc_column_map, A->on_proc_column_map);
+        }
+        if (tap && A->comm_type != Standard)
+        {
+            comm_mat_type = A->model_comm((ContigData*) A->comm->recv_data, Ctmp, NULL);
+            if (comm_mat_type == Standard) comm_pkg = A->comm;
+            else
+            {
+                if (!A->two_step || !A->three_step)
+                {
+                    if (rank == 0) printf("Creating TAPComm Pkgs... SpGEMM timings will be inaccurate\n");
+                    A->init_tap_communicators();
+                }
+                if (comm_mat_type == NAP2) comm_pkg = A->two_step;
+                else comm_pkg = A->three_step;
+            }
+        }
         else
         {
-            if (!A->two_step || !A->three_step)
-            {
-                if (rank == 0) printf("Creating TAPComm Pkgs... SpGEMM timings will be inaccurate\n");
-                A->init_tap_communicators();
-            }
-            if (comm_mat_type == NAP2) comm_pkg = A->two_step;
-            else comm_pkg = A->three_step;
+            comm_pkg = A->comm;
         }
-    }
-    else
-    {
-        comm_pkg = A->comm;
     }
 
     aligned_vector<char> send_buffer;
@@ -211,12 +218,12 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap)
 }
 
 
-ParMatrix* ParMatrix::tap_mult(ParCSRMatrix* B)
+ParMatrix* ParMatrix::tap_mult(ParCSRMatrix* B, CommPkg* _comm_pkg)
 {
-    return mult(B, true);
+    return mult(B, true, _comm_pkg);
 }
 
-ParMatrix* ParMatrix::mult(ParCSRMatrix* B, bool tap)
+ParMatrix* ParMatrix::mult(ParCSRMatrix* B, bool tap, CommPkg* _comm_pkg)
 {
     int rank;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);

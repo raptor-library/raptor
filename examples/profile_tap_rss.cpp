@@ -186,10 +186,25 @@ int main(int argc, char* argv[])
             // Time to create TAP communicators for A
             MPI_Barrier(MPI_COMM_WORLD);
             init_profile();
-            level->A->init_tap_communicators(MPI_COMM_WORLD);
+            level->A->tap_comm = new TAPComm(level->A->partition, 
+                level->A->off_proc_column_map, level->A->on_proc_column_map,
+                false);
             finalize_profile();
-            print_profile("Form A TAPComm");
+            print_profile("Form A 2-Step TAPComm");
+            delete level->A->tap_comm;
+            level->A->tap_comm = NULL;
+
+            MPI_Barrier(MPI_COMM_WORLD);
+            init_profile();
+            level->A->tap_comm = new TAPComm(level->A->partition, 
+                level->A->off_proc_column_map, level->A->on_proc_column_map,
+                true);
+            finalize_profile();
+            print_profile("Form A 3-Step TAPComm");
+            delete level->A->tap_comm;
+            level->A->tap_comm = NULL;
         }
+        level->A->init_tap_communicators(MPI_COMM_WORLD);
 
         if (!level->A->comm) 
             level->A->comm = new ParComm(level->A->partition, level->A->off_proc_column_map,
@@ -302,10 +317,25 @@ int main(int argc, char* argv[])
             // Time to create TAP communicators for P
             MPI_Barrier(MPI_COMM_WORLD);
             init_profile();
+            P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map,
+                    P->on_proc_column_map, false);
             P->init_tap_communicators(MPI_COMM_WORLD);
             finalize_profile();
-            print_profile("Form P TAPComm");
+            print_profile("Form P 2-Step TAPComm");
+            delete P->tap_comm;
+            P->tap_comm = NULL;
+
+            MPI_Barrier(MPI_COMM_WORLD);
+            init_profile();
+            P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map,
+                    P->on_proc_column_map, true);
+            P->init_tap_communicators(MPI_COMM_WORLD);
+            finalize_profile();
+            print_profile("Form P 3-Step TAPComm");
+            delete P->tap_comm;
+            P->tap_comm = NULL;
         }
+        P->init_tap_communicators();
 
         /*********************************
          * Profile Time to AP

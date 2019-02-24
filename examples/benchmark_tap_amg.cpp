@@ -178,61 +178,6 @@ int main(int argc, char* argv[])
     MPI_Reduce(&local_nnz, &nnz, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
     if (rank == 0) printf("A global n %d, nnz %lu\n", A->global_num_rows, nnz);
 
-    // Create Hypre system
-    HYPRE_IJMatrix A_h_ij = convert(A);
-    HYPRE_IJVector x_h_ij = convert(x);
-    HYPRE_IJVector b_h_ij = convert(b);
-
-    hypre_ParCSRMatrix* A_h;
-    HYPRE_IJMatrixGetObject(A_h_ij, (void**) &A_h);
-    hypre_ParVector* x_h;
-    HYPRE_IJVectorGetObject(x_h_ij, (void **) &x_h);
-    hypre_ParVector* b_h;
-    HYPRE_IJVectorGetObject(b_h_ij, (void **) &b_h);
-    data_t* x_data = hypre_VectorData(hypre_ParVectorLocalVector(x_h));
-    data_t* b_data = hypre_VectorData(hypre_ParVectorLocalVector(b_h));
-    for (int i = 0; i < A->local_num_rows; i++)
-    {
-        x_data[i] = x[i];
-        b_data[i] = b[i];
-    }
-
-    // Setup Hypre Hierarchy
-    HYPRE_Solver solver_data;
-
-    // Warm Up 
-    solver_data = hypre_create_hierarchy(A_h, x_h, b_h, 
-            hyp_coarsen_type, hyp_interp_type, p_max_elmts, agg_num_levels, 
-            strong_threshold);
-    hypre_BoomerAMGDestroy(solver_data);
-
-
-    // Hypre Hierarchy
-    MPI_Barrier(MPI_COMM_WORLD);
-    t0 = MPI_Wtime();
-    solver_data = hypre_create_hierarchy(A_h, x_h, b_h, 
-            hyp_coarsen_type, hyp_interp_type, p_max_elmts, agg_num_levels, 
-            strong_threshold);
-    tfinal = MPI_Wtime() - t0;
-    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    if (rank == 0) printf("HYPRE Setup Time: %e\n", t0);
-    MPI_Barrier(MPI_COMM_WORLD);
-    t0 = MPI_Wtime();
-    HYPRE_BoomerAMGSolve(solver_data, A_h, b_h, x_h);
-    tfinal = MPI_Wtime() - t0;
-    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    if (rank == 0) printf("HYPRE Solve Time: %e\n", t0);
-    if (rank == 0) 
-    {
-        iter = hypre_ParAMGDataNumIterations((hypre_ParAMGData*) solver_data);
-        printf("Solved in %d iterations\n", iter);
-    }
-    hypre_BoomerAMGDestroy(solver_data);
-
-    HYPRE_IJMatrixDestroy(A_h_ij);
-    HYPRE_IJVectorDestroy(x_h_ij);
-    HYPRE_IJVectorDestroy(b_h_ij);
-
     A->init_tap_communicators();
 
     // Warm Up
@@ -369,6 +314,62 @@ int main(int argc, char* argv[])
         printf("Solved in %d iterations\n", iter);
     }
     delete ml;
+
+
+    // Create Hypre system
+    HYPRE_IJMatrix A_h_ij = convert(A);
+    HYPRE_IJVector x_h_ij = convert(x);
+    HYPRE_IJVector b_h_ij = convert(b);
+
+    hypre_ParCSRMatrix* A_h;
+    HYPRE_IJMatrixGetObject(A_h_ij, (void**) &A_h);
+    hypre_ParVector* x_h;
+    HYPRE_IJVectorGetObject(x_h_ij, (void **) &x_h);
+    hypre_ParVector* b_h;
+    HYPRE_IJVectorGetObject(b_h_ij, (void **) &b_h);
+    data_t* x_data = hypre_VectorData(hypre_ParVectorLocalVector(x_h));
+    data_t* b_data = hypre_VectorData(hypre_ParVectorLocalVector(b_h));
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        x_data[i] = x[i];
+        b_data[i] = b[i];
+    }
+
+    // Setup Hypre Hierarchy
+    HYPRE_Solver solver_data;
+
+    // Warm Up 
+    solver_data = hypre_create_hierarchy(A_h, x_h, b_h, 
+            hyp_coarsen_type, hyp_interp_type, p_max_elmts, agg_num_levels, 
+            strong_threshold);
+    hypre_BoomerAMGDestroy(solver_data);
+
+
+    // Hypre Hierarchy
+    MPI_Barrier(MPI_COMM_WORLD);
+    t0 = MPI_Wtime();
+    solver_data = hypre_create_hierarchy(A_h, x_h, b_h, 
+            hyp_coarsen_type, hyp_interp_type, p_max_elmts, agg_num_levels, 
+            strong_threshold);
+    tfinal = MPI_Wtime() - t0;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("HYPRE Setup Time: %e\n", t0);
+    MPI_Barrier(MPI_COMM_WORLD);
+    t0 = MPI_Wtime();
+    HYPRE_BoomerAMGSolve(solver_data, A_h, b_h, x_h);
+    tfinal = MPI_Wtime() - t0;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("HYPRE Solve Time: %e\n", t0);
+    if (rank == 0) 
+    {
+        iter = hypre_ParAMGDataNumIterations((hypre_ParAMGData*) solver_data);
+        printf("Solved in %d iterations\n", iter);
+    }
+    hypre_BoomerAMGDestroy(solver_data);
+
+    HYPRE_IJMatrixDestroy(A_h_ij);
+    HYPRE_IJVectorDestroy(x_h_ij);
+    HYPRE_IJVectorDestroy(b_h_ij);
 
     delete A;
 

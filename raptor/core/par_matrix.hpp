@@ -280,12 +280,12 @@ namespace raptor
     void tap_mult_append(ParVector& x, ParVector& b);
     void mult_T(ParVector& x, ParVector& b, bool tap = false);
     void tap_mult_T(ParVector& x, ParVector& b);
-    ParMatrix* mult(ParCSRMatrix* B, bool tap = false);
-    ParMatrix* tap_mult(ParCSRMatrix* B);
-    ParMatrix* mult_T(ParCSCMatrix* B, bool tap = false);
-    ParMatrix* mult_T(ParCSRMatrix* B, bool tap = false);
-    ParMatrix* tap_mult_T(ParCSCMatrix* B);
-    ParMatrix* tap_mult_T(ParCSRMatrix* B);
+    ParMatrix* mult(ParCSRMatrix* B, bool tap = false, CommPkg* comm_pkg = NULL);
+    ParMatrix* tap_mult(ParCSRMatrix* B, CommPkg* comm_pkg = NULL);
+    ParMatrix* mult_T(ParCSCMatrix* B, bool tap = false, CommPkg* comm_pkg = NULL);
+    ParMatrix* mult_T(ParCSRMatrix* B, bool tap = false, CommPkg* comm_pkg = NULL);
+    ParMatrix* tap_mult_T(ParCSCMatrix* B, CommPkg* comm_pkg = NULL);
+    ParMatrix* tap_mult_T(ParCSRMatrix* B, CommPkg* comm_pkg = NULL);
     ParMatrix* add(ParCSRMatrix* A);
     ParMatrix* subtract(ParCSRMatrix* A);
 
@@ -681,12 +681,12 @@ namespace raptor
     void tap_mult(ParVector& x, ParVector& b);
     void mult_T(ParVector& x, ParVector& b, bool tap = false);
     void tap_mult_T(ParVector& x, ParVector& b);
-    ParCSRMatrix* mult(ParCSRMatrix* B, bool tap = false);
-    ParCSRMatrix* tap_mult(ParCSRMatrix* B);
-    ParCSRMatrix* mult_T(ParCSCMatrix* A, bool tap = false);
-    ParCSRMatrix* mult_T(ParCSRMatrix* A, bool tap = false);
-    ParCSRMatrix* tap_mult_T(ParCSCMatrix* A);
-    ParCSRMatrix* tap_mult_T(ParCSRMatrix* A);
+    ParCSRMatrix* mult(ParCSRMatrix* B, bool tap = false, CommPkg* comm_pkg = NULL);
+    ParCSRMatrix* tap_mult(ParCSRMatrix* B, CommPkg* comm_pkg = NULL);
+    ParCSRMatrix* mult_T(ParCSCMatrix* A, bool tap = false, CommPkg* comm_pkg = NULL);
+    ParCSRMatrix* mult_T(ParCSRMatrix* A, bool tap = false, CommPkg* comm_pkg = NULL);
+    ParCSRMatrix* tap_mult_T(ParCSCMatrix* A, CommPkg* comm_pkg = NULL);
+    ParCSRMatrix* tap_mult_T(ParCSRMatrix* A, CommPkg* comm_pkg = NULL);
     ParCSRMatrix* add(ParCSRMatrix* A);
     ParCSRMatrix* subtract(ParCSRMatrix* B);
 

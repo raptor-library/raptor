@@ -83,13 +83,20 @@ namespace raptor
             T = fit_candidates(A, n_aggs, aggregates, B, R, 
                     num_candidates, false, interp_tol);
             
-
-            switch (prolong_type)
+            if (prolong_smooth_steps)    
             {
-                case JacobiProlongation:
-                    P = jacobi_prolongation(A, T, tap_level, 
-                            prolong_weight, prolong_smooth_steps);
-                    break;
+                switch (prolong_type)
+                {
+                    case JacobiProlongation:
+                        P = jacobi_prolongation(A, T, tap_level, 
+                                prolong_weight, prolong_smooth_steps);
+                        break;
+                }
+                delete T;
+            }
+            else
+            {
+                P = T;
             }
             levels[level_ctr]->P = P;
 
@@ -122,7 +129,6 @@ namespace raptor
             std::copy(R.begin(), R.end(), B.begin());
 
             delete AP;
-            delete T;
             delete S;
         }    
 
