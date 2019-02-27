@@ -489,7 +489,7 @@ void setup_comm_exxonmobil(const aligned_vector<int>& recv_procs,
 }
 
 
-void compare_data(const CommData* data, const aligned_vector<int>& send_procs,
+void compare_data(const NonContigData* data, const aligned_vector<int>& send_procs,
         const aligned_vector<int>& send_indptr, const aligned_vector<int>& send_indices,
         const aligned_vector<int>& proc_pos)
 {
