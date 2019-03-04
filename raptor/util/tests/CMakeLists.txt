@@ -86,6 +86,13 @@ if (WITH_MPI)
     add_test(ParBSRSpMVTest ${MPIRUN} -n 3 ./test_par_scale_aniso)
     add_test(ParBSRSpMVTest ${MPIRUN} -n 6 ./test_par_scale_aniso)
 
+    add_executable(test_NAP_partition test_NAP_partition.cpp)
+    target_link_libraries(test_NAP_partition raptor ${MPI_LIBRARIES} googletest pthread )
+    add_test(NAPPartitionTest ${MPIRUN} -n 1 ./test_NAP_partition)
+    add_test(NAPPartitionTest ${MPIRUN} -n 2 ./test_NAP_partition)
+    add_test(NAPPartitionTest ${MPIRUN} -n 3 ./test_NAP_partition)
+    add_test(NAPPartitionTest ${MPIRUN} -n 6 ./test_NAP_partition)
+
     if (WITH_PTSCOTCH)
         add_executable(test_ptscotch test_ptscotch.cpp)
         target_link_libraries(test_ptscotch raptor ${MPI_LIBRARIES} googletest pthread )

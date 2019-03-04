@@ -103,6 +103,7 @@
 // Repartitioning matrix methods
 #ifndef NO_MPI
 #include "util/linalg/repartition.hpp"
+#include "util/linalg/NAP_partition.hpp"
 #endif
 #ifdef USING_PTSCOTCH
     #include "util/linalg/external/ptscotch_wrapper.hpp"
