@@ -18,17 +18,26 @@ void partition(ParCSRMatrix* A, int n_parts,
         for (int j = start; j < end; j++)
         {
             int idx = A->on_proc->idx2[j];
-            if (idx >= A->local_num_rows || idx < 0) printf("IDX TOO LARGE\n");
         }
     }
     int adjweights[A->on_proc->nnz];
     for (int i = 0; i < A->on_proc->nnz; i++)
         adjweights[i] = A->on_proc->vals[i];
 
+    int options[METIS_NOPTIONS];
+    options[METIS_OPTION_PTYPE] = METIS_PTYPE_KWAY;
+    options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_VOL;
+    options[METIS_OPTION_CTYPE] = METIS_CTYPE_SHEM;
+    options[METIS_OPTION_NCUTS] = 1;
+    options[METIS_OPTION_NUMBERING] = 0;
+    options[METIS_OPTION_CONTIG] = 0;
+    options[METIS_OPTION_UFACTOR] = 30;
+    options[METIS_OPTION_MINCONN] = 0;
+
     int objval;
     if (nvtxs) parts.resize(nvtxs);
     METIS_PartGraphKway(&nvtxs, &ncon, xadj, adjncy, NULL, NULL, adjweights, 
-            &n_parts, NULL, NULL, NULL, &objval, parts.data());
+            &n_parts, NULL, NULL, options, &objval, parts.data());
 }
 
 // TODO take into account off-node cols (add to shared neighbor edges)
@@ -331,10 +340,6 @@ ParCSRMatrix* NAP_partition(ParCSRMatrix* A_tmp, aligned_vector<int>& new_rows)
 
     partition(A, n_parts, A_parts);
 
-    MPI_Barrier(MPI_COMM_WORLD);
-    printf("Partition complete\n");
-    MPI_Barrier(MPI_COMM_WORLD);
-
     // Make partition unique (add by rank * n_parts)
     int first = rank * n_parts;
     int node_first = ((rank / next_nr)*next_nr) * n_parts;
@@ -343,23 +348,16 @@ ParCSRMatrix* NAP_partition(ParCSRMatrix* A_tmp, aligned_vector<int>& new_rows)
 
     // Communicate off-proc column partitions
     aligned_vector<int>& off_parts = A_tmp->comm->communicate(A_parts);
-    MPI_Barrier(MPI_COMM_WORLD);
-    printf("OffCols complete\n");
-    MPI_Barrier(MPI_COMM_WORLD);
 
-    int modval = next_nr * n_parts;
     for (aligned_vector<int>::iterator it = A_parts.begin(); it != A_parts.end(); ++it)
         *it -= node_first;
-    for (int i = 0; i < A->off_proc_num_cols; i++)
+    for (int i = 0; i < A_tmp->off_proc_num_cols; i++)
     {
         proc = off_proc_col_to_proc[i];
         node = A->partition->topology->get_node(proc);
         if (node == rank_node)
             off_parts[i] -= node_first;
     }
-    MPI_Barrier(MPI_COMM_WORLD);
-    printf("Updated parts\n");
-    MPI_Barrier(MPI_COMM_WORLD);
 
     // Make new matrix: vertices are partitions, edges between partitions,
     // weights = number of edges in original graph between two partitions
@@ -374,9 +372,6 @@ ParCSRMatrix* NAP_partition(ParCSRMatrix* A_tmp, aligned_vector<int>& new_rows)
     {
         partition(P, A->partition->topology->PPN, P_parts);
     }
-    MPI_Barrier(MPI_COMM_WORLD);
-    printf("Finished node-partition\n");
-    MPI_Barrier(MPI_COMM_WORLD);
     
     delete P;
 
@@ -396,7 +391,7 @@ ParCSRMatrix* NAP_partition(ParCSRMatrix* A_tmp, aligned_vector<int>& new_rows)
     }
 
     // Sort rows of original matrix by partition
- /*   aligned_vector<int> ps(A->partition->topology->PPN,0);
+    aligned_vector<int> ps(A->partition->topology->PPN,0);
     for (int i = 0; i < A->local_num_rows; i++)
     {
         int A_part = A_parts[i];
@@ -405,13 +400,12 @@ ParCSRMatrix* NAP_partition(ParCSRMatrix* A_tmp, aligned_vector<int>& new_rows)
         ps[P_part]++;
     }
     for (int i = 0; i < A->partition->topology->PPN; i++)
-    {
-        printf("Rank %d, PartSize[%d] = %d\n", rank, i, ps[i]);
-    }
+        if (ps[i]) printf("PS[%d] = %d\n", i, ps[i]);
 
-    ParCSRMatrix* A_part = repartition_matrix(A, A_parts.data(), new_rows);
+    ParCSRMatrix* A_part = repartition_matrix(A_tmp, A_parts.data(), new_rows);
 
+    delete A_off_csc;
     delete A;
-    return A_part;*/ return NULL;
+    return A_part;
 }
 
