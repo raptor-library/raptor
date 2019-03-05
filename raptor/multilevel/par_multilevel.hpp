@@ -234,6 +234,7 @@ namespace raptor
 
                 int last_level = num_levels - 1;
                 ParCSRMatrix* Ac = levels[last_level]->A;
+                ParVector& b = levels[last_level]->b;
                 aligned_vector<int> proc_sizes(num_procs);
                 aligned_vector<int> active_procs;
                 MPI_Allgather(&(Ac->local_num_rows), 1, MPI_INT, proc_sizes.data(),
@@ -334,6 +335,13 @@ namespace raptor
                         coarse_sizes[i] /= coarse_n;
                         coarse_displs[i+1] /= coarse_n;
                     }
+                    
+                    // Added for block vectors
+                    for (int i = 0; i < num_active; i++)
+                    {
+                        coarse_sizes[i] *= b.local->b_vecs;
+                        coarse_displs[i] *= b.local->b_vecs;
+                    }
                 }
             }
 
@@ -367,17 +375,27 @@ namespace raptor
                         MPI_Comm_rank(coarse_comm, &active_rank);
 
                         char trans = 'N'; //No transpose
-                        int nhrs = 1; // Number of right hand sides
+                        //int nhrs = 1; // Number of right hand sides
+                        int nhrs = b.local->b_vecs; // Number of right hand sides
                         int info; // result
 
-                        aligned_vector<double> b_data(coarse_n);
+                        /*aligned_vector<double> b_data(coarse_n);
                         MPI_Allgatherv(b.local->data(), b.local_n, MPI_DOUBLE, b_data.data(), 
+                                coarse_sizes.data(), coarse_displs.data(), 
+                                MPI_DOUBLE, coarse_comm);*/
+
+                        aligned_vector<double> b_data(coarse_n*nhrs);
+                        MPI_Allgatherv(b.local->data(), b.local_n*nhrs, MPI_DOUBLE, b_data.data(), 
                                 coarse_sizes.data(), coarse_displs.data(), 
                                 MPI_DOUBLE, coarse_comm);
 
                         dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
                                 LU_permute.data(), b_data.data(), &coarse_n, &info);
-                        for (int i = 0; i < b.local_n; i++)
+                        /*for (int i = 0; i < b.local_n; i++)
+                        {
+                            x.local->values[i] = b_data[i + coarse_displs[active_rank]];
+                        }*/
+                        for (int i = 0; i < b.local_n*nhrs; i++)
                         {
                             x.local->values[i] = b_data[i + coarse_displs[active_rank]];
                         }
