@@ -34,72 +34,82 @@ void SOR_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
     int col;
     double diag;
     double row_sum;
+    int vec_offset;
 
-    start_on = 0;
-    start_off = 0;
-    for (int i = 0; i < A->local_num_rows; i++)
+    for (int k = 0; k < y.local->b_vecs; k++)
     {
-        row_sum = 0;
-        end_on = A->on_proc->idx1[i+1];
-        if (A->on_proc->idx2[start_on] == i)
-        {
-            diag = A->on_proc->vals[start_on];
-            start_on++;
-        }        
-        else continue;
-        for (int j = start_on; j < end_on; j++)
-        {
-            col = A->on_proc->idx2[j];
-            row_sum += A->on_proc->vals[j] * x[col];
-        }
-        start_on = end_on;
+        vec_offset = k * A->local_num_rows;
 
-        end_off = A->off_proc->idx1[i+1];
-        for (int j = start_off; j < end_off; j++)
+        start_on = 0;
+        start_off = 0;
+        for (int i = 0; i < A->local_num_rows; i++)
         {
-            col = A->off_proc->idx2[j];
-            row_sum += A->off_proc->vals[j] * dist_x[col];
-        }
-        start_off = end_off;
+            row_sum = 0;
+            end_on = A->on_proc->idx1[i+1];
+            if (A->on_proc->idx2[start_on] == i)
+            {
+                diag = A->on_proc->vals[start_on];
+                start_on++;
+            }        
+            else continue;
+            for (int j = start_on; j < end_on; j++)
+            {
+                col = A->on_proc->idx2[j];
+                row_sum += A->on_proc->vals[j] * x[vec_offset + col];
+            }
+            start_on = end_on;
 
-//        x[i] = ((1.0 - omega)*x[i]) + (omega*((y[i] - row_sum) / diag));
-        x[i] = (x[i] + omega * (y[i] - x[i] - row_sum)) / diag;
+            end_off = A->off_proc->idx1[i+1];
+            for (int j = start_off; j < end_off; j++)
+            {
+                col = A->off_proc->idx2[j];
+                row_sum += A->off_proc->vals[j] * dist_x[vec_offset + col];
+            }
+            start_off = end_off;
+
+    //        x[i] = ((1.0 - omega)*x[i]) + (omega*((y[i] - row_sum) / diag));
+            x[vec_offset + i] = (x[vec_offset + i] + omega * (y[vec_offset + i] - x[vec_offset + i] - row_sum)) / diag;
+        }
     }
 }
 
 void SOR_backward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
         const aligned_vector<double>& dist_x, double omega)
 {
-    int start, end, col;
+    int start, end, col, vec_offset;
     double diag;
     double row_sum;
 
-    for (int i = A->local_num_rows - 1; i >= 0; i--)
+    for (int k = 0; k < y.local->b_vecs; k++)
     {
-        row_sum = 0;
-        start = A->on_proc->idx1[i];
-        end = A->on_proc->idx1[i+1];
-        if (A->on_proc->idx2[start] == i)
+        vec_offset = k * A->local_num_rows; 
+        for (int i = A->local_num_rows - 1; i >= 0; i--)
         {
-            diag = A->on_proc->vals[start];
-            start++;
-        }        
-        else continue;
-        for (int j = start; j < end; j++)
-        {
-            col = A->on_proc->idx2[j];
-            row_sum += A->on_proc->vals[j] * x[col];
-        }
+            row_sum = 0;
+            start = A->on_proc->idx1[i];
+            end = A->on_proc->idx1[i+1];
+            if (A->on_proc->idx2[start] == i)
+            {
+                diag = A->on_proc->vals[start];
+                start++;
+            }        
+            else continue;
+            for (int j = start; j < end; j++)
+            {
+                col = A->on_proc->idx2[j];
+                row_sum += A->on_proc->vals[j] * x[vec_offset + col];
+            }
 
-        start = A->off_proc->idx1[i];
-        end = A->off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col = A->off_proc->idx2[j];
-            row_sum += A->off_proc->vals[j] * dist_x[col];
-        }
+            start = A->off_proc->idx1[i];
+            end = A->off_proc->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                col = A->off_proc->idx2[j];
+                row_sum += A->off_proc->vals[j] * dist_x[vec_offset + col];
+            }
 
-        x[i] = ((1.0 - omega)*x[i]) + (omega*((y[i] - row_sum) / diag));
+            x[vec_offset + i] = ((1.0 - omega)*x[vec_offset + i]) + (omega*((y[vec_offset + i] - row_sum) / diag));
+        }
     }
 }
 
@@ -110,7 +120,7 @@ void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     A->off_proc->sort();
     A->on_proc->move_diag();
   
-    int start, end, col;
+    int start, end, col, vec_offset;
     double diag, row_sum;
 
     for (int iter = 0; iter < num_sweeps; iter++)
@@ -119,35 +129,40 @@ void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
         comm->communicate(x);
         if (comm_t) *comm_t += MPI_Wtime();
         aligned_vector<double>& dist_x = comm->get_buffer<double>();
-        for (int i = 0; i < A->local_num_rows; i++)
+
+        for (int k = 0; k < b.local->b_vecs; k++)
         {
-            tmp[i] = x[i];
-        }
-
-        for (int i = 0; i < A->local_num_rows; i++)
-        {    
-            diag = 0;
-            row_sum = 0;
-
-            start = A->on_proc->idx1[i]+1;
-            end = A->on_proc->idx1[i+1];
-            for (int j = start; j < end; j++)
+            vec_offset = k * A->local_num_rows; 
+            for (int i = 0; i < A->local_num_rows; i++)
             {
-                col = A->on_proc->idx2[j];
-                row_sum += A->on_proc->vals[j] * tmp[col];
+                tmp[vec_offset + i] = x[vec_offset + i];
             }
 
-            start = A->off_proc->idx1[i];
-            end = A->off_proc->idx1[i+1];
-            for (int j = start; j < end; j++)
-            {
-                col = A->off_proc->idx2[j];
-                row_sum += A->off_proc->vals[j] * dist_x[col];
-            }
+            for (int i = 0; i < A->local_num_rows; i++)
+            {    
+                diag = 0;
+                row_sum = 0;
 
-            if (fabs(diag) > zero_tol)
-            {
-                x[i] = ((1.0 - omega)*tmp[i]) + (omega*((b[i] - row_sum) / diag));
+                start = A->on_proc->idx1[i]+1;
+                end = A->on_proc->idx1[i+1];
+                for (int j = start; j < end; j++)
+                {
+                    col = A->on_proc->idx2[j];
+                    row_sum += A->on_proc->vals[j] * tmp[vec_offset + col];
+                }
+
+                start = A->off_proc->idx1[i];
+                end = A->off_proc->idx1[i+1];
+                for (int j = start; j < end; j++)
+                {
+                    col = A->off_proc->idx2[j];
+                    row_sum += A->off_proc->vals[j] * dist_x[vec_offset + col];
+                }
+
+                if (fabs(diag) > zero_tol)
+                {
+                    x[vec_offset + i] = ((1.0 - omega)*tmp[vec_offset + i]) + (omega*((b[vec_offset + i] - row_sum) / diag));
+                }
             }
         }
     }
