@@ -485,63 +485,55 @@ void PSRECG(ParCSRMatrix* A, ParMultilevel *ml, ParVector& x, ParVector& b, int 
     res.emplace_back(norm_r);
     iter++;
     
+    // Resize z to be used again during preconditioning
+    z.local->b_vecs = t;
+    z.resize(b.global_n, b.local_n, b.first_local);
+    
     // Main SRECG Loop
     while (norm_r > tol && iter < max_iter)
     {
-        /*if (iter == 0)
+        if (iter > 1)
         {
-            // W = T(r0)
-            r.split_contig(W, t);
-
-            // A-orthonormalize W
-            CGS(A, W);
-        }
-        else
-        {*/
             // Update Wk_1 and Wk_2
-            /*Wk_2.copy(Wk_1);
-            Wk_1.copy(W);
+            Wk_2->copy(*Wk_1);
+            //Wk_2 = Wk_1;
+            Wk_1->copy(*W);
+            //Wk_1 = W;
 
             // W = A * W
-            A->mult(W, W_temp);*/
+            A->mult(*W, *W_temp);
 
-            if (iter > 1)
-            {
-                // Update Wk_1 and Wk_2
-                Wk_2->copy(*Wk_1);
-                //Wk_2 = Wk_1;
-                Wk_1->copy(*W);
-                //Wk_1 = W;
+            // W = M^-1 * A * W
+            z.set_const_value(0.0);
+            ml->cycle(z, *W_temp);
 
-                // W = A * W
-                A->mult(*W, *W_temp);
+            // A-orthonormalize W against previous vectors
+            BCGS(A, *Wk_1, *Wk_2, *W_temp);
+        }
+        else
+        {
+            // Update Wk_1
+            Wk_1->copy(*W);
+            //Wk_1 = W;
 
-                // W = M^-1 * A * W
+            // W = A * W
+            A->mult(*W, *W_temp);
+           
+            printf("before cycle\n");
+            // W = M^-1 * A * W
+            z.set_const_value(0.0);
+            ml->cycle(z, *W_temp);
+            printf("after cycle\n");
 
-                // A-orthonormalize W against previous vectors
-                BCGS(A, *Wk_1, *Wk_2, *W_temp);
-            }
-            else
-            {
-                // Update Wk_1
-                Wk_1->copy(*W);
-                //Wk_1 = W;
+            // A-orthonormalize W against previous vectors
+            BCGS(A, *Wk_1, *W_temp);
+        }
 
-                // W = A * W
-                A->mult(*W, *W_temp);
-                
-                // W = M^-1 * A * W
+        W->copy(*W_temp);
+        //W = W_temp;
 
-                // A-orthonormalize W against previous vectors
-                BCGS(A, *Wk_1, *W_temp);
-            }
-
-            W->copy(*W_temp);
-            //W = W_temp;
-
-            // A-orthonormalize W
-            CGS(A, *W);
-        //}
+        // A-orthonormalize W
+        CGS(A, *W);
 
         // alpha = W^T * r
         W->mult_T(r, alpha);
@@ -574,7 +566,6 @@ void PSRECG(ParCSRMatrix* A, ParMultilevel *ml, ParVector& x, ParVector& b, int 
             printf("2 Norm of Residual: %lg\n\n", norm_r);
         }
     }*/
-
     delete W;
     delete Wk_1;
     delete Wk_2;

@@ -29,13 +29,14 @@ TEST(ParPSRECGTest, TestsInKrylov)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    bool print_res_tofile = false;
+    bool print_res_tofile = true;
     bool check_soln = true;
 
     FILE* f;
     double val;
 
-    int grid[2] = {50, 50};
+    //int grid[2] = {50, 50};
+    int grid[2] = {10, 10};
     double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
     ParMultilevel *ml;

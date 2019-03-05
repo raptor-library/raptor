@@ -310,7 +310,7 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap,
     // Initialize Isends and Irecvs to communicate
     // values of x
     if (comm_t) *comm_t -= MPI_Wtime();
-    comm->init_comm(x, off_proc->b_cols);
+    comm->init_comm(x, off_proc->b_cols, x.local->b_vecs);
     if (comm_t) *comm_t += MPI_Wtime();
 
     std::copy(b.local->values.begin(), b.local->values.end(), 
@@ -325,14 +325,14 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap,
 
     // Wait for Isends and Irecvs to complete
     if (comm_t) *comm_t -= MPI_Wtime();
-    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
+    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols, x.local->b_vecs);
     if (comm_t) *comm_t += MPI_Wtime();
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
     if (off_proc_num_cols)
     {
-        off_proc->mult_append_neg(x_tmp, *(r.local));
+        off_proc->mult_append_neg(x_tmp, *(r.local), r.local->b_vecs);
     }
 }
 

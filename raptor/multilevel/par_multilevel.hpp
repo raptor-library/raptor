@@ -352,6 +352,8 @@ namespace raptor
                 ParVector& tmp = levels[level]->tmp;
                 bool tap_level = tap_amg >= 0 && tap_amg <= level;
 
+                printf("top\n");
+
                 double* relax_t = NULL;
                 double* resid_t = NULL;
                 double* restrict_t = NULL;
@@ -363,7 +365,7 @@ namespace raptor
                     restrict_t = &solve_comm_times[3][level];
                     interp_t = &solve_comm_times[4][level];
                 }
-    
+
 
                 if (level == num_levels - 1)
                 {
@@ -405,9 +407,11 @@ namespace raptor
                 }
                 else
                 {
+                    printf("else\n");
                     if (solve_times) solve_times[0][level] -= MPI_Wtime();
 
                     levels[level+1]->x.set_const_value(0.0);
+                    printf("set const value\n");
                     
                     // Relax
                     if (solve_times) solve_times[1][level] -= MPI_Wtime();
@@ -427,15 +431,20 @@ namespace raptor
                             break;
                     }
                     if (solve_times) solve_times[1][level] += MPI_Wtime();
+                    printf("relax\n");
 
 
                     if (solve_times) solve_times[2][level] -= MPI_Wtime();
-                    A->residual(x, b, tmp, tap_level, resid_t);
+                    //A->residual(x, b, tmp, tap_level, resid_t);
+                    A->residual(x, b, tmp);
                     if (solve_times) solve_times[2][level] += MPI_Wtime();
+                    printf("residual\n");
 
                     if (solve_times) solve_times[3][level] -= MPI_Wtime();
-                    P->mult_T(tmp, levels[level+1]->b, tap_level, restrict_t);
+                    //P->mult_T(tmp, levels[level+1]->b, tap_level, restrict_t);
+                    P->mult_T(tmp, levels[level+1]->b);
                     if (solve_times) solve_times[3][level] += MPI_Wtime();
+                    printf("mult_T\n");
 
                     if (solve_times) solve_times[0][level] += MPI_Wtime();
 
@@ -444,7 +453,8 @@ namespace raptor
                     if (solve_times) solve_times[0][level] -= MPI_Wtime();
 
                     if (solve_times) solve_times[4][level] -= MPI_Wtime();
-                    P->mult_append(levels[level+1]->x, x, tap_level, interp_t);
+                    //P->mult_append(levels[level+1]->x, x, tap_level, interp_t);
+                    P->mult_append(levels[level+1]->x, x);
                     //for (int i = 0; i < A->local_num_rows; i++)
                     //{
                     //    x.local[i] += tmp.local[i];
@@ -478,6 +488,7 @@ namespace raptor
                 {
                     solve_comm_times[0][level] = *relax_t + *resid_t + *restrict_t + *interp_t;
                 }
+                printf("bottom\n");
             }
 
             int solve(ParVector& sol, ParVector& rhs)
