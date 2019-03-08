@@ -73,11 +73,11 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
     /************************************
      **** Test Anisotropic Diffusion 
      ***********************************/
-    const char* mesh_file = "/home/bienz2/shared/mfem/data/star-surf.mesh";
+    std::string mesh_file = std::string(MFEM_MESH_DIR) + "/star-surf.mesh";
     int order = 3;
     int seq_refines = 4;
     int par_refines = 0;
-    A = mfem_grad_div(x, b, mesh_file, order, seq_refines, par_refines);
+    A = mfem_grad_div(x, b, mesh_file.c_str(), order, seq_refines, par_refines);
 
     ml = new ParRugeStubenSolver(strong_threshold, PMIS, Extended, Classical, SOR);
     form_hypre_weights(&ml->weights, A->local_num_rows);
@@ -136,11 +136,11 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
         ParCSRMatrix* P = extended_interpolation(Al, S, states, off_proc_states);
         compare(P, P_h);
 
-	hypre_ParCSRMatrix* A_h_c;
+        hypre_ParCSRMatrix* A_h_c;
         hypre_BoomerAMGBuildCoarseOperatorKT(P_h, A_h, P_h, false, &A_h_c);
-	ParCSRMatrix* AP = Al->mult(P);
-	ParCSCMatrix* P_csc = P->to_ParCSC();
-	ParCSRMatrix* Ac = AP->mult_T(P_csc);
+        ParCSRMatrix* AP = Al->mult(P);
+        ParCSCMatrix* P_csc = P->to_ParCSC();
+        ParCSRMatrix* Ac = AP->mult_T(P_csc);
 
         hypre_ParCSRMatrixDestroy(A_h_c);
         hypre_ParCSRMatrixDestroy(P_h);
@@ -148,9 +148,9 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
         HYPRE_IJMatrixDestroy(Al_ij);
         delete[] CF_marker;
 
-	delete Ac;
-	delete P_csc;
-	delete AP;
+        delete Ac;
+        delete P_csc;
+        delete AP;
         delete P;
         delete S;
 

@@ -32,7 +32,6 @@ TEST(ParMetisTest, TestsInUtil)
     ParCSRMatrix* A_orig = readParMatrix(filename);
     ParVector x_orig(A_orig->global_num_rows, A_orig->local_num_rows);
     ParVector b_orig(A_orig->global_num_rows, A_orig->local_num_rows);
-    A_orig->tap_comm = new TAPComm(A_orig->partition, A_orig->off_proc_column_map);
     for (int i = 0; i < A_orig->local_num_rows; i++)
     {
         x_orig[i] = A_orig->on_proc_column_map[i];
@@ -50,7 +49,6 @@ TEST(ParMetisTest, TestsInUtil)
     ParCSRMatrix* A_rr = repartition_matrix(A_orig, proc_part, new_local_rows);
     ParVector x_rr(A_rr->global_num_rows, A_rr->local_num_rows);
     ParVector b_rr(A_rr->global_num_rows, A_rr->local_num_rows);
-    A_rr->tap_comm = new TAPComm(A_rr->partition, A_rr->off_proc_column_map);
     for (int i = 0; i < A_rr->local_num_rows; i++)
     {
         x_rr[i] = new_local_rows[i];
