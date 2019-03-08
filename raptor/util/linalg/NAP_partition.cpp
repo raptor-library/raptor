@@ -32,6 +32,7 @@ void partition(CSRMatrix* A, int n_parts,
             &n_parts, NULL, NULL, options, &objval, parts.data());
 }
 
+
 // Three-steps: partition on-process, then on-node, and then among group of PPN nodes
 ParCSRMatrix* NAP_partition(ParCSRMatrix* A_tmp, aligned_vector<int>& new_rows)
 {
@@ -452,7 +453,7 @@ ParCSRMatrix* NAP_partition(ParCSRMatrix* A_tmp, aligned_vector<int>& new_rows)
     delete Part;
 
     // Update original A_parts with new partition info
-/*    for (int i = 0; i < A_tmp->local_num_rows; i++)
+    for (int i = 0; i < A_tmp->local_num_rows; i++)
     {
         part = A_parts[i];
         local_part = part + first_nr_part - first_part;

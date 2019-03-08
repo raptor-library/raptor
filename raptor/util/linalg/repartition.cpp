@@ -667,7 +667,7 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
         {
             global_to_local[*it] = A_part->off_proc_column_map.size();
             A_part->off_proc_column_map.emplace_back(*it);
-            *it = prev_col;
+            prev_col = *it;
         }
     }
     A_part->off_proc_num_cols = A_part->off_proc_column_map.size();
