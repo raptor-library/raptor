@@ -3,36 +3,28 @@
 #include "NAP_partition.hpp"
 #include "util/linalg/repartition.hpp"
 
-void partition(ParCSRMatrix* A, int n_parts, 
+void partition(CSRMatrix* A, int n_parts, 
         aligned_vector<int>& parts)
 {
-    int nvtxs = A->local_num_rows; // # vertices in graph
+    int nvtxs = A->n_rows; // # vertices in graph
     int ncon = 1; // Number of balancing constraints
-    int* xadj = A->on_proc->idx1.data(); // Indptr
-    int* adjncy = A->on_proc->idx2.data(); // Indices
+    int* xadj = A->idx1.data(); // Indptr
+    int* adjncy = A->idx2.data(); // Indices
 
-    for (int i = 0; i < A->local_num_rows; i++)
-    {
-        int start = A->on_proc->idx1[i];
-        int end = A->on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            int idx = A->on_proc->idx2[j];
-        }
-    }
-    int adjweights[A->on_proc->nnz];
-    for (int i = 0; i < A->on_proc->nnz; i++)
-        adjweights[i] = A->on_proc->vals[i];
+    int adjweights[A->nnz];
+    for (int i = 0; i < A->nnz; i++)
+        adjweights[i] = A->vals[i];
 
     int options[METIS_NOPTIONS];
     options[METIS_OPTION_PTYPE] = METIS_PTYPE_KWAY;
     options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_VOL;
-    options[METIS_OPTION_CTYPE] = METIS_CTYPE_SHEM;
+    options[METIS_OPTION_CTYPE] = METIS_CTYPE_RM;
     options[METIS_OPTION_NCUTS] = 1;
     options[METIS_OPTION_NUMBERING] = 0;
     options[METIS_OPTION_CONTIG] = 0;
     options[METIS_OPTION_UFACTOR] = 30;
     options[METIS_OPTION_MINCONN] = 0;
+    //int* options = NULL;
 
     int objval;
     if (nvtxs) parts.resize(nvtxs);
@@ -40,259 +32,49 @@ void partition(ParCSRMatrix* A, int n_parts,
             &n_parts, NULL, NULL, options, &objval, parts.data());
 }
 
-// TODO take into account off-node cols (add to shared neighbor edges)
-ParCSRMatrix* form_part_mat(ParCSRMatrix* A,
-        int next_nr, int n_parts, aligned_vector<int>& parts,
-        aligned_vector<int>& off_parts, int first, int node_first)
-{
-    int rank, num_procs;
-    int local_rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
-    ParCSRMatrix* P = new ParCSRMatrix(A->partition);
-    int n_cols = A->on_proc_num_cols * next_nr;
-    P->on_proc->idx1.resize(n_cols);
-
-    int start, end, col, row;
-    int idx, row_start, row_end;
-    int part;
-    int n = A->local_num_rows;
-
-    // Create ptr to each row, sorted by partition
-    aligned_vector<int> part_ptr(A->local_num_rows+1);
-    aligned_vector<int> part_idx;
-    aligned_vector<int> part_sizes(n_cols, 0);
-    for (int i = 0; i < A->local_num_rows; i++)
-    {
-        part = parts[i];
-        part = part - (first - node_first);
-        part_sizes[part]++;
-    }
-    part_ptr[0] = 0;
-    for (int i = 0; i < n_parts; i++)
-    {
-        part_ptr[i+1] = part_ptr[i] + part_sizes[i];
-        part_sizes[i] = 0;
-    }
-    int part_size = part_ptr[n_parts];
-    if (part_size) part_idx.resize(part_size);
-    for (int i = 0; i < A->local_num_rows; i++)
-    {
-        part = parts[i];
-        part = part - (first - node_first);
-        idx = part_ptr[part] + part_sizes[part]++;
-        part_idx[idx] = i;
-    }
-
-
-    // Go through rows of A, one partition at a time, adding edges to vector
-    P->local_num_rows = n_parts;
-    P->on_proc->idx1.resize(P->local_num_rows + 1);
-    P->off_proc->idx1.resize(P->local_num_rows + 1);
-    P->on_proc->idx1[0] = 0;
-    P->off_proc->idx1[0] = 0;
-
-    std::fill(part_sizes.begin(), part_sizes.end(), -1);
-    for (int i = 0; i < n_parts; i++)
-    {
-        start = part_ptr[i];
-        end = part_ptr[i+1];
-        for (int j = start; j < end; j++)
-        {
-            row = part_idx[j];
-            row_start = A->on_proc->idx1[row];
-            row_end = A->on_proc->idx1[row+1];
-            for (int k = row_start; k < row_end; k++)
-            {
-                col = A->on_proc->idx2[k];
-                part = parts[col];
-                if (part_sizes[part] == -1)
-                {
-                    part_sizes[part] = P->on_proc->idx2.size();
-                    P->on_proc->idx2.push_back(part);
-                    P->on_proc->vals.push_back(0);
-                }
-                idx = part_sizes[part];
-                P->on_proc->vals[idx] += A->on_proc->vals[k];
-            }
-            row_start = A->off_proc->idx1[row];
-            row_end = A->off_proc->idx1[row+1];
-            for (int k = row_start; k < row_end; k++)
-            {
-                col = A->off_proc->idx2[k];
-                part = off_parts[col];
-                if (part < A->local_num_rows)
-                {
-                    if (part_sizes[part] == -1)
-                    {
-                        part_sizes[part] = P->on_proc->idx2.size();
-                        P->on_proc->idx2.push_back(part);
-                        P->on_proc->vals.push_back(0);
-                    }
-                    idx = part_sizes[part];
-                    P->on_proc->vals[idx]++;
-                }
-                else
-                {
-                    P->off_proc->idx2.push_back(col);
-                }
-            }
-        }
-        P->on_proc->idx1[i+1] = P->on_proc->idx2.size();
-        P->off_proc->idx1[i+1] = P->off_proc->idx2.size();
-
-        start = P->on_proc->idx1[i];
-        end = P->on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-            part_sizes[j] = -1;
-    }
-    P->on_proc->nnz = P->on_proc->idx2.size();
-
-    return P;
-}
-
-void combine_mats(ParCSRMatrix* A)
-{
-    int rank;
-    int local_rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_rank(A->partition->topology->local_comm, &local_rank);
-    int next_nr = A->partition->topology->PPN;
-
-    int ctr, count, size;
-    int start, end;
-    aligned_vector<int> mat;
-    int tag = 9183;
-    int n = A->local_num_rows;
-    int proc;
-    if (local_rank == 0) 
-    {
-        MPI_Status recv_status;
-        A->local_num_rows *= next_nr;
-        A->on_proc->idx1.resize(A->local_num_rows + 1);
-        for (int i = 1; i < A->partition->topology->PPN; i++)
-        {
-            proc = (rank / next_nr) * next_nr + i;
-            MPI_Probe(proc, tag, A->partition->topology->local_comm, &recv_status);
-            MPI_Get_count(&recv_status, MPI_INT, &count);
-            if (count > mat.size()) mat.resize(count);
-            MPI_Recv(mat.data(), count, MPI_INT, proc, tag, A->partition->topology->local_comm, &recv_status);
-            ctr = 0;
-            for (int j = 0; j < n; j++)
-            {
-                size = mat[ctr++];
-                for (int k = 0; k < size; k++)
-                {
-                    A->on_proc->idx2.push_back(mat[ctr++]);
-                    A->on_proc->vals.push_back(mat[ctr++]);
-                }
-                A->on_proc->idx1[i*n+j+1] = A->on_proc->idx2.size();
-            }
-        }
-        A->on_proc->nnz = A->on_proc->idx1[A->local_num_rows];
-    }
-    else
-    {
-        ctr = 0;
-        mat.resize(A->on_proc->n_rows + 2*A->on_proc->nnz);
-        for (int i = 0; i < A->local_num_rows; i++)
-        {
-            start = A->on_proc->idx1[i];
-            end = A->on_proc->idx1[i+1];
-            mat[ctr++] = end - start;
-            for (int j = start; j < end; j++)
-            {
-                mat[ctr++] = A->on_proc->idx2[j];
-                mat[ctr++] = A->on_proc->vals[j];
-            }
-        }
-        MPI_Send(mat.data(), mat.size(), MPI_INT, 0, tag, A->partition->topology->local_comm);
-    }
-}
-
-// TODO -- who am I actually sending to / recving from?  I think this is
-// right... Proc/RN will have to send results to proc, and then proc can send
-// them to me  
-/*aligned_vector<int>& get_non_nr_parts(ParCSRMatrix* A, int nr, aligned_vector<int>& parts)
-{
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    int rank_node = A->partition->topology->get_node(rank);
-
-    int start, end;
-
-    for (int i = 0; i < A->comm->send_data->num_msgs; i++)
-    {
-        proc = A->comm->send_data->procs[i];
-        node = A->partition->topology->get_node(proc);
-        if (node / nr != rank_node / nr)
-        {
-            start = A->comm->send_data->indptr[i];
-            end = A->comm->send_data->indptr[i+1];
-            for (int j = start; j < end; j++)
-            {
-                idx = A->comm->send_data->indices[j];
-                A->comm->send_data->int_buffer[j] = parts[idx];
-            }
-            RAPtor_MPI_Isend(&(A->comm->send_data->int_buffer[start]), end - start, MPI_INT,
-                    proc, A->comm->key, A->comm->mpi_comm, &(A->comm->send_data->requests[i]));
-        }
-    }
-    for (int i = 0; i < A->comm->recv_data->num_msgs; i++)
-    {
-        proc = A->comm->recv_data->procs[i];
-        node = A->partition->topology->get_node(proc);
-        if (node / nr != rank_node / nr)
-        {
-            start = A->comm->recv_data->indptr[i];
-            end = A->comm->recv_data->indptr[i+1];
-            RAPtor_MPI_Irecv(&(A->comm->recv_data->int_buffer[start]), end - start, MPI_INT,
-                    proc, A->comm->key, A->comm->mpi_comm, &(A->comm->recv_data->requests[i]));
-        }
-    }
-
-    if (A->comm->send_data->num_msgs)
-        MPI_Waitall(A->comm->send_data->num_msgs, A->comm->send_data->requests.data(),
-                MPI_STATUSES_IGNORE);
-    if (A->comm->recv_data->num_msgs)
-        MPI_Waitall(A->comm->recv_data->num_msgs, A->comm->recv_data->requests.data(),
-                MPI_STATUSES_IGNORE);
-
-    return A->comm->recv_data->requests;
-}*/
-
-
+// Three-steps: partition on-process, then on-node, and then among group of PPN nodes
 ParCSRMatrix* NAP_partition(ParCSRMatrix* A_tmp, aligned_vector<int>& new_rows)
 {
-
     int rank, num_procs;
-    int local_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-    MPI_Comm_rank(A_tmp->partition->topology->local_comm, &local_rank);
-    int rank_node = A_tmp->partition->topology->get_node(rank);
-    int num_nodes = num_procs / A_tmp->partition->topology->PPN;
-    int proc, node;
 
-    // TODO -- just starting with two-level
-    int n_avg = A_tmp->global_num_rows / num_procs;
-    int n_parts = n_avg / A_tmp->partition->topology->PPN;
-    int nr = 1;
-    int next_nr = nr * A_tmp->partition->topology->PPN;
-    int start, end;
-    int row, col, idx;
+    int start, end, col, row, val;
+    int ctr = 0;
+    int tag = 3492;
+    int count, size, idx, pos;
+    int part, first_part;
+    int first_nr_part, last_nr_part;
     int col_start, col_end;
-    aligned_vector<int> A_parts(A_tmp->local_num_rows);
+    int row_start, row_end;
+    int col_part, local_part;
+    int part_idx, row_part;
+
+    aligned_vector<int> nr_list;
+    aligned_vector<int> master_list;
+    aligned_vector<int> neighbor_master_list;
+    int nr = A_tmp->partition->topology->PPN;
+    int master = (rank / nr) * nr;
+    int neighbor_master = ((rank / nr) + 1) * nr;
+    nr_list.push_back(nr);
+    master_list.push_back(master);
+    neighbor_master_list.push_back(neighbor_master);
+    int mat_size = A_tmp->local_num_rows;
+
+    aligned_vector<int> sizes;
+
+    MPI_Status recv_status;
 
     CSCMatrix* A_off_csc = A_tmp->off_proc->to_CSC();
-    aligned_vector<int> off_proc_col_to_proc;
-    A_tmp->partition->form_col_to_proc(A_tmp->off_proc_column_map, 
-            off_proc_col_to_proc);
 
-    ParCSRMatrix* A = new ParCSRMatrix(A_tmp->partition);
-    aligned_vector<int> weights(A_tmp->local_num_rows, 0);
-    A->on_proc->idx1[0] = 0;
+    CSRMatrix* A_combined = NULL;
+    aligned_vector<int> A_parts;
+    aligned_vector<int> A2_parts;
+
+    // Make serial matrix (data = sum of edges / off-proc neighbors)
+    CSRMatrix* A_serial = new CSRMatrix(A_tmp->local_num_rows, A_tmp->on_proc_num_cols);
+    aligned_vector<int> row_vals(A_tmp->local_num_rows, 0);
+    A_serial->idx1[0] = 0;
     for (int i = 0; i < A_tmp->local_num_rows; i++)
     {
         start = A_tmp->on_proc->idx1[i];
@@ -300,13 +82,12 @@ ParCSRMatrix* NAP_partition(ParCSRMatrix* A_tmp, aligned_vector<int>& new_rows)
         for (int j = start; j < end; j++)
         {
             col = A_tmp->on_proc->idx2[j];
-            if (weights[col] == 0)
-            {
-                A->on_proc->idx2.push_back(col);
+            if (row_vals[col] == 0)
+            {   
+                A_serial->idx2.push_back(col);
             }
-            weights[col]++;
+            row_vals[col]++;
         }
-
         start = A_tmp->off_proc->idx1[i];
         end = A_tmp->off_proc->idx1[i+1];
         for (int j = start; j < end; j++)
@@ -317,95 +98,1053 @@ ParCSRMatrix* NAP_partition(ParCSRMatrix* A_tmp, aligned_vector<int>& new_rows)
             for (int k = col_start; k < col_end; k++)
             {
                 row = A_off_csc->idx2[k];
-                if (weights[row] == 0)
+                if (row_vals[row] == 0) 
                 {
-                    A->on_proc->idx2.push_back(row);
+                    A_serial->idx2.push_back(row);
                 }
-                weights[row]++;
+                row_vals[row]++;
+            }
+        }
+        A_serial->idx1[i+1] = A_serial->idx2.size();
+
+        start = A_serial->idx1[i];
+        end = A_serial->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = A_serial->idx2[j];
+            A_serial->vals.push_back(row_vals[col]);
+            row_vals[col] = 0;
+        }
+    }
+    A_serial->nnz = A_serial->idx2.size();
+
+    // Partition serial matrix
+    int n_parts = (A_tmp->global_num_rows / num_procs) / nr;
+    partition(A_serial, n_parts, A_parts);
+    delete A_serial;
+
+    first_part = rank * n_parts;
+    for (aligned_vector<int>::iterator it = A_parts.begin(); it != A_parts.end(); ++it)
+        *it += first_part;
+
+    // Send off_proc parts
+    aligned_vector<int>& off_parts = A_tmp->comm->communicate(A_parts);
+
+    // Form matrix 'Part' that points to partitions
+    CSRMatrix* Part = new CSRMatrix(n_parts, n_parts);
+    sizes.resize(n_parts);
+    std::fill(sizes.begin(), sizes.end(), 0);
+    for (int i = 0; i < A_tmp->local_num_rows; i++)
+    {
+        part = A_parts[i];
+        local_part = part - first_part;
+        sizes[local_part]++;
+    }
+    Part->idx1[0] = 0;
+    for (int i = 0; i < n_parts; i++)
+    {
+        Part->idx1[i+1] = Part->idx1[i] + sizes[i];
+        sizes[i] = 0;
+    }
+    Part->nnz = Part->idx1[n_parts];
+    Part->idx2.resize(Part->nnz);
+    for (int i = 0; i < A_tmp->local_num_rows; i++)
+    {
+        part = A_parts[i];
+        local_part = part - first_part;
+        idx = Part->idx1[local_part] + sizes[local_part]++;
+        Part->idx2[idx] = i;
+    }
+
+    // If part is in 'nr', make value local (subtract first_nr)
+    // Otherwise, make part negative
+    mat_size = n_parts * nr; // update mat_size (only necessary it n_rows does 
+                             // not evenly divide the number of processes)
+    first_nr_part = ((rank / nr)*nr)*n_parts;
+    last_nr_part = (((rank / nr) + 1)*nr)*n_parts - 1;
+    for (aligned_vector<int>::iterator it = A_parts.begin(); it != A_parts.end(); ++it)
+        *it -= first_nr_part;
+    for (aligned_vector<int>::iterator it = off_parts.begin(); it != off_parts.end(); ++it)
+    {
+        if (*it >= first_nr_part && *it <= last_nr_part)
+            *it -= first_nr_part;
+        else *it *= -1;
+    }
+
+    // For all parts not in 'nr', add position to map
+    // Create off_nr_idx, containing local parts in each 
+    int n_off_nr = off_parts.size();
+    std::map<int, int> off_nr_map;
+    sizes.resize(n_off_nr);
+    std::fill(sizes.begin(), sizes.end(), 0);
+    CSRMatrix* OffPart = new CSRMatrix(n_off_nr, n_off_nr);
+    ctr = 0;
+    for (int i = 0; i < A_tmp->off_proc_num_cols; i++)
+    {
+        part = off_parts[i];
+        if (part < 0)
+        {
+            if (off_nr_map.find(part) == off_nr_map.end())
+            {
+                off_nr_map[part] = ctr++;
+            }
+            idx = off_nr_map[part];
+            start = A_off_csc->idx1[i];
+            end = A_off_csc->idx1[i+1];
+            sizes[idx] += (end - start);
+        }
+    }
+    OffPart->n_rows = ctr;
+    OffPart->n_cols = ctr;
+    OffPart->idx1.resize(ctr+1);
+    OffPart->idx1[0] = 0;
+    for (int i = 0; i < ctr; i++)
+    {
+        OffPart->idx1[i+1] = OffPart->idx1[i] + sizes[i];
+        sizes[i] = 0;
+    }
+    OffPart->nnz = OffPart->idx1[ctr];
+    OffPart->idx2.resize(OffPart->nnz);
+    for (int i = 0; i < A_tmp->off_proc_num_cols; i++)
+    {
+        part = off_parts[i];
+        if (part < 0)
+        {
+            idx = off_nr_map[part];
+            start = A_off_csc->idx1[i];
+            end = A_off_csc->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                row = A_off_csc->idx2[j];
+                part = A_parts[row];
+                if (sizes[idx] == 0)
+                {
+                    pos = OffPart->idx1[idx] + sizes[idx]++;
+                    OffPart->idx2[idx] = part;
+                }
+            }
+        }
+    }
+    ctr = 0;
+    start = OffPart->idx1[0];
+    for (int i = 0; i < OffPart->n_rows; i++)
+    {
+        part = off_parts[i];
+        idx = off_nr_map[part];
+        end = start + sizes[idx];
+        for (int j = start; j < end; j++)
+        {
+            OffPart->idx2[ctr++] = OffPart->idx2[j];
+        }
+        start = OffPart->idx1[i+1];
+        OffPart->idx1[i+1] = ctr;
+    }
+    OffPart->nnz = ctr;
+
+
+    row_vals.resize(mat_size);
+    std::fill(row_vals.begin(), row_vals.end(), 0);
+    aligned_vector<int> mat;
+    aligned_vector<int> row_off_parts(OffPart->n_rows, 0);
+    aligned_vector<int> row_off_ptr(OffPart->n_rows);
+    ctr = 0;
+    if (rank == master_list[0])
+    {
+        A_combined = new CSRMatrix(mat_size, mat_size);
+        A_combined->idx1[0] = 0;
+        for (int i = 0; i < n_parts; i++)
+        {
+            ctr = 0;
+            start = Part->idx1[i];
+            end = Part->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                row = Part->idx2[j];
+                row_start = A_tmp->on_proc->idx1[row];
+                row_end = A_tmp->on_proc->idx1[row+1];
+                for (int k = row_start; k < row_end; k++)
+                {
+                    col = A_tmp->on_proc->idx2[k];
+                    col_part = A_parts[col];
+                    if (row_vals[col_part] == 0)
+                    {
+                        A_combined->idx2.push_back(col_part);
+                    }
+                    row_vals[col_part]++;
+                }
+                row_start = A_tmp->off_proc->idx1[row];
+                row_end = A_tmp->off_proc->idx1[row+1];
+                for (int k = row_start; k < row_end; k++)
+                {
+                    col = A_tmp->off_proc->idx2[k];
+                    col_part = off_parts[col];
+                    if (col_part > 0)
+                    {
+                        if (row_vals[col_part] == 0)
+                        {
+                            A_combined->idx2.push_back(col_part);
+                        }
+                        row_vals[col_part]++;
+                    }
+                    else  // Add shared neighbor partitions to list
+                    {
+                        part_idx = off_nr_map[col_part];
+                        if (row_off_parts[part_idx] == 0)
+                        {
+                            row_off_ptr[ctr++] = part_idx;
+                            row_off_parts[part_idx] = 1;
+                        }
+                    }
+                }
+            }
+
+            // Add weights for shared neighbor partitions
+            for (int j = 0; j < ctr; j++)
+            {
+                part = row_off_ptr[j];
+                start = OffPart->idx1[part];
+                end = OffPart->idx1[part+1];
+                for (int k = start; k < end; k++)
+                {
+                    row_part = OffPart->idx2[k];
+                    if (row_vals[row_part] == 0)
+                    {
+                        A_combined->idx2.push_back(row_part);
+                    }
+                    row_vals[row_part]++;
+                }
+                row_off_parts[part] = 0;
+            }
+
+
+            A_combined->idx1[i+1] = A_combined->idx2.size();
+
+            start = A_combined->idx1[i];
+            end = A_combined->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                col = A_combined->idx2[j];
+                A_combined->vals.push_back(row_vals[col]);
+                row_vals[col] = 0;
             }
         }
 
-        A->on_proc->idx1[i+1] = A->on_proc->idx2.size();
-
-        start = A->on_proc->idx1[i];
-        end = A->on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
+        int idx_ctr = n_parts+1;
+        for (int i = master+1; i < neighbor_master; i++)
         {
-            col = A->on_proc->idx2[j];
-            A->on_proc->vals.push_back(weights[col]);
-            weights[col] = 0;
+            MPI_Probe(i, tag, MPI_COMM_WORLD, &recv_status);
+            MPI_Get_count(&recv_status, MPI_INT, &count);
+            if (count > mat.size()) mat.resize(count);
+            MPI_Recv(mat.data(), count, MPI_INT, i, tag, MPI_COMM_WORLD, &recv_status);
+            ctr = 0;
+            while (ctr < count)
+            {
+                size = mat[ctr++];
+                for (int j = 0; j < size; j++)
+                {
+                    A_combined->idx2.push_back(mat[ctr++]);
+                    A_combined->vals.push_back(mat[ctr++]);
+                }
+                A_combined->idx1[idx_ctr++] = A_combined->idx2.size();
+            }
         }
-    }
-    A->on_proc->nnz = A->on_proc->idx1[A->local_num_rows];
+        A_combined->nnz = A_combined->idx1[A_combined->n_rows];
+        A_combined->n_rows = mat_size;
 
-    partition(A, n_parts, A_parts);
+        A2_parts.resize(mat_size);
+        partition(A_combined, A_tmp->partition->topology->PPN, A2_parts);
+        delete A_combined;
 
-    // Make partition unique (add by rank * n_parts)
-    int first = rank * n_parts;
-    int node_first = ((rank / next_nr)*next_nr) * n_parts;
-    for (aligned_vector<int>::iterator it  = A_parts.begin(); it != A_parts.end(); ++it)
-        *it += first;
-
-    // Communicate off-proc column partitions
-    aligned_vector<int>& off_parts = A_tmp->comm->communicate(A_parts);
-
-    for (aligned_vector<int>::iterator it = A_parts.begin(); it != A_parts.end(); ++it)
-        *it -= node_first;
-    for (int i = 0; i < A_tmp->off_proc_num_cols; i++)
-    {
-        proc = off_proc_col_to_proc[i];
-        node = A->partition->topology->get_node(proc);
-        if (node == rank_node)
-            off_parts[i] -= node_first;
-    }
-
-    // Make new matrix: vertices are partitions, edges between partitions,
-    // weights = number of edges in original graph between two partitions
-    ParCSRMatrix* P = form_part_mat(A, next_nr, n_parts, A_parts, off_parts, first,
-            node_first);
-
-    combine_mats(P);
-
-    int size = n_parts * A->partition->topology->PPN;
-    aligned_vector<int> P_parts(size);
-    if (rank == 0) 
-    {
-        partition(P, A->partition->topology->PPN, P_parts);
-    }
-    
-    delete P;
-
-    // Send parts back to all procs on node
-    int tag = 9421;
-    if (rank % next_nr == 0)
-    {
-        for (int i = 1; i < next_nr; i++)
+        start = n_parts;
+        for (int i = master + 1; i < neighbor_master; i++)
         {
-            MPI_Send(P_parts.data(), size, MPI_INT, rank + i, tag, MPI_COMM_WORLD);
+            MPI_Send(&(A2_parts[start]), n_parts, MPI_INT, i, tag, MPI_COMM_WORLD);
+            start += n_parts;
+        }
+        A2_parts.resize(n_parts);
+    }
+    else
+    {
+        aligned_vector<int> mat_parts(mat_size, 0);
+        int mat_ctr = 0;
+        for (int i = 0; i < n_parts; i++)
+        {
+            ctr = 0;
+            start = Part->idx1[i];
+            end = Part->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                row = Part->idx2[j];
+                row_start = A_tmp->on_proc->idx1[row];
+                row_end = A_tmp->on_proc->idx1[row+1];
+                for (int k = row_start; k < row_end; k++)
+                {
+                    col = A_tmp->on_proc->idx2[k];
+                    col_part = A_parts[col];
+                    if (row_vals[col_part] == 0)
+                    {
+                        mat_parts[mat_ctr++] = col_part;
+                    }
+                    row_vals[col_part]++;
+                }
+                row_start = A_tmp->off_proc->idx1[row];
+                row_end = A_tmp->off_proc->idx1[row+1];
+                for (int k = row_start; k < row_end; k++)
+                {
+                    col = A_tmp->off_proc->idx2[k];
+                    col_part = off_parts[col];
+                    if (col_part >= 0)
+                    {
+                        if (row_vals[col_part] == 0)
+                        {
+                            mat_parts[mat_ctr++] = col_part;
+                        }
+                        row_vals[col_part]++;
+                    }
+                    else
+                    {
+                        part_idx = off_nr_map[col_part];
+                        if (row_off_parts[part_idx] == 0)
+                        {
+                            row_off_ptr[ctr++] = part_idx;
+                            row_off_parts[part_idx] = 1;
+                        }
+                    }
+                }
+            }
+
+            for (int j = 0; j < ctr; j++)
+            {
+                part = row_off_ptr[j];
+                start = OffPart->idx1[part];
+                end = OffPart->idx1[part+1];
+                for (int k = start; k < end; k++)
+                {
+                    row_part = OffPart->idx2[k];
+                    if (row_vals[row_part] == 0)
+                    {
+                        mat_parts[mat_ctr++] = row_part;
+                    }
+                    row_vals[row_part]++;
+                }
+                row_off_parts[part] = 0;
+            }
+
+            mat.push_back(mat_ctr);
+            for (int j = 0; j < mat_ctr; j++)
+            {
+                col = mat_parts[j];
+                mat.push_back(col);
+                mat.push_back(row_vals[col]);
+                row_vals[col] = 0;
+            }
+            mat_ctr = 0;
+        }
+
+        MPI_Send(mat.data(), mat.size(), MPI_INT, master, tag, MPI_COMM_WORLD);
+
+        A2_parts.resize(n_parts);
+        MPI_Recv(A2_parts.data(), n_parts, MPI_INT, master, tag, 
+                MPI_COMM_WORLD, &recv_status);
+    }
+
+    delete OffPart;
+    delete Part;
+
+    // Update original A_parts with new partition info
+/*    for (int i = 0; i < A_tmp->local_num_rows; i++)
+    {
+        part = A_parts[i];
+        local_part = part + first_nr_part - first_part;
+        A_parts[i] = A2_parts[local_part];
+    }
+
+    // Update nr, and update parts to make unique in nr
+    first_part = (rank / nr) * n_parts;
+    nr *= A_tmp->partition->topology->PPN;
+    master_list.push_back((rank / nr)*nr);
+    neighbor_master_list.push_back(((rank / nr) + 1) * nr);
+    for (aligned_vector<int>::iterator it = A_parts.begin();
+            it != A_parts.end(); ++it)
+    {
+        *it += first_part;
+    }
+
+    // Send off_proc parts
+    off_parts = A_tmp->comm->communicate(A_parts);
+
+    // Form matrix 'Part' that points to partitions
+    Part = new CSRMatrix(n_parts, n_parts);
+    sizes.resize(n_parts);
+    std::fill(sizes.begin(), sizes.end(), 0);
+    for (int i = 0; i < A_tmp->local_num_rows; i++)
+    {
+        part = A_parts[i];
+        local_part = part - first_part;
+        sizes[local_part]++;
+    }
+    Part->idx1[0] = 0;
+    for (int i = 0; i < n_parts; i++)
+    {
+        Part->idx1[i+1] = Part->idx1[i] + sizes[i];
+        sizes[i] = 0;
+    }
+    Part->nnz = Part->idx1[n_parts];
+    Part->idx2.resize(Part->nnz);
+    for (int i = 0; i < A_tmp->local_num_rows; i++)
+    {
+        part = A_parts[i];
+        local_part = part - first_part;
+        idx = Part->idx1[local_part] + sizes[local_part]++;
+        Part->idx2[idx] = i;
+    }
+
+    first_nr_part = (rank / nr)*n_parts;
+    last_nr_part = ((rank / nr) + 1)*n_parts - 1;
+    for (aligned_vector<int>::iterator it = A_parts.begin(); it != A_parts.end(); ++it)
+        *it -= first_nr_part;
+    for (aligned_vector<int>::iterator it = off_parts.begin(); it != off_parts.end(); ++it)
+        *it -= first_nr_part;
+
+
+    row_vals.resize(mat_size, 0);
+    mat.clear();
+    ctr = 0;
+    if (rank == master_list[0])
+    {
+        A_combined = new CSRMatrix(mat_size, mat_size);
+        A_combined->idx1[0] = 0;
+        for (int i = 0; i < n_parts; i++)
+        {
+            start = Part->idx1[i];
+            end = Part->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                row = Part->idx2[j];
+                row_start = A_tmp->on_proc->idx1[row];
+                row_end = A_tmp->on_proc->idx1[row+1];
+                for (int k = row_start; k < row_end; k++)
+                {
+                    col = A_tmp->on_proc->idx2[k];
+                    col_part = A_parts[col];
+                    if (row_vals[col_part] == 0)
+                    {
+                        A_combined->idx2.push_back(col_part);
+                    }
+                    row_vals[col_part]++;
+                }
+                row_start = A_tmp->off_proc->idx1[row];
+                row_end = A_tmp->off_proc->idx1[row+1];
+                for (int k = row_start; k < row_end; k++)
+                {
+                    col = A_tmp->off_proc->idx2[k];
+                    col_part = off_parts[col];
+                    if (row_vals[col_part] == 0)
+                    {
+                        A_combined->idx2.push_back(col_part);
+                    }
+                }
+            }
+
+            A_combined->idx1[i+1] = A_combined->idx2.size();
+
+            start = A_combined->idx1[i];
+            end = A_combined->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                col = A_combined->idx2[j];
+                A_combined->vals.push_back(row_vals[col]);
+                row_vals[col] = 0;
+            }
+        }
+
+        int idx_ctr = n_parts+1;
+        for (int i = master_list[0]+1; i < neighbor_master_list[0]; i++)
+        {
+            MPI_Probe(i, tag, MPI_COMM_WORLD, &recv_status);
+            MPI_Get_count(&recv_status, MPI_INT, &count);
+            if (count > mat.size()) mat.resize(count);
+            MPI_Recv(mat.data(), count, MPI_INT, i, tag, MPI_COMM_WORLD, &recv_status);
+            ctr = 0;
+            while (ctr < count)
+            {
+                size = mat[ctr++];
+                for (int j = 0; j < size; j++)
+                {
+                    A_combined->idx2.push_back(mat[ctr++]);
+                    A_combined->vals.push_back(mat[ctr++]);
+                }
+                A_combined->idx1[idx_ctr++] = A_combined->idx2.size();
+            }
+        }
+
+        // Combine rows (all mats have duplicate rows)
+        row_vals.resize(mat_size);
+        std::fill(row_vals.begin(), row_vals.end(), 0);
+        sizes.resize(n_parts);
+        ctr = 0;
+        for (int i = 0; i < n_parts; i++)
+        {
+            for (int j = 0; j < nr; j++)
+            {
+                start = A_combined->idx1[j*n_parts + i];
+                end = A_combined->idx1[j*n_parts + i + 1];
+                for (int k = start; k < end; k++)
+                {
+                    col = A_combined->idx2[k];
+                    if (row_vals[col] == 0)
+                    {
+                        A_combined->idx2[ctr++] = col;
+                    }
+                    row_vals[col] += A_combined->vals[k];
+                }
+            }
+            sizes[i] = ctr;
+        }
+        for (int i = 0; i < n_parts; i++)
+        {
+            A_combined->idx1[i+1] = sizes[i];
+        }
+
+        if (rank == master_list[1])
+        {
+            printf("Rank %d, n_parts %d\n", rank, n_parts);
+            idx_ctr = n_parts+1;
+            for (int i = master_list[1]+nr_list[0]; i < neighbor_master_list[1]; i += nr_list[0])
+            {
+                printf("i %d\n", i);
+                MPI_Probe(i, tag, MPI_COMM_WORLD, &recv_status);
+                MPI_Get_count(&recv_status, MPI_INT, &count);
+                if (count > mat.size()) mat.resize(count);
+                MPI_Recv(mat.data(), count, MPI_INT, i, tag, MPI_COMM_WORLD, &recv_status);
+                ctr = 0;
+                while (ctr < count)
+                {
+                    size = mat[ctr++];
+                    for (int j = 0; j < size; j++)
+                    {
+                        A_combined->idx2.push_back(mat[ctr++]);
+                        A_combined->vals.push_back(mat[ctr++]);
+                    }
+                    A_combined->idx1[idx_ctr++] = A_combined->idx2.size();
+                }
+            }
+            A_combined->n_rows = idx_ctr;
+            A_combined->nnz = A_combined->idx1[idx_ctr];
+            printf("N rows %d, mat size %d\n", idx_ctr, mat_size);
+            A2_parts.resize(A_combined->n_rows);
+            partition(A_combined, A_tmp->partition->topology->PPN, A2_parts);
+            start = n_parts;
+            for (int i = master_list[1]+nr_list[0]; i < neighbor_master_list[1]; i += nr_list[0])
+            {
+                MPI_Send(&(A2_parts[start]), n_parts, MPI_INT, i, tag, MPI_COMM_WORLD);
+                start += n_parts;
+            }
+            A2_parts.resize(n_parts);
+        }
+        else
+        {
+            mat.clear();
+            for (int i = 0; i < n_parts; i++)
+            {
+                start = A_combined->idx1[i];
+                end = A_combined->idx1[i+1];
+                mat.push_back(end - start);
+                for (int j = start; j < end; j++)
+                {
+                    mat.push_back(A_combined->idx2[j]);
+                    mat.push_back(A_combined->vals[j]);
+                }
+            }
+            MPI_Send(mat.data(), mat.size(), MPI_INT, master_list[1], tag, MPI_COMM_WORLD);
+
+            A2_parts.resize(n_parts);
+          //  MPI_Recv(A2_parts.data(), n_parts, MPI_INT, master_list[1], tag, 
+          //          MPI_COMM_WORLD, &recv_status);
+        }
+
+        for (int i = master_list[0]+1; i < neighbor_master_list[0]; i++)
+        {
+            MPI_Send(A2_parts.data(), n_parts, MPI_INT, i, tag, MPI_COMM_WORLD);
         }
     }
     else
     {
-        proc = (rank / next_nr) * next_nr;
-        MPI_Recv(P_parts.data(), size, MPI_INT, proc, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    }
+        mat.clear();
+        aligned_vector<int> mat_parts(mat_size, 0);
+        int mat_ctr = 0;
+        for (int i = 0; i < n_parts; i++)
+        {
+            ctr = 0;
+            start = Part->idx1[i];
+            end = Part->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                row = Part->idx2[j];
+                row_start = A_tmp->on_proc->idx1[row];
+                row_end = A_tmp->on_proc->idx1[row+1];
+                for (int k = row_start; k < row_end; k++)
+                {
+                    col = A_tmp->on_proc->idx2[k];
+                    col_part = A_parts[col];
+                    if (row_vals[col_part] == 0)
+                    {
+                        mat_parts[mat_ctr++] = col_part;
+                    }
+                    row_vals[col_part]++;
+                }
+                row_start = A_tmp->off_proc->idx1[row];
+                row_end = A_tmp->off_proc->idx1[row+1];
+                for (int k = row_start; k < row_end; k++)
+                {
+                    col = A_tmp->off_proc->idx2[k];
+                    col_part = off_parts[col];
+                    if (row_vals[col_part] == 0)
+                    {
+                        mat_parts[mat_ctr++] = col_part;
+                    }
+                    row_vals[col_part]++;
+                }
+            }
 
-    // Sort rows of original matrix by partition
-    aligned_vector<int> ps(A->partition->topology->PPN,0);
-    for (int i = 0; i < A->local_num_rows; i++)
+            mat.push_back(mat_ctr);
+            for (int j = 0; j < mat_ctr; j++)
+            {
+                col = mat_parts[j];
+                mat.push_back(col);
+                mat.push_back(row_vals[col]);
+                row_vals[col] = 0;
+            }
+            mat_ctr = 0;
+        }
+
+        MPI_Send(mat.data(), mat.size(), MPI_INT, master_list[0], tag, MPI_COMM_WORLD);
+
+        A2_parts.resize(n_parts);
+        MPI_Recv(A2_parts.data(), n_parts, MPI_INT, master_list[0], tag, 
+                MPI_COMM_WORLD, &recv_status);
+    }
+    delete OffPart;
+    delete Part;
+
+    for (int i = 0; i < A_tmp->local_num_rows; i++)
     {
-        int A_part = A_parts[i];
-        int P_part = P_parts[A_part];
-        A_parts[i] = P_part;
-        ps[P_part]++;
+        part = A_parts[i];
+        local_part = part - first_part;
+        A_parts[i] = A2_parts[local_part];
     }
-    for (int i = 0; i < A->partition->topology->PPN; i++)
-        if (ps[i]) printf("PS[%d] = %d\n", i, ps[i]);
+*/
 
-    ParCSRMatrix* A_part = repartition_matrix(A_tmp, A_parts.data(), new_rows);
+for (aligned_vector<int>::iterator it = A_parts.begin(); it != A_parts.end(); ++it)
+    *it = rank;
 
     delete A_off_csc;
-    delete A;
-    return A_part;
+    return repartition_matrix(A_tmp, A_parts.data(), new_rows);
+
+    
 }
+
+
+
+
+// Two-steps... partition on process and then on-node (on local process 0)
+/*
+ParCSRMatrix* NAP_partition(ParCSRMatrix* A_tmp, aligned_vector<int>& new_rows)
+{
+    int rank, num_procs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+    int start, end, col, row, val;
+    int ctr = 0;
+    int tag = 3492;
+    int count, size, idx;
+    int part, first_part;
+    int col_start, col_end;
+    int row_start, row_end;
+    int col_part, local_part;
+    MPI_Status recv_status;
+
+    CSCMatrix* A_off_csc = A_tmp->off_proc->to_CSC();
+
+    CSRMatrix* A_combined = NULL;
+    aligned_vector<int> A_parts;
+    aligned_vector<int> P_parts;
+
+    // Make serial matrix (data = sum of edges / off-proc neighbors)
+    CSRMatrix* A_serial = new CSRMatrix(A_tmp->local_num_rows, A_tmp->on_proc_num_cols);
+    aligned_vector<int> row_vals(A_tmp->local_num_rows, 0);
+    A_serial->idx1[0] = 0;
+    for (int i = 0; i < A_tmp->local_num_rows; i++)
+    {
+        start = A_tmp->on_proc->idx1[i];
+        end = A_tmp->on_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = A_tmp->on_proc->idx2[j];
+            if (row_vals[col] == 0)
+            {   
+                A_serial->idx2.push_back(col);
+            }
+            row_vals[col]++;
+        }
+        start = A_tmp->off_proc->idx1[i];
+        end = A_tmp->off_proc->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = A_tmp->off_proc->idx2[j];
+            col_start = A_off_csc->idx1[col];
+            col_end = A_off_csc->idx1[col+1];
+            for (int k = col_start; k < col_end; k++)
+            {
+                row = A_off_csc->idx2[k];
+                if (row_vals[row] == 0) 
+                {
+                    A_serial->idx2.push_back(row);
+                }
+                row_vals[row]++;
+            }
+        }
+        A_serial->idx1[i+1] = A_serial->idx2.size();
+
+        start = A_serial->idx1[i];
+        end = A_serial->idx1[i+1];
+        for (int j = start; j < end; j++)
+        {
+            col = A_serial->idx2[j];
+            A_serial->vals.push_back(row_vals[col]);
+            row_vals[col] = 0;
+        }
+    }
+    A_serial->nnz = A_serial->idx2.size();
+
+    // Partition serial matrix
+    int n_parts = (A_tmp->global_num_rows / num_procs) / 16;
+    partition(A_serial, n_parts, A_parts);
+
+    first_part = rank * n_parts;
+    for (aligned_vector<int>::iterator it = A_parts.begin(); it != A_parts.end(); ++it)
+        *it += first_part;
+
+    // Send off_proc parts
+    aligned_vector<int>& off_parts = A_tmp->comm->communicate(A_parts);
+
+    // Form matrix of partitions
+    aligned_vector<int> part_ptr(n_parts+1);
+    aligned_vector<int> part_sizes(n_parts, 0);
+    aligned_vector<int> part_idx;
+    for (int i = 0; i < A_serial->n_rows; i++)
+    {
+        part = A_parts[i];
+        local_part = part - first_part;
+        part_sizes[local_part]++;
+    }
+    part_ptr[0] = 0;
+    for (int i = 0; i < n_parts; i++)
+    {
+        part_ptr[i+1] = part_ptr[i] + part_sizes[i];
+        part_sizes[i] = 0;
+    }
+    part_idx.resize(part_ptr[n_parts]);
+    for (int i = 0; i < A_serial->n_rows; i++)
+    {
+        part = A_parts[i];
+        local_part = part - first_part;
+        idx = part_ptr[local_part] + part_sizes[local_part]++;
+        part_idx[idx] = i;
+    }
+
+    // Gather matrix P on rank 0
+    row_vals.resize(n_parts*16, 0);
+    aligned_vector<int> mat;
+    if (rank == 0)
+    {
+        A_combined = new CSRMatrix(n_parts*16, n_parts*16);
+        A_combined->idx1[0] = 0;
+        for (int i = 0; i < n_parts; i++)
+        {
+            start = part_ptr[i];
+            end = part_ptr[i+1];
+            for (int j = start; j < end; j++)
+            {
+                row = part_idx[j];
+                row_start = A_tmp->on_proc->idx1[row];
+                row_end = A_tmp->on_proc->idx1[row+1];
+                for (int k = row_start; k < row_end; k++)
+                {
+                    col = A_tmp->on_proc->idx2[k];
+                    col_part = A_parts[col];
+                    if (row_vals[col_part] == 0)
+                    {
+                        A_combined->idx2.push_back(col_part);
+                    }
+                    row_vals[col_part]++;
+                }
+                row_start = A_tmp->off_proc->idx1[row];
+                row_end = A_tmp->off_proc->idx1[row+1];
+                for (int k = row_start; k < row_end; k++)
+                {
+                    col = A_tmp->off_proc->idx2[k];
+                    col_part = off_parts[col];
+                    if (row_vals[col_part] == 0)
+                    {
+                        A_combined->idx2.push_back(col_part);
+                    }
+                    row_vals[col_part]++;
+                }
+            }
+            A_combined->idx1[i+1] = A_combined->idx2.size();
+
+            start = A_combined->idx1[i];
+            end = A_combined->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                col = A_combined->idx2[j];
+                A_combined->vals.push_back(row_vals[col]);
+                row_vals[col] = 0;
+            }
+        }
+
+        int idx_ctr = n_parts+1;
+        for (int i = 1; i < A_tmp->partition->topology->PPN; i++)
+        {
+            MPI_Probe(i, tag, MPI_COMM_WORLD, &recv_status);
+            MPI_Get_count(&recv_status, MPI_INT, &count);
+            if (count > mat.size()) mat.resize(count);
+            MPI_Recv(mat.data(), count, MPI_INT, i, tag, MPI_COMM_WORLD, &recv_status);
+            ctr = 0;
+            while (ctr < count)
+            {
+                size = mat[ctr++];
+                for (int j = 0; j < size; j++)
+                {
+                    A_combined->idx2.push_back(mat[ctr++]);
+                    A_combined->vals.push_back(mat[ctr++]);
+                }
+                A_combined->idx1[idx_ctr++] = A_combined->idx2.size();
+            }
+        }
+        A_combined->nnz = A_combined->idx1[A_combined->n_rows];
+        A_combined->n_rows = n_parts*16;
+
+        P_parts.resize(n_parts*16);
+        partition(A_combined, A_tmp->partition->topology->PPN, P_parts);
+        delete A_combined;
+
+        start = n_parts;
+        for (int i = 1; i < A_tmp->partition->topology->PPN; i++)
+        {
+            MPI_Send(&(P_parts[start]), n_parts, MPI_INT, i, tag, MPI_COMM_WORLD);
+            start += n_parts;
+        }
+
+        P_parts.resize(n_parts);
+    }
+    else
+    {
+        aligned_vector<int> mat_parts(n_parts*16, 0);
+        int mat_ctr = 0;
+        ctr = 0;
+        for (int i = 0; i < n_parts; i++)
+        {
+            start = part_ptr[i];
+            end = part_ptr[i+1];
+            for (int j = start; j < end; j++)
+            {
+                row = part_idx[j];
+                row_start = A_tmp->on_proc->idx1[row];
+                row_end = A_tmp->on_proc->idx1[row+1];
+                for (int k = row_start; k < row_end; k++)
+                {
+                    col = A_tmp->on_proc->idx2[k];
+                    col_part = A_parts[col];
+                    if (row_vals[col_part] == 0)
+                    {
+                        mat_parts[mat_ctr++] = col_part;
+                    }
+                    row_vals[col_part]++;
+                }
+                row_start = A_tmp->off_proc->idx1[row];
+                row_end = A_tmp->off_proc->idx1[row+1];
+                for (int k = row_start; k < row_end; k++)
+                {
+                    col = A_tmp->off_proc->idx2[k];
+                    col_part = off_parts[col];
+                    if (row_vals[col_part] == 0)
+                    {
+                        mat_parts[mat_ctr++] = col_part;
+                    }
+                    row_vals[col_part]++;
+                }
+            }
+
+            mat.push_back(mat_ctr);
+            for (int j = 0; j < mat_ctr; j++)
+            {
+                col = mat_parts[j];
+                mat.push_back(col);
+                mat.push_back(row_vals[col]);
+                row_vals[col] = 0;
+            }
+            mat_ctr = 0;
+        }
+
+        MPI_Send(mat.data(), mat.size(), MPI_INT, 0, tag, MPI_COMM_WORLD);
+
+        P_parts.resize(n_parts);
+        MPI_Recv(P_parts.data(), n_parts, MPI_INT, 0, tag, 
+                MPI_COMM_WORLD, &recv_status);
+    }
+
+    for (int i = 0; i < A_tmp->local_num_rows; i++)
+    {
+        part = A_parts[i];
+        local_part = part - first_part;
+        A_parts[i] = P_parts[local_part];
+    }
+
+    delete A_serial;
+    delete A_off_csc;
+    return repartition_matrix(A_tmp, A_parts.data(), new_rows);
+}
+*/
+
+
+
+// One-step... gather on-node and partition serially
+/*
+ParCSRMatrix* NAP_partition(ParCSRMatrix* A_tmp, aligned_vector<int>& new_rows)
+{
+    int rank, num_procs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+    int start, end, col, val;
+    int ctr = 0;
+    int tag = 3492;
+    int count, size;
+    MPI_Status recv_status;
+
+    CSRMatrix* A_combined = NULL;
+    aligned_vector<int> parts;
+
+    // Gather matrix A on rank 0
+    aligned_vector<int> mat(A_tmp->local_num_rows + A_tmp->on_proc->nnz*2 + A_tmp->off_proc->nnz*2);
+    if (rank == 0)
+    {
+        aligned_vector<int> proc_sizes(A_tmp->partition->topology->PPN);
+        proc_sizes[0] = A_tmp->local_num_rows;
+
+        A_combined = new CSRMatrix(A_tmp->global_num_rows, A_tmp->global_num_cols);
+        A_combined->idx1[0] = 0;
+        for (int i = 0; i < A_tmp->local_num_rows; i++)
+        {
+            start = A_tmp->on_proc->idx1[i];
+            end = A_tmp->on_proc->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                col = A_tmp->on_proc->idx2[j];
+                A_combined->idx2.push_back(A_tmp->on_proc_column_map[col]);
+                A_combined->vals.push_back(1);
+            }
+            start = A_tmp->off_proc->idx1[i];
+            end = A_tmp->off_proc->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                col = A_tmp->off_proc->idx2[j];
+                A_combined->idx2.push_back(A_tmp->off_proc_column_map[col]);
+                A_combined->vals.push_back(1);
+            }
+            A_combined->idx1[i+1] = A_combined->idx2.size();
+        }
+        int idx_ctr = A_tmp->local_num_rows + 1;
+        for (int i = 1; i < A_tmp->partition->topology->PPN; i++)
+        {
+            MPI_Probe(i, tag, MPI_COMM_WORLD, &recv_status);
+            MPI_Get_count(&recv_status, MPI_INT, &count);
+            if (count > mat.size()) mat.resize(count);
+            MPI_Recv(mat.data(), count, MPI_INT, i, tag, MPI_COMM_WORLD, &recv_status);
+            ctr = 0;
+            proc_sizes[i] = 0;
+            while (ctr < count)
+            {
+                size = mat[ctr++];
+                for (int j = 0; j < size; j++)
+                {
+                    A_combined->idx2.push_back(mat[ctr++]);
+                    A_combined->vals.push_back(mat[ctr++]);
+                }
+               // printf("Acomb idx1[%d] = %d\n", idx_ctr, A_combined->idx2.size());
+                A_combined->idx1[idx_ctr++] = A_combined->idx2.size();
+                proc_sizes[i]++;
+            }
+        }
+        A_combined->nnz = A_combined->idx1[A_combined->n_rows];
+        A_combined->n_rows = A_tmp->global_num_rows;
+        printf("%d, %d, %d, %d\n", A_combined->n_rows, A_combined->idx1.size(),
+                A_combined->nnz, A_combined->idx2.size());
+
+        parts.resize(A_tmp->global_num_rows);
+        partition(A_combined, A_tmp->partition->topology->PPN, parts);
+        delete A_combined;
+
+        start = proc_sizes[0];
+        for (int i = 1; i < A_tmp->partition->topology->PPN; i++)
+        {
+            size = proc_sizes[i];
+            MPI_Send(&(parts[start]), size, MPI_INT, i, tag, MPI_COMM_WORLD);
+            start += size;
+        }
+
+        parts.resize(A_tmp->local_num_rows);
+    }
+    else
+    {
+        for (int i = 0; i < A_tmp->local_num_rows; i++)
+        {
+            mat[ctr++] = (A_tmp->on_proc->idx1[i+1] - A_tmp->on_proc->idx1[i])
+                + (A_tmp->off_proc->idx1[i+1] - A_tmp->off_proc->idx1[i]);
+
+            start = A_tmp->on_proc->idx1[i];
+            end = A_tmp->on_proc->idx1[i+1];
+            for (int j = start; j < end; j++)
+            {
+                col = A_tmp->on_proc->idx2[j];
+                val = 1;
+                mat[ctr++] = A_tmp->on_proc_column_map[col];
+                mat[ctr++] = val;
+            }
+
+            start = A_tmp->off_proc->idx1[i];
+            end = A_tmp->off_proc->idx1[i+1];
+            for (int j =start; j < end; j++)
+            {
+                col = A_tmp->off_proc->idx2[j];
+                val = 1;
+                mat[ctr++] = A_tmp->off_proc_column_map[col];
+                mat[ctr++] = val;
+            }
+        }
+        printf("Ctr %d, Matsize %d\n", ctr, mat.size());
+        MPI_Send(mat.data(), ctr, MPI_INT, 0, tag, MPI_COMM_WORLD);
+
+        parts.resize(A_tmp->local_num_rows);
+        MPI_Recv(parts.data(), A_tmp->local_num_rows, MPI_INT, 0, tag, 
+                MPI_COMM_WORLD, &recv_status);
+    }
+
+
+    return repartition_matrix(A_tmp, parts.data(), new_rows);
+
+}
+*/
+
+
+
+
+
+
+
+
+
 

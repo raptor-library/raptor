@@ -76,21 +76,21 @@ TEST(TAPAnisoSpMVTest, TestsInUtil)
     delete[] stencil;
     aligned_vector<int> new_rows;
     ParCSRMatrix* A_part = NAP_partition(A, new_rows);
-//    int* parts = parmetis_partition(A);
-//    aligned_vector<int> parmetis_rows;
-//    ParCSRMatrix* A_par_metis = repartition_matrix(A, parts, parmetis_rows);
+    int* parts = parmetis_partition(A);
+    aligned_vector<int> parmetis_rows;
+    ParCSRMatrix* A_par_metis = repartition_matrix(A, parts, parmetis_rows);
 
     if (rank == 0) printf("Standard A:\n");
     print_mat_data(A);
+    delete A;
 
     if (rank == 0) printf("Partitioned A:\n");
     print_mat_data(A_part);
-
-//    if (rank == 0) printf("ParMetis A:\n");
-//    print_mat_data(A_par_metis);
-
     delete A_part;
-    delete A;
+
+    if (rank == 0) printf("ParMetis A:\n");
+    print_mat_data(A_par_metis);
+    delete A_par_metis;
 
 
 } // end of TEST(ParAnisoSpMVTest, TestsInUtil) //
