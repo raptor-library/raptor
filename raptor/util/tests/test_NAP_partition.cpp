@@ -72,26 +72,26 @@ TEST(TAPAnisoSpMVTest, TestsInUtil)
     double eps = 0.001;
     double theta = M_PI/8.0;
     double* stencil = diffusion_stencil_2d(eps, theta);
+
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
     delete[] stencil;
-    aligned_vector<int> new_rows;
-    ParCSRMatrix* A_part = NAP_partition(A, new_rows);
-    int* parts = parmetis_partition(A);
-    aligned_vector<int> parmetis_rows;
-    ParCSRMatrix* A_par_metis = repartition_matrix(A, parts, parmetis_rows);
-
     if (rank == 0) printf("Standard A:\n");
     print_mat_data(A);
-    delete A;
 
+    aligned_vector<int> new_rows;
+    ParCSRMatrix* A_part = NAP_partition(A, new_rows);
     if (rank == 0) printf("Partitioned A:\n");
     print_mat_data(A_part);
     delete A_part;
 
+    int* parts = parmetis_partition(A);
+    aligned_vector<int> parmetis_rows;
+    ParCSRMatrix* A_par_metis = repartition_matrix(A, parts, parmetis_rows);
     if (rank == 0) printf("ParMetis A:\n");
     print_mat_data(A_par_metis);
     delete A_par_metis;
 
+    delete A;
 
 } // end of TEST(ParAnisoSpMVTest, TestsInUtil) //
 

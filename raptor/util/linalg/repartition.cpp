@@ -400,227 +400,201 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
     RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
     ParCSRMatrix* A_part;
-    aligned_vector<int> send_row_buffer;
-    aligned_vector<int> recv_row_buffer;
-    std::vector<PairData> send_buffer;
-    std::vector<PairData> recv_buffer;
-    
-    int proc, proc_idx;
-    int idx, ctr;
-    int num_rows, first_row;
-    int start, end, col;
-    int row_size;
-    int send_row_size;
-    int num_sends;
-    int row_key = 370284;
-    int key = 204853;
-    int msg_avail, finished;
-    int count;
+    int proc, num_sends, send_row_size;
+    int idx, pos, count, n_rows;
+    int start, end;
+    int start_on, end_on;
+    int start_off, end_off;
+    int on_size, off_size, size;
+    int col, global_col;
+    int row, global_row, first_row;
+    int tag, ctr, prev_ctr;
+    int mat_size, prev_mat_size;
     double val;
     RAPtor_MPI_Status recv_status;
-    RAPtor_MPI_Request barrier_request;
+
+    aligned_vector<int> proc_row_sizes(num_procs, 0);
+    aligned_vector<int> proc_to_idx(num_procs);
+    aligned_vector<int> proc_row_idx;
+
     aligned_vector<int> send_procs;
     aligned_vector<int> send_ptr;
-    aligned_vector<int> proc_sizes(num_procs, 0);
-    aligned_vector<int> proc_to_idx(num_procs);
     aligned_vector<MPI_Request> send_requests;
-    aligned_vector<MPI_Request> recv_requests;
-    aligned_vector<int> recv_rows;
-    aligned_vector<int> recv_row_sizes;
-    aligned_vector<int> recv_procs;
-    aligned_vector<int> recv_ptr;
 
     // Find how many rows go to each proc
     for (int i = 0; i < A->local_num_rows; i++)
     {
         proc = partition[i];
-        proc_sizes[proc]++;
+        if (proc_row_sizes[proc] == 0)
+        {
+            proc_to_idx[proc] = send_procs.size();
+            send_procs.push_back(proc);
+        }
+        proc_row_sizes[proc]++;
     }
 
     // Create send_procs: procs to which I must send rows
-    // and send_ptr: number of rows to send to each
-    send_row_size = 0;
-    send_ptr.emplace_back(0);
-    for (int i = 0; i < num_procs; i++)
-    {
-        if (proc_sizes[i])
-        {
-            send_row_size += proc_sizes[i];
-            proc_to_idx[i] = send_procs.size();
-            send_procs.emplace_back(i);
-            send_ptr.emplace_back(send_row_size);
-            proc_sizes[i] = 0;
-        }
-    }
-
-    // Now know the number of messages to be sent
+    // and send_ptr: number of rows to send to each2
     num_sends = send_procs.size();
-    if (num_sends)
+    send_ptr.resize(num_sends+1);
+    send_ptr[0] = 0;
+    for (int i = 0; i < num_sends; i++)
     {
-        send_requests.resize(num_sends);
+        proc = send_procs[i];
+        send_ptr[i+1] = send_ptr[i] + proc_row_sizes[proc];
+        proc_row_sizes[proc] = 0;
     }
-
-    // Add row and row_size to send buffer, ordered by 
-    // processes to which buffer is sent
-    send_row_buffer.resize(2*send_row_size);
+    send_row_size = send_ptr[num_sends];
+    
+    // Add to proc_idx (rows, sorted by proc, according to proc_ptr)
+    if (send_row_size) proc_row_idx.resize(send_row_size);
     for (int i = 0; i < A->local_num_rows; i++)
     {
         proc = partition[i];
-        proc_idx = proc_to_idx[proc];
-        idx = send_ptr[proc_idx] + proc_sizes[proc]++;
-        send_row_buffer[2*idx] = A->local_row_map[i];
-        
-        row_size = (A->on_proc->idx1[i+1] - A->on_proc->idx1[i]) + 
-            (A->off_proc->idx1[i+1] - A->off_proc->idx1[i]);
-        send_row_buffer[2*idx+1] = row_size;
+        idx = proc_to_idx[proc];
+        pos = send_ptr[idx] + proc_row_sizes[proc]++;
+        proc_row_idx[pos] = i;
     }
+
+    // Now know the number of messages to be sent
+    if (num_sends) send_requests.resize(num_sends);
    
-    aligned_vector<int> send_sizes(num_procs, 0);
-    for (int i = 0; i < num_sends; i++)
-    {
-        proc = send_procs[i];
-        start = send_ptr[i];
-        end = send_ptr[i+1];
-        send_sizes[proc] = 2*(end - start);
-    }
-    RAPtor_MPI_Allreduce(MPI_IN_PLACE, send_sizes.data(), num_procs, MPI_INT,
+    RAPtor_MPI_Allreduce(MPI_IN_PLACE, proc_row_sizes.data(), num_procs, MPI_INT,
             MPI_SUM, MPI_COMM_WORLD);
-    int size_recvs = send_sizes[rank];
+    int recv_num_rows = proc_row_sizes[rank];
 
-    // Send to proc p the rows and row sizes that will be sent next
+    // Send Matrix Rows to Corresponding Processes
+    tag = 23931;
+    ctr = 0;
+    prev_ctr = 0;
+    MPI_Pack_size(2*A->local_num_rows + A->local_nnz, MPI_INT, MPI_COMM_WORLD, &mat_size);
+    MPI_Pack_size(A->local_nnz * A->on_proc->b_size, MPI_DOUBLE, MPI_COMM_WORLD, &size);
+    mat_size += size;
+    aligned_vector<char> send_buffer(mat_size);
     for (int i = 0; i < num_sends; i++)
     {
         proc = send_procs[i];
         start = send_ptr[i];
         end = send_ptr[i+1];
-        RAPtor_MPI_Isend(&(send_row_buffer[2*start]), 2*(end - start), RAPtor_MPI_INT, proc,
-                row_key, RAPtor_MPI_COMM_WORLD, &send_requests[i]);
+        for (int j = start; j < end; j++)
+        {
+            row = proc_row_idx[j];
+            global_row = A->local_row_map[row];
+
+            start_on = A->on_proc->idx1[row];
+            end_on = A->on_proc->idx1[row+1];
+            on_size = end_on - start_on;
+            start_off = A->off_proc->idx1[row];
+            end_off = A->off_proc->idx1[row+1];
+            off_size = end_off - start_off;
+            size = on_size + off_size;
+
+            // Send global row
+            RAPtor_MPI_Pack(&global_row, 1, RAPtor_MPI_INT, send_buffer.data(),
+                    mat_size, &ctr, MPI_COMM_WORLD);
+            // Send size of row (num nonzeros in row)
+            RAPtor_MPI_Pack(&size, 1, RAPtor_MPI_INT, send_buffer.data(), 
+                    mat_size, &ctr, MPI_COMM_WORLD);
+
+            // Add global column indices
+            for (int j = start_on; j < end_on; j++)
+            {
+                col = A->on_proc->idx2[j];
+                global_col = A->on_proc_column_map[col];
+                RAPtor_MPI_Pack(&(global_col), 1, RAPtor_MPI_INT, send_buffer.data(),
+                        mat_size, &ctr, MPI_COMM_WORLD);
+            }
+            for (int j = start_off; j < end_off; j++)
+            {
+                col = A->off_proc->idx2[j];
+                global_col = A->off_proc_column_map[col];
+                RAPtor_MPI_Pack(&(global_col), 1, RAPtor_MPI_INT, send_buffer.data(),
+                        mat_size, &ctr, MPI_COMM_WORLD);
+            }
+            
+            // Add values associated with each nonzero in row
+            RAPtor_MPI_Pack(&(A->on_proc->vals[start_on]), on_size, 
+                    RAPtor_MPI_DOUBLE, send_buffer.data(), mat_size, &ctr, MPI_COMM_WORLD);
+            RAPtor_MPI_Pack(&(A->off_proc->vals[start_off]), off_size, 
+                    RAPtor_MPI_DOUBLE, send_buffer.data(), mat_size, &ctr, MPI_COMM_WORLD);
+        }
+
+        // Send previously packed matrix
+        RAPtor_MPI_Isend(&(send_buffer[prev_ctr]), ctr - prev_ctr, RAPtor_MPI_PACKED,
+                proc, tag, MPI_COMM_WORLD, &(send_requests[i]));
+        prev_ctr = ctr;
     }
 
-    int recv_size = 0;
-    ctr = 0;
-    row_size = 0;
-    recv_ptr.push_back(0);
-    recv_row_buffer.resize(size_recvs);
-    while (ctr < size_recvs)
+    // Recv Matrix Rows (wait for recv_num_rows of them)
+    CSRMatrix* recv_mat = new CSRMatrix(recv_num_rows, recv_num_rows);
+    aligned_vector<int> global_rows;
+    if (recv_num_rows) global_rows.resize(recv_num_rows);
+    aligned_vector<char> recv_buffer;
+    n_rows = 0;
+    mat_size = 0;
+    while (n_rows < recv_num_rows)
     {
-        RAPtor_MPI_Probe(RAPtor_MPI_ANY_SOURCE, row_key, RAPtor_MPI_COMM_WORLD, &recv_status);
+        RAPtor_MPI_Probe(MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, &recv_status);
+        RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_PACKED, &count);
         proc = recv_status.MPI_SOURCE;
-        RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_INT, &count);
-        RAPtor_MPI_Recv(recv_row_buffer.data(), count, RAPtor_MPI_INT, proc, row_key,
-            RAPtor_MPI_COMM_WORLD, &recv_status);
-        ctr += count;
-        for (int i = 0; i < count; i+= 2)
+        if (count > recv_buffer.size())
+            recv_buffer.resize(count);
+        RAPtor_MPI_Recv(&(recv_buffer[0]), count, RAPtor_MPI_PACKED, proc, tag,
+                MPI_COMM_WORLD, &recv_status);
+
+        ctr = 0;
+        while (ctr < count)
         {
-            row_size = recv_row_buffer[i+1];
-            recv_rows.push_back(recv_row_buffer[i]);
-            recv_row_sizes.push_back(row_size);
-            recv_size += row_size;
+            // Get row size, and allocate space in idx2/vals 
+            RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr, &(global_rows[n_rows]),
+                    1, RAPtor_MPI_INT, MPI_COMM_WORLD);
+            RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr, &size, 1, 
+                    RAPtor_MPI_INT, MPI_COMM_WORLD);
+            prev_mat_size = mat_size;
+            mat_size += size;
+            recv_mat->idx1[n_rows+1] = mat_size;
+            n_rows++;
+            recv_mat->idx2.resize(mat_size);
+            recv_mat->vals.resize(mat_size);
+
+            // Unpack row's global column indices
+            RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr, 
+                    &(recv_mat->idx2[prev_mat_size]), size,
+                    RAPtor_MPI_INT, MPI_COMM_WORLD);
+
+            // Unpack row's values
+            RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr,
+                    &(recv_mat->vals[prev_mat_size]), size,
+                    RAPtor_MPI_DOUBLE, MPI_COMM_WORLD);
         }
-        recv_procs.push_back(proc);
-        recv_ptr.push_back(recv_size);
     }
-   
+    recv_mat->nnz = recv_mat->idx2.size();
+            
     if (num_sends)
     {
         RAPtor_MPI_Waitall(num_sends, send_requests.data(), 
                 RAPtor_MPI_STATUSES_IGNORE);
     }
-    int num_recvs = recv_procs.size();
-    num_rows = recv_rows.size();
-    recv_requests.resize(num_recvs);
-    recv_buffer.resize(recv_size);
-
-    // Form vector of pair data (col indices and values) for sending to each
-    // proc
-    for (int i = 0; i < num_procs; i++)
-    {
-        proc_sizes[i] = 0;
-    }
-    for (int i = 0; i < A->local_num_rows; i++)
-    {
-        proc = partition[i];
-        row_size = (A->on_proc->idx1[i+1] - A->on_proc->idx1[i]) + 
-            (A->off_proc->idx1[i+1] - A->off_proc->idx1[i]);
-        proc_sizes[proc] += row_size;
-    }
-    int size_send = 0;
-    for (int i = 0; i < num_sends; i++)
-    {
-        proc = send_procs[i];
-        size_send += proc_sizes[proc];
-        send_ptr[i+1] = send_ptr[i] + proc_sizes[proc];
-        proc_sizes[proc] = 0;
-    }
-    send_buffer.resize(size_send);
-    for (int i = 0; i < A->local_num_rows; i++)
-    {
-        proc = partition[i];
-        proc_idx = proc_to_idx[proc];
-        idx = send_ptr[proc_idx] + proc_sizes[proc];
-
-        start = A->on_proc->idx1[i];
-        end = A->on_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            send_buffer[idx].val = A->on_proc->vals[j];
-            send_buffer[idx].index = A->on_proc_column_map[A->on_proc->idx2[j]];
-            idx++;
-        }
-
-        start = A->off_proc->idx1[i];
-        end = A->off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            send_buffer[idx].val = A->off_proc->vals[j];
-            send_buffer[idx].index = A->off_proc_column_map[A->off_proc->idx2[j]];
-            idx++;
-        }
-
-        proc_sizes[proc] = idx - send_ptr[proc_idx];
-    } 
-
-    // Send send_buffer (PairData)
-    for (int i = 0; i < num_sends; i++)
-    {
-        proc = send_procs[i];
-        start = send_ptr[i];
-        end = send_ptr[i+1];
-        RAPtor_MPI_Isend(&send_buffer[start], end - start, RAPtor_MPI_DOUBLE_INT, proc, key,
-                RAPtor_MPI_COMM_WORLD, &send_requests[i]);
-    }
-
-    for (int i = 0; i < num_recvs; i++)
-    {
-        proc = recv_procs[i];
-        start = recv_ptr[i];
-        end = recv_ptr[i+1];
-        RAPtor_MPI_Irecv(&recv_buffer[start], end - start, RAPtor_MPI_DOUBLE_INT, proc, key,
-                RAPtor_MPI_COMM_WORLD, &recv_requests[i]);
-    }
-    
-    RAPtor_MPI_Waitall(num_sends, send_requests.data(), RAPtor_MPI_STATUSES_IGNORE);
-    RAPtor_MPI_Waitall(num_recvs, recv_requests.data(), RAPtor_MPI_STATUSES_IGNORE);
-
 
     // Assuming local num cols == num_rows (square)
-    RAPtor_MPI_Allgather(&(num_rows), 1, RAPtor_MPI_INT, proc_sizes.data(), 1, RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD);
     first_row = 0;
     for (int i = 0; i < rank; i++)
     {
-        first_row += proc_sizes[i];
+        first_row += proc_row_sizes[i];
     }
 
-    A_part = new ParCSRMatrix(A->global_num_rows, A->global_num_rows, num_rows, num_rows, 
-            first_row, first_row, A->partition->topology);
+    A_part = new ParCSRMatrix(A->global_num_rows, A->global_num_rows, 
+            recv_num_rows, recv_num_rows, first_row, first_row, 
+            A->partition->topology);
 
     // Create row_ptr
     // Add values/indices to appropriate positions
     std::map<int, int> on_proc_to_local;
-    for(int i = 0; i < num_rows; i++)
+    for(int i = 0; i < recv_num_rows; i++)
     {
-       on_proc_to_local[recv_rows[i]] = i;
-       A_part->on_proc_column_map.emplace_back(recv_rows[i]);
+        global_row = global_rows[i];
+        on_proc_to_local[global_row] = i;
+        A_part->on_proc_column_map.push_back(global_row);
     }
     A_part->local_row_map = A_part->get_on_proc_column_map();
     A_part->on_proc_num_cols = A_part->on_proc_column_map.size();
@@ -628,23 +602,24 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
     ctr = 0;
     A_part->on_proc->idx1[0] = 0;
     A_part->off_proc->idx1[0] = 0;
-    for (int i = 0; i < num_rows; i++)
+    for (int i = 0; i < recv_num_rows; i++)
     {
-        row_size = recv_row_sizes[i];
-        for (int j = 0; j < row_size; j++)
+        start = recv_mat->idx1[i];
+        end = recv_mat->idx1[i+1];
+        for (int j = start; j < end; j++)
         {
-            col = recv_buffer[ctr].index;
-            val = recv_buffer[ctr++].val;
-
-            if (on_proc_to_local.find(col) != on_proc_to_local.end())
+            global_col = recv_mat->idx2[j];
+            val = recv_mat->vals[j];
+            std::map<int, int>::iterator it = on_proc_to_local.find(global_col);
+            if (it != on_proc_to_local.end())
             {
-                A_part->on_proc->idx2.emplace_back(on_proc_to_local[col]);
-                A_part->on_proc->vals.emplace_back(val);
+                A_part->on_proc->idx2.push_back(it->second);
+                A_part->on_proc->vals.push_back(val);
             }
             else
             {
-                A_part->off_proc->idx2.emplace_back(col);
-                A_part->off_proc->vals.emplace_back(val);
+                A_part->off_proc->idx2.push_back(global_col);
+                A_part->off_proc->vals.push_back(val);
             }
         }
         A_part->on_proc->idx1[i+1] = A_part->on_proc->idx2.size();
@@ -671,6 +646,7 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
         }
     }
     A_part->off_proc_num_cols = A_part->off_proc_column_map.size();
+    delete recv_mat;
 
     for (aligned_vector<int>::iterator it = A_part->off_proc->idx2.begin();
             it != A_part->off_proc->idx2.end(); ++it)
@@ -681,6 +657,7 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
     new_local_rows.resize(A_part->on_proc_num_cols);
     std::copy(A_part->on_proc_column_map.begin(), A_part->on_proc_column_map.end(),
             new_local_rows.begin());
+
     make_contiguous(A_part);
 
     return A_part;

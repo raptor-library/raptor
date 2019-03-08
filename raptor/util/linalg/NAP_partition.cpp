@@ -500,7 +500,7 @@ ParCSRMatrix* NAP_partition(ParCSRMatrix* A_tmp, aligned_vector<int>& new_rows)
         Part->idx2[idx] = i;
     }
 
-    first_nr_part = (rank / nr)*n_parts;
+/*    first_nr_part = (rank / nr)*n_parts;
     last_nr_part = ((rank / nr) + 1)*n_parts - 1;
     for (aligned_vector<int>::iterator it = A_parts.begin(); it != A_parts.end(); ++it)
         *it -= first_nr_part;
