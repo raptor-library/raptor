@@ -14,8 +14,12 @@
 
 using namespace raptor;
 
-ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector<int>& new_local_rows);
-void make_contiguous(ParCSRMatrix* A);
+CSRMatrix* send_matrix(CSRMatrix* A_on, CSRMatrix* A_off, int* partition, 
+        int* local_row_map, int* on_proc_column_map, int* off_proc_column_map, 
+	aligned_vector<int>& proc_row_sizes, aligned_vector<int>& new_local_rows);
+ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, 
+        aligned_vector<int>& new_local_rows, bool make_contig = true);
+void make_contiguous(ParCSRMatrix* A, bool form_comm = true);
 
 #endif
 
