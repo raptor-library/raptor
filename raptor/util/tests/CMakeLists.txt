@@ -101,6 +101,13 @@ if (WITH_MPI)
     add_test(ParBVectorAnisoSpMVTest ${MPIRUN} -n 8 ./test_par_bvector_spmv_aniso)
     add_test(ParBVectorAnisoSpMVTest ${MPIRUN} -n 16 ./test_par_bvector_spmv_aniso)
     
+    add_executable(test_tap_bv_spmv_aniso test_tap_bv_spmv_aniso.cpp)
+    target_link_libraries(test_tap_bv_spmv_aniso raptor ${MPI_LIBRARIES} googletest pthread )
+    add_test(TAPAnisoBVSpMVTest ${MPIRUN} -n 2 ./test_tap_bv_spmv_aniso)
+    add_test(TAPAnisoBVSpMVTest ${MPIRUN} -n 4 ./test_tap_bv_spmv_aniso)
+    add_test(TAPAnisoBVSpMVTest ${MPIRUN} -n 8 ./test_tap_bv_spmv_aniso)
+    add_test(TAPAnisoBVSpMVTest ${MPIRUN} -n 16 ./test_tap_bv_spmv_aniso)
+    
     add_executable(test_par_bvector_mult test_par_bvector_mult.cpp)
     target_link_libraries(test_par_bvector_mult raptor ${MPI_LIBRARIES} googletest pthread )
     add_test(ParBVectorMultTest ${MPIRUN} -n 1 ./test_par_bvector_mult)

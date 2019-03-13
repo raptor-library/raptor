@@ -1211,6 +1211,7 @@ public:
         send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
     }     
 
+    // UPDATE THIS FOR GLOBAL SENDS AND RECEIVES
     template <typename T>
     void send(const T* values, int key, MPI_Comm mpi_comm, const int block_size = 1,
             const int vblock_size = 1, const int vblock_offset = 0,
