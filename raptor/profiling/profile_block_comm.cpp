@@ -1,4 +1,4 @@
-void ParCSRMatrix::print_mult(const aligned_vector<int>& proc_distances,
+void ParCSRMatrix::print_block_mult(const aligned_vector<int>& proc_distances,
                 const aligned_vector<int>& worst_proc_distances)
 {
     int rank, rank_node, rank_socket;
