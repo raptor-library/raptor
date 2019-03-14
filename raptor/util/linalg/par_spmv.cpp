@@ -120,10 +120,6 @@ void ParMatrix::mult_timed(ParVector& x, ParVector& b, aligned_vector<double>& t
 
 void ParMatrix::tap_mult(ParVector& x, ParVector& b, data_t* comm_t)
 {
-    int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
     // Check that communication package has been initialized
     if (tap_comm == NULL)
     {
@@ -154,7 +150,6 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b, data_t* comm_t)
     {
         off_proc->mult_append(x_tmp, *(b.local), b.local->b_vecs);
     }
-    MPI_Barrier(MPI_COMM_WORLD);
 }
 
 void ParMatrix::mult_append(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
