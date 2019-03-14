@@ -1548,21 +1548,36 @@
             void initialize(const T* values, const int block_size = 1, const int vblock_size = 1,
                             const int vblock_offset = 0)
             {
+                int rank;
+                MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
                 // THIS INITIALIZE CALLED FOR TAP MULT 
                 // Messages with origin and final destination on node
+                double start = MPI_Wtime();
                 local_L_par_comm->communicate<T>(values, block_size, vblock_size, vblock_offset);
+                double stop = MPI_Wtime();
+                printf("%d onnode %lg\n", rank, stop - start);
 
                 if (local_S_par_comm)
                 {
                     // Initial redistribution among node
+                    start = MPI_Wtime();
                     aligned_vector<T>& S_vals = local_S_par_comm->communicate<T>(values, block_size, vblock_size, vblock_offset);
+                    stop = MPI_Wtime();
+                    printf("%d onnode %lg\n", rank, stop - start);
 
                     // Begin inter-node communication 
+                    start = MPI_Wtime();
                     global_par_comm->initialize(S_vals.data(), block_size, vblock_size, vblock_offset);
+                    stop = MPI_Wtime();
+                    printf("%d internode %lg\n", rank, stop - start);
                 }
                 else
                 {
+                    start = MPI_Wtime();
                     global_par_comm->initialize(values, block_size);
+                    stop = MPI_Wtime();
+                    printf("%d internode %lg\n", rank, stop - start);
                 }
             }
 
@@ -1572,11 +1587,17 @@
                 int rank;
                 MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+                double start = MPI_Wtime();
                 // Complete inter-node communication
                 aligned_vector<T>& G_vals = global_par_comm->complete<T>(block_size, vblock_size);
+                double stop = MPI_Wtime();
+                printf("%d internode %lg\n", rank, stop - start);
 
                 // Redistributing recvd inter-node values
+                start = MPI_Wtime();
                 local_R_par_comm->communicate<T>(G_vals.data(), block_size, vblock_size);
+                stop = MPI_Wtime();
+                printf("%d onnode %lg\n", rank, stop - start);
 
                 aligned_vector<T>& recvbuf = get_buffer<T>();
 

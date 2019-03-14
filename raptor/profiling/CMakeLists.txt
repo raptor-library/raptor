@@ -7,6 +7,7 @@ if (WITH_MPI)
         )
     set(profile_SOURCES
         profiling/profile_comm.cpp
+        profiling/profile_block_comm.cpp
         )
 else ()
     set(profile_HEADERS
