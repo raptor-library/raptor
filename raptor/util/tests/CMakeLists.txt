@@ -115,8 +115,8 @@ if (WITH_MPI)
     add_test(ParBVectorMultTest ${MPIRUN} -n 4 ./test_par_bvector_mult)
     add_test(ParBVectorMultTest ${MPIRUN} -n 8 ./test_par_bvector_mult)
 
-    add_executable(oski_test oski_test.cpp)
-    target_link_libraries(oski_test raptor ${MPI_LIBRARIES} googletest pthread )
+    add_executable(par_bvspmv_profiling par_bvspmv_profiling.cpp)
+    target_link_libraries(par_bvspmv_profiling raptor ${MPI_LIBRARIES} pthread )
 
     if (WITH_PTSCOTCH)
         add_executable(test_repartition test_repartition.cpp)
