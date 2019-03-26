@@ -10,23 +10,105 @@
 
 #include "raptor.hpp"
 
-void form_hypre_weights(double** weight_ptr, int n_rows)
+
+void time_AP(ParCSRMatrix* A, ParCSRMatrix* P, int n_tests, bool tap)
 {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    hypre_SeedRand(2747 + rank);
-    double* weights;
-    if (n_rows)
-    {
-        weights = new double[n_rows];
-        for (int i = 0; i < n_rows; i++)
-        {
-            weights[i] = hypre_Rand();
-        }
-    }
 
-    *weight_ptr = weights;
+    double t0, tfinal;
+    ParCSRMatrix* C;
+
+    // Warm-up
+    C = A->mult(P, tap);
+    delete C;
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    tfinal = 0;
+    for (int i = 0; i < n_tests; i++)
+    {
+        t0 = MPI_Wtime();
+        C = A->mult(P, tap);
+        tfinal += MPI_Wtime() - t0;
+        delete C;
+    }
+    tfinal /= n_tests;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Time: %e\n", t0);
 }
+
+
+void time_PTAP(ParCSRMatrix* AP, ParCSCMatrix* P, int n_tests, bool tap)
+{
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    double t0, tfinal;
+    ParCSRMatrix* C;
+
+    // Warm-up
+    C = AP->mult_T(P, tap);
+    delete C;
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    tfinal = 0;
+    for (int i = 0; i < n_tests; i++)
+    {
+        t0 = MPI_Wtime();
+        C = AP->mult_T(P, tap);
+        tfinal += MPI_Wtime() - t0;
+        delete C;
+    }
+    tfinal /= n_tests;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Time: %e\n", t0);
+}
+
+void time_Pe(ParCSRMatrix* P, ParVector& x, ParVector& b, int n_tests, bool tap)
+{
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    double t0, tfinal;
+
+    // Warm-up
+    P->mult(x, b, tap);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    t0 = MPI_Wtime();
+    for (int i = 0; i < n_tests; i++)
+    {
+        P->mult(x, b, tap);
+    }
+    tfinal = (MPI_Wtime() - t0) / n_tests;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Time: %e\n", t0);
+}
+
+void time_PTr(ParCSRMatrix* P, ParVector& x, ParVector& b, int n_tests, bool tap)
+{
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    double t0, tfinal;
+
+    // Warm-up
+    P->mult_T(x, b, tap);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    t0 = MPI_Wtime();
+    for (int i = 0; i < n_tests; i++)
+    {
+        P->mult_T(x, b, tap);
+    }
+    tfinal = (MPI_Wtime() - t0) / n_tests;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Time: %e\n", t0);
+}
+
+
+
+
 
 int main(int argc, char* argv[])
 {
@@ -180,154 +262,69 @@ int main(int argc, char* argv[])
  
     int n_tests = 10;
     int n_spmv_tests = 100;
-
-    // Smoothed Aggregation AMG
-    int s = 2;
-    //for (int s = 0; s < 3; s++)
+   
+    ml = new ParSmoothedAggregationSolver(strong_threshold);
+    ml->setup(A);
+    for (int i = 0; i < ml->num_levels - 1; i++)
     {
-        if (rank == 0) printf("\n\nProlongation Smoothing Sweeps: %d:\n", s);
-        ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation, 
-                Symmetric, SOR, s);
-        ml->setup(A);
-        for (int i = 0; i < ml->num_levels - 1; i++)
-        {
-            ParCSRMatrix* Al = ml->levels[i]->A;
-            ParCSRMatrix* Pl = ml->levels[i]->P;
-            Al->init_tap_communicators();
-            Pl->init_tap_communicators();
+        ParCSRMatrix* Al = ml->levels[i]->A;
+        ParCSRMatrix* Pl = ml->levels[i]->P;
+        Al->init_tap_communicators();
+        Pl->init_tap_communicators();
+  
+        ParCSRMatrix* Pl2 = jacobi_prolongation(Al, Pl);
+        ParCSRMatrix* AP = Al->mult(Pl);
+        ParCSCMatrix* P_csc = Pl->to_ParCSC();
+        ParCSCMatrix* P2_csc = Pl2->to_ParCSC();
 
-            // Standard AP
-            MPI_Barrier(MPI_COMM_WORLD);
-            tfinal = 0;
-            for (int j = 0; j < n_tests; j++)
-            {
-                t0 = MPI_Wtime();
-                ParCSRMatrix* C = Al->mult(Pl);
-                tfinal += MPI_Wtime() - t0;
-                delete C;
-            } 
-            tfinal /= n_tests;
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("Standard AP Time: %e\n", t0);
+        if (rank == 0) printf("Standard AP ");
+        time_AP(Al, Pl, n_tests, false);
+        if (rank == 0) printf("Standard AP2 ");
+        time_AP(Al, Pl2, n_tests, false);
 
-            // 3-step AP
-            Al->comm_mat_type = NAP3;
-            MPI_Barrier(MPI_COMM_WORLD);
-            tfinal = 0;
-            for (int j = 0; j < n_tests; j++)
-            {
-                t0 = MPI_Wtime();
-                ParCSRMatrix* C = Al->tap_mult(Pl);
-                tfinal += MPI_Wtime() - t0;
-                delete C;
-            } 
-            tfinal /= n_tests;
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("3Step AP Time: %e\n", t0);
+        Al->comm_mat_type = NAP2;
+        Al->tap_mat_comm = Al->two_step;
+        if (rank == 0) printf("Two Step AP ");
+        time_AP(Al, Pl, n_tests, true);
+        if (rank == 0) printf("Two Step AP2 ");
+        time_AP(Al, Pl2, n_tests, true);
 
-            // 2-step AP
-            Al->comm_mat_type = NAP2;
-            MPI_Barrier(MPI_COMM_WORLD);
-            tfinal = 0;
-            for (int j = 0; j < n_tests; j++)
-            {
-                t0 = MPI_Wtime();
-                ParCSRMatrix* C = Al->tap_mult(Pl);
-                tfinal += MPI_Wtime() - t0;
-                delete C;
-            } 
-            tfinal /= n_tests;
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("2Step AP Time: %e\n", t0);
-
-            ParCSRMatrix* AP = Al->mult(Pl);
-            ParCSCMatrix* Pl_csc = Pl->to_ParCSC();
-            // Standard PTAP
-            MPI_Barrier(MPI_COMM_WORLD);
-            tfinal = 0;
-            for (int j = 0; j < n_tests; j++)
-            {
-                t0 = MPI_Wtime();
-                ParCSRMatrix* C = AP->mult_T(Pl_csc);
-                tfinal += MPI_Wtime() - t0;
-                delete C;
-            } 
-            tfinal /= n_tests;
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("Standard PTAP Time: %e\n", t0);
-
-            // 3-step PTAP
-            Al->comm_mat_type = NAP3;
-            MPI_Barrier(MPI_COMM_WORLD);
-            tfinal = 0;
-            for (int j = 0; j < n_tests; j++)
-            {
-                t0 = MPI_Wtime();
-                ParCSRMatrix* C = AP->tap_mult_T(Pl_csc);
-                tfinal += MPI_Wtime() - t0;
-                delete C;
-            } 
-            tfinal /= n_tests;
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("3Step PTAP Time: %e\n", t0);
-
-            // 2-step PTAP
-            Al->comm_mat_type = NAP2;
-            MPI_Barrier(MPI_COMM_WORLD);
-            tfinal = 0;
-            for (int j = 0; j < n_tests; j++)
-            {
-                t0 = MPI_Wtime();
-                ParCSRMatrix* C = AP->tap_mult_T(Pl_csc);
-                tfinal += MPI_Wtime() - t0;
-                delete C;
-            } 
-            tfinal /= n_tests;
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("2Step PTAP Time: %e\n", t0);
-            delete Pl_csc;
-            delete AP;
+        Al->comm_mat_type = NAP3;
+        Al->tap_mat_comm = Al->three_step;
+        if (rank == 0) printf("Two Step AP ");
+        time_AP(Al, Pl, n_tests, true);
+        if (rank == 0) printf("Two Step AP2 ");
+        time_AP(Al, Pl2, n_tests, true);
 
 
-            // Standard Ax
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            for (int j = 0; j < n_spmv_tests; j++)
-            {
-                Al->mult(ml->levels[i]->x, ml->levels[i]->b);
-            } 
-            tfinal = (MPI_Wtime() - t0) / n_spmv_tests;
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("Standard Ax Time: %e\n", t0);
 
-            // 3-step Ax
-            Al->comm_mat_type = NAP3;
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            for (int j = 0; j < n_spmv_tests; j++)
-            {
-                Al->tap_mult(ml->levels[i]->x, ml->levels[i]->b);
-            } 
-            tfinal = (MPI_Wtime() - t0) / n_spmv_tests;
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("3Step Ax Time: %e\n", t0);
+        if (rank == 0) printf("Standard PTAP ");
+        time_PTAP(AP, P_csc, n_tests, false);
+        if (rank == 0) printf("Standard PTAP2 ");
+        time_PTAP(AP, P2_csc, n_tests, false);
 
-            // 2-step Ax
-            Al->comm_mat_type = NAP2;
-            MPI_Barrier(MPI_COMM_WORLD);
-            t0 = MPI_Wtime();
-            for (int j = 0; j < n_spmv_tests; j++)
-            {
-                Al->tap_mult(ml->levels[i]->x, ml->levels[i]->b);
+        Al->comm_mat_type = NAP2;
+        Al->tap_mat_comm = Al->two_step;
+        if (rank == 0) printf("Two Step PTAP ");
+        time_PTAP(AP, P_csc, n_tests, true);
+        if (rank == 0) printf("Two Step PTAP2 ");
+        time_PTAP(AP, P2_csc, n_tests, true);
 
-            } 
-            tfinal = (MPI_Wtime() - t0) / n_spmv_tests;
-            MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-            if (rank == 0) printf("2Step Ax Time: %e\n", t0);
+        Al->comm_mat_type = NAP3;
+        Al->tap_mat_comm = Al->three_step;
+        if (rank == 0) printf("Two Step PTAP ");
+        time_PTAP(AP, P_csc, n_tests, true);
+        if (rank == 0) printf("Two Step PTAP2 ");
+        time_PTAP(AP, P2_csc, n_tests, true);
 
-        }
-        delete ml;
+
+        delete P_csc;
+        delete P2_csc;
+        delete AP;
+        delete Pl2;
     }
+    delete ml;
+
     delete A;
 
     MPI_Finalize();

@@ -21,6 +21,9 @@ if (WITH_HYPRE)
 
 endif()
 if (WITH_MPI)
+    add_executable(print_mat print_mat.cpp)
+    target_link_libraries(print_mat raptor ${MPI_LIBRARIES})
+
     add_executable(benchmark_setup benchmark_setup.cpp)
     target_link_libraries(benchmark_setup raptor ${MPI_LIBRARIES})
 

@@ -161,14 +161,25 @@ int main(int argc, char* argv[])
 #endif
     else if (system == 3)
     {
-        const char* file = "../../examples/LFAT5.pm";
-        A = readParMatrix(file);
+        char* file = "../../examples/LFAT5.pm";
+        if (argc > 2) file = argv[2];
+        A = readParMatrix((const char*)file);
+    
+        int dim;
+        if (argc > 3) dim = atoi(argv[3]);
+        if (dim == 3)
+        {
+            strong_threshold = 0.5;
+            coarsen_type = PMIS;
+            interp_type = Extended;
+        }
+        if (argc > 4) strong_threshold = atoi(argv[4]);
     }
     if (system != 2)
     {
         x = ParVector(A->global_num_cols, A->on_proc_num_cols);
         b = ParVector(A->global_num_rows, A->local_num_rows);
-        x.set_rand_values();
+        x.set_const_value(1.0);
         A->mult(x, b);
         x.set_const_value(0.0);
     }

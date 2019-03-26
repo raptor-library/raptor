@@ -138,6 +138,64 @@ void time_steps(ParMultilevel* ml)
     }
 }
 
+
+
+
+
+void print_inter_data(NonContigData* send_data, ParCSRMatrix* A)
+{
+    int rank, num_procs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    int rank_node = A->partition->topology->get_node(rank);
+
+    int proc, node, start, end;
+    int idx;
+
+    int num, n;
+    long size, mat_size, s;
+    num = 0;
+    size = 0;
+    mat_size = 0;
+    for (int i = 0; i < num; i++)
+    {
+        proc = send_data->procs[i];
+        node = A->partition->topology->get_node(proc);
+        if (node != rank_node)
+        {
+            num++;
+            start = send_data->indptr[i];
+            end = send_data->indptr[i+1];
+            size += (end - start);
+            for (int j = start; j < end; j++)
+            {
+                idx = send_data->indices[j];
+                mat_size += (A->on_proc->idx1[idx+1] - A->on_proc->idx1[idx])
+                        + (A->off_proc->idx1[idx+1] - A->off_proc->idx1[idx]);
+            }
+        }
+    }
+
+    MPI_Reduce(&num, &n, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Max Num Msgs: %d\n", n);
+    MPI_Reduce(&num, &n, 1, MPI_INT, MPI_MIN, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Min Num Msgs: %d\n", n);
+    MPI_Reduce(&num, &n, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Avg Num Msgs: %d\n", n/num_procs);
+    MPI_Reduce(&size, &s, 1, MPI_LONG, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Max Size Msgs: %d\n", s);
+    MPI_Reduce(&size, &s, 1, MPI_LONG, MPI_MIN, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Min Size Msgs: %d\n", s);
+    MPI_Reduce(&size, &s, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Avg Size Msgs: %d\n", s/num_procs);
+    MPI_Reduce(&mat_size, &s, 1, MPI_LONG, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Max Size Mat Msgs: %d\n", s);
+    MPI_Reduce(&mat_size, &s, 1, MPI_LONG, MPI_MIN, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Min Size Mat Msgs: %d\n", s);
+    MPI_Reduce(&mat_size, &s, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Avg Size Mat Msgs: %d\n", s/num_procs);
+}
+
 int main(int argc, char* argv[])
 {
     MPI_Init(&argc, &argv);
@@ -278,24 +336,39 @@ int main(int argc, char* argv[])
     }
     ParVector tmp(A->global_num_rows, A->local_num_rows);
 
-    int n_tests = 4;
-    int n_iter = 100;
-
-    if (rank == 0) printf("Ruge Stuben Solver:\n");
-    ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, SOR);
-    ml->tap_amg = 0;
-    ml->track_times = false;
+    ml = new ParRugeStubenSolver(strong_threshold, HMIS, Extended);
     ml->setup(A);
-    time_steps(ml);
-    delete ml;
 
-    if (rank == 0) printf("\n\nSmoothed Aggregation Solver:\n");
-    ml = new ParSmoothedAggregationSolver(strong_threshold);
-    ml->tap_amg = 0;
-    ml->track_times = false;
-    ml->setup(A);
-    time_steps(ml);
-    delete ml;
+    for (int i = 0; i < ml->num_levels - 1; i++)
+    {
+        if (rank == 0) printf("Level %d\n", i);
+        ParCSRMatrix* Al = ml->levels[i]->A;
+
+        long size = 0;
+        long mat_size = 0;
+        int num = 0;
+        int n;
+        long s;
+
+        // Standard Communication
+        if (rank == 0) printf("Standard Communication:\n");
+        ParComm* standard_comm = new ParComm(Al->partition, Al->off_proc_column_map, 
+                Al->on_proc_column_map);
+        delete standard_comm;
+
+
+
+
+        TAPComm* three_step_comm = new TAPComm(Al->partition, Al->off_proc_column_map,
+                Al->on_proc_column_map);
+        TAPComm* two_step_comm = new TAPComm(Al->partition, Al->off_proc_column_map,
+                Al->on_proc_column_map);
+
+
+        delete two_step_comm;
+        delete three_step_comm;
+    }
+
 
     MPI_Finalize();
     return 0;
