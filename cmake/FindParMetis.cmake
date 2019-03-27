@@ -7,7 +7,7 @@ find_path(PARMETIS_INCLUDE_DIR parmetis.h
             HINTS ${PC_PARMETIS_INCLUDEDIR} ${PC_PARMETIS_INCLUDE_DIRS} 
             ${PARMETIS_DIR}/include $ENV{PARMETIS_DIR}/include)
 
-find_library(PARMETIS_LIBRARY NAMES libparmetis.a 
+find_library(PARMETIS_LIBRARY NAMES parmetis 
             HINTS ${PC_PARMETIS_LIBDIR} ${PC_PARMETIS_LIBRARY_DIRS} 
             ${PARMETIS_DIR}/lib $ENV{PARMETIS_DIR}/lib)
 
