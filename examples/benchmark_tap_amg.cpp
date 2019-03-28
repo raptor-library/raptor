@@ -161,9 +161,8 @@ int main(int argc, char* argv[])
 #endif
     else if (system == 3)
     {
-        char* file = "../../examples/LFAT5.pm";
-        if (argc > 2) file = argv[2];
-        A = readParMatrix((const char*)file);
+        if (argc > 2) A = readParMatrix(argv[2]);
+        else A = readParMatrix("../../examples/LFAT5.pm");
     
         int dim;
         if (argc > 3) dim = atoi(argv[3]);

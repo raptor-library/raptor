@@ -6,6 +6,7 @@
 #include "mpi.h"
 #include "raptor.hpp"
 #include "tests/hypre_compare.hpp"
+#include "tests/par_compare.hpp"
 #include <iostream>
 #include <fstream>
 
@@ -93,6 +94,7 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
     HYPRE_IJVectorGetObject(x_h_ij, (void **) &x_hyp);
     HYPRE_IJVectorGetObject(b_h_ij, (void **) &b_hyp);
 
+
     // Setup Hypre Hierarchy
     solver_data = hypre_create_hierarchy(A_hyp, x_hyp, b_hyp, 
             hyp_coarsen_type, hyp_interp_type, p_max_elmts, agg_num_levels, 
@@ -111,7 +113,7 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
         hypre_ParCSRMatrix* A_h;
         Al_ij = convert(Al);
         HYPRE_IJMatrixGetObject(Al_ij, (void**) &A_h);
-//        compare(Al, A_h);
+ //       compare(Al, A_h);
 
         hypre_ParCSRMatrix* S_h;
         hypre_BoomerAMGCreateS(A_h, strong_threshold, 1.0, 1, NULL, &S_h);

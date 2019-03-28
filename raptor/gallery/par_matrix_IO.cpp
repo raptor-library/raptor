@@ -30,18 +30,18 @@ ParCSRMatrix* readParMatrix(const char* filename,
 
     ParCSRMatrix* A;
 
-    uint32_t code;
-    uint32_t global_num_rows;
-    uint32_t global_num_cols;
-    uint32_t global_nnz;
-    uint32_t idx;
+    int32_t code;
+    int32_t global_num_rows;
+    int32_t global_num_cols;
+    int32_t global_nnz;
+    int32_t idx;
     double val;
+    bool is_little_endian = false;
 
     int ctr, size;
 
     int sizeof_dbl = sizeof(val);
     int sizeof_int32 = sizeof(code);
-    bool is_little_endian = little_endian();
 
     std::ifstream ifs (filename, std::ifstream::binary);
 
@@ -50,8 +50,9 @@ ParCSRMatrix* readParMatrix(const char* filename,
     ifs.read(reinterpret_cast<char *>(&global_num_cols), sizeof_int32);
     ifs.read(reinterpret_cast<char *>(&global_nnz), sizeof_int32);
 
-    if (is_little_endian)
+    if (code != PETSC_MAT_CODE)
     {
+        is_little_endian = true;
         endian_swap(&code);
         endian_swap(&global_num_rows);
         endian_swap(&global_num_cols);

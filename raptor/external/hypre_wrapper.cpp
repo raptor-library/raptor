@@ -55,7 +55,7 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, RAPtor_MPI_Comm comm_mat)
     RAPtor_MPI_Comm_rank(comm_mat, &rank);
     RAPtor_MPI_Comm_size(comm_mat, &num_procs);
 
-/*    aligned_vector<int> row_sizes(num_procs);
+    aligned_vector<int> row_sizes(num_procs);
     aligned_vector<int> col_sizes(num_procs);
     RAPtor_MPI_Allgather(&(A_rap->local_num_rows), 1, RAPtor_MPI_INT, row_sizes.data(), 1, RAPtor_MPI_INT,
             RAPtor_MPI_COMM_WORLD);
@@ -77,22 +77,24 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, RAPtor_MPI_Comm comm_mat)
             A_rap->off_proc_column_map, A_rap->on_proc_column_map);
     aligned_vector<int>& recvbuf = A_rap->comm->communicate(new_cols);
     aligned_vector<int> off_proc_cols(A_rap->off_proc_num_cols);
-    std::copy(recvbuf.begin(), recvbuf.begin() + A_rap->off_proc_num_cols,
-            off_proc_cols.begin());
-
+    for (int i = 0; i < A_rap->off_proc_num_cols; i++)
+    {
+        off_proc_cols[i] = recvbuf[i];
+    }
 
     n_rows = A_rap->local_num_rows;
     if (n_rows)
     {
         n_cols = A_rap->on_proc_num_cols;
     }
-*/
+    else n_cols = 0;
+
     /**********************************
      ****** CREATE HYPRE MATRIX
      ************************************/
-//    HYPRE_IJMatrixCreate(comm_mat, local_row_start, local_row_start + n_rows - 1, local_col_start, local_col_start + n_cols - 1, &A);
-    HYPRE_IJMatrixCreate(comm_mat, A_rap->partition->first_local_row, A_rap->partition->last_local_row, 
-            A_rap->partition->first_local_col, A_rap->partition->last_local_col, &A);
+    HYPRE_IJMatrixCreate(comm_mat, local_row_start, local_row_start + n_rows - 1, local_col_start, local_col_start + n_cols - 1, &A);
+//    HYPRE_IJMatrixCreate(comm_mat, A_rap->partition->first_local_row, A_rap->partition->last_local_row, 
+//            A_rap->partition->first_local_col, A_rap->partition->last_local_col, &A);
     HYPRE_IJMatrixSetObjectType(A, HYPRE_PARCSR);
     HYPRE_IJMatrixInitialize(A);
 
@@ -104,12 +106,12 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, RAPtor_MPI_Comm comm_mat)
     {
         row_start = A_rap->on_proc->idx1[i];
         row_end = A_rap->on_proc->idx1[i+1];
-//        global_row = i + local_row_start;
-        global_row = A_rap->local_row_map[i];
+        global_row = i + local_row_start;
+//        global_row = A_rap->local_row_map[i];
         for (int j = row_start; j < row_end; j++)
         {
-//            global_col = A_rap->on_proc->idx2[j] + local_col_start;
-            global_col = A_rap->on_proc_column_map[A_rap->on_proc->idx2[j]];
+            global_col = A_rap->on_proc->idx2[j] + local_col_start;
+//            global_col = A_rap->on_proc_column_map[A_rap->on_proc->idx2[j]];
             value = A_rap->on_proc->vals[j];
             HYPRE_IJMatrixSetValues(A, 1, &one, &global_row, &global_col, &value);
         }
@@ -118,12 +120,12 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, RAPtor_MPI_Comm comm_mat)
     {
         row_start = A_rap->off_proc->idx1[i];
         row_end = A_rap->off_proc->idx1[i+1];
-//        global_row = i + local_row_start;
-        global_row = A_rap->local_row_map[i];
+        global_row = i + local_row_start;
+//        global_row = A_rap->local_row_map[i];
         for (int j = row_start; j < row_end; j++)
         {
-//            global_col = off_proc_cols[A_rap->off_proc->idx2[j]];
-            global_col = A_rap->off_proc_column_map[A_rap->off_proc->idx2[j]];
+            global_col = off_proc_cols[A_rap->off_proc->idx2[j]];
+//            global_col = A_rap->off_proc_column_map[A_rap->off_proc->idx2[j]];
             value = A_rap->off_proc->vals[j];
             HYPRE_IJMatrixSetValues(A, 1, &one, &global_row, &global_col, &value);
         }
