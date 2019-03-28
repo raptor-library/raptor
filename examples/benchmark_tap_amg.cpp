@@ -161,8 +161,8 @@ int main(int argc, char* argv[])
 #endif
     else if (system == 3)
     {
-        const char* file = "../../examples/LFAT5.pm";
-        A = readParMatrix(file);
+        if (argc > 2) A = readParMatrix(argv[2]);
+	else A = readParMatrix("../../examples/LFAT5.pm");
     }
     if (system != 2)
     {

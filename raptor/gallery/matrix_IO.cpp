@@ -25,16 +25,16 @@ CSRMatrix* readMatrix(const char* filename)
 {
     CSRMatrix* A;
 
-    uint32_t code;
-    uint32_t n_rows;
-    uint32_t n_cols;
-    uint32_t nnz;
-    uint32_t idx;
+    int32_t code;
+    int32_t n_rows;
+    int32_t n_cols;
+    int32_t nnz;
+    int32_t idx;
     double val;
 
     int sizeof_dbl = sizeof(val);
     int sizeof_int32 = sizeof(code);
-    bool is_little_endian = little_endian();
+    bool is_little_endian = false;
 
     std::ifstream ifs (filename, std::ifstream::binary);
     ifs.read(reinterpret_cast<char *>(&code), sizeof_int32);
@@ -42,8 +42,9 @@ CSRMatrix* readMatrix(const char* filename)
     ifs.read(reinterpret_cast<char *>(&n_cols), sizeof_int32);
     ifs.read(reinterpret_cast<char *>(&nnz), sizeof_int32);
 
-    if (is_little_endian)
+    if (code != PETSC_MAT_CODE)
     {
+        is_little_endian = true;
         endian_swap(&code);
         endian_swap(&n_rows);
         endian_swap(&n_cols);
