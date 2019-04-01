@@ -308,6 +308,8 @@ class PetscBinaryIO(object):
         assert len(J) == len(V) == I[-1] == rownz.sum()
         assert (rownz > -1).all()
 
+        print(metadata)
+        print(self._inttype, self._scalartype)
         metadata.tofile(fh)
         rownz.astype(self._inttype).tofile(fh)
         J.astype(self._inttype).tofile(fh)
