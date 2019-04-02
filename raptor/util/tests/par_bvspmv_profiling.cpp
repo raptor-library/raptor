@@ -33,6 +33,9 @@ int main(int argc, char** argv)
     double theta = M_PI/8.0;
     double* stencil = diffusion_stencil_2d(eps, theta);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
+
+    printf("A %d x %d\n", A->global_num_rows, A->global_num_rows);
+    return 0;
     
     // Setup BVs
     ParBVector x(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col, block_vecs);

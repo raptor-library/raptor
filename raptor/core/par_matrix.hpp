@@ -3,6 +3,7 @@
 #ifndef PARMATRIX_HPP
 #define PARMATRIX_HPP
 
+#include <omp.h>
 #include <mpi.h>
 #include <math.h>
 #include <set>

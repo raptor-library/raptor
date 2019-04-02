@@ -6,7 +6,7 @@
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
-#include "krylov/par_cg_timed.hpp"
+#include "krylov/par_cg_openmp.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/par_stencil.hpp"
 
@@ -60,7 +60,7 @@ int main(int argc, char** argv)
     {
         residuals.clear();
         x.set_const_value(0.0);
-        SRECG(A, x, b, t, avg_times, residuals);
+        SRECG_omp(A, x, b, t, avg_times, residuals);
     }
 
     for (int j = 0; j < avg_times.size(); j++)

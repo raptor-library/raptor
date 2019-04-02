@@ -19,6 +19,7 @@ option(WITH_HYPRE "Add Hypre" OFF)
 option(WITH_MFEM "Add MFEM" OFF)
 option(WITH_AMPI "Using AMPI" OFF)
 option(WITH_MPI "Using MPI" ON)
+option(WITH_OPENMP "Using OpenMP" ON)
 
 add_feature_info(hypre WITH_HYPRE "Hypre preconditioner")
 add_feature_info(mfem WITH_MFEM "MFEM matrix gallery")
@@ -39,6 +40,10 @@ if (WITH_MPI)
     include_directories(${MPI_INCLUDE_PATH})
     SET(MPIRUN mpirun)
 endif (WITH_MPI)
+
+if (WITH_OPENMP)
+    find_package(OpenMP REQUIRED)
+endif (WITH_OPENMP)
 
 include_directories("external")
 set(raptor_INCDIR ${CMAKE_CURRENT_SOURCE_DIR}/raptor)

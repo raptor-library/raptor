@@ -30,7 +30,8 @@ int main(int argc, char** argv)
 
     double start, stop;
 
-    int grid[2] = {2500, 2500};
+    //int grid[2] = {2500, 2500};
+    int grid[2] = {1000, 1000};
     double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
 
