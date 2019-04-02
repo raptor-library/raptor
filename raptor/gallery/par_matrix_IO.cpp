@@ -3,8 +3,8 @@
 
 #include "par_matrix_IO.hpp"
 #include "matrix_IO.hpp"
-#include <float.h>
 #include <stdio.h>
+#include "limits.h"
 
 bool little_endian()
 {
@@ -28,14 +28,17 @@ ParCSRMatrix* readParMatrix(const char* filename,
     RAPtor_MPI_Comm_rank(comm, &rank);
     RAPtor_MPI_Comm_size(comm, &num_procs);
 
-    ParCSRMatrix* A;
+    ParCSRMatrix* A = NULL;
 
+
+    int64_t pos;
     int32_t code;
     int32_t global_num_rows;
     int32_t global_num_cols;
     int32_t global_nnz;
     int32_t idx;
     double val;
+
     bool is_little_endian = false;
 
     int ctr, size;
@@ -43,23 +46,31 @@ ParCSRMatrix* readParMatrix(const char* filename,
     int sizeof_dbl = sizeof(val);
     int sizeof_int32 = sizeof(code);
 
-    std::ifstream ifs (filename, std::ifstream::binary);
-
-    ifs.read(reinterpret_cast<char *>(&code), sizeof_int32);
-    ifs.read(reinterpret_cast<char *>(&global_num_rows), sizeof_int32);
-    ifs.read(reinterpret_cast<char *>(&global_num_cols), sizeof_int32);
-    ifs.read(reinterpret_cast<char *>(&global_nnz), sizeof_int32);
-
+    FILE* ifile = fopen(filename, "rb");
+    if (fseek(ifile, 0, SEEK_SET)) printf("Error seeking beginning of file\n"); 
+    
+    // Read code, and determine if little endian, or if long int
+    fread(&code, sizeof_int32, 1, ifile);
+    if (ferror(ifile)) printf("Error reading code\n");
     if (code != PETSC_MAT_CODE)
     {
-        is_little_endian = true;
         endian_swap(&code);
+        is_little_endian = true;
+    }
+
+    fread(&global_num_rows, sizeof_int32, 1, ifile);
+    if (ferror(ifile)) printf("Error reading N\n");
+    fread(&global_num_cols, sizeof_int32, 1, ifile);
+    if (ferror(ifile)) printf("Error reading M\n");
+    fread(&global_nnz, sizeof_int32, 1, ifile);
+    if (ferror(ifile)) printf("Error reading nnz\n");
+
+    if (is_little_endian)
+    {
         endian_swap(&global_num_rows);
         endian_swap(&global_num_cols);
         endian_swap(&global_nnz);
     }
-
-    assert(code == PETSC_MAT_CODE);
 
     if (first_local_col >= 0)
     {
@@ -72,105 +83,63 @@ ParCSRMatrix* readParMatrix(const char* filename,
         A = new ParCSRMatrix(global_num_rows, global_num_cols);
     }
 
-    aligned_vector<int> proc_nnz(num_procs);
-    aligned_vector<int> row_sizes;
-    aligned_vector<int> col_indices;
+    aligned_vector<int32_t> row_sizes;
+    aligned_vector<int32_t> col_indices;
     aligned_vector<double> vals;
-    int nnz = 0;
+    aligned_vector<int> proc_nnz(num_procs);
     if (A->local_num_rows)
         row_sizes.resize(A->local_num_rows);
+    int nnz = 0;
 
-    if (is_little_endian)
+    // Find row sizes
+    pos = (4 + A->partition->first_local_col) * sizeof_int32;
+    if (fseek(ifile, pos, SEEK_SET)) printf("Error seeking pos %ld\n", pos); 
+    for (int i = 0; i < A->local_num_rows; i++)
     {
-        // Find row sizes
-        ifs.seekg(A->partition->first_local_row * sizeof_int32, ifs.cur);
-        for (int i = 0; i < A->local_num_rows; i++)
-        {
-            ifs.read(reinterpret_cast<char *>(&idx), sizeof_int32);
-            endian_swap(&idx);
-            row_sizes[i] = idx;
-            nnz += idx;
-        }
-        ifs.seekg((A->global_num_rows - A->partition->last_local_row - 1) * sizeof_int32, ifs.cur);
-
-        // Find nnz per proc (to find first_nnz)
-        RAPtor_MPI_Allgather(&nnz, 1, RAPtor_MPI_INT, proc_nnz.data(), 1, RAPtor_MPI_INT, comm);
-        int first_nnz = 0;
-        for (int i = 0; i < rank; i++)
-        {
-            first_nnz += proc_nnz[i];
-        }
-        int remaining_nnz = global_nnz - first_nnz - nnz;
-
-        // Resize variables
-        if (nnz)
-        {
-            col_indices.resize(nnz);
-            vals.resize(nnz);
-        }
-
-        // Read in col_indices
-        ifs.seekg(first_nnz * sizeof_int32, ifs.cur);
-        for (int i = 0; i < nnz; i++)
-        {
-            ifs.read(reinterpret_cast<char *>(&idx), sizeof_int32);
-            endian_swap(&idx);
-            col_indices[i] = idx;
-        }
-        ifs.seekg(remaining_nnz * sizeof_int32, ifs.cur);
-        ifs.seekg(first_nnz * sizeof_dbl, ifs.cur);
-        for (int i = 0; i < nnz; i++)
-        {
-            ifs.read(reinterpret_cast<char *>(&val), sizeof_dbl);
-            endian_swap(&val);
-            vals[i] = val;
-        }
-        ifs.seekg(remaining_nnz * sizeof_dbl, ifs.cur);
+        fread(&idx, sizeof_int32, 1, ifile);
+        if (ferror(ifile)) printf("Error reading row_size\n");
+        if (is_little_endian) endian_swap(&idx);
+        row_sizes[i] = idx;
+        nnz += idx;
     }
-    else
+
+    // Find nnz per proc (to find first_nnz)
+    RAPtor_MPI_Allgather(&nnz, 1, RAPtor_MPI_INT, proc_nnz.data(), 1, RAPtor_MPI_INT, comm);
+    long first_nnz = 0;
+    for (int i = 0; i < rank; i++)
+        first_nnz += proc_nnz[i];
+    long total_nnz = first_nnz;
+    for (int i = rank; i < num_procs; i++)
+        total_nnz += proc_nnz[i];
+
+    // Resize variables
+    if (nnz)
     {
-        // Find row sizes
-        ifs.seekg(A->partition->first_local_row * sizeof_int32, ifs.cur);
-        for (int i = 0; i < A->local_num_rows; i++)
-        {
-            ifs.read(reinterpret_cast<char *>(&idx), sizeof_int32);
-            row_sizes[i] = idx;
-            nnz += idx;
-        }
-        ifs.seekg((A->global_num_rows - A->partition->last_local_row - 1) * sizeof_int32, ifs.cur);
-
-        // Find nnz per proc (to find first_nnz)
-        RAPtor_MPI_Allgather(&nnz, 1, RAPtor_MPI_INT, proc_nnz.data(), 1, RAPtor_MPI_INT, comm);
-        int first_nnz = 0;
-        for (int i = 0; i < rank; i++)
-        {
-            first_nnz += proc_nnz[i];
-        }
-        int remaining_nnz = global_nnz - first_nnz - nnz;
-
-        // Resize variables
-        if (nnz)
-        {
-            col_indices.resize(nnz);
-            vals.resize(nnz);
-        }
-
-        // Read in col_indices
-        ifs.seekg(first_nnz * sizeof_int32, ifs.cur);
-        for (int i = 0; i < nnz; i++)
-        {
-            ifs.read(reinterpret_cast<char *>(&idx), sizeof_int32);
-            col_indices[i] = idx;
-        }
-        ifs.seekg(remaining_nnz * sizeof_int32, ifs.cur);
-        ifs.seekg(first_nnz * sizeof_dbl, ifs.cur);
-        for (int i = 0; i < nnz; i++)
-        {
-            ifs.read(reinterpret_cast<char *>(&val), sizeof_dbl);
-            vals[i] = val;
-        }
-        ifs.seekg(remaining_nnz * sizeof_dbl, ifs.cur);
+        col_indices.resize(nnz);
+        vals.resize(nnz);
     }
+
+    // Read in col_indices
+    pos = (4 + A->global_num_rows + first_nnz) * sizeof_int32;
+    if (fseek(ifile, pos, SEEK_SET)) printf("Error seeking pos %ld\n", pos); 
+    for (int i = 0; i < nnz; i++)
+    {
+        fread(&idx, sizeof_int32, 1, ifile);
+        if (ferror(ifile)) printf("Error reading col idx\n");
+        if (is_little_endian) endian_swap(&idx);
+        col_indices[i] = idx;
+    }
+
+    pos = (4 + A->global_num_rows + total_nnz) * sizeof_int32 + (first_nnz * sizeof_dbl);
+    if (fseek(ifile, pos, SEEK_SET)) printf("Error seeking pos %ld\n", pos); 
+    for (int i = 0; i < nnz; i++)
+    {
+        fread(&val, sizeof_dbl, 1, ifile);
+        if (ferror(ifile)) printf("Error reading value\n");
+        if (is_little_endian) endian_swap(&val);
+        vals[i] = val;
+    }
+    fclose(ifile);
 
     A->on_proc->idx1[0] = 0;
     A->off_proc->idx1[0] = 0;
