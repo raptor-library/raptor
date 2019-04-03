@@ -30,13 +30,13 @@ TEST(StrengthTest, TestsIntests)
     const char* S1_fn = "../../../test_data/laplacian_S.pm";
     const char* SS1_fn = "../../../test_data/laplacian_SS.pm";
 
-    A = readMatrix(A0_fn);
-    S = readMatrix(S0_fn);
-    S_rap = A->strength(Classical, 0.25);
-    compare_pattern(S, S_rap);
-    delete A;
-    delete S;
-    delete S_rap;
+//    A = readMatrix(A0_fn);
+//    S = readMatrix(S0_fn);
+//    S_rap = A->strength(Classical, 0.25);
+//    compare_pattern(S, S_rap);
+//    delete A;
+//    delete S;
+//    delete S_rap;
 
     A = readMatrix(A1_fn);
     S = readMatrix(S1_fn);
@@ -46,13 +46,13 @@ TEST(StrengthTest, TestsIntests)
     delete S;
     delete S_rap;
 
-    A = readMatrix(A0_fn);
-    S = readMatrix(SS0_fn);
-    S_rap = A->strength(Symmetric, 0.25);
-    compare_pattern(S, S_rap);
-    delete A;
-    delete S;
-    delete S_rap;
+//    A = readMatrix(A0_fn);
+//    S = readMatrix(SS0_fn);
+//    S_rap = A->strength(Symmetric, 0.25);
+//    compare_pattern(S, S_rap);
+//    delete A;
+//    delete S;
+//    delete S_rap;
 
     A = readMatrix(A1_fn);
     S = readMatrix(SS1_fn);

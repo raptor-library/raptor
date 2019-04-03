@@ -30,7 +30,6 @@ ParCSRMatrix* readParMatrix(const char* filename,
 
     ParCSRMatrix* A = NULL;
 
-
     int64_t pos;
     int32_t code;
     int32_t global_num_rows;
@@ -89,18 +88,21 @@ ParCSRMatrix* readParMatrix(const char* filename,
     aligned_vector<int> proc_nnz(num_procs);
     if (A->local_num_rows)
         row_sizes.resize(A->local_num_rows);
-    int nnz = 0;
 
+    int nnz = 0;
     // Find row sizes
-    pos = (4 + A->partition->first_local_col) * sizeof_int32;
-    if (fseek(ifile, pos, SEEK_SET)) printf("Error seeking pos %ld\n", pos); 
-    for (int i = 0; i < A->local_num_rows; i++)
+    if (A->local_num_rows)
     {
-        fread(&idx, sizeof_int32, 1, ifile);
-        if (ferror(ifile)) printf("Error reading row_size\n");
-        if (is_little_endian) endian_swap(&idx);
-        row_sizes[i] = idx;
-        nnz += idx;
+        pos = (4 + A->partition->first_local_row) * sizeof_int32;
+        if (fseek(ifile, pos, SEEK_SET)) printf("Error seeking pos %ld\n", pos); 
+        for (int i = 0; i < A->local_num_rows; i++)
+        {
+            fread(&idx, sizeof_int32, 1, ifile);
+            if (ferror(ifile)) printf("Error reading row_size\n");
+            if (is_little_endian) endian_swap(&idx);
+            row_sizes[i] = idx;
+            nnz += idx;
+        }
     }
 
     // Find nnz per proc (to find first_nnz)
@@ -117,27 +119,27 @@ ParCSRMatrix* readParMatrix(const char* filename,
     {
         col_indices.resize(nnz);
         vals.resize(nnz);
-    }
 
-    // Read in col_indices
-    pos = (4 + A->global_num_rows + first_nnz) * sizeof_int32;
-    if (fseek(ifile, pos, SEEK_SET)) printf("Error seeking pos %ld\n", pos); 
-    for (int i = 0; i < nnz; i++)
-    {
-        fread(&idx, sizeof_int32, 1, ifile);
-        if (ferror(ifile)) printf("Error reading col idx\n");
-        if (is_little_endian) endian_swap(&idx);
-        col_indices[i] = idx;
-    }
+        // Read in col_indices
+        pos = (4 + A->global_num_rows + first_nnz) * sizeof_int32;
+        if (fseek(ifile, pos, SEEK_SET)) printf("Error seeking pos %ld\n", pos); 
+        for (int i = 0; i < nnz; i++)
+        {
+            fread(&idx, sizeof_int32, 1, ifile);
+            if (ferror(ifile)) printf("Error reading col idx\n");
+            if (is_little_endian) endian_swap(&idx);
+            col_indices[i] = idx;
+        }
 
-    pos = (4 + A->global_num_rows + total_nnz) * sizeof_int32 + (first_nnz * sizeof_dbl);
-    if (fseek(ifile, pos, SEEK_SET)) printf("Error seeking pos %ld\n", pos); 
-    for (int i = 0; i < nnz; i++)
-    {
-        fread(&val, sizeof_dbl, 1, ifile);
-        if (ferror(ifile)) printf("Error reading value\n");
-        if (is_little_endian) endian_swap(&val);
-        vals[i] = val;
+        pos = (4 + A->global_num_rows + total_nnz) * sizeof_int32 + (first_nnz * sizeof_dbl);
+        if (fseek(ifile, pos, SEEK_SET)) printf("Error seeking pos %ld\n", pos); 
+        for (int i = 0; i < nnz; i++)
+        {
+            fread(&val, sizeof_dbl, 1, ifile);
+            if (ferror(ifile)) printf("Error reading value\n");
+            if (is_little_endian) endian_swap(&val);
+            vals[i] = val;
+        }
     }
     fclose(ifile);
 
@@ -150,17 +152,18 @@ ParCSRMatrix* readParMatrix(const char* filename,
         for (int j = 0; j < size; j++)
         {
             idx = col_indices[ctr];
-            val = vals[ctr++];
+            val = vals[ctr];
+            ctr++;
             if ((int) idx >= A->partition->first_local_col &&
                     (int) idx <= A->partition->last_local_col)
             {
-                A->on_proc->idx2.emplace_back(idx - A->partition->first_local_col);
-                A->on_proc->vals.emplace_back(val);
+                A->on_proc->idx2.push_back(idx - A->partition->first_local_col);
+                A->on_proc->vals.push_back(val);
             }
             else
             {
-                A->off_proc->idx2.emplace_back(idx);
-                A->off_proc->vals.emplace_back(val);
+                A->off_proc->idx2.push_back(idx);
+                A->off_proc->vals.push_back(val);
             }
         } 
         A->on_proc->idx1[i+1] = A->on_proc->idx2.size();
