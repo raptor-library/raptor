@@ -5,21 +5,7 @@
 
 #include "types.hpp"
 #include <mpi.h>
-
-// Blue Waters Paramters -- TODO add ifdef CRAYXE around this...
-#define alpha_short    2.3e-06
-#define beta_short     7.4e-10
-#define alpha_eager    7.0e-06
-#define beta_eager     1.3e-09
-#define alpha_rend     6.2e-06
-#define beta_rend      3.2e-10
-#define beta_N         1.5e-10
-#define alpha_short_l  8.3e-07
-#define beta_short_l   2.1e-09
-#define alpha_eager_l  1.2e-06
-#define beta_eager_l   1.0e-09
-#define alpha_rend_l   2.5e-06
-#define beta_rend_l    1.6e-10
+#include "topology_params.hpp"
 
 // Global Timing Variables
 extern bool profile;

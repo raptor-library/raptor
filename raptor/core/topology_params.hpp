@@ -1,0 +1,13 @@
+#define alpha_short_l 8.158429e-07
+#define beta_short_l 2.278806e-09
+#define alpha_eager_l 1.217742e-06
+#define beta_eager_l 1.003634e-09
+#define alpha_rend_l 2.227897e-06
+#define beta_rend_l 1.059116e-10
+#define alpha_short 1.541064e-06
+#define beta_short 1.200653e-09
+#define alpha_eager 1.850270e-07
+#define beta_eager 3.926536e-09
+#define alpha_rend 2.322898e-05
+#define beta_rend 1.097653e-09
+#define beta_N 2.353333e-11
