@@ -72,8 +72,6 @@ ParCSRMatrix* readParMatrix(const char* filename,
         endian_swap(&global_nnz);
     }
 
-    if (rank == 0) cout << code << " " << global_num_rows << " " << global_num_cols << " " << global_nnz << endl;
-
     if (first_local_col >= 0)
     {
         A = new ParCSRMatrix(global_num_rows, global_num_cols,
