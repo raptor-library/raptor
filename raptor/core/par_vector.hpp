@@ -5,6 +5,7 @@
 
 #include "assert.h"
 
+#include <omp.h>
 #include <mpi.h>
 #include <math.h>
 

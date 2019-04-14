@@ -53,4 +53,12 @@ if (WITH_MPI)
     target_link_libraries(par_srecg_profiling raptor ${MPI_LIBRARIES} pthread)
 endif()
 
+if (WITH_OPENMP)
+    add_executable(par_cg_omp_profiling par_cg_omp_profiling.cpp)
+    target_link_libraries(par_cg_omp_profiling raptor ${MPI_LIBRARIES} OpenMP::OpenMP_CXX pthread)
+    
+    add_executable(par_srecg_omp_profiling par_srecg_omp_profiling.cpp)
+    target_link_libraries(par_srecg_omp_profiling raptor ${MPI_LIBRARIES} OpenMP::OpenMP_CXX pthread)
+endif()
+
 

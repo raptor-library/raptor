@@ -6,10 +6,9 @@
 #include "core/types.hpp"
 #include "core/par_matrix.hpp"
 #include "core/par_vector.hpp"
-#include "krylov/par_cg_timed.hpp"
+#include "krylov/par_cg_openmp.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/par_stencil.hpp"
-#include "gallery/par_matrix_IO.hpp"
 
 using namespace raptor;
 
@@ -32,14 +31,10 @@ int main(int argc, char** argv)
 
     double start, stop;
 
-    /*int grid[2] = {1000, 1000};
+    //int grid[2] = {5000, 5000};
+    int grid[2] = {1000, 1000};
     double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
-    ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);*/
-
-    FILE* f;
-    const char* mfem_fn = "../../../../../mfem_matrices/mfem_dg_diffusion_331.pm";
-    ParCSRMatrix* A = readParMatrix(mfem_fn);
-
+    ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
     ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     aligned_vector<double> residuals;
@@ -65,7 +60,7 @@ int main(int argc, char** argv)
     {
         residuals.clear();
         x.set_const_value(0.0);
-        SRECG(A, x, b, t, avg_times, residuals, 1e-05, 3);
+        SRECG_omp(A, x, b, t, avg_times, residuals);
     }
 
     for (int j = 0; j < avg_times.size(); j++)
@@ -91,7 +86,7 @@ int main(int argc, char** argv)
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    //delete[] stencil;
+    delete[] stencil;
     delete A;
 
     MPI_Finalize();

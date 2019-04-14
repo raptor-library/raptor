@@ -58,6 +58,7 @@ void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& Q2, ParBVector& P, aligne
     start = MPI_Wtime();
 
     // sqrt(inner_prods[i])
+    // PARALLELIZE THIS LOOP
     for (int i = 0; i < t; i++)
     {
         temp = pow(inner_prods[i], 1.0/2.0);
@@ -121,6 +122,7 @@ void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& P, aligned_vector<double>
 
     start = MPI_Wtime();
     // sqrt(inner_prods[i])
+    // PARALLELIZE THIS LOOP
     for (int i = 0; i < t; i++)
     {
         temp = pow(inner_prods[i], 1.0/2.0);
@@ -186,6 +188,7 @@ void CGS(ParCSRMatrix* A, ParBVector& P, aligned_vector<double>& times)
         start = MPI_Wtime();
         // Just multiply ith column of P by A
         T1.set_const_value(0.0);
+        // PARALLELIZE THIS LOOP
         for (int k = 0; k < T1.local_n; k++)
         {
             T1.local->values[i*T1.local_n + k] = P.local->values[i*P.local_n + k];
@@ -206,6 +209,8 @@ void CGS(ParCSRMatrix* A, ParBVector& P, aligned_vector<double>& times)
 
         // P[:,i] = P[:,i] / ||P[:,i]||_A
         //P.scale(1, inner_prods);
+
+        // PARALLELIZE THIS LOOP
         for (int k = 0; k < P.local_n; k++) P.local->values[i*P.local_n + k] *= 1.0/inner_prod;
         stop = MPI_Wtime();
         times[2] += (stop - start);
