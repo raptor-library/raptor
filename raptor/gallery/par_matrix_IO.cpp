@@ -22,11 +22,11 @@ void endian_swap(T *objp)
 ParCSRMatrix* readParMatrix(const char* filename, 
         int local_num_rows, int local_num_cols,
         int first_local_row, int first_local_col, 
-        RAPtor_MPI_Comm comm)
+        MPI_Comm comm)
 {
     int rank, num_procs;
-    RAPtor_MPI_Comm_rank(comm, &rank);
-    RAPtor_MPI_Comm_size(comm, &num_procs);
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &num_procs);
 
     ParCSRMatrix* A;
 
@@ -93,7 +93,7 @@ ParCSRMatrix* readParMatrix(const char* filename,
         ifs.seekg((A->global_num_rows - A->partition->last_local_row - 1) * sizeof_int32, ifs.cur);
 
         // Find nnz per proc (to find first_nnz)
-        RAPtor_MPI_Allgather(&nnz, 1, RAPtor_MPI_INT, proc_nnz.data(), 1, RAPtor_MPI_INT, comm);
+        MPI_Allgather(&nnz, 1, MPI_INT, proc_nnz.data(), 1, MPI_INT, comm);
         int first_nnz = 0;
         for (int i = 0; i < rank; i++)
         {
@@ -139,7 +139,7 @@ ParCSRMatrix* readParMatrix(const char* filename,
         ifs.seekg((A->global_num_rows - A->partition->last_local_row - 1) * sizeof_int32, ifs.cur);
 
         // Find nnz per proc (to find first_nnz)
-        RAPtor_MPI_Allgather(&nnz, 1, RAPtor_MPI_INT, proc_nnz.data(), 1, RAPtor_MPI_INT, comm);
+        MPI_Allgather(&nnz, 1, MPI_INT, proc_nnz.data(), 1, MPI_INT, comm);
         int first_nnz = 0;
         for (int i = 0; i < rank; i++)
         {

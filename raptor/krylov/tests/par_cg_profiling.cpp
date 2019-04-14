@@ -9,6 +9,7 @@
 #include "krylov/par_cg_timed.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/par_stencil.hpp"
+#include "gallery/par_matrix_IO.hpp"
 
 using namespace raptor;
 
@@ -30,9 +31,13 @@ int main(int argc, char** argv)
 
     double start, stop;
 
-    int grid[2] = {2500, 2500};
+    /*int grid[2] = {1000, 1000};
     double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
-    ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
+    ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);*/
+    
+    FILE* f;
+    const char* mfem_fn = "../../../../../mfem_matrices/mfem_dg_diffusion_331.pm";
+    ParCSRMatrix* A = readParMatrix(mfem_fn);
 
     ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
@@ -59,8 +64,9 @@ int main(int argc, char** argv)
     {
         residuals.clear();
         x.set_const_value(0.0);
-        CG(A, x, b, avg_times, residuals);
+        CG(A, x, b, avg_times, residuals, 1e-05, 3);
     }
+
     for (int i = 0; i < avg_times.size(); i++)
     {
         avg_times[i] = avg_times[i] / timings;
@@ -81,7 +87,7 @@ int main(int argc, char** argv)
         printf("%lg \t %lg \t %lg\n", avg_times[0]/num_procs, avg_times[1]/num_procs, avg_times[2]/num_procs);
     }
     
-    delete[] stencil;
+    //delete[] stencil;
     delete A;
 
     MPI_Finalize();

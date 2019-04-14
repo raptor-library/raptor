@@ -11,6 +11,7 @@
 #include "aggregation/par_smoothed_aggregation_solver.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/par_stencil.hpp"
+#include "gallery/par_matrix_IO.hpp"
 
 using namespace raptor;
 
@@ -30,11 +31,18 @@ TEST(ParCGTest, TestsInKrylov)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
     bool compare_res = false;
-    bool check_soln = true;
+    bool check_soln = false;
+    bool print_res_tofile = true;
 
-    int grid[2] = {50, 50};
+    //int grid[2] = {50, 50};
+    /*int grid[2] = {1000, 1000};
     double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
-    ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
+    ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);*/
+
+    FILE* f;
+    const char* mfem_fn = "../../../../../mfem_matrices/mfem_dg_diffusion_331.pm";
+    ParCSRMatrix* A = readParMatrix(mfem_fn);
+
     ParMultilevel *ml;
     ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
@@ -48,16 +56,29 @@ TEST(ParCGTest, TestsInKrylov)
     double b_norm = b.norm(2);
     CG(A, x, b, residuals);
     
-    if (rank == 0 && compare_res)
+    if (rank == 0)
     {
-        FILE* f = fopen("../../../../test_data/cg_res.txt", "r");
-        double res;
-        for (int i = 0; i < residuals.size(); i++)
+        if (print_res_tofile)
         {
-            fscanf(f, "%lf\n", &res);
-            ASSERT_NEAR(res, residuals[i] * b_norm, 1e-06);
+            FILE* f = fopen("cg_raptor_res.txt", "w");
+            for (int i = 0; i < residuals.size(); i++)
+            {
+                fprintf(f, "%lg\n", residuals[i]);
+            }
+            fclose(f);
         }
-        fclose(f);
+
+	if (compare_res)
+	{
+	    FILE* f = fopen("../../../../test_data/cg_res.txt", "r");
+	    double res;
+	    for (int i = 0; i < residuals.size(); i++)
+	    {
+	        fscanf(f, "%lf\n", &res);
+		ASSERT_NEAR(res, residuals[i] * b_norm, 1e-06);
+	    }
+	    fclose(f);
+	}
     }
 
     if (check_soln)
@@ -69,7 +90,7 @@ TEST(ParCGTest, TestsInKrylov)
     }
 
     // Setup AMG hierarchy
-    ml = new ParSmoothedAggregationSolver(0.0);
+    /*ml = new ParSmoothedAggregationSolver(0.0);
     ml->max_levels = 3;
     ml->setup(A);
 
@@ -83,9 +104,9 @@ TEST(ParCGTest, TestsInKrylov)
         {
             ASSERT_NEAR(x.local->values[i], 1.0, 1e-02);
         }        
-    }
+    }*/
 
-    delete[] stencil;
+    //delete[] stencil;
     delete A;
     delete ml;
     
