@@ -77,7 +77,6 @@ TEST(BlockMatrixTest, TestsInCore)
     for (int i = 0; i < nnz; i++)
         A_coo->add_value(rows[i], cols[i], vals[i]);
 
-
     Matrix* A_bsr = A_bcoo->to_CSR();
     Matrix* A_csr = A_coo->to_CSR();
     Matrix* A_bsc = A_bsr->to_CSC();
