@@ -4,6 +4,7 @@
 #define RAPTOR_CORE_VECTOR_HPP_
 
 #include "core/types.hpp"
+#include "omp.h"
 
 // Vector Class
 //

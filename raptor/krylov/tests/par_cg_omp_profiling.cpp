@@ -46,7 +46,7 @@ int main(int argc, char** argv)
     aligned_vector<double> min_times;
 
     omp_set_num_threads(num_threads);
-
+    
     for (int i = 0; i < 3; i++)
     {
         avg_times.push_back(0.0);

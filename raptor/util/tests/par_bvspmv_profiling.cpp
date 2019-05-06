@@ -4,6 +4,7 @@
 #include "core/par_matrix.hpp"
 #include "gallery/diffusion.hpp"
 #include "gallery/par_stencil.hpp"
+#include "gallery/par_matrix_IO.hpp"
 
 using namespace raptor;
 
@@ -26,13 +27,17 @@ int main(int argc, char** argv)
     int test = atoi(argv[2]);
     int timings = atoi(argv[3]);
     bool tap;
+    
+    FILE* f;
+    const char* rand_fn = "~/mfem_matrices/mfem_dg_diffusion_331.pm";
+    ParCSRMatrix* A = readParMatrix(rand_fn);
 
     // Setup matrix
-    int grid[2] = {2500, 2500};
+    /*int grid[2] = {2500, 2500};
     double eps = 0.001;
     double theta = M_PI/8.0;
     double* stencil = diffusion_stencil_2d(eps, theta);
-    ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
+    ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);*/
 
     printf("A %d x %d\n", A->global_num_rows, A->global_num_rows);
     return 0;
@@ -66,7 +71,7 @@ int main(int argc, char** argv)
     }
     
     delete A;
-    delete[] stencil;
+    //delete[] stencil;
     
     MPI_Finalize();
     return 0;

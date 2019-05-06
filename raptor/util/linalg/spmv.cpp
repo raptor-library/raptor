@@ -57,7 +57,10 @@ void CSR_spmv(const CSRMatrix* A, const double* x, double* b, const int n_vecs =
     {
         start = A->idx1[i];
         end = A->idx1[i+1];
-        for (int v = 0; v < n_vecs; v++)
+        int v;
+        #pragma omp parallel for default(none) private(v, val) \
+            shared(start, end, i, A, x, b) schedule(static)
+        for (v = 0; v < n_vecs; v++)
         {
             val = 0;
             for (int j = start; j < end; j++)
@@ -94,7 +97,10 @@ void CSR_residual(const CSRMatrix* A, const double* x,
     {
         start = A->idx1[i];
         end = A->idx1[i+1];
-        for (int v = 0; v < n_vecs; v++)
+        int v;
+        #pragma omp parallel for default(none) private(v, val) \
+            shared(start, end, i, A, x, b, r) schedule(static)
+        for (v = 0; v < n_vecs; v++)
         {
             val = b[i + v*A->n_rows];
             for (int j = start; j < end; j++)
@@ -116,19 +122,21 @@ void CSR_append(const CSRMatrix* A, const double* x, double* b, const int n_vecs
     {
         start = A->idx1[i];
         end = A->idx1[i+1];
-        for (int v = 0; v < n_vecs; v++)
+        int v;
+        #pragma omp parallel for default(none) private(v, val) \
+            shared(start, end, i, A, x, b, v_offset) schedule(static)
+        for (v = 0; v < n_vecs; v++)
         {
             val = 0;
             for (int j = start; j < end; j++)
             {
                 val += A->vals[j] * x[A->idx2[j] + v*v_offset];
-                //printf("A[%d][%d] * x[%d] = %lg * %lg\n", i, j, A->idx2[j] + v*v_offset, A->vals[j], x[A->idx2[j] + v*v_offset]);
             }
-            //printf("b[%d] %lg\n", i + v*A->n_rows, val);
             b[i + v*A->n_rows] += val;
         }
     }
 }
+
 /*void CSR_append(const CSRMatrix* A, const double* x, double* b)
 {
     int start, end;
@@ -217,7 +225,10 @@ void CSR_append_neg(const CSRMatrix* A, const aligned_vector<T>& vals,
     {
         start = A->idx1[i];
         end = A->idx1[i+1];
-        for (int v = 0; v < n_vecs; v++)
+        int v;
+        #pragma omp parallel for default(none) private(v) \
+            shared(start, end, i, A, x, b, vals) schedule(static)
+        for (v = 0; v < n_vecs; v++)
         {
             for (int j = start; j < end; j++)
             {

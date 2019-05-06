@@ -73,7 +73,7 @@ TEST(ParCGTest, TestsInKrylov)
     ml->max_levels = 3;
     ml->setup(A);
 
-    // AMG Preconditioned BiCGStab
+    // AMG Preconditioned CG
     x.set_const_value(0.0);
     PCG(A, ml, x, b, pre_residuals);
     

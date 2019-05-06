@@ -5,6 +5,7 @@
 
 #include "types.hpp"
 #include "vector.hpp"
+#include "omp.h"
 
 /**************************************************************
  *****   Matrix Base Class
