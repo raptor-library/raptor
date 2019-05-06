@@ -1003,7 +1003,16 @@ COOMatrix* COOMatrix::to_COO()
 {
     return this;
 }
+BCOOMatrix* COOMatrix::to_BCOO()
+{
+    BCOOMatrix* A = new BCOOMatrix();
+    return A;
+}
 COOMatrix* BCOOMatrix::to_COO()
+{
+    return this;
+}
+BCOOMatrix* BCOOMatrix::to_BCOO()
 {
     return this;
 }
@@ -1014,7 +1023,21 @@ CSRMatrix* COOMatrix::to_CSR()
     COO_to_CSR(this, A, vals, A->vals);
     return A;
 }
+BSRMatrix* COOMatrix::to_BSR()
+{
+    BSRMatrix* A = new BSRMatrix();
+    return A;
+}
 CSRMatrix* BCOOMatrix::to_CSR()
+{
+    BSRMatrix* A = new BSRMatrix();
+    A->b_rows = b_rows;
+    A->b_cols = b_cols;
+    A->b_size = b_size;
+    COO_to_CSR(this, A, block_vals, A->block_vals);
+    return A;
+}
+BSRMatrix* BCOOMatrix::to_BSR()
 {
     BSRMatrix* A = new BSRMatrix();
     A->b_rows = b_rows;
@@ -1030,7 +1053,22 @@ CSCMatrix* COOMatrix::to_CSC()
     COO_to_CSC(this, A, vals, A->vals);
     return A;
 }
+BSCMatrix* COOMatrix::to_BSC()
+{
+    BSCMatrix* A = new BSCMatrix();
+    return A;
+}
 CSCMatrix* BCOOMatrix::to_CSC()
+{
+    BSCMatrix* A = new BSCMatrix();
+    A->b_rows = b_rows;
+    A->b_cols = b_cols;
+    A->b_size = b_size;
+    COO_to_CSC(this, A, block_vals, A->block_vals);
+    return A;
+}
+
+BSCMatrix* BCOOMatrix::to_BSC()
 {
     BSCMatrix* A = new BSCMatrix();
     A->b_rows = b_rows;
@@ -1046,7 +1084,21 @@ COOMatrix* CSRMatrix::to_COO()
     CSR_to_COO(this, A, vals, A->vals);
     return A;
 }
+BCOOMatrix* CSRMatrix::to_BCOO()
+{
+    BCOOMatrix* A = new BCOOMatrix();
+    return A;
+}
 COOMatrix* BSRMatrix::to_COO()
+{
+    BCOOMatrix* A = new BCOOMatrix();
+    A->b_rows = b_rows;
+    A->b_cols = b_cols;
+    A->b_size = b_size;
+    CSR_to_COO(this, A, block_vals, A->block_vals);
+    return A;
+}
+BCOOMatrix* BSRMatrix::to_BCOO()
 {
     BCOOMatrix* A = new BCOOMatrix();
     A->b_rows = b_rows;
@@ -1060,7 +1112,16 @@ CSRMatrix* CSRMatrix::to_CSR()
 {
     return this;
 }
+BSRMatrix* CSRMatrix::to_BSR()
+{
+    BSRMatrix* A = new BSRMatrix();
+    return A;
+}
 CSRMatrix* BSRMatrix::to_CSR()
+{
+    return this;
+}
+BSRMatrix* BSRMatrix::to_BSR()
 {
     return this;
 }
@@ -1071,7 +1132,21 @@ CSCMatrix* CSRMatrix::to_CSC()
     CSR_to_CSC(this, A, vals, A->vals);
     return A;
 }
+BSCMatrix* CSRMatrix::to_BSC()
+{
+    BSCMatrix* A = new BSCMatrix();
+    return A;
+}
 CSCMatrix* BSRMatrix::to_CSC()
+{
+    BSCMatrix* A = new BSCMatrix();
+    A->b_rows = b_rows;
+    A->b_cols = b_cols;
+    A->b_size = b_size;
+    CSR_to_CSC(this, A, block_vals, A->block_vals);
+    return A;
+}
+BSCMatrix* BSRMatrix::to_BSC()
 {
     BSCMatrix* A = new BSCMatrix();
     A->b_rows = b_rows;
@@ -1087,7 +1162,21 @@ COOMatrix* CSCMatrix::to_COO()
     CSC_to_COO(this, A, vals, A->vals);
     return A;
 }
+BCOOMatrix* CSCMatrix::to_BCOO()
+{
+    BCOOMatrix* A = new BCOOMatrix();
+    return A;
+}
 COOMatrix* BSCMatrix::to_COO()
+{
+    BCOOMatrix* A = new BCOOMatrix();
+    A->b_rows = b_rows;
+    A->b_cols = b_cols;
+    A->b_size = b_size;
+    CSC_to_COO(this, A, block_vals, A->block_vals);
+    return A;
+}
+BCOOMatrix* BSCMatrix::to_BCOO()
 {
     BCOOMatrix* A = new BCOOMatrix();
     A->b_rows = b_rows;
@@ -1103,7 +1192,21 @@ CSRMatrix* CSCMatrix::to_CSR()
     CSC_to_CSR(this, A, vals, A->vals);
     return A;
 }
+BSRMatrix* CSCMatrix::to_BSR()
+{
+    BSRMatrix* A = new BSRMatrix();
+    return A;
+}
 CSRMatrix* BSCMatrix::to_CSR()
+{
+    BSRMatrix* A = new BSRMatrix();
+    A->b_rows = b_rows;
+    A->b_cols = b_cols;
+    A->b_size = b_size;
+    CSC_to_CSR(this, A, block_vals, A->block_vals);
+    return A;
+}
+BSRMatrix* BSCMatrix::to_BSR()
 {
     BSRMatrix* A = new BSRMatrix();
     A->b_rows = b_rows;
@@ -1116,7 +1219,16 @@ CSCMatrix* CSCMatrix::to_CSC()
 {
    return this; 
 }
+BSCMatrix* CSCMatrix::to_BSC()
+{
+   BSCMatrix* A = new BSCMatrix();
+   return A; 
+}
 CSCMatrix* BSCMatrix::to_CSC()
+{
+    return this;
+}
+BSCMatrix* BSCMatrix::to_BSC()
 {
     return this;
 }
