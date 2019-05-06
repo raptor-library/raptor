@@ -92,7 +92,7 @@ ParCSRMatrix* readParMatrix(const char* filename,
     int nnz = 0;
 
     // Find row sizes
-    pos = (4 + A->partition->first_local_col) * sizeof_int32;
+    pos = (4 + A->partition->first_local_row) * sizeof_int32;
     if (fseek(ifile, pos, SEEK_SET)) printf("Error seeking pos %ld\n", pos); 
     for (int i = 0; i < A->local_num_rows; i++)
     {
