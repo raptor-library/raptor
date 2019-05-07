@@ -539,10 +539,13 @@ namespace raptor
     
     void add_value(int row, int col, double value)
     {
-        idx1.emplace_back(row);
-        idx2.emplace_back(col);
-        vals.emplace_back(value);
-        nnz++;
+        if (fabs(value) > zero_tol)
+        {
+            idx1.emplace_back(row);
+            idx2.emplace_back(col);
+            vals.emplace_back(value);
+            nnz++;
+        }
     }
 
     void add_value(int row, int col, double* value)
@@ -734,9 +737,12 @@ namespace raptor
 
     void add_value(int row, int col, double value) 
     {
-        idx2.emplace_back(col);
-        vals.emplace_back(value);
-        nnz++;
+        if (fabs(value) > zero_tol)
+        {
+            idx2.emplace_back(col);
+            vals.emplace_back(value);
+            nnz++;
+        }
     }
     void add_value(int row, int col, double* value)
     {
@@ -898,9 +904,12 @@ namespace raptor
 
     void add_value(int row, int col, double value)
     {
-        idx2.emplace_back(row);
-        vals.emplace_back(value);
-        nnz++;
+        if (fabs(value) > zero_tol)
+        {
+            idx2.emplace_back(row);
+            vals.emplace_back(value);
+            nnz++;
+        }
     }
     void add_value(int row, int col, double* value)
     {

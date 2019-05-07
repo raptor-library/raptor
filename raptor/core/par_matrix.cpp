@@ -169,12 +169,26 @@ int* ParMatrix::map_partition_to_local()
 }
 
 
-
+/**************************************************************
+*****  ParMatrix Convert
+**************************************************************
+***** Convert from one type of parmatrix to another
+***** No copies if parmatrix type remains the same
+***** If blocked parmatrix, converts to block matrix
+**************************************************************/
 ParCOOMatrix* ParCOOMatrix::to_ParCOO()
 {
     return this;
 }
+ParCOOMatrix* ParCOOMatrix::to_ParBCOO()
+{
+    return this->to_ParCOO();
+}
 ParCOOMatrix* ParBCOOMatrix::to_ParCOO()
+{
+    return this->to_ParBCOO();
+}
+ParCOOMatrix* ParBCOOMatrix::to_ParBCOO()
 {
     return this;
 }
@@ -184,7 +198,15 @@ ParCSRMatrix* ParCOOMatrix::to_ParCSR()
     A->copy_helper(this);
     return A;
 }
+ParCSRMatrix* ParCOOMatrix::to_ParBSR()
+{
+    return this->to_ParCSR();
+}
 ParCSRMatrix* ParBCOOMatrix::to_ParCSR()
+{
+    return this->to_ParBSR();
+}
+ParCSRMatrix* ParBCOOMatrix::to_ParBSR()
 {
     ParBSRMatrix* A = new ParBSRMatrix();
     A->copy_helper(this);
@@ -196,7 +218,15 @@ ParCSCMatrix* ParCOOMatrix::to_ParCSC()
     A->copy_helper(this);
     return A;
 }
+ParCSCMatrix* ParCOOMatrix::to_ParBSC()
+{
+    return this->to_ParCSC();
+}
 ParCSCMatrix* ParBCOOMatrix::to_ParCSC()
+{
+    return this->to_ParBSC();
+}
+ParCSCMatrix* ParBCOOMatrix::to_ParBSC()
 {
     ParBSCMatrix* A = new ParBSCMatrix();
     A->copy_helper(this);
@@ -209,7 +239,15 @@ ParCOOMatrix* ParCSRMatrix::to_ParCOO()
     A->copy_helper(this);
     return A;
 }
+ParCOOMatrix* ParCSRMatrix::to_ParBCOO()
+{
+    return this->to_ParCOO();
+}
 ParCOOMatrix* ParBSRMatrix::to_ParCOO()
+{
+    return this->to_ParBCOO();
+}
+ParCOOMatrix* ParBSRMatrix::to_ParBCOO()
 {
     ParBCOOMatrix* A = new ParBCOOMatrix();
     A->copy_helper(this);
@@ -219,7 +257,15 @@ ParCSRMatrix* ParCSRMatrix::to_ParCSR()
 {
     return this; 
 }
+ParCSRMatrix* ParCSRMatrix::to_ParBSR()
+{
+    return this->to_ParCSR(); 
+}
 ParCSRMatrix* ParBSRMatrix::to_ParCSR()
+{
+    return this->to_ParBSR();
+}
+ParCSRMatrix* ParBSRMatrix::to_ParBSR()
 {
     return this;
 }
@@ -229,7 +275,15 @@ ParCSCMatrix* ParCSRMatrix::to_ParCSC()
     A->copy_helper(this);
     return A;
 }
+ParCSCMatrix* ParCSRMatrix::to_ParBSC()
+{
+    return this->to_ParCSC();
+}
 ParCSCMatrix* ParBSRMatrix::to_ParCSC()
+{
+    return this->to_ParBSC();
+}
+ParCSCMatrix* ParBSRMatrix::to_ParBSC()
 {
     ParBSCMatrix* A = new ParBSCMatrix();
     A->copy_helper(this);
@@ -242,7 +296,15 @@ ParCOOMatrix* ParCSCMatrix::to_ParCOO()
     A->copy_helper(this);
     return A;
 }
+ParCOOMatrix* ParCSCMatrix::to_ParBCOO()
+{
+    return this->to_ParCOO();
+}
 ParCOOMatrix* ParBSCMatrix::to_ParCOO()
+{
+    return this->to_ParBCOO();
+}
+ParCOOMatrix* ParBSCMatrix::to_ParBCOO()
 {
     ParBCOOMatrix* A = new ParBCOOMatrix();
     A->copy_helper(this);
@@ -254,7 +316,15 @@ ParCSRMatrix* ParCSCMatrix::to_ParCSR()
     A->copy_helper(this);
     return A;
 }
+ParCSRMatrix* ParCSCMatrix::to_ParBSR()
+{
+    return this->to_ParCSR();
+}
 ParCSRMatrix* ParBSCMatrix::to_ParCSR()
+{
+    return this->to_ParBSR();
+}
+ParCSRMatrix* ParBSCMatrix::to_ParBSR()
 {
     ParBSRMatrix* A = new ParBSRMatrix();
     A->copy_helper(this);
@@ -264,7 +334,15 @@ ParCSCMatrix* ParCSCMatrix::to_ParCSC()
 {
     return this;
 }
+ParCSCMatrix* ParCSCMatrix::to_ParBSC()
+{
+    return this->to_ParCSC();
+}
 ParCSCMatrix* ParBSCMatrix::to_ParCSC()
+{
+    return this->to_ParBSC();
+}
+ParCSCMatrix* ParBSCMatrix::to_ParBSC()
 {
     return this;
 }

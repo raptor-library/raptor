@@ -315,40 +315,37 @@ void BSR_to_CSR(const BSRMatrix* A, CSRMatrix* B, aligned_vector<T*>& A_vals,
 {
     B->n_rows = A->n_rows * A->b_rows;
     B->n_cols = A->n_cols * A->b_cols;
-    //B->nnz = A->nnz;
 
     B->idx1.resize(B->n_rows + 1);
     B->idx2.reserve(A->nnz);
-    B_vals.reserve(A->nnz);
+    B->vals.reserve(A->nnz);
 
     T val;
-    int row_count = 0;
-
-    // NEED TO UPDATE AFTER THIS POINT
-    // also need to add way of keeping track of nnz
+    int col;
     B->idx1[0] = 0;
     for (int i = 0; i < A->n_rows; i++)
     {
-        B->idx1[i+1] = A->idx1[i+1];
-        int row_start = B->idx1[i];
-        int row_end = B->idx1[i+1];
+        int row_start = A->idx1[i];
+        int row_end = A->idx1[i+1];
         for (int br = 0; br < A->b_rows; br++)
         {
-            row_count = 0;
             for (int j = row_start; j < row_end; j++)
             {
                 for (int bc = 0; bc < A->b_cols; bc++)
                 {
-                    B->idx2[j] = A->idx2[j];
-                    
-                    B_vals[j] = B->copy_val(A_vals[j]);
-                    val = A_vals[][]
-                    B_vals.emplace_back(val);
-                    
+                    val = A_vals[j][br*A->b_cols + bc];
+                    if (val > zero_tol)
+                    {
+                        col = A->idx2[j];
+                        B->vals.emplace_back(val);
+                        B->idx2.emplace_back(col*A->b_cols + bc); 
+                    }
                 }
             }
+            B->idx1[i*A->b_rows + br+1] = B->idx2.size();
         }
     }
+    B->nnz = B->vals.size();
 
 }
 template <typename T>
