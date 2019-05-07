@@ -57,6 +57,51 @@ void print_helper(const CSCMatrix* A, const aligned_vector<T>& vals)
         }
     }
 }
+template <typename T>
+void bcoo_print_helper(const BCOOMatrix* A, const aligned_vector<T>& vals)
+{
+    int row, col;
+    double val;
+
+    for (int i = 0; i < A->nnz; i++)
+    {
+        row = A->idx1[i];
+        col = A->idx2[i];
+        A->val_print(row, col, vals[i]);
+    }
+}
+template <typename T>
+void bsr_print_helper(const BSRMatrix* A, const aligned_vector<T>& vals)
+{
+    int col, start, end;
+
+    for (int row = 0; row < A->n_rows; row++)
+    {
+        start = A->idx1[row];
+        end = A->idx1[row+1];
+        for (int j = start; j < end; j++)
+        {
+            col = A->idx2[j];
+            A->val_print(row, col, vals[j]);
+        }
+    }
+}
+template <typename T>
+void bsc_print_helper(const BSCMatrix* A, const aligned_vector<T>& vals)
+{
+    int row, start, end;
+
+    for (int col = 0; col < A->n_cols; col++)
+    {
+        start = A->idx1[col];
+        end = A->idx1[col+1];
+        for (int j = start; j < end; j++)
+        {
+            row = A->idx2[j];
+            A->val_print(row, col, vals[j]);
+        }
+    }
+}
 void COOMatrix::print()
 {
     print_helper(this, vals);
@@ -71,15 +116,15 @@ void CSCMatrix::print()
 }
 void BCOOMatrix::print()
 {
-    print_helper(this, vals);
+    bcoo_print_helper(this, vals);
 }
 void BSRMatrix::print()
 {
-    print_helper(this, vals);
+    bsr_print_helper(this, vals);
 }
 void BSCMatrix::print()
 {
-    print_helper(this, vals);
+    bsc_print_helper(this, vals);
 }
 
 /**************************************************************
@@ -334,7 +379,7 @@ void BSR_to_CSR(const BSRMatrix* A, CSRMatrix* B, aligned_vector<T*>& A_vals,
                 for (int bc = 0; bc < A->b_cols; bc++)
                 {
                     val = A_vals[j][br*A->b_cols + bc];
-                    if (val > zero_tol)
+                    if (fabs(val) > zero_tol)
                     {
                         col = A->idx2[j];
                         B->vals.emplace_back(val);

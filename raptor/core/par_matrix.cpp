@@ -170,6 +170,76 @@ int* ParMatrix::map_partition_to_local()
 
 
 /**************************************************************
+*****  ParBSRMatrix to ParCSRMatrix Convert
+**************************************************************/
+void bsr_to_csr_copy_helper(ParBSRMatrix* A, ParCSRMatrix* B)
+{
+    if (B->on_proc)
+    {   
+        delete B->on_proc;
+    }
+    if (B->off_proc)
+    {
+        delete B->off_proc;
+    }
+
+    B->on_proc = A->on_proc->to_CSR();
+    B->off_proc = A->off_proc->to_CSR();
+
+    B->local_nnz = B->on_proc->nnz + B->off_proc->nnz;
+    B->global_num_rows = A->global_num_rows * A->on_proc->b_rows;
+    B->global_num_cols = A->global_num_cols * A->on_proc->b_cols;
+
+    B->on_proc_num_cols = B->on_proc->n_cols;
+    B->off_proc_num_cols = B->off_proc->n_cols;
+    
+    // Updated partition
+    B->partition = new Partition(B->global_num_rows, B->global_num_cols,
+                        B->on_proc->n_rows, B->on_proc->n_cols,
+                        A->partition->first_local_row * A->on_proc->b_rows,
+                        A->partition->first_local_col * A->on_proc->b_cols);
+    B->local_num_rows = B->partition->local_num_rows;
+
+    // Updated column and row maps
+    B->finalize(false);
+    int offset = A->off_proc_column_map[0] * A->on_proc->b_cols;
+    for (int i = 0; i < B->off_proc_column_map.size(); i++)
+    {
+        B->off_proc_column_map[i] += offset; 
+    }
+
+    // Updated how communicators are created
+    if (A->comm)
+    {
+        B->comm = new ParComm(B->partition, B->off_proc_column_map, B->on_proc_column_map);
+    }
+    else
+    {
+        B->comm = NULL;
+    }
+
+    if (A->tap_comm)
+    {
+        B->tap_comm = new TAPComm(B->partition, B->off_proc_column_map, B->on_proc_column_map);
+    }
+    else
+    {
+        B->tap_comm = NULL;
+    }
+
+    if (A->tap_mat_comm)
+    {
+        B->tap_mat_comm = new TAPComm(B->partition, B->off_proc_column_map, B->on_proc_column_map);
+    }
+    else
+    {
+        B->tap_mat_comm = NULL;
+    }
+}
+
+
+
+/**************************************************************
 *****  ParMatrix Convert
 **************************************************************
 ***** Convert from one type of parmatrix to another
@@ -263,7 +333,9 @@ ParCSRMatrix* ParCSRMatrix::to_ParBSR()
 }
 ParCSRMatrix* ParBSRMatrix::to_ParCSR()
 {
-    return this->to_ParBSR();
+    ParCSRMatrix* A = new ParCSRMatrix();
+    bsr_to_csr_copy_helper(this, A);
+    return A;
 }
 ParCSRMatrix* ParBSRMatrix::to_ParBSR()
 {
