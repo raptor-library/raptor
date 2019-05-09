@@ -1323,4 +1323,71 @@ BSCMatrix* BSCMatrix::copy()
     return A;
 }
 
+void COOMatrix::block_removal_col_check(bool* col_check)
+{
+    for (int i = 0; i < n_cols * b_cols; i++)
+    {
+        col_check[i] = true;
+    }
+}
+void BCOOMatrix::block_removal_col_check(bool* col_check)
+{
+    for (int i = 0; i < n_cols * b_cols; i++)
+    {
+        col_check[i] = false;
+    }
+}
 
+void CSCMatrix::block_removal_col_check(bool* col_check)
+{
+    for (int i = 0; i < n_cols * b_cols; i++)
+    {
+        col_check[i] = true;
+    }
+}
+void BSCMatrix::block_removal_col_check(bool* col_check)
+{
+    for (int i = 0; i < n_cols * b_cols; i++)
+    {
+        col_check[i] = false;
+    }
+}
+
+void CSRMatrix::block_removal_col_check(bool* col_check)
+{
+    for (int i = 0; i < n_cols * b_cols; i++)
+    {
+        col_check[i] = true;
+    }
+}
+void BSRMatrix::block_removal_col_check(bool* col_check)
+{
+    for (int i = 0; i < n_cols * b_cols; i++)
+    {
+        col_check[i] = false;
+    }
+
+    int start, end, idx, first_col;
+    double* block_val;
+    for (int i = 0; i < n_rows; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int row = 0; row < b_rows; row++)
+        {
+            idx = row * b_cols;
+            for (int j = start; j < end; j++)
+            {
+                first_col = idx2[j]*b_cols;
+                block_val = block_vals[j];
+                for (int col = 0; col < b_cols; col++)
+                {
+                    if(fabs(block_val[idx + col]) > zero_tol)
+                    {
+                        col_check[first_col + col] = true;
+                    } 
+                }
+            }
+        }
+    }
+}

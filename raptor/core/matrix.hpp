@@ -136,6 +136,7 @@ namespace raptor
     virtual CSRMatrix* to_BSR() = 0;
     virtual CSCMatrix* to_BSC() = 0;
     virtual COOMatrix* to_BCOO() = 0;
+    virtual void block_removal_col_check(bool* col_check) = 0;
     virtual Matrix* copy() = 0;
 
     virtual void spmv(const double* x, double* b) const = 0;
@@ -535,6 +536,8 @@ namespace raptor
     CSCMatrix* to_BSC();
     COOMatrix* to_BCOO();
 
+    void block_removal_col_check(bool* col_check);
+
     COOMatrix* copy();
     
     void add_value(int row, int col, double value)
@@ -728,6 +731,8 @@ namespace raptor
     CSCMatrix* to_BSC();
     COOMatrix* to_BCOO();
 
+    void block_removal_col_check(bool* col_check);
+
     CSRMatrix* copy();
 
     format_t format()
@@ -895,6 +900,8 @@ namespace raptor
     CSCMatrix* to_BSC();
     COOMatrix* to_BCOO();
 
+    void block_removal_col_check(bool* col_check);
+
     CSCMatrix* copy();
 
     format_t format()
@@ -1015,6 +1022,8 @@ class BSRMatrix : public CSRMatrix
     CSCMatrix* to_BSC();
     COOMatrix* to_BCOO();
 
+    void block_removal_col_check(bool* col_check);
+
     void print();
     BSRMatrix* copy();
 
@@ -1130,6 +1139,8 @@ class BCOOMatrix : public COOMatrix
     CSCMatrix* to_BSC();
     COOMatrix* to_BCOO();
 
+    void block_removal_col_check(bool* col_check);
+
     BSRMatrix* spgemm(CSRMatrix* B, int* B_to_C = NULL);
     BSRMatrix* spgemm_T(CSCMatrix* A, int* C_map = NULL);
 
@@ -1243,6 +1254,8 @@ class BSCMatrix : public CSCMatrix
     CSRMatrix* to_BSR();
     CSCMatrix* to_BSC();
     COOMatrix* to_BCOO();
+    
+    void block_removal_col_check(bool* col_check);
 
     void print();
     BSCMatrix* copy();

@@ -183,6 +183,7 @@ void bsr_to_csr_copy_helper(ParBSRMatrix* A, ParCSRMatrix* B)
         delete B->off_proc;
     }
 
+    // Convert on and off proc to CSR
     B->on_proc = A->on_proc->to_CSR();
     B->off_proc = A->off_proc->to_CSR();
 
@@ -200,12 +201,42 @@ void bsr_to_csr_copy_helper(ParBSRMatrix* A, ParCSRMatrix* B)
                         A->partition->first_local_col * A->on_proc->b_cols);
     B->local_num_rows = B->partition->local_num_rows;
 
-    // Updated column and row maps
+    // Updated column and row maps - 
     B->finalize(false);
-    int offset = A->off_proc_column_map[0] * A->on_proc->b_cols;
-    for (int i = 0; i < B->off_proc_column_map.size(); i++)
+
+    int first_col;
+    if (B->off_proc_num_cols == (A->off_proc_num_cols * A->off_proc->b_cols))
     {
-        B->off_proc_column_map[i] += offset; 
+        for (int i = 0; i < A->off_proc_num_cols; i++)
+        {
+            first_col = A->off_proc_column_map[i] * A->off_proc->b_cols;
+            for (int j = 0; j < A->off_proc->b_cols; j++)
+            {
+                B->off_proc_column_map[i*A->off_proc->b_cols + j] = first_col + j; 
+            } 
+        }
+    }
+    else
+    {
+        // Determine which cols of blocks are non-zero
+        bool* off_proc_nz_cols = new bool[A->off_proc_num_cols * A->off_proc->b_cols];
+        A->off_proc->block_removal_col_check(off_proc_nz_cols);
+        
+        int indx = 0;
+        for (int i = 0; i < A->off_proc_num_cols; i++)
+        {
+            first_col = A->off_proc_column_map[i] * A->off_proc->b_cols;
+            for (int j = 0; j < A->off_proc->b_cols; j++)
+            {
+                if (off_proc_nz_cols[first_col + j])
+                {
+                    B->off_proc_column_map[indx] = first_col + j; 
+                    indx++;
+                }
+            } 
+        }
+
+        delete off_proc_nz_cols;
     }
 
     // Updated how communicators are created

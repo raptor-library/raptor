@@ -16,7 +16,7 @@ int main(int argc, char** argv)
 
 } // end of main() //
 
-TEST(ParBlockMatrixTest, TestsInCore)
+TEST(ParBlockConversionTest, TestsInCore)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -36,51 +36,39 @@ TEST(ParBlockMatrixTest, TestsInCore)
     double theta = M_PI / 8.0;
     int block_n = 2;
     std::vector<int> grid(2, num_procs*block_n);
-    //std::vector<int> grid(2, 4);
     double* stencil = diffusion_stencil_2d(eps, theta);
-    CSRMatrix* A_serial = stencil_grid(stencil, grid.data(), 2);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid.data(), 2);
 
     ParBSRMatrix* A_bsr = A->to_ParBSR(block_n, block_n);
     ParCSRMatrix* A_csr_from_bsr = A_bsr->to_ParCSR();
     
-    int lcl_nnz = A_csr_from_bsr->local_nnz;
-    int nnz;
-    MPI_Allreduce(&lcl_nnz, &nnz, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-    ASSERT_EQ(A_serial->nnz,nnz);
+    ASSERT_EQ(A->local_nnz,A_csr_from_bsr->local_nnz);
 
-    /*for (int i = 0; i < num_procs; i++)
+    // Test Partition of BSR to CSR
+    for (int i = 0; i < A_csr_from_bsr->partition->first_cols.size(); i++)
     {
-        if (i == rank)
-        {
-            for (int j = 0; j < A_csr_from_bsr->partition->first_cols.size(); j++)
-            {
-                printf("%d ", A_csr_from_bsr->partition->first_cols[j]);
-            }
-            printf("\n");
-            fflush(stdout);   
-            for (int j = 0; j < A->partition->first_cols.size(); j++)
-            {
-                printf("%d ", A->partition->first_cols[j]);
-            }
-            printf("\n");
-            fflush(stdout);   
-            for (int j = 0; j < A_bsr->partition->first_cols.size(); j++)
-            {
-                printf("%d ", A_bsr->partition->first_cols[j]);
-            }
-            printf("\n");
-            fflush(stdout);   
-        }
-        MPI_Barrier(MPI_COMM_WORLD);
-    }*/
-
+        ASSERT_EQ(A->partition->first_cols[i], A_csr_from_bsr->partition->first_cols[i]);
+    }
     ASSERT_EQ(A->partition->local_num_rows, A_csr_from_bsr->partition->local_num_rows);
     ASSERT_EQ(A->partition->local_num_cols, A_csr_from_bsr->partition->local_num_cols);
     ASSERT_EQ(A->partition->first_local_row, A_csr_from_bsr->partition->first_local_row);
     ASSERT_EQ(A->partition->first_local_col, A_csr_from_bsr->partition->first_local_col);
     ASSERT_EQ(A->partition->last_local_row, A_csr_from_bsr->partition->last_local_row);
     ASSERT_EQ(A->partition->last_local_col, A_csr_from_bsr->partition->last_local_col);
+    
+    // Test Row and Column Maps of BSR to CSR
+    for (int i = 0; i < A_csr_from_bsr->off_proc_column_map.size(); i++)
+    {
+        ASSERT_EQ(A->off_proc_column_map[i], A_csr_from_bsr->off_proc_column_map[i]);
+    }
+    for (int i = 0; i < A_csr_from_bsr->on_proc_column_map.size(); i++)
+    {
+        ASSERT_EQ(A->on_proc_column_map[i], A_csr_from_bsr->on_proc_column_map[i]);
+    }
+    for (int i = 0; i < A_csr_from_bsr->local_row_map.size(); i++)
+    {
+        ASSERT_EQ(A->local_row_map[i], A_csr_from_bsr->local_row_map[i]);
+    }
     
     ParVector x(A->global_num_rows, A->local_num_rows);
     ParVector b(A->global_num_rows, A->local_num_rows);
@@ -90,26 +78,26 @@ TEST(ParBlockMatrixTest, TestsInCore)
     // Test BSR to CSR SpMV
     A_bsr->mult(x, b);
     A_csr_from_bsr->mult(x, tmp);
-    for (int i = 0; i < A_bsr->local_num_rows*block_n; i++)
+    for (int i = 0; i < A_csr_from_bsr->local_num_rows; i++)
         ASSERT_NEAR(tmp[i], b[i], 1e-10);
 
     // Test BSR to CSR Transpose SpMV
-    /*A_bsr->mult_T(x, b);
+    A_bsr->mult_T(x, b);
     A_csr_from_bsr->mult_T(x, tmp);
-    for (int i = 0; i < A_bsr->local_num_rows*block_n; i++)
-        ASSERT_NEAR(tmp[i], b[i], 1e-10);*/
+    for (int i = 0; i < A_csr_from_bsr->local_num_rows; i++)
+        ASSERT_NEAR(tmp[i], b[i], 1e-10);
 
     // Test BSR to CSR TAPSpMVs 
     A_bsr->tap_mult(x, b);
     A_csr_from_bsr->tap_mult(x, tmp);
-    for (int i = 0; i < A_bsr->local_num_rows*block_n; i++)
+    for (int i = 0; i < A_csr_from_bsr->local_num_rows; i++)
         ASSERT_NEAR(tmp[i], b[i], 1e-10);
 
     // Test BSR to CSR Transpose TAPSpMV
-    /*A_bsr->tap_mult_T(x, b);
+    A_bsr->tap_mult_T(x, b);
     A_csr_from_bsr->tap_mult_T(x, tmp);
-    for (int i = 0; i < A_bsr->local_num_rows*block_n; i++)
-        ASSERT_NEAR(tmp[i], b[i], 1e-10);*/
+    for (int i = 0; i < A_csr_from_bsr->local_num_rows; i++)
+        ASSERT_NEAR(tmp[i], b[i], 1e-10);
 
     delete A;
     delete A_bsr;
@@ -118,7 +106,7 @@ TEST(ParBlockMatrixTest, TestsInCore)
     setenv("PPN", "16", 1);
     
 
-} // end of TEST(MatrixTest, TestsInCore) //
+} // end of TEST(ParBlockConversionTest, TestsInCore) //
 
 
 
