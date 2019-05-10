@@ -252,7 +252,7 @@ void bsr_to_csr_copy_helper(ParBSRMatrix* A, ParCSRMatrix* B)
         B->tap_mat_comm = NULL;
     }
 
-    delete off_proc_nz_cols;
+    delete[] off_proc_nz_cols;
 }
 
 
