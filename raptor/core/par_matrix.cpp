@@ -203,40 +203,25 @@ void bsr_to_csr_copy_helper(ParBSRMatrix* A, ParCSRMatrix* B)
 
     // Updated column and row maps - 
     B->finalize(false);
-
-    int first_col;
-    if (B->off_proc_num_cols == (A->off_proc_num_cols * A->off_proc->b_cols))
-    {
-        for (int i = 0; i < A->off_proc_num_cols; i++)
-        {
-            first_col = A->off_proc_column_map[i] * A->off_proc->b_cols;
-            for (int j = 0; j < A->off_proc->b_cols; j++)
-            {
-                B->off_proc_column_map[i*A->off_proc->b_cols + j] = first_col + j; 
-            } 
-        }
-    }
-    else
-    {
-        // Determine which cols of blocks are non-zero
-        bool* off_proc_nz_cols = new bool[A->off_proc_num_cols * A->off_proc->b_cols];
-        A->off_proc->block_removal_col_check(off_proc_nz_cols);
         
-        int indx = 0;
-        for (int i = 0; i < A->off_proc_num_cols; i++)
-        {
-            first_col = A->off_proc_column_map[i] * A->off_proc->b_cols;
-            for (int j = 0; j < A->off_proc->b_cols; j++)
-            {
-                if (off_proc_nz_cols[first_col + j])
-                {
-                    B->off_proc_column_map[indx] = first_col + j; 
-                    indx++;
-                }
-            } 
-        }
+    // Determine which cols of blocks are non-zero
+    bool* off_proc_nz_cols = new bool[A->off_proc_num_cols * A->off_proc->b_cols];
+    A->off_proc->block_removal_col_check(off_proc_nz_cols);
 
-        delete off_proc_nz_cols;
+    // Update off_proc_column_map
+    int first_col;
+    int off_proc_map_indx = 0;
+    for (int i = 0; i < A->off_proc_num_cols; i++)
+    {
+        first_col = A->off_proc_column_map[i] * A->off_proc->b_cols;
+        for (int j = 0; j < A->off_proc->b_cols; j++)
+        {
+            if (off_proc_nz_cols[i*A->off_proc->b_cols + j])
+            {
+                B->off_proc_column_map[off_proc_map_indx] = first_col + j; 
+                off_proc_map_indx++;
+            }
+        } 
     }
 
     // Updated how communicators are created
@@ -266,6 +251,8 @@ void bsr_to_csr_copy_helper(ParBSRMatrix* A, ParCSRMatrix* B)
     {
         B->tap_mat_comm = NULL;
     }
+
+    delete off_proc_nz_cols;
 }
 
 
@@ -852,8 +839,6 @@ ParCSCMatrix* ParCSCMatrix::transpose()
 
     return AT;
 }
-
-
 
 // Assumes block_row_size and block_col_size evenly divide local row/col sizes
 ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_col_size)

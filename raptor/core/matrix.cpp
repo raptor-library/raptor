@@ -1323,6 +1323,12 @@ BSCMatrix* BSCMatrix::copy()
     return A;
 }
 
+/**************************************************************
+*****  Matrix Block Removal 
+**************************************************************
+***** Determines which columns were kept after removing
+***** block structure from matrices
+**************************************************************/
 void COOMatrix::block_removal_col_check(bool* col_check)
 {
     for (int i = 0; i < n_cols * b_cols; i++)
@@ -1335,6 +1341,25 @@ void BCOOMatrix::block_removal_col_check(bool* col_check)
     for (int i = 0; i < n_cols * b_cols; i++)
     {
         col_check[i] = false;
+    }
+    
+    int idx, first_col;
+    double* block_val;
+    for (int i = 0; i < nnz; i++)
+    {
+        block_val = block_vals[i];
+        for (int row = 0; row < b_rows; row++)
+        {
+            idx = row * b_cols;
+            first_col = idx2[i]*b_cols;
+            for (int col = 0; col < b_cols; col++)
+            {
+                if(fabs(block_val[idx + col]) > zero_tol)
+                {
+                    col_check[first_col + col] = true;
+                } 
+            }
+        }
     }
 }
 
@@ -1350,6 +1375,29 @@ void BSCMatrix::block_removal_col_check(bool* col_check)
     for (int i = 0; i < n_cols * b_cols; i++)
     {
         col_check[i] = false;
+    }
+    
+    int start, end, idx;
+    double* block_val;
+    for (int j = 0; j < n_cols; j++)
+    {
+        start = idx1[j];
+        end = idx1[j+1];
+        for (int row = 0; row < b_rows; row++)
+        {
+            idx = row * b_cols;
+            for (int i = start; i < end; i++)
+            {
+                block_val = block_vals[i];
+                for (int col = 0; col < b_cols; col++)
+                {
+                    if(fabs(block_val[idx + col]) > zero_tol)
+                    {
+                        col_check[j + col] = true;
+                    } 
+                }
+            }
+        }
     }
 }
 
