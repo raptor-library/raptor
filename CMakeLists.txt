@@ -96,7 +96,7 @@ endif()
 
 if (WITH_HOSTFILE)
     find_file (FILE_OF_HOST, ${HOSTFILE})
-    set(HOST "mpirun --hostfile ${HOSTFILE}")
+    set(HOST "--hostfile ${HOSTFILE}")
 endif()
 
 
