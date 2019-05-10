@@ -1,5 +1,5 @@
-[![Build Status](https://travis-ci.org/lukeolson/raptor.svg?branch=master)](https://travis-ci.org/lukeolson/raptor)
- 
+[![Build Status](https://travis-ci.org/raptor-library/raptor.svg?branch=master)](https://travis-ci.org/raptor-library/raptor)
+
 ![](docs/logo/raptor-logo.png)
 
 # raptor
@@ -26,9 +26,9 @@ cmake [OPTIONS] ..
 ```
 
 ```bash
-make
+make -j 4
 ```
-Note: make VERBOSE=1 if you want to see what flags are being used.
+Note: `make VERBOSE=1` if you want to see what flags are being used.
 
 # Options
 
