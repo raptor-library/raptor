@@ -22,6 +22,7 @@ option(WITH_MFEM "Add MFEM" OFF)
 option(WITH_PETSC "Add Petsc" OFF)
 option(WITH_AMPI "Using AMPI" OFF)
 option(WITH_MPI "Using MPI" ON)
+option(WITH_HOSTFILE "Use a Hostfile with MPI" OFF)
 
 add_feature_info(hypre WITH_HYPRE "Hypre preconditioner")
 add_feature_info(ml WITH_MUELU "Trilinos MueLu preconditioner")
