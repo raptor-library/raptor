@@ -79,6 +79,11 @@ make test
 
 # Full Example
 
+From the `examples` directory:
+```
+mpirun -n 4 ./example
+```
+
 This example is maintained in `raptor/examples/example.cpp`
 
 ```cpp
@@ -178,28 +183,6 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-```
-
-To Build,
-
-```bash
-g++ -std=c++11 -std=gnu++11 -O3
--I<PATHTOMPI>/include
--I<PATHTORAPTOR>/raptor/raptor
--o example.cpp.o -c example.cpp
-```
-
-To Link,
-
-```bash
-g++ -std=c++11 -O3 -Wl,-search_paths_first -Wl,-headerpad_max_install_names
-example.cpp.o -o example
-<PATHTORAPTOR>/build/lib/libraptor.a
-<PATHTOMPI>/lib/libmpicxx.dylib
-<PATHTOMPI>/lib/libmpi.dylib
-<PATHTOMPI>/lib/libpmpi.dylib
-<PATHTO>/liblapack.dylib
-<PATHTO>/libblas.dylib
 ```
 
 # License
