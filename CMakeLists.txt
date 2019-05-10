@@ -32,6 +32,7 @@ add_feature_info(crayxe CRAYXE "Compile on CrayXE")
 add_feature_info(bgq BGQ "Compile on BGQ")
 add_feature_info(ptscotch WITH_PTSCOTCH "Enable PTScotch Partitioning")
 add_feature_info(parmetis WITH_PARMETIS "Enable ParMetis Partitioning")
+add_feature_info(hostfile WITH_HOSTFILE "Enable Hostfile for MPIRUN")
 
 include(options)
 include(testing)
@@ -57,6 +58,7 @@ SET(MFEM_MESH_DIR "" CACHE STRING "Directory containing MFEM mesh files")
 SET(PETSC_DIR "" CACHE STRING "Directory of petsc")
 SET(PTSCOTCH_DIR "" CACHE STRING "Directory of Ptscotch")
 SET(PARMETIS_DIR "" CACHE STRING "Directory of ParMetis")
+SET(HOSTFILE "" CACHE STRING "Set Hostfile")
 
 if (CRAYXE)
     set(EXTERNAL_LIBS "")
@@ -89,6 +91,11 @@ else()
 	find_library(LAPACK_LIB NAMES liblapack.so.3 lapack HINTS "/usr/lib/x86_64-linux-gnu/")
 	find_library(BLAS_LIB NAMES libblas.so.3 blas HINTS "/usr/lib/x86_64-linux-gnu/")
 	set(EXTERNAL_LIBS ${LAPACK_LIB} ${BLAS_LIB})
+endif()
+
+if (WITH_HOSTFILE)
+    find_file (FILE_OF_HOST, ${HOSTFILE})
+    set(HOST "mpirun --hostfile ${HOSTFILE}")
 endif()
 
 
