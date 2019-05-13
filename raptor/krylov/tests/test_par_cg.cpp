@@ -26,7 +26,7 @@ int main(int argc, char** argv)
 
 TEST(ParCGTest, TestsInKrylov)
 {
-    int rank, num_procs;
+    /*int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
@@ -35,9 +35,9 @@ TEST(ParCGTest, TestsInKrylov)
     bool print_res_tofile = true;
 
     //int grid[2] = {50, 50};
-    /*int grid[2] = {1000, 1000};
-    double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
-    ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);*/
+    //int grid[2] = {1000, 1000};
+    //double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
+    //ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
 
     FILE* f;
     const char* mfem_fn = "../../../../../mfem_matrices/mfem_dg_diffusion_331.pm";
@@ -90,7 +90,7 @@ TEST(ParCGTest, TestsInKrylov)
     }
 
     // Setup AMG hierarchy
-    /*ml = new ParSmoothedAggregationSolver(0.0);
+    ml = new ParSmoothedAggregationSolver(0.0);
     ml->max_levels = 3;
     ml->setup(A);
 
@@ -104,11 +104,11 @@ TEST(ParCGTest, TestsInKrylov)
         {
             ASSERT_NEAR(x.local->values[i], 1.0, 1e-02);
         }        
-    }*/
+    }
 
     //delete[] stencil;
     delete A;
-    delete ml;
+    delete ml;*/
     
 } // end of TEST(ParCGTest, TestsInKrylov) //
 

@@ -19,7 +19,7 @@ option(WITH_HYPRE "Add Hypre" OFF)
 option(WITH_MFEM "Add MFEM" OFF)
 option(WITH_AMPI "Using AMPI" OFF)
 option(WITH_MPI "Using MPI" ON)
-option(WITH_OPENMP "Using OpenMP" ON)
+option(WITH_OPENMP "Using OpenMP" OFF)
 
 add_feature_info(hypre WITH_HYPRE "Hypre preconditioner")
 add_feature_info(mfem WITH_MFEM "MFEM matrix gallery")

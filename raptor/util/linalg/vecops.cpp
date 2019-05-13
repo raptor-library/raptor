@@ -20,8 +20,8 @@ using namespace raptor;
 void Vector::axpy(Vector& x, data_t alpha)
 {
     index_t i;
-    #pragma omp parallel for default(none) private(i) \
-        shared(num_values, values, x, b_vecs, alpha) schedule(static)
+    /*#pragma omp parallel for default(none) private(i) \
+        shared(num_values, values, x, b_vecs, alpha) schedule(static)*/
     for (i = 0; i < num_values*b_vecs; i++)
     {
         values[i] += x.values[i]*alpha;
@@ -49,8 +49,8 @@ void Vector::axpy(Vector& x, data_t alpha)
 void Vector::axpy_ij(Vector& y, index_t i, index_t j, data_t alpha)
 {
     index_t k;
-    #pragma omp parallel for default(none) private(k) \
-        shared(num_values, values, y, i, j, alpha) schedule(static)
+    /*#pragma omp parallel for default(none) private(k) \
+        shared(num_values, values, y, i, j, alpha) schedule(static)*/
     for (k = 0; k < num_values; k++)
     {
         values[i*num_values + k] += y.values[j*num_values + k] * alpha;
@@ -75,8 +75,8 @@ void Vector::scale(data_t alpha, data_t* alphas)
     if (alphas == NULL)
     {
         index_t i;
-        #pragma omp parallel for default(none) private(i) \
-            shared(num_values, values, alpha) schedule(static)
+        /*#pragma omp parallel for default(none) private(i) \
+            shared(num_values, values, alpha) schedule(static)*/
         for (index_t i = 0; i < num_values; i++)
         {
             values[i] *= alpha;
@@ -86,8 +86,8 @@ void Vector::scale(data_t alpha, data_t* alphas)
     {
         index_t offset;
         index_t j;
-        #pragma omp parallel for default(none) private(j, offset) \
-            shared(num_values, values, alphas, b_vecs) schedule(static)
+        /*#pragma omp parallel for default(none) private(j, offset) \
+            shared(num_values, values, alphas, b_vecs) schedule(static)*/
         for (j = 0; j < b_vecs; j++)
         {
             offset = j * num_values;
@@ -160,8 +160,8 @@ data_t Vector::inner_product(Vector& x, data_t* inner_prods)
     if (inner_prods == NULL)
     {
         index_t i;
-        #pragma omp parallel for default(none) private(i) shared(num_values, values, x) \
-            reduction(+:result) schedule(static)
+        /*#pragma omp parallel for default(none) private(i) shared(num_values, values, x) \
+            reduction(+:result) schedule(static)*/
         for (i = 0; i < num_values; i++)
         {
             result += values[i] * x[i];
@@ -174,8 +174,8 @@ data_t Vector::inner_product(Vector& x, data_t* inner_prods)
         if (x.b_vecs == 1)
         {
             index_t j;
-            #pragma omp parallel for default(none) private(j, result, offset) \
-                shared(num_values, values, x, inner_prods) schedule(static)
+            /*#pragma omp parallel for default(none) private(j, result, offset) \
+                shared(num_values, values, x, inner_prods) schedule(static)*/
             for (j = 0; j < b_vecs; j++)
             {
                 result = 0.0;
@@ -190,8 +190,8 @@ data_t Vector::inner_product(Vector& x, data_t* inner_prods)
         else
         {
             index_t j;
-            #pragma omp parallel for default(none) private(j, result, offset) \
-                shared(num_values, values, x, inner_prods) schedule(static)
+            /*#pragma omp parallel for default(none) private(j, result, offset) \
+                shared(num_values, values, x, inner_prods) schedule(static)*/
             for (j = 0; j < b_vecs; j++)
             {
                 result = 0.0;
@@ -227,8 +227,8 @@ data_t Vector::inner_product(Vector& x, index_t i, index_t j)
     data_t result = 0.0;
     
     index_t k;
-    #pragma omp parallel for default(none) private(k) shared(num_values, values, x, i, j) \
-        reduction(+:result) schedule(static)
+    /*#pragma omp parallel for default(none) private(k) shared(num_values, values, x, i, j) \
+        reduction(+:result) schedule(static)*/
     for (k = 0; k < num_values; k++)
     {
         result += values[i*num_values + k] * x.values[j*num_values + k];
@@ -255,8 +255,8 @@ void BVector::axpy(Vector& x, data_t alpha)
     index_t offset;
     index_t j; 
 
-    #pragma omp parallel for default(none) private(j, offset) \
-        shared(num_values, values, x, b_vecs, alpha) schedule(static)
+    /*#pragma omp parallel for default(none) private(j, offset) \
+        shared(num_values, values, x, b_vecs, alpha) schedule(static)*/
     for (j = 0; j < b_vecs; j++) {
         offset = j * num_values;
         for (index_t i = 0; i < num_values; i++)
@@ -285,8 +285,8 @@ void BVector::axpy(BVector& y, data_t alpha)
     index_t offset;
 
     index_t j;
-    #pragma omp parallel for default(none) private(j, offset) \
-        shared(num_values, values, y, alpha, b_vecs) schedule(static)
+    /*#pragma omp parallel for default(none) private(j, offset) \
+        shared(num_values, values, y, alpha, b_vecs) schedule(static)*/
     for (j = 0; j < b_vecs; j++)
     {
         offset = j * num_values;
@@ -315,8 +315,8 @@ void BVector::scale(data_t alpha, data_t* alphas)
     if (alphas == NULL)
     {
         index_t i;
-        #pragma omp parallel for default(none) private(i) \
-            shared(num_values, values, alpha) schedule(static)
+        /*#pragma omp parallel for default(none) private(i) \
+            shared(num_values, values, alpha) schedule(static)*/
         for (i = 0; i < num_values; i++)
         {
             values[i] *= alpha;
@@ -326,8 +326,8 @@ void BVector::scale(data_t alpha, data_t* alphas)
     {
         index_t offset;
         index_t j;
-        #pragma omp parallel for default(none) private(j, offset) \
-            shared(num_values, values, alphas, b_vecs) schedule(static)
+        /*#pragma omp parallel for default(none) private(j, offset) \
+            shared(num_values, values, alphas, b_vecs) schedule(static)*/
         for (j = 0; j < b_vecs; j++)
         {
             offset = j * num_values;
@@ -389,8 +389,8 @@ data_t BVector::inner_product(Vector& x, data_t* inner_prods)
     index_t offset;
 
     index_t j;
-    #pragma omp parallel for default(none) private(j, result, offset) \
-        shared(num_values, values, x, inner_prods) schedule(static)
+    /*#pragma omp parallel for default(none) private(j, result, offset) \
+        shared(num_values, values, x, inner_prods) schedule(static)*/
     for (j = 0; j < b_vecs; j++)
     {
         result = 0.0;
@@ -422,8 +422,8 @@ data_t BVector::inner_product(BVector& y, data_t* inner_prods)
     index_t offset;
 
     index_t j;
-    #pragma omp parallel for default(none) private(j, result, offset) \
-        shared(num_values, values, y, inner_prods) schedule(static)
+    /*#pragma omp parallel for default(none) private(j, result, offset) \
+        shared(num_values, values, y, inner_prods) schedule(static)*/
     for (j = 0; j < b_vecs; j++)
     {
         result = 0.0;
@@ -459,8 +459,8 @@ void Vector::mult_T(Vector& X, Vector& B)
 
     data_t result;
     index_t x;
-    #pragma omp parallel for default(none) private(x, result) \
-        shared(X, b_vecs, num_values, values, B) schedule(static)
+    /*#pragma omp parallel for default(none) private(x, result) \
+        shared(X, b_vecs, num_values, values, B) schedule(static)*/
     for (x = 0; x < X.b_vecs; x++)
     {
         for (index_t v = 0; v < b_vecs; v++)
@@ -496,8 +496,8 @@ void Vector::mult(Vector& x, Vector& b)
     
     data_t result;
     index_t j;
-    #pragma omp parallel for default(none) private(j, result) \
-        shared(num_values, values, x, b) schedule(static)
+    /*#pragma omp parallel for default(none) private(j, result) \
+        shared(num_values, values, x, b) schedule(static)*/
     for (j = 0; j < x.b_vecs; j++)
     {
         for (index_t v = 0; v < num_values; v++)

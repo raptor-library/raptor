@@ -35,13 +35,13 @@ TEST(ParSRECGTest, TestsInKrylov)
     FILE* f;
     double val;
 
-    //int grid[2] = {50, 50};
-    /*int grid[2] = {1000, 1000};
+    int grid[2] = {50, 50};
+    //int grid[2] = {1000, 1000};
     double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
-    ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);*/
+    ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
 
-    const char* mfem_fn = "../../../../../mfem_matrices/mfem_dg_diffusion_331.pm";
-    ParCSRMatrix* A = readParMatrix(mfem_fn);
+    /*const char* mfem_fn = "../../../../../mfem_matrices/mfem_dg_diffusion_331.pm";
+    ParCSRMatrix* A = readParMatrix(mfem_fn);*/
 
     ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
