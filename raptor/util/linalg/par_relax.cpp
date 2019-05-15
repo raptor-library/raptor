@@ -168,6 +168,61 @@ void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     }
 }
 
+void jacobi_spmv(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
+        int num_sweeps, double omega, CommPkg* comm, data_t* comm_t)
+{
+    A->on_proc->sort();
+    A->off_proc->sort();
+    A->on_proc->move_diag();
+  
+    int start, end, col, vec_offset;
+    double diag, row_sum;
+
+    for (int iter = 0; iter < num_sweeps; iter++)
+    {
+        if (comm_t) *comm_t -= MPI_Wtime();
+        comm->communicate(x);
+        if (comm_t) *comm_t += MPI_Wtime();
+        aligned_vector<double>& dist_x = comm->get_buffer<double>();
+
+        for (int k = 0; k < b.local->b_vecs; k++)
+        {
+            vec_offset = k * A->local_num_rows; 
+            for (int i = 0; i < A->local_num_rows; i++)
+            {
+                tmp[vec_offset + i] = x[vec_offset + i];
+            }
+
+            for (int i = 0; i < A->local_num_rows; i++)
+            {    
+                diag = 0;
+                row_sum = 0;
+
+                start = A->on_proc->idx1[i]+1;
+                end = A->on_proc->idx1[i+1];
+                for (int j = start; j < end; j++)
+                {
+                    col = A->on_proc->idx2[j];
+                    row_sum += A->on_proc->vals[j] * tmp[vec_offset + col];
+                }
+
+                start = A->off_proc->idx1[i];
+                end = A->off_proc->idx1[i+1];
+                for (int j = start; j < end; j++)
+                {
+                    col = A->off_proc->idx2[j];
+                    row_sum += A->off_proc->vals[j] * dist_x[vec_offset + col];
+                }
+
+                if (fabs(diag) > zero_tol)
+                {
+                    x[vec_offset + i] = ((1.0 - omega)*tmp[vec_offset + i]) + (omega*((b[vec_offset + i] - row_sum) / diag));
+                }
+            }
+        }
+    }
+}
+
 void sor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
         int num_sweeps, double omega, CommPkg* comm, data_t* comm_t)
 {

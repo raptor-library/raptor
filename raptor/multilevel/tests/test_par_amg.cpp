@@ -62,7 +62,9 @@ TEST(ParAMGTest, TestsInMultilevel)
     x.set_const_value(1.0);
     A->mult(x, b);
     x.set_const_value(0.0);
+    printf("before solve\n");
     int iter = ml->solve(x, b);
+    printf("after solve\n");
     ml->print_residuals(iter);
 
     delete ml;

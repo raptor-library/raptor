@@ -43,8 +43,8 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
 
     ParMultilevel* ml;
     ParCSRMatrix* A;
-    ParVector x;
-    ParVector b;
+    ParBVector x;
+    ParBVector b;
 
     double strong_threshold = 0.0;
 
@@ -52,10 +52,12 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
     A = par_stencil_grid(stencil, grid, dim);
     delete[] stencil;
 
+    x.local->b_vecs = dim;
+    b.local->b_vecs = dim;
     x.resize(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     b.resize(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     
-    ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
+    ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, Jacobi);
     ml->setup(A);
     ml->print_hierarchy();
 
@@ -63,14 +65,12 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
     A->mult(x, b);
     x.set_const_value(0.0);
     int iter = ml->solve(x, b);
-    ml->print_residuals(iter);
+    ml->print_residuals(iter*dim);
 
     delete ml;
 
-
-
     // Test Smoothed Aggregation Solver
-    ml = new ParSmoothedAggregationSolver(strong_threshold);
+    /*ml = new ParSmoothedAggregationSolver(strong_threshold);
     ml->setup(A);
 
     if (rank == 0)
@@ -120,7 +120,7 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
         printf("Res[%d] = %e\n", i, sa_res[i]);
     }
 
-    delete ml;
+    delete ml;*/
 
     delete A;
 

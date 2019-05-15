@@ -179,7 +179,8 @@ void ParBVector::scale(data_t alpha, data_t* alphas)
 data_t ParBVector::norm(index_t p, data_t* norms)
 {
     data_t temp;
-    if (local_n)
+    if (local->b_vecs == 1) return ParVector::norm(p);
+    else if (local_n)
     {
         temp = local->norm(p, norms);
         for (int i = 0; i < local->b_vecs; i++)

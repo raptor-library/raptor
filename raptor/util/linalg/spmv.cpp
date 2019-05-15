@@ -98,8 +98,8 @@ void CSR_residual(const CSRMatrix* A, const double* x,
         start = A->idx1[i];
         end = A->idx1[i+1];
         int v;
-        #pragma omp parallel for default(none) private(v, val) \
-            shared(start, end, i, A, x, b, r) schedule(static)
+        /*#pragma omp parallel for default(none) private(v, val) \
+            shared(start, end, i, A, x, b, r) schedule(static)*/
         for (v = 0; v < n_vecs; v++)
         {
             val = b[i + v*A->n_rows];

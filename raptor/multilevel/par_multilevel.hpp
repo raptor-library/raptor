@@ -367,6 +367,7 @@ namespace raptor
 
                 if (level == num_levels - 1)
                 {
+                    printf("inside if\n");
                     if (solve_times) solve_times[0][level] -= MPI_Wtime();
 
                     if (A->local_num_rows)
@@ -388,9 +389,11 @@ namespace raptor
                         MPI_Allgatherv(b.local->data(), b.local_n*nhrs, MPI_DOUBLE, b_data.data(), 
                                 coarse_sizes.data(), coarse_displs.data(), 
                                 MPI_DOUBLE, coarse_comm);
+                        printf("after allgather\n");
 
                         dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
                                 LU_permute.data(), b_data.data(), &coarse_n, &info);
+                        printf("after lapack call\n");
                         /*for (int i = 0; i < b.local_n; i++)
                         {
                             x.local->values[i] = b_data[i + coarse_displs[active_rank]];
@@ -405,6 +408,7 @@ namespace raptor
                 }
                 else
                 {
+                    printf("inside else\n");
                     if (solve_times) solve_times[0][level] -= MPI_Wtime();
 
                     levels[level+1]->x.set_const_value(0.0);
@@ -484,13 +488,29 @@ namespace raptor
 
             int solve(ParVector& sol, ParVector& rhs)
             {
-                double b_norm = rhs.norm(2);
+                // Update this to return the maximum of the 2-norms
+                // of each individual vector in rhs
+                double b_norm;
+                if (rhs.local->b_vecs > 1)
+                {
+                    double *bnorms = new double[rhs.local->b_vecs];
+                    b_norm = rhs.norm(2, bnorms);
+                    for (int i = 0; i < rhs.local->b_vecs; i++)
+                    {
+                        if (bnorms[i] > b_norm) b_norm = bnorms[i];
+                    }
+                    delete bnorms;
+                }
+                else
+                {
+                    b_norm = rhs.norm(2);
+                }
                 double r_norm;
                 int iter = 0;
 
                 if (store_residuals)
                 {
-                    residuals.resize(max_iterations + 1);
+                    residuals.resize((max_iterations + 1) * rhs.local->b_vecs);
                 }
                 if (track_times)
                 {
@@ -512,24 +532,53 @@ namespace raptor
                 }
 
                 // Iterate until convergence or max iterations
-                ParVector resid(rhs.global_n, rhs.local_n, rhs.first_local);
+                ParBVector resid(rhs.global_n, rhs.local_n, rhs.first_local, rhs.local->b_vecs);
                 levels[0]->A->residual(sol, rhs, resid);
-                if (fabs(b_norm) > zero_tol)
+                if (rhs.local->b_vecs > 1)
                 {
-                    r_norm = resid.norm(2) / b_norm;
+                    double *rnorms = new double[rhs.local->b_vecs];
+                    r_norm = resid.norm(2, rnorms);
+                    for (int i = 0; i < rhs.local->b_vecs; i++)
+                    {
+                        if (rnorms[i] > r_norm) r_norm = rnorms[i];
+                    }
+                    if (store_residuals)
+                    {
+                        int start_indx = iter * rhs.local->b_vecs; 
+                        for (int i = 0; i < rhs.local->b_vecs; i++)
+                        {
+                            residuals[start_indx + i] = rnorms[i];
+                        }
+                    }
+                    delete rnorms;
                 }
                 else
+                {
+                    r_norm = resid.norm(2);
+                    if (store_residuals)
+                    {
+                        residuals[iter] = r_norm;
+                    }
+                }
+
+                if (fabs(b_norm) > zero_tol)
+                {
+                    //r_norm = resid.norm(2) / b_norm;
+                    r_norm = r_norm / b_norm;
+                }
+                /*else
                 {
                     r_norm = resid.norm(2);
                 }
                 if (store_residuals)
                 {
                     residuals[iter] = r_norm;
-                }
+                }*/
 
                 while (r_norm > solve_tol && iter < max_iterations)
                 {
                     cycle(sol, rhs, 0);
+                    printf("after cycle\n");
 
                     iter++;
                     levels[0]->A->residual(sol, rhs, resid);
