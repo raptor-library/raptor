@@ -34,7 +34,7 @@ namespace raptor
         {
         }
 
-        void setup(ParCSRMatrix* Af) 
+        void setup(ParCSRMatrix* Af, int nrhs = 1) 
         {
             if (track_times)
             {
@@ -52,10 +52,10 @@ namespace raptor
                 B[i] = 1.0;
             }
 
-            setup_helper(Af);
+            setup_helper(Af, nrhs);
         }
 
-        void extend_hierarchy()
+        void extend_hierarchy(int nrhs=1)
         {
             int level_ctr = levels.size() - 1;
             bool tap_level = tap_amg >= 0 && tap_amg <= level_ctr;
@@ -172,10 +172,13 @@ namespace raptor
             A->comm = new ParComm(A->partition, A->off_proc_column_map,
                     A->on_proc_column_map, levels[level_ctr-1]->A->comm->key,
                     levels[level_ctr-1]->A->comm->mpi_comm, total_time);
+            levels[level_ctr]->x.local->b_vecs = nrhs;
             levels[level_ctr]->x.resize(A->global_num_rows, A->local_num_rows,
                     A->partition->first_local_row);
+            levels[level_ctr]->b.local->b_vecs = nrhs;
             levels[level_ctr]->b.resize(A->global_num_rows, A->local_num_rows,
                     A->partition->first_local_row);
+            levels[level_ctr]->tmp.local->b_vecs = nrhs;
             levels[level_ctr]->tmp.resize(A->global_num_rows, A->local_num_rows,
                     A->partition->first_local_row);
             levels[level_ctr]->P = NULL;

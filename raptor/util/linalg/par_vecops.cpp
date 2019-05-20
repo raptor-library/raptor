@@ -45,6 +45,39 @@ void ParVector::scale(data_t alpha)
 }
 
 /**************************************************************
+*****  block_norm_helper 
+**************************************************************
+***** Calculates the P norm of each global vector in the 
+***** ParVector or ParBVector
+*****
+***** Parameters
+***** -------------
+***** p : index_t
+*****    Determines which p-norm to calculate
+***** norms : data_t*
+*****    Array to hold norm of each vector
+**************************************************************/
+void block_norm_helper(ParVector* X, index_t p, data_t* norms)
+{
+    data_t temp;
+    if (X->local_n)
+    {
+        temp = X->local->norm(p, norms);
+        for (int i = 0; i < X->local->b_vecs; i++)
+        {
+            norms[i] = pow(norms[i], p); // undoing root of p from local operation
+        }
+    }
+
+    MPI_Allreduce(MPI_IN_PLACE, norms, X->local->b_vecs, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
+
+    for (int i = 0; i < X->local->b_vecs; i++)
+    {
+        norms[i] = pow(norms[i], 1./p);
+    }
+}
+
+/**************************************************************
 *****   Vector Norm
 **************************************************************
 ***** Calculates the P norm of the global vector (for a given P)
@@ -56,14 +89,22 @@ void ParVector::scale(data_t alpha)
 **************************************************************/
 data_t ParVector::norm(index_t p, data_t* norms)
 {
-    data_t result;
-    if (local_n)
+    if (local->b_vecs > 1)
     {
-        result = local->norm(p);
-        result = pow(result, p); // undoing root of p from local operation
+        block_norm_helper(this, p, norms);
+        return 0;
     }
-    MPI_Allreduce(MPI_IN_PLACE, &result, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
-    return result;
+    else
+    {
+        data_t result;
+        if (local_n)
+        {
+            result = local->norm(p);
+            result = pow(result, p); // undoing root of p from local operation
+        }
+        MPI_Allreduce(MPI_IN_PLACE, &result, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
+        return pow(result, 1./p);
+    }
 }
 
 
@@ -178,22 +219,8 @@ void ParBVector::scale(data_t alpha, data_t* alphas)
 **************************************************************/
 data_t ParBVector::norm(index_t p, data_t* norms)
 {
-    data_t temp;
     if (local->b_vecs == 1) return ParVector::norm(p);
-    else if (local_n)
-    {
-        temp = local->norm(p, norms);
-        for (int i = 0; i < local->b_vecs; i++)
-        {
-            norms[i] = pow(norms[i], p); // undoing root of p from local operation
-        }
-    }
-    MPI_Allreduce(MPI_IN_PLACE, norms, local->b_vecs, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
-
-    for (int i = 0; i < local->b_vecs; i++)
-    {
-        norms[i] = pow(norms[i], 1./p);
-    }
+    else block_norm_helper(this, p, norms);
 
     return 0;
 }

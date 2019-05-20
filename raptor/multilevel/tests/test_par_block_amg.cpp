@@ -38,6 +38,7 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
     int dim = 3;
+    int nrhs = 2;
 
     int grid[3] = {5, 5, 5};
 
@@ -52,20 +53,25 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
     A = par_stencil_grid(stencil, grid, dim);
     delete[] stencil;
 
-    x.local->b_vecs = dim;
-    b.local->b_vecs = dim;
+    x.local->b_vecs = nrhs;
+    b.local->b_vecs = nrhs;
     x.resize(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     b.resize(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     
     ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, Jacobi);
-    ml->setup(A);
+    ml->setup(A, nrhs);
     ml->print_hierarchy();
 
     x.set_const_value(1.0);
+
+    printf("A %d x %d\n", A->global_num_rows, A->global_num_cols);
+    printf("%d x local size %d\n", rank, x.local->values.size());
+    printf("%d b local size %d\n", rank, b.local->values.size());
+
     A->mult(x, b);
     x.set_const_value(0.0);
     int iter = ml->solve(x, b);
-    ml->print_residuals(iter*dim);
+    ml->print_residuals(iter);
 
     delete ml;
 

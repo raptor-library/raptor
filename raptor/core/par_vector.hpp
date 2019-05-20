@@ -44,6 +44,8 @@
  **************************************************************/
 namespace raptor
 {
+    class ParBVector;
+
     class ParVector
     {
     public:
