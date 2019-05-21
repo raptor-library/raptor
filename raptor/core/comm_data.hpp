@@ -102,9 +102,10 @@ public:
             int init_result_func_val,
             const int vblock_size = 1, const int vblock_offset = 0) = 0;
     virtual void double_send(const double* values, int key, MPI_Comm mpi_comm, const int block_size,
+            const int vblock_size,
             std::function<double(double, double)> init_result_func,
             double init_result_func_val,
-            const int vblock_size = 1, const int vblock_offset = 0) = 0;
+            const int vblock_offset = 0) = 0;
 
     template <typename T>
     void send(const T* values, int key, MPI_Comm mpi_comm,
@@ -115,7 +116,7 @@ public:
             int* n_send_ptr, const int block_size, const int vblock_size = 1) = 0;
     virtual void double_send(const double* values, int key, MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
-            int* n_send_ptr, const int block_size, const int vblock_size = 1) = 0;
+            int* n_send_ptr, const int block_size, const int vblock_size) = 0;
 
 
     virtual void send(char* send_buffer,
@@ -400,9 +401,10 @@ public:
                 init_result_func_val);
     }
     void double_send(const double* values, int key, MPI_Comm mpi_comm, const int block_size,
+            const int vblock_size,
             std::function<double(double, double)> init_result_func,
             double init_result_func_val,
-            const int vblock_size = 1, const int vblock_offset = 0)
+            const int vblock_offset = 0)
     {
         send(values, key, mpi_comm, block_size, vblock_size, vblock_offset, init_result_func,
                 init_result_func_val);
@@ -416,7 +418,7 @@ public:
     }
     void double_send(const double* values, int key, MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
-            int* n_send_ptr, const int block_size, const int vblock_size = 1)
+            int* n_send_ptr, const int block_size, const int vblock_size)
     {
         send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
     }        
@@ -431,7 +433,6 @@ public:
 
         int start, end;
         int proc, idx;
-        //int size = size_msgs * block_size;
         int size = size_msgs * block_size * vblock_size;
 
         MPI_Datatype datatype = get_type<T>();
@@ -441,8 +442,6 @@ public:
             proc = procs[i];
             start = indptr[i];
             end = indptr[i+1];
-            //MPI_Isend(&(values[start*block_size]), (end - start) * block_size,
-              //      datatype, proc, key, mpi_comm, &(requests[i]));
             MPI_Isend(&(values[start*block_size*vblock_size]), (end - start) * block_size * vblock_size,
                     datatype, proc, key, mpi_comm, &(requests[i]));
         }
@@ -789,9 +788,10 @@ public:
                 init_result_func_val);
     }
     void double_send(const double* values, int key, MPI_Comm mpi_comm, const int block_size,
+            const int vblock_size,
             std::function<double(double, double)> init_result_func,
             double init_result_func_val,
-            const int vblock_size = 1, const int vblock_offset = 0)
+            const int vblock_offset = 0)
     {
         send(values, key, mpi_comm, block_size, vblock_size, vblock_offset, init_result_func,
                 init_result_func_val);
@@ -804,7 +804,7 @@ public:
     }
     void double_send(const double* values, int key, MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
-            int* n_send_ptr, const int block_size, const int vblock_size = 1)
+            int* n_send_ptr, const int block_size, const int vblock_size)
     {
         send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
     }     
@@ -1191,9 +1191,10 @@ public:
                 init_result_func_val);
     }
     void double_send(const double* values, int key, MPI_Comm mpi_comm, const int block_size,
+            const int vblock_size,
             std::function<double(double, double)> init_result_func,
             double init_result_func_val,
-            const int vblock_size = 1, const int vblock_offset = 0)
+            const int vblock_offset = 0)
     {
         send(values, key, mpi_comm, block_size, vblock_size, vblock_offset, init_result_func,
                 init_result_func_val);
@@ -1206,7 +1207,7 @@ public:
     }
     void double_send(const double* values, int key, MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
-            int* n_send_ptr, const int block_size, const int vblock_size = 1)
+            int* n_send_ptr, const int block_size, const int vblock_size)
     {
         send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
     }     

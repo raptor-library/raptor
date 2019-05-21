@@ -459,7 +459,7 @@ namespace raptor
                     }
 
                     // INSERTED PRINT STATEMENTS FOR CHECKING
-                    double x_inner;
+                    /*double x_inner;
                     if (x.local->b_vecs > 1)
                     {
                         double *xinners = new double[x.local->b_vecs];
@@ -474,7 +474,7 @@ namespace raptor
                     {
                         x_inner = x.inner_product(x);
                         printf("x_inner %e\n", x_inner);
-                    }
+                    }*/
                     //////////////////////////////////////////////////
 
 
@@ -483,6 +483,7 @@ namespace raptor
                     if (solve_times) solve_times[2][level] -= MPI_Wtime();
                     //A->residual(x, b, tmp, tap_level, resid_t);
                     A->residual(x, b, tmp);
+                    
                     if (solve_times) solve_times[2][level] += MPI_Wtime();
 
                     if (solve_times) solve_times[3][level] -= MPI_Wtime();

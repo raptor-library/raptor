@@ -32,6 +32,7 @@ TEST(AnisoBVectorSpMVTest, TestsInUtil)
     BVector *b = new BVector(A_sten->n_rows, vecs_in_block);
 
     const char* b_ones = "../../../../test_data/aniso_ones_b.txt";
+    const char* b_T_ones = "../../../../test_data/aniso_ones_b_T.txt";
     
     // Test b <- A*ones
     x->set_const_value(1.0);
@@ -42,9 +43,22 @@ TEST(AnisoBVectorSpMVTest, TestsInUtil)
         fscanf(f, "%lg\n", &b_val);
         for (int v = 0; v < vecs_in_block; v++)
         {
-            ASSERT_NEAR(b->values[i + v*b->num_values],b_val,1e-06);
+            ASSERT_NEAR(b->values[i + v*b->num_values], b_val, 1e-06);
         }
     }
+    fclose(f);
+    
+    // Test b <- A_T*ones
+    A_sten->mult_T(*x, *b);
+    f = fopen(b_T_ones, "r");
+    for (int i = 0; i < A_sten->n_rows; i++)
+    {
+        fscanf(f, "%lg\n", &b_val);
+        for (int v = 0; v < vecs_in_block; v++)
+        {
+            ASSERT_NEAR(b->values[i + v*b->num_values], b_val, 1e-06);
+        }
+    } 
     fclose(f);
 
     delete x;

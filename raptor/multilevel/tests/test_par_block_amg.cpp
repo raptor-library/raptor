@@ -64,10 +64,6 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
 
     x.set_const_value(1.0);
 
-    printf("A %d x %d\n", A->global_num_rows, A->global_num_cols);
-    printf("%d x local size %d\n", rank, x.local->values.size());
-    printf("%d b local size %d\n", rank, b.local->values.size());
-
     A->mult(x, b);
     x.set_const_value(0.0);
     int iter = ml->solve(x, b);

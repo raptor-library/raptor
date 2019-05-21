@@ -45,7 +45,7 @@ void CommData::send<double>(const double* values, int key, MPI_Comm mpi_comm, co
         const int vblock_size, const int vblock_offset,
         std::function<double(double, double)> init_result_func, double init_result_func_val) 
 {
-    double_send(values, key, mpi_comm, block_size, init_result_func,
+    double_send(values, key, mpi_comm, block_size, vblock_size, init_result_func,
             init_result_func_val);
 }
 
@@ -61,7 +61,7 @@ void CommData::send<double>(const double* values, int key, MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size, const int vblock_size)
 {
-    double_send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
+    double_send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size, vblock_size);
 }
 
 

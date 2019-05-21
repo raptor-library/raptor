@@ -55,16 +55,15 @@ TEST(ParAMGTest, TestsInMultilevel)
     x.resize(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     b.resize(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     
-    ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
+    //ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
+    ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, Jacobi);
     ml->setup(A);
     ml->print_hierarchy();
 
     x.set_const_value(1.0);
     A->mult(x, b);
     x.set_const_value(0.0);
-    printf("before solve\n");
     int iter = ml->solve(x, b);
-    printf("after solve\n");
     ml->print_residuals(iter);
 
     delete ml;

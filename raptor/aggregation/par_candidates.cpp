@@ -175,7 +175,7 @@ ParCSRMatrix* fit_candidates(ParCSRMatrix* A,
 
     std::function<double(double, double)> func = &sum_func<double, double>;
     if (comm_t) *comm_t -= MPI_Wtime();
-    comm->communicate_T(off_proc_norms, R, 1, func, func);
+    comm->communicate_T(off_proc_norms, R, 1, 1, func, func);
     if (comm_t) *comm_t += MPI_Wtime();
 
     for (int i = 0; i < n_aggs; i++)

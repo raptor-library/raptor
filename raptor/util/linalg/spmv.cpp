@@ -203,16 +203,19 @@ void BSR_spmv(const BSRMatrix* A, const double* x, double* b, const int n_vecs =
 }
 template <typename T>
 void CSR_append_T(const CSRMatrix* A, const aligned_vector<T>& vals,
-        const double* x, double* b)
+        const double* x, double* b, const int n_vecs = 1)
 {
     int start, end;
     for (int i = 0; i < A->n_rows; i++)
     {
         start = A->idx1[i];
         end = A->idx1[i+1];
-        for (int j = start; j < end; j++)
+        for (int v = 0; v < n_vecs; v++)
         {
-            A->append_T(i, A->idx2[j], b, x, vals[j]);
+            for (int j = start; j < end; j++)
+            {
+                A->append_T(i + v*A->n_cols, v*A->n_rows + A->idx2[j], b, x, vals[j]);
+            }
         }
     }
 }
@@ -239,16 +242,21 @@ void CSR_append_neg(const CSRMatrix* A, const aligned_vector<T>& vals,
 }
 template <typename T>
 void CSR_append_neg_T(const CSRMatrix* A, const aligned_vector<T>& vals,
-        const double* x, double* b)
+        const double* x, double* b, const int n_vecs = 1)
 {
+    printf("negative transpose called\n");
     int start, end;
     for (int i = 0; i < A->n_rows; i++)
     {
         start = A->idx1[i];
         end = A->idx1[i+1];
-        for (int j = start; j < end; j++)
+        for (int v = 0; v < n_vecs; v++)
         {
-            A->append_neg_T(i, A->idx2[j], b, x, vals[j]);
+            for (int j = start; j < end; j++)
+            {
+                //A->append_neg(i + v*A->n_rows, v*A->n_cols + A->idx2[j], b, x, vals[j+v*A->n_cols]);
+                A->append_neg_T(i + v*A->n_rows, v*A->n_cols + A->idx2[j], b, x, vals[j+v*A->n_cols]);
+            }
         }
     }
 }
@@ -328,7 +336,7 @@ void COOMatrix::spmv_append(const double* x, double* b, const int n_vecs, const 
 {
     COO_append(this, vals, x, b);
 }
-void COOMatrix::spmv_append_T(const double* x, double* b) const
+void COOMatrix::spmv_append_T(const double* x, double* b, const int n_vecs) const
 {
     COO_append_T(this, vals, x, b);
 }
@@ -336,7 +344,7 @@ void COOMatrix::spmv_append_neg(const double* x, double* b, const int n_vecs) co
 {
     COO_append_neg(this, vals, x, b);
 }
-void COOMatrix::spmv_append_neg_T(const double* x, double* b) const
+void COOMatrix::spmv_append_neg_T(const double* x, double* b, const int n_vecs) const
 {
     COO_append_neg_T(this, vals, x, b);
 }
@@ -356,7 +364,7 @@ void BCOOMatrix::spmv_append(const double* x,double* b, const int n_vecs, const 
 {
     COO_append(this, block_vals, x, b);
 }
-void BCOOMatrix::spmv_append_T(const double* x,double* b) const
+void BCOOMatrix::spmv_append_T(const double* x,double* b, const int n_vecs) const
 {
     COO_append_T(this, block_vals, x, b);
 }
@@ -364,7 +372,7 @@ void BCOOMatrix::spmv_append_neg(const double* x,double* b, const int n_vecs) co
 {
     COO_append_neg(this, block_vals, x, b);
 }
-void BCOOMatrix::spmv_append_neg_T(const double* x,double* b) const
+void BCOOMatrix::spmv_append_neg_T(const double* x,double* b, const int n_vecs) const
 {
     COO_append_neg_T(this, block_vals, x, b);
 }
@@ -385,17 +393,17 @@ void CSRMatrix::spmv_append(const double* x, double* b, const int n_vecs, const 
 {
     CSR_append(this, x, b, n_vecs, xlen);
 }
-void CSRMatrix::spmv_append_T(const double* x, double* b) const
+void CSRMatrix::spmv_append_T(const double* x, double* b, const int n_vecs) const
 {
-    CSR_append_T(this, vals, x, b);
+    CSR_append_T(this, vals, x, b, n_vecs);
 }
 void CSRMatrix::spmv_append_neg(const double* x, double* b, const int n_vecs) const
 {
     CSR_append_neg(this, vals, x, b, n_vecs);
 }
-void CSRMatrix::spmv_append_neg_T(const double* x, double* b) const
+void CSRMatrix::spmv_append_neg_T(const double* x, double* b, const int n_vecs) const
 {
-    CSR_append_neg_T(this, vals, x, b);
+    CSR_append_neg_T(this, vals, x, b, n_vecs);
 }
 void CSRMatrix::spmv_residual(const double* x, const double* b, double* r, const int n_vecs) const
 {
@@ -409,7 +417,7 @@ void BSRMatrix::spmv_append(const double* x,double* b, const int n_vecs, const i
 {
     BSR_append(this, block_vals, x, b);
 }
-void BSRMatrix::spmv_append_T(const double* x,double* b) const
+void BSRMatrix::spmv_append_T(const double* x,double* b, const int n_vecs) const
 {
     CSR_append_T(this, block_vals, x, b);
 }
@@ -417,7 +425,7 @@ void BSRMatrix::spmv_append_neg(const double* x,double* b, const int n_vecs) con
 {
     CSR_append_neg(this, block_vals, x, b);
 }
-void BSRMatrix::spmv_append_neg_T(const double* x,double* b) const
+void BSRMatrix::spmv_append_neg_T(const double* x,double* b, const int n_vecs) const
 {
     CSR_append_neg_T(this, block_vals, x, b);
 }
@@ -440,7 +448,7 @@ void CSCMatrix::spmv_append(const double* x, double* b, const int n_vecs, const 
 {
     CSC_append(this, vals, x, b);
 }
-void CSCMatrix::spmv_append_T(const double* x, double* b) const
+void CSCMatrix::spmv_append_T(const double* x, double* b, const int n_vecs) const
 {
     CSC_append_T(this, vals, x, b);
 }
@@ -448,7 +456,7 @@ void CSCMatrix::spmv_append_neg(const double* x, double* b, const int n_vecs) co
 {
     CSC_append_neg(this, vals, x, b);
 }
-void CSCMatrix::spmv_append_neg_T(const double* x, double* b) const
+void CSCMatrix::spmv_append_neg_T(const double* x, double* b, const int n_vecs) const
 {
     CSC_append_neg_T(this, vals, x, b);
 }
@@ -468,7 +476,7 @@ void BSCMatrix::spmv_append(const double* x,double* b, const int n_vecs, const i
 {
     CSC_append(this, block_vals, x, b);
 }
-void BSCMatrix::spmv_append_T(const double* x,double* b) const
+void BSCMatrix::spmv_append_T(const double* x,double* b, const int n_vecs) const
 {
     CSC_append_T(this, block_vals, x, b);
 }
@@ -476,7 +484,7 @@ void BSCMatrix::spmv_append_neg(const double* x,double* b, const int n_vecs) con
 {
     CSC_append_neg(this, block_vals, x, b);
 }
-void BSCMatrix::spmv_append_neg_T(const double* x,double* b) const
+void BSCMatrix::spmv_append_neg_T(const double* x,double* b, const int n_vecs) const
 {
     CSC_append_neg_T(this, block_vals, x, b);
 }

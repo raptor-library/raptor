@@ -166,101 +166,101 @@
             template<typename T, typename U>
             void communicate_T(const aligned_vector<T>& values, aligned_vector<U>& result,
                     const int block_size = 1,
+                    const int vblock_size = 1,
                     std::function<U(U, T)> result_func = &sum_func<T, U>,
                     std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                    T init_result_func_val = 0,
-                    const int vblock_size = 1)
+                    T init_result_func_val = 0)
             {  
-                communicate_T(values.data(), result, block_size, result_func, 
+                communicate_T(values.data(), result, block_size, vblock_size, result_func, 
                         init_result_func, init_result_func_val);
             }
             template<typename T>
             void communicate_T(const aligned_vector<T>& values,
                     const int block_size = 1, 
+                    const int vblock_size = 1,
                     std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                    T init_result_func_val = 0,
-                    const int vblock_size = 1)
+                    T init_result_func_val = 0)
             {  
-                communicate_T(values.data(), block_size, init_result_func,
+                communicate_T(values.data(), block_size, vblock_size, init_result_func,
                         init_result_func_val);
             }
             template<typename T>
             void init_comm_T(const aligned_vector<T>& values,
                     const int block_size = 1, 
+                    const int vblock_size = 1,
                     std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                    T init_result_func_val = 0,
-                    const int vblock_size = 1)
+                    T init_result_func_val = 0)
             {
-                init_comm_T(values.data(), block_size, init_result_func, init_result_func_val);
+                init_comm_T(values.data(), block_size, vblock_size, init_result_func, init_result_func_val);
             }
             template<typename T> void init_comm_T(const T* values,
                     const int block_size = 1, 
+                    const int vblock_size = 1,
                     std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
-                    T init_result_func_val = 0,
-                    const int vblock_size = 1);
+                    T init_result_func_val = 0);
             template<typename T, typename U> void complete_comm_T(aligned_vector<U>& result,
                     const int block_size = 1,
+                    const int vblock_size = 1,
                     std::function<U(U, T)> result_func = &sum_func<T, U>,
                     std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
-                    T init_result_func_val = 0,
-                    const int vblock_size = 1);
+                    T init_result_func_val = 0);
             template<typename T> void complete_comm_T(
                     const int block_size = 1,
+                    const int vblock_size = 1,
                     std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                    T init_result_func_val = 0,
-                    const int vblock_size = 1);
+                    T init_result_func_val = 0);
             template<typename T, typename U> void communicate_T(const T* values, 
                     aligned_vector<U>& result, const int block_size = 1, 
+                    const int vblock_size = 1,
                     std::function<U(U, T)> result_func = &sum_func<T, U>,
                     std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
-                    T init_result_func_val = 0,
-                    const int vblock_size = 1);
+                    T init_result_func_val = 0);
             template<typename T> void communicate_T(const T* values,
                     const int block_size = 1,
+                    const int vblock_size = 1,
                     std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                    T init_result_func_val = 0,
-                    const int vblock_size = 1);
+                    T init_result_func_val = 0);
             virtual void init_double_comm_T(const double* values,
                     const int block_size,
+                    const int vblock_size = 1,
                     std::function<double(double, double)> init_result_func = 
                         &sum_func<double, double>, 
-                        double init_result_func_val = 0,
-                    const int vblock_size = 1) = 0;
+                        double init_result_func_val = 0) = 0;
             virtual void init_int_comm_T(const int* values,
                     const int block_size,
+                    const int vblock_size = 1,
                     std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                    int init_result_func_val = 0,
-                    const int vblock_size = 1) = 0;
+                    int init_result_func_val = 0) = 0;
             virtual void complete_double_comm_T(aligned_vector<double>& result,
                     const int block_size,
+                    const int vblock_size = 1,
                     std::function<double(double, double)> result_func = &sum_func<double, double>,
                     std::function<double(double, double)> init_result_func = 
-                        &sum_func<double, double>, double init_result_func_val = 0,
-                    const int vblock_size = 1) = 0;
+                        &sum_func<double, double>, double init_result_func_val = 0) = 0;
             virtual void complete_double_comm_T(aligned_vector<int>& result,
                     const int block_size,
+                    const int vblock_size = 1,
                     std::function<int(int, double)> result_func = &sum_func<double, int>,
                     std::function<double(double, double)> init_result_func = 
-                        &sum_func<double, double>, double init_result_func_val = 0,
-                    const int vblock_size = 1) = 0;
+                        &sum_func<double, double>, double init_result_func_val = 0) = 0;
             virtual void complete_int_comm_T(aligned_vector<int>& result,
                     const int block_size,
+                    const int vblock_size = 1,
                     std::function<int(int, int)> result_func = &sum_func<int, int>,
                     std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                    int init_result_func_val = 0,
-                    const int vblock_size = 1) = 0;
+                    int init_result_func_val = 0) = 0;
             virtual void complete_int_comm_T(aligned_vector<double>& result,
                     const int block_size,
+                    const int vblock_size = 1,
                     std::function<double(double, int)> result_func = &sum_func<int, double>,
                     std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                    int init_result_func_val = 0, const int vblock_size = 1) = 0;
-            virtual void complete_double_comm_T(const int block_size,
+                    int init_result_func_val = 0) = 0;
+            virtual void complete_double_comm_T(const int block_size, const int vblock_size = 1,
                     std::function<double(double, double)> init_result_func = 
-                        &sum_func<double, double>, double init_result_func_val = 0,
-                    const int vblock_size = 1) = 0;
-            virtual void complete_int_comm_T(const int block_size,
+                        &sum_func<double, double>, double init_result_func_val = 0) = 0;
+            virtual void complete_int_comm_T(const int block_size, const int vblock_size = 1,
                     std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                    int init_result_func_val = 0, const int vblock_size = 1) = 0;
+                    int init_result_func_val = 0) = 0;
 
             // Helper methods
             template <typename T> aligned_vector<T>& get_buffer();
@@ -551,7 +551,7 @@
                         else return a;
                     };
                     if (comm_t) *comm_t -= MPI_Wtime();
-                    comm->communicate_T(off_proc_col_to_new, 1, compare_func, -1);
+                    comm->communicate_T(off_proc_col_to_new, 1, 1, compare_func, -1);
                     if (comm_t) *comm_t += MPI_Wtime();
 
                     recv_data = comm->recv_data->copy(off_proc_col_to_new);
@@ -683,145 +683,202 @@
                 // Transpose Communication
                 void init_double_comm_T(const double* values,
                         const int block_size = 1,
+                        const int vblock_size = 1,
                         std::function<double(double, double)> init_result_func = 
                             &sum_func<double, double>, 
-                            double init_result_func_val = 0, const int vblock_size = 1)
+                            double init_result_func_val = 0)
                 {
-                    initialize_T(values, block_size, init_result_func, init_result_func_val);
+                    initialize_T(values, block_size, vblock_size, init_result_func, init_result_func_val);
                 }
                 void init_int_comm_T(const int* values,
                         const int block_size = 1,
+                        const int vblock_size = 1,
                         std::function<int(int, int)> init_result_func = 
                             &sum_func<int, int>, 
-                            int init_result_func_val = 0, const int vblock_size = 1)
+                            int init_result_func_val = 0)
                 {
-                    initialize_T(values, block_size, init_result_func, init_result_func_val);
+                    initialize_T(values, block_size, vblock_size, init_result_func, init_result_func_val);
                 }
                 void complete_double_comm_T(aligned_vector<double>& result,
                         const int block_size = 1,
+                        const int vblock_size = 1,
                         std::function<double(double, double)> result_func = &sum_func<double, double>,
                         std::function<double(double, double)> init_result_func = 
                             &sum_func<double, double>,
-                            double init_result_func_val = 0, const int vblock_size = 1)
+                            double init_result_func_val = 0)
                 {
-                    complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
+                    complete_T<double>(result, block_size, vblock_size, result_func, init_result_func, init_result_func_val);
                 }
                 void complete_double_comm_T(aligned_vector<int>& result,
                         const int block_size = 1,
+                        const int vblock_size = 1,
                         std::function<int(int, double)> result_func = &sum_func<double, int>,
                         std::function<double(double, double)> init_result_func = 
                             &sum_func<double, double>,
-                            double init_result_func_val = 0, const int vblock_size = 1)
+                            double init_result_func_val = 0)
                 {
-                    complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
+                    complete_T<double>(result, block_size, vblock_size, result_func, init_result_func, init_result_func_val);
                 }
                 void complete_int_comm_T(aligned_vector<double>& result,
                         const int block_size = 1,
+                        const int vblock_size = 1,
                         std::function<double(double, int)> result_func = &sum_func<int, double>,
                         std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                        int init_result_func_val = 0, const int vblock_size = 1)
+                        int init_result_func_val = 0)
                 {
-                    complete_T<int>(result, block_size, result_func, init_result_func, init_result_func_val);
+                    complete_T<int>(result, block_size, vblock_size, result_func, init_result_func, init_result_func_val);
                 }
                 void complete_int_comm_T(aligned_vector<int>& result,
                         const int block_size = 1,
+                        const int vblock_size = 1,
                         std::function<int(int, int)> result_func = &sum_func<int, int>,
                         std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                        int init_result_func_val = 0, const int vblock_size = 1)
+                        int init_result_func_val = 0)
                 {
-                    complete_T<int>(result, block_size, result_func, init_result_func, init_result_func_val);
+                    complete_T<int>(result, block_size, vblock_size, result_func, init_result_func, init_result_func_val);
                 }
-                void complete_double_comm_T(const int block_size = 1,
+                void complete_double_comm_T(const int block_size = 1, const int vblock_size = 1,
                         std::function<double(double, double)> init_result_func =
                         &sum_func<double, double>, 
-                        double init_result_func_val = 0, const int vblock_size = 1)
+                        double init_result_func_val = 0)
                 {
-                    complete_T<double>(block_size, init_result_func, init_result_func_val);
+                    complete_T<double>(block_size, vblock_size, init_result_func, init_result_func_val);
                 }
-                void complete_int_comm_T(const int block_size = 1,
+                void complete_int_comm_T(const int block_size = 1, const int vblock_size = 1,
                         std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                        int init_result_func_val = 0, const int vblock_size = 1)
+                        int init_result_func_val = 0)
                 {
-                    complete_T<int>(block_size, init_result_func, init_result_func_val);
+                    complete_T<int>(block_size, vblock_size, init_result_func, init_result_func_val);
                 }
                 template<typename T, typename U>
                 void communicate_T(const aligned_vector<T>& values, aligned_vector<U>& result,
-                        const int block_size = 1,
+                        const int block_size = 1, const int vblock_size = 1,
                         std::function<U(U, T)> result_func = &sum_func<T, U>,
                         std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
-                        T init_result_func_val = 0, const int vblock_size = 1)
+                        T init_result_func_val = 0)
                 {
-                    CommPkg::communicate_T(values.data(), result, block_size,
+                    CommPkg::communicate_T(values.data(), result, block_size, vblock_size,
                             result_func, init_result_func, init_result_func_val);
                 }
                 template<typename T, typename U>
                 void communicate_T(const T* values, aligned_vector<U>& result,
                         const int block_size = 1,
+                        const int vblock_size = 1,
                         std::function<U(U, T)> result_func = &sum_func<T, U>,
                         std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                        T init_result_func_val = 0, const int vblock_size = 1)
+                        T init_result_func_val = 0)
                 {
-                    CommPkg::communicate_T(values, result, block_size,
+                    CommPkg::communicate_T(values, result, block_size, vblock_size,
                             result_func, init_result_func, init_result_func_val);
                 }
                 template<typename T>
                 void communicate_T(const aligned_vector<T>& values,
                         const int block_size = 1,
+                        const int vblock_size = 1,
                         std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                        T init_result_func_val = 0, const int vblock_size = 1)
+                        T init_result_func_val = 0)
                 {
-                    CommPkg::communicate_T(values.data(), block_size, init_result_func,
+                    CommPkg::communicate_T(values.data(), block_size, vblock_size, init_result_func,
                             init_result_func_val);
                 }
                 template<typename T>
-                void communicate_T(const T* values, const int block_size = 1,
+                void communicate_T(const T* values, const int block_size = 1, const int vblock_size = 1,
                         std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                        T init_result_func_val = 0, const int vblock_size = 1)
+                        T init_result_func_val = 0)
                 {
-                    CommPkg::communicate_T(values, block_size, init_result_func, init_result_func_val);
+                    CommPkg::communicate_T(values, block_size, vblock_size, init_result_func, init_result_func_val);
                 }
 
                 template<typename T>
-                void initialize_T(const T* values, const int block_size = 1,
+                void initialize_T(const T* values, const int block_size = 1, const int vblock_size = 1,
                         std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
-                        T init_result_func_val = 0, const int vblock_size = 1,
-                        const int vblock_offset = 0)
+                        T init_result_func_val = 0, const int vblock_offset = 0)
                 {
                     int start, end;
                     int proc, idx, pos;
 
                     recv_data->send(values, key, mpi_comm, block_size, vblock_size, vblock_offset, init_result_func, init_result_func_val);
-                    send_data->recv<T>(key, mpi_comm, block_size);
+                    send_data->recv<T>(key, mpi_comm, block_size, vblock_size);
                 }
 
                 template<typename T, typename U>
                 void complete_T(aligned_vector<U>& result, 
                         const int block_size = 1,
+                        const int vblock_size = 1,
                         std::function<U(U, T)> result_func = &sum_func<T, U>,
                         std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                        T init_result_func_val = 0, const int vblock_size = 1)
+                        T init_result_func_val = 0)
                 {
                     // TODO - dont need to copy into sendbuf first
-                    complete_T<T>(block_size, init_result_func, init_result_func_val);
+                    complete_T<T>(block_size, vblock_size, init_result_func, init_result_func_val);
 
                     int idx, pos;
                     aligned_vector<T>& sendbuf = send_data->get_buffer<T>();
 
-                    for (int i = 0; i < send_data->size_msgs; i++)
+                    int rank, num_procs;
+                    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+                    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+                    for (int i = 0; i < num_procs; i++)
                     {
-                        idx = send_data->indices[i] * block_size;
-                        pos = i * block_size;
-                        for (int j = 0; j < block_size; j++)
+                        if (rank == i)
                         {
-                            result[idx + j]  = result_func(result[idx + j], sendbuf[pos + j]);
+                            printf("-------------- rank %d %d ----------------\n", rank, sendbuf.size());
+                            /*for (int j = 0; j < sendbuf.size(); j++)
+                            {
+                                printf("%e ", sendbuf[i]);
+                            }
+                            printf("\n");*/
+                        }
+                        MPI_Barrier(MPI_COMM_WORLD);
+                    }
+
+                    int vec_size, vec_start, vec_end;
+                    int total_vec_size = sendbuf.size() / vblock_size;
+                    for (int v = 0; v < vblock_size; v++)
+                    {
+                        for (int i = 0; i < send_data->size_msgs; i++)
+                        {
+                            idx = send_data->indices[i] * block_size;
+                            pos = i * block_size;
+                            for (int j = 0; j < block_size; j++)
+                            {
+                                result[idx + j]  = result_func(result[idx + j], sendbuf[pos + j]);
+                            }
                         }
                     }
+                    
+                    /*if (vblock_size > 1 && recv_data->procs.size() > 1)
+                    {
+                        aligned_vector<T> temp;
+                        int vec_size, start, end, vec_start, vec_end;
+                        int total_vec_size = buf.size() / vblock_size;
+                        for (int v = 0; v < vblock_size; v++)
+                        {
+                            for (int i = 0; i < recv_data->num_msgs; i++)
+                            {
+                                start = recv_data->indptr[i];
+                                end = recv_data->indptr[i+1];
+                                vec_size = (end - start) * block_size;
+                                start = start * block_size * vblock_size;
+                                vec_start = start + v * vec_size;
+                                vec_end = vec_start + vec_size;
+                                for (int j = vec_start; j < vec_end; j++)
+                                {
+                                    temp.emplace_back(buf[j]); 
+                                }
+                            }
+                        }
+                        std::copy(temp.begin(), temp.end(), buf.begin());
+                    }
+
+                    return buf;*/
                 }
 
                 template<typename T>
-                void complete_T(const int block_size = 1,
+                void complete_T(const int block_size = 1, const int vblock_size = 1,
                         std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                        T init_result_func_val = 0, const int vblock_size = 1)
+                        T init_result_func_val = 0)
                 {
                     send_data->waitall();
                     recv_data->waitall();
@@ -1650,130 +1707,139 @@
         // Transpose Communication
         void init_double_comm_T(const double* values,
                 const int block_size,
+                const int vblock_size = 1,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>,
-                    double init_result_func_val = 0, const int vblock_size = 1)
+                    double init_result_func_val = 0)
         {
-            initialize_T(values, block_size, init_result_func, init_result_func_val);
+            initialize_T(values, block_size, vblock_size, init_result_func, init_result_func_val);
         }
         void init_int_comm_T(const int* values,
                 const int block_size,
+                const int vblock_size = 1,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                int init_result_func_val = 0, const int vblock_size = 1)
+                int init_result_func_val = 0)
         {
-            initialize_T(values, block_size, init_result_func, init_result_func_val);
+            initialize_T(values, block_size, vblock_size, init_result_func, init_result_func_val);
         }
         void complete_double_comm_T(aligned_vector<double>& result,
                 const int block_size,
+                const int vblock_size = 1,
                 std::function<double(double, double)> result_func = &sum_func<double, double>,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>,
-                    double init_result_func_val = 0, const int vblock_size = 1)
+                    double init_result_func_val = 0)
         {
-            complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
+            complete_T<double>(result, block_size, vblock_size, result_func, init_result_func, init_result_func_val);
         }        
         void complete_double_comm_T(aligned_vector<int>& result,
                 const int block_size,
+                const int vblock_size = 1,
                 std::function<int(int, double)> result_func = &sum_func<double, int>,
                 std::function<double(double, double)> init_result_func = 
                     &sum_func<double, double>,
-                    double init_result_func_val = 0, const int vblock_size = 1)
+                    double init_result_func_val = 0)
         {
-            complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
+            complete_T<double>(result, block_size, vblock_size, result_func, init_result_func, init_result_func_val);
         }
         void complete_int_comm_T(aligned_vector<double>& result,
                 const int block_size,
+                const int vblock_size = 1,
                 std::function<double(double, int)> result_func = &sum_func<int, double>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                int init_result_func_val = 0, const int vblock_size = 1)
+                int init_result_func_val = 0)
         {
-            complete_T<int>(result, block_size, result_func, init_result_func, init_result_func_val);
+            complete_T<int>(result, block_size, vblock_size, result_func, init_result_func, init_result_func_val);
         }
         void complete_int_comm_T(aligned_vector<int>& result,
                 const int block_size,
+                const int vblock_size = 1,
                 std::function<int(int, int)> result_func = &sum_func<int, int>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
-                int init_result_func_val = 0, const int vblock_size = 1)
+                int init_result_func_val = 0)
         {
-            complete_T<int>(result, block_size, result_func, init_result_func, init_result_func_val);
+            complete_T<int>(result, block_size, vblock_size, result_func, init_result_func, init_result_func_val);
         }
 
-        void complete_double_comm_T(const int block_size,
+        void complete_double_comm_T(const int block_size, const int vblock_size = 1,
                 std::function<double(double, double)> init_result_func = 
                 &sum_func<double, double>,
-                double init_result_func_val = 0, const int vblock_size = 1)
+                double init_result_func_val = 0)
         {
-            complete_T<double>(block_size, init_result_func, init_result_func_val);
+            complete_T<double>(block_size, vblock_size, init_result_func, init_result_func_val);
         }
-        void complete_int_comm_T(const int block_size,
+        void complete_int_comm_T(const int block_size, const int vblock_size = 1,
                 std::function<int(int, int)> init_result_func = 
                     &sum_func<int, int>,
-                int init_result_func_val = 0, const int vblock_size = 1)
+                int init_result_func_val = 0)
         {
-            complete_T<int>(block_size, init_result_func, init_result_func_val);
+            complete_T<int>(block_size, vblock_size, init_result_func, init_result_func_val);
         }
 
         template<typename T, typename U>
         void communicate_T(const aligned_vector<T>& values, aligned_vector<U>& result,
                 const int block_size = 1,
+                const int vblock_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0, const int vblock_size = 1)
+                T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values.data(), result, block_size, result_func, init_result_func,
+            CommPkg::communicate_T(values.data(), result, block_size, vblock_size, result_func, init_result_func,
                     init_result_func_val);
         }
         template<typename T, typename U>
         void communicate_T(const T* values, aligned_vector<U>& result,
                 const int block_size = 1,
+                const int vblock_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0, const int vblock_size = 1)
+                T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values, result, block_size, result_func, init_result_func,
+            CommPkg::communicate_T(values, result, block_size, vblock_size, result_func, init_result_func,
                     init_result_func_val);
         }
         template<typename T>
         void communicate_T(const aligned_vector<T>& values,
                 const int block_size = 1,
+                const int vblock_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0, const int vblock_size = 1)
+                T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values.data(), block_size, init_result_func, init_result_func_val);
+            CommPkg::communicate_T(values.data(), block_size, vblock_size, init_result_func, init_result_func_val);
         }
         template<typename T>
-        void communicate_T(const T* values, const int block_size = 1,
+        void communicate_T(const T* values, const int block_size = 1, const int vblock_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0, const int vblock_size = 1)
+                T init_result_func_val = 0)
         {
-            CommPkg::communicate_T(values, block_size, init_result_func, init_result_func_val);
+            CommPkg::communicate_T(values, block_size, vblock_size, init_result_func, init_result_func_val);
         }
 
         template<typename T>
-        void initialize_T(const T* values, const int block_size = 1,
+        void initialize_T(const T* values, const int block_size = 1, const int vblock_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0, const int vblock_size = 1)
+                T init_result_func_val = 0)
         {
             int idx;
 
             // Messages with origin and final destination on node
-            local_L_par_comm->communicate_T(values, block_size, init_result_func, init_result_func_val);
+            local_L_par_comm->communicate_T(values, block_size, vblock_size, init_result_func, init_result_func_val);
 
             // Initial redistribution among node
-            local_R_par_comm->communicate_T(values, block_size, init_result_func, init_result_func_val);
+            local_R_par_comm->communicate_T(values, block_size, vblock_size, init_result_func, init_result_func_val);
 
             // Begin inter-node communication 
             aligned_vector<T>& R_sendbuf = local_R_par_comm->send_data->get_buffer<T>();
-            global_par_comm->init_comm_T(R_sendbuf, block_size, init_result_func, init_result_func_val);
+            global_par_comm->init_comm_T(R_sendbuf, block_size, vblock_size, init_result_func, init_result_func_val);
         }
 
         template<typename T, typename U>
-        void complete_T(aligned_vector<U>& result, const int block_size = 1,
+        void complete_T(aligned_vector<U>& result, const int block_size = 1, const int vblock_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0, const int vblock_size = 1)
+                T init_result_func_val = 0)
         {
-            complete_T<T>(block_size, init_result_func, init_result_func_val);
+            complete_T<T>(block_size, vblock_size, init_result_func, init_result_func_val);
             int idx, pos;
             aligned_vector<T>& L_sendbuf = local_L_par_comm->send_data->get_buffer<T>();
 
@@ -1815,17 +1881,17 @@
             }
         }
         template<typename T>
-        void complete_T(const int block_size = 1,
+        void complete_T(const int block_size = 1, const int vblock_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
-                T init_result_func_val = 0, const int vblock_size = 1)
+                T init_result_func_val = 0)
         {
             // Complete inter-node communication
-            global_par_comm->complete_comm_T<T>(block_size, init_result_func, init_result_func_val);
+            global_par_comm->complete_comm_T<T>(block_size, vblock_size, init_result_func, init_result_func_val);
     
             if (local_S_par_comm)
             {
                 aligned_vector<T>& G_sendbuf = global_par_comm->send_data->get_buffer<T>();
-                local_S_par_comm->communicate_T(G_sendbuf, block_size, init_result_func,
+                local_S_par_comm->communicate_T(G_sendbuf, block_size, vblock_size, init_result_func,
                         init_result_func_val);
             }
         }

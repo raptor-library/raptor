@@ -252,13 +252,20 @@ void ParMatrix::mult_T(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
     }
 
     aligned_vector<double>& x_tmp = comm->get_buffer<double>();
-    if (x_tmp.size() <= comm->recv_data->size_msgs * off_proc->b_cols)
-        x_tmp.resize(comm->recv_data->size_msgs * off_proc->b_cols);
+
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    printf("%d xtmp size %d\n", rank, x_tmp.size());
+
+    if (x_tmp.size() <= comm->recv_data->size_msgs * off_proc->b_cols * x.local->b_vecs)
+        x_tmp.resize(comm->recv_data->size_msgs * off_proc->b_cols * x.local->b_vecs);
+
+    printf("%d xtmp size %d size msgs %d\n", rank, x_tmp.size(), comm->recv_data->size_msgs);
 
     off_proc->mult_T(*(x.local), x_tmp);
-
+            
     if (comm_t) *comm_t -= MPI_Wtime();
-    comm->init_comm_T(x_tmp, off_proc->b_cols);
+    comm->init_comm_T(x_tmp, off_proc->b_cols, x.local->b_vecs);
     if (comm_t) *comm_t += MPI_Wtime();
 
     if (local_num_rows)
@@ -267,7 +274,7 @@ void ParMatrix::mult_T(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
     }
 
     if (comm_t) *comm_t -= MPI_Wtime();
-    comm->complete_comm_T<double>(b.local->values, off_proc->b_cols);
+    comm->complete_comm_T<double>(b.local->values, off_proc->b_cols, x.local->b_vecs);
     if (comm_t) *comm_t += MPI_Wtime();
 }
 
