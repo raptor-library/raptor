@@ -57,6 +57,51 @@ void print_helper(const CSCMatrix* A, const aligned_vector<T>& vals)
         }
     }
 }
+template <typename T>
+void bcoo_print_helper(const BCOOMatrix* A, const aligned_vector<T>& vals)
+{
+    int row, col;
+    double val;
+
+    for (int i = 0; i < A->nnz; i++)
+    {
+        row = A->idx1[i];
+        col = A->idx2[i];
+        A->val_print(row, col, vals[i]);
+    }
+}
+template <typename T>
+void bsr_print_helper(const BSRMatrix* A, const aligned_vector<T>& vals)
+{
+    int col, start, end;
+
+    for (int row = 0; row < A->n_rows; row++)
+    {
+        start = A->idx1[row];
+        end = A->idx1[row+1];
+        for (int j = start; j < end; j++)
+        {
+            col = A->idx2[j];
+            A->val_print(row, col, vals[j]);
+        }
+    }
+}
+template <typename T>
+void bsc_print_helper(const BSCMatrix* A, const aligned_vector<T>& vals)
+{
+    int row, start, end;
+
+    for (int col = 0; col < A->n_cols; col++)
+    {
+        start = A->idx1[col];
+        end = A->idx1[col+1];
+        for (int j = start; j < end; j++)
+        {
+            row = A->idx2[j];
+            A->val_print(row, col, vals[j]);
+        }
+    }
+}
 void COOMatrix::print()
 {
     print_helper(this, vals);
@@ -71,15 +116,15 @@ void CSCMatrix::print()
 }
 void BCOOMatrix::print()
 {
-    print_helper(this, vals);
+    bcoo_print_helper(this, vals);
 }
 void BSRMatrix::print()
 {
-    print_helper(this, vals);
+    bsr_print_helper(this, vals);
 }
 void BSCMatrix::print()
 {
-    print_helper(this, vals);
+    bsc_print_helper(this, vals);
 }
 
 /**************************************************************
@@ -307,6 +352,45 @@ void CSR_to_CSR(const CSRMatrix* A, CSRMatrix* B, aligned_vector<T>& A_vals,
             B_vals[j] = B->copy_val(A_vals[j]);
         }
     }
+
+}
+template <typename T>
+void BSR_to_CSR(const BSRMatrix* A, CSRMatrix* B, aligned_vector<T*>& A_vals,
+        aligned_vector<T>& B_vals)
+{
+    B->n_rows = A->n_rows * A->b_rows;
+    B->n_cols = A->n_cols * A->b_cols;
+
+    B->idx1.resize(B->n_rows + 1);
+    B->idx2.reserve(A->nnz);
+    B->vals.reserve(A->nnz);
+
+    T val;
+    int col;
+    B->idx1[0] = 0;
+    for (int i = 0; i < A->n_rows; i++)
+    {
+        int row_start = A->idx1[i];
+        int row_end = A->idx1[i+1];
+        for (int br = 0; br < A->b_rows; br++)
+        {
+            for (int j = row_start; j < row_end; j++)
+            {
+                for (int bc = 0; bc < A->b_cols; bc++)
+                {
+                    val = A_vals[j][br*A->b_cols + bc];
+                    if (fabs(val) > zero_tol)
+                    {
+                        col = A->idx2[j];
+                        B->vals.emplace_back(val);
+                        B->idx2.emplace_back(col*A->b_cols + bc); 
+                    }
+                }
+            }
+            B->idx1[i*A->b_rows + br+1] = B->idx2.size();
+        }
+    }
+    B->nnz = B->vals.size();
 
 }
 template <typename T>
@@ -1003,18 +1087,33 @@ COOMatrix* COOMatrix::to_COO()
 {
     return this;
 }
+COOMatrix* COOMatrix::to_BCOO()
+{
+    return this->to_COO();
+}
 COOMatrix* BCOOMatrix::to_COO()
+{
+    return this->to_BCOO();
+}
+COOMatrix* BCOOMatrix::to_BCOO()
 {
     return this;
 }
-
 CSRMatrix* COOMatrix::to_CSR()
 {
     CSRMatrix* A = new CSRMatrix();
     COO_to_CSR(this, A, vals, A->vals);
     return A;
 }
+CSRMatrix* COOMatrix::to_BSR()
+{
+    return this->to_CSR();
+}
 CSRMatrix* BCOOMatrix::to_CSR()
+{
+    return this->to_BSR();
+}
+CSRMatrix* BCOOMatrix::to_BSR()
 {
     BSRMatrix* A = new BSRMatrix();
     A->b_rows = b_rows;
@@ -1023,14 +1122,21 @@ CSRMatrix* BCOOMatrix::to_CSR()
     COO_to_CSR(this, A, block_vals, A->block_vals);
     return A;
 }
-
 CSCMatrix* COOMatrix::to_CSC()
 {
     CSCMatrix* A = new CSCMatrix();
     COO_to_CSC(this, A, vals, A->vals);
     return A;
 }
+CSCMatrix* COOMatrix::to_BSC()
+{
+    return this->to_CSC();
+}
 CSCMatrix* BCOOMatrix::to_CSC()
+{
+    return this->to_CSC();
+}
+CSCMatrix* BCOOMatrix::to_BSC()
 {
     BSCMatrix* A = new BSCMatrix();
     A->b_rows = b_rows;
@@ -1046,7 +1152,15 @@ COOMatrix* CSRMatrix::to_COO()
     CSR_to_COO(this, A, vals, A->vals);
     return A;
 }
+COOMatrix* CSRMatrix::to_BCOO()
+{
+    return this->to_COO();
+}
 COOMatrix* BSRMatrix::to_COO()
+{
+    return this->to_BCOO();
+}
+COOMatrix* BSRMatrix::to_BCOO()
 {
     BCOOMatrix* A = new BCOOMatrix();
     A->b_rows = b_rows;
@@ -1055,23 +1169,39 @@ COOMatrix* BSRMatrix::to_COO()
     CSR_to_COO(this, A, block_vals, A->block_vals);
     return A;
 }
-
 CSRMatrix* CSRMatrix::to_CSR()
 {
     return this;
 }
+CSRMatrix* CSRMatrix::to_BSR()
+{
+    return this->to_CSR();
+}
 CSRMatrix* BSRMatrix::to_CSR()
+{
+    CSRMatrix* A = new CSRMatrix();
+    BSR_to_CSR(this, A, block_vals, A->vals);
+    return A;
+}
+CSRMatrix* BSRMatrix::to_BSR()
 {
     return this;
 }
-
 CSCMatrix* CSRMatrix::to_CSC()
 {
     CSCMatrix* A = new CSCMatrix();
     CSR_to_CSC(this, A, vals, A->vals);
     return A;
 }
+CSCMatrix* CSRMatrix::to_BSC()
+{
+    return this->to_CSC();
+}
 CSCMatrix* BSRMatrix::to_CSC()
+{
+    return this->to_BSC();
+}
+CSCMatrix* BSRMatrix::to_BSC()
 {
     BSCMatrix* A = new BSCMatrix();
     A->b_rows = b_rows;
@@ -1087,7 +1217,15 @@ COOMatrix* CSCMatrix::to_COO()
     CSC_to_COO(this, A, vals, A->vals);
     return A;
 }
+COOMatrix* CSCMatrix::to_BCOO()
+{
+    return this->to_COO();
+}
 COOMatrix* BSCMatrix::to_COO()
+{
+    return this->to_BCOO();
+}
+COOMatrix* BSCMatrix::to_BCOO()
 {
     BCOOMatrix* A = new BCOOMatrix();
     A->b_rows = b_rows;
@@ -1096,14 +1234,21 @@ COOMatrix* BSCMatrix::to_COO()
     CSC_to_COO(this, A, block_vals, A->block_vals);
     return A;
 }
-
 CSRMatrix* CSCMatrix::to_CSR()
 {
     CSRMatrix* A = new CSRMatrix();
     CSC_to_CSR(this, A, vals, A->vals);
     return A;
 }
+CSRMatrix* CSCMatrix::to_BSR()
+{
+    return this->to_CSR();
+}
 CSRMatrix* BSCMatrix::to_CSR()
+{
+    return this->to_BSR();
+}
+CSRMatrix* BSCMatrix::to_BSR()
 {
     BSRMatrix* A = new BSRMatrix();
     A->b_rows = b_rows;
@@ -1114,13 +1259,24 @@ CSRMatrix* BSCMatrix::to_CSR()
 }
 CSCMatrix* CSCMatrix::to_CSC()
 {
-   return this; 
+    return this; 
+}
+CSCMatrix* CSCMatrix::to_BSC()
+{
+    return this->to_CSC();
 }
 CSCMatrix* BSCMatrix::to_CSC()
+{
+    return this->to_BSC();
+}
+CSCMatrix* BSCMatrix::to_BSC()
 {
     return this;
 }
 
+/**************************************************************
+*****   Matrix Copy
+**************************************************************/
 COOMatrix* COOMatrix::copy()
 {
     COOMatrix* A = new COOMatrix();
@@ -1167,4 +1323,119 @@ BSCMatrix* BSCMatrix::copy()
     return A;
 }
 
+/**************************************************************
+*****  Matrix Block Removal 
+**************************************************************
+***** Determines which columns were kept after removing
+***** block structure from matrices
+**************************************************************/
+void COOMatrix::block_removal_col_check(bool* col_check)
+{
+    for (int i = 0; i < n_cols * b_cols; i++)
+    {
+        col_check[i] = true;
+    }
+}
+void BCOOMatrix::block_removal_col_check(bool* col_check)
+{
+    for (int i = 0; i < n_cols * b_cols; i++)
+    {
+        col_check[i] = false;
+    }
+    
+    int idx, first_col;
+    double* block_val;
+    for (int i = 0; i < nnz; i++)
+    {
+        block_val = block_vals[i];
+        for (int row = 0; row < b_rows; row++)
+        {
+            idx = row * b_cols;
+            first_col = idx2[i]*b_cols;
+            for (int col = 0; col < b_cols; col++)
+            {
+                if(fabs(block_val[idx + col]) > zero_tol)
+                {
+                    col_check[first_col + col] = true;
+                } 
+            }
+        }
+    }
+}
 
+void CSCMatrix::block_removal_col_check(bool* col_check)
+{
+    for (int i = 0; i < n_cols * b_cols; i++)
+    {
+        col_check[i] = true;
+    }
+}
+void BSCMatrix::block_removal_col_check(bool* col_check)
+{
+    for (int i = 0; i < n_cols * b_cols; i++)
+    {
+        col_check[i] = false;
+    }
+    
+    int start, end, idx;
+    double* block_val;
+    for (int j = 0; j < n_cols; j++)
+    {
+        start = idx1[j];
+        end = idx1[j+1];
+        for (int row = 0; row < b_rows; row++)
+        {
+            idx = row * b_cols;
+            for (int i = start; i < end; i++)
+            {
+                block_val = block_vals[i];
+                for (int col = 0; col < b_cols; col++)
+                {
+                    if(fabs(block_val[idx + col]) > zero_tol)
+                    {
+                        col_check[j + col] = true;
+                    } 
+                }
+            }
+        }
+    }
+}
+
+void CSRMatrix::block_removal_col_check(bool* col_check)
+{
+    for (int i = 0; i < n_cols * b_cols; i++)
+    {
+        col_check[i] = true;
+    }
+}
+void BSRMatrix::block_removal_col_check(bool* col_check)
+{
+    for (int i = 0; i < n_cols * b_cols; i++)
+    {
+        col_check[i] = false;
+    }
+
+    int start, end, idx, first_col;
+    double* block_val;
+    for (int i = 0; i < n_rows; i++)
+    {
+        start = idx1[i];
+        end = idx1[i+1];
+        for (int row = 0; row < b_rows; row++)
+        {
+            idx = row * b_cols;
+            for (int j = start; j < end; j++)
+            {
+                first_col = idx2[j]*b_cols;
+                block_val = block_vals[j];
+                for (int col = 0; col < b_cols; col++)
+                {
+                    if(fabs(block_val[idx + col]) > zero_tol)
+                    {
+                        col_check[first_col + col] = true;
+                    } 
+                }
+            }
+        }
+    }
+}

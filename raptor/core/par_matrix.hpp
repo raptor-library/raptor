@@ -310,6 +310,9 @@ namespace raptor
     virtual ParCOOMatrix* to_ParCOO() = 0;
     virtual ParCSRMatrix* to_ParCSR() = 0;
     virtual ParCSCMatrix* to_ParCSC() = 0;
+    virtual ParCOOMatrix* to_ParBCOO() = 0;
+    virtual ParCSRMatrix* to_ParBSR() = 0;
+    virtual ParCSCMatrix* to_ParBSC() = 0;
     virtual ParMatrix* copy() = 0;
     virtual void copy_helper(ParCSRMatrix* A);
     virtual void copy_helper(ParCSCMatrix* A);
@@ -405,6 +408,10 @@ namespace raptor
     ParCOOMatrix* to_ParCOO();
     ParCSRMatrix* to_ParCSR();
     ParCSCMatrix* to_ParCSC();
+    ParCOOMatrix* to_ParBCOO();
+    ParCSRMatrix* to_ParBSR();
+    ParCSCMatrix* to_ParBSC();
+
     ParCOOMatrix* copy()
     {
         ParCOOMatrix* A = new ParCOOMatrix();
@@ -469,6 +476,10 @@ namespace raptor
     ParCOOMatrix* to_ParCOO();
     ParCSRMatrix* to_ParCSR();
     ParCSCMatrix* to_ParCSC();
+    ParCOOMatrix* to_ParBCOO();
+    ParCSRMatrix* to_ParBSR();
+    ParCSCMatrix* to_ParBSC();
+
     ParCOOMatrix* copy()
     {
         ParCOOMatrix* A = new ParCOOMatrix();
@@ -554,6 +565,10 @@ namespace raptor
     ParCOOMatrix* to_ParCOO();
     ParCSRMatrix* to_ParCSR();
     ParCSCMatrix* to_ParCSC();
+    ParCOOMatrix* to_ParBCOO();
+    ParCSRMatrix* to_ParBSR();
+    ParCSCMatrix* to_ParBSC();
+
     ParCSRMatrix* copy()
     {
         ParCSRMatrix* A = new ParCSRMatrix();
@@ -678,6 +693,10 @@ namespace raptor
     ParCOOMatrix* to_ParCOO();
     ParCSRMatrix* to_ParCSR();
     ParCSCMatrix* to_ParCSC();
+    ParCOOMatrix* to_ParBCOO();
+    ParCSRMatrix* to_ParBSR();
+    ParCSCMatrix* to_ParBSC();
+
     ParBSRMatrix* copy()
     {
         ParBSRMatrix* A = new ParBSRMatrix();
@@ -756,6 +775,10 @@ namespace raptor
     ParCOOMatrix* to_ParCOO();
     ParCSRMatrix* to_ParCSR();
     ParCSCMatrix* to_ParCSC();
+    ParCOOMatrix* to_ParBCOO();
+    ParCSRMatrix* to_ParBSR();
+    ParCSCMatrix* to_ParBSC();
+
     ParCSCMatrix* copy()
     {
         ParCSCMatrix* A = new ParCSCMatrix();
@@ -821,6 +844,10 @@ class ParBSCMatrix : public ParCSCMatrix
     ParCOOMatrix* to_ParCOO();
     ParCSRMatrix* to_ParCSR();
     ParCSCMatrix* to_ParCSC();
+    ParCOOMatrix* to_ParBCOO();
+    ParCSRMatrix* to_ParBSR();
+    ParCSCMatrix* to_ParBSC();
+
     ParBSCMatrix* copy()
     {
         ParBSCMatrix* A = new ParBSCMatrix();

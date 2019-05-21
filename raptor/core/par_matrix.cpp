@@ -169,12 +169,114 @@ int* ParMatrix::map_partition_to_local()
 }
 
 
+/**************************************************************
+*****  ParBSRMatrix to ParCSRMatrix Convert
+**************************************************************/
+void bsr_to_csr_copy_helper(ParBSRMatrix* A, ParCSRMatrix* B)
+{
+    if (B->on_proc)
+    {   
+        delete B->on_proc;
+    }
+    if (B->off_proc)
+    {
+        delete B->off_proc;
+    }
 
+    // Convert on and off proc to CSR
+    B->on_proc = A->on_proc->to_CSR();
+    B->off_proc = A->off_proc->to_CSR();
+
+    B->local_nnz = B->on_proc->nnz + B->off_proc->nnz;
+    B->global_num_rows = A->global_num_rows * A->on_proc->b_rows;
+    B->global_num_cols = A->global_num_cols * A->on_proc->b_cols;
+
+    B->on_proc_num_cols = B->on_proc->n_cols;
+    B->off_proc_num_cols = B->off_proc->n_cols;
+    
+    // Updated partition
+    B->partition = new Partition(B->global_num_rows, B->global_num_cols,
+                        B->on_proc->n_rows, B->on_proc->n_cols,
+                        A->partition->first_local_row * A->on_proc->b_rows,
+                        A->partition->first_local_col * A->on_proc->b_cols);
+    B->local_num_rows = B->partition->local_num_rows;
+
+    // Updated column and row maps - 
+    B->finalize(false);
+        
+    // Determine which cols of blocks are non-zero
+    bool* off_proc_nz_cols = new bool[A->off_proc_num_cols * A->off_proc->b_cols];
+    A->off_proc->block_removal_col_check(off_proc_nz_cols);
+
+    // Update off_proc_column_map
+    int first_col;
+    int off_proc_map_indx = 0;
+    for (int i = 0; i < A->off_proc_num_cols; i++)
+    {
+        first_col = A->off_proc_column_map[i] * A->off_proc->b_cols;
+        for (int j = 0; j < A->off_proc->b_cols; j++)
+        {
+            if (off_proc_nz_cols[i*A->off_proc->b_cols + j])
+            {
+                B->off_proc_column_map[off_proc_map_indx] = first_col + j; 
+                off_proc_map_indx++;
+            }
+        } 
+    }
+
+    // Updated how communicators are created
+    if (A->comm)
+    {
+        B->comm = new ParComm(B->partition, B->off_proc_column_map, B->on_proc_column_map);
+    }
+    else
+    {
+        B->comm = NULL;
+    }
+
+    if (A->tap_comm)
+    {
+        B->tap_comm = new TAPComm(B->partition, B->off_proc_column_map, B->on_proc_column_map);
+    }
+    else
+    {
+        B->tap_comm = NULL;
+    }
+
+    if (A->tap_mat_comm)
+    {
+        B->tap_mat_comm = new TAPComm(B->partition, B->off_proc_column_map, B->on_proc_column_map);
+    }
+    else
+    {
+        B->tap_mat_comm = NULL;
+    }
+
+    delete[] off_proc_nz_cols;
+}
+
+
+
+/**************************************************************
+*****  ParMatrix Convert
+**************************************************************
+***** Convert from one type of parmatrix to another
+***** No copies if parmatrix type remains the same
+***** If blocked parmatrix, converts to block matrix
+**************************************************************/
 ParCOOMatrix* ParCOOMatrix::to_ParCOO()
 {
     return this;
 }
+ParCOOMatrix* ParCOOMatrix::to_ParBCOO()
+{
+    return this->to_ParCOO();
+}
 ParCOOMatrix* ParBCOOMatrix::to_ParCOO()
+{
+    return this->to_ParBCOO();
+}
+ParCOOMatrix* ParBCOOMatrix::to_ParBCOO()
 {
     return this;
 }
@@ -184,7 +286,15 @@ ParCSRMatrix* ParCOOMatrix::to_ParCSR()
     A->copy_helper(this);
     return A;
 }
+ParCSRMatrix* ParCOOMatrix::to_ParBSR()
+{
+    return this->to_ParCSR();
+}
 ParCSRMatrix* ParBCOOMatrix::to_ParCSR()
+{
+    return this->to_ParBSR();
+}
+ParCSRMatrix* ParBCOOMatrix::to_ParBSR()
 {
     ParBSRMatrix* A = new ParBSRMatrix();
     A->copy_helper(this);
@@ -196,7 +306,15 @@ ParCSCMatrix* ParCOOMatrix::to_ParCSC()
     A->copy_helper(this);
     return A;
 }
+ParCSCMatrix* ParCOOMatrix::to_ParBSC()
+{
+    return this->to_ParCSC();
+}
 ParCSCMatrix* ParBCOOMatrix::to_ParCSC()
+{
+    return this->to_ParBSC();
+}
+ParCSCMatrix* ParBCOOMatrix::to_ParBSC()
 {
     ParBSCMatrix* A = new ParBSCMatrix();
     A->copy_helper(this);
@@ -209,7 +327,15 @@ ParCOOMatrix* ParCSRMatrix::to_ParCOO()
     A->copy_helper(this);
     return A;
 }
+ParCOOMatrix* ParCSRMatrix::to_ParBCOO()
+{
+    return this->to_ParCOO();
+}
 ParCOOMatrix* ParBSRMatrix::to_ParCOO()
+{
+    return this->to_ParBCOO();
+}
+ParCOOMatrix* ParBSRMatrix::to_ParBCOO()
 {
     ParBCOOMatrix* A = new ParBCOOMatrix();
     A->copy_helper(this);
@@ -219,7 +345,17 @@ ParCSRMatrix* ParCSRMatrix::to_ParCSR()
 {
     return this; 
 }
+ParCSRMatrix* ParCSRMatrix::to_ParBSR()
+{
+    return this->to_ParCSR(); 
+}
 ParCSRMatrix* ParBSRMatrix::to_ParCSR()
+{
+    ParCSRMatrix* A = new ParCSRMatrix();
+    bsr_to_csr_copy_helper(this, A);
+    return A;
+}
+ParCSRMatrix* ParBSRMatrix::to_ParBSR()
 {
     return this;
 }
@@ -229,7 +365,15 @@ ParCSCMatrix* ParCSRMatrix::to_ParCSC()
     A->copy_helper(this);
     return A;
 }
+ParCSCMatrix* ParCSRMatrix::to_ParBSC()
+{
+    return this->to_ParCSC();
+}
 ParCSCMatrix* ParBSRMatrix::to_ParCSC()
+{
+    return this->to_ParBSC();
+}
+ParCSCMatrix* ParBSRMatrix::to_ParBSC()
 {
     ParBSCMatrix* A = new ParBSCMatrix();
     A->copy_helper(this);
@@ -242,7 +386,15 @@ ParCOOMatrix* ParCSCMatrix::to_ParCOO()
     A->copy_helper(this);
     return A;
 }
+ParCOOMatrix* ParCSCMatrix::to_ParBCOO()
+{
+    return this->to_ParCOO();
+}
 ParCOOMatrix* ParBSCMatrix::to_ParCOO()
+{
+    return this->to_ParBCOO();
+}
+ParCOOMatrix* ParBSCMatrix::to_ParBCOO()
 {
     ParBCOOMatrix* A = new ParBCOOMatrix();
     A->copy_helper(this);
@@ -254,7 +406,15 @@ ParCSRMatrix* ParCSCMatrix::to_ParCSR()
     A->copy_helper(this);
     return A;
 }
+ParCSRMatrix* ParCSCMatrix::to_ParBSR()
+{
+    return this->to_ParCSR();
+}
 ParCSRMatrix* ParBSCMatrix::to_ParCSR()
+{
+    return this->to_ParBSR();
+}
+ParCSRMatrix* ParBSCMatrix::to_ParBSR()
 {
     ParBSRMatrix* A = new ParBSRMatrix();
     A->copy_helper(this);
@@ -264,7 +424,15 @@ ParCSCMatrix* ParCSCMatrix::to_ParCSC()
 {
     return this;
 }
+ParCSCMatrix* ParCSCMatrix::to_ParBSC()
+{
+    return this->to_ParCSC();
+}
 ParCSCMatrix* ParBSCMatrix::to_ParCSC()
+{
+    return this->to_ParBSC();
+}
+ParCSCMatrix* ParBSCMatrix::to_ParBSC()
 {
     return this;
 }
@@ -671,8 +839,6 @@ ParCSCMatrix* ParCSCMatrix::transpose()
 
     return AT;
 }
-
-
 
 // Assumes block_row_size and block_col_size evenly divide local row/col sizes
 ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_col_size)

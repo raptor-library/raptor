@@ -262,7 +262,7 @@ CSRMatrix* COOMatrix::spgemm(CSRMatrix* B, int* B_to_C)
 }
 BSRMatrix* BCOOMatrix::spgemm(CSRMatrix* B, int* B_to_C)
 {
-    BSRMatrix* A_bsr = (BSRMatrix*) to_CSR();
+    BSRMatrix* A_bsr = (BSRMatrix*) to_BSR();
     BSRMatrix* B_bsr = (BSRMatrix*) B;
     BSRMatrix* C = (BSRMatrix*) spgemm_helper(A_bsr, B_bsr, 
             A_bsr->block_vals, B_bsr->block_vals, B_to_C);
@@ -279,7 +279,7 @@ CSRMatrix* CSCMatrix::spgemm(CSRMatrix* B, int* B_to_C)
 }
 BSRMatrix* BSCMatrix::spgemm(CSRMatrix* B, int* B_to_C)
 {
-    BSRMatrix* A_bsr = (BSRMatrix*) to_CSR();
+    BSRMatrix* A_bsr = (BSRMatrix*) to_BSR();
     BSRMatrix* B_bsr = (BSRMatrix*) B;
     BSRMatrix* C = (BSRMatrix*) spgemm_helper(A_bsr, B_bsr, 
             A_bsr->block_vals, B_bsr->block_vals, B_to_C);
@@ -309,7 +309,7 @@ CSRMatrix* COOMatrix::spgemm_T(CSCMatrix* A, int* C_map)
 BSRMatrix* BCOOMatrix::spgemm_T(CSCMatrix* A, int* C_map)
 {
     BSCMatrix* A_bsc = (BSCMatrix*) A;
-    BSRMatrix* B_bsr = (BSRMatrix*) to_CSR();
+    BSRMatrix* B_bsr = (BSRMatrix*) to_BSR();
     BSRMatrix* C = (BSRMatrix*) spgemm_T_helper(A_bsc, B_bsr, 
             A_bsc->block_vals, B_bsr->block_vals, C_map);
     delete B_bsr;
@@ -326,7 +326,7 @@ CSRMatrix* CSCMatrix::spgemm_T(CSCMatrix* A, int* C_map)
 BSRMatrix* BSCMatrix::spgemm_T(CSCMatrix* A, int* C_map)
 {
     BSCMatrix* A_bsc = (BSCMatrix*) A;
-    BSRMatrix* B_bsr = (BSRMatrix*) to_CSR();
+    BSRMatrix* B_bsr = (BSRMatrix*) to_BSR();
     BSRMatrix* C = (BSRMatrix*) spgemm_T_helper(A_bsc, B_bsr, 
             A_bsc->block_vals, B_bsr->block_vals, C_map);
     delete B_bsr;
