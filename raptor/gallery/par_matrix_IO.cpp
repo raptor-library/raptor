@@ -92,8 +92,8 @@ ParCSRMatrix* readParMatrix(const char* filename,
     int nnz = 0;
 
     // Find row sizes
-    pos = (4 + A->partition->first_local_col) * sizeof_int32;
-    if (fseek(ifile, pos, SEEK_SET)) printf("Error seeking pos %ld\n", pos); 
+    pos = (4 + A->partition->first_local_row) * sizeof_int32;
+    if (fseek(ifile, pos, SEEK_SET)) printf("Error seeking pos\n"); 
     for (int i = 0; i < A->local_num_rows; i++)
     {
         fread(&idx, sizeof_int32, 1, ifile);
@@ -121,7 +121,7 @@ ParCSRMatrix* readParMatrix(const char* filename,
 
     // Read in col_indices
     pos = (4 + A->global_num_rows + first_nnz) * sizeof_int32;
-    if (fseek(ifile, pos, SEEK_SET)) printf("Error seeking pos %ld\n", pos); 
+    if (fseek(ifile, pos, SEEK_SET)) printf("Error seeking pos\n"); 
     for (int i = 0; i < nnz; i++)
     {
         fread(&idx, sizeof_int32, 1, ifile);
@@ -131,7 +131,7 @@ ParCSRMatrix* readParMatrix(const char* filename,
     }
 
     pos = (4 + A->global_num_rows + total_nnz) * sizeof_int32 + (first_nnz * sizeof_dbl);
-    if (fseek(ifile, pos, SEEK_SET)) printf("Error seeking pos %ld\n", pos); 
+    if (fseek(ifile, pos, SEEK_SET)) printf("Error seeking pos\n"); 
     for (int i = 0; i < nnz; i++)
     {
         fread(&val, sizeof_dbl, 1, ifile);
