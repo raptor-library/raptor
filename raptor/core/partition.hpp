@@ -87,6 +87,7 @@ namespace raptor
         }
         else
         {
+            first_local_col = 0;
             local_num_cols = 0;
         }
 

@@ -251,6 +251,7 @@ namespace raptor
                 RAPtor_MPI_Group_incl(world_group, active_procs.size(), active_procs.data(),
                         &active_group);
                 RAPtor_MPI_Comm_create_group(RAPtor_MPI_COMM_WORLD, active_group, 0, &coarse_comm);
+                RAPtor_MPI_Group_free(&world_group);
                 RAPtor_MPI_Group_free(&active_group);
 
                 if (Ac->local_num_rows)

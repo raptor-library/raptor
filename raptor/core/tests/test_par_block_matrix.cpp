@@ -63,7 +63,7 @@ TEST(ParBlockMatrixTest, TestsInCore)
     double* stencil = diffusion_stencil_2d(eps, theta);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid.data(), 2);
     ParBSRMatrix* A_bsr = A->to_ParBSR(block_n, block_n);
-
+ 
     ParVector x(A->global_num_rows, A->local_num_rows);
     ParVector b(A->global_num_rows, A->local_num_rows);
     ParVector tmp(A->global_num_rows, A->local_num_rows);
@@ -84,7 +84,7 @@ TEST(ParBlockMatrixTest, TestsInCore)
     A_bsr->mult(x, tmp);
     for (int i = 0; i < A->local_num_rows; i++)
         ASSERT_NEAR(tmp[i], b[i], 1e-10);
-
+    
     // Test Blocked Transpose Communication
     A->comm->communicate_T(x.local.values, b.local.values);
     A_bsr->comm->communicate_T(x.local.values, tmp.local.values, A_bsr->off_proc->b_cols);
@@ -97,7 +97,7 @@ TEST(ParBlockMatrixTest, TestsInCore)
     A_bsr->mult_T(x, tmp);
     for (int i = 0; i < A->local_num_rows; i++)
         ASSERT_NEAR(tmp[i], b[i], 1e-10);
-
+    
     // Test Blocked TAPSpMVs
     A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map);
     A_bsr->tap_comm = new TAPComm(A_bsr->partition, A_bsr->off_proc_column_map);
@@ -117,7 +117,7 @@ TEST(ParBlockMatrixTest, TestsInCore)
     for (int i = 0; i < n; i++)
         ASSERT_NEAR(b[i], tmp[i], 1e-10);
 
-    // Test Blocked Transpose SpMV
+    // Test Blocked Transpose TAPSpMV
     A->tap_mult_T(x, b);
     A_bsr->tap_mult_T(x, tmp);
     for (int i = 0; i < A->local_num_rows; i++)

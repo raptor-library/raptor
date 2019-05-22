@@ -17,35 +17,35 @@ add_test(TestRugeStuben ./test_ruge_stuben)
 if (WITH_MPI)
     add_executable(test_par_rap test_par_rap.cpp)
     target_link_libraries(test_par_rap raptor ${MPI_LIBRARIES} googletest pthread )
-    add_test(TestParRAP ${MPIRUN} -n 16 ./test_par_rap)
+    add_test(TestParRAP ${MPIRUN} -n 16 ${HOST} ./test_par_rap)
 
     add_executable(test_tap_rap test_tap_rap.cpp)
     target_link_libraries(test_tap_rap raptor ${MPI_LIBRARIES} googletest pthread )
-    add_test(TestTAPRAP ${MPIRUN} -n 16 ./test_tap_rap)
+    add_test(TestTAPRAP ${MPIRUN} -n 16 ${HOST} ./test_tap_rap)
 
     add_executable(test_par_splitting test_par_splitting.cpp)
     target_link_libraries(test_par_splitting raptor ${MPI_LIBRARIES} googletest pthread )
-    add_test(TestParSplitting ${MPIRUN} -n 16 ./test_par_splitting)
+    add_test(TestParSplitting ${MPIRUN} -n 16 ${HOST} ./test_par_splitting)
 
     add_executable(test_tap_splitting test_tap_splitting.cpp)
     target_link_libraries(test_tap_splitting raptor ${MPI_LIBRARIES} googletest pthread )
-    add_test(TestTAPSplitting ${MPIRUN} -n 16 ./test_tap_splitting)
+    add_test(TestTAPSplitting ${MPIRUN} -n 16 ${HOST} ./test_tap_splitting)
 
     add_executable(test_par_interpolation test_par_interpolation.cpp)
     target_link_libraries(test_par_interpolation raptor ${MPI_LIBRARIES} googletest pthread )
-    add_test(TestParInterpolation ${MPIRUN} -n 16 ./test_par_interpolation)
+    add_test(TestParInterpolation ${MPIRUN} -n 16 ${HOST} ./test_par_interpolation)
 
     add_executable(test_tap_interpolation test_tap_interpolation.cpp)
     target_link_libraries(test_tap_interpolation raptor ${MPI_LIBRARIES} googletest pthread )
-    add_test(TestTAPInterpolation ${MPIRUN} -n 16 ./test_tap_interpolation)
+    add_test(TestTAPInterpolation ${MPIRUN} -n 16 ${HOST} ./test_tap_interpolation)
 
     add_executable(test_par_ruge_stuben test_par_ruge_stuben.cpp)
     target_link_libraries(test_par_ruge_stuben raptor ${MPI_LIBRARIES} googletest pthread )
-    add_test(TestParRugeStuben ${MPIRUN} -n 16 ./test_par_ruge_stuben)
+    add_test(TestParRugeStuben ${MPIRUN} -n 16 ${HOST} ./test_par_ruge_stuben)
 
     add_executable(test_tap_ruge_stuben test_tap_ruge_stuben.cpp)
     target_link_libraries(test_tap_ruge_stuben raptor ${MPI_LIBRARIES} googletest pthread )
-    add_test(TestTAPRugeStuben ${MPIRUN} -n 16 ./test_tap_ruge_stuben)
+    add_test(TestTAPRugeStuben ${MPIRUN} -n 16 ${HOST} ./test_tap_ruge_stuben)
 endif()
 
 if (WITH_HYPRE)

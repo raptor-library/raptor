@@ -77,11 +77,11 @@ TEST(BlockMatrixTest, TestsInCore)
     for (int i = 0; i < nnz; i++)
         A_coo->add_value(rows[i], cols[i], vals[i]);
 
-
     Matrix* A_bsr = A_bcoo->to_CSR();
     Matrix* A_csr = A_coo->to_CSR();
     Matrix* A_bsc = A_bsr->to_CSC();
     Matrix* A_csc = A_csr->to_CSC();
+    Matrix* A_csr_from_bsr = A_bsr->to_CSR();
 
     Vector x(num_rows);
     Vector b(num_cols);
@@ -106,6 +106,7 @@ TEST(BlockMatrixTest, TestsInCore)
     ASSERT_EQ(A_bsr->n_cols, A_bsc->n_cols);
     ASSERT_EQ(A_bcoo->nnz, A_bsr->nnz);
     ASSERT_EQ(A_bsr->nnz, A_bsc->nnz);
+    ASSERT_EQ(A_csr_from_bsr->nnz, A_csr->nnz);
 
     double** bcoo_vals = (double**) A_bcoo->get_data();
     double** bsr_vals = (double**) A_bsr->get_data();
@@ -135,10 +136,14 @@ TEST(BlockMatrixTest, TestsInCore)
     ASSERT_EQ(A_csr->format(), CSR);
     ASSERT_EQ(A_bsc->format(), BSC);
     ASSERT_EQ(A_csc->format(), CSC);
-
+    ASSERT_EQ(A_csr_from_bsr->format(), CSR);
 
     A_csr->mult(x, b);
     A_bsr->mult(x, tmp);
+    for (int i = 0; i < num_cols; i++)
+        ASSERT_NEAR(b[i], tmp[i], 1e-10);
+    
+    A_csr_from_bsr->mult(x, tmp);
     for (int i = 0; i < num_cols; i++)
         ASSERT_NEAR(b[i], tmp[i], 1e-10);
 
@@ -165,11 +170,21 @@ TEST(BlockMatrixTest, TestsInCore)
     ASSERT_EQ(C_csr->n_cols, C_bsr->n_cols * C_bsr->b_cols);
     compare_vals(C_csr, (BSRMatrix*) C_bsr);
 
+    CSRMatrix* C_csr_from_bsr = A_csr_from_bsr->mult((CSRMatrix*)A_csr_from_bsr);
+    ASSERT_EQ(C_csr_from_bsr->n_rows, C_bsr->n_rows * C_bsr->b_rows);
+    ASSERT_EQ(C_csr_from_bsr->n_cols, C_bsr->n_cols * C_bsr->b_cols);
+    compare_vals(C_csr_from_bsr, (BSRMatrix*) C_bsr);
+
     CSRMatrix* D_csr = A_csr->mult_T((CSCMatrix*)A_csc);
     CSRMatrix* D_bsr = A_bsr->mult_T((BSCMatrix*)A_bsc);
     ASSERT_EQ(D_csr->n_rows, D_bsr->n_rows * D_bsr->b_rows);
     ASSERT_EQ(D_csr->n_cols, D_bsr->n_cols * D_bsr->b_cols);
     compare_vals(D_csr, (BSRMatrix*) D_bsr);
+    
+    CSRMatrix* D_csr_from_bsr = A_csr_from_bsr->mult_T((CSCMatrix*)A_csc);
+    ASSERT_EQ(D_csr_from_bsr->n_rows, D_bsr->n_rows * D_bsr->b_rows);
+    ASSERT_EQ(D_csr_from_bsr->n_cols, D_bsr->n_cols * D_bsr->b_cols);
+    compare_vals(D_csr_from_bsr, (BSRMatrix*) D_bsr);
 
     delete A_bsr;
     delete A_csr;
@@ -177,10 +192,15 @@ TEST(BlockMatrixTest, TestsInCore)
     delete A_csc;
     delete A_bcoo;
     delete A_coo;
+    delete A_csr_from_bsr;
 
     delete C_csr;
     delete C_bsr;
+    delete C_csr_from_bsr;
 
+    delete D_csr;
+    delete D_bsr;
+    delete D_csr_from_bsr;
     
     for (aligned_vector<double*>::iterator it = block_vals.begin();
             it != block_vals.end(); ++it)
