@@ -33,11 +33,53 @@ TEST(AnisoBVectorSpMVTest, TestsInUtil)
 
     const char* b_ones = "../../../../test_data/aniso_ones_b.txt";
     const char* b_T_ones = "../../../../test_data/aniso_ones_b_T.txt";
+    const char* b_inc = "../../../../test_data/aniso_inc_b.txt";
+    const char* b_T_inc = "../../../../test_data/aniso_inc_b_T.txt";
     
     // Test b <- A*ones
     x->set_const_value(1.0);
+    std::vector<double> alphas = {1.0, 2.0, 1.0};
+    x->scale(1.0, &(alphas[0]));
+
     A_sten->mult(*x, *b);
+
     FILE* f = fopen(b_ones, "r");
+    for (int i = 0; i < A_sten->n_rows; i++)
+    {
+        fscanf(f, "%lg\n", &b_val);
+        for (int v = 0; v < vecs_in_block; v++)
+        {
+            if (v == 1) ASSERT_NEAR(b->values[i + v*b->num_values], 2.0 * b_val, 1e-06);
+            else ASSERT_NEAR(b->values[i + v*b->num_values], b_val, 1e-06);
+        }
+    }
+    fclose(f);
+    
+    // Test b <- A_T*ones
+    A_sten->mult_T(*x, *b);
+
+    f = fopen(b_T_ones, "r");
+    for (int i = 0; i < A_sten->n_rows; i++)
+    {
+        fscanf(f, "%lg\n", &b_val);
+        for (int v = 0; v < vecs_in_block; v++)
+        {
+            if (v == 1) ASSERT_NEAR(b->values[i + v*b->num_values], 2.0 * b_val, 1e-06);
+            else ASSERT_NEAR(b->values[i + v*b->num_values], b_val, 1e-06);
+        }
+    } 
+    fclose(f);
+    
+    // Tests b <- A*incr
+    for (int i = 0; i < A_sten->n_rows; i++)
+    {
+        for (int v = 0; v < vecs_in_block; v++)
+        {
+            x->values[i + v*A_sten->n_rows] = i;
+        }
+    }
+    A_sten->mult(*x, *b);
+    f = fopen(b_inc, "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         fscanf(f, "%lg\n", &b_val);
@@ -45,12 +87,12 @@ TEST(AnisoBVectorSpMVTest, TestsInUtil)
         {
             ASSERT_NEAR(b->values[i + v*b->num_values], b_val, 1e-06);
         }
-    }
+    } 
     fclose(f);
-    
-    // Test b <- A_T*ones
+
+    // Tests b <- A_T*incr
     A_sten->mult_T(*x, *b);
-    f = fopen(b_T_ones, "r");
+    f = fopen(b_T_inc, "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         fscanf(f, "%lg\n", &b_val);

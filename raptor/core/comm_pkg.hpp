@@ -819,22 +819,9 @@
                     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-                    for (int i = 0; i < num_procs; i++)
-                    {
-                        if (rank == i)
-                        {
-                            printf("-------------- rank %d %d ----------------\n", rank, sendbuf.size());
-                            /*for (int j = 0; j < sendbuf.size(); j++)
-                            {
-                                printf("%e ", sendbuf[i]);
-                            }
-                            printf("\n");*/
-                        }
-                        MPI_Barrier(MPI_COMM_WORLD);
-                    }
-
                     int vec_size, vec_start, vec_end;
-                    int total_vec_size = sendbuf.size() / vblock_size;
+                    int send_vec_offset = sendbuf.size() / vblock_size;
+                    int result_vec_offset = result.size() / vblock_size;
                     for (int v = 0; v < vblock_size; v++)
                     {
                         for (int i = 0; i < send_data->size_msgs; i++)
@@ -843,7 +830,8 @@
                             pos = i * block_size;
                             for (int j = 0; j < block_size; j++)
                             {
-                                result[idx + j]  = result_func(result[idx + j], sendbuf[pos + j]);
+                                result[v*result_vec_offset + idx + j]  = result_func(result[v*result_vec_offset + idx + j], sendbuf[v*send_vec_offset + pos + j]);
+                                printf("%d result[%d] = result[%d] + sendbuf[%d]\n", rank, v*result_vec_offset + idx+j, v*result_vec_offset + idx+j, v*send_vec_offset + pos+j);
                             }
                         }
                     }

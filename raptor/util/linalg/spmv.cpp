@@ -203,9 +203,10 @@ void BSR_spmv(const BSRMatrix* A, const double* x, double* b, const int n_vecs =
 }
 template <typename T>
 void CSR_append_T(const CSRMatrix* A, const aligned_vector<T>& vals,
-        const double* x, double* b, const int n_vecs = 1)
+        const double* x, double* b, const int n_vecs = 1, const int blen = 0)
 {
     int start, end;
+    int v_offset = blen / n_vecs;
     for (int i = 0; i < A->n_rows; i++)
     {
         start = A->idx1[i];
@@ -214,7 +215,7 @@ void CSR_append_T(const CSRMatrix* A, const aligned_vector<T>& vals,
         {
             for (int j = start; j < end; j++)
             {
-                A->append_T(i + v*A->n_cols, v*A->n_rows + A->idx2[j], b, x, vals[j]);
+                A->append_T(i + v*A->n_cols, v*v_offset + A->idx2[j], b, x, vals[j]);
             }
         }
     }
@@ -336,7 +337,7 @@ void COOMatrix::spmv_append(const double* x, double* b, const int n_vecs, const 
 {
     COO_append(this, vals, x, b);
 }
-void COOMatrix::spmv_append_T(const double* x, double* b, const int n_vecs) const
+void COOMatrix::spmv_append_T(const double* x, double* b, const int n_vecs, const int blen) const
 {
     COO_append_T(this, vals, x, b);
 }
@@ -364,7 +365,7 @@ void BCOOMatrix::spmv_append(const double* x,double* b, const int n_vecs, const 
 {
     COO_append(this, block_vals, x, b);
 }
-void BCOOMatrix::spmv_append_T(const double* x,double* b, const int n_vecs) const
+void BCOOMatrix::spmv_append_T(const double* x,double* b, const int n_vecs, const int blen) const
 {
     COO_append_T(this, block_vals, x, b);
 }
@@ -393,9 +394,9 @@ void CSRMatrix::spmv_append(const double* x, double* b, const int n_vecs, const 
 {
     CSR_append(this, x, b, n_vecs, xlen);
 }
-void CSRMatrix::spmv_append_T(const double* x, double* b, const int n_vecs) const
+void CSRMatrix::spmv_append_T(const double* x, double* b, const int n_vecs, const int blen) const
 {
-    CSR_append_T(this, vals, x, b, n_vecs);
+    CSR_append_T(this, vals, x, b, n_vecs, blen);
 }
 void CSRMatrix::spmv_append_neg(const double* x, double* b, const int n_vecs) const
 {
@@ -417,7 +418,7 @@ void BSRMatrix::spmv_append(const double* x,double* b, const int n_vecs, const i
 {
     BSR_append(this, block_vals, x, b);
 }
-void BSRMatrix::spmv_append_T(const double* x,double* b, const int n_vecs) const
+void BSRMatrix::spmv_append_T(const double* x,double* b, const int n_vecs, const int blen) const
 {
     CSR_append_T(this, block_vals, x, b);
 }
@@ -448,7 +449,7 @@ void CSCMatrix::spmv_append(const double* x, double* b, const int n_vecs, const 
 {
     CSC_append(this, vals, x, b);
 }
-void CSCMatrix::spmv_append_T(const double* x, double* b, const int n_vecs) const
+void CSCMatrix::spmv_append_T(const double* x, double* b, const int n_vecs, const int blen) const
 {
     CSC_append_T(this, vals, x, b);
 }
@@ -476,7 +477,7 @@ void BSCMatrix::spmv_append(const double* x,double* b, const int n_vecs, const i
 {
     CSC_append(this, block_vals, x, b);
 }
-void BSCMatrix::spmv_append_T(const double* x,double* b, const int n_vecs) const
+void BSCMatrix::spmv_append_T(const double* x,double* b, const int n_vecs, const int blen) const
 {
     CSC_append_T(this, block_vals, x, b);
 }

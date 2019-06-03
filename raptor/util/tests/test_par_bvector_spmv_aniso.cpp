@@ -33,16 +33,37 @@ TEST(ParBVectorAnisoSpMVTest, TestsInUtil)
     double* stencil = diffusion_stencil_2d(eps, theta);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
 
-    printf("A %d x %d\n", A->global_num_rows, A->global_num_rows);
-
     ParBVector *x = new ParBVector(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col, vecs_in_block);
     ParBVector *b = new ParBVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row, vecs_in_block);
 
+    ParVector *x_single = new ParVector(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
+    ParVector *b_single = new ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+
+    for (int i = 0; i < A->on_proc->vals.size(); i++)
+    {
+        A->on_proc->vals[i] = 1.0;
+    }
+    for (int i = 0; i < A->off_proc->vals.size(); i++)
+    {
+        A->off_proc->vals[i] = 1.0;
+    }
+
     x->set_const_value(1.0);
+    x_single->set_const_value(1.0);
     std::vector<double> alphas = {1.0, 2.0, 1.0};
     x->scale(1.0, &(alphas[0]));
 
     A->mult(*x, *b);
+    /*A->mult(x_single, b_single);
+    
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        for (int v = 0; v < vecs_in_block; v++)
+        {
+            if (v == 1) ASSERT_NEAR(b.local->values[i + v*b.local_n], 2*b_single.local->values[i], 1e-06);
+            else ASSERT_NEAR(b.local->values[i + v*b.local_n], b_single.local->values[i], 1e-06);
+        }
+    }*/
 
     /*f = fopen("../../../../test_data/aniso_ones_b.txt", "r");
     for (int i = 0; i < A->partition->first_local_row; i++)
@@ -54,15 +75,37 @@ TEST(ParBVectorAnisoSpMVTest, TestsInUtil)
         fscanf(f, "%lg\n", &b_val);
         for (int v = 0; v < vecs_in_block; v++)
         {
-            if (v == 1) ASSERT_NEAR(b->local->values[i + v*b->local_n], 2*b_val, 1e-06);
-            else ASSERT_NEAR(b->local->values[i + v*b->local_n], b_val, 1e-06);
+            if (v == 1) ASSERT_NEAR(b.local->values[i + v*b.local_n], 2*b_val, 1e-06);
+            else ASSERT_NEAR(b.local->values[i + v*b.local_n], b_val, 1e-06);
         }
     }
     fclose(f);*/
     
     b->set_const_value(1.0);
-    b->scale(1.0, &(alphas[0]));
+    b_single->set_const_value(1.0);
+    //b.scale(1.0, &(alphas[0]));
+    A->mult_T(*b_single, *x_single);
+    printf("--------------------\n");
+    printf("--------------------\n");
+    MPI_Barrier(MPI_COMM_WORLD);
     A->mult_T(*b, *x);
+   
+    for (int p = 0; p < num_procs; p++)
+    {
+        if (p == rank) 
+        {
+            for (int i = 0; i < A->local_num_rows; i++)
+            {
+                for (int v = 0; v < vecs_in_block; v++)
+                {
+                    ASSERT_NEAR(x->local->values[i + v*x->local_n], x_single->local->values[i], 1e-06);
+                    //printf("%d x single %e x %e\n", rank, x_single.local->values[i], x.local->values[i + v*b.local_n]);
+                }
+            }
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+
     /*f = fopen("../../../../test_data/aniso_ones_b_T.txt", "r");
     for (int i = 0; i < A->partition->first_local_col; i++)
     {
@@ -73,8 +116,7 @@ TEST(ParBVectorAnisoSpMVTest, TestsInUtil)
         fscanf(f, "%lg\n", &b_val);
         for (int v = 0; v < vecs_in_block; v++)
         {
-            //ASSERT_NEAR(x->local->values[i + v*x->local_n], b_val, 1e-06);
-            printf("%d v %d b_val %e x %e\n", rank, v, b_val, x->local->values[i + v*x->local_n]);
+            ASSERT_NEAR(x.local->values[i + v*x.local_n], b_val, 1e-06);
         }
     }
     fclose(f);*/
@@ -121,6 +163,8 @@ TEST(ParBVectorAnisoSpMVTest, TestsInUtil)
 
     delete x;
     delete b;
+    delete x_single;
+    delete b_single;
     delete A;
     delete[] stencil;
 

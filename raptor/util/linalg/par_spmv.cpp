@@ -253,17 +253,29 @@ void ParMatrix::mult_T(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
 
     aligned_vector<double>& x_tmp = comm->get_buffer<double>();
 
-    int rank;
+    int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    printf("%d xtmp size %d\n", rank, x_tmp.size());
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    if (x_tmp.size() <= comm->recv_data->size_msgs * off_proc->b_cols * x.local->b_vecs)
-        x_tmp.resize(comm->recv_data->size_msgs * off_proc->b_cols * x.local->b_vecs);
-
-    printf("%d xtmp size %d size msgs %d\n", rank, x_tmp.size(), comm->recv_data->size_msgs);
+    //if (x_tmp.size() <= comm->recv_data->size_msgs * off_proc->b_cols * x.local->b_vecs)
+    x_tmp.resize(comm->recv_data->size_msgs * off_proc->b_cols * x.local->b_vecs);
 
     off_proc->mult_T(*(x.local), x_tmp);
-            
+    
+    for (int i = 0; i < num_procs; i++)
+    {
+        if (i == rank)
+        {
+            printf("%d x_tmp ", rank);
+            for (int i = 0; i < x_tmp.size(); i++)
+            {
+                printf("%e ", x_tmp[i]);
+            }
+            printf("\n");
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+    
     if (comm_t) *comm_t -= MPI_Wtime();
     comm->init_comm_T(x_tmp, off_proc->b_cols, x.local->b_vecs);
     if (comm_t) *comm_t += MPI_Wtime();
@@ -273,9 +285,37 @@ void ParMatrix::mult_T(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
         on_proc->mult_T(*(x.local), *(b.local));
     }
 
+    /*for (int i = 0; i < num_procs; i++)
+    {
+        if (i == rank)
+        {
+            printf("%d b_local ", rank);
+            for (int i = 0; i < b.local->values.size(); i++)
+            {
+                printf("%e ", b.local->values[i]);
+            }
+            printf("\n");
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }*/
+    
     if (comm_t) *comm_t -= MPI_Wtime();
     comm->complete_comm_T<double>(b.local->values, off_proc->b_cols, x.local->b_vecs);
     if (comm_t) *comm_t += MPI_Wtime();
+    
+    for (int i = 0; i < num_procs; i++)
+    {
+        if (i == rank)
+        {
+            printf("%d b_local ", rank);
+            for (int i = 0; i < b.local->values.size(); i++)
+            {
+                printf("%e ", b.local->values[i]);
+            }
+            printf("\n");
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
 }
 
 void ParMatrix::tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t)
