@@ -138,7 +138,7 @@ namespace raptor
 
     virtual void spmv(const double* x, double* b, const int n_vecs = 1) const = 0;
     virtual void spmv_append(const double* x, double* b, const int n_vecs = 1, const int xlen = 0) const = 0;
-    virtual void spmv_append_T(const double* x, double* b, const int n_vecs = 1, const int blen = 0) const = 0;
+    virtual void spmv_append_T(const double* x, double* b, const int n_vecs = 1, const int xlen = 0, const int blen = 0) const = 0;
     virtual void spmv_append_neg(const double* x, double* b, const int n_vecs = 1) const = 0;
     virtual void spmv_append_neg_T(const double* x, double* b, const int n_vecs = 1) const = 0;
     virtual void spmv_residual(const double* x, const double* b, double* r, const int n_vecs = 1) const = 0;
@@ -284,6 +284,7 @@ namespace raptor
     }
     void append_T(int idx1, int idx2, double* b, const double* x, const double val) const
     {
+        //printf("b[%d] = %e, x[%d] = %e\n", idx2, b[idx2], idx1, x[idx1]);
         b[idx2] += val*x[idx1];
     }
     void append_neg(int idx1, int idx2, double* b, const double* x, const double val) const
@@ -364,7 +365,7 @@ namespace raptor
         for (int i = 0; i < cols; i++)
             for (int v = 0; v < x.b_vecs; v++)
                 b[i + v * cols] = 0.0;
-        spmv_append_T(get_values(x), get_values(b), x.b_vecs, get_size(b));
+        spmv_append_T(get_values(x), get_values(b), x.b_vecs, get_size(x), get_size(b));
     }
     template <typename T, typename U> void mult_append(T& x, U& b, const int n_vecs = 1) const
     {
@@ -541,7 +542,7 @@ namespace raptor
 
     void spmv(const double* x, double* b, const int n_vecs = 1) const;
     void spmv_append(const double* x, double* b, const int n_vecs = 1, const int xlen = 0) const;
-    void spmv_append_T(const double* x, double* b, const int n_vecs = 1, const int blen = 0) const;
+    void spmv_append_T(const double* x, double* b, const int n_vecs = 1, const int xlen = 0, const int blen = 0) const;
     void spmv_append_neg(const double* x, double* b, const int n_vecs = 1) const;
     void spmv_append_neg_T(const double* x, double* b, const int n_vecs = 1) const;
     void spmv_residual(const double* x, const double* b, double* r, const int n_vecs = 1) const; 
@@ -718,7 +719,7 @@ namespace raptor
 
     void spmv(const double* x, double* b, const int n_vecs = 1) const;
     void spmv_append(const double* x, double* b, const int n_vecs = 1, const int xlen = 0) const;
-    void spmv_append_T(const double* x, double* b, const int n_vecs = 1, const int blen = 0) const;
+    void spmv_append_T(const double* x, double* b, const int n_vecs = 1, const int xlen = 0, const int blen = 0) const;
     void spmv_append_neg(const double* x, double* b, const int n_vecs = 1) const;
     void spmv_append_neg_T(const double* x, double* b, const int n_vecs = 1) const;
     void spmv_residual(const double* x, const double* b, double* r, const int n_vecs = 1) const; 
@@ -885,7 +886,7 @@ namespace raptor
 
     void spmv(const double* x, double* b, const int n_vecs = 1) const;
     void spmv_append(const double* x, double* b, const int n_vecs = 1, const int xlen = 0) const;
-    void spmv_append_T(const double* x, double* b, const int n_vecs = 1, const int blen = 0) const;
+    void spmv_append_T(const double* x, double* b, const int n_vecs = 1, const int xlen = 0, const int blen = 0) const;
     void spmv_append_neg(const double* x, double* b, const int n_vecs = 1) const;
     void spmv_append_neg_T(const double* x, double* b, const int n_vecs = 1) const;
     void spmv_residual(const double* x, const double* b, double* r, const int n_vecs = 1) const; 
@@ -1021,7 +1022,7 @@ class BSRMatrix : public CSRMatrix
 
     void spmv(const double* x, double* b, const int n_vecs = 1) const;
     void spmv_append(const double* x, double* b, const int n_vecs = 1, const int xlen = 0) const;
-    void spmv_append_T(const double* x, double* b, const int n_vecs = 1, const int blen = 0) const;
+    void spmv_append_T(const double* x, double* b, const int n_vecs = 1, const int xlen = 0, const int blen = 0) const;
     void spmv_append_neg(const double* x, double* b, const int n_vecs = 1) const;
     void spmv_append_neg_T(const double* x, double* b, const int n_vecs = 1) const;
     void spmv_residual(const double* x, const double* b, double* r, const int n_vecs = 1) const; 
@@ -1130,7 +1131,7 @@ class BCOOMatrix : public COOMatrix
 
     void spmv(const double* x, double* b, const int n_vecs = 1) const;
     void spmv_append(const double* x, double* b, const int n_vecs = 1, const int xlen = 0) const;
-    void spmv_append_T(const double* x, double* b, const int n_vecs = 1, const int blen = 0) const;
+    void spmv_append_T(const double* x, double* b, const int n_vecs = 1, const int xlen = 0, const int blen = 0) const;
     void spmv_append_neg(const double* x, double* b, const int n_vecs = 1) const;
     void spmv_append_neg_T(const double* x, double* b, const int n_vecs = 1) const;
     void spmv_residual(const double* x, const double* b, double* r, const int n_vecs = 1) const; 
@@ -1244,7 +1245,7 @@ class BSCMatrix : public CSCMatrix
 
     void spmv(const double* x, double* b, const int n_vecs = 1) const;
     void spmv_append(const double* x, double* b, const int n_vecs = 1, const int xlen = 0) const;
-    void spmv_append_T(const double* x, double* b, const int n_vecs = 1, const int blen = 0) const;
+    void spmv_append_T(const double* x, double* b, const int n_vecs = 1, const int xlen = 0, const int blen = 0) const;
     void spmv_append_neg(const double* x, double* b, const int n_vecs = 1) const;
     void spmv_append_neg_T(const double* x, double* b, const int n_vecs = 1) const;
     void spmv_residual(const double* x, const double* b, double* r, const int n_vecs = 1) const; 

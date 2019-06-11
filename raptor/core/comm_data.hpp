@@ -434,6 +434,7 @@ public:
         int start, end;
         int proc, idx;
         int size = size_msgs * block_size * vblock_size;
+        aligned_vector<T> send_vals;
 
         MPI_Datatype datatype = get_type<T>();
 
@@ -442,8 +443,26 @@ public:
             proc = procs[i];
             start = indptr[i];
             end = indptr[i+1];
-            MPI_Isend(&(values[start*block_size*vblock_size]), (end - start) * block_size * vblock_size,
-                    datatype, proc, key, mpi_comm, &(requests[i]));
+
+            if (vblock_size > 1)
+            {
+                send_vals.resize((end-start)*block_size*vblock_size);
+                for (int v = 0; v < vblock_size; v++)
+                {
+                    for (int i = 0; i < (end-start)*block_size; i++)
+                    {
+                        send_vals[(end-start)*block_size*v + i] = values[start*block_size+v*size_msgs+i]; 
+                    }
+                }
+
+                MPI_Isend(&(send_vals[0]), (end-start)*block_size*vblock_size,
+                        datatype, proc, key, mpi_comm, &(requests[i]));
+            }
+            else
+            {
+                MPI_Isend(&(values[start*block_size*vblock_size]), (end-start)*block_size*vblock_size,
+                        datatype, proc, key, mpi_comm, &(requests[i]));
+            }
         }
     }
 
