@@ -178,26 +178,26 @@ void ParMatrix::mult_append(ParVector& x, ParVector& b, bool tap, data_t* comm_t
     // Initialize Isends and Irecvs to communicate
     // values of x
     if (comm_t) *comm_t -= MPI_Wtime();
-    comm->init_comm(x, off_proc->b_cols);
+    comm->init_comm(x, off_proc->b_cols, x.local->b_vecs);
     if (comm_t) *comm_t += MPI_Wtime();
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
     if (local_num_rows)
     {
-        on_proc->mult_append(*(x.local), *(b.local));
+        on_proc->mult_append(*(x.local), *(b.local), b.local->b_vecs);
     }
 
     // Wait for Isends and Irecvs to complete
     if (comm_t) *comm_t -= MPI_Wtime();
-    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
+    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols, b.local->b_vecs);
     if (comm_t) *comm_t += MPI_Wtime();
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
     if (off_proc_num_cols)
     {
-        off_proc->mult_append(x_tmp, *(b.local));
+        off_proc->mult_append(x_tmp, *(b.local), b.local->b_vecs);
     }
 }
 

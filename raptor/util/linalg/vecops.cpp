@@ -170,38 +170,18 @@ data_t Vector::inner_product(Vector& x, data_t* inner_prods)
     }
     else
     {
-        index_t offset;
-        if (x.b_vecs == 1)
+        index_t offset, j;
+        /*#pragma omp parallel for default(none) private(j, result, offset) \
+            shared(num_values, values, x, inner_prods) schedule(static)*/
+        for (j = 0; j < b_vecs; j++)
         {
-            index_t j;
-            /*#pragma omp parallel for default(none) private(j, result, offset) \
-                shared(num_values, values, x, inner_prods) schedule(static)*/
-            for (j = 0; j < b_vecs; j++)
+            result = 0.0;
+            offset = j * num_values;
+            for (index_t i = 0; i < num_values; i++)
             {
-                result = 0.0;
-                offset = j * num_values;
-                for (index_t i = 0; i < num_values; i++)
-                {
-                    result += values[i + offset] * x[i];
-                }
-                inner_prods[j] = result;
+                result += values[i + offset] * x.values[i + offset];
             }
-        }
-        else
-        {
-            index_t j;
-            /*#pragma omp parallel for default(none) private(j, result, offset) \
-                shared(num_values, values, x, inner_prods) schedule(static)*/
-            for (j = 0; j < b_vecs; j++)
-            {
-                result = 0.0;
-                offset = j * num_values;
-                for (index_t i = 0; i < num_values; i++)
-                {
-                    result += values[i + offset] * x[i + offset];
-                }
-                inner_prods[j] = result;
-            }
+            inner_prods[j] = result;
         }
         return 0;
     }

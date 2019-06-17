@@ -218,7 +218,7 @@ void jacobi_spmv(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
                     col = A->on_proc->idx2[j];
                     row_sum += A->on_proc->vals[j] * tmp[vec_offset + col];
                 }
-                printf("%d %d v %d on_proc row_sum %e\n", rank, i, k, row_sum);
+                //printf("%d %d v %d on_proc row_sum %e\n", rank, i, k, row_sum);
 
                 start = A->off_proc->idx1[i];
                 end = A->off_proc->idx1[i+1];
@@ -227,7 +227,7 @@ void jacobi_spmv(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
                     col = A->off_proc->idx2[j];
                     row_sum += A->off_proc->vals[j] * dist_x[dist_vec_offset + col];
                 }
-                printf("%d %d v %d off_proc row_sum %e\n", rank, i, k, row_sum);
+                //printf("%d %d v %d off_proc row_sum %e\n", rank, i, k, row_sum);
 
                 if (fabs(diag) > zero_tol)
                 {

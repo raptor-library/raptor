@@ -231,13 +231,13 @@ void CSR_append_neg(const CSRMatrix* A, const aligned_vector<T>& vals,
         start = A->idx1[i];
         end = A->idx1[i+1];
         int v;
-        #pragma omp parallel for default(none) private(v) \
+        //#pragma omp parallel for default(none) private(v) \
             shared(start, end, i, A, x, b, vals) schedule(static)
         for (v = 0; v < n_vecs; v++)
         {
             for (int j = start; j < end; j++)
             {
-                A->append_neg(i + v*A->n_rows, v*A->n_cols + A->idx2[j], b, x, vals[j+v*A->n_cols]);
+                A->append_neg(i + v*A->n_rows, v*A->n_cols + A->idx2[j], b, x, vals[j]);
             }
         }
     }

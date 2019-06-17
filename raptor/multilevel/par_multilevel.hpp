@@ -355,7 +355,6 @@ namespace raptor
                 MPI_Comm_rank(MPI_COMM_WORLD, &rank);
                 MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-
                 ParCSRMatrix* A = levels[level]->A;
                 ParCSRMatrix* P = levels[level]->P;
                 ParVector& tmp = levels[level]->tmp;
@@ -385,94 +384,38 @@ namespace raptor
                         MPI_Comm_rank(coarse_comm, &active_rank);
 
                         char trans = 'N'; //No transpose
-                        //int nhrs = 1; // Number of right hand sides
                         int nhrs = b.local->b_vecs; // Number of right hand sides
                         int info; // result
 
-                        /*aligned_vector<double> b_data(coarse_n);
-                        MPI_Allgatherv(b.local->data(), b.local_n, MPI_DOUBLE, b_data.data(), 
-                                coarse_sizes.data(), coarse_displs.data(), 
-                                MPI_DOUBLE, coarse_comm);*/
-                        /*int rank, num_procs;
-                        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-                        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
-                        printf("%d nhrs %d\n", rank, nhrs);
-                        printf("%d b local data size %d\n", rank, b.local->values.size());
-                        printf("%d b local_n * nhrs  %d\n", rank, b.local_n*nhrs);
-                        printf("%d coarse_n * nhrs  %d\n", rank, coarse_n*nhrs);
-
-                        for (int p = 0; p < num_procs; p++)
-                        {
-                            if (p == rank)
-                            {
-                                printf("%d coarse_sizes ", rank);
-                                for (int i = 0; i < coarse_sizes.size(); i++)
-                                {
-                                    printf("%d ", coarse_sizes[i]);
-                                }
-                                printf("\n");
-                                printf("%d coarse_displs ", rank);
-                                for (int i = 0; i < coarse_displs.size(); i++)
-                                {
-                                    printf("%d ", coarse_displs[i]);
-                                }
-                                printf("\n");
-                            }
-                            MPI_Barrier(MPI_COMM_WORLD);
-                        }*/
-
-                        printf("%d coarse_sizes %d %d coarse_displs %d %d %d\n", rank, coarse_sizes.data()[0], coarse_sizes.data()[1], coarse_displs.data()[0], coarse_displs.data()[1], coarse_displs.data()[2]);
-                        
-                        fflush(stdout);
-                        MPI_Barrier(MPI_COMM_WORLD);
-                        for (int i = 0; i < num_procs; i++)
-                        {
-                            if (i == rank)
-                            {
-                                printf("%d b.local data ", rank);
-                                for (int k = 0; k < b.local_n*nhrs; k++)
-                                {
-                                    printf("%e ", b.local->values[k]);
-                                }
-                                printf("\n");
-                            }
-                            MPI_Barrier(MPI_COMM_WORLD);
-                        }
-
-                        aligned_vector<double> b_data(coarse_n*nhrs);
-                        MPI_Allgatherv(b.local->data(), b.local_n*nhrs, MPI_DOUBLE, b_data.data(), 
+                        aligned_vector<double> b_data_temp(coarse_n*nhrs);
+                        MPI_Allgatherv(b.local->data(), b.local_n*nhrs, MPI_DOUBLE, b_data_temp.data(), 
                                 coarse_sizes.data(), coarse_displs.data(), 
                                 MPI_DOUBLE, coarse_comm);
-
-                        fflush(stdout);
-                        MPI_Barrier(MPI_COMM_WORLD);
-                        for (int i = 0; i < num_procs; i++)
+                        
+                        aligned_vector<double> b_data;
+                        int start, stop;
+                        for (int v = 0; v < nhrs; v++)
                         {
-                            if (i == rank)
+                            for (int i = 0; i < coarse_sizes.size(); i++)
                             {
-                                printf("%d b_data ", rank);
-                                for (int k = 0; k < b_data.size(); k++)
+                                start = coarse_displs[i] + (v * coarse_sizes[i] / nhrs);
+                                stop = start + (coarse_sizes[i] / nhrs);
+                                for (int j = start; j < stop; j++)
                                 {
-                                    printf("%e ", b_data.data()[k]);
+                                    b_data.emplace_back(b_data_temp[j]);
                                 }
-                                printf("\n");
                             }
-                            MPI_Barrier(MPI_COMM_WORLD);
                         }
 
                         dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
                                 LU_permute.data(), b_data.data(), &coarse_n, &info);
 
-                        printf("after blas call\n");
-                        /*for (int i = 0; i < b.local_n; i++)
+                        for (int v = 0; v < nhrs; v++)
                         {
-                            x.local->values[i] = b_data[i + coarse_displs[active_rank]];
-                        }*/
-                        for (int i = 0; i < b.local_n*nhrs; i++)
-                        {
-                            x.local->values[i] = b_data[i + coarse_displs[active_rank]];
-                            printf("%d x[%d] = b[%d] %e\n", rank, i, i + coarse_displs[active_rank], b_data[i + coarse_displs[active_rank]]);
+                            for (int i = 0; i < b.local_n; i++)
+                            {
+                                x.local->values[i + v*b.local_n] = b_data[i + (coarse_displs[active_rank]/nhrs) + v*b.global_n];
+                            }
                         }
                     }
 
@@ -528,21 +471,6 @@ namespace raptor
                     if (solve_times) solve_times[2][level] -= MPI_Wtime();
                     //A->residual(x, b, tmp, tap_level, resid_t);
                     A->residual(x, b, tmp);
-
-                    fflush(stdout);
-                    MPI_Barrier(MPI_COMM_WORLD);
-                    for (int i = 0; i < num_procs; i++)
-                    {
-                        if (i == rank)
-                        {
-                            printf("%d tmp -------\n", rank);
-                            for (int k = 0; k < tmp.local->values.size(); k++)
-                            {
-                                printf("tmp[%d] %e\n", k, tmp.local->values[k]);
-                            }
-                        }
-                        MPI_Barrier(MPI_COMM_WORLD);
-                    }
                     
                     if (solve_times) solve_times[2][level] += MPI_Wtime();
 
@@ -559,7 +487,9 @@ namespace raptor
 
                     if (solve_times) solve_times[4][level] -= MPI_Wtime();
                     //P->mult_append(levels[level+1]->x, x, tap_level, interp_t);
+
                     P->mult_append(levels[level+1]->x, x);
+
                     //for (int i = 0; i < A->local_num_rows; i++)
                     //{
                     //    x.local[i] += tmp.local[i];
