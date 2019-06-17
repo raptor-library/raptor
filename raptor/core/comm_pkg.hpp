@@ -653,6 +653,7 @@
                     int start, end;
                     int proc, pos, idx;
 
+                    //printf("this initialize called for jacobi\n");
                     send_data->send(values, key, mpi_comm, block_size, vblock_size, vblock_offset);
                     recv_data->recv<T>(key, mpi_comm, block_size, vblock_size);
                 }
@@ -692,6 +693,9 @@
                         }
                         std::copy(temp.begin(), temp.end(), buf.begin());
                     }
+                    // MAYBE CHECK THE WAY THE BUFFER IS GETTING ALLOCATED - SEE THAT IT'S RESIZED
+                    // TO INCORPORATE BLOCK SIZE IN SEND AND RECV - LIKE IN MULT
+                    //printf("send size %d buf size %d num_msgs %d\n", send_data->get_buffer<T>().size(), buf.size(), recv_data->num_msgs);
 
                     return buf;
                 }

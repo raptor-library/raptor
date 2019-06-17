@@ -222,7 +222,7 @@ using namespace raptor;
 
 aligned_vector<double>& CommPkg::communicate(ParVector& v, const int block_size)
 {
-    init_double_comm(v.local->data(), block_size);
+    init_double_comm(v.local->data(), block_size, v.local->b_vecs);
     return complete_double_comm(block_size, v.local->b_vecs);
 }
 

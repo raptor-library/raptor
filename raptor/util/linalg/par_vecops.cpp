@@ -122,10 +122,17 @@ data_t ParVector::inner_product(ParVector& x, data_t* inner_prods)
 
     if (local_n)
     {
-        inner_prod = local->inner_product(*(x.local));
+        if (x.local->b_vecs > 1)
+        {
+            inner_prod = local->inner_product(*(x.local), inner_prods);
+            MPI_Allreduce(MPI_IN_PLACE, inner_prods, local->b_vecs, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
+        }
+        else
+        {
+            inner_prod = local->inner_product(*(x.local));
+            MPI_Allreduce(MPI_IN_PLACE, &inner_prod, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
+        }
     }
-
-    MPI_Allreduce(MPI_IN_PLACE, &inner_prod, 1, MPI_DATA_T, MPI_SUM, MPI_COMM_WORLD);
     
     return inner_prod;
 }

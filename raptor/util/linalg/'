@@ -139,6 +139,7 @@ public:
     template <typename T>
     void recv(int key, MPI_Comm mpi_comm, const int block_size = 1, const int vblock_size = 1)
     {
+        printf("this receive called in jacobi vblock %d\n", vblock_size);
         // THIS RECEIVE CALLED IN MULT
         if (num_msgs == 0) return;
 
@@ -147,7 +148,6 @@ public:
         MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
         if (buf.size() < size) buf.resize(size);
-        //printf("****this receive called in jacobi vblock %d size %d\n", vblock_size, size);
 
         for (int i = 0; i < num_msgs; i++)
         {
@@ -430,14 +430,13 @@ public:
             std::function<T(T, T)> init_result_func = &sum_func<T, T>,
             T init_result_func_val = 0)
     {
+        printf("**** send called by double send vblock %d\n", vblock_size);
         if (num_msgs == 0) return;
 
         int start, end;
         int proc, idx;
         int size = size_msgs * block_size * vblock_size;
         aligned_vector<T> send_vals;
-        
-        //printf("**** send called by double send size_msgs %d vblock %d size %d\n", size_msgs, vblock_size, size);
 
         MPI_Datatype datatype = get_type<T>();
 
@@ -847,7 +846,6 @@ public:
         MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
         if (buf.size() < size) buf.resize(size);
-        //printf("**** this send called by double send size_msgs %d vblock %d size %d buf %d\n", size_msgs, vblock_size, size, buf.size());
 
         if (vblock_size > 1)
         {

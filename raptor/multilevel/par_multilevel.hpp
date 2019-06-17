@@ -345,11 +345,17 @@ namespace raptor
                         coarse_sizes[i] *= b.local->b_vecs;
                         coarse_displs[i] *= b.local->b_vecs;
                     }
+                    coarse_displs[num_active] *= b.local->b_vecs;
                 }
             }
 
             void cycle(ParVector& x, ParVector& b, int level = 0)
             {
+                int rank, num_procs;
+                MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+                MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+
                 ParCSRMatrix* A = levels[level]->A;
                 ParCSRMatrix* P = levels[level]->P;
                 ParVector& tmp = levels[level]->tmp;
@@ -370,6 +376,7 @@ namespace raptor
 
                 if (level == num_levels - 1)
                 {
+                    printf("inside if\n");
                     if (solve_times) solve_times[0][level] -= MPI_Wtime();
 
                     if (A->local_num_rows)
@@ -415,13 +422,49 @@ namespace raptor
                             MPI_Barrier(MPI_COMM_WORLD);
                         }*/
 
+                        printf("%d coarse_sizes %d %d coarse_displs %d %d %d\n", rank, coarse_sizes.data()[0], coarse_sizes.data()[1], coarse_displs.data()[0], coarse_displs.data()[1], coarse_displs.data()[2]);
+                        
+                        fflush(stdout);
+                        MPI_Barrier(MPI_COMM_WORLD);
+                        for (int i = 0; i < num_procs; i++)
+                        {
+                            if (i == rank)
+                            {
+                                printf("%d b.local data ", rank);
+                                for (int k = 0; k < b.local_n*nhrs; k++)
+                                {
+                                    printf("%e ", b.local->values[k]);
+                                }
+                                printf("\n");
+                            }
+                            MPI_Barrier(MPI_COMM_WORLD);
+                        }
+
                         aligned_vector<double> b_data(coarse_n*nhrs);
                         MPI_Allgatherv(b.local->data(), b.local_n*nhrs, MPI_DOUBLE, b_data.data(), 
                                 coarse_sizes.data(), coarse_displs.data(), 
                                 MPI_DOUBLE, coarse_comm);
 
+                        fflush(stdout);
+                        MPI_Barrier(MPI_COMM_WORLD);
+                        for (int i = 0; i < num_procs; i++)
+                        {
+                            if (i == rank)
+                            {
+                                printf("%d b_data ", rank);
+                                for (int k = 0; k < b_data.size(); k++)
+                                {
+                                    printf("%e ", b_data.data()[k]);
+                                }
+                                printf("\n");
+                            }
+                            MPI_Barrier(MPI_COMM_WORLD);
+                        }
+
                         dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
                                 LU_permute.data(), b_data.data(), &coarse_n, &info);
+
+                        printf("after blas call\n");
                         /*for (int i = 0; i < b.local_n; i++)
                         {
                             x.local->values[i] = b_data[i + coarse_displs[active_rank]];
@@ -429,6 +472,7 @@ namespace raptor
                         for (int i = 0; i < b.local_n*nhrs; i++)
                         {
                             x.local->values[i] = b_data[i + coarse_displs[active_rank]];
+                            printf("%d x[%d] = b[%d] %e\n", rank, i, i + coarse_displs[active_rank], b_data[i + coarse_displs[active_rank]]);
                         }
                     }
 
@@ -436,6 +480,7 @@ namespace raptor
                 }
                 else
                 {
+                    printf("inside else\n");
                     if (solve_times) solve_times[0][level] -= MPI_Wtime();
 
                     levels[level+1]->x.set_const_value(0.0);
@@ -459,14 +504,14 @@ namespace raptor
                     }
 
                     // INSERTED PRINT STATEMENTS FOR CHECKING
-                    /*double x_inner;
+                    double x_inner;
                     if (x.local->b_vecs > 1)
                     {
                         double *xinners = new double[x.local->b_vecs];
                         x_inner = x.inner_product(x, xinners);
                         for (int i = 0; i < x.local->b_vecs; i++)
                         {
-                            printf("xinners[%d] %e\n", i, xinners[i]);
+                            printf("%d xinners[%d] %e\n", rank, i, xinners[i]);
                         }
                         delete[] xinners;
                     }
@@ -474,7 +519,7 @@ namespace raptor
                     {
                         x_inner = x.inner_product(x);
                         printf("x_inner %e\n", x_inner);
-                    }*/
+                    }
                     //////////////////////////////////////////////////
 
 
@@ -483,6 +528,21 @@ namespace raptor
                     if (solve_times) solve_times[2][level] -= MPI_Wtime();
                     //A->residual(x, b, tmp, tap_level, resid_t);
                     A->residual(x, b, tmp);
+
+                    fflush(stdout);
+                    MPI_Barrier(MPI_COMM_WORLD);
+                    for (int i = 0; i < num_procs; i++)
+                    {
+                        if (i == rank)
+                        {
+                            printf("%d tmp -------\n", rank);
+                            for (int k = 0; k < tmp.local->values.size(); k++)
+                            {
+                                printf("tmp[%d] %e\n", k, tmp.local->values[k]);
+                            }
+                        }
+                        MPI_Barrier(MPI_COMM_WORLD);
+                    }
                     
                     if (solve_times) solve_times[2][level] += MPI_Wtime();
 
@@ -632,7 +692,7 @@ namespace raptor
                 while (r_norm > solve_tol && iter < max_iterations)
                 {
                     cycle(sol, rhs, 0);
-                    //printf("%d after cycle\n", rank);
+                    printf("%d after cycle\n", rank);
 
                     iter++;
                     levels[0]->A->residual(sol, rhs, resid);
