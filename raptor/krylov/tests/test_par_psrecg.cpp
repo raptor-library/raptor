@@ -40,6 +40,7 @@ TEST(ParPSRECGTest, TestsInKrylov)
     double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
     ParMultilevel *ml;
+    ParMultilevel *ml_rhs1;
     ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     aligned_vector<double> residuals_t5;
@@ -51,11 +52,15 @@ TEST(ParPSRECGTest, TestsInKrylov)
     x.set_const_value(0.0);
     
     // Setup AMG hierarchy
-    ml = new ParSmoothedAggregationSolver(0.0);
+    ml = new ParSmoothedAggregationSolver(0.0, MIS, JacobiProlongation, Symmetric, Jacobi);
     ml->max_levels = 3;
-    ml->setup(A);
+    ml->setup(A, 5);
+    
+    ml_rhs1 = new ParSmoothedAggregationSolver(0.0, MIS, JacobiProlongation, Symmetric, Jacobi);
+    ml_rhs1->max_levels = 3;
+    ml_rhs1->setup(A, 5);
 
-    PSRECG(A, ml, x, b, 5, residuals_t5);
+    PSRECG(A, ml_rhs1, ml, x, b, 5, residuals_t5);
 
     if (rank == 0)
     {
@@ -77,6 +82,12 @@ TEST(ParPSRECGTest, TestsInKrylov)
             ASSERT_NEAR(x.local->values[i], 1.0, 1e-05);
         }        
     }
+
+    delete ml;
+    
+    /*ml = new ParSmoothedAggregationSolver(0.0, MIS, JacobiProlongation, Symmetric, Jacobi);
+    ml->max_levels = 3;
+    ml->setup(A, 25);
 
     x.set_const_value(0.0);
     SRECG(A, x, b, 25, residuals_t25);
@@ -101,6 +112,12 @@ TEST(ParPSRECGTest, TestsInKrylov)
             ASSERT_NEAR(x.local->values[i], 1.0, 1e-05);
         }        
     }
+    
+    delete ml;
+    
+    ml = new ParSmoothedAggregationSolver(0.0, MIS, JacobiProlongation, Symmetric, Jacobi);
+    ml->max_levels = 3;
+    ml->setup(A, 50);
 
     x.set_const_value(0.0);
     SRECG(A, x, b, 50, residuals_t50);
@@ -124,10 +141,10 @@ TEST(ParPSRECGTest, TestsInKrylov)
         {
             ASSERT_NEAR(x.local->values[i], 1.0, 1e-05);
         }        
-    }
+    }*/
 
     delete[] stencil;
-    delete ml;
+    //delete ml;
     delete A;
     
 } // end of TEST(ParPSRECGTest, TestsInKrylov) //

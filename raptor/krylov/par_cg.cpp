@@ -386,7 +386,7 @@ void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<do
         iter++;
     }
 
-    /*if (rank == 0)
+    if (rank == 0)
     {
         if (iter == max_iter)
         {
@@ -398,7 +398,7 @@ void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<do
             printf("%d Iteration required to converge\n", iter);
             printf("2 Norm of Residual: %lg\n\n", norm_r);
         }
-    }*/
+    }
 
     delete W;
     delete Wk_1;
@@ -407,7 +407,7 @@ void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<do
     return;
 }
 
-void PSRECG(ParCSRMatrix* A, ParMultilevel *ml, ParVector& x, ParVector& b, int t, aligned_vector<double>& res, double tol, int max_iter)
+void PSRECG(ParCSRMatrix* A, ParMultilevel *ml_single, ParMultilevel *ml, ParVector& x, ParVector& b, int t, aligned_vector<double>& res, double tol, int max_iter)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -456,7 +456,7 @@ void PSRECG(ParCSRMatrix* A, ParMultilevel *ml, ParVector& x, ParVector& b, int 
 
     // Initial residual preconditioned before splitting
     z.set_const_value(0.0);
-    ml->cycle(z, r);
+    ml_single->cycle(z, r);
 
     // Perform first iteration outside loop
     // to reduce control flow instructions
@@ -519,11 +519,9 @@ void PSRECG(ParCSRMatrix* A, ParMultilevel *ml, ParVector& x, ParVector& b, int 
             // W = A * W
             A->mult(*W, *W_temp);
            
-            printf("before cycle\n");
             // W = M^-1 * A * W
             z.set_const_value(0.0);
             ml->cycle(z, *W_temp);
-            printf("after cycle\n");
 
             // A-orthonormalize W against previous vectors
             BCGS(A, *Wk_1, *W_temp);
@@ -553,7 +551,7 @@ void PSRECG(ParCSRMatrix* A, ParMultilevel *ml, ParVector& x, ParVector& b, int 
         iter++;
     }
 
-    /*if (rank == 0)
+    if (rank == 0)
     {
         if (iter == max_iter)
         {
@@ -565,7 +563,8 @@ void PSRECG(ParCSRMatrix* A, ParMultilevel *ml, ParVector& x, ParVector& b, int 
             printf("%d Iteration required to converge\n", iter);
             printf("2 Norm of Residual: %lg\n\n", norm_r);
         }
-    }*/
+    }
+
     delete W;
     delete Wk_1;
     delete Wk_2;

@@ -72,8 +72,8 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
     delete ml;
 
     // Test Smoothed Aggregation Solver
-    /*ml = new ParSmoothedAggregationSolver(strong_threshold);
-    ml->setup(A);
+    ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation, Symmetric, Jacobi);
+    ml->setup(A, nrhs);
 
     if (rank == 0)
     {
@@ -111,7 +111,10 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
     x.set_const_value(1.0);
     A->mult(x, b);
     x.set_const_value(0.0);
+
+    printf("%d before solve\n", rank);
     iter = ml->solve(x, b);
+    printf("%d after solve\n", rank);
     if (rank == 0)
     {
         printf("\nSolve Phase Relative Residuals:\n");
@@ -122,7 +125,7 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
         printf("Res[%d] = %e\n", i, sa_res[i]);
     }
 
-    delete ml;*/
+    delete ml;
 
     delete A;
 
