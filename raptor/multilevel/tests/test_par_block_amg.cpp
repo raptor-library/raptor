@@ -58,7 +58,7 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
     x.resize(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     b.resize(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     
-    ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, Jacobi);
+    ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SSOR);
     ml->setup(A, nrhs);
     ml->print_hierarchy();
 
@@ -67,12 +67,12 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
     A->mult(x, b);
     x.set_const_value(0.0);
     int iter = ml->solve(x, b);
-    ml->print_residuals(iter);
+    ml->print_residuals(iter*nrhs);
 
     delete ml;
 
     // Test Smoothed Aggregation Solver
-    ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation, Symmetric, Jacobi);
+    ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation, Symmetric, SSOR);
     ml->setup(A, nrhs);
 
     if (rank == 0)
@@ -112,15 +112,13 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
     A->mult(x, b);
     x.set_const_value(0.0);
 
-    printf("%d before solve\n", rank);
     iter = ml->solve(x, b);
-    printf("%d after solve\n", rank);
     if (rank == 0)
     {
         printf("\nSolve Phase Relative Residuals:\n");
     }
     aligned_vector<double>& sa_res = ml->get_residuals();
-    if (rank == 0) for (int i = 0; i < iter; i++)
+    if (rank == 0) for (int i = 0; i < iter*nrhs; i++)
     {
         printf("Res[%d] = %e\n", i, sa_res[i]);
     }

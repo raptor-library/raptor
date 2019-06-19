@@ -45,7 +45,7 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
     double start = MPI_Wtime();
     comm->init_comm(x, off_proc->b_cols, x.local->b_vecs);
     double stop = MPI_Wtime();
-    printf("%d commtime %lg\n", rank, stop - start);
+    //printf("%d commtime %lg\n", rank, stop - start);
     if (comm_t) *comm_t += MPI_Wtime();
 
     // Multiply the diagonal portion of the matrix,
@@ -60,7 +60,7 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
     start = MPI_Wtime();
     aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols, x.local->b_vecs);
     stop = MPI_Wtime();
-    printf("%d commtime %lg\n", rank, stop - start);
+    //printf("%d commtime %lg\n", rank, stop - start);
     if (comm_t) *comm_t += MPI_Wtime();
 
     // Multiply remaining columns, appending to previous

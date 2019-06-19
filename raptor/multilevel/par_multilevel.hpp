@@ -498,15 +498,16 @@ namespace raptor
             int solve(ParVector& sol, ParVector& rhs)
             {
                 double b_norm;
+                double *bnorms;
                 if (rhs.local->b_vecs > 1)
                 {
-                    double *bnorms = new double[rhs.local->b_vecs];
+                    bnorms = new double[rhs.local->b_vecs];
                     b_norm = rhs.norm(2, bnorms);
                     for (int i = 0; i < rhs.local->b_vecs; i++)
                     {
                         if (bnorms[i] > b_norm) b_norm = bnorms[i];
                     }
-                    delete[] bnorms;
+                    //delete[] bnorms;
                 }
                 else
                 {
@@ -555,7 +556,7 @@ namespace raptor
                         int start_indx = iter * rhs.local->b_vecs; 
                         for (int i = 0; i < rhs.local->b_vecs; i++)
                         {
-                            if (fabs(b_norm) > zero_tol) residuals[start_indx + i] = rnorms[i] / b_norm;
+                            if (fabs(b_norm) > zero_tol) residuals[start_indx + i] = rnorms[i] / bnorms[i];
                             else residuals[start_indx + i] = rnorms[i];
                         }
                     }
@@ -590,7 +591,7 @@ namespace raptor
                             int start_indx = iter * rhs.local->b_vecs; 
                             for (int i = 0; i < rhs.local->b_vecs; i++)
                             {
-                                if (fabs(b_norm) > zero_tol) residuals[start_indx + i] = rnorms[i] / b_norm;
+                                if (fabs(b_norm) > zero_tol) residuals[start_indx + i] = rnorms[i] / bnorms[i];
                                 else residuals[start_indx + i] = rnorms[i];
                             }
                         }
@@ -607,6 +608,7 @@ namespace raptor
                     }
                 }
 
+                if (rhs.local->b_vecs > 1) delete bnorms;
 
                 return iter;
             }
