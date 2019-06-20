@@ -15,7 +15,7 @@ install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install mpich2 lapack; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew upgrade cmake; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install cmake mpich2 liblapack-dev ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install cmake mpich liblapack-dev ; fi
 before_script: 
   - mkdir build
   - cd build
