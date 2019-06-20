@@ -87,6 +87,7 @@ mpirun -n 4 ./example
 This example is maintained in `raptor/examples/example.cpp`
 
 ```cpp
+
 // Copyright (c) 2015-2017, Raptor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include <mpi.h>
@@ -101,7 +102,6 @@ This example is maintained in `raptor/examples/example.cpp`
 // This is a basic use case.
 int main(int argc, char *argv[])
 {
-
     // set rank and number of processors
     int rank, num_procs;
     MPI_Init(&argc, &argv);
@@ -120,10 +120,13 @@ int main(int argc, char *argv[])
     int dim = 2;
     int n = 100;
 
-    std::vector<int> grid;
+    aligned_vector<int> grid;
     grid.resize(dim, n);
 
     // Anisotropic diffusion
+    coarsen_t coarsen_type = CLJP;
+    interp_t interp_type = ModClassical;
+    relax_t relax_type = SOR;
     double eps = 0.001;
     double theta = M_PI/8.0;
     double* stencil = NULL;
@@ -131,8 +134,8 @@ int main(int argc, char *argv[])
     A = par_stencil_grid(stencil, grid.data(), dim);
     delete[] stencil;
 
-    x = ParVector(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
-    b = ParVector(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
+    x = ParVector(A->global_num_cols, A->on_proc_num_cols);
+    b = ParVector(A->global_num_rows, A->local_num_rows);
 
     x.set_const_value(1.0);
     A->mult(x, b);
@@ -147,7 +150,8 @@ int main(int argc, char *argv[])
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);
     time_base = MPI_Wtime();
-    ml = new ParMultilevel(A, strong_threshold, Falgout, Direct, SOR);
+    ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, relax_type);
+    ml->setup(A);
     time_setup = MPI_Wtime() - time_base;
 
     // Print out information on the AMG hierarchy
