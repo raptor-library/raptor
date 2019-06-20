@@ -935,7 +935,8 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         P->off_proc->idx1[i+1] = row_end_off;
     }
 
-    filter_interp(P, filter_threshold);
+    if (filter_threshold > zero_tol && filter_threshold < 1) 
+        filter_interp(P, filter_threshold);
 
     // Update off_proc columns in P (remove col j if col_exists[j] is false)
     if (P->off_proc_num_cols)
