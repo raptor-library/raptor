@@ -21,6 +21,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const aligned_vector<int>& states,
         const aligned_vector<int>& off_proc_states,
+        const double filter_threshold = 0.3,
         bool tap_amg = false, int num_variables = 1, int* variables = NULL);
 
 #endif

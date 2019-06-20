@@ -21,6 +21,7 @@ namespace raptor
             interp_type = _interp_type;
             variables = NULL;
             num_variables = 1;
+            interp_filter = 0.3; // Only used in HMIS/PMIS
         }
 
         ~ParRugeStubenSolver()
@@ -115,7 +116,7 @@ namespace raptor
                     break;
                 case Extended:
                     P = extended_interpolation(A, S, states, off_proc_states, 
-                            tap_level, num_variables, variables);
+                            interp_filter, tap_level, num_variables, variables);
                     break;
             }
             levels[level_ctr]->P = P;
@@ -162,6 +163,7 @@ namespace raptor
 
         coarsen_t coarsen_type;
         interp_t interp_type;
+        double interp_filter;
 
         int* variables;
 

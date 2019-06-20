@@ -228,7 +228,9 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
     HYPRE_BoomerAMGSetNumFunctions(amg_data, num_functions);
     //HYPRE_BoomerAMGSetRAP2(amg_data, 1);
 
-    HYPRE_BoomerAMGSetPrintLevel(amg_data, 0);
+    HYPRE_BoomerAMGSetTruncFactor(amg_data, 0.3);
+
+    HYPRE_BoomerAMGSetPrintLevel(amg_data, 1);
     HYPRE_BoomerAMGSetMaxIter(amg_data, 1000);
 
     // Setup AMG
@@ -268,7 +270,7 @@ HYPRE_Solver hypre_create_GMRES(hypre_ParCSRMatrix* A,
     HYPRE_BoomerAMGSetMaxIter(amg_data, 1);
 
     HYPRE_BoomerAMGSetRelaxOrder(amg_data, 1);
-    HYPRE_BoomerAMGSetTruncFactor(amg_data, 0.5);
+    HYPRE_BoomerAMGSetTruncFactor(amg_data, 0.3);
 
     // Set GMRES Parameters
     HYPRE_GMRESSetMaxIter(gmres_data, 100);
