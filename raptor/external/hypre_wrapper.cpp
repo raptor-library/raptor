@@ -208,6 +208,7 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
                                 HYPRE_Int p_max_elmts,
                                 HYPRE_Int agg_num_levels,
                                 HYPRE_Real strong_threshold,
+                                HYPRE_Real filter_threshold,
                                 HYPRE_Int num_functions)
 {
     // Create AMG solver struct
@@ -228,9 +229,9 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
     HYPRE_BoomerAMGSetNumFunctions(amg_data, num_functions);
     //HYPRE_BoomerAMGSetRAP2(amg_data, 1);
 
-    HYPRE_BoomerAMGSetTruncFactor(amg_data, 0.3);
+    HYPRE_BoomerAMGSetTruncFactor(amg_data, filter_threshold);
 
-    HYPRE_BoomerAMGSetPrintLevel(amg_data, 1);
+    HYPRE_BoomerAMGSetPrintLevel(amg_data, 0);
     HYPRE_BoomerAMGSetMaxIter(amg_data, 1000);
 
     // Setup AMG

@@ -185,72 +185,80 @@ void filter_interp(ParCSRMatrix* P, const double filter_threshold)
     double row_max, row_sum, row_scale;
     double remain_sum;
 
-    for (int i = 0; i < P->local_num_rows; i++)
+    if (filter_threshold > zero_tol && filter_threshold <= 1)
     {
-        prev_ctr_on = ctr_on;
-        prev_ctr_off = ctr_off;
-
-        row_end_on = P->on_proc->idx1[i+1];
-        row_end_off = P->off_proc->idx1[i+1];
-
-        row_max = 0;
-        for (int j = row_start_on; j < row_end_on; j++)
+        for (int i = 0; i < P->local_num_rows; i++)
         {
-            val = P->on_proc->vals[j];
-            abs_val = fabs(val);
-            if (abs_val > row_max) 
-                row_max = abs_val;
-        }
-        for (int j = row_start_off; j < row_end_off; j++)
-        {
-            val = P->off_proc->vals[j];
-            abs_val = fabs(val);
-            if (abs_val > row_max) 
-                row_max = abs_val;
-        }
+            prev_ctr_on = ctr_on;
+            prev_ctr_off = ctr_off;
 
-        row_max *= filter_threshold;
-        row_sum = 0;
-        remain_sum = 0;
-        for (int j = row_start_on; j < row_end_on; j++)
-        {
-            val = P->on_proc->vals[j];
-            row_sum += val;
-            if (fabs(val) >= row_max)
+            row_end_on = P->on_proc->idx1[i+1];
+            row_end_off = P->off_proc->idx1[i+1];
+
+            row_max = 0;
+            for (int j = row_start_on; j < row_end_on; j++)
             {
-                P->on_proc->idx2[ctr_on] = P->on_proc->idx2[j];
-                P->on_proc->vals[ctr_on] = val;
-                ctr_on++;
-                remain_sum += val;
+                val = P->on_proc->vals[j];
+                abs_val = fabs(val);
+                if (abs_val > row_max) 
+                    row_max = abs_val;
             }
-        }
-        for (int j = row_start_off; j < row_end_off; j++)
-        {
-            val = P->off_proc->vals[j];
-            row_sum += val;
-            if (fabs(val) >= row_max)
+            for (int j = row_start_off; j < row_end_off; j++)
             {
-                P->off_proc->idx2[ctr_off] = P->off_proc->idx2[j];
-                P->off_proc->vals[ctr_off] = val;
-                ctr_off++;
-                remain_sum += val;
+                val = P->off_proc->vals[j];
+                abs_val = fabs(val);
+                if (abs_val > row_max) 
+                    row_max = abs_val;
             }
+
+            row_max *= filter_threshold;
+            row_sum = 0;
+            remain_sum = 0;
+            for (int j = row_start_on; j < row_end_on; j++)
+            {
+                val = P->on_proc->vals[j];
+                row_sum += val;
+                if (fabs(val) >= row_max)
+                {
+                    P->on_proc->idx2[ctr_on] = P->on_proc->idx2[j];
+                    P->on_proc->vals[ctr_on] = val;
+                    ctr_on++;
+                    remain_sum += val;
+                }
+            }
+            for (int j = row_start_off; j < row_end_off; j++)
+            {
+                val = P->off_proc->vals[j];
+                row_sum += val;
+                if (fabs(val) >= row_max)
+                {
+                    P->off_proc->idx2[ctr_off] = P->off_proc->idx2[j];
+                    P->off_proc->vals[ctr_off] = val;
+                    ctr_off++;
+                    remain_sum += val;
+                }
+            }
+
+            if (fabs(remain_sum) > zero_tol && fabs(row_sum - remain_sum) > zero_tol)
+            {
+                row_scale = row_sum / remain_sum;
+                for (int j = prev_ctr_on; j < ctr_on; j++)
+                    P->on_proc->vals[j] *= row_scale;
+                for (int j = prev_ctr_off; j < ctr_off; j++)
+                    P->off_proc->vals[j] *= row_scale;
+            }
+
+            P->on_proc->idx1[i+1] = ctr_on;
+            P->off_proc->idx1[i+1] = ctr_off;
+
+            row_start_on = row_end_on;
+            row_start_off = row_end_off;
         }
-
-        if (fabs(remain_sum) > zero_tol && fabs(row_sum - remain_sum) > zero_tol)
-        {
-            row_scale = row_sum / remain_sum;
-            for (int j = prev_ctr_on; j < ctr_on; j++)
-                P->on_proc->vals[j] *= row_scale;
-            for (int j = prev_ctr_off; j < ctr_off; j++)
-                P->off_proc->vals[j] *= row_scale;
-        }
-
-        P->on_proc->idx1[i+1] = ctr_on;
-        P->off_proc->idx1[i+1] = ctr_off;
-
-        row_start_on = row_end_on;
-        row_start_off = row_end_off;
+    }
+    else
+    {
+        ctr_on = P->on_proc->idx2.size();
+        ctr_off = P->off_proc->idx2.size();
     }
 
     P->on_proc->nnz = ctr_on;
@@ -935,8 +943,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         P->off_proc->idx1[i+1] = row_end_off;
     }
 
-    if (filter_threshold > zero_tol && filter_threshold < 1) 
-        filter_interp(P, filter_threshold);
+    filter_interp(P, filter_threshold);
 
     // Update off_proc columns in P (remove col j if col_exists[j] is false)
     if (P->off_proc_num_cols)

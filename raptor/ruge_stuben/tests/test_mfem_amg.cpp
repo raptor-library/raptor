@@ -132,8 +132,8 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
         hypre_BoomerAMGCoarseParms(MPI_COMM_WORLD, local_num_vars, 1,
                 NULL, CF_marker, &coarse_dof_func, &coarse_pnts_global);
         hypre_BoomerAMGBuildExtPIInterp(A_h, CF_marker, S_h, coarse_pnts_global,
-                1, NULL, 0, 0, 0, NULL, &P_h);
-        ParCSRMatrix* P = extended_interpolation(Al, S, states, off_proc_states);
+                1, NULL, 0, 0.3, 0, NULL, &P_h);
+        ParCSRMatrix* P = extended_interpolation(Al, S, states, off_proc_states, 0.3);
         compare(P, P_h);
 
         hypre_ParCSRMatrix* A_h_c;

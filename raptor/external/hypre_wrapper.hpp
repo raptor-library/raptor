@@ -32,6 +32,7 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
                                 int p_max_elmts = 0,
                                 int agg_num_levels = 0,
                                 double strong_threshold = 0.25,
+                                double filter_threshold =  0.3,
                                 int num_functions = 1);
 HYPRE_Solver hypre_create_GMRES(hypre_ParCSRMatrix* A,
                                 hypre_ParVector* x,
