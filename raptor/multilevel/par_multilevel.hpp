@@ -101,7 +101,8 @@ namespace raptor
                 n_setup_times = 0;
                 n_solve_times = 0;
                 solve_tol = 1e-07;
-                max_iterations = 100;
+                max_iterations = 10;
+                //max_iterations = 100;
             }
 
             virtual ~ParMultilevel()
@@ -351,6 +352,10 @@ namespace raptor
 
             void cycle(ParVector& x, ParVector& b, int level = 0)
             {
+                int rank, num_procs;
+                MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+                MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
                 ParCSRMatrix* A = levels[level]->A;
                 ParCSRMatrix* P = levels[level]->P;
                 ParVector& tmp = levels[level]->tmp;
@@ -386,7 +391,7 @@ namespace raptor
                         MPI_Allgatherv(b.local->data(), b.local_n*nhrs, MPI_DOUBLE, b_data_temp.data(), 
                                 coarse_sizes.data(), coarse_displs.data(), 
                                 MPI_DOUBLE, coarse_comm);
-                        
+
                         aligned_vector<double> b_data;
                         int start, stop;
                         for (int v = 0; v < nhrs; v++)
@@ -401,10 +406,10 @@ namespace raptor
                                 }
                             }
                         }
-
+                        
                         dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
                                 LU_permute.data(), b_data.data(), &coarse_n, &info);
-
+                        
                         for (int v = 0; v < nhrs; v++)
                         {
                             for (int i = 0; i < b.local_n; i++)
@@ -412,6 +417,7 @@ namespace raptor
                                 x.local->values[i + v*b.local_n] = b_data[i + (coarse_displs[active_rank]/nhrs) + v*b.global_n];
                             }
                         }
+
                     }
 
                     if (solve_times) solve_times[0][level] += MPI_Wtime();
@@ -455,15 +461,15 @@ namespace raptor
                     if (solve_times) solve_times[3][level] += MPI_Wtime();
 
                     if (solve_times) solve_times[0][level] += MPI_Wtime();
-
+                    
                     cycle(levels[level+1]->x, levels[level+1]->b, level+1);
 
                     if (solve_times) solve_times[0][level] -= MPI_Wtime();
 
                     if (solve_times) solve_times[4][level] -= MPI_Wtime();
-
+                    
                     P->mult_append(levels[level+1]->x, x);
-
+                    
                     if (solve_times) solve_times[4][level] += MPI_Wtime();
 
                     if (solve_times) solve_times[1][level] -= MPI_Wtime();
@@ -482,6 +488,29 @@ namespace raptor
                                     tap_level, relax_t);
                             break;
                     }
+
+                    // ALL OF A SUDDEN RELAX IS RETURNING THE INCORRECT VALUE HERE --- MAKE SURE YOU
+                    // DON'T HAVE A MEMORY LEAK
+                   
+                    double *x_inners = new double[x.local->b_vecs];
+                    double *b_inners = new double[x.local->b_vecs];
+                    double *tmp_inners = new double[x.local->b_vecs];
+                    double t = x.inner_product(x, x_inners);
+                    t = b.inner_product(b, b_inners);
+                    t = tmp.inner_product(tmp, tmp_inners);
+                    for (int p = 0; p < num_procs; p++)
+                    {
+                        if (p == rank)
+                        {
+                            printf("%d x_inners %e %e\n", rank, x_inners[0], x_inners[1]);
+                            printf("%d b_inners %e %e\n", rank, b_inners[0], b_inners[1]);
+                            printf("%d tmp_inners %e %e\n", rank, tmp_inners[0], tmp_inners[1]);
+                        }
+                        fflush(stdout);
+                        MPI_Barrier(MPI_COMM_WORLD);
+                    }
+                    MPI_Barrier(MPI_COMM_WORLD);
+
                     if (solve_times)
                     {
                         solve_times[1][level] += MPI_Wtime();
@@ -497,17 +526,15 @@ namespace raptor
 
             int solve(ParVector& sol, ParVector& rhs)
             {
+                int rank;
+                MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
                 double b_norm;
-                double *bnorms;
+                double *bnorms = NULL;
                 if (rhs.local->b_vecs > 1)
                 {
                     bnorms = new double[rhs.local->b_vecs];
                     b_norm = rhs.norm(2, bnorms);
-                    for (int i = 0; i < rhs.local->b_vecs; i++)
-                    {
-                        if (bnorms[i] > b_norm) b_norm = bnorms[i];
-                    }
-                    //delete[] bnorms;
                 }
                 else
                 {
@@ -515,6 +542,7 @@ namespace raptor
                 }
 
                 double r_norm;
+                double *rnorms = NULL;
                 int iter = 0;
 
                 if (store_residuals)
@@ -545,10 +573,11 @@ namespace raptor
                 levels[0]->A->residual(sol, rhs, resid);
                 if (rhs.local->b_vecs > 1)
                 {
-                    double *rnorms = new double[rhs.local->b_vecs];
+                    rnorms = new double[rhs.local->b_vecs];
                     r_norm = resid.norm(2, rnorms);
                     for (int i = 0; i < rhs.local->b_vecs; i++)
                     {
+                        if (fabs(bnorms[i]) > zero_tol) rnorms[i] = rnorms[i] / bnorms[i];
                         if (rnorms[i] > r_norm) r_norm = rnorms[i];
                     }
                     if (store_residuals)
@@ -556,11 +585,9 @@ namespace raptor
                         int start_indx = iter * rhs.local->b_vecs; 
                         for (int i = 0; i < rhs.local->b_vecs; i++)
                         {
-                            if (fabs(b_norm) > zero_tol) residuals[start_indx + i] = rnorms[i] / bnorms[i];
-                            else residuals[start_indx + i] = rnorms[i];
+                            residuals[start_indx + i] = rnorms[i];
                         }
                     }
-                    delete[] rnorms;
                 }
                 else
                 {
@@ -580,10 +607,10 @@ namespace raptor
                     levels[0]->A->residual(sol, rhs, resid);
                     if (rhs.local->b_vecs > 1)
                     {
-                        double *rnorms = new double[rhs.local->b_vecs];
                         r_norm = resid.norm(2, rnorms);
                         for (int i = 0; i < rhs.local->b_vecs; i++)
                         {
+                            if (fabs(bnorms[i]) > zero_tol) rnorms[i] = rnorms[i] / bnorms[i];
                             if (rnorms[i] > r_norm) r_norm = rnorms[i];
                         }
                         if (store_residuals)
@@ -591,11 +618,9 @@ namespace raptor
                             int start_indx = iter * rhs.local->b_vecs; 
                             for (int i = 0; i < rhs.local->b_vecs; i++)
                             {
-                                if (fabs(b_norm) > zero_tol) residuals[start_indx + i] = rnorms[i] / bnorms[i];
-                                else residuals[start_indx + i] = rnorms[i];
+                                residuals[start_indx + i] = rnorms[i];
                             }
                         }
-                        delete[] rnorms;
                     }
                     else
                     {
@@ -608,7 +633,11 @@ namespace raptor
                     }
                 }
 
-                if (rhs.local->b_vecs > 1) delete bnorms;
+                if (rhs.local->b_vecs > 1) 
+                {
+                    delete bnorms;
+                    delete rnorms;
+                }
 
                 return iter;
             }

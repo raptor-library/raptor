@@ -63,11 +63,13 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
     ml->print_hierarchy();
 
     x.set_const_value(1.0);
+    std::vector<double> alphas = {1.0, 2.0};
+    x.scale(1.0, &(alphas[0]));
 
     A->mult(x, b);
     x.set_const_value(0.0);
     int iter = ml->solve(x, b);
-    ml->print_residuals(iter*nrhs);
+    ml->print_residuals(iter*nrhs+1);
 
     delete ml;
 
@@ -109,6 +111,8 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
     }
     
     x.set_const_value(1.0);
+    x.scale(1.0, &(alphas[0]));
+
     A->mult(x, b);
     x.set_const_value(0.0);
 
