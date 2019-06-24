@@ -39,7 +39,7 @@ void SOR_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
     for (int k = 0; k < y.local->b_vecs; k++)
     {
         vec_offset = k * A->local_num_rows;
-        dist_vec_offset = dist_x.size() / x.local->b_vecs;
+        dist_vec_offset = k * (dist_x.size() / x.local->b_vecs);
 
         start_on = 0;
         start_off = 0;
@@ -80,11 +80,11 @@ void SOR_backward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
     double diag;
     double row_sum;
     int vec_offset, dist_vec_offset;
-
+    
     for (int k = 0; k < y.local->b_vecs; k++)
     {
         vec_offset = k * A->local_num_rows; 
-        dist_vec_offset = dist_x.size() / x.local->b_vecs;
+        dist_vec_offset = k * (dist_x.size() / x.local->b_vecs);
 
         for (int i = A->local_num_rows - 1; i >= 0; i--)
         {
@@ -183,6 +183,7 @@ void sor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     for (int iter = 0; iter < num_sweeps; iter++)
     {
         if (comm_t) *comm_t -= MPI_Wtime();
+        // MAKE SURE THIS X COMMUNICATION IS CORRECT
         comm->communicate(x);
         if (comm_t) *comm_t += MPI_Wtime();
         SOR_forward(A, x, b, comm->get_buffer<double>(), omega);
@@ -200,6 +201,7 @@ void ssor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     for (int iter = 0; iter < num_sweeps; iter++)
     {
         if (comm_t) *comm_t -= MPI_Wtime();
+        // MAKE SURE THIS X COMMUNICATION IS CORRECT
         comm->communicate(x);
         if (comm_t) *comm_t += MPI_Wtime();
         SOR_forward(A, x, b, comm->get_buffer<double>(), omega);

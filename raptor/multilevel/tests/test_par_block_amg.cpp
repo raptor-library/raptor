@@ -38,7 +38,7 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
     int dim = 3;
-    int nrhs = 2;
+    int nrhs = 3;
 
     int grid[3] = {5, 5, 5};
 
@@ -63,7 +63,7 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
     ml->print_hierarchy();
 
     x.set_const_value(1.0);
-    std::vector<double> alphas = {1.0, 2.0};
+    std::vector<double> alphas = {1.0, 2.0, 3.0};
     x.scale(1.0, &(alphas[0]));
 
     A->mult(x, b);

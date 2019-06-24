@@ -35,8 +35,8 @@ TEST(ParPSRECGTest, TestsInKrylov)
     FILE* f;
     double val;
 
-    //int grid[2] = {50, 50};
-    int grid[2] = {10, 10};
+    int grid[2] = {50, 50};
+    //int grid[2] = {10, 10};
     double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
     ParMultilevel *ml;
@@ -52,13 +52,13 @@ TEST(ParPSRECGTest, TestsInKrylov)
     x.set_const_value(0.0);
     
     // Setup AMG hierarchy
-    ml = new ParSmoothedAggregationSolver(0.0, MIS, JacobiProlongation, Symmetric, Jacobi);
+    ml = new ParSmoothedAggregationSolver(0.0, MIS, JacobiProlongation, Symmetric, SOR);
     ml->max_levels = 3;
     ml->setup(A, 5);
     
-    ml_rhs1 = new ParSmoothedAggregationSolver(0.0, MIS, JacobiProlongation, Symmetric, Jacobi);
+    ml_rhs1 = new ParSmoothedAggregationSolver(0.0, MIS, JacobiProlongation, Symmetric, SOR);
     ml_rhs1->max_levels = 3;
-    ml_rhs1->setup(A, 5);
+    ml_rhs1->setup(A);
 
     PSRECG(A, ml_rhs1, ml, x, b, 5, residuals_t5);
 

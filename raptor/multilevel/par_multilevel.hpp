@@ -101,8 +101,7 @@ namespace raptor
                 n_setup_times = 0;
                 n_solve_times = 0;
                 solve_tol = 1e-07;
-                max_iterations = 10;
-                //max_iterations = 100;
+                max_iterations = 100;
             }
 
             virtual ~ParMultilevel()
@@ -469,10 +468,11 @@ namespace raptor
                     if (solve_times) solve_times[4][level] -= MPI_Wtime();
                     
                     P->mult_append(levels[level+1]->x, x);
-                    
+
                     if (solve_times) solve_times[4][level] += MPI_Wtime();
 
                     if (solve_times) solve_times[1][level] -= MPI_Wtime();
+
                     switch (relax_type)
                     {
                         case Jacobi:
@@ -488,16 +488,29 @@ namespace raptor
                                     tap_level, relax_t);
                             break;
                     }
-
-                    // ALL OF A SUDDEN RELAX IS RETURNING THE INCORRECT VALUE HERE --- MAKE SURE YOU
-                    // DON'T HAVE A MEMORY LEAK
-                   
-                    double *x_inners = new double[x.local->b_vecs];
-                    double *b_inners = new double[x.local->b_vecs];
-                    double *tmp_inners = new double[x.local->b_vecs];
-                    double t = x.inner_product(x, x_inners);
-                    t = b.inner_product(b, b_inners);
-                    t = tmp.inner_product(tmp, tmp_inners);
+                    
+                    /*for (int p = 0; p < num_procs; p++)
+                    {
+                        if (p == rank)
+                        {
+                            for (int v = 0; v < x.local->b_vecs; v++)
+                            {
+                                printf("%d v %d x ", rank, v);
+                                for (int i = 0; i < x.local_n; i++)
+                                {
+                                    printf("%e ", x.local->values[i + v*x.local_n]);    
+                                }
+                                printf("\n");
+                            }
+                        }
+                        fflush(stdout);
+                        MPI_Barrier(MPI_COMM_WORLD);
+                    }
+                    MPI_Barrier(MPI_COMM_WORLD);*/
+                    
+                    /*t = x.inner_product(x, &(x_inners[0]));
+                    t = b.inner_product(b, &(b_inners[0]));
+                    t = tmp.inner_product(tmp, &(tmp_inners[0]));
                     for (int p = 0; p < num_procs; p++)
                     {
                         if (p == rank)
@@ -509,7 +522,7 @@ namespace raptor
                         fflush(stdout);
                         MPI_Barrier(MPI_COMM_WORLD);
                     }
-                    MPI_Barrier(MPI_COMM_WORLD);
+                    MPI_Barrier(MPI_COMM_WORLD);*/
 
                     if (solve_times)
                     {
@@ -530,11 +543,11 @@ namespace raptor
                 MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
                 double b_norm;
-                double *bnorms = NULL;
+                aligned_vector<double> bnorms;
                 if (rhs.local->b_vecs > 1)
                 {
-                    bnorms = new double[rhs.local->b_vecs];
-                    b_norm = rhs.norm(2, bnorms);
+                    bnorms.resize(rhs.local->b_vecs);
+                    b_norm = rhs.norm(2, &(bnorms[0]));
                 }
                 else
                 {
@@ -542,7 +555,7 @@ namespace raptor
                 }
 
                 double r_norm;
-                double *rnorms = NULL;
+                aligned_vector<double> rnorms;
                 int iter = 0;
 
                 if (store_residuals)
@@ -573,8 +586,8 @@ namespace raptor
                 levels[0]->A->residual(sol, rhs, resid);
                 if (rhs.local->b_vecs > 1)
                 {
-                    rnorms = new double[rhs.local->b_vecs];
-                    r_norm = resid.norm(2, rnorms);
+                    rnorms.resize(rhs.local->b_vecs);
+                    r_norm = resid.norm(2, &(rnorms[0]));
                     for (int i = 0; i < rhs.local->b_vecs; i++)
                     {
                         if (fabs(bnorms[i]) > zero_tol) rnorms[i] = rnorms[i] / bnorms[i];
@@ -607,7 +620,7 @@ namespace raptor
                     levels[0]->A->residual(sol, rhs, resid);
                     if (rhs.local->b_vecs > 1)
                     {
-                        r_norm = resid.norm(2, rnorms);
+                        r_norm = resid.norm(2, &(rnorms[0]));
                         for (int i = 0; i < rhs.local->b_vecs; i++)
                         {
                             if (fabs(bnorms[i]) > zero_tol) rnorms[i] = rnorms[i] / bnorms[i];
@@ -631,12 +644,6 @@ namespace raptor
                             residuals[iter] = r_norm;
                         }
                     }
-                }
-
-                if (rhs.local->b_vecs > 1) 
-                {
-                    delete bnorms;
-                    delete rnorms;
                 }
 
                 return iter;
