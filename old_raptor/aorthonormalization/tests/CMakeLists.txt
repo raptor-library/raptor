@@ -1,0 +1,15 @@
+add_executable(test_cgs test_cgs.cpp)
+target_link_libraries(test_cgs raptor googletest pthread )
+add_test(CGSTest ./test_cgs)
+
+if (WITH_MPI)
+    add_executable(test_par_cgs test_par_cgs.cpp)
+    target_link_libraries(test_par_cgs raptor ${MPI_LIBRARIES} googletest pthread )
+    add_test(ParCGSTest ${MPIRUN} -n 1 ./test_par_cgs)
+    add_test(ParCGSTest ${MPIRUN} -n 2 ./test_par_cgs)
+    add_test(ParCGSTest ${MPIRUN} -n 4 ./test_par_cgs)
+    add_test(ParCGSTest ${MPIRUN} -n 8 ./test_par_cgs)
+    
+    add_executable(aortho_timings aortho_timings.cpp)
+    target_link_libraries(aortho_timings raptor ${MPI_LIBRARIES} pthread )
+endif()

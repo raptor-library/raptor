@@ -1,0 +1,348 @@
+// Copyright (c) 2015-2017, RAPtor Developer Team
+// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
+#ifndef PARTITION_HPP 
+#define PARTITION_HPP
+
+#include <mpi.h>
+#include <math.h>
+#include <set>
+
+#include "types.hpp"
+#include "topology.hpp"
+
+#define STANDARD_PPN 4
+#define STANDARD_PROC_LAYOUT 1
+
+/**************************************************************
+ *****   Partition Class
+ **************************************************************
+ ***** This class holds the partition of a number of vertices 
+ ***** across a number of processes
+ *****
+ ***** Attributes
+ ***** -------------
+ ***** global_num_indices : index_t
+ *****    Number of rows to be partitioned
+ ***** first_local_idx : index_t
+ *****    First global index of a row in partition local to rank
+ ***** local_num_indices : index_t
+ *****    Number of rows local to rank's partition
+ *****
+ ***** Methods
+ ***** ---------
+ **************************************************************/
+namespace raptor
+{
+  class Partition
+  {
+  public:
+    Partition(index_t _global_num_rows, index_t _global_num_cols,
+            Topology* _topology = NULL)
+    {
+        int rank, num_procs;
+        int avg_num;
+        int extra;
+
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+        global_num_rows = _global_num_rows;
+        global_num_cols = _global_num_cols;
+
+        // Partition rows across processes
+        avg_num = global_num_rows / num_procs;
+        extra = global_num_rows % num_procs;
+        first_local_row = avg_num * rank;
+        local_num_rows = avg_num;
+        if (extra > rank)
+        {
+            first_local_row += rank;
+            local_num_rows++;
+        }
+        else
+        {
+            first_local_row += extra;
+        }
+
+        // Partition cols across processes
+        if (global_num_rows < num_procs)
+        {
+            num_procs = global_num_rows;
+        }
+        avg_num = global_num_cols / num_procs;
+        extra = global_num_cols % num_procs;
+        if (local_num_rows)
+        {
+            first_local_col = avg_num * rank;
+            local_num_cols = avg_num;
+            if (extra > rank)
+            {
+                first_local_col += rank;
+                local_num_cols++;
+            }
+            else
+            {
+                first_local_col += extra;
+            }
+        }
+        else
+        {
+            local_num_cols = 0;
+        }
+
+        last_local_row = first_local_row + local_num_rows - 1;
+        last_local_col = first_local_col + local_num_cols - 1;
+
+        num_shared = 0;
+
+        create_assumed_partition();
+
+        if (_topology == NULL)
+        {
+            topology = new Topology();
+        }
+        else
+        {
+            topology = _topology;
+            topology->num_shared++;
+        }
+    }
+
+    Partition(index_t _global_num_rows, index_t _global_num_cols,
+            index_t _brows, index_t _bcols, Topology* _topology = NULL)
+    {
+        int rank, num_procs;
+        int avg_num_blocks, global_num_row_blocks, global_num_col_blocks;
+        int extra;
+
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+        global_num_rows = _global_num_rows;
+        global_num_cols = _global_num_cols;
+
+        // Partition rows across processes
+        global_num_row_blocks = global_num_rows / _brows;
+        avg_num_blocks = global_num_row_blocks / num_procs;
+        extra = global_num_row_blocks % num_procs;
+        first_local_row = avg_num_blocks * rank * _brows;
+        local_num_rows = avg_num_blocks * _brows;
+        if (extra > rank)
+        {
+            first_local_row += rank * _brows;
+            local_num_rows += _brows;
+        }
+        else
+        {
+            first_local_row += extra * _brows;
+        }
+
+        // Partition cols across processes
+	    // local_num_cols = number of cols in on_proc matrix
+        if (global_num_row_blocks < num_procs)
+        {
+            num_procs = global_num_row_blocks;
+        }
+
+	    global_num_col_blocks = global_num_cols / _bcols;
+        avg_num_blocks = global_num_col_blocks / num_procs;
+        extra = global_num_col_blocks % num_procs;
+        if (local_num_rows)
+        {
+            first_local_col = avg_num_blocks * rank * _bcols;
+            local_num_cols = avg_num_blocks * _bcols;
+            if (extra > rank)
+            {
+                first_local_col += rank * _bcols;
+                local_num_cols += _bcols;
+            }
+            else
+            {
+                first_local_col += extra * _bcols;
+            }
+        }
+        else
+        {
+            local_num_cols = 0;
+        }
+
+        last_local_row = first_local_row + local_num_rows - 1;
+        last_local_col = first_local_col + local_num_cols - 1;
+
+        num_shared = 0;
+
+        create_assumed_partition();
+
+        if (_topology == NULL)
+        {
+            topology = new Topology();
+        }
+        else
+        {
+            topology = _topology;
+            topology->num_shared++;
+        }
+    }
+
+    Partition(index_t _global_num_rows, index_t _global_num_cols,
+            int _local_num_rows, int _local_num_cols,
+            index_t _first_local_row, index_t _first_local_col,
+            Topology* _topology = NULL)
+    {
+        int rank, num_procs;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+        global_num_rows = _global_num_rows;
+        global_num_cols = _global_num_cols;
+        local_num_rows = _local_num_rows;
+        local_num_cols = _local_num_cols;
+        first_local_row = _first_local_row;
+        first_local_col = _first_local_col;
+        last_local_row = first_local_row + local_num_rows - 1;
+        last_local_col = first_local_col + local_num_cols - 1;
+
+        num_shared = 0;
+
+        create_assumed_partition();
+
+        if (_topology == NULL)
+        {
+            topology = new Topology();
+        }
+        else
+        {
+            topology = _topology;
+            topology->num_shared++;
+        }
+    }
+
+    Partition(Topology* _topology = NULL)
+    {
+        if (_topology == NULL)
+        {
+            topology = new Topology();
+        }
+        else
+        {
+            topology = _topology;
+            topology->num_shared++;
+        }
+    }
+
+    Partition(Partition* A, Partition* B)
+    {
+        global_num_rows = A->global_num_rows;
+        global_num_cols = B->global_num_cols;
+        local_num_rows = A->local_num_rows;
+        local_num_cols = B->local_num_cols;
+        first_local_row = A->first_local_row;
+        first_local_col = B->first_local_col;
+        last_local_row = A->last_local_row;
+        last_local_col = B->last_local_col;
+
+        num_shared = 0;
+
+        create_assumed_partition();
+
+        topology = A->topology;
+        topology->num_shared++;
+    }
+
+    ~Partition()
+    {
+        num_shared = 0;
+        global_num_rows = 0;
+        global_num_cols = 0;
+        local_num_rows = 0;
+        local_num_cols = 0;
+        first_local_row = 0;
+        first_local_col = 0;
+        last_local_row = 0;
+        last_local_col = 0;
+        assumed_first_col = 0;
+        assumed_last_col = 0;
+        assumed_num_cols = 0;
+
+        if (topology->num_shared)
+        {
+            topology->num_shared--;
+        }
+        else
+        {
+            delete topology;
+        }
+    }
+
+    Partition* transpose()
+    {
+        Partition* part = new Partition(global_num_cols, global_num_rows,
+                local_num_cols, local_num_rows, first_local_col,
+                first_local_row, topology);
+        return part;
+    }
+
+    void create_assumed_partition()
+    {
+        // Get MPI Information
+        int rank, num_procs;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+        
+        assumed_num_cols = global_num_cols / num_procs;
+        if (global_num_cols % num_procs) assumed_num_cols++;
+
+	first_cols.resize(num_procs);
+	MPI_Allgather(&(first_local_col), 1, MPI_INT, first_cols.data(), 1, MPI_INT,
+			MPI_COMM_WORLD);
+    }
+
+    void form_col_to_proc (const aligned_vector<int>& off_proc_column_map,
+            aligned_vector<int>& off_proc_col_to_proc) 
+    {
+        int rank, num_procs;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+	int global_col, assumed_proc;
+	int ctr = 0;
+	off_proc_col_to_proc.resize(off_proc_column_map.size());
+	for (aligned_vector<int>::const_iterator it = off_proc_column_map.begin();
+			it != off_proc_column_map.end(); ++it)
+	{
+            global_col = *it;
+	    assumed_proc = global_col / assumed_num_cols;
+	    while (global_col < first_cols[assumed_proc])
+	    {
+                assumed_proc--;
+	    }
+	    while (assumed_proc < num_procs - 1 && global_col >= first_cols[assumed_proc+1])
+	    {
+                assumed_proc++;
+	    }
+	    off_proc_col_to_proc[ctr++] = assumed_proc;
+	}
+    }
+
+
+    index_t global_num_rows;
+    index_t global_num_cols;
+    int local_num_rows;
+    int local_num_cols;
+    index_t first_local_row;
+    index_t first_local_col;
+    index_t last_local_row;
+    index_t last_local_col;
+
+    index_t assumed_first_col;
+    index_t assumed_last_col;
+    int assumed_num_cols;
+    aligned_vector<int> first_cols;
+
+    Topology* topology;
+
+    int num_shared;  // Number of ParMatrix classes using partition
+
+  };
+}
+#endif
