@@ -261,6 +261,8 @@ void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<do
     int iter, recompute_r;
     data_t rr_inner;
     double norm_r;
+    double b_norm = b.norm(2);
+    if (b_norm < zero_tol) b_norm = 1.0;
 
     // Adjust max iterations
     if (max_iter <= 0)
@@ -407,13 +409,15 @@ void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<do
     return;
 }
 
-void PSRECG(ParCSRMatrix* A, ParMultilevel *ml_single, ParMultilevel *ml, ParVector& x, ParVector& b, int t, aligned_vector<double>& res, double tol, int max_iter)
+/*void PSRECG(ParCSRMatrix* A, ParMultilevel *ml_single, ParMultilevel *ml, ParVector& x, ParVector& b, int t, aligned_vector<double>& res, double tol, int max_iter)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     ParVector r;
+    ParVector z;
+    ParBVector z_block;
     ParBVector *W = new ParBVector(A->global_num_cols, A->local_num_rows, A->partition->first_local_row, t);
     ParBVector *W_temp = new ParBVector(A->global_num_cols, A->local_num_rows, A->partition->first_local_row, t);
     ParBVector *Wk_1 = new ParBVector(A->global_num_cols, A->local_num_rows, A->partition->first_local_row, t);
@@ -434,6 +438,9 @@ void PSRECG(ParCSRMatrix* A, ParMultilevel *ml_single, ParMultilevel *ml, ParVec
 
     // Fixed Constructors
     r.resize(b.global_n, b.local_n, b.first_local);
+    z.resize(b.global_n, b.local_n, b.first_local);
+    z_block.local->b_vecs = x.local->b_vecs;
+    z_block.resize(b.global_n, b.local_n, b.first_local);
     Wa.resize(x.global_n, x.local_n, x.first_local);
     T.resize(x.global_n, x.local_n, x.first_local);
     alpha.resize(t);
@@ -455,9 +462,14 @@ void PSRECG(ParCSRMatrix* A, ParMultilevel *ml_single, ParMultilevel *ml, ParVec
     // Perform first iteration outside loop
     // to reduce control flow instructions
     iter = 0;
+   
+    // UPDATE THIS 
+    // z0 = M^{-1}r0
+    z.set_const_value(0.0);
+    ml_single->cycle(z, r);
 
-    // W = T(r0)
-    r.split_contig(*W, t);
+    // W = T(M^-1 * r0)
+    z.split_contig(*W, t);
 
     // A-orthonormalize W
     CGS(A, *W);
@@ -487,12 +499,14 @@ void PSRECG(ParCSRMatrix* A, ParMultilevel *ml_single, ParMultilevel *ml, ParVec
         {
             // Update Wk_1 and Wk_2
             Wk_2->copy(*Wk_1);
-            //Wk_2 = Wk_1;
             Wk_1->copy(*W);
-            //Wk_1 = W;
 
             // W = A * W
             A->mult(*W, *W_temp);
+
+            // W = M^-1 * A * W
+            z_block.set_const_value(0.0);
+            ml->cycle(z_block, *W_temp);
 
             BCGS(A, *Wk_1, *Wk_2, *W_temp);
         }
@@ -500,10 +514,13 @@ void PSRECG(ParCSRMatrix* A, ParMultilevel *ml_single, ParMultilevel *ml, ParVec
         {
             // Update Wk_1
             Wk_1->copy(*W);
-            //Wk_1 = W;
 
             // W = A * W
             A->mult(*W, *W_temp);
+
+            // W = M^-1 * A * W
+            z_block.set_const_value(0.0);
+            ml->cycle(z_block, *W_temp);
 
             BCGS(A, *Wk_1, *W_temp);
         }
@@ -552,9 +569,9 @@ void PSRECG(ParCSRMatrix* A, ParMultilevel *ml_single, ParMultilevel *ml, ParVec
     delete Wk_2;
     delete W_temp;
     return;
-}
+}*/
 
-/*void PSRECG(ParCSRMatrix* A, ParMultilevel *ml_single, ParMultilevel *ml, ParVector& x, ParVector& b, int t, aligned_vector<double>& res, double tol, int max_iter)
+void PSRECG(ParCSRMatrix* A, ParMultilevel *ml_single, ParMultilevel *ml, ParVector& x, ParVector& b, int t, aligned_vector<double>& res, double tol, int max_iter)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -717,4 +734,4 @@ void PSRECG(ParCSRMatrix* A, ParMultilevel *ml_single, ParMultilevel *ml, ParVec
     delete Wk_2;
     delete W_temp;
     return;
-}*/
+}
