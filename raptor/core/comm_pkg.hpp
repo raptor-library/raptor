@@ -1610,7 +1610,7 @@
                 double start = MPI_Wtime();
                 local_L_par_comm->communicate<T>(values, block_size, vblock_size, vblock_offset);
                 double stop = MPI_Wtime();
-                printf("%d onnode %lg\n", rank, stop - start);
+                //printf("%d onnode %lg\n", rank, stop - start);
 
                 if (local_S_par_comm)
                 {
@@ -1618,20 +1618,20 @@
                     start = MPI_Wtime();
                     aligned_vector<T>& S_vals = local_S_par_comm->communicate<T>(values, block_size, vblock_size, vblock_offset);
                     stop = MPI_Wtime();
-                    printf("%d onnode %lg\n", rank, stop - start);
+                    //printf("%d onnode %lg\n", rank, stop - start);
 
                     // Begin inter-node communication 
                     start = MPI_Wtime();
                     global_par_comm->initialize(S_vals.data(), block_size, vblock_size, vblock_offset);
                     stop = MPI_Wtime();
-                    printf("%d internode %lg\n", rank, stop - start);
+                    //printf("%d internode %lg\n", rank, stop - start);
                 }
                 else
                 {
                     start = MPI_Wtime();
                     global_par_comm->initialize(values, block_size);
                     stop = MPI_Wtime();
-                    printf("%d internode %lg\n", rank, stop - start);
+                    //printf("%d internode %lg\n", rank, stop - start);
                 }
             }
 
@@ -1645,13 +1645,13 @@
                 // Complete inter-node communication
                 aligned_vector<T>& G_vals = global_par_comm->complete<T>(block_size, vblock_size);
                 double stop = MPI_Wtime();
-                printf("%d internode %lg\n", rank, stop - start);
+                //printf("%d internode %lg\n", rank, stop - start);
 
                 // Redistributing recvd inter-node values
                 start = MPI_Wtime();
                 local_R_par_comm->communicate<T>(G_vals.data(), block_size, vblock_size);
                 stop = MPI_Wtime();
-                printf("%d onnode %lg\n", rank, stop - start);
+                //printf("%d onnode %lg\n", rank, stop - start);
 
                 aligned_vector<T>& recvbuf = get_buffer<T>();
 

@@ -14,10 +14,6 @@
 
 using namespace raptor;
 
-
-int argc;
-char **argv;
-
 int main(int _argc, char** _argv)
 {
     MPI_Init(&_argc, &_argv);
@@ -26,18 +22,16 @@ int main(int _argc, char** _argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
-    //int dim = 3;
-    if (argc < 3)
+    if (_argc < 3)
     {
-        printf("Usage: <nrhs> <first_tap_level>\n");
+        printf("Usage: <nrhs> <first_tap_level> <nap_version>\n");
         exit(-1);
     }
 
     // Grab command line arguments
-    int nrhs = atoi(argv[1]);
-    int first_tap_level = atoi(argv[2]);
-
-    //int grid[3] = {5, 5, 5};
+    int nrhs = atoi(_argv[1]);
+    int first_tap_level = atoi(_argv[2]);
+    int nap_version = atoi(_argv[3]);
 
     ParMultilevel* ml;
     ParCSRMatrix* A;
@@ -51,8 +45,7 @@ int main(int _argc, char** _argv)
     //double* stencil = laplace_stencil_27pt();
     //A = par_stencil_grid(stencil, grid, dim);
     //delete[] stencil;
-
-    int first_tap_level = 1;
+    
     int grid[2] = {2500, 2500};
     double eps = 0.001;
     double theta = M_PI / 8.0;
@@ -72,10 +65,13 @@ int main(int _argc, char** _argv)
     // Setup 2-step node aware communication for V-Cycle
     ml->tap_amg = first_tap_level; // Set level to start node aware comm
     ml->setup(A, nrhs);
-    for (int i = first_tap_level; i < ml->num_levels; i++)
+    if (nap_version == 2)
     {
-        if (ml->levels[i]->A->tap_comm) delete ml->levels[i]->A->tap_comm;
-        ml->levels[i]->A->tap_comm = new TAPComm(ml->levels[i]->A->tap_mat_comm); 
+        for (int i = first_tap_level; i < ml->num_levels-1; i++)
+        {
+            if (ml->levels[i]->A->tap_comm != NULL) delete ml->levels[i]->A->tap_comm;
+            ml->levels[i]->A->tap_comm = new TAPComm(ml->levels[i]->A->partition, ml->levels[i]->A->off_proc_column_map, ml->levels[i]->A->on_proc_column_map, false); 
+        }
     }
 
     ml->print_hierarchy();
@@ -95,6 +91,9 @@ int main(int _argc, char** _argv)
     printf("%d multi %lg\n", rank, stop - start);
 
     delete ml;
+
+    printf("%d after multi\n", rank);
+    MPI_Barrier(MPI_COMM_WORLD);
     
     ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
     ml->setup(A);
