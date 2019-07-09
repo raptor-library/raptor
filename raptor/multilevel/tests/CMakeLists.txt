@@ -16,6 +16,7 @@ if (WITH_MPI)
     target_link_libraries(test_par_block_amg raptor ${MPI_LIBRARIES} googletest pthread )
     add_test(ParBlockAMGTest ${MPIRUN} -n 1 ./test_par_block_amg)
     add_test(ParBlockAMGTest ${MPIRUN} -n 2 ./test_par_block_amg)
+    add_test(ParBlockAMGTest ${MPIRUN} -n 4 ./test_par_block_amg)
     
     add_executable(par_block_amg_profiling par_block_amg_profiling.cpp)
     target_link_libraries(par_block_amg_profiling raptor ${MPI_LIBRARIES} pthread )
