@@ -27,7 +27,15 @@ int main(int _argc, char** _argv)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
     //int dim = 3;
-    int nrhs = 5;
+    if (argc < 3)
+    {
+        printf("Usage: <nrhs> <first_tap_level>\n");
+        exit(-1);
+    }
+
+    // Grab command line arguments
+    int nrhs = atoi(argv[1]);
+    int first_tap_level = atoi(argv[2]);
 
     //int grid[3] = {5, 5, 5};
 
@@ -44,6 +52,7 @@ int main(int _argc, char** _argv)
     //A = par_stencil_grid(stencil, grid, dim);
     //delete[] stencil;
 
+    int first_tap_level = 1;
     int grid[2] = {2500, 2500};
     double eps = 0.001;
     double theta = M_PI / 8.0;
@@ -59,7 +68,16 @@ int main(int _argc, char** _argv)
     b_single.resize(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     
     ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
+
+    // Setup 2-step node aware communication for V-Cycle
+    ml->tap_amg = first_tap_level; // Set level to start node aware comm
     ml->setup(A, nrhs);
+    for (int i = first_tap_level; i < ml->num_levels; i++)
+    {
+        if (ml->levels[i]->A->tap_comm) delete ml->levels[i]->A->tap_comm;
+        ml->levels[i]->A->tap_comm = new TAPComm(ml->levels[i]->A->tap_mat_comm); 
+    }
+
     ml->print_hierarchy();
 
     x.set_const_value(1.0);
