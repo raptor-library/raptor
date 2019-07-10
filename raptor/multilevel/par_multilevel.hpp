@@ -448,14 +448,18 @@ namespace raptor
                     if (solve_times) solve_times[1][level] += MPI_Wtime();
 
                     if (solve_times) solve_times[2][level] -= MPI_Wtime();
-                    
+                   
+                    printf("before residual calc\n"); 
                     A->residual(x, b, tmp);
+                    printf("after residual calc\n"); 
                     
                     if (solve_times) solve_times[2][level] += MPI_Wtime();
 
                     if (solve_times) solve_times[3][level] -= MPI_Wtime();
 
+                    printf("before mult_T calc\n"); 
                     P->mult_T(tmp, levels[level+1]->b);
+                    printf("after mult_T calc\n"); 
 
                     if (solve_times) solve_times[3][level] += MPI_Wtime();
 
@@ -467,7 +471,9 @@ namespace raptor
 
                     if (solve_times) solve_times[4][level] -= MPI_Wtime();
                     
+                    printf("before mult_append\n"); 
                     P->mult_append(levels[level+1]->x, x);
+                    printf("after mult_append\n"); 
 
                     if (solve_times) solve_times[4][level] += MPI_Wtime();
 
@@ -488,41 +494,6 @@ namespace raptor
                                     tap_level, relax_t);
                             break;
                     }
-                    
-                    /*for (int p = 0; p < num_procs; p++)
-                    {
-                        if (p == rank)
-                        {
-                            for (int v = 0; v < x.local->b_vecs; v++)
-                            {
-                                printf("%d v %d x ", rank, v);
-                                for (int i = 0; i < x.local_n; i++)
-                                {
-                                    printf("%e ", x.local->values[i + v*x.local_n]);    
-                                }
-                                printf("\n");
-                            }
-                        }
-                        fflush(stdout);
-                        MPI_Barrier(MPI_COMM_WORLD);
-                    }
-                    MPI_Barrier(MPI_COMM_WORLD);*/
-                    
-                    /*t = x.inner_product(x, &(x_inners[0]));
-                    t = b.inner_product(b, &(b_inners[0]));
-                    t = tmp.inner_product(tmp, &(tmp_inners[0]));
-                    for (int p = 0; p < num_procs; p++)
-                    {
-                        if (p == rank)
-                        {
-                            printf("%d x_inners %e %e\n", rank, x_inners[0], x_inners[1]);
-                            printf("%d b_inners %e %e\n", rank, b_inners[0], b_inners[1]);
-                            printf("%d tmp_inners %e %e\n", rank, tmp_inners[0], tmp_inners[1]);
-                        }
-                        fflush(stdout);
-                        MPI_Barrier(MPI_COMM_WORLD);
-                    }
-                    MPI_Barrier(MPI_COMM_WORLD);*/
 
                     if (solve_times)
                     {

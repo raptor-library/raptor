@@ -70,7 +70,9 @@ int main(int _argc, char** _argv)
         for (int i = first_tap_level; i < ml->num_levels-1; i++)
         {
             if (ml->levels[i]->A->tap_comm != NULL) delete ml->levels[i]->A->tap_comm;
+            //if (ml->levels[i]->P->tap_comm != NULL) delete ml->levels[i]->P->tap_comm;
             ml->levels[i]->A->tap_comm = new TAPComm(ml->levels[i]->A->partition, ml->levels[i]->A->off_proc_column_map, ml->levels[i]->A->on_proc_column_map, false); 
+            //ml->levels[i]->P->tap_comm = new TAPComm(ml->levels[i]->P->partition, ml->levels[i]->P->off_proc_column_map, ml->levels[i]->P->on_proc_column_map, false); 
         }
     }
 
@@ -91,9 +93,6 @@ int main(int _argc, char** _argv)
     printf("%d multi %lg\n", rank, stop - start);
 
     delete ml;
-
-    printf("%d after multi\n", rank);
-    MPI_Barrier(MPI_COMM_WORLD);
     
     ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
     ml->setup(A);

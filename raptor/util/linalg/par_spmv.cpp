@@ -212,26 +212,26 @@ void ParMatrix::tap_mult_append(ParVector& x, ParVector& b, data_t* comm_t)
     // Initialize Isends and Irecvs to communicate
     // values of x
     if (comm_t) *comm_t -= MPI_Wtime();
-    tap_comm->init_comm(x, off_proc->b_cols);
+    tap_comm->init_comm(x, off_proc->b_cols, x.local->b_vecs);
     if (comm_t) *comm_t += MPI_Wtime();
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
     if (local_num_rows)
     {
-        on_proc->mult_append(*(x.local), *(b.local));
+        on_proc->mult_append(*(x.local), *(b.local), b.local->b_vecs);
     }
 
     // Wait for Isends and Irecvs to complete
     if (comm_t) *comm_t -= MPI_Wtime();
-    aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols);
+    aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols, b.local->b_vecs);
     if (comm_t) *comm_t += MPI_Wtime();
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
     if (off_proc_num_cols)
     {
-        off_proc->mult_append(x_tmp, *(b.local));
+        off_proc->mult_append(x_tmp, *(b.local), b.local->b_vecs);
     }
 }
 
@@ -281,6 +281,7 @@ void ParMatrix::tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t)
 {
     int idx, pos;
 
+    printf("tap_mult_T called\n");
     // Check that communication package has been initialized
     if (tap_comm == NULL)
     {
@@ -288,13 +289,13 @@ void ParMatrix::tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t)
     }
 
     aligned_vector<double>& x_tmp = tap_comm->get_buffer<double>();
-    if (x_tmp.size() < tap_comm->recv_size * off_proc->b_cols)
-        x_tmp.resize(tap_comm->recv_size * off_proc->b_cols);
+    //if (x_tmp.size() < tap_comm->recv_size * off_proc->b_cols)
+    x_tmp.resize(tap_comm->recv_size * off_proc->b_cols * x.local->b_vecs);
 
     off_proc->mult_T(*(x.local), x_tmp);
 
     if (comm_t) *comm_t -= MPI_Wtime();
-    tap_comm->init_comm_T(x_tmp, off_proc->b_cols);
+    tap_comm->init_comm_T(x_tmp, off_proc->b_cols, x.local->b_vecs);
     if (comm_t) *comm_t += MPI_Wtime();
 
     if (local_num_rows)
@@ -303,7 +304,7 @@ void ParMatrix::tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t)
     }
 
     if (comm_t) *comm_t -= MPI_Wtime();
-    tap_comm->complete_comm_T<double>(b.local->values, off_proc->b_cols);
+    tap_comm->complete_comm_T<double>(b.local->values, off_proc->b_cols, x.local->b_vecs);
     if (comm_t) *comm_t += MPI_Wtime();
 }
 
@@ -421,7 +422,7 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r,
     // Initialize Isends and Irecvs to communicate
     // values of x
     if (comm_t) *comm_t -= MPI_Wtime();
-    tap_comm->init_comm(x, off_proc->b_cols);
+    tap_comm->init_comm(x, off_proc->b_cols, x.local->b_vecs);
     if (comm_t) *comm_t += MPI_Wtime();
 
     std::copy(b.local->values.begin(), b.local->values.end(), r.local->values.begin());
@@ -430,19 +431,19 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r,
     // setting b = A_diag*x_local
     if (local_num_rows && on_proc_num_cols)
     {
-        on_proc->mult_append_neg(*(x.local), *(r.local));
+        on_proc->mult_append_neg(*(x.local), *(r.local), r.local->b_vecs);
     }
 
     // Wait for Isends and Irecvs to complete
     if (comm_t) *comm_t -= MPI_Wtime();
-    aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols);
+    aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols, x.local->b_vecs);
     if (comm_t) *comm_t += MPI_Wtime();
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
     if (off_proc_num_cols)
     {
-        off_proc->mult_append_neg(x_tmp, *(r.local));
+        off_proc->mult_append_neg(x_tmp, *(r.local), r.local->b_vecs);
     }
 }
 
