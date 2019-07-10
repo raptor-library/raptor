@@ -41,10 +41,6 @@ int main(int _argc, char** _argv)
     ParVector b_single;
 
     double strong_threshold = 0.0;
-
-    //double* stencil = laplace_stencil_27pt();
-    //A = par_stencil_grid(stencil, grid, dim);
-    //delete[] stencil;
     
     int grid[2] = {2500, 2500};
     double eps = 0.001;
@@ -70,9 +66,9 @@ int main(int _argc, char** _argv)
         for (int i = first_tap_level; i < ml->num_levels-1; i++)
         {
             if (ml->levels[i]->A->tap_comm != NULL) delete ml->levels[i]->A->tap_comm;
-            //if (ml->levels[i]->P->tap_comm != NULL) delete ml->levels[i]->P->tap_comm;
+            if (ml->levels[i]->P->tap_comm != NULL) delete ml->levels[i]->P->tap_comm;
             ml->levels[i]->A->tap_comm = new TAPComm(ml->levels[i]->A->partition, ml->levels[i]->A->off_proc_column_map, ml->levels[i]->A->on_proc_column_map, false); 
-            //ml->levels[i]->P->tap_comm = new TAPComm(ml->levels[i]->P->partition, ml->levels[i]->P->off_proc_column_map, ml->levels[i]->P->on_proc_column_map, false); 
+            ml->levels[i]->P->tap_comm = new TAPComm(ml->levels[i]->P->partition, ml->levels[i]->P->off_proc_column_map, ml->levels[i]->P->on_proc_column_map, false); 
         }
     }
 
@@ -84,11 +80,9 @@ int main(int _argc, char** _argv)
 
     A->mult(x, b);
     x.set_const_value(0.0);
-    //int iter = ml->solve(x, b);
     double start = MPI_Wtime();
     ml->cycle(x, b);
     double stop = MPI_Wtime();
-    //ml->print_residuals(iter*nrhs+1);
 
     printf("%d multi %lg\n", rank, stop - start);
 
@@ -102,7 +96,6 @@ int main(int _argc, char** _argv)
 
     A->mult(x_single, b_single);
     x_single.set_const_value(0.0);
-    //int iter = ml->solve(x, b);
     start = MPI_Wtime();
     ml->cycle(x_single, b_single);
     stop = MPI_Wtime();

@@ -17,7 +17,7 @@ int main(int argc, char** argv)
     return temp;
 } // end of main() //
 
-TEST(TAPAnisoBVSpMVTest, TestsInUtil)
+TEST(TAPAnisoBVSpMVAppendTest, TestsInUtil)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -44,84 +44,102 @@ TEST(TAPAnisoBVSpMVTest, TestsInUtil)
     
     ParVector x3(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
     ParVector b3(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col);
+    
+    b.set_const_value(1.0);
 
-    x.set_const_value(1.0);
+    x1.set_rand_values();
+    x2.set_rand_values();
+    x3.set_rand_values();
+    b1.set_const_value(1.0);
+    b2.set_const_value(2.0);
+    b3.set_const_value(3.0);
 
-    x1.set_const_value(1.0);
-    x2.set_const_value(2.0);
-    x3.set_const_value(3.0);
-
-    // b vectors to test against    
-    A->tap_mult(x1, b1);
-    A->tap_mult(x2, b2);
-    A->tap_mult(x3, b3);
+    A->tap_mult_append(x1, b1);
+    A->tap_mult_append(x2, b2);
+    A->tap_mult_append(x3, b3);
 
     // Set block vector x for testing against
     for (int i=0; i<A->local_num_rows; i++)
     {
-        x.local->values[A->local_num_rows + i] = 2.0;
+        x.local->values[i] = x1.local->values[i];
     }
     for (int i=0; i<A->local_num_rows; i++)
     {
-        x.local->values[2*A->local_num_rows + i] = 3.0;
+        b.local->values[A->local_num_rows + i] = 2.0;
+        x.local->values[A->local_num_rows + i] = x2.local->values[i];
+    }
+    for (int i=0; i<A->local_num_rows; i++)
+    {
+        b.local->values[2*A->local_num_rows + i] = 3.0;
+        x.local->values[2*A->local_num_rows + i] = x3.local->values[i];
     }
 
-    A->tap_mult(x, b);
+    A->tap_mult_append(x, b);
    
     // Test first vector in block 
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        ASSERT_NEAR(b.local->values[i], b1.local->values[i], 1e-06);
+        ASSERT_NEAR(x.local->values[i], x1.local->values[i], 1e-06);
     }
     
     // Test second vector in block
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        ASSERT_NEAR(b.local->values[A->local_num_rows + i], b2.local->values[i], 1e-06);
+        ASSERT_NEAR(x.local->values[A->local_num_rows + i], x2.local->values[i], 1e-06);
     }
     
     // Test third vector in block
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        ASSERT_NEAR(b.local->values[2*A->local_num_rows + i], b3.local->values[i], 1e-06);
+        ASSERT_NEAR(x.local->values[2*A->local_num_rows + i], x3.local->values[i], 1e-06);
     }
 
     // TEST SAME WITH SIMPLE TAP COMM
     delete A->tap_comm;
     A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, A->on_proc_column_map, false);
+    
+    x1.set_rand_values();
+    x2.set_rand_values();
+    x3.set_rand_values();
 
-    x.set_const_value(1.0);
+    A->tap_mult_append(x1, b1);
+    A->tap_mult_append(x2, b2);
+    A->tap_mult_append(x3, b3);
 
-    for (int i=0; i<A->on_proc_num_cols; i++)
+    // Set block vector x for testing against
+    for (int i=0; i<A->local_num_rows; i++)
     {
-        x.local->values[A->on_proc_num_cols + i] = 2.0;
+        x.local->values[i] = x1.local->values[i];
+    }
+    for (int i=0; i<A->local_num_rows; i++)
+    {
+        x.local->values[A->local_num_rows + i] = x2.local->values[i];
+    }
+    for (int i=0; i<A->local_num_rows; i++)
+    {
+        x.local->values[2*A->local_num_rows + i] = x3.local->values[i];
     }
 
-    for (int i=0; i<A->on_proc_num_cols; i++)
-    {
-        x.local->values[2*A->on_proc_num_cols + i] = 3.0;
-    }
-
-    A->tap_mult(x, b);
+    A->tap_mult_append(x, b);
     
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        ASSERT_NEAR(b.local->values[i], b1.local->values[i], 1e-06);
+        ASSERT_NEAR(x.local->values[i], x1.local->values[i], 1e-06);
     }
     
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        ASSERT_NEAR(b.local->values[A->local_num_rows + i], b2.local->values[i], 1e-06);
+        ASSERT_NEAR(x.local->values[A->local_num_rows + i], x2.local->values[i], 1e-06);
     }
     
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        ASSERT_NEAR(b.local->values[2*A->local_num_rows + i], b3.local->values[i], 1e-06);
+        ASSERT_NEAR(x.local->values[2*A->local_num_rows + i], x3.local->values[i], 1e-06);
     }
-    
+   
     delete A;
     delete[] stencil;
 
     setenv("PPN", "16", 1);
 
-} // end of TEST(ParAnisoBVSpMVTest, TestsInUtil) //
+} // end of TEST(ParAnisoBVSpMVAppendTest, TestsInUtil) //
