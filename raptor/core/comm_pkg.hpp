@@ -769,7 +769,9 @@
                         &sum_func<double, double>, 
                         double init_result_func_val = 0)
                 {
+                    //printf("this complete_double_comm_T called after init_double_comm_T vblock_size %d\n", vblock_size);
                     complete_T<double>(block_size, vblock_size, vblock_offset, init_result_func, init_result_func_val);
+                    //printf("after complete_T in complete_double_comm_T vblock_size %d\n", vblock_size);
                 }
                 void complete_int_comm_T(const int block_size = 1, const int vblock_size = 1,
                         const int vblock_offset = 0,
@@ -818,6 +820,7 @@
                         std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                         T init_result_func_val = 0)
                 {
+                    //printf("communicate_T called after initialize_T\n");
                     CommPkg::communicate_T(values, block_size, vblock_size, vblock_offset, init_result_func, init_result_func_val);
                 }
 
@@ -1832,6 +1835,7 @@
         {
             int idx;
 
+            //printf("initialize_T vblock_size %d\n", vblock_size);
             // Messages with origin and final destination on node
             local_L_par_comm->communicate_T(values, block_size, vblock_size, vblock_offset, init_result_func, init_result_func_val);
 
@@ -1851,43 +1855,99 @@
                 T init_result_func_val = 0)
         {
             complete_T<T>(block_size, vblock_size, vblock_offset, init_result_func, init_result_func_val);
-            int idx, pos;
+
+            int rank, num_procs;
+            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
+            int idx, pos, start, end;
             aligned_vector<T>& L_sendbuf = local_L_par_comm->send_data->get_buffer<T>();
 
-            for (int i = 0; i < local_L_par_comm->send_data->size_msgs; i++)
+            int v_offset = result.size() / vblock_size;
+
+            for (int i = 0; i < local_L_par_comm->send_data->num_msgs; i++)
             {
-                idx = local_L_par_comm->send_data->indices[i] * block_size;
-                pos = i * block_size;
-                for (int j = 0; j < block_size; j++)
+                start = local_L_par_comm->send_data->indptr[i];
+                end = local_L_par_comm->send_data->indptr[i+1];
+                for (int j = 0; j < (end-start); j++)
                 {
-                    result[idx + j] = result_func(result[idx + j], L_sendbuf[pos + j]);
+                    idx = local_L_par_comm->send_data->indices[j+start] * block_size;
+                    pos = j * block_size + (start * vblock_size);
+                    for (int b = 0; b < block_size; b++)
+                    {
+                        for (int v = 0; v < vblock_size; v++)
+                        {
+                            result[v*v_offset + idx + b] = result_func(result[v*v_offset + idx + b], L_sendbuf[v*(end-start) + pos + b]);
+                            //printf("%d result[%d](%e) + L_sendbuf[%d](%e)\n", rank ,v*v_offset + idx + b, result[v*v_offset + idx + b], v*(end-start) + pos + b, L_sendbuf[v*(end-start) + pos + b]);
+                        }
+                    }
                 }
             }
 
             if (local_S_par_comm)
             {
                 aligned_vector<T>& S_sendbuf = local_S_par_comm->send_data->get_buffer<T>();
-                for (int i = 0; i < local_S_par_comm->send_data->size_msgs; i++)
+
+                for (int i = 0; i < local_S_par_comm->send_data->num_msgs; i++)
                 {
-                    idx = local_S_par_comm->send_data->indices[i] * block_size;
-                    pos = i * block_size;
-                    for (int j = 0; j < block_size; j++)
+                    start = local_S_par_comm->send_data->indptr[i];
+                    end = local_S_par_comm->send_data->indptr[i+1];
+                    for (int j = 0; j < (end-start); j++)
                     {
-                        result[idx + j] = result_func(result[idx + j], S_sendbuf[pos + j]);
+                        idx = local_S_par_comm->send_data->indices[j+start] * block_size;
+                        pos = j * block_size + (start * vblock_size);
+                        for (int b = 0; b < block_size; b++)
+                        {
+                            for (int v = 0; v < vblock_size; v++)
+                            {
+                                result[v*v_offset + idx + b] = result_func(result[v*v_offset + idx + b], S_sendbuf[v*(end-start) + pos + b]);
+                            }
+                        }
                     }
                 }
             }
             else
             {
                 aligned_vector<T>& G_sendbuf = global_par_comm->send_data->get_buffer<T>();
-                for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
+
+                //v_offset = G_sendbuf.size() / vblock_size; 
+                /*for (int i = 0; i < global_par_comm->send_data->size_msgs; i++)
                 {
-                    idx = global_par_comm->send_data->indices[i] * block_size;
-                    pos = i * block_size;
-                    for (int j = 0; j < block_size; j++)
+                    for (int v = 0; v < vblock_size; v++)
                     {
-                        result[idx + j] = result_func(result[idx + j], G_sendbuf[pos + j]);
+                        idx = global_par_comm->send_data->indices[i] * block_size + v * v_offset;
+                        pos = i * block_size + v * global_par_comm->send_data->size_msgs;
+                        for (int j = 0; j < block_size; j++)
+                        {
+                            result[idx + j] = result_func(result[idx + j], G_sendbuf[pos + j]);
+                        }
                     }
+                }*/
+                for (int i = 0; i < global_par_comm->send_data->num_msgs; i++)
+                {
+                    start = global_par_comm->send_data->indptr[i];
+                    end = global_par_comm->send_data->indptr[i+1];
+                    for (int j = 0; j < (end-start); j++)
+                    {
+                        idx = global_par_comm->send_data->indices[j+start] * block_size;
+                        pos = j * block_size + (start * vblock_size);
+                        for (int b = 0; b < block_size; b++)
+                        {
+                            for (int v = 0; v < vblock_size; v++)
+                            {
+                                result[v*v_offset + idx + b] = result_func(result[v*v_offset + idx + b], G_sendbuf[v*(end-start) + pos + b]);
+                            }
+                        }
+                    }
+                    /*for (int v = 0; v < vblock_size; v++)
+                    {
+                        idx = global_par_comm->send_data->indices[i] * block_size + v * v_offset;
+                        pos = i * block_size + v * global_par_comm->send_data->size_msgs;
+                        for (int j = 0; j < block_size; j++)
+                        {
+                            result[idx + j] = result_func(result[idx + j], G_sendbuf[pos + j]);
+                        }
+                    }*/
                 }
             }
         }
@@ -1902,6 +1962,7 @@
     
             if (local_S_par_comm)
             {
+                //printf("before second communicate_T\n");
                 aligned_vector<T>& G_sendbuf = global_par_comm->send_data->get_buffer<T>();
                 local_S_par_comm->communicate_T(G_sendbuf, block_size, vblock_size, vblock_offset, init_result_func,
                         init_result_func_val);

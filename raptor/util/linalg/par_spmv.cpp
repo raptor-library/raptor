@@ -280,8 +280,10 @@ void ParMatrix::mult_T(ParVector& x, ParVector& b, bool tap, data_t* comm_t)
 void ParMatrix::tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t)
 {
     int idx, pos;
+    int rank, num_procs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    printf("tap_mult_T called\n");
     // Check that communication package has been initialized
     if (tap_comm == NULL)
     {
@@ -295,7 +297,8 @@ void ParMatrix::tap_mult_T(ParVector& x, ParVector& b, data_t* comm_t)
     off_proc->mult_T(*(x.local), x_tmp);
 
     if (comm_t) *comm_t -= MPI_Wtime();
-    tap_comm->init_comm_T(x_tmp, off_proc->b_cols, x.local->b_vecs);
+    //tap_comm->init_comm_T(x_tmp, off_proc->b_cols, x.local->b_vecs);
+    tap_comm->init_comm_T(x_tmp, off_proc->b_cols, x.local->b_vecs, tap_comm->recv_size * off_proc->b_cols);
     if (comm_t) *comm_t += MPI_Wtime();
 
     if (local_num_rows)

@@ -118,6 +118,7 @@ namespace raptor
             std::function<double(double, double)> init_result_func,
             double init_result_func_val)
     {
+        //printf("this communicate_T called from other communicate_T vblock_size %d\n", vblock_size);
         init_double_comm_T(values, block_size, vblock_size, vblock_offset, init_result_func, init_result_func_val);
         complete_double_comm_T(block_size, vblock_size, vblock_offset, init_result_func, init_result_func_val);
     }

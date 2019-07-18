@@ -147,7 +147,6 @@ public:
         MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
         if (buf.size() < size) buf.resize(size);
-        //printf("****this receive called in jacobi vblock %d size %d\n", vblock_size, size);
 
         for (int i = 0; i < num_msgs; i++)
         {
@@ -421,7 +420,7 @@ public:
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size, const int vblock_size)
     {
-        send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
+        send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size, vblock_size);
     }        
 
     template <typename T>
@@ -436,8 +435,6 @@ public:
         int proc, idx;
         int size = size_msgs * block_size * vblock_size;
         aligned_vector<T> send_vals;
-        
-        //printf("**** send called by double send size_msgs %d vblock %d size %d\n", size_msgs, vblock_size, size);
 
         MPI_Datatype datatype = get_type<T>();
 
@@ -828,7 +825,7 @@ public:
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size, const int vblock_size)
     {
-        send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
+        send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size, vblock_size);
     }     
 
     template <typename T>
@@ -847,7 +844,6 @@ public:
         MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
         if (buf.size() < size) buf.resize(size);
-        //printf("**** this send called by double send size_msgs %d vblock %d size %d buf %d\n", size_msgs, vblock_size, size, buf.size());
 
         if (vblock_size > 1)
         {
@@ -1232,7 +1228,7 @@ public:
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size, const int vblock_size)
     {
-        send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
+        send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size, vblock_size);
     }     
 
     // UPDATE THIS FOR GLOBAL SENDS AND RECEIVES

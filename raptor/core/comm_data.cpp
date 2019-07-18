@@ -46,7 +46,7 @@ void CommData::send<double>(const double* values, int key, MPI_Comm mpi_comm, co
         std::function<double(double, double)> init_result_func, double init_result_func_val) 
 {
     double_send(values, key, mpi_comm, block_size, vblock_size, init_result_func,
-            init_result_func_val);
+            init_result_func_val, vblock_offset);
 }
 
 template<>

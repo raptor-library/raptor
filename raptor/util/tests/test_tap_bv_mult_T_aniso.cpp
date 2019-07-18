@@ -30,8 +30,8 @@ TEST(TAPAnisoBVMultTTest, TestsInUtil)
     double theta = M_PI/8.0;
     double* stencil = diffusion_stencil_2d(eps, theta);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
+
     setenv("PPN", "4", 1);
-    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, A->on_proc_column_map);
 
     ParBVector x(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col, vecs_in_block);
     ParBVector b(A->global_num_cols, A->on_proc_num_cols, A->partition->first_local_col, vecs_in_block);
@@ -69,12 +69,11 @@ TEST(TAPAnisoBVMultTTest, TestsInUtil)
     }
 
     A->tap_mult_T(x, b);
-   
+    
     // Test first vector in block 
     for (int i = 0; i < A->local_num_rows; i++)
     {
         ASSERT_NEAR(b.local->values[i], b1.local->values[i], 1e-06);
-        //printf("%d %e %e\n", rank, b.local->values[i], b1.local->values[i]);
     }
     
     // Test second vector in block
@@ -90,7 +89,7 @@ TEST(TAPAnisoBVMultTTest, TestsInUtil)
     }
 
     // TEST SAME WITH SIMPLE TAP COMM
-    /*delete A->tap_comm;
+    delete A->tap_comm;
     A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, A->on_proc_column_map, false);
     
     // res vectors to test against    
@@ -113,7 +112,7 @@ TEST(TAPAnisoBVMultTTest, TestsInUtil)
     for (int i = 0; i < A->local_num_rows; i++)
     {
         ASSERT_NEAR(b.local->values[2*A->local_num_rows + i], b3.local->values[i], 1e-06);
-    }*/
+    }
     
     delete A;
     delete[] stencil;
