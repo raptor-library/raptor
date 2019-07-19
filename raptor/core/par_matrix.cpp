@@ -792,7 +792,7 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
     return A;
 }
 
-void ParMatrix::init_tap_communicators(MPI_Comm comm, data_t* comm_t)
+void ParMatrix::init_tap_communicators(MPI_Comm comm, data_t* comm_t, bool simple)
 {
     /*********************************
      * Initialize 
@@ -801,9 +801,6 @@ void ParMatrix::init_tap_communicators(MPI_Comm comm, data_t* comm_t)
     int rank, num_procs;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &num_procs);
-
-    // Initialize standard tap_comm
-    tap_comm = new TAPComm(partition, true);    
 
     // Initialize Variables
     int idx;
@@ -828,57 +825,114 @@ void ParMatrix::init_tap_communicators(MPI_Comm comm, data_t* comm_t)
         }
     }
 
-    /*********************************
-     * Split columns by processes, 
-     * on-node, and off-node 
-     * *******************************/
-    // Find process on which vector value associated with each column is
-    // stored
-    partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
 
-    // Partition off_proc cols into on_node and off_node
-    tap_comm->split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
-           on_node_column_map, on_node_col_to_proc, on_node_to_off_proc,
-           off_node_column_map, off_node_col_to_proc, off_node_to_off_proc);
-
-    // Form local_L_par_comm: fully local communication (origin and
-    // destination processes both local to node)
-    tap_comm->form_local_L_par_comm(on_node_column_map, on_node_col_to_proc,
-            partition->first_local_col, comm_t);
-    for (aligned_vector<int>::iterator it = tap_comm->local_L_par_comm->send_data->indices.begin();
-            it != tap_comm->local_L_par_comm->send_data->indices.end(); ++it)
+    if (simple)
     {
-        *it = on_proc_to_new[*it];
+        /*********************************
+         * Form simple 2-step 
+         * node-aware communicator 
+         * *******************************/
+        // Create simple (2-step) TAPComm for block vector communication
+        tap_comm = new TAPComm(partition, false);
+
+        // Find process on which vector value associated with each column is
+        // stored
+        partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
+
+        // Partition off_proc cols into on_node and off_node
+        tap_comm->split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
+               on_node_column_map, on_node_col_to_proc, on_node_to_off_proc,
+               off_node_column_map, off_node_col_to_proc, off_node_to_off_proc);
+        
+        // Form local_L_par_comm: fully local communication (origin and
+        // destination processes both local to node)
+        tap_comm->form_local_L_par_comm(on_node_column_map, on_node_col_to_proc,
+                partition->first_local_col, comm_t);
+        for (aligned_vector<int>::iterator it = tap_comm->local_L_par_comm->send_data->indices.begin();
+                it != tap_comm->local_L_par_comm->send_data->indices.end(); ++it)
+        {
+            *it = on_proc_to_new[*it];
+        }
+        
+        // Form local recv communicator.  Will recv from local rank
+        // corresponding to global rank on which data originates.  E.g. if
+        // data is on rank r = (p, n), and my rank is s = (q, m), I will
+        // recv data from (p, m).
+        tap_comm->form_simple_R_par_comm(off_node_column_map, off_node_col_to_proc, comm_t);
+        
+        // Form global par comm.. Will recv from proc on which data
+        // originates
+        tap_comm->form_simple_global_comm(off_node_col_to_proc, comm_t);
+        
+        // Adjust send indices (currently global vector indices) to be
+        // index of global vector value from previous recv (only updating
+        // local_R to match position in global)
+        tap_comm->adjust_send_indices(partition->first_local_col);
+
+        tap_comm->update_recv(on_node_to_off_proc, off_node_to_off_proc, false);
+
+        for (aligned_vector<int>::iterator it = 
+                tap_comm->global_par_comm->send_data->indices.begin();
+                it != tap_comm->global_par_comm->send_data->indices.end(); ++it)
+        {
+            *it = on_proc_to_new[*it];
+        }
     }
-
-
-    /*********************************
-     * Form standard 3-step 
-     * node-aware communicator 
-     * *******************************/
-    // Gather all nodes with which any local process must communication
-    tap_comm->form_local_R_par_comm(off_node_column_map, off_node_col_to_proc, 
-            orig_procs, comm_t);
-
-    // Find global processes with which rank communications
-    tap_comm->form_global_par_comm(orig_procs, comm_t);
-
-    // Form local_S_par_comm: initial distribution of values among local
-    // processes, before inter-node communication
-    tap_comm->form_local_S_par_comm(orig_procs, comm_t);
-
-    // Adjust send indices (currently global vector indices) to be index 
-    // of global vector value from previous recv
-    tap_comm->adjust_send_indices(partition->first_local_col);
-
-
-    tap_comm->update_recv(on_node_to_off_proc, off_node_to_off_proc);
-    for (aligned_vector<int>::iterator it = tap_comm->local_S_par_comm->send_data->indices.begin();
-            it != tap_comm->local_S_par_comm->send_data->indices.end(); ++it)
+    else
     {
-        *it = on_proc_to_new[*it];
-    }
+        // Initialize standard tap_comm
+        tap_comm = new TAPComm(partition, true);    
 
+        /*********************************
+         * Split columns by processes, 
+         * on-node, and off-node 
+         * *******************************/
+        // Find process on which vector value associated with each column is
+        // stored
+        partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
+
+        // Partition off_proc cols into on_node and off_node
+        tap_comm->split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
+               on_node_column_map, on_node_col_to_proc, on_node_to_off_proc,
+               off_node_column_map, off_node_col_to_proc, off_node_to_off_proc);
+
+        // Form local_L_par_comm: fully local communication (origin and
+        // destination processes both local to node)
+        tap_comm->form_local_L_par_comm(on_node_column_map, on_node_col_to_proc,
+                partition->first_local_col, comm_t);
+        for (aligned_vector<int>::iterator it = tap_comm->local_L_par_comm->send_data->indices.begin();
+                it != tap_comm->local_L_par_comm->send_data->indices.end(); ++it)
+        {
+            *it = on_proc_to_new[*it];
+        }
+
+        /*********************************
+         * Form standard 3-step 
+         * node-aware communicator 
+         * *******************************/
+        // Gather all nodes with which any local process must communication
+        tap_comm->form_local_R_par_comm(off_node_column_map, off_node_col_to_proc, 
+                orig_procs, comm_t);
+
+        // Find global processes with which rank communications
+        tap_comm->form_global_par_comm(orig_procs, comm_t);
+
+        // Form local_S_par_comm: initial distribution of values among local
+        // processes, before inter-node communication
+        tap_comm->form_local_S_par_comm(orig_procs, comm_t);
+
+        // Adjust send indices (currently global vector indices) to be index 
+        // of global vector value from previous recv
+        tap_comm->adjust_send_indices(partition->first_local_col);
+
+
+        tap_comm->update_recv(on_node_to_off_proc, off_node_to_off_proc);
+        for (aligned_vector<int>::iterator it = tap_comm->local_S_par_comm->send_data->indices.begin();
+                it != tap_comm->local_S_par_comm->send_data->indices.end(); ++it)
+        {
+            *it = on_proc_to_new[*it];
+        }
+    }
 
     /*********************************
      * Form simple 2-step 

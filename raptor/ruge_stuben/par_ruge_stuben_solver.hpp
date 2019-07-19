@@ -157,7 +157,7 @@ namespace raptor
                     break;
             }
             if (setup_times) setup_times[2][level_ctr] += MPI_Wtime();
-
+            
             // Form modified classical interpolation
             if (setup_times) setup_times[3][level_ctr] -= MPI_Wtime();
             switch (interp_type)
@@ -180,6 +180,7 @@ namespace raptor
             if (setup_times) setup_times[3][level_ctr] += MPI_Wtime();
             levels[level_ctr]->P = P;
 
+            
             if (num_variables > 1)
             {
                 int ctr = 0;
@@ -199,7 +200,7 @@ namespace raptor
             if (setup_times) setup_times[4][level_ctr] -= MPI_Wtime();
             AP = A->mult(levels[level_ctr]->P, tap_level, AP_mat_time);
             if (setup_times) setup_times[4][level_ctr] += MPI_Wtime();
-
+            
             if (setup_times) setup_times[5][level_ctr] -= MPI_Wtime();
             A = AP->mult_T(P, tap_level, PTAP_mat_time);
             if (setup_times) setup_times[5][level_ctr] += MPI_Wtime();
@@ -222,13 +223,13 @@ namespace raptor
             levels[level_ctr]->tmp.resize(A->global_num_rows, A->local_num_rows,
                     A->partition->first_local_row);
             levels[level_ctr]->P = NULL;
-
+            
             if (tap_amg >= 0 && tap_amg <= level_ctr)
             {
                 levels[level_ctr]->A->init_tap_communicators(MPI_COMM_WORLD, 
-                        total_time);
+                        total_time, tap_simple);
             }
-
+            
             delete AP;
             delete S;
 

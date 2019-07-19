@@ -32,9 +32,12 @@ int main(int _argc, char** _argv)
     int nrhs = atoi(_argv[1]);
     int first_tap_level = atoi(_argv[2]);
     int nap_version = atoi(_argv[3]);
+    
+    setenv("PPN", "4", 1);
 
     ParMultilevel* ml;
     ParCSRMatrix* A;
+    TAPComm* temp_comm;
     ParBVector x;
     ParBVector b;
     ParVector x_single;
@@ -42,7 +45,8 @@ int main(int _argc, char** _argv)
 
     double strong_threshold = 0.0;
     
-    int grid[2] = {2500, 2500};
+    //int grid[2] = {2500, 2500};
+    int grid[2] = {25, 25};
     double eps = 0.001;
     double theta = M_PI / 8.0;
     double* stencil = diffusion_stencil_2d(eps, theta);
@@ -60,17 +64,33 @@ int main(int _argc, char** _argv)
 
     // Setup 2-step node aware communication for V-Cycle
     ml->tap_amg = first_tap_level; // Set level to start node aware comm
+    if (nap_version == 2) ml->tap_simple = true;
     ml->setup(A, nrhs);
-    if (nap_version == 2)
+    /*if (nap_version == 2)
     {
         for (int i = first_tap_level; i < ml->num_levels-1; i++)
         {
-            if (ml->levels[i]->A->tap_comm != NULL) delete ml->levels[i]->A->tap_comm;
-            if (ml->levels[i]->P->tap_comm != NULL) delete ml->levels[i]->P->tap_comm;
-            ml->levels[i]->A->tap_comm = new TAPComm(ml->levels[i]->A->partition, ml->levels[i]->A->off_proc_column_map, ml->levels[i]->A->on_proc_column_map, false); 
-            ml->levels[i]->P->tap_comm = new TAPComm(ml->levels[i]->P->partition, ml->levels[i]->P->off_proc_column_map, ml->levels[i]->P->on_proc_column_map, false); 
+            if (ml->levels[i]->A->tap_comm != NULL)
+            {
+                temp_comm = new TAPComm(partition, false, ml->levels[i]->A->tap_comm->local_L_par_comm);
+                temp_comm->form_simple_R_par_comm(ml->levels[i]->A->off_node_column_map, ml->levels[i]->A->off_node_col_to_proc, NULL);
+                temp_comm->form_simple_global_comm(ml->levels[i]->A->off_node_col_to_proc, NULL);
+                temp_comm->adjust_send_indices(ml->levels[i]->A->partition->first_local_col);
+                temp_comm->update_recv(ml->levels[i]->A->on_node_to_off_proc, ml->levels[i]->A->off_node_to_off_proc, false);
+
+                for (aligned_vector<int>::iterator it = 
+                        temp_comm->global_par_comm->send_data->indices.begin();
+                        it != temp_comm->global_par_comm->send_data->indices.end(); ++it)
+                {
+                    *it = ml->levels[i]->A->on_proc_to_new[*it];
+                }
+
+                delete ml->levels[i]->A->tap_comm;
+                ml->levels[i]->A->tap_comm = temp_comm;
+                temp_comm = NULL;
+            }
         }
-    }
+    }*/
 
     ml->print_hierarchy();
 
@@ -88,7 +108,7 @@ int main(int _argc, char** _argv)
 
     delete ml;
     
-    ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
+    /*ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
     ml->setup(A);
     ml->print_hierarchy();
     
@@ -102,7 +122,7 @@ int main(int _argc, char** _argv)
     
     printf("%d single %lg\n", rank, stop - start);
 
-    delete ml;
+    delete ml;*/
 
     // Test Smoothed Aggregation Solver
     /*ml = new ParSmoothedAggregationSolver(strong_threshold, MIS, JacobiProlongation, Symmetric, SSOR);

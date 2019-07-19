@@ -263,7 +263,7 @@ namespace raptor
     ParMatrix* add(ParCSRMatrix* A);
     ParMatrix* subtract(ParCSRMatrix* A);
 
-    void init_tap_communicators(MPI_Comm comm = MPI_COMM_WORLD, data_t* comm_t = NULL);
+    void init_tap_communicators(MPI_Comm comm = MPI_COMM_WORLD, data_t* comm_t = NULL, bool simple=false);
     void update_tap_comm(ParMatrix* old, const aligned_vector<int>& old_to_new,
             double* comm_t = NULL)
     {

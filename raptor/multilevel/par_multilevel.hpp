@@ -89,6 +89,7 @@ namespace raptor
                 max_coarse = 50;
                 max_levels = 25;
                 tap_amg = -1;
+                tap_simple = false;
                 weights = NULL;
                 store_residuals = true;
                 track_times = false;
@@ -189,7 +190,12 @@ namespace raptor
                 while (levels[last_level]->A->global_num_rows > max_coarse && 
                         (max_levels == -1 || (int) levels.size() < max_levels))
                 {
+                    //printf("%d BEFORE EXTEND_HIERARCHY\n", rank);
+                    //MPI_Barrier(MPI_COMM_WORLD);
+
                     extend_hierarchy(nrhs);
+                    //printf("%d AFTER EXTEND_HIERARCHY\n", rank);
+                    //MPI_Barrier(MPI_COMM_WORLD);
                     last_level++;
 
                     for (int i = 0; i < n_setup_times; i++)
@@ -199,7 +205,6 @@ namespace raptor
                         setup_mat_comm_times[i].emplace_back(0.0);
                     }
                 }
-
                 num_levels = levels.size();
                 if (Af->local_num_rows) 
                 {
@@ -449,17 +454,17 @@ namespace raptor
 
                     if (solve_times) solve_times[2][level] -= MPI_Wtime();
                    
-                    printf("before residual calc\n"); 
+                    //printf("before residual calc\n"); 
                     A->residual(x, b, tmp);
-                    printf("after residual calc\n"); 
+                    //printf("after residual calc\n"); 
                     
                     if (solve_times) solve_times[2][level] += MPI_Wtime();
 
                     if (solve_times) solve_times[3][level] -= MPI_Wtime();
 
-                    printf("before mult_T calc\n"); 
+                    //printf("before mult_T calc\n"); 
                     P->mult_T(tmp, levels[level+1]->b);
-                    printf("after mult_T calc\n"); 
+                    //printf("after mult_T calc\n"); 
 
                     if (solve_times) solve_times[3][level] += MPI_Wtime();
 
@@ -471,9 +476,9 @@ namespace raptor
 
                     if (solve_times) solve_times[4][level] -= MPI_Wtime();
                     
-                    printf("before mult_append\n"); 
+                    //printf("before mult_append\n"); 
                     P->mult_append(levels[level+1]->x, x);
-                    printf("after mult_append\n"); 
+                    //printf("after mult_append\n"); 
 
                     if (solve_times) solve_times[4][level] += MPI_Wtime();
 
@@ -727,6 +732,7 @@ namespace raptor
             int max_coarse;
             int max_levels;
             int tap_amg;
+            int tap_simple;
             int n_setup_times, n_solve_times;
             int max_iterations;
 
