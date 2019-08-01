@@ -489,7 +489,8 @@ void ParMatrix::default_copy_helper(ParMatrix* A)
 
     if (A->comm)
     {
-        comm = new ParComm((ParComm*) A->comm);
+        comm = A->comm;
+        comm->num_shared++;
     }
     else
     {
@@ -498,7 +499,8 @@ void ParMatrix::default_copy_helper(ParMatrix* A)
 
     if (A->tap_comm)
     {
-        tap_comm = new TAPComm((TAPComm*) A->tap_comm);
+        tap_comm = A->tap_comm;
+        tap_comm->num_shared++;
     }
     else
     {
@@ -507,7 +509,8 @@ void ParMatrix::default_copy_helper(ParMatrix* A)
 
     if (A->tap_mat_comm)
     {
-        tap_mat_comm = new TAPComm((TAPComm*) A->tap_mat_comm);
+        tap_mat_comm = A->tap_mat_comm;
+        tap_mat_comm->num_shared++;
     }
     else
     {
