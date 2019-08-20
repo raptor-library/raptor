@@ -28,7 +28,7 @@ data_t half_inner_contig(ParVector &x, ParVector &y, int half, int part_global){
             printf("Error. Dimensions do not match.\n");
 	    exit(-1);
 	}
-	inner_prod = x.local.inner_product(y.local);
+	inner_prod = x.local->inner_product(*(y.local));
 	return inner_prod;
     }
 
@@ -73,7 +73,7 @@ data_t half_inner_contig(ParVector &x, ParVector &y, int half, int part_global){
     // Perform Inner Product on Half
     if (!(color)){
         if (x.local_n){
-            inner_prod = x.local.inner_product(y.local);
+            inner_prod = x.local->inner_product(*(y.local));
         }
         if (inner_comm_size > 1) RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &inner_prod, 1, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, inner_comm);
     }
@@ -113,7 +113,7 @@ data_t sequential_inner(ParVector &x, ParVector &y){
             printf("Error. Dimensions do not match.\n");
 	    exit(-1);
 	}
-	inner_prod = x.local.inner_product(y.local);
+	inner_prod = x.local->inner_product(*(y.local));
 	return inner_prod;
     }
 
@@ -123,7 +123,7 @@ data_t sequential_inner(ParVector &x, ParVector &y){
     }
 
     for(int i=0; i<x.local_n; i++){
-        inner_prod += x.local[i] * y.local[i];
+        inner_prod += x.local->values[i] * y.local->values[i];
     }
 
     if (rank < num_procs-1)
@@ -233,7 +233,7 @@ data_t half_inner(RAPtor_MPI_Comm &inner_comm, ParVector &x, ParVector &y, int &
                 printf("Error. Dimensions do not match.\n");
             exit(-1);
         }
-        inner_prod = x.local.inner_product(y.local);
+        inner_prod = x.local->inner_product(*(y.local));
         return inner_prod;
     }
     
@@ -250,7 +250,7 @@ data_t half_inner(RAPtor_MPI_Comm &inner_comm, ParVector &x, ParVector &y, int &
     // and corresponds to the half performing the inner product this iteration
     if (my_color == send_color){
         if (x.local_n){
-            inner_prod = x.local.inner_product(y.local);
+            inner_prod = x.local->inner_product(*(y.local));
         }
         if (inner_comm_size > 1) RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &inner_prod, 1, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, inner_comm);
         // Scale inner product by global percentage before sending
@@ -318,7 +318,7 @@ data_t partial_inner(RAPtor_MPI_Comm &inner_comm, RAPtor_MPI_Comm &root_comm, Pa
     // and corresponds to the half performing the inner product this iteration
     if (my_color == send_color){
         if (x.local_n){
-            inner_prod = x.local.inner_product(y.local);
+            inner_prod = x.local->inner_product(*(y.local));
         }
         if (inner_comm_size > 1) RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &inner_prod, 1, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, inner_comm);
         // Scale inner product by global percentage before sending

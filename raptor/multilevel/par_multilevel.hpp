@@ -362,7 +362,7 @@ namespace raptor
                         int info; // result
 
                         aligned_vector<double> b_data(coarse_n);
-                        RAPtor_MPI_Allgatherv(b.local.data(), b.local_n, RAPtor_MPI_DOUBLE, b_data.data(), 
+                        RAPtor_MPI_Allgatherv(b.local->data(), b.local_n, RAPtor_MPI_DOUBLE, b_data.data(), 
                                 coarse_sizes.data(), coarse_displs.data(), 
                                 RAPtor_MPI_DOUBLE, coarse_comm);
 
@@ -370,7 +370,7 @@ namespace raptor
                                 LU_permute.data(), b_data.data(), &coarse_n, &info);
                         for (int i = 0; i < b.local_n; i++)
                         {
-                            x.local[i] = b_data[i + coarse_displs[active_rank]];
+                            x.local->values[i] = b_data[i + coarse_displs[active_rank]];
                         }
                     }
 

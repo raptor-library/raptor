@@ -21,6 +21,7 @@ if (WITH_MPI)
         )
     set(par_linalg_SOURCES
         util/linalg/par_spmv.cpp
+        util/linalg/par_vecops.cpp
         util/linalg/par_matmult.cpp
         util/linalg/par_add.cpp
         util/linalg/par_relax.cpp
@@ -46,6 +47,7 @@ set(linalg_SOURCES
     util/linalg/relax.cpp
     util/linalg/add.cpp
     util/linalg/spmv.cpp
+    util/linalg/vecops.cpp
     ${par_linalg_SOURCES}
     PARENT_SCOPE
     )

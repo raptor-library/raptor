@@ -51,8 +51,9 @@ public:
     ***** len : index_t
     *****    Size of the vector
     **************************************************************/
-    Vector(int len)
+    Vector(int len, int vecs_in_block = 1)
     {
+        b_vecs = vecs_in_block;
         resize(len);
     }
 
@@ -64,6 +65,7 @@ public:
     Vector()
     {
         num_values = 0;
+        b_vecs = 1;
     }
 
     Vector(const Vector& v)
@@ -73,7 +75,7 @@ public:
 
     void resize(int len)
     {
-        values.resize(len);
+        values.resize(len * b_vecs);
         num_values = len;
     }
 
@@ -133,8 +135,11 @@ public:
     ***** -------------
     ***** alpha : data_t
     *****    Constant value to set multiply element of vector by
+    ***** alphas : data_t*
+    *****    Constant values to multiply element of each vector
+    *****    in block vector by
     **************************************************************/
-    void scale(data_t alpha);
+    void scale(data_t alpha, data_t* alphas = NULL);
 
     /**************************************************************
     *****   Vector Norm
@@ -145,8 +150,25 @@ public:
     ***** -------------
     ***** p : index_t
     *****    Determines which p-norm to calculate
-     **************************************************************/
-    data_t norm(index_t p);
+    ***** norms : data_t*
+    *****    Contains the p_norms of each vector in block if 
+    *****    b_vecs > 1
+    ****************************************************************/
+    data_t norm(index_t p, data_t* norms = NULL);
+    
+    /**************************************************************
+    *****   Vector Mult 
+    **************************************************************
+    ***** Calculates the P norm of the vector (for a given P)
+    *****
+    ***** Parameters
+    ***** -------------
+    ***** x : Vector&
+    *****    Vector with which to multiply
+    ***** b : Vector& 
+    *****    Vector to hold result
+    ****************************************************************/
+    void mult(Vector& x, Vector& b);
 
     /**************************************************************
     *****   Print Vector
@@ -191,10 +213,44 @@ public:
         return num_values;
     }
 
-    data_t inner_product(Vector& x);
+    data_t inner_product(Vector& x, data_t* inner_prods = NULL);
+    data_t inner_product(Vector& x, index_t i, index_t j);
+
+    void axpy_ij(Vector& y, index_t i, index_t j, data_t alpha);
+    void mult_T(Vector& X, Vector& B);
+
+    void append(Vector& P);
+    void split(Vector& W, int t, int i);
+    void split_range(Vector& W, int t, int start);
+    void split_contig(Vector& W, int t, int first_global_index, int glob_vals);
 
     aligned_vector<double> values;
     index_t num_values;
+    index_t b_vecs;
+};
+
+// Forward Declaration of Blocked Vector
+class BVector;
+
+class BVector : public Vector
+{
+
+
+public:
+    BVector(int len, int vecs_in_block) : Vector(len, vecs_in_block)
+    {
+        b_vecs = vecs_in_block;
+        num_values = len;
+    }
+
+    BVector() : Vector()
+    {
+        b_vecs = 1;
+    }
+
+    void axpy(Vector& x, data_t alpha);
+    data_t norm(index_t p, data_t* norms = NULL);
+    data_t inner_product(Vector& x, data_t* inner_prods = NULL);
 };
 
 }

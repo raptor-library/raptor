@@ -22,6 +22,14 @@ add_executable(test_bsr_spmv_random test_bsr_spmv_random.cpp)
 target_link_libraries(test_bsr_spmv_random raptor ${MPI_LIBRARIES} googletest pthread )
 add_test(RandomBSRSpMVTest ./test_bsr_spmv_random)
 
+add_executable(test_bvector_spmv_aniso test_bvector_spmv_aniso.cpp)
+target_link_libraries(test_bvector_spmv_aniso raptor ${MPI_LIBRARIES} googletest pthread )
+add_test(AnisoBVectorSpMVTest ./test_bvector_spmv_aniso)
+
+add_executable(test_bvector_mult test_bvector_mult.cpp)
+target_link_libraries(test_bvector_mult raptor ${MPI_LIBRARIES} googletest pthread )
+add_test(BVectorMultTest ./test_bvector_mult)
+
 if (WITH_MPI)
     add_executable(test_par_add test_par_add.cpp)
     target_link_libraries(test_par_add raptor ${MPI_LIBRARIES} googletest pthread )

@@ -57,13 +57,18 @@ namespace raptor
         ***** lcl_n : index_t
         *****    Number of entries of global vector stored locally
         **************************************************************/
-        ParVector(index_t glbl_n, int lcl_n)
+        ParVector(index_t glbl_n, int lcl_n, bool form_vec = true)
         {
-            resize(glbl_n, lcl_n);
+            if (form_vec)
+            {
+                local = new Vector(lcl_n);
+                resize(glbl_n, lcl_n);
+            }
         }
 
         ParVector(const ParVector& x)
         {
+            local = new Vector();
             copy(x);
         }
 
@@ -75,6 +80,7 @@ namespace raptor
         ParVector()
         {
             local_n = 0;
+            local = new Vector(local_n);
         }
 
         /**************************************************************
@@ -84,20 +90,21 @@ namespace raptor
         **************************************************************/
         ~ParVector()
         {
+            delete local;
         }
 
         void resize(index_t glbl_n, int lcl_n)
         {
             global_n = glbl_n;
             local_n = lcl_n;
-            local.resize(local_n);
+            local->resize(local_n);
         }
 
         void copy(const ParVector& x)
         {
             global_n = x.global_n;
             local_n = x.local_n;
-            local.copy(x.local);
+            local->copy(*(x.local));
         }
 
         /**************************************************************
@@ -162,17 +169,53 @@ namespace raptor
 
         const data_t& operator[](const int index) const
         {
-            return local.values[index];
+            return local->values[index];
         }
 
         data_t& operator[](const int index)
         {
-            return local.values[index];
+            return local->values[index];
         }
 
-        Vector local;
+        void split(ParVector& W, int t);
+        void split_contig(ParVector& W, int t, int first_local);
+
+        void add_val(data_t val, index_t vec, index_t global_n, index_t first_local);
+
+        Vector* local;
         int global_n;
         int local_n;
+    };
+
+    class ParBVector : public ParVector
+    {
+
+    public:
+        ParBVector(index_t glbl_n, int lcl_n, int vecs_in_block)
+            : ParVector(glbl_n, lcl_n, false)
+        {
+            local = new BVector(lcl_n, vecs_in_block);
+            global_n = glbl_n;
+            local_n = lcl_n;
+        }
+
+        ParBVector() : ParVector()
+        {
+        }
+
+        void scale(data_t alpha, data_t* alphas = NULL);
+        void axpy_ij(ParBVector& y, index_t i, index_t j, data_t alpha);
+        data_t norm(index_t p, data_t* norms = NULL);
+
+        data_t inner_product(ParBVector& x, data_t* inner_prods = NULL);
+        data_t inner_product(ParBVector& x, index_t i, index_t j);
+
+        void mult_T(ParVector& x, Vector& b);
+        void mult(Vector& x, ParVector& b);
+
+        void append(ParBVector& P);
+        void add_val(data_t val, index_t vec, index_t global_n, index_t first_local);
+        
     };
 
 }

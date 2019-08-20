@@ -64,7 +64,7 @@ TEST(Repartition, TestsInUtil)
     for (int i = 0; i < num_procs; i++)
         row_displs[i+1] = row_displs[i] + row_sizes[i];
     aligned_vector<double> orig_sol(A_orig->global_num_rows);
-    MPI_Gatherv(b_orig.local.data(), A_orig->local_num_rows, MPI_DOUBLE, 
+    MPI_Gatherv(b_orig.local->data(), A_orig->local_num_rows, MPI_DOUBLE, 
            orig_sol.data(), row_sizes.data(), row_displs.data(), 
            MPI_DOUBLE, 0, MPI_COMM_WORLD);
     x_rr.set_const_value(1.0);
@@ -75,7 +75,7 @@ TEST(Repartition, TestsInUtil)
     for (int i = 0; i < num_procs; i++)
         row_displs[i+1] = row_displs[i] + row_sizes[i];
     aligned_vector<double> rr_sol(A_rr->global_num_rows);
-    MPI_Gatherv(b_rr.local.data(), A_rr->local_num_rows, MPI_DOUBLE, 
+    MPI_Gatherv(b_rr.local->data(), A_rr->local_num_rows, MPI_DOUBLE, 
            rr_sol.data(), row_sizes.data(), row_displs.data(), 
            MPI_DOUBLE, 0, MPI_COMM_WORLD);
     aligned_vector<int> orig_to_rr(A_orig->global_num_rows);

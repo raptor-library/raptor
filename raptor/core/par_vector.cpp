@@ -6,45 +6,6 @@ using namespace raptor;
 
 
 /**************************************************************
-*****   Vector AXPY
-**************************************************************
-***** Multiplies the local vector by a constant, alpha, and then
-***** sums each element with corresponding entry of Y
-*****
-***** Parameters
-***** -------------
-***** y : ParVector* y
-*****    Vector to be summed with
-***** alpha : data_t
-*****    Constant value to multiply each element of vector by
-**************************************************************/
-void ParVector::axpy(ParVector& x, data_t alpha)
-{
-    if (local_n)
-    {
-        local.axpy(x.local, alpha);
-    }
-}
-
-/**************************************************************
-*****   Vector Scale
-**************************************************************
-***** Multiplies the local vector by a constant, alpha
-*****
-***** Parameters
-***** -------------
-***** alpha : data_t
-*****    Constant value to multiply each element of vector by
-**************************************************************/
-void ParVector::scale(data_t alpha)
-{
-    if (local_n)
-    {
-        local.scale(alpha);
-    }
-}
-
-/**************************************************************
 *****   ParVector Set Constant Value
 **************************************************************
 ***** Sets each element of the local vector to a constant value
@@ -58,7 +19,7 @@ void ParVector::set_const_value(data_t alpha)
 {
     if (local_n)
     {
-        local.set_const_value(alpha);
+        local->set_const_value(alpha);
     }
 }
 
@@ -71,53 +32,72 @@ void ParVector::set_rand_values()
 {
     if (local_n)
     {
-        local.set_rand_values();
+        local->set_rand_values();
     }
 }
 
 /**************************************************************
-*****   Vector Norm
+*****   ParVector Append ParVector 
 **************************************************************
-***** Calculates the P norm of the global vector (for a given P)
-*****
-***** Parameters
-***** -------------
-***** p : index_t
-*****    Determines which p-norm to calculate
+***** Appends a ParVector to the ParVector 
 **************************************************************/
-data_t ParVector::norm(index_t p)
+void ParBVector::append(ParBVector& P)
 {
-    data_t result = 0.0;
-    if (local_n)
-    {
-        result = local.norm(p);
-        result = pow(result, p); // undoing root of p from local operation
-    }
-    RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &result, 1, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
-    return pow(result, 1./p);
+    local->append(*(P.local));
 }
 
-
-data_t ParVector::inner_product(ParVector& x)
+/**************************************************************
+*****   ParVector Add ParVector 
+**************************************************************
+***** Adds a Value to the ParVector 
+**************************************************************/
+void ParVector::add_val(data_t val, index_t vec, index_t global_n, index_t first_local)
 {
-    data_t inner_prod = 0.0;
-
-    if (local_n != x.local_n)
+    if ((global_n >= first_local) && (global_n < first_local + local_n))
     {
-        int rank;
-        RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
-        printf("Error.  Cannot perform inner product.  Dimensions do not match.\n");
-        exit(-1);
+        local->values[vec*local_n + (global_n - first_local)] = val;
     }
+}
 
-    if (local_n)
-    {
-        inner_prod = local.inner_product(x.local);
-    }
-
-    RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &inner_prod, 1, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
+/**************************************************************
+*****   ParVector Split ParVector 
+**************************************************************
+***** Splits a ParVector into t bvecs making a ParBVector
+***** Storing the local values in W at the appropriate bvec
+***** index 
+**************************************************************/
+void ParVector::split(ParVector& W, int t)
+{
+    int rank, num_procs;
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
     
-    return inner_prod;
+    if (t == num_procs) local->split(*(W.local), t, rank);
+    else local->split_range(*(W.local), t, rank % t);
 }
 
-
+/**************************************************************
+*****   ParVector Split Contiguous ParVector 
+**************************************************************
+***** Splits a ParVector into t bvecs making a ParBVector
+***** Storing the local values in equal sized contiguous blocks 
+***** for each rank
+**************************************************************/
+void ParVector::split_contig(ParVector& W, int t, int first_local)
+{
+    int rank, num_procs;
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
+    
+    if (t == num_procs) local->split(*(W.local), t, rank);
+    else
+    {
+        int group_size = global_n / t;
+        int n;
+        for (int i = 0; i < local_n; i++)
+        {
+            n = first_local + i;
+            W.add_val(local->values[i], n/group_size, n, first_local);
+        }
+    }
+}

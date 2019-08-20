@@ -86,8 +86,8 @@ TEST(ParBlockMatrixTest, TestsInCore)
         ASSERT_NEAR(tmp[i], b[i], 1e-10);
     
     // Test Blocked Transpose Communication
-    A->comm->communicate_T(x.local.values, b.local.values);
-    A_bsr->comm->communicate_T(x.local.values, tmp.local.values, A_bsr->off_proc->b_cols);
+    A->comm->communicate_T(x.local->values, b.local->values);
+    A_bsr->comm->communicate_T(x.local->values, tmp.local->values, A_bsr->off_proc->b_cols);
     ASSERT_EQ(std.size(), blocked.size());
     for (int i = 0; i < n; i++)
         ASSERT_NEAR(b[i], tmp[i], 1e-10);
@@ -111,8 +111,8 @@ TEST(ParBlockMatrixTest, TestsInCore)
         ASSERT_NEAR(b[i], tmp[i], 1e-10);
 
     // Test Blocked Transpose TAPSpMVs
-    A->tap_comm->communicate_T(x.local.values, b.local.values);
-    A_bsr->comm->communicate_T(x.local.values, tmp.local.values, A_bsr->off_proc->b_cols);
+    A->tap_comm->communicate_T(x.local->values, b.local->values);
+    A_bsr->comm->communicate_T(x.local->values, tmp.local->values, A_bsr->off_proc->b_cols);
     ASSERT_EQ(std.size(), blocked.size());
     for (int i = 0; i < n; i++)
         ASSERT_NEAR(b[i], tmp[i], 1e-10);

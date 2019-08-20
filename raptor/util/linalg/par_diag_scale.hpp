@@ -39,7 +39,7 @@ void diagonally_scale(ParCSRMatrix* A, ParVector& rhs, aligned_vector<double>& r
     int start, end, col;
 
     A->on_proc->move_diag();
-    double* rhs_vals = rhs.local.data();
+    double* rhs_vals = rhs.local->data();
 
     if (A->local_num_rows) row_scales.resize(A->local_num_rows, 0);
     for (int i = 0; i < A->local_num_rows; i++)
@@ -79,7 +79,7 @@ void diagonally_scale(ParCSRMatrix* A, ParVector& rhs, aligned_vector<double>& r
 
 void diagonally_unscale(ParVector& sol, const aligned_vector<double>& row_scales)
 {
-    double* vals = sol.local.data();
+    double* vals = sol.local->data();
     for (int i = 0; i < sol.local_n; i++)
     {
         vals[i] *= row_scales[i];
