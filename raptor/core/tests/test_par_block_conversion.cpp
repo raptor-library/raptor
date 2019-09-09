@@ -79,25 +79,25 @@ TEST(ParBlockConversionTest, TestsInCore)
     A_bsr->mult(x, b);
     A_csr_from_bsr->mult(x, tmp);
     for (int i = 0; i < A_csr_from_bsr->local_num_rows; i++)
-        ASSERT_NEAR(tmp[i], b[i], 1e-10);
+        ASSERT_NEAR(tmp.local->values[i], b.local->values[i], 1e-10);
 
     // Test BSR to CSR Transpose SpMV
     A_bsr->mult_T(x, b);
     A_csr_from_bsr->mult_T(x, tmp);
     for (int i = 0; i < A_csr_from_bsr->local_num_rows; i++)
-        ASSERT_NEAR(tmp[i], b[i], 1e-10);
+        ASSERT_NEAR(tmp.local->values[i], b.local->values[i], 1e-10);
 
     // Test BSR to CSR TAPSpMVs 
     A_bsr->tap_mult(x, b);
     A_csr_from_bsr->tap_mult(x, tmp);
     for (int i = 0; i < A_csr_from_bsr->local_num_rows; i++)
-        ASSERT_NEAR(tmp[i], b[i], 1e-10);
+        ASSERT_NEAR(tmp.local->values[i], b.local->values[i], 1e-10);
 
     // Test BSR to CSR Transpose TAPSpMV
     A_bsr->tap_mult_T(x, b);
     A_csr_from_bsr->tap_mult_T(x, tmp);
     for (int i = 0; i < A_csr_from_bsr->local_num_rows; i++)
-        ASSERT_NEAR(tmp[i], b[i], 1e-10);
+        ASSERT_NEAR(tmp.local->values[i], b.local->values[i], 1e-10);
 
     delete A;
     delete A_bsr;

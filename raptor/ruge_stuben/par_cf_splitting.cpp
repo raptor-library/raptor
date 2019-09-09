@@ -387,7 +387,7 @@ void find_max_off_weights(CommPkg* comm,
 
     if (first_pass)
     {
-        comm->communicate_T(send_weights, max_weights, block_size, result_max, result_max);
+        comm->communicate_T(send_weights, max_weights, block_size, 1, 0, result_max, result_max);
     }
     else
     {

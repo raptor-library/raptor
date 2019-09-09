@@ -53,7 +53,7 @@ void ParVector::scale(data_t alpha)
 ***** p : index_t
 *****    Determines which p-norm to calculate
 **************************************************************/
-data_t ParVector::norm(index_t p)
+data_t ParVector::norm(index_t p, data_t* norms)
 {
     data_t result = 0.0;
     if (local_n)
@@ -76,7 +76,7 @@ data_t ParVector::norm(index_t p)
 ***** x : ParVector&
 *****   Global vector with which to perform inner product 
 **************************************************************/
-data_t ParVector::inner_product(ParVector& x)
+data_t ParVector::inner_product(ParVector& x, data_t* inner_prods)
 {
     data_t inner_prod = 0.0;
 
@@ -90,7 +90,7 @@ data_t ParVector::inner_product(ParVector& x)
 
     if (local_n)
     {
-        inner_prod = local->inner_product(*(x.local));
+        inner_prod = local->inner_product(*(x.local), inner_prods);
     }
 
     RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &inner_prod, 1, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
@@ -133,8 +133,7 @@ void ParBVector::axpy_ij(ParBVector& y, index_t i, index_t j, data_t alpha)
 **************************************************************/
 void ParBVector::scale(data_t alpha, data_t* alphas)
 {
-    //if (local_n) local->scale(alpha, alphas);
-    if (local_n) local->scale(alpha);
+    if (local_n) local->scale(alpha, alphas);
 }
 
 /**************************************************************

@@ -9,6 +9,7 @@ add_subdirectory(multilevel)
 add_subdirectory(krylov)
 add_subdirectory(profiling)
 add_subdirectory(external)
+add_subdirectory(aorthonormalization)
 
 if (WITH_MPI)
     set(par_SOURCES
@@ -28,7 +29,8 @@ add_library(raptor STATIC ${core_SOURCES} ${core_HEADERS}
         ${multilevel_SOURCES} ${multilevel_HEADERS} 
         ${krylov_SOURCES} ${krylov_HEADERS} 
         ${profile_SOURCES} ${profile_HEADERS}
-        ${external_SOURCES} ${external_HEADERS})
+        ${external_SOURCES} ${external_HEADERS}
+        ${aorthonormalization_SOURCES} ${aorthonormalization_HEADERS})
 
 target_link_libraries(raptor ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
     ${MUELU_LIBRARIES} ${PETSC_LIBRARIES} ${PTSCOTCH_LIBRARIES} ${PARMETIS_LIBRARIES} ${EXTERNAL_LIBS} )
@@ -45,6 +47,7 @@ install(FILES ${multilevel_HEADERS} DESTINATION "include/raptor/multilevel")
 install(FILES ${krylov_HEADERS} DESTINATION "include/raptor/krylov")
 install(FILES ${profile_HEADERS} DESTINATION "include/raptor/profiling")
 install(FILES ${external_HEADERS} DESTINATION "include/raptor/external")
+install(FILES ${aorthonormalization_HEADERS} DESTINATION "include/raptor/aorthonormalization")
 
 
 include_directories(".")
@@ -58,4 +61,5 @@ if(ENABLE_UNIT_TESTS)
     add_subdirectory(gallery/tests)
     add_subdirectory(krylov/tests)
     add_subdirectory(external/tests)
+    add_subdirectory(aorthonormalization/tests)
 endif()

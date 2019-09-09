@@ -94,6 +94,9 @@
 #include "krylov/bicgstab.hpp"
 #include "krylov/par_bicgstab.hpp"
 
+// Aorthonormolization methods
+#include "aorthonormalization/par_cgs.hpp"
+
 // Relaxation methods
 #include "util/linalg/relax.hpp"
 #ifndef NO_MPI

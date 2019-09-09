@@ -31,14 +31,7 @@ TEST(AnisoSpMVTest, TestsInUtil)
     {
         alphs[i] = i + 1.0;
     }
-    for (int i = 0; i < len; i++)
-    {
-        for (int v = 0; v < W_bvecs; v++)
-        {
-            W->values[v*len + i] = v + 1.0;
-        }
-    }
-    //W->scale(1.0, *alphs);
+    W->scale(1.0, alphs);
 
     // Test B <- Q^T * W
     Q->mult_T(*W, *B);

@@ -38,7 +38,7 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap)
 
     // Initialize Isends and Irecvs to communicate
     // values of x
-    comm->init_comm(x, off_proc->b_cols);
+    comm->init_comm(x, off_proc->b_cols, x.local->b_vecs);
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
@@ -48,13 +48,13 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap)
     }
 
     // Wait for Isends and Irecvs to complete
-    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
+    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols, x.local->b_vecs);
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
     if (off_proc_num_cols)
     {
-        off_proc->mult_append(x_tmp, *(b.local));
+        off_proc->mult_append(x_tmp, *(b.local), b.local->b_vecs);
     }
 }
 
@@ -68,7 +68,7 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b)
 
     // Initialize Isends and Irecvs to communicate
     // values of x
-    tap_comm->init_comm(x, off_proc->b_cols);
+    tap_comm->init_comm(x, off_proc->b_cols, x.local->b_vecs);
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
@@ -78,13 +78,13 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b)
     }
 
     // Wait for Isends and Irecvs to complete
-    aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols);
+    aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols, b.local->b_vecs);
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
     if (off_proc_num_cols)
     {
-        off_proc->mult_append(x_tmp, *(b.local));
+        off_proc->mult_append(x_tmp, *(b.local), b.local->b_vecs);
     }
 }
 
@@ -104,23 +104,23 @@ void ParMatrix::mult_append(ParVector& x, ParVector& b, bool tap)
 
     // Initialize Isends and Irecvs to communicate
     // values of x
-    comm->init_comm(x, off_proc->b_cols);
+    comm->init_comm(x, off_proc->b_cols, x.local->b_vecs);
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
     if (local_num_rows)
     {
-        on_proc->mult_append(*(x.local), *(b.local));
+        on_proc->mult_append(*(x.local), *(b.local), b.local->b_vecs);
     }
 
     // Wait for Isends and Irecvs to complete
-    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
+    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols, b.local->b_vecs);
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
     if (off_proc_num_cols)
     {
-        off_proc->mult_append(x_tmp, *(b.local));
+        off_proc->mult_append(x_tmp, *(b.local), b.local->b_vecs);
     }
 }
 
@@ -134,23 +134,23 @@ void ParMatrix::tap_mult_append(ParVector& x, ParVector& b)
 
     // Initialize Isends and Irecvs to communicate
     // values of x
-    tap_comm->init_comm(x, off_proc->b_cols);
+    tap_comm->init_comm(x, off_proc->b_cols, x.local->b_vecs);
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
     if (local_num_rows)
     {
-        on_proc->mult_append(*(x.local), *(b.local));
+        on_proc->mult_append(*(x.local), *(b.local), b.local->b_vecs);
     }
 
     // Wait for Isends and Irecvs to complete
-    aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols);
+    aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols, b.local->b_vecs);
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
     if (off_proc_num_cols)
     {
-        off_proc->mult_append(x_tmp, *(b.local));
+        off_proc->mult_append(x_tmp, *(b.local), b.local->b_vecs);
     }
 }
 
@@ -169,21 +169,26 @@ void ParMatrix::mult_T(ParVector& x, ParVector& b, bool tap)
     {
         comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
     }
+    
+    int rank, num_procs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     aligned_vector<double>& x_tmp = comm->get_buffer<double>();
-    if (x_tmp.size() < comm->recv_data->size_msgs * off_proc->b_cols)
-        x_tmp.resize(comm->recv_data->size_msgs * off_proc->b_cols);
+    //if (x_tmp.size() < comm->recv_data->size_msgs * off_proc->b_cols)
+    x_tmp.resize(comm->recv_data->size_msgs * off_proc->b_cols * x.local->b_vecs);
 
     off_proc->mult_T(*(x.local), x_tmp);
-
-    comm->init_comm_T(x_tmp, off_proc->b_cols);
+    
+    comm->init_comm_T(x_tmp, off_proc->b_cols, x.local->b_vecs);
 
     if (local_num_rows)
     {
         on_proc->mult_T(*(x.local), *(b.local));
     }
 
-    comm->complete_comm_T<double>(b.local->values, off_proc->b_cols);
+    comm->complete_comm_T<double>(b.local->values, off_proc->b_cols, x.local->b_vecs);
+    
 }
 
 void ParMatrix::tap_mult_T(ParVector& x, ParVector& b)
@@ -197,19 +202,19 @@ void ParMatrix::tap_mult_T(ParVector& x, ParVector& b)
     }
 
     aligned_vector<double>& x_tmp = tap_comm->get_buffer<double>();
-    if (x_tmp.size() < tap_comm->recv_size * off_proc->b_cols)
-        x_tmp.resize(tap_comm->recv_size * off_proc->b_cols);
+    //if (x_tmp.size() < tap_comm->recv_size * off_proc->b_cols)
+    x_tmp.resize(tap_comm->recv_size * off_proc->b_cols * x.local->b_vecs);
 
     off_proc->mult_T(*(x.local), x_tmp);
 
-    tap_comm->init_comm_T(x_tmp, off_proc->b_cols);
+    tap_comm->init_comm_T(x_tmp, off_proc->b_cols, x.local->b_vecs, tap_comm->recv_size * off_proc->b_cols);
 
     if (local_num_rows)
     {
         on_proc->mult_T(*(x.local), *(b.local));
     }
 
-    tap_comm->complete_comm_T<double>(b.local->values, off_proc->b_cols);
+    tap_comm->complete_comm_T<double>(b.local->values, off_proc->b_cols, x.local->b_vecs);
 }
 
 void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap)
@@ -228,7 +233,7 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap)
 
     // Initialize Isends and Irecvs to communicate
     // values of x
-    comm->init_comm(x, off_proc->b_cols);
+    comm->init_comm(x, off_proc->b_cols, x.local->b_vecs);
 
     std::copy(b.local->values.begin(), b.local->values.end(), 
             r.local->values.begin());
@@ -241,13 +246,13 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap)
     }
 
     // Wait for Isends and Irecvs to complete
-    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
+    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols, x.local->b_vecs);
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
     if (off_proc_num_cols)
     {
-        off_proc->mult_append_neg(x_tmp, *(r.local));
+        off_proc->mult_append_neg(x_tmp, *(r.local), r.local->b_vecs);
     }
 }
 
@@ -261,7 +266,7 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r)
 
     // Initialize Isends and Irecvs to communicate
     // values of x
-    tap_comm->init_comm(x, off_proc->b_cols);
+    tap_comm->init_comm(x, off_proc->b_cols, x.local->b_vecs);
 
     std::copy(b.local->values.begin(), b.local->values.end(), r.local->values.begin());
 
@@ -269,17 +274,17 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r)
     // setting b = A_diag*x_local
     if (local_num_rows && on_proc_num_cols)
     {
-        on_proc->mult_append_neg(*(x.local), *(r.local));
+        on_proc->mult_append_neg(*(x.local), *(r.local), r.local->b_vecs);
     }
 
     // Wait for Isends and Irecvs to complete
-    aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols);
+    aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols, x.local->b_vecs);
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
     if (off_proc_num_cols)
     {
-        off_proc->mult_append_neg(x_tmp, *(r.local));
+        off_proc->mult_append_neg(x_tmp, *(r.local), r.local->b_vecs);
     }
 }
 

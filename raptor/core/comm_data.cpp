@@ -6,17 +6,17 @@
 namespace raptor 
 {
 template<>
-aligned_vector<double>& CommData::get_buffer<double>(const int block_size)
+aligned_vector<double>& CommData::get_buffer<double>(const int block_size, const int vblock_size)
 {
     return buffer;
 }
 template<>
-aligned_vector<int>& CommData::get_buffer<int>(const int block_size)
+aligned_vector<int>& CommData::get_buffer<int>(const int block_size, const int vblock_size)
 {
     return int_buffer;
 }
 template<> 
-aligned_vector<char>& CommData::get_buffer<char>(const int block_size)
+aligned_vector<char>& CommData::get_buffer<char>(const int block_size, const int vblock_size)
 {
     return pack_buffer;
 }
@@ -34,6 +34,7 @@ RAPtor_MPI_Datatype CommData::get_type<double>()
 
 template<>
 void CommData::send<int>(const int* values, int key, RAPtor_MPI_Comm mpi_comm, const int block_size, 
+        const int vblock_size, const int vblock_offset,
         std::function<int(int, int)> init_result_func, int init_result_func_val)
 {
     int_send(values, key, mpi_comm, block_size, init_result_func, 
@@ -41,25 +42,26 @@ void CommData::send<int>(const int* values, int key, RAPtor_MPI_Comm mpi_comm, c
 }
 template<>
 void CommData::send<double>(const double* values, int key, RAPtor_MPI_Comm mpi_comm, const int block_size, 
+        const int vblock_size, const int vblock_offset,
         std::function<double(double, double)> init_result_func, double init_result_func_val)
 {
-    double_send(values, key, mpi_comm, block_size, init_result_func,
-            init_result_func_val);
+    double_send(values, key, mpi_comm, block_size, vblock_size, init_result_func,
+            init_result_func_val, vblock_offset);
 }
 
 template<>
 void CommData::send<int>(const int* values, int key, RAPtor_MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
-            int* n_send_ptr, const int block_size)
+            int* n_send_ptr, const int block_size, const int vblock_size)
 {
     int_send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
 }
 template<>
 void CommData::send<double>(const double* values, int key, RAPtor_MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
-            int* n_send_ptr, const int block_size)
+            int* n_send_ptr, const int block_size, const int vblock_size)
 {
-    double_send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
+    double_send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size, vblock_size);
 }
 
 
@@ -67,7 +69,8 @@ template <>
 void CommData::recv<int>(int key, RAPtor_MPI_Comm mpi_comm, 
         const aligned_vector<int>& off_proc_states,
         std::function<bool(int)> compare_func,
-        int* s_recv_ptr, int* n_recv_ptr, const int block_size)
+        int* s_recv_ptr, int* n_recv_ptr, const int block_size,
+        const int vblock_size)
 {
     int_recv(key, mpi_comm, off_proc_states, compare_func,
             s_recv_ptr, n_recv_ptr, block_size);
@@ -77,7 +80,8 @@ template <>
 void CommData::recv<double>(int key, RAPtor_MPI_Comm mpi_comm, 
         const aligned_vector<int>& off_proc_states,
         std::function<bool(int)> compare_func,
-        int* s_recv_ptr, int* n_recv_ptr, const int block_size)
+        int* s_recv_ptr, int* n_recv_ptr, const int block_size,
+        const int vblock_size)
 {
     double_recv(key, mpi_comm, off_proc_states, compare_func,
             s_recv_ptr, n_recv_ptr, block_size);

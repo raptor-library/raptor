@@ -248,9 +248,9 @@ public:
         b_vecs = 1;
     }
 
-    void axpy(Vector& x, data_t alpha);
-    data_t norm(index_t p, data_t* norms = NULL);
-    data_t inner_product(Vector& x, data_t* inner_prods = NULL);
+    //void axpy(Vector& x, data_t alpha);
+    //data_t norm(index_t p, data_t* norms = NULL);
+    //data_t inner_product(Vector& x, data_t* inner_prods = NULL);
 };
 
 }

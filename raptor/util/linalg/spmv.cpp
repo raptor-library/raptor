@@ -166,6 +166,7 @@ void CSR_append_T(const CSRMatrix* A, const aligned_vector<T>& vals,
     int start, end;
     int x_offset = xlen / n_vecs;
     int b_offset = blen / n_vecs;
+
     for (int i = 0; i < A->n_rows; i++)
     {
         start = A->idx1[i];

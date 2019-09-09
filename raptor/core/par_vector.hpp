@@ -41,6 +41,8 @@
  **************************************************************/
 namespace raptor
 {
+    class ParBVector;
+
     class ParVector
     {
     public:
@@ -163,9 +165,9 @@ namespace raptor
         ***** p : index_t
         *****    Determines which p-norm to calculate
         **************************************************************/
-        data_t norm(index_t p);
+        data_t norm(index_t p, data_t* norms = NULL);
 
-        data_t inner_product(ParVector& x);        
+        data_t inner_product(ParVector& x, data_t* inner_prods = NULL);        
 
         const data_t& operator[](const int index) const
         {
@@ -214,8 +216,6 @@ namespace raptor
         void mult(Vector& x, ParVector& b);
 
         void append(ParBVector& P);
-        void add_val(data_t val, index_t vec, index_t global_n, index_t first_local);
-        
     };
 
 }

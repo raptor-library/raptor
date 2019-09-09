@@ -36,7 +36,6 @@ TEST(ParLaplacianSpMVTest, TestsInUtil)
     {
         fscanf(f, "%lg\n", &b_val);
     }
-
     for (int i = 0; i < A->local_num_rows; i++)
     {
         fscanf(f, "%lg\n", &b_val);
@@ -56,7 +55,6 @@ TEST(ParLaplacianSpMVTest, TestsInUtil)
         fscanf(f, "%lg\n", &b_val);
         ASSERT_NEAR(x[i], b_val, 1e-06);
     }
-    fclose(f);
 
     for (int i = 0; i < A->on_proc_num_cols; i++)
     {

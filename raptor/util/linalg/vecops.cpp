@@ -19,9 +19,12 @@ using namespace raptor;
 **************************************************************/
 void Vector::axpy(Vector& x, data_t alpha)
 {
-    for (index_t i = 0; i < num_values * b_vecs; i++)
+    for (index_t i = 0; i < num_values; i++)
     {
-        values[i] += x.values[i]*alpha;
+        for (index_t k = 0; k < b_vecs; k++)
+        {
+            values[k*num_values + i] += x.values[i]*alpha;
+        }
     }
 }
 
@@ -66,9 +69,21 @@ void Vector::axpy_ij(Vector& y, index_t i, index_t j, data_t alpha)
 **************************************************************/
 void Vector::scale(data_t alpha, data_t* alphas)
 {
-    for (index_t i = 0; i < num_values; i++)
+    if (alphas == NULL)
     {
-        values[i] *= alpha;
+        for (index_t i = 0; i < num_values; i++)
+        {
+            values[i] *= alpha;
+        }
+    }
+    else{
+        for (index_t v = 0; v < b_vecs; v++)
+        {
+            for (index_t i = 0; i < num_values; i++)
+            {
+                values[v*num_values + i] *= alphas[v];
+            }
+        }
     }
 }
 
@@ -87,8 +102,8 @@ data_t Vector::norm(index_t p, data_t* norms)
     data_t result = 0.0;
     double val;
 
-    /*if (norms = NULL)
-    {*/
+    if (norms == NULL)
+    {
         for (index_t i = 0; i < num_values; i++)
         {
             val = values[i];
@@ -96,8 +111,8 @@ data_t Vector::norm(index_t p, data_t* norms)
                 result += pow(val, p);
         }
         return pow(result, 1.0/p);
-    //}
-    /*else{
+    }
+    else{
         index_t offset;
         for (index_t j = 0; j < b_vecs; j++)
         {
@@ -112,7 +127,7 @@ data_t Vector::norm(index_t p, data_t* norms)
             norms[j] = pow(result, 1.0/p);
         }
         return 0.0;
-    }*/
+    }
 }
 
 /**************************************************************
@@ -133,29 +148,31 @@ data_t Vector::inner_product(Vector& x, data_t* inner_prods)
 {
     data_t result = 0.0;
 
-    /*if (inner_prods = NULL)
-    {*/
+    if (inner_prods == NULL)
+    {
         for (index_t i = 0; i < num_values; i++)
         {
             result += values[i] * x[i];
         }
         return result;
-    /*}
+    }
     else
     {
-        index_t offset;
+        index_t vals_offset, x_offset;
         for (index_t j = 0; j < b_vecs; j++)
         {
             result = 0.0;
-            offset = j * num_values;
+            vals_offset = j * num_values;
+            if (x.b_vecs == 1) x_offset = 0;
+            else x_offset = vals_offset; 
             for (index_t i = 0; i < num_values; i++)
             {
-                result += values[i + offset] * x.values[i + offset];
+                result += values[i + vals_offset] * x.values[i + x_offset];
             }
             inner_prods[j] = result;
         }
         return 0.0;
-    }*/
+    }
 
 }
 

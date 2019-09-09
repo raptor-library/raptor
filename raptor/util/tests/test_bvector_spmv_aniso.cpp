@@ -34,12 +34,8 @@ TEST(AnisoSpMVTest, TestsInUtil)
     
     // Test b <- A*ones
     x.set_const_value(1.0);
-    //std::vector<double> alphas = {1.0, 2.0, 1.0};
-    for (int i = 0; i < x.num_values; i++)
-    {
-        x.values[x.num_values + i] = 2.0; 
-    }
-    //x.scale(1.0, &(alphas[0]));
+    std::vector<double> alphas = {1.0, 2.0, 1.0};
+    x.scale(1.0, &(alphas[0]));
 
     A_sten->mult(x, b);
 
@@ -56,26 +52,36 @@ TEST(AnisoSpMVTest, TestsInUtil)
     fclose(f);
 
     // Test b <- A_T*ones
-    /*A_sten->mult_T(x, b);
+    A_sten->mult_T(x, b);
     f = fopen(b_T_ones, "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         fscanf(f, "%lg\n", &b_val);
-        ASSERT_NEAR(b[i], b_val, 1e-06);
+        for (int v = 0; v < vecs_in_block; v++)
+        {
+            if (v == 1) ASSERT_NEAR(b.values[i + v*b.num_values], b_val*2.0, 1e-06);
+            else ASSERT_NEAR(b.values[i + v*b.num_values], b_val, 1e-06);
+        }
     } 
     fclose(f);
 
     // Tests b <- A*incr
     for (int i = 0; i < A_sten->n_rows; i++)
     {
-        x[i] = i;
+        for (int v = 0; v < vecs_in_block; v++)
+        {
+            x.values[v*x.num_values + i] = i;
+        }
     }
     A_sten->mult(x, b);
     f = fopen(b_inc, "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         fscanf(f, "%lg\n", &b_val);
-        ASSERT_NEAR(b[i],b_val, 1e-06);
+        for (int v = 0; v < vecs_in_block; v++)
+        {
+            ASSERT_NEAR(b.values[i + v*b.num_values], b_val, 1e-06);
+        }
     } 
     fclose(f);
 
@@ -85,9 +91,12 @@ TEST(AnisoSpMVTest, TestsInUtil)
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         fscanf(f, "%lg\n", &b_val);
-        ASSERT_NEAR(b[i], b_val,  1e-06);
+        for (int v = 0; v < vecs_in_block; v++)
+        {
+            ASSERT_NEAR(b.values[i + v*b.num_values], b_val, 1e-06);
+        }
     } 
-    fclose(f);*/
+    fclose(f);
 
 } // end of TEST(AnisoSpMVTest, TestsInUtil) //
 

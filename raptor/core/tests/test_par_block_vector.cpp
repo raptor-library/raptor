@@ -84,14 +84,14 @@ TEST(ParVectorTest, TestsInCore)
     p_par.set_const_value(1.0);
     v_par.set_const_value(1.0);
 
-    /*double* alphas = new double[vecs_in_block];
+    double* alphas = new double[vecs_in_block];
     for (int i = 0; i < vecs_in_block; i++) alphas[i] = i + 1.0;
     v.scale(1.0, alphas);
     v_par.scale(1.0, alphas);
     
     for (int i = 0; i < vecs_in_block; i++) alphas[i] += 1.0;
     p.scale(1.0, alphas);
-    p_par.scale(1.0, alphas);*/
+    p_par.scale(1.0, alphas);
 
     for (int k = 0; k < vecs_in_block; k++)
     {
