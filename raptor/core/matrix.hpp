@@ -375,7 +375,7 @@ namespace raptor
     }
     template <typename T, typename U> void mult_append(T& x, U& b, const int n_vecs = 1) const
     {
-        spmv_append(get_values(x), get_values(b), n_vecs, x.size());
+        spmv_append(get_values(x), get_values(b), n_vecs, get_size(x));
     }
     template <typename T, typename U> void mult_append_T(T& x, U& b, const int n_vecs = 1) const
     {

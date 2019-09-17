@@ -42,6 +42,39 @@ void ParVector::scale(data_t alpha)
         local->scale(alpha);
     }
 }
+/**************************************************************
+*****  block_norm_helper 
+**************************************************************
+***** Calculates the P norm of each global vector in the
+***** ParBVector 
+*****
+***** Parameters
+***** -------------
+***** p : index_t
+*****    Determines which p-norm to calculate
+***** norms : data_t*
+*****    Array to hold norm of each vector
+**************************************************************/
+void block_norm_helper(ParVector* X, index_t p, data_t* norms)
+{
+    data_t temp;
+    if (X->local_n)
+    {
+        temp = X->local->norm(p, norms);
+        for (int i = 0; i < X->local->b_vecs; i++)
+        {
+            norms[i] = pow(norms[i], p); // undoig root of p from local operation
+        }
+    }
+    
+    RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, norms, X->local->b_vecs, RAPtor_MPI_DATA_T,
+            RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
+
+    for (int i = 0; i < X->local->b_vecs; i++)
+    {
+        norms[i] = pow(norms[i], 1./p);
+    }
+}
 
 /**************************************************************
 *****   ParVector Norm
@@ -55,14 +88,23 @@ void ParVector::scale(data_t alpha)
 **************************************************************/
 data_t ParVector::norm(index_t p, data_t* norms)
 {
-    data_t result = 0.0;
     if (local_n)
     {
-        result = local->norm(p);
-        result = pow(result, p); // undoing root of p from local operation
+        if (local->b_vecs > 1)
+        {
+            block_norm_helper(this, p, norms);
+            return 0;
+        }
+        else
+        {
+            data_t result = 0.0;
+            result = local->norm(p);
+            result = pow(result, p); // undoing root of p from local operation
+            RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &result, 1, RAPtor_MPI_DATA_T,
+                    RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
+            return pow(result, 1./p);
+        }
     }
-    RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &result, 1, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
-    return pow(result, 1./p);
 }
 
 
@@ -134,41 +176,6 @@ void ParBVector::axpy_ij(ParBVector& y, index_t i, index_t j, data_t alpha)
 void ParBVector::scale(data_t alpha, data_t* alphas)
 {
     if (local_n) local->scale(alpha, alphas);
-}
-
-/**************************************************************
-*****   ParBVector Norm 
-**************************************************************
-***** Calculates the p norm of each global vector in the
-***** ParBVector (for a given p) 
-*****
-***** Parameters
-***** -------------
-***** X : ParVector*
-*****   ParVector of which to calculate p-norm
-***** p : index_t
-*****   Determines whcih p-norm to calculate 
-***** norms : data_t*
-*****   Array to hold norm of each vector
-**************************************************************/
-void block_norm_helper(ParVector* X, index_t p, data_t* norms)
-{
-    data_t temp;
-    if (X->local_n)
-    {
-        temp = X->local->norm(p, norms);
-        for (int i = 0; i < X->local->b_vecs; i++)
-        {
-            norms[i] = pow(norms[i], p); // undoing root of p from local operation
-        }
-    }
-
-    RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, norms, X->local->b_vecs, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
-
-    for (int i = 0; i < X->local->b_vecs; i++)
-    {
-        norms[i] = pow(norms[i], 1./p);
-    }
 }
 
 /**************************************************************

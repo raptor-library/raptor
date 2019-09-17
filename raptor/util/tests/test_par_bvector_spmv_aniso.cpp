@@ -30,16 +30,20 @@ TEST(ParBVectorAnisoTAPSpMVTest, TestsInUtil)
 
     ParBVector *x = new ParBVector(A->global_num_cols, A->on_proc_num_cols, vecs_in_block);
     ParBVector *b = new ParBVector(A->global_num_rows, A->local_num_rows, vecs_in_block);
+    ParBVector *res = new ParBVector(A->global_num_rows, A->local_num_rows, vecs_in_block);
 
     // Vectors to test against
     ParVector x1(A->global_num_cols, A->on_proc_num_cols);
     ParVector b1(A->global_num_cols, A->on_proc_num_cols);
+    ParVector res1(A->global_num_cols, A->on_proc_num_cols);
 
     ParVector x2(A->global_num_cols, A->on_proc_num_cols);
     ParVector b2(A->global_num_cols, A->on_proc_num_cols);
+    ParVector res2(A->global_num_cols, A->on_proc_num_cols);
 
     ParVector x3(A->global_num_cols, A->on_proc_num_cols);
     ParVector b3(A->global_num_cols, A->on_proc_num_cols);
+    ParVector res3(A->global_num_cols, A->on_proc_num_cols);
 
     x1.set_const_value(1.0);
     x2.set_const_value(2.0);
@@ -96,6 +100,37 @@ TEST(ParBVectorAnisoTAPSpMVTest, TestsInUtil)
         ASSERT_NEAR(x->local->values[2*A->local_num_rows + i], x3.local->values[i], 1e-06);
     }
 
+    b1.set_rand_values();
+    b2.set_rand_values();
+    b3.set_rand_values();
+    for (int i = 0; i < A->on_proc_num_cols; i++)
+    {
+        b->local->values[i] = b1.local->values[i];
+        b->local->values[i + x->local_n] = b2.local->values[i];
+        b->local->values[i + 2*x->local_n] = b3.local->values[i];
+    }
+
+    A->residual(x1, b1, res1);
+    A->residual(x2, b2, res2);
+    A->residual(x3, b3, res3);
+    
+    A->residual(*x, *b, *res);
+    
+    // Test each vector in block vector
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        ASSERT_NEAR(res->local->values[i], res1.local->values[i], 1e-06);
+    }
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        ASSERT_NEAR(res->local->values[A->local_num_rows + i], res2.local->values[i], 1e-06);
+    }
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        ASSERT_NEAR(res->local->values[2*A->local_num_rows + i], res3.local->values[i], 1e-06);
+    }
+
+    // Tests with incremented vectors
     for (int i = 0; i < A->on_proc_num_cols; i++)
     {
         x1.local->values[i] = A->partition->first_local_col + i;
@@ -134,6 +169,7 @@ TEST(ParBVectorAnisoTAPSpMVTest, TestsInUtil)
 
     delete x;
     delete b;
+    delete res;
     delete A;
     delete[] stencil;
 

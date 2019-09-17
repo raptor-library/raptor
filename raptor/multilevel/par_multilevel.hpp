@@ -89,6 +89,7 @@ namespace raptor
                 max_coarse = 50;
                 max_levels = 25;
                 tap_amg = -1;
+                tap_simple = false;
                 weights = NULL;
                 store_residuals = true;
                 track_times = false;
@@ -121,9 +122,9 @@ namespace raptor
                 delete[] solve_times;
             }
             
-            virtual void setup(ParCSRMatrix* Af) = 0;
+            virtual void setup(ParCSRMatrix* Af, int nrhs = 1) = 0;
 
-            void setup_helper(ParCSRMatrix* Af)
+            void setup_helper(ParCSRMatrix* Af, int nrhs = 1)
             {
                 int rank, num_procs;
                 RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
@@ -141,8 +142,11 @@ namespace raptor
                 levels[0]->A = Af->copy();
                 levels[0]->A->sort();
                 levels[0]->A->on_proc->move_diag();
+                levels[0]->x.local->b_vecs = nrhs;
                 levels[0]->x.resize(Af->global_num_rows, Af->local_num_rows);
+                levels[0]->b.local->b_vecs = nrhs;
                 levels[0]->b.resize(Af->global_num_rows, Af->local_num_rows);
+                levels[0]->tmp.local->b_vecs = nrhs;
                 levels[0]->tmp.resize(Af->global_num_rows, Af->local_num_rows);
                 if (tap_amg == 0)
                 {
@@ -171,7 +175,7 @@ namespace raptor
                 while (levels[last_level]->A->global_num_rows > max_coarse && 
                         (max_levels == -1 || (int) levels.size() < max_levels))
                 {
-                    extend_hierarchy();
+                    extend_hierarchy(nrhs);
 
                     if (track_times)
                     {
@@ -224,7 +228,7 @@ namespace raptor
                 }
             }
                 
-            virtual void extend_hierarchy() = 0;
+            virtual void extend_hierarchy(int nrhs = 1) = 0;
 
             void duplicate_coarse()
             {
@@ -234,6 +238,7 @@ namespace raptor
 
                 int last_level = num_levels - 1;
                 ParCSRMatrix* Ac = levels[last_level]->A;
+                ParVector& b = levels[last_level]->b;
                 aligned_vector<int> proc_sizes(num_procs);
                 aligned_vector<int> active_procs;
                 RAPtor_MPI_Allgather(&(Ac->local_num_rows), 1, RAPtor_MPI_INT, proc_sizes.data(),
@@ -335,9 +340,17 @@ namespace raptor
                         coarse_sizes[i] /= coarse_n;
                         coarse_displs[i+1] /= coarse_n;
                     }
+                    
+                    // Added for block vectors
+                    for (int i = 0; i < num_active; i++)
+                    {
+                        coarse_sizes[i] *= b.local->b_vecs;
+                        coarse_displs[i+1] *= b.local->b_vecs;
+                    }
                 }
             }
 
+            // Stopped editing right here
             void cycle(ParVector& x, ParVector& b, int level = 0)
             {
                 if (solve_times)
@@ -358,19 +371,40 @@ namespace raptor
                         RAPtor_MPI_Comm_rank(coarse_comm, &active_rank);
 
                         char trans = 'N'; //No transpose
-                        int nhrs = 1; // Number of right hand sides
+                        int nhrs = b.local->b_vecs; // Number of right hand sides
                         int info; // result
 
-                        aligned_vector<double> b_data(coarse_n);
-                        RAPtor_MPI_Allgatherv(b.local->data(), b.local_n, RAPtor_MPI_DOUBLE, b_data.data(), 
-                                coarse_sizes.data(), coarse_displs.data(), 
+                        aligned_vector<double> b_data_temp(coarse_n*nhrs);
+                        RAPtor_MPI_Allgatherv(b.local->data(), b.local_n*nhrs, RAPtor_MPI_DOUBLE,
+                                b_data_temp.data(), coarse_sizes.data(), coarse_displs.data(), 
                                 RAPtor_MPI_DOUBLE, coarse_comm);
+
+                        // Reorder b_data_temp into correct rhs for block coarse solve
+                        aligned_vector<double> b_data;
+                        int start, stop;
+                        for (int v = 0; v < nhrs; v++)
+                        {
+                            for (int i = 0; i < coarse_sizes.size(); i++)
+                            {
+                                start = coarse_displs[i] + (v * coarse_sizes[i] / nhrs);
+                                stop = start + (coarse_sizes[i] / nhrs);
+                                for (int j = start; j < stop; j++)
+                                {
+                                    b_data.emplace_back(b_data_temp[j]);
+                                }
+                            }
+                        }
 
                         dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
                                 LU_permute.data(), b_data.data(), &coarse_n, &info);
-                        for (int i = 0; i < b.local_n; i++)
+
+                        for (int v = 0; v < nhrs; v++)
                         {
-                            x.local->values[i] = b_data[i + coarse_displs[active_rank]];
+                            for (int i = 0; i < b.local_n; i++)
+                            {
+                                x.local->values[i + v*b.local_n] = 
+                                    b_data[i + (coarse_displs[active_rank]/nhrs) + v*b.global_n];
+                            }
                         }
                     }
 
@@ -426,8 +460,25 @@ namespace raptor
                         init_profile();
                     }
 
-
                     P->mult_append(levels[level+1]->x, x, tap_level);
+                        
+                    /*for (int p = 0; p < num_procs; p++)
+                    {
+                        if (p == rank)
+                        {
+                            printf("%d mult_append x\n", rank);
+                            for (int v = 0; v < x.local->b_vecs; v++)
+                            {
+                                printf("v %d ", v);
+                                for (int i = 0; i < x.local_n; i++)
+                                {
+                                    printf("%e ", x.local->values[v*x.local_n + i]);
+                                }
+                                printf("\n");
+                            }
+                        }
+                        MPI_Barrier(MPI_COMM_WORLD);
+                    }*/
 
                     switch (relax_type)
                     {
@@ -458,13 +509,22 @@ namespace raptor
 
             int solve(ParVector& sol, ParVector& rhs)
             {
-                double b_norm = rhs.norm(2);
+                double b_norm;
+                aligned_vector<double> b_norms;
+                if (rhs.local->b_vecs > 1)
+                {
+                    b_norms.resize(rhs.local->b_vecs);
+                    b_norm = rhs.norm(2, &(b_norms[0]));
+                }
+                else b_norm = rhs.norm(2);
+
                 double r_norm;
+                aligned_vector<double> r_norms;
                 int iter = 0;
 
                 if (store_residuals)
                 {
-                    residuals.resize(max_iterations + 1);
+                    residuals.resize(max_iterations + 1 * rhs.local->b_vecs);
                 }
 
                 if (track_times)
@@ -474,19 +534,32 @@ namespace raptor
                 }
 
                 // Iterate until convergence or max iterations
-                ParVector resid(rhs.global_n, rhs.local_n);
+                //ParVector resid(rhs.global_n, rhs.local_n);
+                ParBVector resid(rhs.global_n, rhs.local_n, rhs.local->b_vecs);
                 levels[0]->A->residual(sol, rhs, resid);
-                if (fabs(b_norm) > zero_tol)
+                if (rhs.local->b_vecs > 1)
                 {
-                    r_norm = resid.norm(2) / b_norm;
+                    r_norms.resize(rhs.local->b_vecs);
+                    r_norm = resid.norm(2, &(r_norms[0]));
+                    for (int i = 0; i < rhs.local->b_vecs; i++)
+                    {
+                        if (fabs(b_norms[i]) > zero_tol) r_norms[i] = r_norms[i] / b_norms[i];
+                        if (r_norms[i] > r_norm) r_norm = r_norms[i];
+                    }
+                    if (store_residuals)
+                    {
+                        int start_indx = iter * rhs.local->b_vecs;
+                        for (int i = 0; i < rhs.local->b_vecs; i++)
+                        {
+                            residuals[start_indx + i] = r_norms[i];
+                        }
+                    }
                 }
                 else
                 {
                     r_norm = resid.norm(2);
-                }
-                if (store_residuals)
-                {
-                    residuals[iter] = r_norm;
+                    if (fabs(b_norm) > zero_tol) r_norm = r_norm / b_norm;
+                    if (store_residuals) residuals[iter] = r_norm;
                 }
 
                 if (track_times)
@@ -501,6 +574,7 @@ namespace raptor
 
                 while (r_norm > solve_tol && iter < max_iterations)
                 {
+                    // sol and rhs correct before cycle called
                     cycle(sol, rhs, 0);
 
                     if (track_times)
@@ -510,18 +584,32 @@ namespace raptor
 
                     iter++;
                     levels[0]->A->residual(sol, rhs, resid);
-                    if (fabs(b_norm) > zero_tol)
+                    if (rhs.local->b_vecs > 1)
                     {
-                        r_norm = resid.norm(2) / b_norm;
+                        r_norm = resid.norm(2, &(r_norms[0]));
+                        for (int i = 0; i < rhs.local->b_vecs; i++)
+                        {
+                            if (fabs(b_norms[i]) > zero_tol) r_norms[i] = r_norms[i] / b_norms[i];
+                            if (r_norms[i] > r_norm) r_norm = r_norms[i];
+                        }
+                        if (store_residuals)
+                        {
+                            int start_indx = iter * rhs.local->b_vecs;
+                            for (int i = 0; i < rhs.local->b_vecs; i++)
+                            {
+                                residuals[start_indx + i] = r_norms[i];
+                            }
+                        }
+                        //printf("residuals %e %e %e\n", r_norms[0], r_norms[1], r_norms[2]);
                     }
                     else
                     {
                         r_norm = resid.norm(2);
+                        if (fabs(b_norm) > zero_tol) r_norm = r_norm / b_norm;
+                        if (store_residuals) residuals[iter] = r_norm;
+                        //printf("residual %e\n", r_norm);
                     }
-                    if (store_residuals)
-                    {
-                        residuals[iter] = r_norm;
-                    }
+
                     if (track_times)
                     {
                         finalize_profile();
@@ -630,6 +718,7 @@ namespace raptor
             int max_coarse;
             int max_levels;
             int tap_amg;
+            int tap_simple;
             int max_iterations;
 
             double strong_threshold;

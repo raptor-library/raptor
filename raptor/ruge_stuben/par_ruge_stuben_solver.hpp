@@ -29,14 +29,14 @@ namespace raptor
 
         }
 
-        void setup(ParCSRMatrix *Af)
+        void setup(ParCSRMatrix *Af, int nrhs = 1)
         {
             if (num_variables > 1 && variables == NULL) 
             {
                 form_variable_list(Af, num_variables);
             }
 
-            setup_helper(Af);
+            setup_helper(Af, nrhs);
 
             if (num_variables > 1) delete[] variables;
             variables = NULL;
@@ -54,7 +54,7 @@ namespace raptor
             }
         }
 
-        void extend_hierarchy()
+        void extend_hierarchy(int nrhs = 1)
         {
             int level_ctr = levels.size() - 1;
             bool tap_level = tap_amg >= 0 && tap_amg <= level_ctr;
@@ -147,14 +147,17 @@ namespace raptor
             A->comm = new ParComm(A->partition, A->off_proc_column_map,
                     A->on_proc_column_map, levels[level_ctr-1]->A->comm->key,
                     levels[level_ctr-1]->A->comm->mpi_comm);
+            levels[level_ctr]->x.local->b_vecs = nrhs;
             levels[level_ctr]->x.resize(A->global_num_rows, A->local_num_rows);
+            levels[level_ctr]->b.local->b_vecs = nrhs;
             levels[level_ctr]->b.resize(A->global_num_rows, A->local_num_rows);
+            levels[level_ctr]->tmp.local->b_vecs = nrhs;
             levels[level_ctr]->tmp.resize(A->global_num_rows, A->local_num_rows);
             levels[level_ctr]->P = NULL;
 
             if (tap_amg >= 0 && tap_amg <= level_ctr)
             {
-                levels[level_ctr]->A->init_tap_communicators(RAPtor_MPI_COMM_WORLD);
+                levels[level_ctr]->A->init_tap_communicators(RAPtor_MPI_COMM_WORLD, tap_simple);
             }
 
             delete AP;

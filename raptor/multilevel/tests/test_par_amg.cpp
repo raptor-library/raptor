@@ -55,6 +55,7 @@ TEST(ParAMGTest, TestsInMultilevel)
     A->mult(x, b);
     x.set_const_value(0.0);
     int iter = ml->solve(x, b);
+
     ml->print_residuals(iter);
 
     delete ml;
