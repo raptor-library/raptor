@@ -3,6 +3,7 @@ include_directories(.)
 add_subdirectory(core)
 add_subdirectory(gallery)
 add_subdirectory(util)
+add_subdirectory(linalg)
 add_subdirectory(ruge_stuben)
 add_subdirectory(aggregation)
 add_subdirectory(multilevel)
@@ -10,6 +11,7 @@ add_subdirectory(krylov)
 add_subdirectory(profiling)
 add_subdirectory(external)
 add_subdirectory(aorthonormalization)
+add_subdirectory(relaxation)
 
 if (WITH_MPI)
     set(par_SOURCES
@@ -23,6 +25,7 @@ endif()
 add_library(raptor STATIC ${core_SOURCES} ${core_HEADERS} 
 	${gallery_SOURCES} ${gallery_HEADERS} ${ext_gallery_HEADERS} 
 	${util_SOURCES} ${util_HEADERS}
+	${linalg_SOURCES} ${linalg_HEADERS}
 	${par_SOURCES} strength.cpp 
 	${ruge_stuben_SOURCES} ${ruge_stuben_HEADERS}
         ${aggregation_SOURCES} ${aggregation_HEADERS}
@@ -30,7 +33,8 @@ add_library(raptor STATIC ${core_SOURCES} ${core_HEADERS}
         ${krylov_SOURCES} ${krylov_HEADERS} 
         ${profile_SOURCES} ${profile_HEADERS}
         ${external_SOURCES} ${external_HEADERS}
-        ${aorthonormalization_SOURCES} ${aorthonormalization_HEADERS})
+        ${aorthonormalization_SOURCES} ${aorthonormalization_HEADERS}
+        ${relaxation_SOURCES} ${relaxation_HEADERS})
 
 target_link_libraries(raptor ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
     ${MUELU_LIBRARIES} ${PETSC_LIBRARIES} ${PTSCOTCH_LIBRARIES} ${PARMETIS_LIBRARIES} ${EXTERNAL_LIBS} )
@@ -40,7 +44,8 @@ install(FILES raptor.hpp DESTINATION "include/raptor")
 install(FILES ${core_HEADERS} DESTINATION "include/raptor/core")
 install(FILES ${gallery_HEADERS}  DESTINATION "include/raptor/gallery")
 install(FILES ${ext_gallery_HEADERS} DESTINATION "include/raptor/gallery/external")
-install(FILES ${util_HEADERS} DESTINATION "include/raptor/util/linalg")
+install(FILES ${util_HEADERS} DESTINATION "include/raptor/util")
+install(FILES ${linalg_HEADERS} DESTINATION "include/raptor/linalg")
 install(FILES ${ruge_stuben_HEADERS} DESTINATION "include/raptor/ruge_stuben")
 install(FILES ${aggregation_HEADERS} DESTINATION "include/raptor/aggregation")
 install(FILES ${multilevel_HEADERS} DESTINATION "include/raptor/multilevel")
@@ -48,6 +53,7 @@ install(FILES ${krylov_HEADERS} DESTINATION "include/raptor/krylov")
 install(FILES ${profile_HEADERS} DESTINATION "include/raptor/profiling")
 install(FILES ${external_HEADERS} DESTINATION "include/raptor/external")
 install(FILES ${aorthonormalization_HEADERS} DESTINATION "include/raptor/aorthonormalization")
+install(FILES ${relaxation_HEADERS} DESTINATION "include/raptor/relaxation")
 
 
 include_directories(".")
@@ -55,6 +61,7 @@ if(ENABLE_UNIT_TESTS)
     add_subdirectory(tests)
     add_subdirectory(core/tests)
     add_subdirectory(util/tests)
+    add_subdirectory(linalg/tests)
     add_subdirectory(ruge_stuben/tests)
     add_subdirectory(aggregation/tests)
     add_subdirectory(multilevel/tests)
@@ -62,4 +69,5 @@ if(ENABLE_UNIT_TESTS)
     add_subdirectory(krylov/tests)
     add_subdirectory(external/tests)
     add_subdirectory(aorthonormalization/tests)
+    add_subdirectory(relaxation/tests)
 endif()

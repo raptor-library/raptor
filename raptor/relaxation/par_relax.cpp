@@ -2,7 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "core/types.hpp"
-#include "util/linalg/par_relax.hpp"
+#include "relaxation/par_relax.hpp"
 #include "core/par_matrix.hpp"
 
 /**************************************************************
@@ -199,6 +199,21 @@ void ssor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     for (int iter = 0; iter < num_sweeps; iter++)
     {
         comm->communicate(x);
+
+        /*int rank, num_procs;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+        for (int p = 0; p < num_procs; p++)
+        {
+            if (p == rank)
+            {
+                for (int i = 0; i < x.size(); i++)
+                {
+                }
+            }
+            MPI_Barrier(MPI_COMM_WORLD);
+        }*/
+
         SOR_forward(A, x, b, comm->get_buffer<double>(), omega);
         SOR_backward(A, x, b, comm->get_buffer<double>(), omega);
     }

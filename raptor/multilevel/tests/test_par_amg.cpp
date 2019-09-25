@@ -31,7 +31,8 @@ TEST(ParAMGTest, TestsInMultilevel)
     
     int dim = 3;
 
-    int grid[3] = {5, 5, 5};
+    //int grid[3] = {5, 5, 5};
+    int grid[3] = {10, 10, 10};
 
     ParMultilevel* ml;
     ParCSRMatrix* A;
@@ -48,22 +49,27 @@ TEST(ParAMGTest, TestsInMultilevel)
     b.resize(A->global_num_rows, A->local_num_rows);
     
     ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
+    ml->tap_amg = 0;
+    ml->max_iterations = 3;
     ml->setup(A);
     ml->print_hierarchy();
 
     x.set_const_value(1.0);
+    x.set_const_value(2.0);
+    //x.set_const_value(3.0);
     A->mult(x, b);
     x.set_const_value(0.0);
-    int iter = ml->solve(x, b);
+    ml->cycle(x, b);
+    //int iter = ml->solve(x, b);
 
-    ml->print_residuals(iter);
+    //ml->print_residuals(iter);
 
     delete ml;
 
 
 
     // Test Smoothed Aggregation Solver
-    ml = new ParSmoothedAggregationSolver(strong_threshold);
+    /*ml = new ParSmoothedAggregationSolver(strong_threshold);
     ml->setup(A);
 
     if (rank == 0)
@@ -113,7 +119,7 @@ TEST(ParAMGTest, TestsInMultilevel)
         printf("Res[%d] = %e\n", i, sa_res[i]);
     }
 
-    delete ml;
+    delete ml;*/
 
     delete A;
 

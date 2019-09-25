@@ -56,7 +56,7 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
     x.resize(A->global_num_rows, A->local_num_rows);
     b.resize(A->global_num_rows, A->local_num_rows);
     
-    ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
+    /*ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
     ml->setup(A, nrhs);
     ml->print_hierarchy();
 
@@ -90,26 +90,30 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
     }
 
     delete ml;
-    delete ml_single;
+    delete ml_single;*/
    
     // Test Standard TAP AMG with block vectors
     ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
     ml->tap_amg = 0;
+    ml->max_iterations = 3;
     ml->setup(A, nrhs);
 
     ml_single = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
     ml_single->tap_amg = 0;
+    ml->max_iterations = 3;
     ml_single->setup(A);
 
     x.set_const_value(1.0);
+    std::vector<double> alphas = {1.0, 2.0, 3.0};
     x.scale(1.0, &(alphas[0]));
 
     A->mult(x, b);
     x.set_const_value(0.0);
-    iter = ml->solve(x, b);
+    ml->cycle(x, b);
+    //int iter = ml->solve(x, b);
 
     // Check residuals
-    aligned_vector<double>& mrhs_tap_res = ml->get_residuals();
+    /*aligned_vector<double>& mrhs_tap_res = ml->get_residuals();
     x_single.set_const_value(1.0);
     A->mult(x_single, b_single);
     x_single.set_const_value(0.0);
@@ -120,9 +124,9 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
         for (int v = 0; v < nrhs; v++)
         {
             //ASSERT_NEAR(mrhs_tap_res[i*nrhs + v], single_tap_res[i], 1e-10);
-            printf("res[%d] %e mrhs[%d] %e\n", i, single_tap_res[i], i*nrhs+v, mrhs_tap_res[i*nrhs + v]);
+            //printf("res[%d] %e mrhs[%d] %e\n", i, single_tap_res[i], i*nrhs+v, mrhs_tap_res[i*nrhs + v]);
         }
-    }
+    }*/
 
     delete ml;
     delete ml_single;

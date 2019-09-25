@@ -98,25 +98,25 @@
 #include "aorthonormalization/par_cgs.hpp"
 
 // Relaxation methods
-#include "util/linalg/relax.hpp"
+#include "relaxation/relax.hpp"
 #ifndef NO_MPI
-    #include "util/linalg/par_relax.hpp"
+    #include "relaxation/par_relax.hpp"
 #endif
 
 // Repartitioning matrix methods
 #ifndef NO_MPI
-#include "util/linalg/repartition.hpp"
+#include "util/repartition.hpp"
 #endif
 #ifdef USING_PTSCOTCH
-    #include "util/linalg/external/ptscotch_wrapper.hpp"
+    #include "util/external/ptscotch_wrapper.hpp"
 #endif
 #ifdef USING_PARMETIS
-    #include "util/linalg/external/parmetis_wrapper.hpp"
+    #include "util/external/parmetis_wrapper.hpp"
 #endif
 
 // Preconditioning Methods
 #ifndef NO_MPI
-    #include "util/linalg/par_diag_scale.hpp"
+    #include "linalg/par_diag_scale.hpp"
 #endif
 
 

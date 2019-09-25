@@ -7,7 +7,7 @@
 #include "core/matrix.hpp"
 #include "core/vector.hpp"
 #include "level.hpp"
-#include "util/linalg/relax.hpp"
+#include "relaxation/relax.hpp"
 
 // Coarse Matrices (A) are CSC
 // Prolongation Matrices (P) are CSC
