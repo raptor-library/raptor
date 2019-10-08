@@ -28,9 +28,10 @@ void Vector::set_const_value(data_t alpha)
 ***** Initializes each element of the vector to a random
 ***** value
 **************************************************************/
-void Vector::set_rand_values()
+void Vector::set_rand_values(int seed)
 {
-    srand(time(NULL));
+    if (seed) srand(seed);
+    else srand(time(NULL));
     for (index_t i = 0; i < num_values * b_vecs; i++)
     {
         values[i] = ((double)rand()) / RAND_MAX;

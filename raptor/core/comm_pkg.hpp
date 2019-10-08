@@ -1609,7 +1609,8 @@ namespace raptor
         void init_double_comm(const double* values, const int block_size,
                 const int vblock_size = 1, const int vblock_offset = 0)
         {
-            initialize(values, block_size, vblock_size, vblock_offset);
+            if (vblock_size > 1) initialize(values, block_size, vblock_size, vblock_offset);
+            else initialize(values, block_size);
         }
         void init_int_comm(const int* values, const int block_size, const int vblock_size = 1)
         {
@@ -1641,8 +1642,33 @@ namespace raptor
         void initialize(const T* values, const int block_size = 1, const int vblock_size = 1,
                 const int vblock_offset = 0)
         {
+            int rank, num_procs;
+            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+            printf("%d this initialize vblock_size %d vblock_offset %d\n", rank, vblock_size, vblock_offset);
             // Messages with origin and final destination on node
             local_L_par_comm->communicate<T>(values, block_size, vblock_size, vblock_offset);
+
+            MPI_Barrier(MPI_COMM_WORLD);
+            printf("%d after local_L_par_comm communicate\n", rank);
+            fflush(stdout);
+            MPI_Barrier(MPI_COMM_WORLD);
+
+            for (int p = 0; p < num_procs; p++)
+            {
+                if (rank == p)
+                {
+                    aligned_vector<T>& buf = local_L_par_comm->send_data->get_buffer<T>();
+                    printf("%d send_data ", rank);
+                    for (int i = 0; i < buf.size(); i++)
+                    {
+                        printf("%e ", buf[i]);
+                    }
+                    printf("\n");
+                    fflush(stdout);
+                }
+                MPI_Barrier(MPI_COMM_WORLD); 
+            }
 
             if (local_S_par_comm)
             {
@@ -1655,8 +1681,8 @@ namespace raptor
             }
             else
             {
-                //global_par_comm->initialize(values, block_size);
-                global_par_comm->initialize(values, block_size, vblock_size, vblock_offset);
+                global_par_comm->initialize(values, block_size, vblock_size);
+                //global_par_comm->initialize(values, block_size, vblock_size, vblock_offset);
             }
         }
 

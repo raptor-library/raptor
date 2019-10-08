@@ -1,36 +1,36 @@
 // Copyright (c) 2015-2017, RAPtor Developer Team
-// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#ifndef RAPTOR_CORE_PARVECTOR_HPP
-#define RAPTOR_CORE_PARVECTOR_HPP
+    // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
+    #ifndef RAPTOR_CORE_PARVECTOR_HPP
+    #define RAPTOR_CORE_PARVECTOR_HPP
 
-#include "assert.h"
+    #include "assert.h"
 
-#include <mpi.h>
-#include <math.h>
+    #include <mpi.h>
+    #include <math.h>
 
-#include "mpi_types.hpp"
-#include "vector.hpp"
+    #include "mpi_types.hpp"
+    #include "vector.hpp"
 
-/**************************************************************
- *****   ParVector Class
- **************************************************************
- ***** This class constructs a parallel vector, containing 
- ***** values for a local portion
- *****
- ***** Attributes
- ***** -------------
- ***** local : Vector*
- *****    Local portion of the parallel vector
- ***** global_n : index_t
- *****    Number of entries in the global vector
- ***** local_n : index_t
- *****    Dimension of the local portion of the vector
- ***** 
- ***** Methods
- ***** -------
- ***** set_const_value(data_t alpha)
- *****    Sets the local vector to a constant value
- ***** set_rand_values()
+    /**************************************************************
+     *****   ParVector Class
+     **************************************************************
+     ***** This class constructs a parallel vector, containing 
+     ***** values for a local portion
+     *****
+     ***** Attributes
+     ***** -------------
+     ***** local : Vector*
+     *****    Local portion of the parallel vector
+     ***** global_n : index_t
+     *****    Number of entries in the global vector
+     ***** local_n : index_t
+     *****    Dimension of the local portion of the vector
+     ***** 
+     ***** Methods
+     ***** -------
+     ***** set_const_value(data_t alpha)
+     *****    Sets the local vector to a constant value
+     ***** set_rand_values()
  *****    Sets each element of the local vector to a random value
  ***** axpy(Vector& y, data_t alpha)
  *****    Performs axpy on local portion of vector
@@ -126,7 +126,7 @@ namespace raptor
         **************************************************************
         ***** Sets each element of the local vector to a random value
         **************************************************************/
-        void set_rand_values();
+        void set_rand_values(int seed = 0);
 
         /**************************************************************
         *****   Vector AXPY

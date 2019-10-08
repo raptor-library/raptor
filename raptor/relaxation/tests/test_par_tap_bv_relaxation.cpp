@@ -50,19 +50,13 @@ TEST(ParTAPBVectorAnisoTAPSpMVTest, TestsInUtil)
     ParVector b3(A->global_num_cols, A->on_proc_num_cols);
    
     // Set rand values 
-    x1.set_rand_values();
+    x1.set_rand_values(rank);
+    x2.set_rand_values(rank + 2);
+    x3.set_rand_values(rank + 3);
     for (int i = 0; i < A->local_num_rows; i++)
     {
         x->local->values[i] = x1.local->values[i];
-    }
-    x2.set_rand_values();
-    for (int i = 0; i < A->local_num_rows; i++)
-    {
         x->local->values[A->local_num_rows + i] = x2.local->values[i];
-    }
-    x3.set_rand_values();
-    for (int i = 0; i < A->local_num_rows; i++)
-    {
         x->local->values[2*A->local_num_rows + i] = x3.local->values[i];
     }
 
@@ -81,18 +75,15 @@ TEST(ParTAPBVectorAnisoTAPSpMVTest, TestsInUtil)
     // Test each vector in block vector
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        //ASSERT_NEAR(x->local->values[i], x1.local->values[i], 1e-06);
-        printf("%d x1 %e %e\n", rank, x->local->values[i], x1.local->values[i]);
+        ASSERT_NEAR(x->local->values[i], x1.local->values[i], 1e-06);
     }
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        //ASSERT_NEAR(x->local->values[A->local_num_rows + i], x2.local->values[i], 1e-06);
-        printf("%d x2 %e %e\n", rank, x->local->values[A->local_num_rows + i], x2.local->values[i]);
+        ASSERT_NEAR(x->local->values[A->local_num_rows + i], x2.local->values[i], 1e-06);
     }
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        //ASSERT_NEAR(x->local->values[2*A->local_num_rows + i], x3.local->values[i], 1e-06);
-        printf("%d x3 %e %e\n", rank, x->local->values[2*A->local_num_rows + i], x3.local->values[i]);
+        ASSERT_NEAR(x->local->values[2*A->local_num_rows + i], x3.local->values[i], 1e-06);
     }
     
     // Test SOR

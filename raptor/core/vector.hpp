@@ -97,7 +97,7 @@ public:
     ***** Initializes each element of the vector to a random
     ***** value
     **************************************************************/
-    void set_rand_values();
+    void set_rand_values(int seed = 0);
 
     /**************************************************************
     *****   Vector AXPY

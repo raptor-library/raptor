@@ -246,6 +246,9 @@ aligned_vector<double>& CommPkg::communicate(ParVector& v, const int block_size)
 
 void CommPkg::init_comm(ParVector& v, const int block_size, const int vblock_size)
 {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    printf("%d v.local->num_values %d v.local_n %d\n", rank, v.local->num_values, v.local_n);
     init_double_comm(v.local->data(), block_size, vblock_size, v.local->num_values);
 }
 

@@ -36,9 +36,9 @@ TEST(BlockVectorRelaxationTest, TestsInUtil)
     Vector b3(A_sten->n_rows);
 
     // Test b <- A*ones
-    x1.set_rand_values();
-    x2.set_rand_values();
-    x3.set_rand_values();
+    x1.set_rand_values(1);
+    x2.set_rand_values(2);
+    x3.set_rand_values(3);
 
     for (int i = 0; i < A_sten->n_rows; i++)
     {

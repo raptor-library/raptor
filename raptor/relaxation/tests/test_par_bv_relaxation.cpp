@@ -44,9 +44,9 @@ TEST(ParBVectorAnisoTAPSpMVTest, TestsInUtil)
     ParVector b3(A->global_num_cols, A->on_proc_num_cols);
    
     // Set rand values 
-    x1.set_rand_values();
-    x2.set_rand_values();
-    x3.set_rand_values();
+    x1.set_rand_values(rank + 1);
+    x2.set_rand_values(rank + 2);
+    x3.set_rand_values(rank + 3);
 
     for (int i = 0; i < A->local_num_rows; i++)
     {

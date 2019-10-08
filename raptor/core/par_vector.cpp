@@ -28,11 +28,11 @@ void ParVector::set_const_value(data_t alpha)
 **************************************************************
 ***** Sets each element of the local vector to a random value
 **************************************************************/
-void ParVector::set_rand_values()
+void ParVector::set_rand_values(int seed)
 {
     if (local_n)
     {
-        local->set_rand_values();
+        local->set_rand_values(seed);
     }
 }
 

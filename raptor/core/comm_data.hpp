@@ -148,9 +148,6 @@ public:
         aligned_vector<T>& buf = get_buffer<T>();
         if (buf.size() < size) buf.resize(size);
        
-        int rank;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
         for (int i = 0; i < num_msgs; i++)
         {
             proc = procs[i];
@@ -850,6 +847,9 @@ public:
         aligned_vector<T>& buf = get_buffer<T>();
         if (buf.size() < size) buf.resize(size);
 
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
         if (vblock_size > 1)
         {
             for (int i = 0; i < num_msgs; i++)
@@ -867,6 +867,9 @@ public:
                         for (int k = 0; k < block_size; k++)
                         {
                             buf[pos + v*(end-start) + k] = values[idx + v*vblock_offset + k];
+                            /*printf("%d buf[%d] %e = values[%d] %e to %d vblock_offset %d\n", rank, pos + v*(end-start) + k, 
+                                    buf[pos + v*(end-start) + k], idx + v*vblock_offset + k, 
+                                    values[idx + v*vblock_offset + k], proc, vblock_offset);*/
                         }
                     }
                     buf_pos++;
