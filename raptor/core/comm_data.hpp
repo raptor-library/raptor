@@ -140,6 +140,7 @@ public:
     template <typename T>
     void recv(int key, RAPtor_MPI_Comm mpi_comm, const int block_size = 1, const int vblock_size = 1)
     {
+        printf("this recv?\n");
         if (num_msgs == 0) return;
 
         int proc, start, end;
@@ -843,12 +844,14 @@ public:
         int proc, idx, pos;
         int size = size_msgs * block_size * vblock_size;
 
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
         RAPtor_MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
         if (buf.size() < size) buf.resize(size);
 
-        int rank;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        printf("%d buf size %d\n", rank, size);
 
         if (vblock_size > 1)
         {
@@ -885,6 +888,7 @@ public:
                 proc = procs[i];
                 start = indptr[i];
                 end = indptr[i+1];
+                printf("%d start %d end %d\n", rank, start, end);
                 for (int j = start; j < end; j++)
                 {
                     idx = indices[j] * block_size;
@@ -897,6 +901,7 @@ public:
                 RAPtor_MPI_Isend(&(buf[start*block_size]), (end - start) * block_size,
                         datatype, proc, key, mpi_comm, &(requests[i]));
             }
+            printf("%d after sends placed in buf\n", rank);
         }
     }
 

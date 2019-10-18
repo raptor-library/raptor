@@ -25,7 +25,8 @@ TEST(ParBVectorTinyRectangularTAPSpMVTest, TestsInUtil)
     int vecs_in_block = 3;
     int global_rows = 16;
     int global_cols = 6;
-
+   
+    // Setup ParCSRMatrix P - 16 x 6 //
     aligned_vector<int> on_proc_idx1, on_proc_idx2;
     aligned_vector<int> off_proc_idx1, off_proc_idx2;
     aligned_vector<double> on_proc_data, off_proc_data;
@@ -264,17 +265,13 @@ TEST(ParBVectorTinyRectangularTAPSpMVTest, TestsInUtil)
         first_local_col = 0;
     }
 
-    Partition* P_part = new Partition(global_rows, global_cols,
+    ParCSRMatrix* P = new ParCSRMatrix(global_rows, global_cols,
                                 on_proc_idx1.size()-1, on_col_map.size(),
                                 first_local_row, first_local_col);
-    
-    ParCSRMatrix* P = new ParCSRMatrix(P_part);
-
-    //ParCSRMatrix* P = new ParCSRMatrix(P_part, on_mat, off_mat);
 
     P->local_nnz = on_proc_idx2.size() + off_proc_idx2.size();
     P->off_proc_num_cols = off_col_map.size();
-
+    
     // Update on_proc mat
     P->on_proc->resize(on_proc_idx1.size()-1, on_col_map.size());
     P->on_proc->resize_data(on_proc_data.size());
@@ -321,21 +318,128 @@ TEST(ParBVectorTinyRectangularTAPSpMVTest, TestsInUtil)
     {
         P->local_row_map[i] = row_map[i];
     }
-    /*for (int p = 0; p < num_procs; p++)
+    
+    // Setup ParVectors //
+    ParBVector x(global_cols, P->on_proc_num_cols, vecs_in_block);
+    ParBVector b(global_rows, P->local_num_rows, vecs_in_block);
+    
+    ParVector x1(global_cols, P->on_proc_num_cols);
+    ParVector x2(global_cols, P->on_proc_num_cols);
+    ParVector x3(global_cols, P->on_proc_num_cols);
+
+    ParVector b1(global_rows, P->local_num_rows);
+    ParVector b2(global_rows, P->local_num_rows);
+    ParVector b3(global_rows, P->local_num_rows);
+
+    // Set values in ParVectors //
+    for (int i = 0; i < x.local_n; i++)
+    {
+        x.local->values[i] = rank;
+        x.local->values[x.local_n + i] = rank*2;
+        x.local->values[2*x.local_n + i] = rank*3;
+        
+        x1.local->values[i] = rank;
+        x2.local->values[i] = rank*2;
+        x3.local->values[i] = rank*3;
+    }
+    
+    // Setup TAPComm for tests //
+    P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map);
+    
+    // Test tap_mult
+    P->tap_mult(x1, b1);
+    /*P->tap_mult(x2, b2);
+    P->tap_mult(x3, b3);*/
+
+    //P->tap_mult(x, b);
+
+    // Test each vector in block vector
+    /*for (int i = 0; i < A->local_num_rows; i++)
+    {
+        ASSERT_NEAR(b.local->values[i], b1.local->values[i], 1e-06);
+    }
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        ASSERT_NEAR(b.local->values[A->local_num_rows + i], b2.local->values[i], 1e-06);
+    }
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        ASSERT_NEAR(b.local->values[2*A->local_num_rows + i], b3.local->values[i], 1e-06);
+    }*/
+
+    // TESTED EVERYTHING IN PARTITION - NEED TO CHECK EVERYTHING IN TAPCOMM NEXT
+    // LOOK AT SIZE OF SEND AND RECEIVE BUFFERS FOR LOCAL_L_COMM, LOCAL_S_COMM, LOCAL_R_COMM
+    // GETTING A SEGFAULT FOR PROCESS 3 BC SEND BUFFER ISN'T MAPPED OR HAS A MESSAGE WHEN IT SHOULDN'T
+    // CHECK IF THIS IS HAPPENING BC OF THE WAY YOU SETUP THE PARTITION????
+    /*if (rank == 0) printf("--------- Testing local_R_par_comm send_data ----------\n");
+    fflush(stdout);
+    MPI_Barrier(MPI_COMM_WORLD);
+    for (int p = 0; p < num_procs; p++)
     {
         if (rank == p)
         {
-            printf("%d glob_rows %d glob_cols %d on_proc_num_cols %d local_rows %d\n",
-                rank, P->global_num_rows, P->global_num_cols, P->on_proc_num_cols, P->local_num_rows);
+            printf("%d num_msgs %d\n", rank, P->tap_comm->local_R_par_comm->send_data->num_msgs);
+            printf("%d size_msgs %d\n", rank, P->tap_comm->local_R_par_comm->send_data->size_msgs);
+            printf("%d procs ", rank);
+            for (int i = 0; i < P->tap_comm->local_R_par_comm->send_data->procs.size(); i++)
+            {
+                printf("%d ", P->tap_comm->local_R_par_comm->send_data->procs[i]);
+            }
+            printf("\n %d indptr ", rank);
+            for (int i = 0; i < P->tap_comm->local_R_par_comm->send_data->indptr.size(); i++)
+            {
+                printf("%d ", P->tap_comm->local_R_par_comm->send_data->indptr[i]);
+            }
+            printf("\n %d buffer ", rank);
+            for (int i = 0; i < P->tap_comm->local_R_par_comm->send_data->buffer.size(); i++)
+            {
+                printf("%e ", P->tap_comm->local_R_par_comm->send_data->buffer[i]);
+            }
+            printf("\n %d int_buffer ", rank);
+            for (int i = 0; i < P->tap_comm->local_R_par_comm->send_data->int_buffer.size(); i++)
+            {
+                printf("%d ", P->tap_comm->local_R_par_comm->send_data->int_buffer[i]);
+            }
+            printf("\n");
         }
+        fflush(stdout);
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+    if (rank == 0) printf("--------- Testing local_R_par_comm recv_data ----------\n");
+    fflush(stdout);
+    MPI_Barrier(MPI_COMM_WORLD);
+    for (int p = 0; p < num_procs; p++)
+    {
+        if (rank == p)
+        {
+            printf("%d num_msgs %d\n", rank, P->tap_comm->local_R_par_comm->recv_data->num_msgs);
+            printf("%d size_msgs %d\n", rank, P->tap_comm->local_R_par_comm->recv_data->size_msgs);
+            printf("%d procs ", rank);
+            for (int i = 0; i < P->tap_comm->local_R_par_comm->recv_data->procs.size(); i++)
+            {
+                printf("%d ", P->tap_comm->local_R_par_comm->recv_data->procs[i]);
+            }
+            printf("\n %d indptr ", rank);
+            for (int i = 0; i < P->tap_comm->local_R_par_comm->recv_data->indptr.size(); i++)
+            {
+                printf("%d ", P->tap_comm->local_R_par_comm->recv_data->indptr[i]);
+            }
+            printf("\n %d buffer ", rank);
+            for (int i = 0; i < P->tap_comm->local_R_par_comm->recv_data->buffer.size(); i++)
+            {
+                printf("%e ", P->tap_comm->local_R_par_comm->recv_data->buffer[i]);
+            }
+            printf("\n %d int_buffer ", rank);
+            for (int i = 0; i < P->tap_comm->local_R_par_comm->recv_data->int_buffer.size(); i++)
+            {
+                printf("%d ", P->tap_comm->local_R_par_comm->recv_data->int_buffer[i]);
+            }
+            printf("\n");
+        }
+        fflush(stdout);
         MPI_Barrier(MPI_COMM_WORLD);
     }*/
 
-    P->finalize();
-   
-    P->comm = new ParComm(P->partition, P->off_proc_column_map, P->on_proc_column_map);
-    //P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map, P->on_proc_column_map);
-    //P->tap_mat_comm = new TAPComm(P->partition, P->off_proc_column_map, P->on_proc_column_map, false);
 
     setenv("PPN", "16", 1);
 

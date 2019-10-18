@@ -149,6 +149,7 @@ namespace raptor
         aligned_vector<T>& communicate(const aligned_vector<T>& values, const int block_size = 1,
                                        const int vblock_size = 1, const int vblock_offset = 0)
         {
+            //return communicate(values.data(), block_size, vblock_size, vblock_offset);
             return communicate(values.data(), block_size);
         }
         template<typename T>
@@ -414,7 +415,7 @@ namespace raptor
             aligned_vector<int> part_col_to_new;
 
             init_par_comm(partition, off_proc_column_map, _key, comm, r_data);
-            
+
             if (partition->local_num_cols)
             {
                 part_col_to_new.resize(partition->local_num_cols, -1);
@@ -431,6 +432,7 @@ namespace raptor
                 send_data->indices[i] = part_col_to_new[idx];
                 assert(part_col_to_new[idx] >= 0);
             }
+
 	    
         }
 
@@ -638,7 +640,8 @@ namespace raptor
         aligned_vector<int>& complete_int_comm(const int block_size = 1,
                 const int vblock_size = 1)
         {
-            return complete<int>(block_size, vblock_size);
+            //return complete<int>(block_size, vblock_size);
+            return complete<int>(block_size);
         }
         template<typename T>
         aligned_vector<T>& communicate(const aligned_vector<T>& values,
@@ -660,7 +663,7 @@ namespace raptor
         {
             int start, end;
             int proc, pos, idx;
-
+            
             if (profile) vec_t -= RAPtor_MPI_Wtime();
             send_data->send(values, key, mpi_comm, block_size, vblock_size, vblock_offset);
             recv_data->recv<T>(key, mpi_comm, block_size, vblock_size);
@@ -869,9 +872,6 @@ namespace raptor
 
             int result_vec_offset = result.size() / vblock_size;
             int start, end;
-
-            int rank;
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
             if (vblock_size > 1)
             {
@@ -1645,26 +1645,25 @@ namespace raptor
             int rank, num_procs;
             MPI_Comm_rank(MPI_COMM_WORLD, &rank);
             MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-            printf("%d this initialize vblock_size %d vblock_offset %d\n", rank, vblock_size, vblock_offset);
+            //printf("%d this initialize vblock_size %d vblock_offset %d\n", rank, vblock_size, vblock_offset);
             // Messages with origin and final destination on node
             local_L_par_comm->communicate<T>(values, block_size, vblock_size, vblock_offset);
-
-            MPI_Barrier(MPI_COMM_WORLD);
-            printf("%d after local_L_par_comm communicate\n", rank);
-            fflush(stdout);
-            MPI_Barrier(MPI_COMM_WORLD);
 
             for (int p = 0; p < num_procs; p++)
             {
                 if (rank == p)
                 {
-                    aligned_vector<T>& buf = local_L_par_comm->send_data->get_buffer<T>();
-                    printf("%d send_data ", rank);
-                    for (int i = 0; i < buf.size(); i++)
+                    if (local_L_par_comm->send_data)
                     {
-                        printf("%e ", buf[i]);
+                        printf("%d send buf size %d\n", rank, local_L_par_comm->send_data->buffer.size());
+                        /*aligned_vector<T>& buf = local_L_par_comm->send_data->get_buffer<T>();
+                        printf("%d send_data ", rank);
+                        for (int i = 0; i < buf.size(); i++)
+                        {
+                            printf("%e ", buf[i]);
+                        }
+                        printf("\n");*/
                     }
-                    printf("\n");
                     fflush(stdout);
                 }
                 MPI_Barrier(MPI_COMM_WORLD); 
@@ -1672,16 +1671,28 @@ namespace raptor
 
             if (local_S_par_comm)
             {
+                fflush(stdout);
+                MPI_Barrier(MPI_COMM_WORLD);
+                printf("%d before local_S_par_comm communicate\n", rank);
+                fflush(stdout);
+                MPI_Barrier(MPI_COMM_WORLD);
+                MPI_Barrier(MPI_COMM_WORLD);
+
                 // Initial redistribution among node
                 aligned_vector<T>& S_vals = local_S_par_comm->communicate<T>(values, block_size,
                         vblock_size, vblock_offset);
+
+                printf("%d after local_S_par_comm communicate\n", rank);
+                fflush(stdout);
+                MPI_Barrier(MPI_COMM_WORLD);
 
                 // Begin inter-node communication 
                 global_par_comm->initialize(S_vals.data(), block_size, vblock_size, vblock_offset);
             }
             else
             {
-                global_par_comm->initialize(values, block_size, vblock_size);
+                //global_par_comm->initialize(values, block_size, vblock_size);
+                global_par_comm->initialize(values, block_size);
                 //global_par_comm->initialize(values, block_size, vblock_size, vblock_offset);
             }
         }
