@@ -149,6 +149,7 @@ void ParMatrix::finalize(bool create_comm)
     off_proc->resize(local_num_rows, off_proc_num_cols);
     local_nnz = on_proc->nnz + off_proc->nnz;
 
+    // On and off proc column maps correct before this call
     if (create_comm){
         comm = new ParComm(partition, off_proc_column_map);
     }

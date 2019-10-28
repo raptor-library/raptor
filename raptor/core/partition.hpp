@@ -304,7 +304,7 @@ namespace raptor
         RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
         RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
-        int global_col, assumed_proc;
+        int global_col, assumed_proc, last_nonzero_proc;
         int ctr = 0;
         off_proc_col_to_proc.resize(off_proc_column_map.size());
         for (aligned_vector<int>::const_iterator it = off_proc_column_map.begin();
@@ -316,10 +316,13 @@ namespace raptor
             {
                 assumed_proc--;
             }
+            last_nonzero_proc = assumed_proc;
             while (assumed_proc < num_procs - 1 && global_col >= first_cols[assumed_proc+1])
             {
+                if (first_cols[assumed_proc] != 0) last_nonzero_proc = assumed_proc;
                 assumed_proc++;
             }
+            if (first_cols[assumed_proc] == 0 && last_nonzero_proc != 0) assumed_proc = last_nonzero_proc;
             off_proc_col_to_proc[ctr++] = assumed_proc;
         }
     }

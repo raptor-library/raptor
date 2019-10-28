@@ -332,33 +332,9 @@ TEST(ParBVectorTinyRectangularTAPSpMVTest, TestsInUtil)
 
     P->finalize();
     
-    for (int p = 0; p < num_procs; p++)
-    {
-        if (rank == p)
-        {
-            printf("%d on_proc ------------------\n", rank);
-            P->on_proc->print();
-            printf("%d off_proc ------------------\n", rank);
-            P->off_proc->print();
-            fflush(stdout);
-            printf("%d on_proc_column_map ", rank);
-            for (int i = 0; i < P->on_proc_column_map.size(); i++)
-            {
-                printf("%d ", P->on_proc_column_map[i]);
-            }
-            printf("\n%d off_proc_column_map ", rank);
-            for (int i = 0; i < P->off_proc_column_map.size(); i++)
-            {
-                printf("%d ", P->off_proc_column_map[i]);
-            }
-            printf("\n");
-        }
-        MPI_Barrier(MPI_COMM_WORLD);
-    }
-    
     // Setup ParVectors //
-    /*ParBVector x(global_cols, P->on_proc_num_cols, vecs_in_block);
-    ParBVector b(global_rows, P->local_num_rows, vecs_in_block);*/
+    ParBVector x(global_cols, P->on_proc_num_cols, vecs_in_block);
+    ParBVector b(global_rows, P->local_num_rows, vecs_in_block);
     
     ParVector x1(global_cols, P->on_proc_num_cols);
     ParVector x2(global_cols, P->on_proc_num_cols);
@@ -371,62 +347,213 @@ TEST(ParBVectorTinyRectangularTAPSpMVTest, TestsInUtil)
     // Set values in ParVectors //
     for (int i = 0; i < x1.local_n; i++)
     {
-        /*x.local->values[i] = rank;
+        x.local->values[i] = rank;
         x.local->values[x.local_n + i] = rank*2;
-        x.local->values[2*x.local_n + i] = rank*3;*/
+        x.local->values[2*x.local_n + i] = rank*3;
         
         x1.local->values[i] = rank;
         x2.local->values[i] = rank*2;
         x3.local->values[i] = rank*3;
     }
 
-    for (int p = 0; p < num_procs; p++)
+    // Setup TAPComm for tests //
+    P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map);
+    
+    /*for (int p = 0; p < num_procs; p++)
     {
         if (rank == p)
         {
+            printf("%d local_S_par_comm -------------------------\n", rank);
             printf("%d send_data ------------------\n", rank);
-            for (int i = 0; i < P->comm->send_data->num_msgs; i++)
+            printf("%d num_msgs %d\n", rank, P->tap_comm->local_S_par_comm->send_data->num_msgs);
+            printf("%d size_msgs %d\n", rank, P->tap_comm->local_S_par_comm->send_data->size_msgs);
+            printf("%d procs ", rank);
+            for (int i = 0; i < P->tap_comm->local_S_par_comm->send_data->procs.size(); i++)
             {
-                printf("%d send %d vals to %d\n", rank, 
-                P->comm->send_data->indptr[i+1] - P->comm->send_data->indptr[i],
-                P->comm->send_data->procs[i]); 
+                printf("%d ", P->tap_comm->local_S_par_comm->send_data->procs[i]); 
             }
+            printf("\n");
+            fflush(stdout);
+            printf("%d indptr ", rank);
+            for (int i = 0; i < P->tap_comm->local_S_par_comm->send_data->indptr.size(); i++)
+            {
+                printf("%d ", P->tap_comm->local_S_par_comm->send_data->indptr[i]); 
+            }
+            printf("\n");
+            fflush(stdout);
+            printf("%d buffer ", rank);
+            for (int i = 0; i < P->tap_comm->local_S_par_comm->send_data->buffer.size(); i++)
+            {
+                printf("%e ", P->tap_comm->local_S_par_comm->send_data->buffer[i]); 
+            }
+            printf("\n");
             fflush(stdout);
             printf("%d recv_data ------------------\n", rank);
-            for (int i = 0; i < P->comm->recv_data->num_msgs; i++)
+            printf("%d num_msgs %d\n", rank, P->tap_comm->local_S_par_comm->recv_data->num_msgs);
+            printf("%d size_msgs %d\n", rank, P->tap_comm->local_S_par_comm->recv_data->size_msgs);
+            printf("%d procs ", rank);
+            for (int i = 0; i < P->tap_comm->local_S_par_comm->recv_data->procs.size(); i++)
             {
-                printf("%d recv from %d\n", rank, 
-                P->comm->recv_data->procs[i]); 
+                printf("%d ", P->tap_comm->local_S_par_comm->recv_data->procs[i]); 
             }
+            printf("\n");
             fflush(stdout);
+            printf("%d indptr ", rank);
+            for (int i = 0; i < P->tap_comm->local_S_par_comm->recv_data->indptr.size(); i++)
+            {
+                printf("%d ", P->tap_comm->local_S_par_comm->recv_data->indptr[i]); 
+            }
+            printf("\n");
+            fflush(stdout);
+            printf("%d buffer ", rank);
+            for (int i = 0; i < P->tap_comm->local_S_par_comm->recv_data->buffer.size(); i++)
+            {
+                printf("%e ", P->tap_comm->local_S_par_comm->recv_data->buffer[i]); 
+            }
+            printf("\n");
+            fflush(stdout);
+            
+            printf("%d local_R_par_comm -------------------------\n", rank);
+            printf("%d send_data ------------------\n", rank);
+            printf("%d num_msgs %d\n", rank, P->tap_comm->local_R_par_comm->send_data->num_msgs);
+            printf("%d size_msgs %d\n", rank, P->tap_comm->local_R_par_comm->send_data->size_msgs);
+            printf("%d procs ", rank);
+            for (int i = 0; i < P->tap_comm->local_R_par_comm->send_data->procs.size(); i++)
+            {
+                printf("%d ", P->tap_comm->local_R_par_comm->send_data->procs[i]); 
+            }
+            printf("\n");
+            fflush(stdout);
+            printf("%d indptr ", rank);
+            for (int i = 0; i < P->tap_comm->local_R_par_comm->send_data->indptr.size(); i++)
+            {
+                printf("%d ", P->tap_comm->local_R_par_comm->send_data->indptr[i]); 
+            }
+            printf("\n");
+            fflush(stdout);
+            printf("%d buffer ", rank);
+            for (int i = 0; i < P->tap_comm->local_R_par_comm->send_data->buffer.size(); i++)
+            {
+                printf("%e ", P->tap_comm->local_R_par_comm->send_data->buffer[i]); 
+            }
+            printf("\n");
+            fflush(stdout);
+            printf("%d recv_data ------------------\n", rank);
+            printf("%d num_msgs %d\n", rank, P->tap_comm->local_R_par_comm->recv_data->num_msgs);
+            printf("%d size_msgs %d\n", rank, P->tap_comm->local_R_par_comm->recv_data->size_msgs);
+            printf("%d procs ", rank);
+            for (int i = 0; i < P->tap_comm->local_R_par_comm->recv_data->procs.size(); i++)
+            {
+                printf("%d ", P->tap_comm->local_R_par_comm->recv_data->procs[i]); 
+            }
+            printf("\n");
+            fflush(stdout);
+            printf("%d indptr ", rank);
+            for (int i = 0; i < P->tap_comm->local_R_par_comm->recv_data->indptr.size(); i++)
+            {
+                printf("%d ", P->tap_comm->local_R_par_comm->recv_data->indptr[i]); 
+            }
+            printf("\n");
+            fflush(stdout);
+            printf("%d buffer ", rank);
+            for (int i = 0; i < P->tap_comm->local_R_par_comm->recv_data->buffer.size(); i++)
+            {
+                printf("%e ", P->tap_comm->local_R_par_comm->recv_data->buffer[i]); 
+            }
+            printf("\n");
+            fflush(stdout);
+
+            printf("%d local_L_par_comm -------------------------\n", rank);
+            printf("%d send_data ------------------\n", rank);
+            printf("%d num_msgs %d\n", rank, P->tap_comm->local_L_par_comm->send_data->num_msgs);
+            printf("%d size_msgs %d\n", rank, P->tap_comm->local_L_par_comm->send_data->size_msgs);
+            printf("%d procs ", rank);
+            for (int i = 0; i < P->tap_comm->local_L_par_comm->send_data->procs.size(); i++)
+            {
+                printf("%d ", P->tap_comm->local_L_par_comm->send_data->procs[i]); 
+            }
+            printf("\n");
+            fflush(stdout);
+            printf("%d indptr ", rank);
+            for (int i = 0; i < P->tap_comm->local_L_par_comm->send_data->indptr.size(); i++)
+            {
+                printf("%d ", P->tap_comm->local_L_par_comm->send_data->indptr[i]); 
+            }
+            printf("\n");
+            fflush(stdout);
+            printf("%d buffer ", rank);
+            for (int i = 0; i < P->tap_comm->local_L_par_comm->send_data->buffer.size(); i++)
+            {
+                printf("%e ", P->tap_comm->local_L_par_comm->send_data->buffer[i]); 
+            }
+            printf("\n");
+            fflush(stdout);
+            printf("%d recv_data ------------------\n", rank);
+            printf("%d num_msgs %d\n", rank, P->tap_comm->local_L_par_comm->recv_data->num_msgs);
+            printf("%d size_msgs %d\n", rank, P->tap_comm->local_L_par_comm->recv_data->size_msgs);
+            printf("%d procs ", rank);
+            for (int i = 0; i < P->tap_comm->local_L_par_comm->recv_data->procs.size(); i++)
+            {
+                printf("%d ", P->tap_comm->local_L_par_comm->recv_data->procs[i]); 
+            }
+            printf("\n");
+            fflush(stdout);
+            printf("%d indptr ", rank);
+            for (int i = 0; i < P->tap_comm->local_L_par_comm->recv_data->indptr.size(); i++)
+            {
+                printf("%d ", P->tap_comm->local_L_par_comm->recv_data->indptr[i]); 
+            }
+            printf("\n");
+            fflush(stdout);
+            printf("%d buffer ", rank);
+            for (int i = 0; i < P->tap_comm->local_L_par_comm->recv_data->buffer.size(); i++)
+            {
+                printf("%e ", P->tap_comm->local_L_par_comm->recv_data->buffer[i]); 
+            }
+            printf("\n");
+            fflush(stdout);
+
         }
         MPI_Barrier(MPI_COMM_WORLD);
-    }
-    //P->mult(x1, b1);
-    
-    // Setup TAPComm for tests //
-    //P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map);
+    }*/
     
     // Test tap_mult
-    //P->tap_mult(x1, b1);
-    //P->mult(x1, b1);
+    P->tap_mult(x1, b1);
     /*P->tap_mult(x2, b2);
     P->tap_mult(x3, b3);*/
 
     //P->tap_mult(x, b);
 
+    /*for (int p = 0; p < num_procs; p++)
+    {
+        if (rank == p)
+        {
+            for (int v = 0; v < 3; v++)
+            {
+                printf("%d v %d vals ", rank, v);
+                for (int i = 0; i < b.local_n; i++)
+                {
+                    printf("%e ", b.local->values[v*b.local_n + i]);
+                }
+                printf("\n");
+                fflush(stdout);
+            }
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }*/
+
     // Test each vector in block vector
-    /*for (int i = 0; i < A->local_num_rows; i++)
+    /*for (int i = 0; i < b.local_n; i++)
     {
         ASSERT_NEAR(b.local->values[i], b1.local->values[i], 1e-06);
     }
-    for (int i = 0; i < A->local_num_rows; i++)
+    for (int i = 0; i < b.local_n; i++)
     {
-        ASSERT_NEAR(b.local->values[A->local_num_rows + i], b2.local->values[i], 1e-06);
+        ASSERT_NEAR(b.local->values[b.local_n + i], b2.local->values[i], 1e-06);
     }
-    for (int i = 0; i < A->local_num_rows; i++)
+    for (int i = 0; i < b.local_n; i++)
     {
-        ASSERT_NEAR(b.local->values[2*A->local_num_rows + i], b3.local->values[i], 1e-06);
+        ASSERT_NEAR(b.local->values[2*b.local_n + i], b3.local->values[i], 1e-06);
     }*/
 
     setenv("PPN", "16", 1);

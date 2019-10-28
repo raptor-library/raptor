@@ -33,26 +33,17 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap)
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
+    
     // Check that communication package has been initialized
     if (comm == NULL)
     {
         comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
     }
 
-    printf("%d before init_comm\n", rank);
-    fflush(stdout);
-    MPI_Barrier(MPI_COMM_WORLD);
     // Initialize Isends and Irecvs to communicate
     // values of x
     comm->init_comm(x, off_proc->b_cols, x.local->b_vecs);
-
-    MPI_Barrier(MPI_COMM_WORLD);
-    if (rank == 0) printf("After init_comm\n");
-    fflush(stdout);
-    MPI_Barrier(MPI_COMM_WORLD);
     
-
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
     if (local_num_rows)
@@ -98,7 +89,7 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b)
     // Wait for Isends and Irecvs to complete
     aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols, b.local->b_vecs);
    
-    MPI_Barrier(MPI_COMM_WORLD);
+    /*MPI_Barrier(MPI_COMM_WORLD);
     for (int p = 0; p < num_procs; p++)
     {
         if (rank == p)
@@ -113,7 +104,7 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b)
             fflush(stdout);
         }
         MPI_Barrier(MPI_COMM_WORLD);
-    }
+    }*/
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -122,7 +113,7 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b)
         off_proc->mult_append(x_tmp, *(b.local), b.local->b_vecs);
     }
     
-    for (int p = 0; p < num_procs; p++)
+    /*for (int p = 0; p < num_procs; p++)
     {
         if (rank == p)
         {
@@ -141,7 +132,7 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b)
             fflush(stdout);
         }
         MPI_Barrier(MPI_COMM_WORLD);
-    }
+    }*/
 }
 
 void ParMatrix::mult_append(ParVector& x, ParVector& b, bool tap)
