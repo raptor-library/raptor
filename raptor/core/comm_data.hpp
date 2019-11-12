@@ -838,7 +838,6 @@ public:
     {
 	if (num_msgs == 0) return;
 
-
         int start, end, buf_pos;
         int proc, idx, pos;
         int size = size_msgs * block_size * vblock_size;
@@ -1251,6 +1250,7 @@ public:
     {
         if (num_msgs == 0) return;
 
+        printf("duplicate data non_contig send being called?\n");
 
         int start, end;
         int proc, idx;

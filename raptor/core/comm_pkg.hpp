@@ -845,9 +845,6 @@ namespace raptor
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
                 T init_result_func_val = 0)
         {
-            int start, end;
-            int proc, idx, pos;
-
             if (profile) vec_t -= RAPtor_MPI_Wtime();
             recv_data->send(values, key, mpi_comm, block_size, vblock_size, vblock_offset,
                     init_result_func, init_result_func_val);
@@ -1642,69 +1639,64 @@ namespace raptor
         void initialize(const T* values, const int block_size = 1, const int vblock_size = 1,
                 const int vblock_offset = 0)
         {
-            int rank, num_procs;
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-            //printf("%d this initialize vblock_size %d vblock_offset %d\n", rank, vblock_size, vblock_offset);
             // Messages with origin and final destination on node
+            // SEND AND RECV DATA BUFFERS CORRECT
             local_L_par_comm->communicate<T>(values, block_size, vblock_size, vblock_offset);
-
-            for (int p = 0; p < num_procs; p++)
-            {
-                if (rank == p)
-                {
-                    if (local_L_par_comm->send_data)
-                    {
-                        printf("%d send buf size %d\n", rank, local_L_par_comm->send_data->buffer.size());
-                        /*aligned_vector<T>& buf = local_L_par_comm->send_data->get_buffer<T>();
-                        printf("%d send_data ", rank);
-                        for (int i = 0; i < buf.size(); i++)
-                        {
-                            printf("%e ", buf[i]);
-                        }
-                        printf("\n");*/
-                    }
-                    fflush(stdout);
-                }
-                MPI_Barrier(MPI_COMM_WORLD); 
-            }
 
             if (local_S_par_comm)
             {
-                fflush(stdout);
-                MPI_Barrier(MPI_COMM_WORLD);
-                printf("%d before local_S_par_comm communicate\n", rank);
-                fflush(stdout);
-                MPI_Barrier(MPI_COMM_WORLD);
-                MPI_Barrier(MPI_COMM_WORLD);
-
                 // Initial redistribution among node
+                // SEND AND RECV DATA BUFFERS CORRECT
                 aligned_vector<T>& S_vals = local_S_par_comm->communicate<T>(values, block_size,
                         vblock_size, vblock_offset);
 
-                printf("%d after local_S_par_comm communicate\n", rank);
-                fflush(stdout);
-                MPI_Barrier(MPI_COMM_WORLD);
-
-                // Begin inter-node communication 
-                global_par_comm->initialize(S_vals.data(), block_size, vblock_size, vblock_offset);
+                // Begin inter-node communication
+                // SEND AND RECV DATA BUFFERS CORRECT 
+                int offset = S_vals.size() / vblock_size;
+                global_par_comm->initialize(S_vals.data(), block_size, vblock_size, offset);
             }
             else
             {
-                //global_par_comm->initialize(values, block_size, vblock_size);
-                global_par_comm->initialize(values, block_size);
-                //global_par_comm->initialize(values, block_size, vblock_size, vblock_offset);
+                // MIGHT NEED TO RECALCULATE VBLOCK_OFFSET HERE?
+                global_par_comm->initialize(values, block_size, vblock_size, vblock_offset);
             }
         }
 
         template<typename T>
         aligned_vector<T>& complete(const int block_size = 1, const int vblock_size = 1)
         {
+            /*int rank, num_procs;
+            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+            printf("%d complete vblock_size %d\n", rank, vblock_size);*/
+
             // Complete inter-node communication
+            // G_VALS CORRECT
             aligned_vector<T>& G_vals = global_par_comm->complete<T>(block_size, vblock_size);
 
+            int offset = G_vals.size() / vblock_size;
             // Redistributing recvd inter-node values
-            local_R_par_comm->communicate<T>(G_vals.data(), block_size, vblock_size);
+            local_R_par_comm->communicate<T>(G_vals.data(), block_size, vblock_size, offset);
+            
+            /*for (int p = 0; p < num_procs; p++)
+            {
+                if (rank == p)
+                {
+                    if (local_R_par_comm->recv_data)
+                    {
+                        printf("%d recv buf size %d\n", rank, local_R_par_comm->recv_data->buffer.size());
+                        aligned_vector<T>& buf = local_R_par_comm->recv_data->get_buffer<T>();
+                        printf("%d recv_data ", rank);
+                        for (int i = 0; i < buf.size(); i++)
+                        {
+                            printf("%e ", buf[i]);
+                        }
+                        printf("\n");
+                    }
+                    fflush(stdout);
+                }
+                MPI_Barrier(MPI_COMM_WORLD); 
+            }*/
 
             aligned_vector<T>& recvbuf = get_buffer<T>();
 
@@ -1889,20 +1881,69 @@ namespace raptor
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
+            int rank, num_procs;
+            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+
             int idx;
 
             // Messages with origin and final destination on node
+            // SEND AND RECV BUFFERS CORRECT
             local_L_par_comm->communicate_T(values, block_size, vblock_size, vblock_offset,
                     init_result_func, init_result_func_val);
 
             // Initial redistribution among node
+            // SEND AND RECV BUFFERS CORRECT
             local_R_par_comm->communicate_T(values, block_size, vblock_size, vblock_offset,
                     init_result_func, init_result_func_val);
-
+           
+            if (rank == 0) printf("before global_par_comm init_comm_T\n"); 
+            fflush(stdout);
+            MPI_Barrier(MPI_COMM_WORLD);
             // Begin inter-node communication 
             aligned_vector<T>& R_sendbuf = local_R_par_comm->send_data->get_buffer<T>();
             global_par_comm->init_comm_T(R_sendbuf, block_size, vblock_size, vblock_offset,
                     init_result_func, init_result_func_val);
+            
+            for (int p = 0; p < num_procs; p++)
+            {
+                if (rank == p)
+                {
+                    printf("%d R_sendbuf size %d vblock_size %d vblock_offset %d\n", rank, R_sendbuf.size(), vblock_size, vblock_offset);
+                    printf("%d R_sendbuf ", rank);
+                    for (int i = 0; i < R_sendbuf.size(); i++)
+                    {
+                        printf("%e ", R_sendbuf[i]);
+                    }
+                    printf("\n");
+                    fflush(stdout);
+                    if (global_par_comm->recv_data)
+                    {
+                        printf("%d global recv buf size %d\n", rank, global_par_comm->recv_data->buffer.size());
+                        aligned_vector<T>& buf = global_par_comm->recv_data->get_buffer<T>();
+                        printf("%d global recv_data ", rank);
+                        for (int i = 0; i < buf.size(); i++)
+                        {
+                            printf("%e ", buf[i]);
+                        }
+                        printf("\n");
+                    }
+                    fflush(stdout);
+                    if (global_par_comm->send_data)
+                    {
+                        printf("%d global send buf size %d\n", rank, global_par_comm->send_data->buffer.size());
+                        aligned_vector<T>& buf = global_par_comm->send_data->get_buffer<T>();
+                        printf("%d global send_data ", rank);
+                        for (int i = 0; i < buf.size(); i++)
+                        {
+                            printf("%e ", buf[i]);
+                        }
+                        printf("\n");
+                    }
+                    fflush(stdout);
+                }
+                MPI_Barrier(MPI_COMM_WORLD); 
+            }
         }
 
         template<typename T, typename U>

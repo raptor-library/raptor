@@ -74,10 +74,10 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b)
     // values of x
     tap_comm->init_comm(x, off_proc->b_cols, x.local->b_vecs);
 
-    int rank, num_procs;
+    /*int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);*/
 
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
