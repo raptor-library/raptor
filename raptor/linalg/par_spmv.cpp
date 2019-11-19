@@ -43,7 +43,7 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap)
     // Initialize Isends and Irecvs to communicate
     // values of x
     comm->init_comm(x, off_proc->b_cols, x.local->b_vecs);
-    
+
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
     if (local_num_rows)

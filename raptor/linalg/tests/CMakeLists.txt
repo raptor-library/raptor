@@ -133,6 +133,6 @@ if (WITH_MPI)
     
     add_executable(test_bv_tap_spmv_rectangular_medium test_bv_tap_spmv_rectangular_medium.cpp)
     target_link_libraries(test_bv_tap_spmv_rectangular_medium raptor ${MPI_LIBRARIES} googletest pthread )
-    add_test(ParBVectorRectangularTAPSpMVMedTest ${MPIRUN} -n 8 ./test_bv_tap_spmv_rectangular_medium)
+    add_test(ParBVectorRectangularTAPSpMVMedTest ${MPIRUN} -n 12 ./test_bv_tap_spmv_rectangular_medium)
     
 endif()

@@ -93,7 +93,7 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
     delete ml_single;*/
    
     // Test Standard TAP AMG with block vectors
-    ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
+    /*ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
     ml->tap_amg = 0;
     ml->max_iterations = 3;
     ml->setup(A, nrhs);
@@ -109,7 +109,13 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
 
     A->mult(x, b);
     x.set_const_value(0.0);
-    ml->cycle(x, b);
+    ml->cycle(x, b);*/
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    A->mult(x_single, b_single);
+    //x_single.set_const_value(0.0);
+    //ml_single->cycle(x_single, b_single);
+
     //int iter = ml->solve(x, b);
 
     // Check residuals

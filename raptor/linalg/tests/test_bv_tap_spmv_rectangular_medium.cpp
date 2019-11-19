@@ -23,260 +23,123 @@ TEST(ParBVectorRectangularTAPSpMVMedTest, TestsInUtil)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     int vecs_in_block = 3;
-    int global_rows = 16;
-    int global_cols = 6;
+    int global_rows = 24;
+    int global_cols = 10;
+    int local_rows, local_cols, first_local_row, first_local_col;
    
-    // Setup ParCSRMatrix P - 16 x 6 //
-    aligned_vector<int> on_proc_idx1, on_proc_idx2;
-    aligned_vector<int> off_proc_idx1, off_proc_idx2;
-    aligned_vector<double> on_proc_data, off_proc_data;
-    aligned_vector<int> off_col_map, on_col_map, row_map;
-
     if (rank == 0)
     {
-        on_proc_idx1.push_back(0);
-        on_proc_idx1.push_back(0);
-        on_proc_idx1.push_back(0);
-
-        off_proc_idx1.push_back(0);
-        off_proc_idx1.push_back(2);
-        off_proc_idx1.push_back(3);
-
-        off_proc_idx2.push_back(0);
-        off_proc_idx2.push_back(1);
-        off_proc_idx2.push_back(1);
-
-        off_proc_data.push_back(1.0);
-        off_proc_data.push_back(1.0);
-        off_proc_data.push_back(1.0);
-
-        off_col_map.push_back(4);
-        off_col_map.push_back(5);
-
-        row_map.push_back(0);
-        row_map.push_back(1);
+        local_rows = 2;
+        local_cols = 0; 
+    
+        first_local_row = 0;
+        first_local_col = 0;
     }
     else if (rank == 1)
     {
-        on_proc_idx1.push_back(0);
-        on_proc_idx1.push_back(0);
-        on_proc_idx1.push_back(1);
-        on_proc_idx1.push_back(1);
-
-        on_proc_idx2.push_back(0);
-
-        off_proc_idx1.push_back(0);
-        off_proc_idx1.push_back(1);
-        off_proc_idx1.push_back(2);
-        off_proc_idx1.push_back(3);
-
-        off_proc_idx2.push_back(0);
-        off_proc_idx2.push_back(1);
-        off_proc_idx2.push_back(2);
-
-        on_proc_data.push_back(1.0);
-
-        off_proc_data.push_back(1.0);
-        off_proc_data.push_back(1.0);
-        off_proc_data.push_back(1.0);
+        local_rows = 3;
+        local_cols = 1; 
         
-        off_col_map.push_back(2);
-        off_col_map.push_back(3);
-        off_col_map.push_back(5);
-
-        on_col_map.push_back(0);
-        row_map.push_back(2);
-        row_map.push_back(3);
-        row_map.push_back(4);
+        first_local_row = 2;
+        first_local_col = 0;
     }
     else if (rank == 2)
     {
-        on_proc_idx1.push_back(0);
-        on_proc_idx1.push_back(1);
-        on_proc_idx1.push_back(2);
-        on_proc_idx1.push_back(2);
+        local_rows = 3;
+        local_cols = 2;
 
-        on_proc_idx2.push_back(0);
-        on_proc_idx2.push_back(0);
-
-        off_proc_idx1.push_back(0);
-        off_proc_idx1.push_back(1);
-        off_proc_idx1.push_back(2);
-        off_proc_idx1.push_back(3);
-
-        off_proc_idx2.push_back(2);
-        off_proc_idx2.push_back(1);
-        off_proc_idx2.push_back(0);
-        
-        on_proc_data.push_back(1.0);
-        on_proc_data.push_back(1.0);
-
-        off_proc_data.push_back(1.0);
-        off_proc_data.push_back(1.0);
-        off_proc_data.push_back(1.0);
-        
-        off_col_map.push_back(0);
-        off_col_map.push_back(3);
-        off_col_map.push_back(5);
-
-        on_col_map.push_back(1);
-
-        row_map.push_back(5);
-        row_map.push_back(6);
-        row_map.push_back(7);
+        first_local_row = 5;
+        first_local_col = 1;
     }
     else if (rank == 3)
     {
-        on_proc_idx1.push_back(0);
-        on_proc_idx1.push_back(0);
+        local_rows = 1;
+        local_cols = 0;
 
-        off_proc_idx1.push_back(0);
-        off_proc_idx1.push_back(1);
-
-        off_proc_idx2.push_back(0);
-        
-        off_proc_data.push_back(1.0);
-        
-        off_col_map.push_back(4);
-
-        row_map.push_back(8);
+        first_local_row = 8;
+        first_local_col = 0;
     }
     else if (rank == 4)
     {
-        on_proc_idx1.push_back(0);
-        on_proc_idx1.push_back(1);
-        on_proc_idx1.push_back(1);
+        local_rows = 2;
+        local_cols = 1;
 
-        on_proc_idx2.push_back(0);
-
-        off_proc_idx1.push_back(0);
-        off_proc_idx1.push_back(1);
-        off_proc_idx1.push_back(2);
-
-        off_proc_idx2.push_back(1);
-        off_proc_idx2.push_back(0);
-        
-        on_proc_data.push_back(1.0);
-
-        off_proc_data.push_back(1.0);
-        off_proc_data.push_back(1.0);
-        
-        off_col_map.push_back(0);
-        off_col_map.push_back(5);
-
-        on_col_map.push_back(2);
-
-        row_map.push_back(9);
-        row_map.push_back(10);
+        first_local_row = 9;
+        first_local_col = 3;
     }
     else if (rank == 5)
     {
-        on_proc_idx1.push_back(0);
-        on_proc_idx1.push_back(1);
-
-        on_proc_idx2.push_back(0);
-
-        off_proc_idx1.push_back(0);
-        off_proc_idx1.push_back(1);
-
-        off_proc_idx2.push_back(0);
+        local_rows = 1;
+        local_cols = 1;
         
-        on_proc_data.push_back(1.0);
-        off_proc_data.push_back(1.0);
-        
-        off_col_map.push_back(2);
-
-        on_col_map.push_back(3);
-
-        row_map.push_back(11);
+        first_local_row = 11;
+        first_local_col = 4;
     }
     else if (rank == 6)
     {
-        on_proc_idx1.push_back(0);
-        on_proc_idx1.push_back(1);
-        on_proc_idx1.push_back(2);
-
-        on_proc_idx2.push_back(0);
-        on_proc_idx2.push_back(0);
-
-        off_proc_idx1.push_back(0);
-        off_proc_idx1.push_back(1);
-        off_proc_idx1.push_back(2);
-
-        off_proc_idx2.push_back(0);
-        off_proc_idx2.push_back(1);
+        local_rows = 2;
+        local_cols = 2;
         
-        on_proc_data.push_back(1.0);
-        on_proc_data.push_back(1.0);
-        off_proc_data.push_back(1.0);
-        off_proc_data.push_back(1.0);
-        
-        off_col_map.push_back(1);
-        off_col_map.push_back(2);
-
-        on_col_map.push_back(4);
-
-        row_map.push_back(12);
-        row_map.push_back(13);
+        first_local_row = 12;
+        first_local_col = 5;
     }
     else if (rank == 7)
     {
-        on_proc_idx1.push_back(0);
-        on_proc_idx1.push_back(0);
-        on_proc_idx1.push_back(1);
-
-        on_proc_idx2.push_back(0);
-
-        off_proc_idx1.push_back(0);
-        off_proc_idx1.push_back(2);
-        off_proc_idx1.push_back(4);
-
-        off_proc_idx2.push_back(1);
-        off_proc_idx2.push_back(2);
-        off_proc_idx2.push_back(0);
-        off_proc_idx2.push_back(2);
+        local_rows = 2;
+        local_cols = 1;
         
-        on_proc_data.push_back(1.0);
-
-        off_proc_data.push_back(1.0);
-        off_proc_data.push_back(1.0);
-        off_proc_data.push_back(1.0);
-        off_proc_data.push_back(1.0);
+        first_local_row = 14;
+        first_local_col = 7;
+    }
+    else if (rank == 8)
+    {
+        local_rows = 3;
+        local_cols = 0;
         
-        off_col_map.push_back(0);
-        off_col_map.push_back(1);
-        off_col_map.push_back(3);
-
-        on_col_map.push_back(5);
-
-        row_map.push_back(14);
-        row_map.push_back(15);
+        first_local_row = 16;
+        first_local_col = 0;
     }
-
-    int first_local_row, first_local_col;
-    first_local_row = row_map[0];
-    if (on_col_map.size())
+    else if (rank == 9)
     {
-        first_local_col = on_col_map[0];
+        local_rows = 2;
+        local_cols = 1;
+        
+        first_local_row = 19;
+        first_local_col = 8;
     }
-    else
+    else if (rank == 10)
     {
+        local_rows = 1;
+        local_cols = 1;
+        
+        first_local_row = 21;
+        first_local_col = 9;
+    }
+    else if (rank == 11)
+    {
+        local_rows = 3;
+        local_cols = 0;
+        
+        first_local_row = 22;
         first_local_col = 0;
     }
 
     ParCSRMatrix* P = new ParCSRMatrix(global_rows, global_cols,
-                                on_proc_idx1.size()-1, on_col_map.size(),
+                                local_rows, local_cols,
                                 first_local_row, first_local_col);
 
     if (rank == 0)
     {
-        P->add_value(0, 4, 1.0);
-        P->add_value(0, 5, 1.0);
-        P->add_value(1, 5, 1.0);
+        P->add_value(0, 3, 1.0);
+        P->add_value(0, 8, 1.0);
+        P->add_value(0, 9, 1.0);
+        P->add_value(1, 4, 1.0);
+        P->add_value(1, 9, 1.0);
     }
     else if (rank == 1)
     {
-        P->add_value(0, 5, 1.0);
+        P->add_value(0, 6, 1.0);
+        P->add_value(0, 9, 1.0);
         P->add_value(1, 0, 1.0);
         P->add_value(1, 2, 1.0);
         P->add_value(2, 3, 1.0);
@@ -284,32 +147,39 @@ TEST(ParBVectorRectangularTAPSpMVMedTest, TestsInUtil)
     else if (rank == 2)
     {
         P->add_value(0, 1, 1.0);
-        P->add_value(0, 5, 1.0);
-        P->add_value(1, 1, 1.0);
-        P->add_value(1, 3, 1.0);
+        P->add_value(0, 7, 1.0);
+        P->add_value(0, 8, 1.0);
+        P->add_value(1, 2, 1.0);
+        P->add_value(1, 5, 1.0);
         P->add_value(2, 0, 1.0);
+        P->add_value(2, 9, 1.0);
     }
     else if (rank == 3)
     {
-        P->add_value(0, 4, 1.0);
+        P->add_value(0, 6, 1.0);
     }
     else if (rank == 4)
     {
-        P->add_value(0, 2, 1.0);
+        P->add_value(0, 3, 1.0);
         P->add_value(0, 5, 1.0);
+        P->add_value(0, 9, 1.0);
         P->add_value(1, 0, 1.0);
+        P->add_value(1, 6, 1.0);
     }
     else if (rank == 5)
     {
-        P->add_value(0, 2, 1.0);
         P->add_value(0, 3, 1.0);
+        P->add_value(0, 4, 1.0);
     }
     else if (rank == 6)
     {
         P->add_value(0, 1, 1.0);
-        P->add_value(0, 4, 1.0);
+        P->add_value(0, 5, 1.0);
+        P->add_value(0, 8, 1.0);
         P->add_value(1, 2, 1.0);
-        P->add_value(1, 4, 1.0);
+        P->add_value(1, 5, 1.0);
+        P->add_value(1, 6, 1.0);
+        P->add_value(1, 8, 1.0);
     }
     else if (rank == 7)
     {
@@ -317,17 +187,33 @@ TEST(ParBVectorRectangularTAPSpMVMedTest, TestsInUtil)
         P->add_value(0, 3, 1.0);
         P->add_value(1, 0, 1.0);
         P->add_value(1, 3, 1.0);
+        P->add_value(1, 7, 1.0);
+    }
+    else if (rank == 8)
+    {
+        P->add_value(0, 1, 1.0);
         P->add_value(1, 5, 1.0);
+        P->add_value(2, 0, 1.0);
     }
-    P->on_proc->idx1.resize(on_proc_idx1.size());
-    for (int i = 0; i < on_proc_idx1.size(); i++)
+    else if (rank == 9)
     {
-        P->on_proc->idx1[i] = on_proc_idx1[i];
+        P->add_value(0, 3, 1.0);
+        P->add_value(0, 8, 1.0);
+        P->add_value(1, 6, 1.0);
+        P->add_value(1, 8, 1.0);
+        P->add_value(1, 9, 1.0);
     }
-    P->off_proc->idx1.resize(off_proc_idx1.size());
-    for (int i = 0; i < off_proc_idx1.size(); i++)
+    else if (rank == 10)
     {
-        P->off_proc->idx1[i] = off_proc_idx1[i];
+        P->add_value(0, 9, 1.0);
+    }
+    else if (rank == 11)
+    {
+        P->add_value(0, 3, 1.0);
+        P->add_value(0, 7, 1.0);
+        P->add_value(1, 5, 1.0);
+        P->add_value(2, 0, 1.0);
+        P->add_value(2, 3, 1.0);
     }
 
     P->finalize();
@@ -543,37 +429,6 @@ TEST(ParBVectorRectangularTAPSpMVMedTest, TestsInUtil)
     P->tap_mult_T(b3, x3);
 
     P->tap_mult_T(b, x);
-
-    /*MPI_Barrier(MPI_COMM_WORLD);
-    fflush(stdout);
-    if (rank == 0) printf("---------------------\n");
-    fflush(stdout);
-    MPI_Barrier(MPI_COMM_WORLD);
-    
-    for (int p = 0; p < num_procs; p++)
-    {
-        if (p == rank)
-        {
-            printf("%d x1 ", rank);
-            for (int i = 0; i < x1.local_n; i++)
-            {
-                printf("%e ", x1.local->values[i]);
-            }
-            printf("\n");
-            fflush(stdout);
-            for (int v = 0; v < 3; v++)
-            {
-                printf("%d x ", rank, v);
-                for (int i = 0; i < x.local_n; i++)
-                {
-                    printf("%e ", x.local->values[v*x.local_n + i]);
-                }
-            }
-            printf("\n");
-            fflush(stdout);
-        }
-        MPI_Barrier(MPI_COMM_WORLD);
-    }*/
 
     for (int i = 0; i < x.local_n; i++)
     {
