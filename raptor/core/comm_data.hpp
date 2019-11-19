@@ -849,8 +849,6 @@ public:
         aligned_vector<T>& buf = get_buffer<T>();
         if (buf.size() < size) buf.resize(size);
 
-        //printf("%d buf size %d\n", rank, size);
-
         if (vblock_size > 1)
         {
             for (int i = 0; i < num_msgs; i++)
@@ -1250,46 +1248,93 @@ public:
     {
         if (num_msgs == 0) return;
 
-        printf("duplicate data non_contig send being called?\n");
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        //printf("%d sending via duplicate data non_contig send\n", rank);
 
-        int start, end;
+        int start, end, buf_pos;
         int proc, idx;
         int idx_start, idx_end;
-        int size = size_msgs * block_size;
+        int size = size_msgs * block_size * vblock_size;
         int pos;
 
         RAPtor_MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
         if (buf.size() < size) buf.resize(size);
 
-        aligned_vector<T> tmp(block_size);
+        aligned_vector<T> tmp(block_size * vblock_size);
 
-        for (int i = 0; i < num_msgs; i++)
+        if (vblock_size > 1)
         {
-            proc = procs[i];
-            start = indptr[i];
-            end = indptr[i+1];
-            for (int j = start; j < end; j++)
+            for (int i = 0; i < num_msgs; i++)
             {
-                idx_start = indptr_T[j];
-                idx_end = indptr_T[j+1];
-                std::fill(tmp.begin(), tmp.end(), init_result_func_val);
-                for (int k = idx_start; k < idx_end; k++)
+                proc = procs[i];
+                start = indptr[i];
+                end = indptr[i+1];
+                for (int j = start; j < end; j++)
                 {
-                    idx = indices[k] * block_size;
-                    for (int l = 0; l < block_size; l++)
+                    idx_start = indptr_T[j];
+                    idx_end = indptr_T[j+1];
+                    //printf("%d proc %d start %d end %d idx_start %d idx_end %d\n", rank, proc, start, end, idx_start, idx_end);
+                    std::fill(tmp.begin(), tmp.end(), init_result_func_val);
+                    for (int k = idx_start; k < idx_end; k++)
                     {
-                        tmp[l] = init_result_func(tmp[l], values[idx+l]);
+                        idx = indices[k] * block_size;
+                        for (int v = 0; v < vblock_size; v++)
+                        {
+                            for (int l = 0; l < block_size; l++)
+                            {
+                                //printf("idx %d values[%d] %e\n", idx, v*vblock_offset+idx+l, values[v*vblock_offset+idx+l]);
+                                tmp[v*block_size+l] = init_result_func(tmp[v*block_size+l], values[v*vblock_offset+idx+l]);
+                            }
+                        }
+                    }
+                    pos  = j * block_size * vblock_size;
+                    for (int v = 0; v < vblock_size; v++)
+                    {
+                        for (int k = 0; k < block_size; k++)
+                        {
+                            buf[pos + v*block_size + k] = tmp[v*block_size + k];
+                            //printf("%d pos %d buf[%d] = tmp[%d] %e\n", rank, pos, pos+v*block_size+k, v*block_size+k, tmp[v*block_size+k]);
+                        }
                     }
                 }
-                pos  = j * block_size;
-                for (int k = 0; k < block_size; k++)
-                {
-                    buf[pos + k] = tmp[k];
-                }
+                RAPtor_MPI_Isend(&(buf[start * block_size * vblock_size]), (end - start) * block_size * vblock_size,
+                       datatype, proc, key, mpi_comm, &(requests[i]));
             }
-            RAPtor_MPI_Isend(&(buf[start * block_size]), (end - start) * block_size,
-                   datatype, proc, key, mpi_comm, &(requests[i]));
+        }
+        else
+        {
+            for (int i = 0; i < num_msgs; i++)
+            {
+                proc = procs[i];
+                start = indptr[i];
+                end = indptr[i+1];
+                for (int j = start; j < end; j++)
+                {
+                    idx_start = indptr_T[j];
+                    idx_end = indptr_T[j+1];
+                    //printf("%d proc %d start %d end %d idx_start %d idx_end %d\n", rank, proc, start, end, idx_start, idx_end);
+                    std::fill(tmp.begin(), tmp.end(), init_result_func_val);
+                    for (int k = idx_start; k < idx_end; k++)
+                    {
+                        idx = indices[k] * block_size;
+                        for (int l = 0; l < block_size; l++)
+                        {
+                            //printf("idx %d values[%d] %e\n", idx, idx+l, values[idx+l]);
+                            tmp[l] = init_result_func(tmp[l], values[idx+l]);
+                        }
+                    }
+                    pos  = j * block_size;
+                    for (int k = 0; k < block_size; k++)
+                    {
+                        buf[pos + k] = tmp[k];
+                        //printf("%d buf[%d] = tmp[%d] %e\n", rank, pos+k, k, tmp[k]);
+                    }
+                }
+                RAPtor_MPI_Isend(&(buf[start * block_size]), (end - start) * block_size,
+                       datatype, proc, key, mpi_comm, &(requests[i]));
+            }
         }
     }
 

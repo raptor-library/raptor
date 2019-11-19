@@ -14,7 +14,7 @@ int main(int argc, char** argv)
     return temp;
 } // end of main() //
 
-TEST(ParBVectorRectangularTAPSpMVTinyTest, TestsInUtil)
+TEST(ParBVectorRectangularTAPSpMVMedTest, TestsInUtil)
 {
     setenv("PPN", "4", 1);
 
@@ -592,4 +592,4 @@ TEST(ParBVectorRectangularTAPSpMVTinyTest, TestsInUtil)
 
     delete P;
 
-} // end of TEST(ParBVectorRectangularTAPSpMVTinyTest, TestsInUtil) */
+} // end of TEST(ParBVectorRectangularTAPSpMVMedTest, TestsInUtil) */

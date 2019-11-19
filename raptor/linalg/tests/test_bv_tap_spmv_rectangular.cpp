@@ -57,14 +57,14 @@ TEST(ParBVectorAnisoTAPSpMVTest, TestsInUtil)
     P->tap_comm = new TAPComm(P->partition, P->off_proc_column_map, P->on_proc_column_map);
 
     // Set vectors for testing
-    b.set_const_value(1.0);
+    //b.set_const_value(1.0);
 
     x1.set_rand_values(rank + 1);
     x2.set_rand_values(rank + 2);
     x3.set_rand_values(rank + 3);
-    b1.set_const_value(1.0);
+    /*b1.set_const_value(1.0);
     b2.set_const_value(2.0);
-    b3.set_const_value(3.0);
+    b3.set_const_value(3.0);*/
 
     // Set block vector x for testing against
     for (int i = 0; i < x.local_n; i++)
