@@ -399,11 +399,11 @@ namespace raptor
                             }
                         }
                     
-                        if (rank == 0 ) printf("coarse solve\n");
+                        //if (rank == 0 ) printf("coarse solve\n");
 
                         dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
                                 LU_permute.data(), b_data.data(), &coarse_n, &info);
-
+                    
                         for (int v = 0; v < nhrs; v++)
                         {
                             for (int i = 0; i < b.local_n; i++)
@@ -428,7 +428,7 @@ namespace raptor
                 {
                     levels[level+1]->x.set_const_value(0.0);
                    
-                    if (rank == 0) printf("relax\n"); 
+                    //if (rank == 0) printf("relax\n"); 
                     // Relax
                     switch (relax_type)
                     {
@@ -446,41 +446,7 @@ namespace raptor
                             break;
                     }
                     
-                    for (int p = 0; p < num_procs; p++)
-                    {
-                        if (rank == p)
-                        {
-                            printf("%d x after relax\n", rank);
-                            fflush(stdout);
-                            if (x.local->b_vecs > 1)
-                            {
-                                for (int i = 0; i < x.local_n; i++)
-                                {
-                                    printf("%e ", x.local->values[x.local_n + i]);
-                                }
-                                printf("\n");
-                                fflush(stdout);
-                            }
-                            else
-                            {
-                                for (int v = 0; v < x.local->b_vecs; v++)
-                                {
-                                    printf("v %d ", v);
-                                    fflush(stdout);
-                                    for (int i = 0; i < x.local_n; i++)
-                                    {
-                                        printf("%e ", x.local->values[v*x.local_n + i]);
-                                    }
-                                    printf("\n");
-                                    fflush(stdout);
-                                }
-                            }
-                            fflush(stdout);
-                        }   
-                        MPI_Barrier(MPI_COMM_WORLD);
-                    }
-                    
-                    if (rank == 0) printf("residual\n");
+                    //if (rank == 0) printf("residual\n");
                     A->residual(x, b, tmp, tap_level);
                     
                     /*for (int p = 0; p < num_procs; p++)
@@ -493,16 +459,17 @@ namespace raptor
                                 printf("v %d ", v);
                                 for (int i = 0; i < tmp.local_n; i++)
                                 {
-                                    printf("%e ", tmp.local->values[v*tmp.local_n + i]);
+                                    //printf("%e ", tmp.local->values[v*tmp.local_n + i]);
+                                    printf("tmp[%d] %e \n", i, tmp.local->values[i]);
                                 }
                                 printf("\n");
-                            }
+                            //}
                             fflush(stdout);
                         }
                         MPI_Barrier(MPI_COMM_WORLD);
                     }*/
                     
-                    if (rank == 0) printf("mult_T\n");
+                    //if (rank == 0) printf("mult_T\n");
                     P->mult_T(tmp, levels[level+1]->b, tap_level);
                     
                     if (solve_times)
@@ -515,14 +482,14 @@ namespace raptor
                         solve_times[5*level + 4] += mat_t;
                     }
                     
-                    if (rank == 0) printf("cycle\n");
+                    //if (rank == 0) printf("cycle\n");
                     cycle(levels[level+1]->x, levels[level+1]->b, level+1);
                     if (solve_times)
                     {
                         init_profile();
                     }
-
-                    if (rank == 0) printf("mult_append\n");
+                    
+                    //if (rank == 0) printf("mult_append\n");
                     P->mult_append(levels[level+1]->x, x, tap_level);
                    
                     switch (relax_type)
@@ -540,6 +507,20 @@ namespace raptor
                                     tap_level);
                             break;
                     }
+                        /*for (int p = 0; p < num_procs; p++)
+                        {
+                            if (rank == p)
+                            {
+                                printf("%d x after relax\n", rank);
+                                for (int i = 0; i < x.local_n; i++)
+                                {
+                                    printf("x[%d] %e \n", i, x.local->values[i]);
+                                }
+                                printf("\n");
+                                fflush(stdout);
+                            }
+                            MPI_Barrier(MPI_COMM_WORLD);
+                        }*/
                     
                     if (solve_times)
                     {
@@ -648,14 +629,14 @@ namespace raptor
                                 residuals[start_indx + i] = r_norms[i];
                             }
                         }
-                        printf("%d residuals %e %e %e\n", rank, r_norms[0], r_norms[1], r_norms[2]);
+                        //printf("%d residuals %e %e %e\n", rank, r_norms[0], r_norms[1], r_norms[2]);
                     }
                     else
                     {
                         r_norm = resid.norm(2);
                         if (fabs(b_norm) > zero_tol) r_norm = r_norm / b_norm;
                         if (store_residuals) residuals[iter] = r_norm;
-                        printf("%d residual %e\n", rank, r_norm);
+                        //printf("%d residual %e\n", rank, r_norm);
                     }
 
                     if (track_times)

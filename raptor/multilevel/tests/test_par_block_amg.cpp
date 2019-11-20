@@ -56,9 +56,8 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
     x.resize(A->global_num_rows, A->local_num_rows);
     b.resize(A->global_num_rows, A->local_num_rows);
     
-    /*ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
+    ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
     ml->setup(A, nrhs);
-    ml->print_hierarchy();
 
     x_single.resize(A->global_num_rows, A->local_num_rows);
     b_single.resize(A->global_num_rows, A->local_num_rows);
@@ -72,16 +71,51 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
 
     A->mult(x, b);
     x.set_const_value(0.0);
-    int iter = ml->solve(x, b);
+    ml->cycle(x, b);
+
+    x_single.set_const_value(1.0); 
+    A->mult(x_single, b_single);
+    x_single.set_const_value(0.0);
+    ml_single->cycle(x_single, b_single);
+
+    // Compare values in x_single and x
+    for (int i = 0; i < x.local_n; i++)
+    {
+        ASSERT_NEAR(x.local->values[i], x_single.local->values[i], 1e-10);
+    }
+   
+    x_single.set_const_value(2.0); 
+    A->mult(x_single, b_single);
+    x_single.set_const_value(0.0);
+    ml_single->cycle(x_single, b_single);
+    
+    // Compare values in x_single and x
+    for (int i = 0; i < x.local_n; i++)
+    {
+        ASSERT_NEAR(x.local->values[x.local_n + i], x_single.local->values[i], 1e-10);
+    }
+    
+    x_single.set_const_value(3.0); 
+    A->mult(x_single, b_single);
+    x_single.set_const_value(0.0);
+    ml_single->cycle(x_single, b_single);
+    
+    // Compare values in x_single and x
+    for (int i = 0; i < x.local_n; i++)
+    {
+        ASSERT_NEAR(x.local->values[2*x.local_n + i], x_single.local->values[i], 1e-10);
+    }
+
+    x.set_const_value(0.0);
+    x_single.set_const_value(0.0);
+
+    int iter_block = ml->solve(x, b);
+    int iter_single = ml_single->solve(x_single, b_single);
 
     // Check residuals
     aligned_vector<double>& mrhs_res = ml->get_residuals();
-    x_single.set_const_value(1.0);
-    A->mult(x_single, b_single);
-    x_single.set_const_value(0.0);
-    iter = ml_single->solve(x_single, b_single);
     aligned_vector<double>& single_res = ml_single->get_residuals();
-    for (int i = 0; i < iter; i++)
+    for (int i = 0; i < iter_single; i++)
     {
         for (int v = 0; v < nrhs; v++)
         {
@@ -90,20 +124,83 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
     }
 
     delete ml;
-    delete ml_single;*/
+    delete ml_single;
    
     // Test Standard TAP AMG with block vectors
-    /*ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
+    ml = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
     ml->tap_amg = 0;
     ml->max_iterations = 3;
     ml->setup(A, nrhs);
+    ml->print_hierarchy();
 
     ml_single = new ParRugeStubenSolver(strong_threshold, CLJP, ModClassical, Classical, SOR);
     ml_single->tap_amg = 0;
     ml->max_iterations = 3;
     ml_single->setup(A);
-
+    ml->print_hierarchy();
+    
     x.set_const_value(1.0);
+    x.scale(1.0, &(alphas[0]));
+
+    A->mult(x, b);
+    x.set_const_value(0.0);
+    ml->cycle(x, b);
+
+    x_single.set_const_value(1.0); 
+    A->mult(x_single, b_single);
+    x_single.set_const_value(0.0);
+    ml_single->cycle(x_single, b_single);
+
+    // Compare values in x_single and x
+    for (int i = 0; i < x.local_n; i++)
+    {
+        ASSERT_NEAR(x.local->values[i], x_single.local->values[i], 1e-10);
+    }
+   
+    x_single.set_const_value(2.0); 
+    A->mult(x_single, b_single);
+    x_single.set_const_value(0.0);
+    ml_single->cycle(x_single, b_single);
+    
+    // Compare values in x_single and x
+    for (int i = 0; i < x.local_n; i++)
+    {
+        ASSERT_NEAR(x.local->values[x.local_n + i], x_single.local->values[i], 1e-10);
+    }
+    
+    x_single.set_const_value(3.0); 
+    A->mult(x_single, b_single);
+    x_single.set_const_value(0.0);
+    ml_single->cycle(x_single, b_single);
+    
+    // Compare values in x_single and x
+    for (int i = 0; i < x.local_n; i++)
+    {
+        ASSERT_NEAR(x.local->values[2*x.local_n + i], x_single.local->values[i], 1e-10);
+    }
+
+    x.set_const_value(0.0);
+    x_single.set_const_value(0.0);
+
+    // ******************************************
+    // NEED TO CHECK WHERE TAP SOLVE IS BREAKING
+    // ******************************************
+
+    //iter_block = ml->solve(x, b);
+    //iter_single = ml_single->solve(x_single, b_single);
+
+    // Check residuals
+    /*aligned_vector<double>& mrhs_res = ml->get_residuals();
+    aligned_vector<double>& single_res = ml_single->get_residuals();
+    for (int i = 0; i < iter_single; i++)
+    {
+        for (int v = 0; v < nrhs; v++)
+        {
+            ASSERT_NEAR(mrhs_res[i*nrhs + v], single_res[i], 1e-10);
+        }
+    }*/
+
+    /*x.set_const_value(1.0);
     std::vector<double> alphas = {1.0, 2.0, 3.0};
     x.scale(1.0, &(alphas[0]));
 
@@ -111,8 +208,7 @@ TEST(ParBlockAMGTest, TestsInMultilevel)
     x.set_const_value(0.0);
     ml->cycle(x, b);*/
 
-    MPI_Barrier(MPI_COMM_WORLD);
-    A->mult(x_single, b_single);
+    //A->mult(x_single, b_single);
     //x_single.set_const_value(0.0);
     //ml_single->cycle(x_single, b_single);
 

@@ -53,12 +53,15 @@ void SOR_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
                 start_on++;
             }        
             else continue;
+            //printf("row_sum %e\n", row_sum);
             for (int j = start_on; j < end_on; j++)
             {
                 col = A->on_proc->idx2[j];
-                row_sum += A->on_proc->vals[j] * x[vec_offset + col];
+                row_sum += A->on_proc->vals[j] * x.local->values[vec_offset + col];
+                //printf("x[%d] %e\n", vec_offset + col, x.local->values[vec_offset+col]);
             }
             start_on = end_on;
+            //printf("row_sum %e\n", row_sum);
 
             end_off = A->off_proc->idx1[i+1];
             for (int j = start_off; j < end_off; j++)
@@ -69,8 +72,8 @@ void SOR_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
             start_off = end_off;
 
     //        x[i] = ((1.0 - omega)*x[i]) + (omega*((y[i] - row_sum) / diag));
-            x[vec_offset + i] = (x[vec_offset + i] + omega * 
-                    (y[vec_offset + i] - x[vec_offset + i] - row_sum)) / diag;
+            x.local->values[vec_offset + i] = (x.local->values[vec_offset + i] + omega * 
+                    (y.local->values[vec_offset + i] - x.local->values[vec_offset + i] - row_sum)) / diag;
         }
     }
 }
@@ -184,6 +187,23 @@ void sor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     for (int iter = 0; iter < num_sweeps; iter++)
     {
         comm->communicate(x);
+        aligned_vector<double>& dist_x = comm->get_buffer<double>();
+
+        /*int rank, num_procs;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+        for (int p = 0; p < num_procs; p++)
+        {
+            if (rank == p)
+            {
+                for (int i = 0; i < dist_x.size(); i++)
+                {
+                    printf("%d dist_x[%d] %e\n", rank, i, dist_x[i]);
+                }
+            }
+            MPI_Barrier(MPI_COMM_WORLD);
+        }*/
+
         SOR_forward(A, x, b, comm->get_buffer<double>(), omega);
     }
 }
