@@ -150,14 +150,19 @@ namespace raptor
                 levels[0]->tmp.resize(Af->global_num_rows, Af->local_num_rows);
                 if (tap_amg == 0)
                 {
-                    if (!Af->tap_comm && !Af->tap_mat_comm)
+                    if (!Af->tap_comm && !Af->tap_mat_comm && !tap_simple)
                     {
                         levels[0]->A->init_tap_communicators();
                     }
-                    else if (!Af->tap_comm) // 3-step NAPComm
+                    else if (!Af->tap_comm && !tap_simple) // 3-step NAPComm
                     {
                         levels[0]->A->tap_comm = new TAPComm(Af->partition,
                                 Af->off_proc_column_map, Af->on_proc_column_map);
+                    }
+                    else if (!Af->tap_comm && tap_simple) // 2-step NAPComm
+                    {
+                        levels[0]->A->tap_comm = new TAPComm(Af->partition,
+                                Af->off_proc_column_map, Af->on_proc_column_map, false);
                     }
                     else if (!Af->tap_mat_comm) // 2-step NAPComm
                     {
@@ -350,7 +355,6 @@ namespace raptor
                 }
             }
 
-            // Stopped editing right here
             void cycle(ParVector& x, ParVector& b, int level = 0)
             {
                 int rank, num_procs;

@@ -44,7 +44,6 @@ namespace raptor
             {
                 B[i] = 1.0;
             }
-
             setup_helper(Af, nrhs);
         }
 
@@ -83,7 +82,6 @@ namespace raptor
             T = fit_candidates(A, n_aggs, aggregates, B, R, 
                     num_candidates, false, interp_tol);
             
-
             switch (prolong_type)
             {
                 case JacobiProlongation:
