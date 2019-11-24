@@ -13,7 +13,7 @@ int main(int argc, char** argv)
 
 } // end of main() //
 
-TEST(AnisoSpMVTest, TestsInUtil)
+TEST(BVectorMultTest, TestsInUtil)
 {
     int Q_bvecs = 5;
     int W_bvecs = 2;
@@ -71,5 +71,5 @@ TEST(AnisoSpMVTest, TestsInUtil)
     delete B;
     delete alphs;
 
-} // end of TEST(AnisoSpMVTest, TestsInUtil) //
+} // end of TEST(BVectorMultTest, TestsInUtil) //
 

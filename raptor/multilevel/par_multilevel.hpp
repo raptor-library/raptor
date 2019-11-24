@@ -402,8 +402,6 @@ namespace raptor
                                 }
                             }
                         }
-                    
-                        //if (rank == 0 ) printf("coarse solve\n");
 
                         dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
                                 LU_permute.data(), b_data.data(), &coarse_n, &info);
@@ -432,7 +430,6 @@ namespace raptor
                 {
                     levels[level+1]->x.set_const_value(0.0);
                    
-                    //if (rank == 0) printf("relax\n"); 
                     // Relax
                     switch (relax_type)
                     {
@@ -450,30 +447,8 @@ namespace raptor
                             break;
                     }
                     
-                    //if (rank == 0) printf("residual\n");
                     A->residual(x, b, tmp, tap_level);
                     
-                    /*for (int p = 0; p < num_procs; p++)
-                    {
-                        if (rank == p)
-                        {
-                            printf("%d tmp after residual\n", rank);
-                            for (int v = 0; v < tmp.local->b_vecs; v++)
-                            {
-                                printf("v %d ", v);
-                                for (int i = 0; i < tmp.local_n; i++)
-                                {
-                                    //printf("%e ", tmp.local->values[v*tmp.local_n + i]);
-                                    printf("tmp[%d] %e \n", i, tmp.local->values[i]);
-                                }
-                                printf("\n");
-                            //}
-                            fflush(stdout);
-                        }
-                        MPI_Barrier(MPI_COMM_WORLD);
-                    }*/
-                    
-                    //if (rank == 0) printf("mult_T\n");
                     P->mult_T(tmp, levels[level+1]->b, tap_level);
                     
                     if (solve_times)
@@ -486,14 +461,12 @@ namespace raptor
                         solve_times[5*level + 4] += mat_t;
                     }
                     
-                    //if (rank == 0) printf("cycle\n");
                     cycle(levels[level+1]->x, levels[level+1]->b, level+1);
                     if (solve_times)
                     {
                         init_profile();
                     }
                     
-                    //if (rank == 0) printf("mult_append\n");
                     P->mult_append(levels[level+1]->x, x, tap_level);
                    
                     switch (relax_type)
@@ -511,20 +484,6 @@ namespace raptor
                                     tap_level);
                             break;
                     }
-                        /*for (int p = 0; p < num_procs; p++)
-                        {
-                            if (rank == p)
-                            {
-                                printf("%d x after relax\n", rank);
-                                for (int i = 0; i < x.local_n; i++)
-                                {
-                                    printf("x[%d] %e \n", i, x.local->values[i]);
-                                }
-                                printf("\n");
-                                fflush(stdout);
-                            }
-                            MPI_Barrier(MPI_COMM_WORLD);
-                        }*/
                     
                     if (solve_times)
                     {

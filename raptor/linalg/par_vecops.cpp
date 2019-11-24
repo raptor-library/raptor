@@ -254,7 +254,7 @@ void ParBVector::mult_T(ParVector& x, Vector& b)
     {
         local->mult_T(*(x.local), b);
     }
-    RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &(b[0]), local->b_vecs * x.local->b_vecs, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
+    RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &(b.values[0]), local->b_vecs * x.local->b_vecs, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
 }
 
 /**************************************************************

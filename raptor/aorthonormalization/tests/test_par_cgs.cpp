@@ -75,7 +75,7 @@ TEST(ParCGSTest, TestsInUtil)
     Q2_par->add_val(2.0, 0, 2, A->partition->first_local_row);
 
     Q2_par->add_val(3.0, 1, 3, A->partition->first_local_row);
-    Q2_par->add_val(1.0, 1, 2, A->partition->first_local_row);
+    Q2_par->add_val(1.0, 1, 4, A->partition->first_local_row);
 
     Q2_par->add_val(1.0, 2, 5, A->partition->first_local_row);
     Q2_par->add_val(2.0, 2, 6, A->partition->first_local_row);

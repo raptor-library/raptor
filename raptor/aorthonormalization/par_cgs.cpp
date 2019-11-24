@@ -29,13 +29,13 @@ void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& Q2, ParBVector& P)
     Q.mult_T(W, B);
     Q.mult(B, W);
     P.axpy(W, -1.0);
-
+    
     // W = A * P
     A->mult(P, W);
-
+    
     // P[:,i]^T W[:,i]
     temp = P.inner_product(W, inner_prods);
-
+    
     // sqrt(inner_prods[i])
     for (int i = 0; i < t; i++)
     {

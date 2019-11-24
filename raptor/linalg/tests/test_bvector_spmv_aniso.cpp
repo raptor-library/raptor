@@ -13,7 +13,7 @@ int main(int argc, char** argv)
 
 } // end of main() //
 
-TEST(AnisoSpMVTest, TestsInUtil)
+TEST(AnisoBVectorSpMVTest, TestsInUtil)
 {
     double b_val;
     int offset;
@@ -98,5 +98,5 @@ TEST(AnisoSpMVTest, TestsInUtil)
     } 
     fclose(f);
 
-} // end of TEST(AnisoSpMVTest, TestsInUtil) //
+} // end of TEST(AnisoBVectorSpMVTest, TestsInUtil) //
 

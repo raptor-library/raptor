@@ -23,7 +23,7 @@ void Vector::axpy(Vector& x, data_t alpha)
     {
         for (index_t k = 0; k < b_vecs; k++)
         {
-            values[k*num_values + i] += x.values[i]*alpha;
+            values[k*num_values + i] += x.values[k*num_values + i]*alpha;
         }
     }
 }
