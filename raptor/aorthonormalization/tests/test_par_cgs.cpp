@@ -122,6 +122,46 @@ TEST(ParCGSTest, TestsInUtil)
         }
     }
     fclose(f);
+    
+    BCGS(A, *Q2_par, *P_par);
+
+    f = fopen("../../../../test_data/bcgs_v1_soln.txt", "r");
+    for (int i = 0; i < A->partition->first_local_row; i++)
+    {
+        for (int j = 0; j < W_bvecs; j++)
+        {
+            fscanf(f, "%lg\n", &val);
+        }
+    }
+    for (int i = 0; i < P_par->local_n; i++)
+    {
+        for (int j = 0; j < W_bvecs; j++)
+        {
+            fscanf(f, "%lg\n", &val);
+            ASSERT_NEAR(P_par->local->values[j*P_par->local_n + i], val, 1e-06);
+        }
+    }
+    fclose(f);
+    
+    MGS(A, *P_par);
+
+    f = fopen("../../../../test_data/mgs_soln.txt", "r");
+    for (int i = 0; i < A->partition->first_local_row; i++)
+    {
+        for (int j = 0; j < W_bvecs; j++)
+        {
+            fscanf(f, "%lg\n", &val);
+        }
+    }
+    for (int i = 0; i < P_par->local_n; i++)
+    {
+        for (int j = 0; j < W_bvecs; j++)
+        {
+            fscanf(f, "%lg\n", &val);
+            ASSERT_NEAR(P_par->local->values[j*P_par->local_n + i], val, 1e-06);
+        }
+    }
+    fclose(f);
 
     delete[] stencil;
     delete A;

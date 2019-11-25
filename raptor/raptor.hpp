@@ -91,6 +91,7 @@
 // Krylov methods
 #include "krylov/cg.hpp"
 #include "krylov/par_cg.hpp"
+#include "krylov/par_srecg.hpp"
 #include "krylov/bicgstab.hpp"
 #include "krylov/par_bicgstab.hpp"
 
