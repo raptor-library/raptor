@@ -8,7 +8,7 @@ using namespace raptor;
 ***
 *** ALG 17 IN APPENDIX
 *********************************************************/
-void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& Q2, ParBVector& P)
+void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& Q2, ParBVector& P, double* comm_t)
 {
     int t = P.local->b_vecs;
     double *inner_prods = new double[t];
@@ -57,7 +57,7 @@ void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& Q2, ParBVector& P)
 ***
 *** ALG 17 IN APPENDIX
 *********************************************************/
-void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& P)
+void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& P, double* comm_t)
 {
     int t = P.local->b_vecs;
     double *inner_prods = new double[t];
@@ -101,7 +101,7 @@ void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& P)
 ***
 *** ALG 20 IN APPENDIX
 **************************************************/
-void CGS(ParCSRMatrix* A, ParBVector& P)
+void CGS(ParCSRMatrix* A, ParBVector& P, double* comm_t)
 {
     int t = P.local->b_vecs;
     double inner_prod;
@@ -144,7 +144,7 @@ void CGS(ParCSRMatrix* A, ParBVector& P)
 *** Modified Gram-Schmidt for A-Orthnormalization 
 *** of vectors in P against one another
 **************************************************/
-void MGS(ParCSRMatrix* A, ParBVector& P)
+void MGS(ParCSRMatrix* A, ParBVector& P, double* comm_t)
 {
     int t = P.local->b_vecs;
     double *inner_prods = new double[t];

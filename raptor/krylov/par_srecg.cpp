@@ -6,6 +6,7 @@
 
 using namespace raptor;
 
+/* comm_t measures all reduce time for algorithm */
 void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<double>& res, 
         double tol, int max_iter, double* comm_t)
 {
