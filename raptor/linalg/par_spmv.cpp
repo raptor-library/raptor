@@ -22,11 +22,11 @@ using namespace raptor;
  ***** b : ParVector*
  *****    Parallel vector result is returned in
  **************************************************************/
-void ParMatrix::mult(ParVector& x, ParVector& b, bool tap)
+void ParMatrix::mult(ParVector& x, ParVector& b, bool tap, double* comp_t)
 {
     if (tap)
     {
-        this->tap_mult(x, b);
+        this->tap_mult(x, b, comp_t);
         return;
     }
 
@@ -48,7 +48,9 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap)
     // setting b = A_diag*x_local
     if (local_num_rows)
     {
+    if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
         on_proc->mult(*(x.local), *(b.local));
+    if (comp_t) *comp_t += RAPtor_MPI_Wtime();
     }
 
     // Wait for Isends and Irecvs to complete
@@ -58,11 +60,13 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap)
     // solution in b (b += A_offd * x_distant)
     if (off_proc_num_cols)
     {
+    if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
         off_proc->mult_append(x_tmp, *(b.local), b.local->b_vecs);
+    if (comp_t) *comp_t += RAPtor_MPI_Wtime();
     }
 }
 
-void ParMatrix::tap_mult(ParVector& x, ParVector& b)
+void ParMatrix::tap_mult(ParVector& x, ParVector& b, double* comp_t)
 {
     // Check that communication package has been initialized
     if (tap_comm == NULL)
@@ -74,65 +78,27 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b)
     // values of x
     tap_comm->init_comm(x, off_proc->b_cols, x.local->b_vecs);
 
-    /*int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-    MPI_Barrier(MPI_COMM_WORLD);*/
-
     // Multiply the diagonal portion of the matrix,
     // setting b = A_diag*x_local
     if (local_num_rows)
     {
+    if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
         on_proc->mult(*(x.local), *(b.local));
+    if (comp_t) *comp_t += RAPtor_MPI_Wtime();
     }
 
     // Wait for Isends and Irecvs to complete
     aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols, b.local->b_vecs);
-   
-    /*MPI_Barrier(MPI_COMM_WORLD);
-    for (int p = 0; p < num_procs; p++)
-    {
-        if (rank == p)
-        {
-            printf("%d x_tmp \n", rank);
-            fflush(stdout);
-            for (int i = 0; i < x_tmp.size(); i++)
-            {
-                printf("%e ", x_tmp[i]);
-            }
-            printf("\n");
-            fflush(stdout);
-        }
-        MPI_Barrier(MPI_COMM_WORLD);
-    }*/
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
     if (off_proc_num_cols)
     {
+    if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
         off_proc->mult_append(x_tmp, *(b.local), b.local->b_vecs);
+    if (comp_t) *comp_t += RAPtor_MPI_Wtime();
     }
     
-    /*for (int p = 0; p < num_procs; p++)
-    {
-        if (rank == p)
-        {
-            printf("%d b.local\n", rank);
-            fflush(stdout);
-            for (int v = 0; v < b.local->b_vecs; v++)
-            {
-                printf("v %d - ", v);
-                for (int i = 0; i < b.local_n; i++)
-                {
-                    printf("%e ", b.local->values[v*b.local_n + i]);
-                }
-                printf("\n");
-                fflush(stdout);
-            }
-            fflush(stdout);
-        }
-        MPI_Barrier(MPI_COMM_WORLD);
-    }*/
 }
 
 void ParMatrix::mult_append(ParVector& x, ParVector& b, bool tap)
@@ -264,11 +230,11 @@ void ParMatrix::tap_mult_T(ParVector& x, ParVector& b)
     tap_comm->complete_comm_T<double>(b.local->values, off_proc->b_cols, x.local->b_vecs);
 }
 
-void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap)
+void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap, double* comp_t)
 {
     if (tap) 
     {
-        this->tap_residual(x, b, r);
+        this->tap_residual(x, b, r, comp_t);
         return;
     }
 
@@ -289,7 +255,9 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap)
     // setting b = A_diag*x_local
     if (local_num_rows && on_proc_num_cols)
     {
+    if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
         on_proc->residual(*(x.local), *(b.local), *(r.local));
+    if (comp_t) *comp_t += RAPtor_MPI_Wtime();
     }
 
     // Wait for Isends and Irecvs to complete
@@ -299,11 +267,13 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap)
     // solution in b (b += A_offd * x_distant)
     if (off_proc_num_cols)
     {
+    if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
         off_proc->mult_append_neg(x_tmp, *(r.local), r.local->b_vecs);
+    if (comp_t) *comp_t += RAPtor_MPI_Wtime();
     }
 }
 
-void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r)
+void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r, double* comp_t)
 {
     // Check that communication package has been initialized
     if (tap_comm == NULL)
@@ -321,7 +291,9 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r)
     // setting b = A_diag*x_local
     if (local_num_rows && on_proc_num_cols)
     {
+    if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
         on_proc->mult_append_neg(*(x.local), *(r.local), r.local->b_vecs);
+    if (comp_t) *comp_t += RAPtor_MPI_Wtime();
     }
 
     // Wait for Isends and Irecvs to complete
@@ -331,39 +303,41 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r)
     // solution in b (b += A_offd * x_distant)
     if (off_proc_num_cols)
     {
+    if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
         off_proc->mult_append_neg(x_tmp, *(r.local), r.local->b_vecs);
+    if (comp_t) *comp_t += RAPtor_MPI_Wtime();
     }
 }
 
 
-void ParCOOMatrix::mult(ParVector& x, ParVector& b, bool tap)
+void ParCOOMatrix::mult(ParVector& x, ParVector& b, bool tap, double* comp_t)
 {
-    ParMatrix::mult(x, b, tap);
+    ParMatrix::mult(x, b, tap, comp_t);
 }
 
-void ParCSRMatrix::mult(ParVector& x, ParVector& b, bool tap)
+void ParCSRMatrix::mult(ParVector& x, ParVector& b, bool tap, double* comp_t)
 {
-    ParMatrix::mult(x, b, tap);
+    ParMatrix::mult(x, b, tap, comp_t);
 }
 
-void ParCSCMatrix::mult(ParVector& x, ParVector& b, bool tap)
+void ParCSCMatrix::mult(ParVector& x, ParVector& b, bool tap, double* comp_t)
 {
-    ParMatrix::mult(x, b, tap);
+    ParMatrix::mult(x, b, tap, comp_t);
 }
 
-void ParCOOMatrix::tap_mult(ParVector& x, ParVector& b)
+void ParCOOMatrix::tap_mult(ParVector& x, ParVector& b, double* comp_t)
 {
-    ParMatrix::tap_mult(x, b);
+    ParMatrix::tap_mult(x, b, comp_t);
 }
 
-void ParCSRMatrix::tap_mult(ParVector& x, ParVector& b)
+void ParCSRMatrix::tap_mult(ParVector& x, ParVector& b, double* comp_t)
 {
-    ParMatrix::tap_mult(x, b);
+    ParMatrix::tap_mult(x, b, comp_t);
 }
 
-void ParCSCMatrix::tap_mult(ParVector& x, ParVector& b)
+void ParCSCMatrix::tap_mult(ParVector& x, ParVector& b, double* comp_t)
 {
-    ParMatrix::tap_mult(x, b);
+    ParMatrix::tap_mult(x, b, comp_t);
 }
 
 void ParCOOMatrix::mult_T(ParVector& x, ParVector& b, bool tap)

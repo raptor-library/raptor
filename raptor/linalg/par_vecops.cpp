@@ -17,11 +17,13 @@ using namespace raptor;
 ***** alpha : data_t
 *****    Constant value to multiply each element of vector by
 **************************************************************/
-void ParVector::axpy(ParVector& x, data_t alpha)
+void ParVector::axpy(ParVector& x, data_t alpha, double* comp_t)
 {
     if (local_n)
     {
+    if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
         local->axpy(*(x.local), alpha);
+    if (comp_t) *comp_t += RAPtor_MPI_Wtime();
     }
 }
 
@@ -118,7 +120,7 @@ data_t ParVector::norm(index_t p, data_t* norms)
 ***** x : ParVector&
 *****   Global vector with which to perform inner product 
 **************************************************************/
-data_t ParVector::inner_product(ParVector& x, data_t* inner_prods)
+data_t ParVector::inner_product(ParVector& x, data_t* inner_prods, double* comp_t)
 {
     data_t inner_prod = 0.0;
 
@@ -132,7 +134,9 @@ data_t ParVector::inner_product(ParVector& x, data_t* inner_prods)
 
     if (local_n)
     {
+    if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
         inner_prod = local->inner_product(*(x.local), inner_prods);
+    if (comp_t) *comp_t += RAPtor_MPI_Wtime();
     }
 
     RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &inner_prod, 1, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
@@ -158,9 +162,11 @@ data_t ParVector::inner_product(ParVector& x, data_t* inner_prods)
 ***** alpha : data_t
 *****   Constant value to multiply each element of column by 
 **************************************************************/
-void ParBVector::axpy_ij(ParBVector& y, index_t i, index_t j, data_t alpha)
+void ParBVector::axpy_ij(ParBVector& y, index_t i, index_t j, data_t alpha, double* comp_t)
 {
+    if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
     if (local_n) local->axpy_ij(*(y.local), i, j, alpha);
+    if (comp_t) *comp_t += RAPtor_MPI_Wtime();
 }
 
 /**************************************************************
@@ -211,7 +217,7 @@ data_t ParBVector::norm(index_t p, data_t* norms)
 *****   Inner products of every corresponding vector in each
 *****   ParBVector
 **************************************************************/
-data_t ParBVector::inner_product(ParBVector& x, data_t* inner_prods)
+data_t ParBVector::inner_product(ParBVector& x, data_t* inner_prods, double* comp_t)
 {
     data_t temp;
     data_t inner_prod = 0.0;
@@ -226,7 +232,9 @@ data_t ParBVector::inner_product(ParBVector& x, data_t* inner_prods)
 
     if (local_n)
     {
+    if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
         temp = local->inner_product(*(x.local), inner_prods);
+    if (comp_t) *comp_t += RAPtor_MPI_Wtime();
     }
 
     RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, inner_prods, local->b_vecs, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
@@ -247,12 +255,14 @@ data_t ParBVector::inner_product(ParBVector& x, data_t* inner_prods)
 ***** b : Vector&
 *****   Vector in which to store result 
 **************************************************************/
-void ParBVector::mult_T(ParVector& x, Vector& b)
+void ParBVector::mult_T(ParVector& x, Vector& b, double* comp_t)
 {
     data_t temp;
     if (local_n)
     {
+    if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
         local->mult_T(*(x.local), b);
+    if (comp_t) *comp_t += RAPtor_MPI_Wtime();
     }
     RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &(b.values[0]), local->b_vecs * x.local->b_vecs, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
 }
@@ -270,10 +280,12 @@ void ParBVector::mult_T(ParVector& x, Vector& b)
 ***** b : ParVector&
 *****   Store result in local portion of b 
 **************************************************************/
-void ParBVector::mult(Vector& x, ParVector& b)
+void ParBVector::mult(Vector& x, ParVector& b, double* comp_t)
 {
     b.resize(global_n, local_n);
+    if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
     local->mult(x, *(b.local));
+    if (comp_t) *comp_t += RAPtor_MPI_Wtime();
 }
 
 /**************************************************************
@@ -291,7 +303,7 @@ void ParBVector::mult(Vector& x, ParVector& b)
 ***** j : index_t
 *****   Column of x for inner product
 **************************************************************/
-data_t ParBVector::inner_product(ParBVector& x, index_t i, index_t j)
+data_t ParBVector::inner_product(ParBVector& x, index_t i, index_t j, double* comp_t)
 {
     data_t temp;
     
@@ -305,7 +317,9 @@ data_t ParBVector::inner_product(ParBVector& x, index_t i, index_t j)
 
     if (local_n)
     {
+    if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
         temp = local->inner_product(*(x.local), i, j);
+    if (comp_t) *comp_t += RAPtor_MPI_Wtime();
     }
 
     RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &temp, 1, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);

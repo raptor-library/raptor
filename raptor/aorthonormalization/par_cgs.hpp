@@ -7,12 +7,12 @@
 
 using namespace raptor;
 
-void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& Q2, ParBVector& P, double* comm_t = NULL);
+void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& Q2, ParBVector& P, double* comp_t = NULL, bool tap = false);
 
-void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& P, double* comm_t = NULL);
+void BCGS(ParCSRMatrix* A, ParBVector& Q1, ParBVector& P, double* comp_t = NULL, bool tap = false);
 
-void CGS(ParCSRMatrix* A, ParBVector& P, double* comm_t = NULL);
+void CGS(ParCSRMatrix* A, ParBVector& P, double* comp_t = NULL, bool tap = false);
 
-void MGS(ParCSRMatrix* A, ParBVector& P, double* comm_t = NULL);
+void MGS(ParCSRMatrix* A, ParBVector& P);
 
 #endif

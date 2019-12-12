@@ -240,10 +240,10 @@ namespace raptor
     int* map_partition_to_local();
     void condense_off_proc();
 
-    void residual(ParVector& x, ParVector& b, ParVector& r, bool tap = false);
-    void tap_residual(ParVector& x, ParVector& b, ParVector& r);
-    void mult(ParVector& x, ParVector& b, bool tap = false);
-    void tap_mult(ParVector& x, ParVector& b);
+    void residual(ParVector& x, ParVector& b, ParVector& r, bool tap = false, double* comp_t = NULL);
+    void tap_residual(ParVector& x, ParVector& b, ParVector& r, double* comp_t = NULL);
+    void mult(ParVector& x, ParVector& b, bool tap = false, double* comp_t = NULL);
+    void tap_mult(ParVector& x, ParVector& b, double* comp_t = NULL);
     void mult_append(ParVector& x, ParVector& b, bool tap = false);
     void tap_mult_append(ParVector& x, ParVector& b);
     void mult_T(ParVector& x, ParVector& b, bool tap = false);
@@ -412,8 +412,8 @@ namespace raptor
     void copy_helper(ParCSCMatrix* A);
     void copy_helper(ParCOOMatrix* A);
 
-    void mult(ParVector& x, ParVector& b, bool tap = false);
-    void tap_mult(ParVector& x, ParVector& b);
+    void mult(ParVector& x, ParVector& b, bool tap = false, double* comp_t = NULL);
+    void tap_mult(ParVector& x, ParVector& b, double* comp_t = NULL);
     void mult_T(ParVector& x, ParVector& b, bool tap = false);
     void tap_mult_T(ParVector& x, ParVector& b);
 
@@ -582,8 +582,8 @@ namespace raptor
     int maximal_independent_set(aligned_vector<int>& local_states,
             aligned_vector<int>& off_proc_states, int max_iters = -1);
 
-    void mult(ParVector& x, ParVector& b, bool tap = false);
-    void tap_mult(ParVector& x, ParVector& b);
+    void mult(ParVector& x, ParVector& b, bool tap = false, double* comp_t = NULL);
+    void tap_mult(ParVector& x, ParVector& b, double* comp_t = NULL);
     void mult_T(ParVector& x, ParVector& b, bool tap = false);
     void tap_mult_T(ParVector& x, ParVector& b);
     ParCSRMatrix* mult(ParCSRMatrix* B, bool tap = false);
@@ -780,8 +780,8 @@ namespace raptor
     void copy_helper(ParCSCMatrix* A);
     void copy_helper(ParCOOMatrix* A);
 
-    void mult(ParVector& x, ParVector& b, bool tap);
-    void tap_mult(ParVector& x, ParVector& b);
+    void mult(ParVector& x, ParVector& b, bool tap, double* comp_t = NULL);
+    void tap_mult(ParVector& x, ParVector& b, double* comp_t = NULL);
     void mult_T(ParVector& x, ParVector& b, bool tap);
     void tap_mult_T(ParVector& x, ParVector& b);
 

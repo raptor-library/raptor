@@ -8,7 +8,7 @@ using namespace raptor;
 
 /* comm_t measures all reduce time for algorithm */
 void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<double>& res, 
-        double tol, int max_iter, double* comm_t)
+        double tol, int max_iter, double* comp_t, double* aort_t, bool tap)
 {
     int rank;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
@@ -39,12 +39,10 @@ void SRECG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<do
     alpha.resize(t);
 
     // r0 = b - A * x0
-    A->residual(x, b, r);
+    A->residual(x, b, r, tap, comp_t);
 
     // Append norm of initial residual to res
-if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
-    rr_inner = r.inner_product(r);
-if (comm_t) *comm_t += RAPtor_MPI_Wtime();
+    rr_inner = r.inner_product(r, NULL, comp_t);
     norm_r = sqrt(rr_inner);
     res.emplace_back(norm_r);
 
@@ -62,23 +60,21 @@ if (comm_t) *comm_t += RAPtor_MPI_Wtime();
     r.split_contig(*W, t, A->partition->first_local_row);
 
     // A-orthonormalize W
-    CGS(A, *W);
+    CGS(A, *W, aort_t, tap);
 
     // alpha = W^T * r
-    W->mult_T(r, alpha);
+    W->mult_T(r, alpha, comp_t);
 
     // x = x + W * alpha
     W->mult(alpha, Wa);
     x.axpy(Wa, 1.0);
 
     // r = r - A * W * alpha
-    A->mult(Wa, T);
+    A->mult(Wa, T, tap, comp_t);
     r.axpy(T, -1.0);
 
     // Update norm of residual and iteration
-if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
-    rr_inner = r.inner_product(r);
-if (comm_t) *comm_t += RAPtor_MPI_Wtime();
+    rr_inner = r.inner_product(r, NULL, comp_t);
     norm_r = sqrt(rr_inner);
     res.emplace_back(norm_r);
     iter++;
@@ -93,8 +89,8 @@ if (comm_t) *comm_t += RAPtor_MPI_Wtime();
             Wk_1->copy(*W);
 
             // W = A * W
-            A->mult(*W, *W_temp);
-            BCGS(A, *Wk_1, *Wk_2, *W_temp);
+            A->mult(*W, *W_temp, tap, comp_t);
+            BCGS(A, *Wk_1, *Wk_2, *W_temp, aort_t, tap);
         }
         else
         {
@@ -102,30 +98,28 @@ if (comm_t) *comm_t += RAPtor_MPI_Wtime();
             Wk_1->copy(*W);
 
             // W = A * W
-            A->mult(*W, *W_temp);
-            BCGS(A, *Wk_1, *W_temp);
+            A->mult(*W, *W_temp, tap, comp_t);
+            BCGS(A, *Wk_1, *W_temp, aort_t, tap);
         }
 
         W->copy(*W_temp);
 
         // A-orthonormalize W
-        CGS(A, *W);
+        CGS(A, *W, aort_t, tap);
 
         // alpha = W^T * r
-        W->mult_T(r, alpha);
+        W->mult_T(r, alpha, comp_t);
 
         // x = x + W * alpha
-        W->mult(alpha, Wa);
-        x.axpy(Wa, 1.0);
+        W->mult(alpha, Wa, comp_t);
+        x.axpy(Wa, 1.0, comp_t);
 
         // r = r - A * W * alpha
-        A->mult(Wa, T);
-        r.axpy(T, -1.0);
+        A->mult(Wa, T, tap, comp_t);
+        r.axpy(T, -1.0, comp_t);
 
         // Update norm of residual and iteration
-    if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
-        rr_inner = r.inner_product(r);
-    if (comm_t) *comm_t += RAPtor_MPI_Wtime();
+        rr_inner = r.inner_product(r, NULL, comp_t);
         norm_r = sqrt(rr_inner);
         res.emplace_back(norm_r);
 
@@ -155,7 +149,7 @@ if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 }
 
 void PSRECG(ParCSRMatrix* A, ParMultilevel* ml_single, ParMultilevel* ml, ParVector& x, ParVector& b,
-    int t, aligned_vector<double>& res, double tol, int max_iter, double* precond_t, double* comm_t)
+    int t, aligned_vector<double>& res, double tol, int max_iter, double* precond_t, double* comm_t, double* comp_t, double* aort_t)
 {
     int rank;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);

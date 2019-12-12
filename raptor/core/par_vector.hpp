@@ -141,7 +141,7 @@ namespace raptor
         ***** alpha : data_t
         *****    Constant value to multiply each element of vector by
         **************************************************************/
-        void axpy(ParVector& y, data_t alpha);
+        void axpy(ParVector& y, data_t alpha, double* comp_t = NULL);
 
         /**************************************************************
         *****   Vector Scale
@@ -167,7 +167,7 @@ namespace raptor
         **************************************************************/
         data_t norm(index_t p, data_t* norms = NULL);
 
-        data_t inner_product(ParVector& x, data_t* inner_prods = NULL);        
+        data_t inner_product(ParVector& x, data_t* inner_prods = NULL, double* comp_t = NULL);  
 
         const data_t& operator[](const int index) const
         {
@@ -206,14 +206,14 @@ namespace raptor
         }
 
         void scale(data_t alpha, data_t* alphas = NULL);
-        void axpy_ij(ParBVector& y, index_t i, index_t j, data_t alpha);
+        void axpy_ij(ParBVector& y, index_t i, index_t j, data_t alpha, double* comp_t = NULL);
         data_t norm(index_t p, data_t* norms = NULL);
 
-        data_t inner_product(ParBVector& x, data_t* inner_prods = NULL);
-        data_t inner_product(ParBVector& x, index_t i, index_t j);
+        data_t inner_product(ParBVector& x, data_t* inner_prods = NULL, double* comp_t = NULL);
+        data_t inner_product(ParBVector& x, index_t i, index_t j, double* comp_t = NULL);
 
-        void mult_T(ParVector& x, Vector& b);
-        void mult(Vector& x, ParVector& b);
+        void mult_T(ParVector& x, Vector& b, double* comp_t = NULL);
+        void mult(Vector& x, ParVector& b, double* comp_t = NULL);
 
         void append(ParBVector& P);
     };
