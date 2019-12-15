@@ -21,8 +21,6 @@ int main(int _argc, char** _argv)
         printf("Usage: <nrhs> <nap_version>\n");
         exit(-1);
     }
-    
-    setenv("PPN", "4", 1);
 
     // Grab command line arguments
     int nrhs = atoi(_argv[1]);
@@ -80,8 +78,6 @@ int main(int _argc, char** _argv)
     MPI_Allreduce(aort_time, &t, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);    
     if (rank == 0 && t > 0.0) printf("Aortho Computation Time: %e\n", t);
     
-    setenv("PPN", "16", 1);
- 
     delete A;
     delete comp_time;
     delete aort_time;
