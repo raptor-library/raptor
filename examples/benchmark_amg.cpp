@@ -151,7 +151,7 @@ int main(int argc, char* argv[])
 
 
     // Ruge-Stuben AMG
-    if (rank == 0) printf("Ruge Stuben Solver: \n");
+    /*if (rank == 0) printf("Ruge Stuben Solver: \n");
     MPI_Barrier(MPI_COMM_WORLD);
     ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, SOR);
     ml->max_iterations = 1000;
@@ -175,7 +175,7 @@ int main(int argc, char* argv[])
     if (rank == 0) printf("Total Solve Time: %e\n", t0);
     ml->print_residuals(iter);
     ml->print_solve_times();
-    delete ml;
+    delete ml;*/
 
     // Smoothed Aggregation AMG
     if (rank == 0) printf("\n\nSmoothed Aggregation Solver:\n");
