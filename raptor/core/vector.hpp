@@ -219,6 +219,8 @@ public:
     void axpy_ij(Vector& y, index_t i, index_t j, data_t alpha);
     void mult_T(Vector& X, Vector& B);
 
+    void sum_cols(Vector& b);
+
     void append(Vector& P);
     void split(Vector& W, int t, int i);
     void split_range(Vector& W, int t, int start);

@@ -269,3 +269,31 @@ void Vector::mult_T(Vector& X, Vector& B)
         }
     }
 }
+
+/**************************************************************
+*****   Vector Sum Cols 
+**************************************************************
+***** Sums the columns of the BVector
+*****
+***** Parameters
+***** -------------
+***** b : Vector&
+*****    Vector to hold result 
+**************************************************************/
+void Vector::sum_cols(Vector& b)
+{
+    // Resize b
+    b.b_vecs = 1;
+    b.resize(num_values);
+
+    data_t result;
+    for (index_t v = 0; v < num_values; v++)
+    {
+        result = 0.0;
+        for(index_t j = 0; j < b_vecs; j++)
+        {
+            result += values[j*num_values + v];
+        }
+        b.values[v] = result;
+    }
+}

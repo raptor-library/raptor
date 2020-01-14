@@ -15,7 +15,7 @@ int main(int argc, char** argv)
     return temp;
 } // end of main() //
 
-TEST(ParSRECGTest, TestsInKrylov)
+TEST(ParEKCGTest, TestsInKrylov)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -34,10 +34,9 @@ TEST(ParSRECGTest, TestsInKrylov)
     x.set_const_value(0.0);
 
     double b_norm = b.norm(2);
-    //SRECG(A, x, b, 5, residuals);
-    SRECG(A, x, b, 1, residuals);
+    EKCG(A, x, b, 2, residuals);
 
-    FILE* f = fopen("../../../../test_data/srecg_res.txt", "r");
+    //FILE* f = fopen("../../../../test_data/srecg_res.txt", "r");
     double res;
     for (int i = 0; i < residuals.size(); i++)
     {
@@ -45,12 +44,12 @@ TEST(ParSRECGTest, TestsInKrylov)
         //ASSERT_NEAR(res, residuals[i], 1e-05);
         printf("%e\n", residuals[i]);
     }
-    fclose(f);
+    //fclose(f);
 
     delete[] stencil;
     delete A;
     
-} // end of TEST(ParSRECGTest, TestsInKrylov) //
+} // end of TEST(ParEKCGTest, TestsInKrylov) //
 
 
 

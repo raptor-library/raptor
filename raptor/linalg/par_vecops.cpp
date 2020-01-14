@@ -326,3 +326,21 @@ data_t ParBVector::inner_product(ParBVector& x, index_t i, index_t j, double* co
     
     return temp;
 }
+
+/**************************************************************
+*****   ParBVector Sum Cols 
+**************************************************************
+***** Sums the columns of the ParBVector
+*****
+***** Parameters
+***** -------------
+***** b : ParVector&
+*****   Store result in local portion of b 
+**************************************************************/
+void ParBVector::sum_cols(ParVector& b, double* comp_t)
+{
+    b.resize(global_n, local_n);
+    if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
+    local->sum_cols(*(b.local));
+    if (comp_t) *comp_t += RAPtor_MPI_Wtime();
+}

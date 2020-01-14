@@ -215,6 +215,8 @@ namespace raptor
         void mult_T(ParVector& x, Vector& b, double* comp_t = NULL);
         void mult(Vector& x, ParVector& b, double* comp_t = NULL);
 
+        void sum_cols(ParVector& b, double* comp_t = NULL);
+
         void append(ParBVector& P);
     };
 

@@ -12,7 +12,7 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 include(FeatureSummary)
 
-option(CRAYXE "Running on Cray XE" ON)
+option(CRAYXE "Running on Cray XE" OFF)
 option(BGQ "Running on BGQ" OFF)
 option(WITH_PTSCOTCH "Enable PTScotch Partitioning" OFF)
 option(WITH_PARMETIS "Enable ParMetis Partitioning" OFF)

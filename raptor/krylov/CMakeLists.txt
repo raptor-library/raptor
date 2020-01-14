@@ -6,12 +6,14 @@ if (WITH_MPI)
         krylov/par_cg.cpp
         krylov/par_bicgstab.cpp
         krylov/par_srecg.cpp
+        krylov/par_ekcg.cpp
         krylov/partial_inner.cpp
         )
     set(par_krylov_HEADERS
         krylov/par_cg.hpp
         krylov/par_bicgstab.hpp
         krylov/par_srecg.hpp
+        krylov/par_ekcg.hpp
         krylov/partial_inner.hpp
         )
 else()
