@@ -17,7 +17,6 @@ extern "C" void dtrsm_(char *SIDE, char *UPLO, char *TRANSA, char *DIAG, int *M,
 extern "C" void dpotrf_(char *UPLO, int *N, double *A, int *LDA, int *INFO );
 
 void EKCG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<double>& res, 
-        double tol = 1e-05, int max_iter = -1, double* comp_t = NULL, double* aort_t = NULL,
-        bool tap = false);
+        double tol = 1e-05, int max_iter = -1, double* comp_t = NULL, bool tap = false);
 
 #endif

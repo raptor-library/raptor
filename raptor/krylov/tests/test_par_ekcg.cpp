@@ -21,8 +21,8 @@ TEST(ParEKCGTest, TestsInKrylov)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    //int grid[2] = {50, 50};
-    int grid[2] = {5, 5};
+    int grid[2] = {50, 50};
+    //int grid[2] = {5, 5};
     double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
     ParVector x(A->global_num_rows, A->local_num_rows);
@@ -34,7 +34,7 @@ TEST(ParEKCGTest, TestsInKrylov)
     x.set_const_value(0.0);
 
     double b_norm = b.norm(2);
-    EKCG(A, x, b, 2, residuals);
+    EKCG(A, x, b, 1, residuals);
 
     //FILE* f = fopen("../../../../test_data/srecg_res.txt", "r");
     double res;

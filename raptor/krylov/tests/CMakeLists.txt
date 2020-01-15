@@ -29,6 +29,9 @@ if (WITH_MPI)
     
     add_executable(par_srecg_profiling par_srecg_profiling.cpp)
     target_link_libraries(par_srecg_profiling raptor ${MPI_LIBRARIES} googletest pthread)
+    
+    add_executable(par_ekcg_profiling par_ekcg_profiling.cpp)
+    target_link_libraries(par_ekcg_profiling raptor ${MPI_LIBRARIES} googletest pthread)
 
 endif()
 

@@ -8,7 +8,7 @@ using namespace raptor;
 
 /* comm_t measures all reduce time for algorithm */
 void EKCG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<double>& res, 
-        double tol, int max_iter, double* comp_t, double* aort_t, bool tap)
+        double tol, int max_iter, double* comp_t, bool tap)
 {
     int rank;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
@@ -94,20 +94,25 @@ void EKCG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<dou
     {
         // P = Z * (Z^T * A * Z)^{-1/2}
         // Cholesky of (Z^T * A * Z)
-        //A->mult(*P, *AP, comp_t);
         A->mult(*Z, *AP, comp_t);
         Z->mult_T(*AP, rho, comp_t);
 
         // Cholesky of Z^T A Z
+    if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
         dpotrf_(&u, &t, rho.values.data(), &t, &info);
+    if (comp_t) *comp_t += RAPtor_MPI_Wtime();
         
         // Solve for P
         P->copy(*Z);
+    if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
         dtrsm_(&side, &u, &trans, &unit, &(P->local->num_values), &t, &alph, rho.values.data(),
                 &t, P->local->values.data(), &(P->local->num_values));
+    if (comp_t) *comp_t += RAPtor_MPI_Wtime();
         // Solve for AP
+    if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
         dtrsm_(&side, &u, &trans, &unit, &(AP->local->num_values), &t, &alph, rho.values.data(),
                 &t, AP->local->values.data(), &(AP->local->num_values));
+    if (comp_t) *comp_t += RAPtor_MPI_Wtime();
 
         // alpha = P^T * R 
         P->mult_T(*R, alpha, comp_t);
@@ -126,18 +131,24 @@ void EKCG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<dou
         norm_r = sqrt(rr_inner);
         res.emplace_back(norm_r);
 
-        iter++;
-
         if (norm_r < tol || iter > max_iter)
         {
-            printf("norm_r %e tol %e\n", norm_r, tol);
-            printf("iter %d max_iter %d\n", iter, max_iter);
             // Sum X and return
             X->sum_cols(x);
+
+            delete T;
+            delete R;
+            delete Z;
+            delete P;
+            delete P_1;
+            delete AP;
+            delete AP_1;
+            delete X;
+
             return;
         }
 
-        // CORRECT ON FIRST ITERATION UP TO THIS POINT
+        iter++;
 
         // gamma = (AP)^T * (AP)
         AP->mult_T(*AP, gamma, comp_t);
@@ -157,29 +168,4 @@ void EKCG(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_vector<dou
         // Copy P for next iteration
         P_1->copy(*P);
     }
-
-    if (rank == 0)
-    {
-        if (iter == max_iter)
-        {
-            printf("Max Iterations Reached.\n");
-            printf("2 Norm of Residual: %lg\n\n", norm_r);
-        }
-        else
-        {
-            printf("%d Iteration required to converge\n", iter);
-            printf("2 Norm of Residual: %lg\n\n", norm_r);
-        }
-    }
-
-    delete T;
-    delete R;
-    delete Z;
-    delete P;
-    delete P_1;
-    delete AP;
-    delete AP_1;
-    delete X;
-
-    return;
 }
