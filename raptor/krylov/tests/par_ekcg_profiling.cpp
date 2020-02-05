@@ -18,34 +18,59 @@ int main(int _argc, char** _argv)
 
     if (_argc < 2)
     {
-        printf("Usage: <nrhs> <nap_version>\n");
+        printf("Usage: <mat#> <nrhs> <nap_version>\n");
         exit(-1);
     }
 
     // Grab command line arguments
-    int nrhs = atoi(_argv[1]);
-    int nap_version = atoi(_argv[2]);
+    int mat = atoi(_argv[1]);
+    int nrhs = atoi(_argv[2]);
+    int nap_version = atoi(_argv[3]);
 
-    // Setup matrix and vectors
-    //int grid[2] = {5000, 5000};
-    int grid[2] = {50, 50};
-    double eps = 0.001;
-    double theta = M_PI / 8.0;
-    double* stencil = diffusion_stencil_2d(eps, theta);
-    ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
-    delete[] stencil;
+    // Matrix market filenames
+    const char* mat1 = "../../../../../mtx_market_matrices/Bump_2911.mtx";
+    const char* mat2 = "../../../../../mtx_market_matrices/G3_circuit.mtx";
+    const char* mat3 = "../../../../../mtx_market_matrices/Hook_1498.mtx";
+    // Residual output filenames
+    const char* res_filename1 = "Bump_2911_res.txt";
+    const char* res_filename2 = "G3_circuit_res.txt";
+    const char* res_filename3 = "Hook_1498_res.txt";
+    const char* min_res_filename1 = "Bump_2911_res_mincomm.txt";
+    const char* min_res_filename2 = "G3_circuit_res_mincomm.txt";
+    const char* min_res_filename3 = "Hook_1498_res_mincomm.txt";
+    // For writing out residual files
+    FILE* f;
 
+    // Read in matrix
+    ParCSRMatrix* A; 
+    if (mat == 1)
+    {
+        A = read_par_mm(mat1);
+    }
+    else if (mat == 2)
+    {
+        A = read_par_mm(mat2);
+    }
+    else if (mat == 3)
+    {
+        A = read_par_mm(mat3);
+    }
+
+    // Declare vectors and residual variables
     ParVector x(A->global_num_rows, A->local_num_rows);
     ParVector b(A->global_num_rows, A->local_num_rows);
     aligned_vector<double> residuals;
+    aligned_vector<double> residuals_mincomm;
 
     if (rank == 0) printf("A %d x %d\n", A->global_num_rows, A->global_num_rows);
 
     // Setup for Timings
     bool tap_comm = false;
     double* comp_time = new double[1];
+    double* bv_time = new double[1];
     init_profile();
     *comp_time = 0.0;
+    *bv_time = 0.0;
     
     // Setup correct node aware communication
     if (nap_version == 2)
@@ -63,7 +88,8 @@ int main(int _argc, char** _argv)
     x.set_const_value(1.0);
     A->mult(x, b);
     x.set_const_value(0.0);
-    EKCG(A, x, b, nrhs, residuals, 1e-5, A->global_num_rows, comp_time, tap_comm);
+    //EKCG(A, x, b, nrhs, residuals, 1e-8, A->global_num_rows, comp_time, tap_comm);
+    EKCG(A, x, b, nrhs, residuals, 1e-8, 10, comp_time, bv_time, tap_comm);
 
     // Finalize profile for communication timings
     finalize_profile();
@@ -73,6 +99,61 @@ int main(int _argc, char** _argv)
     double t;
     MPI_Allreduce(comp_time, &t, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
     if (rank == 0 && t > 0.0) printf("Computation Time: %e\n", t);
+    MPI_Allreduce(bv_time, &t, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    if (rank == 0 && t > 0.0) printf("BVSpMV Time: %e\n", t);
+    
+    // Print out residuals to file
+    if (rank == 0)
+    {
+        if (mat == 1) f = fopen(res_filename1, "w");
+        if (mat == 2) f = fopen(res_filename2, "w");
+        if (mat == 3) f = fopen(res_filename3, "w");
+        for (int i = 0; i < residuals.size(); i++)
+        {
+            fprintf(f, "%e\n", residuals[i]);
+        }
+        fclose(f);
+    }
+
+    if (rank == 0 && t > 0.0) printf("-------------------------\n");
+    MPI_Barrier(MPI_COMM_WORLD);
+    
+    // Setup for Timings
+    delete comp_time;
+    delete bv_time;
+    comp_time = new double[1];
+    bv_time = new double[1];
+    *comp_time = 0.0;
+    *bv_time = 0.0;
+    
+    // Call SRECG
+    x.set_const_value(0.0);
+    init_profile();
+    //EKCG_MinComm(A, x, b, nrhs, residuals_mincomm, 1e-8, A->global_num_rows, comp_time, tap_comm);
+    EKCG_MinComm(A, x, b, nrhs, residuals_mincomm, 1e-8, 10, comp_time, bv_time, tap_comm);
+
+    // Finalize profile for communication timings
+    finalize_profile();
+
+    // Print times
+    print_profile("EKCG MinComm");
+    MPI_Allreduce(comp_time, &t, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    if (rank == 0 && t > 0.0) printf("Computation Time: %e\n", t);
+    MPI_Allreduce(bv_time, &t, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    if (rank == 0 && t > 0.0) printf("BVSpMV Time: %e\n", t);
+
+    // Print out residuals to file
+    if (rank == 0)
+    {
+        if (mat == 1) f = fopen(min_res_filename1, "w");
+        if (mat == 2) f = fopen(min_res_filename2, "w");
+        if (mat == 3) f = fopen(min_res_filename3, "w");
+        for (int i = 0; i < residuals_mincomm.size(); i++)
+        {
+            fprintf(f, "%e\n", residuals_mincomm[i]);
+        }
+        fclose(f);
+    }
     
     delete A;
     delete comp_time;

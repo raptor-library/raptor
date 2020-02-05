@@ -5,7 +5,7 @@
 
 using namespace raptor;
 
-void CG(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol, int max_iter, double* comm_t)
+void CG(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol, int max_iter, double* comp_t, bool tap)
 {
     int rank;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
@@ -32,14 +32,12 @@ void CG(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res
     Ap.resize(b.global_n, b.local_n);
 
     // r0 = b - A * x0
-    A->residual(x, b, r);
+    A->residual(x, b, r, tap, comp_t);
 
     // p0 = r0
     p.copy(r);
 
-if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
-    rr_inner = r.inner_product(r);
-if (comm_t) *comm_t += RAPtor_MPI_Wtime();
+    rr_inner = r.inner_product(r, NULL, comp_t);
     norm_r = sqrt(rr_inner);
     res.emplace_back(norm_r / b_norm);
 
@@ -56,10 +54,8 @@ if (comm_t) *comm_t += RAPtor_MPI_Wtime();
     while (norm_r > tol && iter < max_iter)
     {
         // alpha_i = (r_i, r_i) / (A*p_i, p_i)
-        A->mult(p, Ap);
-if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
-        App_inner = Ap.inner_product(p);
-if (comm_t) *comm_t += RAPtor_MPI_Wtime();
+        A->mult(p, Ap, comp_t);
+        App_inner = Ap.inner_product(p, NULL, comp_t);
         if (App_inner < 0.0)
         {
             if (rank == 0)
@@ -70,27 +66,27 @@ if (comm_t) *comm_t += RAPtor_MPI_Wtime();
         }
         alpha = rr_inner / App_inner;
 
-        x.axpy(p, alpha);
+        x.axpy(p, alpha, comp_t);
 
         // x_{i+1} = x_i + alpha_i * p_i
         if ((iter % recompute_r) && iter > 0)
         {
-            r.axpy(Ap, -1.0*alpha);
+            r.axpy(Ap, -1.0*alpha, comp_t);
         }
         else
         {
-            A->residual(x, b, r);
+            A->residual(x, b, r, tap, comp_t);
         }
 
         // beta_i = (r_{i+1}, r_{i+1}) / (r_i, r_i)
-if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
-        next_inner = r.inner_product(r);
-if (comm_t) *comm_t += RAPtor_MPI_Wtime();
+        next_inner = r.inner_product(r, NULL, comp_t);
         beta = next_inner / rr_inner;
 
         // p_{i+1} = r_{i+1} + beta_i * p_i
+        if (comp_t) *comp_t -= RAPtor_MPI_Wtime();
         p.scale(beta);
-        p.axpy(r, 1.0);
+        if (comp_t) *comp_t += RAPtor_MPI_Wtime();
+        p.axpy(r, 1.0, comp_t);
 
         // Update next inner product
         rr_inner = next_inner;

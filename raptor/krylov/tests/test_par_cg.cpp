@@ -23,10 +23,15 @@ TEST(ParCGTest, TestsInKrylov)
 
     int grid[2] = {50, 50};
     double* stencil = diffusion_stencil_2d(0.001, M_PI/8.0);
+    ParMultilevel* ml;
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
     ParVector x(A->global_num_rows, A->local_num_rows);
     ParVector b(A->global_num_rows, A->local_num_rows);
     aligned_vector<double> residuals;
+    aligned_vector<double> pre_residuals;
+    
+    ml = new ParSmoothedAggregationSolver(0.0);
+    ml->setup(A);
 
     x.set_const_value(1.0);
     A->mult(x, b);
@@ -43,10 +48,16 @@ TEST(ParCGTest, TestsInKrylov)
         ASSERT_NEAR(res, residuals[i] * b_norm, 1e-06);
     }
     fclose(f);
+    
+    x.set_const_value(0.0);
+    PCG(A, ml, x, b, pre_residuals);
+    printf("CG It %d CG Res %e\n", residuals.size()-1, residuals[residuals.size()-1]);
+    printf("PCG It %d PCG Res %e\n", pre_residuals.size()-1, pre_residuals[pre_residuals.size()-1]);
 
 
     delete[] stencil;
     delete A;
+    delete ml;
     
 } // end of TEST(ParCGTest, TestsInKrylov) //
 

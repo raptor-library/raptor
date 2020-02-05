@@ -22,6 +22,9 @@ if (WITH_MPI)
     add_test(TestParSRECG ${MPIRUN} -n 1 ${HOST} ./test_par_srecg)
     add_test(TestParSRECG ${MPIRUN} -n 2 ${HOST} ./test_par_srecg)
     
+    add_executable(test_par_psrecg test_par_psrecg.cpp)
+    target_link_libraries(test_par_psrecg raptor ${MPI_LIBRARIES} googletest pthread)
+    
     add_executable(test_par_ekcg test_par_ekcg.cpp)
     target_link_libraries(test_par_ekcg raptor ${MPI_LIBRARIES} googletest pthread)
     add_test(TestParSRECG ${MPIRUN} -n 1 ${HOST} ./test_par_ekcg)
@@ -32,6 +35,9 @@ if (WITH_MPI)
     
     add_executable(par_ekcg_profiling par_ekcg_profiling.cpp)
     target_link_libraries(par_ekcg_profiling raptor ${MPI_LIBRARIES} googletest pthread)
+    
+    add_executable(par_cg_profiling par_cg_profiling.cpp)
+    target_link_libraries(par_cg_profiling raptor ${MPI_LIBRARIES} googletest pthread)
 
 endif()
 
