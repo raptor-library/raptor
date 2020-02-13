@@ -46,8 +46,8 @@ CSRMatrix* communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<in
                 {
                     if (val * sign < 0) // Only add needed cols
                     {
-                        col_indices.emplace_back(-(global_col+1));
-                        values.emplace_back(val);
+                        col_indices.push_back(-(global_col+1));
+                        values.push_back(val);
                     }
                     ctr_S++;
                 }
@@ -55,8 +55,8 @@ CSRMatrix* communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<in
                 {
                     if (val * sign < 0) // Only add needed cols
                     {
-                        col_indices.emplace_back(global_col);
-                        values.emplace_back(val);
+                        col_indices.push_back(global_col);
+                        values.push_back(val);
                     }
                 }
             }
@@ -83,8 +83,8 @@ CSRMatrix* communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<in
                 if (val * sign < 0) // Only add needed cols
                 {
                     global_col += A->partition->global_num_cols;
-                    col_indices.emplace_back(global_col);
-                    values.emplace_back(val);
+                    col_indices.push_back(global_col);
+                    values.push_back(val);
                 }
                 if (ctr_S < end_S && S->off_proc->idx2[ctr_S] == col)
                 {
@@ -96,8 +96,8 @@ CSRMatrix* communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<in
                 // Selected and in S
                 if (val * sign < 0) //Only add needed cols 
                 {
-                    col_indices.emplace_back(-(global_col+1));
-                    values.emplace_back(val);
+                    col_indices.push_back(-(global_col+1));
+                    values.push_back(val);
                 }
                 ctr_S++;
             }
@@ -106,8 +106,8 @@ CSRMatrix* communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<in
                 // Selected weak connection
                 if (val * sign < 0)
                 {
-                    col_indices.emplace_back(global_col);
-                    values.emplace_back(val);
+                    col_indices.push_back(global_col);
+                    values.push_back(val);
                 }
             }
         }
@@ -150,8 +150,8 @@ CSRMatrix*  communicate(ParCSRMatrix* A, const aligned_vector<int>& states,
             val = A->on_proc->vals[j];
             if (states[col] == 1 && val * sign < 0)
             {
-                col_indices.emplace_back(A->on_proc_column_map[col]);
-                values.emplace_back(A->on_proc->vals[j]);
+                col_indices.push_back(A->on_proc_column_map[col]);
+                values.push_back(A->on_proc->vals[j]);
             }
         }
         start = A->off_proc->idx1[i];
@@ -162,8 +162,8 @@ CSRMatrix*  communicate(ParCSRMatrix* A, const aligned_vector<int>& states,
             val = A->off_proc->vals[j];
             if (off_proc_states[col] == 1 && val * sign < 0)
             {
-                col_indices.emplace_back(A->off_proc_column_map[col]);
-                values.emplace_back(A->off_proc->vals[j]);
+                col_indices.push_back(A->off_proc_column_map[col]);
+                values.push_back(A->off_proc->vals[j]);
             }
         }
         rowptr[i+1] = col_indices.size();
@@ -172,9 +172,115 @@ CSRMatrix*  communicate(ParCSRMatrix* A, const aligned_vector<int>& states,
     return comm->communicate(rowptr, col_indices, values);
 }
 
+void filter_interp(ParCSRMatrix* P, const double filter_threshold)
+{
+    int row_start_on = 0;
+    int row_start_off = 0;
+    int row_end_on, row_end_off;
+    int ctr_on = 0;
+    int ctr_off = 0;
+    int prev_ctr_on, prev_ctr_off;
+
+    double val, abs_val;
+    double row_max, row_sum, row_scale;
+    double remain_sum;
+
+    if (filter_threshold > zero_tol && filter_threshold <= 1)
+    {
+        for (int i = 0; i < P->local_num_rows; i++)
+        {
+            prev_ctr_on = ctr_on;
+            prev_ctr_off = ctr_off;
+
+            row_end_on = P->on_proc->idx1[i+1];
+            row_end_off = P->off_proc->idx1[i+1];
+
+            row_max = 0;
+            for (int j = row_start_on; j < row_end_on; j++)
+            {
+                val = P->on_proc->vals[j];
+                abs_val = fabs(val);
+                if (abs_val > row_max) 
+                    row_max = abs_val;
+            }
+            for (int j = row_start_off; j < row_end_off; j++)
+            {
+                val = P->off_proc->vals[j];
+                abs_val = fabs(val);
+                if (abs_val > row_max) 
+                    row_max = abs_val;
+            }
+
+            row_max *= filter_threshold;
+            row_sum = 0;
+            remain_sum = 0;
+            for (int j = row_start_on; j < row_end_on; j++)
+            {
+                val = P->on_proc->vals[j];
+                row_sum += val;
+                if (fabs(val) >= row_max)
+                {
+                    P->on_proc->idx2[ctr_on] = P->on_proc->idx2[j];
+                    P->on_proc->vals[ctr_on] = val;
+                    ctr_on++;
+                    remain_sum += val;
+                }
+            }
+            for (int j = row_start_off; j < row_end_off; j++)
+            {
+                val = P->off_proc->vals[j];
+                row_sum += val;
+                if (fabs(val) >= row_max)
+                {
+                    P->off_proc->idx2[ctr_off] = P->off_proc->idx2[j];
+                    P->off_proc->vals[ctr_off] = val;
+                    ctr_off++;
+                    remain_sum += val;
+                }
+            }
+
+            if (fabs(remain_sum) > zero_tol && fabs(row_sum - remain_sum) > zero_tol)
+            {
+                row_scale = row_sum / remain_sum;
+                for (int j = prev_ctr_on; j < ctr_on; j++)
+                    P->on_proc->vals[j] *= row_scale;
+                for (int j = prev_ctr_off; j < ctr_off; j++)
+                    P->off_proc->vals[j] *= row_scale;
+            }
+
+            P->on_proc->idx1[i+1] = ctr_on;
+            P->off_proc->idx1[i+1] = ctr_off;
+
+            row_start_on = row_end_on;
+            row_start_off = row_end_off;
+        }
+    }
+    else
+    {
+        ctr_on = P->on_proc->idx2.size();
+        ctr_off = P->off_proc->idx2.size();
+    }
+
+    P->on_proc->nnz = ctr_on;
+    P->off_proc->nnz = ctr_off;
+    P->local_nnz = ctr_on + ctr_off;
+   
+    P->on_proc->idx2.resize(ctr_on);
+    P->on_proc->vals.resize(ctr_on);
+    P->off_proc->idx2.resize(ctr_off);
+    P->off_proc->vals.resize(ctr_off);
+
+    P->on_proc->idx2.shrink_to_fit();
+    P->on_proc->vals.shrink_to_fit();
+    P->off_proc->idx2.shrink_to_fit();
+    P->off_proc->vals.shrink_to_fit();
+}
+
+
 ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const aligned_vector<int>& states,
-        const aligned_vector<int>& off_proc_states, 
+        const aligned_vector<int>& off_proc_states,
+        const double filter_threshold, 
         bool tap_interp, int num_variables, int* variables)
 {
     int start, end, idx, idx_k;
@@ -185,8 +291,9 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     int global_num_cols;
     int on_proc_cols, off_proc_cols;
     int sign;
-    int row_start_on, row_end_on;
-    int row_start_off, row_end_off;
+    int row_start_on, row_start_off;
+    int row_end_on = 0;
+    int row_end_off = 0;
     double val, val_k, weak_sum;
     double diag, col_sum;
 
@@ -332,7 +439,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     for (std::set<int>::iterator it = global_set.begin(); it != global_set.end(); ++it)
     {
         global_to_local[*it] = off_proc_column_map.size();
-        off_proc_column_map.emplace_back(*it);
+        off_proc_column_map.push_back(*it);
     }
     off_proc_cols = off_proc_column_map.size();
 
@@ -375,7 +482,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         if (states[i] == Selected)
         {
             on_proc_col_to_new[i] = P->on_proc_column_map.size();
-            P->on_proc_column_map.emplace_back(S->on_proc_column_map[i]);
+            P->on_proc_column_map.push_back(S->on_proc_column_map[i]);
         }
     }
     P->local_row_map = S->get_local_row_map();
@@ -831,24 +938,12 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
             }
         }
         pos[i] = -1;
-
+   
         P->on_proc->idx1[i+1] = row_end_on;
         P->off_proc->idx1[i+1] = row_end_off;
     }
-    P->on_proc->nnz = nnz_on;
-    P->off_proc->nnz = nnz_off;
 
-    P->on_proc->idx2.resize(nnz_on);
-    P->on_proc->idx2.shrink_to_fit();
-    P->on_proc->vals.resize(nnz_on);
-    P->on_proc->vals.shrink_to_fit();
-
-    P->off_proc->idx2.resize(nnz_off);
-    P->off_proc->idx2.shrink_to_fit();
-    P->off_proc->vals.resize(nnz_off);
-    P->off_proc->vals.shrink_to_fit();
-
-    P->local_nnz = P->on_proc->nnz + P->off_proc->nnz;
+    filter_interp(P, filter_threshold);
 
     // Update off_proc columns in P (remove col j if col_exists[j] is false)
     if (P->off_proc_num_cols)
@@ -859,7 +954,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         	if (col_exists[i])
         	{
             	P_to_new[i] = P->off_proc_column_map.size();
-            	P->off_proc_column_map.emplace_back(off_proc_column_map[i]);
+            	P->off_proc_column_map.push_back(off_proc_column_map[i]);
         	}
     	}
         for (aligned_vector<int>::iterator it = P->off_proc->idx2.begin(); 
@@ -979,7 +1074,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         if (states[i] == Selected)
         {
             on_proc_col_to_new[i] = P->on_proc_column_map.size();
-            P->on_proc_column_map.emplace_back(S->on_proc_column_map[i]);
+            P->on_proc_column_map.push_back(S->on_proc_column_map[i]);
         }
     }
     P->local_row_map = S->get_local_row_map();
@@ -998,13 +1093,13 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
             col = recv_mat->idx2[j];
             if (col < A->partition->first_local_col || col > A->partition->last_local_col)
             {
-                recv_off->idx2.emplace_back(col);
-                recv_off->vals.emplace_back(recv_mat->vals[j]);
+                recv_off->idx2.push_back(col);
+                recv_off->vals.push_back(recv_mat->vals[j]);
             }
             else
             {
-                recv_on->idx2.emplace_back(col);
-                recv_on->vals.emplace_back(recv_mat->vals[j]);
+                recv_on->idx2.push_back(col);
+                recv_on->vals.push_back(recv_mat->vals[j]);
             }
         }
         recv_on->idx1[i+1] = recv_on->idx2.size();
@@ -1076,8 +1171,8 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         // If coarse row, add to P
         if (states[i] == Selected)
         {
-            P->on_proc->idx2.emplace_back(on_proc_col_to_new[i]);
-            P->on_proc->vals.emplace_back(1);
+            P->on_proc->idx2.push_back(on_proc_col_to_new[i]);
+            P->on_proc->vals.push_back(1);
             P->on_proc->idx1[i+1] = P->on_proc->idx2.size();
             P->off_proc->idx1[i+1] = P->off_proc->idx2.size();
             continue;
@@ -1325,7 +1420,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         if (col_exists[i])
         {
             off_proc_col_to_new[i] = P->off_proc_column_map.size();
-            P->off_proc_column_map.emplace_back(S->off_proc_column_map[i]);
+            P->off_proc_column_map.push_back(S->off_proc_column_map[i]);
         }
     }
     for (aligned_vector<int>::iterator it = P->off_proc->idx2.begin(); 
@@ -1450,7 +1545,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         if (states[i])
         {
             on_proc_col_to_new[i] = P->on_proc_column_map.size();
-            P->on_proc_column_map.emplace_back(S->on_proc_column_map[i]);
+            P->on_proc_column_map.push_back(S->on_proc_column_map[i]);
         }
     }
     aligned_vector<bool> col_exists;
@@ -1464,8 +1559,8 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
     {
         if (states[i] == 1)
         {
-            P->on_proc->idx2.emplace_back(on_proc_col_to_new[i]);
-            P->on_proc->vals.emplace_back(1);
+            P->on_proc->idx2.push_back(on_proc_col_to_new[i]);
+            P->on_proc->vals.push_back(1);
         }
         else
         {
@@ -1584,15 +1679,15 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
                 if (states[col] == 1)
                 {
                     val = sa_on[j];
-                    P->on_proc->idx2.emplace_back(on_proc_col_to_new[col]);
+                    P->on_proc->idx2.push_back(on_proc_col_to_new[col]);
                     
                     if (val < 0)
                     {
-                        P->on_proc->vals.emplace_back(neg_coeff * val);
+                        P->on_proc->vals.push_back(neg_coeff * val);
                     }
                     else
                     {
-                        P->on_proc->vals.emplace_back(pos_coeff * val);
+                        P->on_proc->vals.push_back(pos_coeff * val);
                     }
                 }
             }
@@ -1605,15 +1700,15 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
                 {
                     val = sa_off[j];
                     col_exists[col] = true;
-                    P->off_proc->idx2.emplace_back(col);
+                    P->off_proc->idx2.push_back(col);
 
                     if (val < 0)
                     {
-                        P->off_proc->vals.emplace_back(neg_coeff * val);
+                        P->off_proc->vals.push_back(neg_coeff * val);
                     }
                     else
                     {
-                        P->off_proc->vals.emplace_back(pos_coeff * val);
+                        P->off_proc->vals.push_back(pos_coeff * val);
                     }
                 }
             }
@@ -1630,7 +1725,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         if (col_exists[i])
         {
             off_proc_col_to_new[i] = P->off_proc_column_map.size();
-            P->off_proc_column_map.emplace_back(S->off_proc_column_map[i]);
+            P->off_proc_column_map.push_back(S->off_proc_column_map[i]);
         }
     }
     for (aligned_vector<int>::iterator it = P->off_proc->idx2.begin(); 

@@ -39,12 +39,14 @@ namespace raptor
         {
             topology = partition->topology;
             topology->num_shared++;
+            num_shared = 0;
         }
         
         CommPkg(Topology* _topology)
         {
             topology = _topology;
             topology->num_shared++;
+            num_shared = 0;
         }
 
         virtual ~CommPkg()
@@ -60,6 +62,13 @@ namespace raptor
                     delete topology;
                 }
             }
+        }
+
+        void delete_comm()
+        {
+            if (num_shared == 0)
+                delete this;
+            else num_shared--;
         }
 
         // Matrix Communication
@@ -249,6 +258,7 @@ namespace raptor
         Topology* topology;
         aligned_vector<double> buffer;
         aligned_vector<int> int_buffer;
+        int num_shared;
     };
 
 
@@ -1017,13 +1027,12 @@ namespace raptor
             if (L_comm)
             {
                 local_L_par_comm = L_comm;
-                shared_L = true;
+                local_L_par_comm->num_shared++;
             }
             else
             {
                 local_L_par_comm = new ParComm(partition, 4567, partition->topology->local_comm,
                         new NonContigData());
-                shared_L = false;
             }
         }
 
@@ -1058,8 +1067,6 @@ namespace raptor
             {
                 init_tap_comm_simple(partition, off_proc_column_map, comm);
             }
-
-            shared_L = false;
         }
 
         TAPComm(Partition* partition,
@@ -1106,8 +1113,6 @@ namespace raptor
             {
                 *it = on_proc_to_new[*it];
             }
-
-            shared_L = false;
         }
 
         /**************************************************************
@@ -1142,8 +1147,6 @@ namespace raptor
                 buffer.resize(recv_size);
                 int_buffer.resize(recv_size);
             }
-
-            shared_L = false;
         }
 
         TAPComm(TAPComm* tap_comm, const aligned_vector<int>& off_proc_col_to_new, 
@@ -1199,12 +1202,11 @@ namespace raptor
             if (local_L)
             {
                 local_L_par_comm = local_L;
-                shared_L = true;
+                local_L_par_comm->num_shared++;
             }
             else
             {
                 local_L_par_comm = new ParComm(tap_comm->local_L_par_comm, off_proc_col_to_new);
-                shared_L = false;
             }
             local_R_par_comm = new ParComm(tap_comm->local_R_par_comm, off_proc_col_to_new);
 
@@ -1302,10 +1304,14 @@ namespace raptor
         **************************************************************/
         ~TAPComm()
         {
-            delete global_par_comm;
-            delete local_S_par_comm;  // May be NULL but can still call delete
-            delete local_R_par_comm;
-            if (!shared_L) delete local_L_par_comm;
+            if (global_par_comm)
+                global_par_comm->delete_comm();
+            if (local_S_par_comm)
+                local_S_par_comm->delete_comm();
+            if (local_R_par_comm)
+                local_R_par_comm->delete_comm();
+            if (local_L_par_comm)
+                local_L_par_comm->delete_comm();
         }
 
         void init_tap_comm(Partition* partition,
@@ -1823,7 +1829,6 @@ namespace raptor
         ParComm* local_R_par_comm;
         ParComm* local_L_par_comm;
         ParComm* global_par_comm;
-        bool shared_L;
     };
 }
 #endif

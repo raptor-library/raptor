@@ -46,6 +46,7 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
     FILE* f;
     int cf;
 
+    double filter_threshold = 0.3;
     double strong_threshold = 0.25;
     int hyp_coarsen_type = 8; // PMIS 
     int hyp_interp_type = 6; // Extended
@@ -91,8 +92,8 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
 
     // Setup Hypre Hierarchy
     HYPRE_Solver solver_data = hypre_create_hierarchy(A_hyp, x_hyp, b_hyp, 
-            hyp_coarsen_type, hyp_interp_type, p_max_elmts, agg_num_levels, 
-            strong_threshold);
+            hyp_coarsen_type, hyp_interp_type, p_max_elmts, 
+            agg_num_levels, strong_threshold, filter_threshold);
 
     hypre_ParCSRMatrix** A_array = hypre_ParAMGDataAArray((hypre_ParAMGData*) solver_data);
     hypre_ParCSRMatrix** P_array = hypre_ParAMGDataPArray((hypre_ParAMGData*) solver_data);
@@ -143,8 +144,8 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
 
     // Setup Hypre Hierarchy
     solver_data = hypre_create_hierarchy(A_hyp, x_hyp, b_hyp, 
-            hyp_coarsen_type, hyp_interp_type, p_max_elmts, agg_num_levels, 
-            strong_threshold);
+            hyp_coarsen_type, hyp_interp_type, p_max_elmts, 
+            agg_num_levels, strong_threshold, filter_threshold);
 
     A_array = hypre_ParAMGDataAArray((hypre_ParAMGData*) solver_data);
     P_array = hypre_ParAMGDataPArray((hypre_ParAMGData*) solver_data);
@@ -188,7 +189,7 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
     // Setup Hypre Hierarchy
     solver_data = hypre_create_hierarchy(A_hyp, x_hyp, b_hyp, 
             hyp_coarsen_type, hyp_interp_type, p_max_elmts, agg_num_levels, 
-            strong_threshold);
+            strong_threshold, filter_threshold);
 
     A_array = hypre_ParAMGDataAArray((hypre_ParAMGData*) solver_data);
     P_array = hypre_ParAMGDataPArray((hypre_ParAMGData*) solver_data);

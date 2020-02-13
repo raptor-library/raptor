@@ -8,13 +8,7 @@
 
 #include "clear_cache.hpp"
 
-#include "core/par_matrix.hpp"
-#include "core/par_vector.hpp"
-#include "core/types.hpp"
-#include "gallery/par_stencil.hpp"
-#include "gallery/laplacian27pt.hpp"
-#include "gallery/diffusion.hpp"
-#include "gallery/par_matrix_IO.hpp"
+#include "raptor.hpp"
 
 #ifdef USING_MFEM
 #include "external/mfem_wrapper.hpp"

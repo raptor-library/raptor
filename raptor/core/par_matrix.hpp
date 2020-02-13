@@ -91,7 +91,6 @@ namespace raptor
         comm = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
-        shared_comm = false;
         on_proc = NULL;
         off_proc = NULL;
     }
@@ -110,7 +109,6 @@ namespace raptor
         comm = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
-        shared_comm = false;
         on_proc = NULL;
         off_proc = NULL;
     }
@@ -127,7 +125,6 @@ namespace raptor
         comm = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
-        shared_comm = false;
         on_proc = NULL;
         off_proc = NULL;
     }
@@ -151,7 +148,6 @@ namespace raptor
         comm = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
-        shared_comm = false;
         on_proc = NULL;
         off_proc = NULL;
     }
@@ -167,7 +163,6 @@ namespace raptor
         comm = NULL;
         tap_comm = NULL;
         tap_mat_comm = NULL;
-        shared_comm = false;
 
         on_proc = NULL;
         off_proc = NULL;
@@ -180,12 +175,9 @@ namespace raptor
         delete off_proc;
         delete on_proc;
 
-        if (!shared_comm)
-        {
-            delete comm;
-            delete tap_mat_comm;
-            delete tap_comm;
-        }
+        if (comm) comm->delete_comm();
+        if (tap_comm) tap_comm->delete_comm();
+        if (tap_mat_comm) tap_mat_comm->delete_comm();
 
         if (partition)
         {
@@ -199,7 +191,6 @@ namespace raptor
             }
         }
     }
-
 
     /**************************************************************
     *****   ParMatrix Add Value
@@ -349,7 +340,6 @@ namespace raptor
     ParComm* comm;
     TAPComm* tap_comm;
     TAPComm* tap_mat_comm;
-    bool shared_comm;
   };
 
   class ParCOOMatrix : public ParMatrix

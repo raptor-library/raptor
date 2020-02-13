@@ -329,7 +329,10 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
     S->comm = A->comm;
     S->tap_comm = A->tap_comm;
     S->tap_mat_comm = A->tap_mat_comm;
-    S->shared_comm = true;
+
+    if (S->comm) S->comm->num_shared++;
+    if (S->tap_comm) S->tap_comm->num_shared++;
+    if (S->tap_mat_comm) S->tap_mat_comm->num_shared++;
 
     return S;
 
@@ -519,7 +522,10 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg)
     S->comm = A->comm;
     S->tap_comm = A->tap_comm;
     S->tap_mat_comm = A->tap_mat_comm;
-    S->shared_comm = true;
+
+    if (S->comm) S->comm->num_shared++;
+    if (S->tap_comm) S->tap_comm->num_shared++;
+    if (S->tap_mat_comm) S->tap_mat_comm->num_shared++;
 
     return S;
 }
