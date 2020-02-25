@@ -24,7 +24,7 @@ using namespace raptor;
 //
 //
 
-data_t* laplace_stencil_27pt()
+static data_t* laplace_stencil_27pt()
 {
     data_t* stencil = new data_t[27];
 

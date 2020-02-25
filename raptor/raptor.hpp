@@ -5,6 +5,7 @@
 
 // Define types such as int and double sizes
 #include "core/types.hpp"
+#include "core/utilities.hpp"
 
 // Data about topology and matrix partitions
 #ifndef NO_MPI

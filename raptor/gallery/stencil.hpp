@@ -14,7 +14,7 @@
 using namespace raptor;
 
 // Stencils are symmetric, so A could be CSR or CSC
-CSRMatrix* stencil_grid(data_t* stencil, int* grid, int dim)
+static CSRMatrix* stencil_grid(data_t* stencil, int* grid, int dim)
 {
     aligned_vector<int> diags;
     aligned_vector<double> nonzero_stencil;

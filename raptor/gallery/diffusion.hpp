@@ -55,7 +55,7 @@ using namespace raptor;
 // ----
 // Add FD option
 //
-data_t* diffusion_stencil_2d(data_t eps = 1.0, data_t theta = 0.0)
+static data_t* diffusion_stencil_2d(data_t eps = 1.0, data_t theta = 0.0)
 {
     data_t* stencil = new data_t[9];
 

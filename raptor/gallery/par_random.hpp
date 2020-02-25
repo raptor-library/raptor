@@ -14,7 +14,7 @@
 
 using namespace raptor;
 
-ParCSRMatrix* par_random(int global_rows, int global_cols, int nnz_per_row)
+static ParCSRMatrix* par_random(int global_rows, int global_cols, int nnz_per_row)
 {
     int rank, num_procs;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
