@@ -11,7 +11,7 @@
 
 using namespace raptor;
 
-void row_scale(ParCSRMatrix* A, ParVector& rhs)
+static void row_scale(ParCSRMatrix* A, ParVector& rhs)
 {
     int start, end, col;
     double scale;
@@ -34,7 +34,7 @@ void row_scale(ParCSRMatrix* A, ParVector& rhs)
     }
 }
 
-void diagonally_scale(ParCSRMatrix* A, ParVector& rhs, aligned_vector<double>& row_scales)
+static void diagonally_scale(ParCSRMatrix* A, ParVector& rhs, aligned_vector<double>& row_scales)
 {
     int start, end, col;
 
@@ -77,7 +77,7 @@ void diagonally_scale(ParCSRMatrix* A, ParVector& rhs, aligned_vector<double>& r
     }
 }
 
-void diagonally_unscale(ParVector& sol, const aligned_vector<double>& row_scales)
+static void diagonally_unscale(ParVector& sol, const aligned_vector<double>& row_scales)
 {
     double* vals = sol.local.data();
     for (int i = 0; i < sol.local_n; i++)

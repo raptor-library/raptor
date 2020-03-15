@@ -13,7 +13,7 @@
 
 using namespace raptor;
 
-ParCSRMatrix* par_stencil_grid(data_t* stencil, int* grid, int dim)
+static ParCSRMatrix* par_stencil_grid(data_t* stencil, int* grid, int dim)
 {
     // Get MPI Information
     int rank, num_procs;

@@ -14,7 +14,7 @@
 
 using namespace raptor;
 
-CSRMatrix* random(int rows, int cols, int nnz_per_row)
+static CSRMatrix* random(int rows, int cols, int nnz_per_row)
 {
     CSRMatrix* A;
     COOMatrix* Atmp = new COOMatrix(rows, cols, nnz_per_row);
