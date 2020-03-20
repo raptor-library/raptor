@@ -17,6 +17,7 @@ ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, 
 
     int first_row, first_col;
     FILE* f;
+    int n_items_read;
     ParCSRMatrix* P_rap=nullptr;
     aligned_vector<int> proc_sizes(num_procs);
     aligned_vector<int> splitting;
@@ -35,11 +36,11 @@ ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, 
     int cf;
     for (int i = 0; i < first_row; i++)
     {
-        fscanf(f, "%d\n", &cf);
+        n_items_read = fscanf(f, "%d\n", &cf);
     }
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        fscanf(f, "%d\n", &splitting[i]);
+        n_items_read = fscanf(f, "%d\n", &splitting[i]);
     }
     fclose(f);
 
