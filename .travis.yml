@@ -4,11 +4,9 @@ os:
   - linux
 compiler: gcc
 sudo: true
-#before_install:
-  - test -n $CC && unset CC
-  - test -n $CXX && unset CXX
-#  - export CC=mpicc
-#  - export CXX=mpicxx
+before_install:
+  - export CC=mpicc
+  - export CXX=mpicxx
 install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update ; fi
     #  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then sudo rm /usr/local/include/c++ ; fi
