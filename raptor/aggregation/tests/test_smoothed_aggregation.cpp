@@ -28,6 +28,7 @@ TEST(TestCandidates, TestsInAggregation)
     aligned_vector<int> states;
     aligned_vector<int> aggs;
     aligned_vector<double> weights;
+    int n_items_read;
 
     CSRMatrix* S_py;
     CSRMatrix* T_py;
@@ -60,7 +61,7 @@ TEST(TestCandidates, TestsInAggregation)
     f = fopen(weights_fn, "r");
     for (int i = 0; i < A->n_rows; i++)
     {
-        fscanf(f, "%lf\n", &weights[i]);
+        n_items_read = fscanf(f, "%lf\n", &weights[i]);
     }
     fclose(f);
 
@@ -74,7 +75,7 @@ TEST(TestCandidates, TestsInAggregation)
     f = fopen(mis0_fn, "r");
     for (int i = 0; i < A->n_rows; i++)
     {
-        fscanf(f, "%d\n", &py_states[i]);
+        n_items_read = fscanf(f, "%d\n", &py_states[i]);
     }
     fclose(f);
     mis2(S, states, weights.data());
@@ -87,7 +88,7 @@ TEST(TestCandidates, TestsInAggregation)
     f = fopen(agg0_fn, "r");
     for (int i = 0; i < A->n_rows; i++)
     {
-        fscanf(f, "%d\n", &py_aggs[i]);
+        n_items_read = fscanf(f, "%d\n", &py_aggs[i]);
     }
     fclose(f);
     int n_aggs = aggregate(A, S, states, aggs, weights.data());
@@ -140,7 +141,7 @@ TEST(TestCandidates, TestsInAggregation)
     f = fopen(mis1_fn, "r");
     for (int i = 0; i < A->n_rows; i++)
     {
-        fscanf(f, "%d\n", &py_states[i]);
+        n_items_read = fscanf(f, "%d\n", &py_states[i]);
     }
     fclose(f);
     mis2(S, states, weights.data());
@@ -153,7 +154,7 @@ TEST(TestCandidates, TestsInAggregation)
     f = fopen(agg1_fn, "r");
     for (int i = 0; i < A->n_rows; i++)
     {
-        fscanf(f, "%d\n", &py_aggs[i]);
+        n_items_read = fscanf(f, "%d\n", &py_aggs[i]);
     }
     fclose(f);
     n_aggs = aggregate(A, S, states, aggs, weights.data());

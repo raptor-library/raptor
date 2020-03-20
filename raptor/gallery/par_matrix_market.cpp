@@ -23,6 +23,7 @@ ParCSRMatrix* read_par_mm(const char *fname)
     int M, N, nz;
     int i;
     int row, col;
+    int n_items_read;
     double val;
  
     if ((f = fopen(fname, "r")) == NULL)
@@ -68,7 +69,7 @@ ParCSRMatrix* read_par_mm(const char *fname)
     bool col_local;
     for (i=0; i<nz; i++)
     {
-        fscanf(f, "%d %d %lg\n", &row, &col, &val);
+        n_items_read = fscanf(f, "%d %d %lg\n", &row, &col, &val);
         row--;
         col--;
         if (row >= A->partition->first_local_row && row <= A->partition->last_local_row)

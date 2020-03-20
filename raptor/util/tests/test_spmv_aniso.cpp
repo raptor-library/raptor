@@ -32,12 +32,13 @@ TEST(AnisoSpMVTest, TestsInUtil)
     const char* b_T_inc = "../../../../test_data/aniso_inc_b_T.txt";
     
     // Test b <- A*ones
+    int n_items_read;
     x.set_const_value(1.0);
     A_sten->mult(x, b);
     FILE* f = fopen(b_ones, "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
         ASSERT_NEAR(b[i],b_val,1e-06);
     } 
     fclose(f);
@@ -47,7 +48,7 @@ TEST(AnisoSpMVTest, TestsInUtil)
     f = fopen(b_T_ones, "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
         ASSERT_NEAR(b[i], b_val, 1e-06);
     } 
     fclose(f);
@@ -61,7 +62,7 @@ TEST(AnisoSpMVTest, TestsInUtil)
     f = fopen(b_inc, "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
         ASSERT_NEAR(b[i],b_val, 1e-06);
     } 
     fclose(f);
@@ -71,7 +72,7 @@ TEST(AnisoSpMVTest, TestsInUtil)
     f = fopen(b_T_inc, "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
         ASSERT_NEAR(b[i], b_val,  1e-06);
     } 
     fclose(f);

@@ -28,6 +28,7 @@ TEST(TestTAPAggregate, TestsInAggregation)
     FILE* f;
     aligned_vector<int> states;
     aligned_vector<int> off_proc_states;
+    int n_items_read;
 
     ParCSRMatrix* A;
     ParCSRMatrix* S;
@@ -45,11 +46,11 @@ TEST(TestTAPAggregate, TestsInAggregation)
     f = fopen(weights_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
-        fscanf(f, "%lf\n", &weights[0]);
+        n_items_read = fscanf(f, "%lf\n", &weights[0]);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        fscanf(f, "%lf\n", &weights[i]);
+        n_items_read = fscanf(f, "%lf\n", &weights[i]);
     }
     fclose(f);
 
@@ -59,11 +60,11 @@ TEST(TestTAPAggregate, TestsInAggregation)
     f = fopen(agg0_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
-        fscanf(f, "%d\n", &py_aggregates[0]);
+        n_items_read = fscanf(f, "%d\n", &py_aggregates[0]);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        fscanf(f, "%d\n", &py_aggregates[i]);
+        n_items_read = fscanf(f, "%d\n", &py_aggregates[i]);
     }
     fclose(f);
 

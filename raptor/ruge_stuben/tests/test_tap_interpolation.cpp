@@ -16,6 +16,7 @@ ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, 
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     int first_row, first_col;
+    int n_items_read;
     FILE* f;
     ParCSRMatrix* P_rap = NULL;
     aligned_vector<int> proc_sizes(num_procs);
@@ -35,11 +36,11 @@ ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, 
     int cf;
     for (int i = 0; i < first_row; i++)
     {
-        fscanf(f, "%d\n", &cf);
+        n_items_read = fscanf(f, "%d\n", &cf);
     }
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        fscanf(f, "%d\n", &splitting[i]);
+        n_items_read = fscanf(f, "%d\n", &splitting[i]);
     }
     fclose(f);
 

@@ -26,12 +26,13 @@ TEST(TestMIS, TestsInAggregation)
     const char* weights_fn = "../../../../test_data/weights.txt";
 
     S = readMatrix(S0_fn);
+    int n_items_read;
 
     f = fopen(weights_fn, "r");
     aligned_vector<double> weights(S->n_rows);
     for (int i = 0; i < S->n_rows; i++)
     {
-        fscanf(f, "%lf\n", &weights[i]);
+        n_items_read = fscanf(f, "%lf\n", &weights[i]);
     }
     fclose(f);
 
@@ -39,7 +40,7 @@ TEST(TestMIS, TestsInAggregation)
     f = fopen(mis0_fn, "r");
     for (int i = 0; i < S->n_rows; i++)
     {
-        fscanf(f, "%d\n", &python_states[i]);
+        n_items_read = fscanf(f, "%d\n", &python_states[i]);
     }
     fclose(f);
     
@@ -61,7 +62,7 @@ TEST(TestMIS, TestsInAggregation)
     f = fopen(mis1_fn, "r");
     for (int i = 0; i < S->n_rows; i++)
     {
-        fscanf(f, "%d\n", &python_states[i]);
+        n_items_read = fscanf(f, "%d\n", &python_states[i]);
     }
     fclose(f);
     
