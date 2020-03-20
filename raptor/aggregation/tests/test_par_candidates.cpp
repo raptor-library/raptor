@@ -30,6 +30,7 @@ TEST(TestParCandidates, TestsInAggregation)
 
     ParCSRMatrix* A;
     ParCSRMatrix* S;
+    int n_items_read;
 
     const char* A0_fn = "../../../../test_data/sas_A0.pm";
     const char* S0_fn = "../../../../test_data/sas_S0.pm";
@@ -44,11 +45,11 @@ TEST(TestParCandidates, TestsInAggregation)
     f = fopen(weights_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
-        fscanf(f, "%lf\n", &weights[0]);
+        n_items_read = fscanf(f, "%lf\n", &weights[0]);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        fscanf(f, "%lf\n", &weights[i]);
+        n_items_read = fscanf(f, "%lf\n", &weights[i]);
     }
     fclose(f);
 

@@ -27,6 +27,7 @@ TEST(ParCGTest, TestsInKrylov)
     ParVector x(A->global_num_rows, A->local_num_rows);
     ParVector b(A->global_num_rows, A->local_num_rows);
     aligned_vector<double> residuals;
+    int n_items_read;
 
     x.set_const_value(1.0);
     A->mult(x, b);
@@ -39,7 +40,7 @@ TEST(ParCGTest, TestsInKrylov)
     double res;
     for (int i = 0; i < residuals.size(); i++)
     {
-        fscanf(f, "%lf\n", &res);
+        n_items_read = fscanf(f, "%lf\n", &res);
         ASSERT_NEAR(res, residuals[i] * b_norm, 1e-06);
     }
     fclose(f);

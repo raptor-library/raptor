@@ -27,7 +27,7 @@ TEST(AnisoTest, TestsInGallery)
     command += f_in;
     command += " ";
     command += f_out;
-    system(command.c_str());
+    int err = system(command.c_str());
 
 
     remove(f_out);

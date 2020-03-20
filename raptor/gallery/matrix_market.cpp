@@ -22,6 +22,7 @@ CSRMatrix* read_mm(const char *fname)
     int M, N, nz;
     int i;
     int row, col;
+    int n_items_read;
     double val;
 
     if ((f = fopen(fname, "r")) == NULL)
@@ -63,7 +64,7 @@ CSRMatrix* read_mm(const char *fname)
  
     for (i=0; i<nz; i++)
     {
-        fscanf(f, "%d %d %lg\n", &row, &col, &val);
+        n_items_read = fscanf(f, "%d %d %lg\n", &row, &col, &val);
         A->add_value(row - 1, col - 1, val);
     }
     fclose(f);

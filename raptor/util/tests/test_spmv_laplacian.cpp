@@ -23,12 +23,13 @@ TEST(LaplacianSpMVTest, TestsInUtil)
     Vector b(A_sten->n_rows);
     
     // Test b <- A*ones
+    int n_items_read;
     x.set_const_value(1.0);
     A_sten->mult(x, b);
     FILE* f = fopen("../../../../test_data/laplacian27_ones_b.txt", "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
         ASSERT_NEAR(b[i], b_val, 1e-06);
     } 
     fclose(f);
@@ -38,7 +39,7 @@ TEST(LaplacianSpMVTest, TestsInUtil)
     f = fopen("../../../../test_data/laplacian27_ones_b_T.txt", "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
         ASSERT_NEAR(b[i], b_val, 1e-06);
     } 
     fclose(f);
@@ -52,7 +53,7 @@ TEST(LaplacianSpMVTest, TestsInUtil)
     f = fopen("../../../../test_data/laplacian27_inc_b.txt", "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
         ASSERT_NEAR(b[i], b_val, 1e-06);
     } 
     fclose(f);
@@ -62,7 +63,7 @@ TEST(LaplacianSpMVTest, TestsInUtil)
     f = fopen("../../../../test_data/laplacian27_inc_b_T.txt", "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
         ASSERT_NEAR(b[i], b_val, 1e-06);
     } 
     fclose(f);

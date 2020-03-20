@@ -38,6 +38,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     const char* cf1_fn = "../../../../test_data/rss_cf1.txt";
     const char* cf1_pmis = "../../../../test_data/rss_cf1_pmis.txt";
     const char* weights_fn = "../../../../test_data/weights.txt";
+    int n_items_read;
 
     // TEST LEVEL 0
     S = readParMatrix(S0_fn);
@@ -46,11 +47,11 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     aligned_vector<double> weights(S->local_num_rows);
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
-        fscanf(f, "%lf\n", &weights[0]);
+        n_items_read = fscanf(f, "%lf\n", &weights[0]);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        fscanf(f, "%lf\n", &weights[i]);
+        n_items_read = fscanf(f, "%lf\n", &weights[i]);
     }
     fclose(f);
 
@@ -60,11 +61,11 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     f = fopen(cf0_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
-        fscanf(f, "%d\n", &cf);
+        n_items_read = fscanf(f, "%d\n", &cf);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        fscanf(f, "%d\n", &cf);
+        n_items_read = fscanf(f, "%d\n", &cf);
         ASSERT_EQ(cf, states[i]);
     }
     fclose(f);
@@ -75,11 +76,11 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     f = fopen(cf0_pmis, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
-        fscanf(f, "%d\n", &cf);
+        n_items_read = fscanf(f, "%d\n", &cf);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        fscanf(f, "%d\n", &cf);
+        n_items_read = fscanf(f, "%d\n", &cf);
         ASSERT_EQ(cf, states[i]);
     }
     fclose(f);
@@ -93,11 +94,11 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     weights.resize(S->local_num_rows);
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
-        fscanf(f, "%lf\n", &weights[0]);
+        n_items_read = fscanf(f, "%lf\n", &weights[0]);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        fscanf(f, "%lf\n", &weights[i]);
+        n_items_read = fscanf(f, "%lf\n", &weights[i]);
     }
     fclose(f);
     split_cljp(S, states, off_proc_states, false, weights.data());
@@ -105,11 +106,11 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     f = fopen(cf1_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
-        fscanf(f, "%d\n", &cf);
+        n_items_read = fscanf(f, "%d\n", &cf);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        fscanf(f, "%d\n", &cf);
+        n_items_read = fscanf(f, "%d\n", &cf);
         ASSERT_EQ(cf, states[i]);
     }
     fclose(f);
@@ -120,11 +121,11 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     f = fopen(cf1_pmis, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
-        fscanf(f, "%d\n", &cf);
+        n_items_read = fscanf(f, "%d\n", &cf);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        fscanf(f, "%d\n", &cf);
+        n_items_read = fscanf(f, "%d\n", &cf);
         ASSERT_EQ(cf, states[i]);
     }
     fclose(f);

@@ -30,6 +30,7 @@ TEST(TestTAPMIS, TestsInAggregation)
     aligned_vector<int> off_proc_states;
 
     ParCSRMatrix* S;
+    int n_items_read;
 
     const char* S0_fn = "../../../../test_data/sas_S0.pm";
     const char* mis0_fn = "../../../../test_data/sas_mis0.txt";
@@ -43,11 +44,11 @@ TEST(TestTAPMIS, TestsInAggregation)
     aligned_vector<double> weights(S->local_num_rows);
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
-        fscanf(f, "%lf\n", &weights[0]);
+        n_items_read = fscanf(f, "%lf\n", &weights[0]);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        fscanf(f, "%lf\n", &weights[i]);
+        n_items_read = fscanf(f, "%lf\n", &weights[i]);
     }
     fclose(f);
 
@@ -55,11 +56,11 @@ TEST(TestTAPMIS, TestsInAggregation)
     f = fopen(mis0_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
-        fscanf(f, "%d\n", &python_states[0]);
+        n_items_read = fscanf(f, "%d\n", &python_states[0]);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        fscanf(f, "%d\n", &python_states[i]);
+        n_items_read = fscanf(f, "%d\n", &python_states[i]);
     }
     fclose(f);
 

@@ -103,7 +103,7 @@ void BiCGStab(CSRMatrix* A, Vector& x, Vector& b, aligned_vector<double>& res, d
 	
 	if (iter == max_iter)
 	{
-            printf("Max Iterations Reached.\n", iter);
+            printf("Max Iterations Reached.\n");
             printf("2 Norm of Residual: %.15f\n\n", norm_r);
 	    return;
 	}
