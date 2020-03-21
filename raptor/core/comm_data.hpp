@@ -141,7 +141,7 @@ public:
         int size = size_msgs * block_size;
         RAPtor_MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
-        if (buf.size() < size) buf.resize(size);
+        if ((int) buf.size() < size) buf.resize(size);
 
         for (int i = 0; i < num_msgs; i++)
         {
@@ -192,7 +192,7 @@ public:
             RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_PACKED, &count);
 
             // Resize recv_buffer as needed
-            if (count > recv_buffer.size())
+            if (count > (int) recv_buffer.size())
             {
                 recv_buffer.resize(count);
             }
@@ -367,7 +367,7 @@ public:
 
     void probe(int n_recv, int key, RAPtor_MPI_Comm mpi_comm)
     {
-        int proc, count, size;
+        int size;
         RAPtor_MPI_Status recv_status;
 
         size_msgs = 0;
@@ -421,8 +421,7 @@ public:
         if (num_msgs == 0) return;
 
         int start, end;
-        int proc, idx;
-        int size = size_msgs * block_size;
+        int proc;
 
         RAPtor_MPI_Datatype datatype = get_type<T>();
 
@@ -456,7 +455,7 @@ public:
 
         RAPtor_MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
-        if (buf.size() < size) buf.resize(size);
+        if ((int)buf.size() < size) buf.resize(size);
 
         n_sends = 0;
         ctr = 0;
@@ -627,7 +626,7 @@ public:
 
         RAPtor_MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
-        if (buf.size() < size) buf.resize(size);
+        if ((int)buf.size() < size) buf.resize(size);
 
         n_recvs = 0;
         ctr = 0;
@@ -808,7 +807,7 @@ public:
 
         RAPtor_MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
-        if (buf.size() < size) buf.resize(size);
+        if ((int)buf.size() < size) buf.resize(size);
 
         for (int i = 0; i < num_msgs; i++)
         {
@@ -849,7 +848,7 @@ public:
 
         RAPtor_MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
-        if (buf.size() < size) buf.resize(size);
+        if ((int)buf.size() < size) buf.resize(size);
 
         n_sends = 0;
         ctr = 0;
@@ -917,8 +916,6 @@ public:
     int get_msg_size(const int* rowptr, const bool has_vals, RAPtor_MPI_Comm mpi_comm,
             const int block_size = 1)
     {
-        int start, end;
-        int row_start, row_end;
         int num_ints, num_doubles;
         int double_bytes, bytes;
 
@@ -955,8 +952,7 @@ public:
         int start, end, proc;
         int ctr, prev_ctr, size;
         int row, row_start, row_end;
-        int num_ints, num_doubles;
-        int double_bytes, bytes;
+        int bytes;
 
         // Resize send buffer
         bytes = get_msg_size(rowptr, values, mpi_comm, block_size);
@@ -1027,7 +1023,7 @@ public:
 
         RAPtor_MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
-        if (buf.size() < size) buf.resize(size);
+        if ((int)buf.size() < size) buf.resize(size);
 
         n_recvs = 0;
         ctr = 0;
@@ -1179,7 +1175,7 @@ public:
 
         RAPtor_MPI_Datatype datatype = get_type<T>();
         aligned_vector<T>& buf = get_buffer<T>();
-        if (buf.size() < size) buf.resize(size);
+        if ((int)buf.size() < size) buf.resize(size);
 
         aligned_vector<T> tmp(block_size);
 
@@ -1238,7 +1234,6 @@ public:
         int idx_start, idx_end;
         int row_start, row_end;
         int size, row, idx, ctr;
-        int pos = 0;
 
         idx_start = indptr_T[j];
         idx_end = indptr_T[j+1];
@@ -1258,7 +1253,8 @@ public:
             vec_sort(send_indices, send_values);
             size = 1;
 
-            for (int k = 1; k < send_indices.size(); k++)
+            int s_send = send_indices.size();
+            for (int k = 1; k < s_send; k++)
             {
                 ctr = k * block_size;
                 if (send_indices[k] != send_indices[size - 1])
@@ -1308,7 +1304,8 @@ public:
         {
             size = 1;
             std::sort(send_indices.begin(), send_indices.end());
-            for (int k = 1; k < send_indices.size(); k++)
+            int s_send = send_indices.size();
+            for (int k = 1; k < s_send; k++)
             {
                 if (send_indices[k] != send_indices[size - 1])
                 {
@@ -1346,8 +1343,6 @@ public:
     int get_msg_size(const int* rowptr, const bool has_vals, RAPtor_MPI_Comm mpi_comm, 
             const int block_size = 1)
     {
-        int start, end;
-        int row_start, row_end;
         int num_ints, num_doubles;
         int double_bytes, bytes;
 
@@ -1382,8 +1377,6 @@ public:
 
         int start, end, proc;
         int ctr, prev_ctr, size;
-        int row, row_start, row_end;
-        int idx_start, idx_end;
         int bytes;
 
         // Resize send buffer
@@ -1416,7 +1409,7 @@ public:
 
                 if (values)
                 {
-                    pack_values(send_values.data(), row_start, size, send_buffer, bytes, &ctr, 
+                    pack_values(send_values.data(), 0, size, send_buffer, bytes, &ctr, 
                             mpi_comm, block_size);
                 }
             }

@@ -12,7 +12,7 @@ CSRMatrix* communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<in
 {
     int start, end, col;
     int ctr_S, end_S, global_col;
-    int tmp_col, sign;
+    int sign;
     double diag, val;
 
     aligned_vector<int> rowptr(A->local_num_rows + 1);
@@ -283,10 +283,10 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         const double filter_threshold, 
         bool tap_interp, int num_variables, int* variables)
 {
-    int start, end, idx, idx_k;
+    int start, end, idx;
     int ctr, end_S;
     int start_k, end_k;
-    int col, global_col;
+    int col;
     int col_k, col_P;
     int global_num_cols;
     int on_proc_cols, off_proc_cols;

@@ -18,9 +18,8 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
     // Initialize Variables
     aligned_vector<int> off_proc_S_to_A;
     int n_aggs = 0;
-    int off_aggs = 0;
     int start, end, col;
-    int col_A, global_col;
+    int global_col;
     int ctr, max_agg, j;
     double max_val, val;
 

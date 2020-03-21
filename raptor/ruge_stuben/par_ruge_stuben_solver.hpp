@@ -47,7 +47,6 @@ namespace raptor
             if (A->local_num_rows == 0 || num_variables <= 1) return;
             
             variables = new int[A->local_num_rows];
-            int var_dist = A->global_num_rows / num_variables;
             for (int i = 0; i < A->local_num_rows; i++)
             {
                 variables[i] = A->local_row_map[i] % num_variables;

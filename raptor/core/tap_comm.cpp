@@ -362,7 +362,6 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs)
 
     int n_sends;
     int proc, node;
-    int finished, msg_avail;
     int recvbuf;
     int n_send_procs;
     int recv_size;
@@ -371,7 +370,6 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs)
     int start, end, size;
     int count;
     RAPtor_MPI_Status recv_status;
-    RAPtor_MPI_Request barrier_request;
 
     aligned_vector<int> node_list(topology->num_nodes, 0);
     aligned_vector<int> sendbuf;
@@ -987,9 +985,6 @@ void TAPComm::form_simple_R_par_comm(aligned_vector<int>& off_node_column_map,
 
     int proc, local_proc;
     int proc_idx, idx;
-    int start, end;
-    int count;
-    RAPtor_MPI_Status recv_status;
     int off_node_num_cols = off_node_column_map.size();
     aligned_vector<int> local_proc_sizes(topology->PPN, 0);
     aligned_vector<int> proc_size_idx(topology->PPN);
@@ -1049,12 +1044,8 @@ void TAPComm::form_simple_global_comm(aligned_vector<int>& off_proc_col_to_proc)
     int rank;
     int num_procs;
     int proc, start, end;
-    int finished, msg_avail;
-    int count;
     int idx, proc_idx;
     int global_idx;
-    RAPtor_MPI_Status recv_status;
-    RAPtor_MPI_Request barrier_request;
 
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
     RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
@@ -1062,7 +1053,6 @@ void TAPComm::form_simple_global_comm(aligned_vector<int>& off_proc_col_to_proc)
     aligned_vector<int> proc_sizes(num_procs, 0);
     aligned_vector<int> proc_ctr;
 
-    NonContigData* local_R_recv = (NonContigData*) local_R_par_comm->recv_data;
     NonContigData* global_recv = (NonContigData*) global_par_comm->recv_data;
 
     // Communicate processes on which each index originates

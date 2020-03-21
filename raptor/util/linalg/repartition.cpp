@@ -515,7 +515,7 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
         MPI_Probe(MPI_ANY_SOURCE, key, MPI_COMM_WORLD, &status);
         proc = status.MPI_SOURCE;
         MPI_Get_count(&status, MPI_PACKED, &count);
-        if (count > recv_buffer.size())
+        if (count > (int)recv_buffer.size())
             recv_buffer.resize(count);
         MPI_Recv(recv_buffer.data(), count, MPI_PACKED, proc, key, 
                 MPI_COMM_WORLD, &status);
@@ -677,7 +677,7 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
         MPI_Probe(MPI_ANY_SOURCE, key, MPI_COMM_WORLD, &status);
         proc = status.MPI_SOURCE;
         MPI_Get_count(&status, MPI_INT, &count);
-        if (count > recvbuf.size())
+        if (count > (int)recvbuf.size())
             recvbuf.resize(count);
         MPI_Recv(recvbuf.data(), count, MPI_INT, proc, key, 
                 MPI_COMM_WORLD, &status);
@@ -763,7 +763,7 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
         MPI_Probe(MPI_ANY_SOURCE, key, MPI_COMM_WORLD, &status);
         proc = status.MPI_SOURCE;
         MPI_Get_count(&status, MPI_INT, &count);
-        if (count > recvbuf.size())
+        if (count > (int)recvbuf.size())
             recvbuf.resize(count);
         MPI_Recv(recvbuf.data(), count, MPI_INT, proc, key, 
                 MPI_COMM_WORLD, &status);

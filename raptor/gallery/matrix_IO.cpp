@@ -59,20 +59,20 @@ CSRMatrix* readMatrix(const char* filename)
     A->idx1[0] = 0;
     if (is_little_endian)
     {
-        for (size_t i = 0; i < n_rows; i++)
+        for (int32_t i = 0; i < n_rows; i++)
         {
             ifs.read(reinterpret_cast<char *>(&idx), sizeof_int32);
             endian_swap(&idx);
             displ += idx;
             A->idx1[i+1] = displ;
         }
-        for (size_t i = 0; i < nnz; i++)
+        for (int32_t i = 0; i < nnz; i++)
         {
             ifs.read(reinterpret_cast<char *>(&idx), sizeof_int32);
             endian_swap(&idx);
             A->idx2.emplace_back(idx);
         }
-        for (size_t i = 0; i < nnz; i++)
+        for (int32_t i = 0; i < nnz; i++)
         {
             ifs.read(reinterpret_cast<char *>(&val), sizeof_dbl);
             endian_swap(&val);
@@ -81,18 +81,18 @@ CSRMatrix* readMatrix(const char* filename)
     }
     else
     {
-        for (size_t i = 0; i < n_rows; i++)
+        for (int32_t i = 0; i < n_rows; i++)
         {
             ifs.read(reinterpret_cast<char *>(&idx), sizeof_int32);
             displ += idx;
             A->idx1[i+1] = displ;
         }   
-        for (size_t i = 0; i < nnz; i++)
+        for (int32_t i = 0; i < nnz; i++)
         {
             ifs.read(reinterpret_cast<char *>(&idx), sizeof_int32);
             A->idx2.emplace_back(idx);
         }
-        for (size_t i = 0; i < nnz; i++)
+        for (int32_t i = 0; i < nnz; i++)
         {
             ifs.read(reinterpret_cast<char *>(&val), sizeof_dbl);
             endian_swap(&val);

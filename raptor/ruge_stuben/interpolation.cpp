@@ -14,7 +14,6 @@ CSRMatrix* extended_interpolation(CSRMatrix* A, CSRMatrix* S,
     int start_k, end_k, col_k;
     int col, ctr, idx;
     int row_start, row_end;
-    int head, length;
     double weak_sum;
     double val;
     double sign;
@@ -208,11 +207,9 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A, CSRMatrix* S,
         const aligned_vector<int>& states, int num_variables, int* variables)
 {
     int startA, endA;
-    int startS, endS;
-    int startNS, endNS;
+    int endS;
     int startSS, endSS;
     int startSU, endSU;
-    int startNU, endNU;
     int start_k, end_k, col_k;
     int col, ctr, idx;
     double weak_sum;
@@ -347,9 +344,6 @@ CSRMatrix* mod_classical_interpolation(CSRMatrix* A, CSRMatrix* S,
         }
 
         // Add weak values to weak_sum
-        startNS = NS->idx1[i];
-        endNS = NS->idx1[i+1];
-
         weak_sum = weak_sums[i];
         sign = signs[i];
 

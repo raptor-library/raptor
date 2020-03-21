@@ -558,10 +558,8 @@ void pmis_main_loop(CSRMatrix* S, aligned_vector<int>& col_ptr, aligned_vector<i
 {
     int num_new_coarse;
     int start, end, col, row;
-    int ctr, idx;
+    int idx;
     int num_remaining;
-    double row_weight, col_weight;
-    double max_row_weight, max_col_weight;
     aligned_vector<double> weights;
     aligned_vector<int> unassigned;
     aligned_vector<int> new_coarse_list;

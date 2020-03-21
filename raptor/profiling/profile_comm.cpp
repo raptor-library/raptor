@@ -8,14 +8,11 @@ void print_internode_comm(Topology* topology, aligned_vector<int> num_msgs, alig
         aligned_vector<int> node_size_msgs)
 {
     int n, max_n;
-    int rank, rank_node, rank_socket;
-    int ranks_per_socket;
+    int rank, rank_node;
     int num_procs, num_nodes;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
     RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
     rank_node = topology->get_node(rank);
-    ranks_per_socket = topology->PPN / 2;
-    rank_socket = rank / ranks_per_socket;
     num_nodes = num_procs / topology->PPN;
 
     // Number of processes each process talks to 

@@ -22,7 +22,6 @@ CSRMatrix* read_mm(const char *fname)
     int M, N, nz;
     int i;
     int row, col;
-    int n_items_read;
     double val;
 
     if ((f = fopen(fname, "r")) == NULL)
@@ -64,7 +63,8 @@ CSRMatrix* read_mm(const char *fname)
  
     for (i=0; i<nz; i++)
     {
-        n_items_read = fscanf(f, "%d %d %lg\n", &row, &col, &val);
+        if (fscanf(f, "%d %d %lg\n", &row, &col, &val) != 3)
+            return NULL;
         A->add_value(row - 1, col - 1, val);
     }
     fclose(f);
@@ -478,53 +478,52 @@ char  *mm_typecode_to_str(MM_typecode matcode)
     char buffer[MM_MAX_LINE_LENGTH];
     const char *types[4];
 	char *mm_strdup(const char *);
-    int error =0;
 
     /* check for MTX type */
     if (mm_is_matrix(matcode)) 
         types[0] = MM_MTX_STR;
     else
-        error=1;
+        return NULL;
 
     /* check for CRD or ARR matrix */
     if (mm_is_sparse(matcode))
         types[1] = MM_SPARSE_STR;
     else
-    if (mm_is_dense(matcode))
-        types[1] = MM_DENSE_STR;
-    else
-        return NULL;
+        if (mm_is_dense(matcode))
+            types[1] = MM_DENSE_STR;
+        else
+            return NULL;
 
     /* check for element data type */
     if (mm_is_real(matcode))
         types[2] = MM_REAL_STR;
     else
-    if (mm_is_complex(matcode))
-        types[2] = MM_COMPLEX_STR;
-    else
-    if (mm_is_pattern(matcode))
-        types[2] = MM_PATTERN_STR;
-    else
-    if (mm_is_integer(matcode))
-        types[2] = MM_INT_STR;
-    else
-        return NULL;
+        if (mm_is_complex(matcode))
+            types[2] = MM_COMPLEX_STR;
+        else
+            if (mm_is_pattern(matcode))
+                types[2] = MM_PATTERN_STR;
+            else
+                if (mm_is_integer(matcode))
+                    types[2] = MM_INT_STR;
+                else
+                    return NULL;
 
 
     /* check for symmetry type */
     if (mm_is_general(matcode))
         types[3] = MM_GENERAL_STR;
     else
-    if (mm_is_symmetric(matcode))
-        types[3] = MM_SYMM_STR;
-    else 
-    if (mm_is_hermitian(matcode))
-        types[3] = MM_HERM_STR;
-    else 
-    if (mm_is_skew(matcode))
-        types[3] = MM_SKEW_STR;
-    else
-        return NULL;
+        if (mm_is_symmetric(matcode))
+            types[3] = MM_SYMM_STR;
+        else 
+            if (mm_is_hermitian(matcode))
+                types[3] = MM_HERM_STR;
+            else 
+                if (mm_is_skew(matcode))
+                    types[3] = MM_SKEW_STR;
+                else
+                    return NULL;
 
     sprintf(buffer,"%s %s %s %s", types[0], types[1], types[2], types[3]);
     return mm_strdup(buffer);

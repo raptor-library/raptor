@@ -25,6 +25,7 @@ if (WITH_MPI)
         util/linalg/par_add.cpp
         util/linalg/par_relax.cpp
         util/linalg/repartition.cpp
+        util/linalg/par_diag_scale.cpp
         )
 else ()
     set(par_linalg_HEADERS

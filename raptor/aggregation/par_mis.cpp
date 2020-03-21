@@ -61,10 +61,8 @@ void comm_finished(const ParCSRMatrix* A,
         aligned_vector<int>& active_recvs, 
         int remaining)
 {
-    int ctr, prev_ctr;
     int n_sends, n_recvs;
-    int start, end;
-    int proc, idx, size;
+    int start, proc;
     int finish_tag = 19432;
     int finish_tag_T = 23491;
 
@@ -149,7 +147,7 @@ void comm_coarse_dist1(const ParCSRMatrix* A,
 {
     int n_sends, n_recvs;
     int start, end;
-    int proc, idx, size;
+    int proc, idx;
     int tag = 935921;
 
     if (first_pass)
@@ -212,7 +210,6 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
 
     // Declare Variables
     int start, end, col;
-    int start_k, end_k;
     int remaining, iterate;
     int off_remaining;
     int ctr, v, w, u;
@@ -338,8 +335,6 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
     remaining = A->local_num_rows;
     off_remaining = A->off_proc_num_cols;
     iterate = 0;
-    int total_remaining;
-    int set_size, total_set_size;
     bool first_pass = true;
     while (remaining || off_remaining || first_pass)
     {

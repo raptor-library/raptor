@@ -70,6 +70,7 @@ ParCSRMatrix* read_par_mm(const char *fname)
     for (i=0; i<nz; i++)
     {
         n_items_read = fscanf(f, "%d %d %lg\n", &row, &col, &val);
+        if (n_items_read == EOF) printf("EOF reading code\n");
         row--;
         col--;
         if (row >= A->partition->first_local_row && row <= A->partition->last_local_row)
@@ -159,7 +160,7 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
 
     FILE *f;
     MM_typecode matcode;
-    int pos, bytes;
+    int pos;
     int int_bytes, double_bytes;
     int num_ints, num_doubles;
     int comm_size;
@@ -218,7 +219,7 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
             RAPtor_MPI_Pack_size(num_ints, RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD, &int_bytes);
             RAPtor_MPI_Pack_size(num_doubles, RAPtor_MPI_DOUBLE, RAPtor_MPI_COMM_WORLD, &double_bytes);
             comm_size = int_bytes + double_bytes;
-            if (buffer.size() < comm_size) buffer.resize(comm_size);
+            if ((int)buffer.size() < comm_size) buffer.resize(comm_size);
 
             // Resize Matrix Arrays
             int row_max = i_dims[0];
@@ -226,9 +227,9 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
             int nnz_max = i_dims[3];
             if (i_dims[2] > i_dims[1]) col_max = i_dims[2];
             if (i_dims[4] > i_dims[3]) nnz_max = i_dims[4];
-            if (col_map.size() < col_max) col_map.resize(col_max);
-            if (idx1.size() < row_max) idx1.resize(row_max);
-            if (idx2.size() < nnz_max)
+            if ((int)col_map.size() < col_max) col_map.resize(col_max);
+            if ((int)idx1.size() < row_max) idx1.resize(row_max);
+            if ((int)idx2.size() < nnz_max)
             {
                 idx2.resize(nnz_max);
                 vals.resize(nnz_max);

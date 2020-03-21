@@ -56,14 +56,14 @@ namespace raptor
             ParCSRMatrix* A = levels[level_ctr]->A;
             ParCSRMatrix* S;
             ParCSRMatrix* T;
-            ParCSRMatrix* P;
+            ParCSRMatrix* P = NULL;
             ParCSRMatrix* AP;
 
             aligned_vector<int> states;
             aligned_vector<int> off_proc_states;
             aligned_vector<int> aggregates;
             aligned_vector<double> R;
-            int n_aggs;
+            int n_aggs = 0;
 
             // Form strength of connection
             S = A->strength(strength_type, strong_threshold, tap_level, 

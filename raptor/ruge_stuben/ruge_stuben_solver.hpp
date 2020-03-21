@@ -46,7 +46,6 @@ namespace raptor
             if (A->n_rows == 0 || num_variables <= 1) return;
 
             variables = new int[A->n_rows];
-            int var_dist = A->n_rows / num_variables;
             for (int i = 0; i < A->n_rows; i++)
             {
                 variables[i] = i % num_variables;

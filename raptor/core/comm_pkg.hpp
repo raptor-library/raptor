@@ -415,12 +415,9 @@ namespace raptor
                 recv_data = new ContigData();
 
             // Declare communication variables
-            int send_start, send_end;
             int proc, prev_proc;
-            int count;
             int tag = 12345;  // TODO -- switch this to key?
             int off_proc_num_cols = off_proc_column_map.size();
-            RAPtor_MPI_Status recv_status;
 
             aligned_vector<int> off_proc_col_to_proc(off_proc_num_cols);
             aligned_vector<int> tmp_send_buffer;
@@ -480,9 +477,6 @@ namespace raptor
             : CommPkg(comm->topology)
         {
             mpi_comm = comm->mpi_comm;
-            bool comm_proc;
-            int proc, start, end;
-            int idx, new_idx;
 
             if (comm == NULL)
             {
@@ -499,8 +493,6 @@ namespace raptor
             : CommPkg(comm->topology)
         {
             mpi_comm = comm->mpi_comm;
-            bool comm_proc;
-            int proc, start, end;
             int idx, new_idx;
 
             if (comm == NULL)
@@ -526,10 +518,8 @@ namespace raptor
 
         void init_off_proc_new(ParComm* comm, const aligned_vector<int>& off_proc_col_to_new)
         {
-            bool comm_proc, comm_idx;
+            bool comm_proc;
             int proc, start, end;
-            int idx, new_idx, ctr;
-            int idx_start, idx_end;
 
             std::function<int(int, int)> compare_func = [](const int a, const int b)
             {
@@ -611,9 +601,6 @@ namespace raptor
         template<typename T>
         void initialize(const T* values, const int block_size = 1)
         {
-            int start, end;
-            int proc, pos, idx;
-
             if (profile) vec_t -= RAPtor_MPI_Wtime();
             send_data->send(values, key, mpi_comm, block_size);
             recv_data->recv<T>(key, mpi_comm, block_size);
@@ -741,9 +728,6 @@ namespace raptor
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
                 T init_result_func_val = 0)
         {
-            int start, end;
-            int proc, idx, pos;
-
             if (profile) vec_t -= RAPtor_MPI_Wtime();
             recv_data->send(values, key, mpi_comm, block_size, init_result_func, init_result_func_val);
             send_data->recv<T>(key, mpi_comm, block_size);
@@ -784,8 +768,6 @@ namespace raptor
             recv_data->waitall();
             if (profile) vec_t += RAPtor_MPI_Wtime();
             key++;
-            
-            aligned_vector<T>& buf = send_data->get_buffer<T>();
         }
 
         // Conditional communication
@@ -1333,7 +1315,6 @@ namespace raptor
             global_par_comm = new ParComm(partition, 5678, comm, new DuplicateData());
 
             // Initialize Variables
-            int idx;
             aligned_vector<int> off_proc_col_to_proc;
             aligned_vector<int> on_node_column_map;
             aligned_vector<int> on_node_col_to_proc;
@@ -1397,7 +1378,6 @@ namespace raptor
             global_par_comm = new ParComm(partition, 5678, comm, new DuplicateData());
 
             // Initialize Variables
-            int idx;
             aligned_vector<int> off_proc_col_to_proc;
             aligned_vector<int> on_node_column_map;
             aligned_vector<int> on_node_col_to_proc;
@@ -1530,12 +1510,12 @@ namespace raptor
             aligned_vector<T>& R_recvbuf = local_R_par_comm->recv_data->get_buffer<T>();
             aligned_vector<T>& L_recvbuf = local_L_par_comm->recv_data->get_buffer<T>();
 
-            if (recvbuf.size() < recv_size * block_size)
+            if ((int)recvbuf.size() < recv_size * block_size)
                 recvbuf.resize(recv_size * block_size);
 
             // Add values from L_recv and R_recv to appropriate positions in 
             // Vector recv
-            int idx, new_idx, pos;
+            int idx, pos;
             int R_recv_size = local_R_par_comm->recv_data->size_msgs;
             int L_recv_size = local_L_par_comm->recv_data->size_msgs;
             NonContigData* local_R_recv = (NonContigData*) local_R_par_comm->recv_data;
@@ -1671,8 +1651,6 @@ namespace raptor
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
-            int idx;
-
             // Messages with origin and final destination on node
             local_L_par_comm->communicate_T(values, block_size, init_result_func, init_result_func_val);
 

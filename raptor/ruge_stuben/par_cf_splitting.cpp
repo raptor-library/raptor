@@ -76,8 +76,6 @@ void split_pmis(ParCSRMatrix* S, aligned_vector<int>& states,
         aligned_vector<int>& off_proc_states, bool tap_cf, 
         double* rand_vals)
 {
-    int remaining;
-
     S->on_proc->move_diag();
 
     set_initial_states(S, states);
@@ -251,11 +249,6 @@ void initial_weights(const ParCSRMatrix* S,
     int start, end;
     int idx;
     
-    
-    int proc;
-    int tag = 3029;
-    
-
     aligned_vector<int> off_proc_weights;
 
     if (S->off_proc_num_cols)
@@ -972,7 +965,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
         {
             start = S->on_proc->idx1[i];
             end = S->on_proc->idx1[i+1];
-            if (S->on_proc->idx2[idx_start] == idx)
+            if (S->on_proc->idx2[start] == i)
             {
                 start++;
             }
@@ -1200,8 +1193,6 @@ void combine_weight_updates(CommPkg* comm,
 int update_states(aligned_vector<double>& weights, 
         aligned_vector<int>& states, const int remaining, aligned_vector<int>& unassigned)
 {
-    int num_states = states.size();
-
     int ctr = 0;
     int u;
     for (int i = 0; i < remaining; i++)
@@ -1232,7 +1223,7 @@ void pmis_main_loop(ParCSRMatrix* S,
         bool tap_comm, double* rand_vals)
 {
     int start, end, row;
-    int idx, ctr;
+    int idx;
     int num_new_coarse;
     int num_remaining;
     int num_remaining_off;
@@ -1388,15 +1379,10 @@ void cljp_main_loop(ParCSRMatrix* S,
     /**********************************************
      * Declare and Initialize Variables
      **********************************************/
-    int proc, idx, ctr;
-    int start, end;
+    int ctr;
     int num_new_coarse;
     int off_num_new_coarse;
-    int num_fine;
-    int off_num_fine;
-    int unassigned_off_proc;
     int remaining, off_remaining;
-    int size, global_col;
 
     CommPkg* comm = S->comm;
     CommPkg* mat_comm = S->comm;
@@ -1424,12 +1410,6 @@ void cljp_main_loop(ParCSRMatrix* S,
     aligned_vector<int> on_edgemark;
     aligned_vector<int> off_edgemark;
     aligned_vector<double> weights;
-
-    int count;
-    int n_sends, n_recvs;
-    int prev_ctr;
-    int msg_avail;
-    RAPtor_MPI_Status recv_status;
 
     int* part_to_col = S->map_partition_to_local();
 
