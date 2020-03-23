@@ -217,11 +217,11 @@ public:
                     {
                         BSRMatrix* recv_mat_bsr = (BSRMatrix*) recv_mat;
                         recv_mat_bsr->block_vals.resize(recv_size + row_size);
-                        for (int i = 0; i < row_size; i++)
+                        for (int k = 0; k < row_size; k++)
                         {
-                            recv_mat_bsr->block_vals[recv_size + i] = new double[block_size];
+                            recv_mat_bsr->block_vals[recv_size + k] = new double[block_size];
                             RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr, 
-                                    recv_mat_bsr->block_vals[recv_size + i],
+                                    recv_mat_bsr->block_vals[recv_size + k],
                                     block_size, RAPtor_MPI_DOUBLE, mpi_comm);
                         }
                     }
@@ -271,16 +271,16 @@ public:
     }
 
     template <typename T>
-    void unpack(aligned_vector<T>& buffer, RAPtor_MPI_Comm mpi_comm, const int block_size = 1)
+    void unpack(aligned_vector<T>& unpacked_buffer, RAPtor_MPI_Comm mpi_comm, const int block_size = 1)
     {
         if (num_msgs == 0) return;
 
         int position = 0;
         int flat_size = size_msgs * block_size;
-        if (buffer.size() < flat_size) buffer.resize(flat_size);
+        if (unpacked_buffer.size() < flat_size) unpacked_buffer.resize(flat_size);
         RAPtor_MPI_Datatype datatype = get_type<T>();
         RAPtor_MPI_Unpack(pack_buffer.data(), pack_buffer.size(), &position,
-                buffer.data(), flat_size, datatype, mpi_comm);
+                unpacked_buffer.data(), flat_size, datatype, mpi_comm);
     }
 
     void reset_buffer()

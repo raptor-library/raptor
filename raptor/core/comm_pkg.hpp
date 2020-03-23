@@ -326,9 +326,9 @@ namespace raptor
                 recv_data = new ContigData();
         }
 
-        ParComm(Topology* topology, int _key = 0, 
+        ParComm(Topology* topo, int _key = 0, 
                 RAPtor_MPI_Comm _comm = RAPtor_MPI_COMM_WORLD,
-                CommData* r_data = NULL) : CommPkg(topology)
+                CommData* r_data = NULL) : CommPkg(topo)
         {
             mpi_comm = _comm;
             key = _key;
@@ -780,12 +780,12 @@ namespace raptor
                 const int block_size = 1)
         {
             int ctr, n_sends, n_recvs;
-            int key = 325493;
+            int tag = 325493;
             bool comparison;
             
             if (profile) vec_t -= RAPtor_MPI_Wtime();
-            send_data->send(vals.data(), key, mpi_comm, states, compare_func, &n_sends, block_size);
-            recv_data->recv<T>(key, mpi_comm, off_proc_states, 
+            send_data->send(vals.data(), tag, mpi_comm, states, compare_func, &n_sends, block_size);
+            recv_data->recv<T>(tag, mpi_comm, off_proc_states, 
                     compare_func, &ctr, &n_recvs, block_size);
 
             send_data->waitall(n_sends);
@@ -837,13 +837,13 @@ namespace raptor
         {
             int idx, ctr;
             int n_sends, n_recvs;
-            int key = 453246;
+            int tag = 453246;
             bool comparison;
 
             if (profile) vec_t -= RAPtor_MPI_Wtime();
-            recv_data->send(vals.data(), key, mpi_comm, off_proc_states, compare_func,
+            recv_data->send(vals.data(), tag, mpi_comm, off_proc_states, compare_func,
                     &n_sends, block_size);
-            send_data->recv<T>(key, mpi_comm, states, compare_func, &ctr, &n_recvs, block_size);
+            send_data->recv<T>(tag, mpi_comm, states, compare_func, &ctr, &n_recvs, block_size);
             
             recv_data->waitall(n_sends);
             send_data->waitall(n_recvs);
