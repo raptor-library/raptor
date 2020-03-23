@@ -13,8 +13,11 @@
 
 #include "par_matrix_market.hpp"
 
-
 using namespace raptor;
+
+// Declare Private Methods
+void write_par_data(FILE* f, int n, int* rowptr, int* col_idx,
+        double* vals, int first_row, int* col_map);
 
 ParCSRMatrix* read_par_mm(const char *fname)
 {

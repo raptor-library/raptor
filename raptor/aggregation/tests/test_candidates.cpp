@@ -38,6 +38,7 @@ TEST(TestCandidates, TestsInAggregation)
     for (int i = 0; i < S->n_rows; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 
@@ -46,6 +47,7 @@ TEST(TestCandidates, TestsInAggregation)
     for (int i = 0; i < S->n_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &python_states[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     aligned_vector<int> aggregates;
@@ -82,6 +84,7 @@ TEST(TestCandidates, TestsInAggregation)
     for (int i = 0; i < S->n_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &python_states[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     n_aggs = aggregate(A, S, python_states, aggregates, weights.data());

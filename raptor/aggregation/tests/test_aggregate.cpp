@@ -37,6 +37,7 @@ TEST(TestAggregate, TestsInAggregation)
     for (int i = 0; i < S->n_rows; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 
@@ -45,6 +46,7 @@ TEST(TestAggregate, TestsInAggregation)
     for (int i = 0; i < S->n_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &python_states[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 
@@ -53,6 +55,7 @@ TEST(TestAggregate, TestsInAggregation)
     for (int i = 0; i < S->n_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &python_aggs[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 
@@ -62,6 +65,7 @@ TEST(TestAggregate, TestsInAggregation)
 
     for (int i = 0; i < S->n_rows; i++)
     {
+        ASSERT_LT(aggregates[i], n_aggs);
         ASSERT_EQ(aggregates[i], python_aggs[i]);
     }
 
@@ -83,6 +87,7 @@ TEST(TestAggregate, TestsInAggregation)
     for (int i = 0; i < S->n_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &python_states[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 
@@ -91,6 +96,7 @@ TEST(TestAggregate, TestsInAggregation)
     for (int i = 0; i < S->n_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &python_aggs[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 

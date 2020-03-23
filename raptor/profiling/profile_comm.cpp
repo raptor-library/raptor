@@ -4,6 +4,15 @@ using namespace raptor;
 #define short_cutoff 500
 #define eager_cutoff 8000
 
+// Declare Private Methods
+void print_internode_comm(Topology* topology, aligned_vector<int> num_msgs, aligned_vector<int> size_msgs,
+        aligned_vector<int> node_size_msgs);
+void print_comm(aligned_vector<int>& num_msgs, aligned_vector<int>& size_msgs, 
+        aligned_vector<int>& node_size_msgs);
+void calc_and_print(Topology* topology, CommData* comm_data);
+int get_idx(NonContigData* comm_data, int j);
+int get_idx(ContigData* comm_data, int j);
+
 void print_internode_comm(Topology* topology, aligned_vector<int> num_msgs, aligned_vector<int> size_msgs,
         aligned_vector<int> node_size_msgs)
 {

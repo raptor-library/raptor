@@ -36,9 +36,6 @@ if (WITH_MPI)
     add_executable(profile_tap_spgemm profile_tap_spgemm.cpp)
     target_link_libraries(profile_tap_spgemm raptor ${MPI_LIBRARIES})
 
-    add_executable(benchmark_commpkg benchmark_commpkg.cpp)
-    target_link_libraries(benchmark_commpkg raptor ${MPI_LIBRARIES})
-
     add_executable(benchmark_amg benchmark_amg.cpp)
     target_link_libraries(benchmark_amg raptor ${MPI_LIBRARIES})
 

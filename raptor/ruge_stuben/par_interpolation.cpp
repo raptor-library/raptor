@@ -6,6 +6,26 @@
 
 using namespace raptor;
 
+// Declare Private Methods
+CSRMatrix* communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<int>& states,
+        const aligned_vector<int>& off_proc_states, CommPkg* comm);
+CSRMatrix*  communicate(ParCSRMatrix* A, const aligned_vector<int>& states,
+        const aligned_vector<int>& off_proc_states, CommPkg* comm);
+void filter_interp(ParCSRMatrix* P, const double filter_threshold);
+ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
+        ParCSRMatrix* S, const aligned_vector<int>& states,
+        const aligned_vector<int>& off_proc_states, const double filter_threshold, 
+        bool tap_interp, int num_variables, int* variables);
+ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
+        ParCSRMatrix* S, const aligned_vector<int>& states,
+        const aligned_vector<int>& off_proc_states, 
+        bool tap_interp, int num_variables, int* variables);
+ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
+        ParCSRMatrix* S, const aligned_vector<int>& states,
+        const aligned_vector<int>& off_proc_states, bool tap_interp);
+
+
+
 // TODO -- if in S, col is positive, otherwise col is -(col+1)
 CSRMatrix* communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<int>& states,
         const aligned_vector<int>& off_proc_states, CommPkg* comm)
@@ -23,6 +43,7 @@ CSRMatrix* communicate(ParCSRMatrix* A, ParCSRMatrix* S, const aligned_vector<in
         col_indices.reserve(A->local_nnz);
         values.reserve(A->local_nnz);
     }
+    
     rowptr[0] = 0;
     for (int i = 0; i < A->local_num_rows; i++)
     {

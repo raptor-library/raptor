@@ -41,10 +41,12 @@ TEST(TestParMIS, TestsInAggregation)
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[0]);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 
@@ -53,10 +55,12 @@ TEST(TestParMIS, TestsInAggregation)
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
         n_items_read = fscanf(f, "%d\n", &python_states[0]);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &python_states[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 

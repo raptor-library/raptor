@@ -48,6 +48,7 @@ TEST(TestTAPRugeStuben, TestsInRuge_Stuben)
     for (int i = 0; i < max_n; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 

@@ -9,7 +9,13 @@
 
 using namespace raptor;
 
-ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, int* first_row_ptr, int* first_col_ptr, int interp_option = 0)
+// Declare Private Methods 
+ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, 
+        int* first_row_ptr, int* first_col_ptr, int interp_option = 0);
+
+
+ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, 
+        int* first_row_ptr, int* first_col_ptr, int interp_option)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -37,10 +43,12 @@ ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, 
     for (int i = 0; i < first_row; i++)
     {
         n_items_read = fscanf(f, "%d\n", &cf);
+        if (n_items_read == EOF) return NULL;
     }
     for (int i = 0; i < A->local_num_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &splitting[i]);
+        if (n_items_read == EOF) return NULL;
     }
     fclose(f);
 

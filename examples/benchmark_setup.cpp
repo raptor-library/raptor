@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
-    int dim;
+    int dim = 3;
     int n = 5;
     int system = 0;
 
@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
         system = atoi(argv[1]);
     }
 
-    ParCSRMatrix* A;
+    ParCSRMatrix* A = NULL;
     ParVector x;
     ParVector b;
 
@@ -86,14 +86,9 @@ int main(int argc, char *argv[])
     else if (system == 3)
     {
         const char* file = "../../examples/LFAT5.mtx";
-        int sym = 1;
         if (argc > 2)
         {
             file = argv[2];
-            if (argc > 3)
-            {
-                sym = atoi(argv[3]);
-            }
         }
         A = readParMatrix(file);
     }
@@ -141,7 +136,7 @@ int main(int argc, char *argv[])
 
     if (rank == 0)
     {
-        for (int i = 0; i < res.size(); i++)
+        for (int i = 0; i < (int)res.size(); i++)
         {
             printf("Res[%d] = %e\n", i, res[i]);
         }

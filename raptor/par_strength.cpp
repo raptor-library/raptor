@@ -5,6 +5,12 @@
 
 using namespace raptor;
 
+// Declare Private Methods
+ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, int num_variables,
+        int* variables);
+ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg);
+
+
 ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, int num_variables,
         int* variables)
 {
@@ -541,6 +547,8 @@ ParCSRMatrix* ParCSRMatrix::strength(strength_t strength_type,
             return classical_strength(this, theta, tap_amg, num_variables, variables);
         case Symmetric:
             return symmetric_strength(this, theta, tap_amg);
+        default : 
+            return NULL;
     }
 
     return NULL;

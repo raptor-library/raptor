@@ -49,10 +49,12 @@ TEST(TestTAPSplitting, TestsInRuge_Stuben)
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[0]);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     split_cljp(S, states, off_proc_states, true, weights.data());
@@ -61,10 +63,12 @@ TEST(TestTAPSplitting, TestsInRuge_Stuben)
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
         n_items_read = fscanf(f, "%d\n", &cf);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &cf);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_EQ(cf, states[i]);
     }
     fclose(f);
@@ -80,10 +84,12 @@ TEST(TestTAPSplitting, TestsInRuge_Stuben)
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[0]);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     split_cljp(S, states, off_proc_states, true, weights.data());
@@ -92,10 +98,12 @@ TEST(TestTAPSplitting, TestsInRuge_Stuben)
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
         n_items_read = fscanf(f, "%d\n", &cf);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &cf);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_EQ(cf, states[i]);
     }
     fclose(f);

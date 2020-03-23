@@ -39,6 +39,7 @@ TEST(AnisoSpMVTest, TestsInUtil)
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(b[i],b_val,1e-06);
     } 
     fclose(f);
@@ -49,6 +50,7 @@ TEST(AnisoSpMVTest, TestsInUtil)
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(b[i], b_val, 1e-06);
     } 
     fclose(f);
@@ -63,6 +65,7 @@ TEST(AnisoSpMVTest, TestsInUtil)
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(b[i],b_val, 1e-06);
     } 
     fclose(f);
@@ -73,6 +76,7 @@ TEST(AnisoSpMVTest, TestsInUtil)
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(b[i], b_val,  1e-06);
     } 
     fclose(f);

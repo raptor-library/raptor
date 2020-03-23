@@ -62,6 +62,7 @@ TEST(TestCandidates, TestsInAggregation)
     for (int i = 0; i < A->n_rows; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 
@@ -76,6 +77,7 @@ TEST(TestCandidates, TestsInAggregation)
     for (int i = 0; i < A->n_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &py_states[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     mis2(S, states, weights.data());
@@ -89,6 +91,7 @@ TEST(TestCandidates, TestsInAggregation)
     for (int i = 0; i < A->n_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &py_aggs[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     int n_aggs = aggregate(A, S, states, aggs, weights.data());
@@ -142,6 +145,7 @@ TEST(TestCandidates, TestsInAggregation)
     for (int i = 0; i < A->n_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &py_states[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     mis2(S, states, weights.data());
@@ -155,6 +159,7 @@ TEST(TestCandidates, TestsInAggregation)
     for (int i = 0; i < A->n_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &py_aggs[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     n_aggs = aggregate(A, S, states, aggs, weights.data());

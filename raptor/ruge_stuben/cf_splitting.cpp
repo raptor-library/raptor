@@ -6,6 +6,29 @@
 
 using namespace raptor;
 
+// Declare Private Methods
+void transpose(const CSRMatrix* S, aligned_vector<int>& col_ptr, aligned_vector<int>& col_indices);
+void rs_first_pass(const CSRMatrix* S, const aligned_vector<int>& col_ptr,
+        const aligned_vector<int>& col_indices, aligned_vector<int>& weights, 
+        aligned_vector<int>& states);
+void rs_second_pass(const CSRMatrix* S, aligned_vector<int>& weights, aligned_vector<int>& states);
+int select_independent_set(CSRMatrix* S, aligned_vector<int>& col_ptr,
+        aligned_vector<int>& col_indices, int remaining, aligned_vector<int>& unassigned,
+        aligned_vector<int>& states, aligned_vector<double>& weights,
+        aligned_vector<int>& new_coarse_list);
+void update_weights(CSRMatrix* S, aligned_vector<int>& col_ptr, aligned_vector<int>& col_indices, 
+        aligned_vector<int>& edgemark, aligned_vector<int>& c_dep_cache, 
+        aligned_vector<int>& new_coarse_list, int num_new_coarse, 
+        aligned_vector<int>& states, aligned_vector<double>& weights);
+int update_states(int remaining, aligned_vector<int>& unassigned, aligned_vector<int>& states,
+        aligned_vector<double>& weights);
+void cljp_main_loop(CSRMatrix* S, aligned_vector<int>& col_ptr, aligned_vector<int>& col_indices,
+        aligned_vector<int>& states, double* rand_vals = NULL);
+void pmis_main_loop(CSRMatrix* S, aligned_vector<int>& col_ptr, aligned_vector<int>& col_indices,
+        aligned_vector<int>& states, double* rand_vals);
+
+
+
 void transpose(const CSRMatrix* S,
         aligned_vector<int>& col_ptr,
         aligned_vector<int>& col_indices)
@@ -477,7 +500,7 @@ int update_states(int remaining, aligned_vector<int>& unassigned, aligned_vector
 }
 
 void cljp_main_loop(CSRMatrix* S, aligned_vector<int>& col_ptr, aligned_vector<int>& col_indices,
-        aligned_vector<int>& states, double* rand_vals = NULL)
+        aligned_vector<int>& states, double* rand_vals)
 {
     int num_new_coarse;
     int remaining;

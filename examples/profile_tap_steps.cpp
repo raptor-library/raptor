@@ -148,14 +148,12 @@ int main(int argc, char* argv[])
     int n = 5;
     int system = 0;
     double strong_threshold = 0.25;
-    int iter;
-    int num_variables = 1;
 
     coarsen_t coarsen_type = HMIS;
     interp_t interp_type = Extended;
 
     ParMultilevel* ml;
-    ParCSRMatrix* A;
+    ParCSRMatrix* A = NULL;
     ParVector x;
     ParVector b;
 
@@ -165,7 +163,7 @@ int main(int argc, char* argv[])
     }
     if (system < 2)
     {
-        int dim;
+        int dim = 3;
         double* stencil = NULL;
         aligned_vector<int> grid;
         if (argc > 2)
@@ -277,9 +275,6 @@ int main(int argc, char* argv[])
         x.set_const_value(0.0);
     }
     ParVector tmp(A->global_num_rows, A->local_num_rows);
-
-    int n_tests = 4;
-    int n_iter = 100;
 
     if (rank == 0) printf("Ruge Stuben Solver:\n");
     ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, SOR);

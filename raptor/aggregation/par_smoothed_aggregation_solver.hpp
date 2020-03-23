@@ -77,6 +77,11 @@ namespace raptor
                     n_aggs = aggregate(A, S, states, off_proc_states, 
                             aggregates, tap_level);
                     break;
+                default:
+                    mis2(S, states, off_proc_states, tap_level, weights);
+                    n_aggs = aggregate(A, S, states, off_proc_states, 
+                            aggregates, tap_level);
+                    break;
             }
 
             // Form tentative interpolation
@@ -87,6 +92,10 @@ namespace raptor
             switch (prolong_type)
             {
                 case JacobiProlongation:
+                    P = jacobi_prolongation(A, T, tap_level, 
+                            prolong_weight, prolong_smooth_steps);
+                    break;
+                default:
                     P = jacobi_prolongation(A, T, tap_level, 
                             prolong_weight, prolong_smooth_steps);
                     break;

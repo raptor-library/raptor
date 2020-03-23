@@ -15,6 +15,11 @@
 
 using namespace raptor;
 
+// Declare Private Methods
+char *mm_strdup(const char *s);
+int mm_read_mtx_crd(char *fname, int *M, int *N, int *nz, int **I, int **J, 
+        double **val, MM_typecode *matcode);
+
 CSRMatrix* read_mm(const char *fname)
 {
     FILE *f;

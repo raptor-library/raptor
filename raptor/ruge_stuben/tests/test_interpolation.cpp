@@ -47,6 +47,7 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     for (int i = 0; i < A->n_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &splitting[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 
@@ -82,6 +83,7 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     for (int i = 0; i < A->n_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &splitting[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 

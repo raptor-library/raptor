@@ -28,6 +28,7 @@ TEST(AnisoTest, TestsInGallery)
     command += " ";
     command += f_out;
     int err = system(command.c_str());
+    ASSERT_EQ(err, 0);
 
 
     remove(f_out);

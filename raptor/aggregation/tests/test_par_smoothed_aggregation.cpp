@@ -28,7 +28,6 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
 
     ParCSRMatrix* A;
     ParCSRMatrix* S;
-    ParCSRMatrix* S_red;
     ParCSRMatrix* T;
     ParCSRMatrix* P;
     ParCSRMatrix* Ac;
@@ -70,10 +69,12 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     for (int i = 0; i < A->partition->first_local_row; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[0]);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < A->local_num_rows; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 
@@ -92,10 +93,12 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
         n_items_read = fscanf(f, "%d\n", &py_states[0]);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &py_states[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     mis2(S, states, off_proc_states, false, weights.data());
@@ -109,10 +112,12 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
         n_items_read = fscanf(f, "%d\n", &py_aggs[0]);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &py_aggs[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     int n_aggs = aggregate(A, S, states, off_proc_states, 
@@ -124,7 +129,7 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     aligned_vector<int> agg_displ(num_procs+1);
     aligned_vector<int> agg_list;
     aligned_vector<int> total_agg_list;
-    int global_col, local_col;
+    int global_col;
     MPI_Allgather(&n_aggs, 1, MPI_INT, agg_sizes.data(), 1, MPI_INT, MPI_COMM_WORLD);
     agg_displ[0] = 0;
     int first_n = 0;
@@ -203,10 +208,12 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     for (int i = 0; i < first_col; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[0]);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < n_aggs; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 
@@ -224,10 +231,12 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     for (int i = 0; i < first_col; i++)
     {
         n_items_read = fscanf(f, "%d\n", &py_states[0]);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < n_aggs; i++)
     {
         n_items_read = fscanf(f, "%d\n", &py_states[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     mis2(S, states, off_proc_states, false, weights.data());
@@ -241,10 +250,12 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     for (int i = 0; i < first_col; i++)
     {
         n_items_read = fscanf(f, "%d\n", &py_aggs[0]);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < n_aggs; i++)
     {
         n_items_read = fscanf(f, "%d\n", &py_aggs[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     aggs.clear();

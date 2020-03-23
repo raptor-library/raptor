@@ -20,8 +20,6 @@ TEST(ParAnisoSpMVTest, TestsInUtil)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    FILE* f;
-    double b_val;
     int grid[2] = {25, 25};
     double eps = 0.001;
     double theta = M_PI/8.0;
@@ -43,7 +41,6 @@ TEST(ParAnisoSpMVTest, TestsInUtil)
 
     double r_norm;
     double r_norm_scaled;
-    int iter;
 
     // Form right-hand-side
     x.set_const_value(1.0);
@@ -57,7 +54,8 @@ TEST(ParAnisoSpMVTest, TestsInUtil)
     x.set_const_value(0.0);
     ml = new ParRugeStubenSolver();
     ml->setup(A);
-    iter = ml->solve(x, b);
+    int iter = ml->solve(x, b);
+    ASSERT_GE(iter, 1);
     delete ml;
     A->residual(x, b, r);
     r_norm = r.norm(2);
@@ -70,6 +68,7 @@ TEST(ParAnisoSpMVTest, TestsInUtil)
     ml = new ParRugeStubenSolver();
     ml->setup(A_scale);
     iter = ml->solve(x_scale, b_scale);
+    ASSERT_GE(iter, 1);
     delete ml;
     A_scale->residual(x_scale, b_scale, r);
     r_norm_scaled = r.norm(2);

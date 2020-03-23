@@ -24,13 +24,6 @@ TEST(ParBlockConversionTest, TestsInCore)
 
     setenv("PPN", "4", 1);
 
-    int start, end, pos;
-    int col, prev_col, block_col;
-    int prev_row, block_row;
-    int block_pos, row_pos, col_pos;
-    int global_col;
-    double val;
-
     // Form standard anisotropic matrix
     double eps = 0.001;
     double theta = M_PI / 8.0;
@@ -45,7 +38,7 @@ TEST(ParBlockConversionTest, TestsInCore)
     ASSERT_EQ(A->local_nnz,A_csr_from_bsr->local_nnz);
 
     // Test Partition of BSR to CSR
-    for (int i = 0; i < A_csr_from_bsr->partition->first_cols.size(); i++)
+    for (int i = 0; i < (int)A_csr_from_bsr->partition->first_cols.size(); i++)
     {
         ASSERT_EQ(A->partition->first_cols[i], A_csr_from_bsr->partition->first_cols[i]);
     }
@@ -57,15 +50,15 @@ TEST(ParBlockConversionTest, TestsInCore)
     ASSERT_EQ(A->partition->last_local_col, A_csr_from_bsr->partition->last_local_col);
     
     // Test Row and Column Maps of BSR to CSR
-    for (int i = 0; i < A_csr_from_bsr->off_proc_column_map.size(); i++)
+    for (int i = 0; i < (int)A_csr_from_bsr->off_proc_column_map.size(); i++)
     {
         ASSERT_EQ(A->off_proc_column_map[i], A_csr_from_bsr->off_proc_column_map[i]);
     }
-    for (int i = 0; i < A_csr_from_bsr->on_proc_column_map.size(); i++)
+    for (int i = 0; i < (int)A_csr_from_bsr->on_proc_column_map.size(); i++)
     {
         ASSERT_EQ(A->on_proc_column_map[i], A_csr_from_bsr->on_proc_column_map[i]);
     }
-    for (int i = 0; i < A_csr_from_bsr->local_row_map.size(); i++)
+    for (int i = 0; i < (int)A_csr_from_bsr->local_row_map.size(); i++)
     {
         ASSERT_EQ(A->local_row_map[i], A_csr_from_bsr->local_row_map[i]);
     }

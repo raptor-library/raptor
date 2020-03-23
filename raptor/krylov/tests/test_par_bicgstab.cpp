@@ -44,6 +44,7 @@ TEST(ParBiCGStabTest, TestsInKrylov)
         for (int i = 0; i < 10; i++)
         {
             n_items_read = fscanf(f, "%lf\n", &res);
+            ASSERT_EQ(n_items_read, 1);
             ASSERT_NEAR(res, residuals[i], 1e-06);
         }
         fclose(f);

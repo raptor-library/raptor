@@ -19,7 +19,6 @@ int main(int argc, char** argv)
 
 TEST(TestCandidates, TestsInAggregation)
 { 
-    FILE* f;
     CSRMatrix* A;
     CSRMatrix* T;
 

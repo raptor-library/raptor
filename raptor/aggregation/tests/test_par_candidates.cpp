@@ -34,7 +34,6 @@ TEST(TestParCandidates, TestsInAggregation)
 
     const char* A0_fn = "../../../../test_data/sas_A0.pm";
     const char* S0_fn = "../../../../test_data/sas_S0.pm";
-    const char* mis0_fn = "../../../../test_data/sas_mis0.txt";
     const char* T0_fn = "../../../../test_data/sas_T0.pm";
     const char* weights_fn = "../../../../test_data/weights.txt";
 
@@ -46,10 +45,12 @@ TEST(TestParCandidates, TestsInAggregation)
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[0]);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 

@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
-    int dim;
+    int dim = 3;
     int n = 5;
     int system = 0;
 
@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
         system = atoi(argv[1]);
     }
 
-    ParCSRMatrix* A;
+    ParCSRMatrix* A = NULL;
     ParVector x;
     ParVector b;
 
@@ -86,14 +86,9 @@ int main(int argc, char *argv[])
     else if (system == 3)
     {
         const char* file = "../../examples/LFAT5.mtx";
-        int sym = 1;
         if (argc > 2)
         {
             file = argv[2];
-            if (argc > 3)
-            {
-                sym = atoi(argv[3]);
-            }
         }
         A = readParMatrix(file);
     }
@@ -129,6 +124,8 @@ int main(int argc, char *argv[])
     raptor_solve = MPI_Wtime() - t0;
     clear_cache(cache_array);
 
+    int model;
+    double comm_time;
     long lcl_nnz;
     long nnz;
     if (rank == 0) printf("Level\tNumRows\tNNZ\n");
@@ -142,7 +139,7 @@ int main(int argc, char *argv[])
 
     if (rank == 0)
     {
-        for (int i = 0; i < res.size(); i++)
+        for (int i = 0; i < (int)res.size(); i++)
         {
             printf("Res[%d] = %e\n", i, res[i]);
         }
@@ -184,7 +181,6 @@ int main(int argc, char *argv[])
 
         double model_a = 0;
         double model_b = 0;
-        double model = 0;
 
         int eager_active = 0;
         int rend_active = 0;
@@ -295,7 +291,6 @@ int main(int argc, char *argv[])
         model = model_a + model_b;
 
 
-        double comm_time = 0;
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
         for (int i = 0; i < 100; i++)

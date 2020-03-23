@@ -57,7 +57,7 @@ namespace raptor
             int level_ctr = levels.size() - 1;
             CSRMatrix* A = levels[level_ctr]->A;
             CSRMatrix* S;
-            CSRMatrix* P;
+            CSRMatrix* P = NULL;
             CSRMatrix* AP;
             CSCMatrix* P_csc;
             aligned_vector<int> states;
@@ -75,15 +75,16 @@ namespace raptor
                     split_cljp(S, states);
                     break;
                 case Falgout:
-                    printf("Falgout in serial is just RS..\n");
                     split_rs(S, states);
                     break;
                 case PMIS:
                     split_pmis(S, states);
                     break;
                 case HMIS:
-                    printf("HMIS in serial is just PMIS...\n");
                     split_pmis(S, states);
+                    break;
+                default:
+                    split_rs(S, states);
                     break;
             }
             
@@ -98,6 +99,10 @@ namespace raptor
                     break;
                 case Extended:
                     P = extended_interpolation(A, S, states, num_variables, variables);
+                    break;
+                default:
+                    P = direct_interpolation(A, S, states);
+                    break;
             }
             levels[level_ctr]->P = P;
 

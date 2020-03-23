@@ -4,6 +4,12 @@
 
 using namespace raptor;
 
+// Declare Private Methods
+ParCSRMatrix* init_mat(ParCSCMatrix* A);
+ParCSRMatrix* init_mat(ParCSRMatrix* A);
+ParBSRMatrix* init_mat(ParBSRMatrix* A);
+ParBSRMatrix* init_mat(ParBSCMatrix* A);
+
 ParCSRMatrix* init_mat(ParCSCMatrix* A)
 {
     return new ParCSRMatrix(A->partition);

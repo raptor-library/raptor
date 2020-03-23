@@ -4,6 +4,9 @@
 
 using namespace raptor;
 
+// Declare private methods
+void bsr_to_csr_copy_helper(ParBSRMatrix* A, ParCSRMatrix* B);
+
 /**************************************************************
 *****   ParMatrix Add Value
 **************************************************************

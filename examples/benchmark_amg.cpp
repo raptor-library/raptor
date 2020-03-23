@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
     interp_t interp_type = Extended;
 
     ParMultilevel* ml;
-    ParCSRMatrix* A;
+    ParCSRMatrix* A = NULL;
     ParVector x;
     ParVector b;
 
@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
     }
     if (system < 2)
     {
-        int dim;
+        int dim = 3;
         double* stencil = NULL;
         aligned_vector<int> grid;
         if (argc > 2)

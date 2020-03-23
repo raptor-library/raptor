@@ -33,6 +33,7 @@ TEST(TestMIS, TestsInAggregation)
     for (int i = 0; i < S->n_rows; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 
@@ -41,6 +42,7 @@ TEST(TestMIS, TestsInAggregation)
     for (int i = 0; i < S->n_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &python_states[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     
@@ -63,6 +65,7 @@ TEST(TestMIS, TestsInAggregation)
     for (int i = 0; i < S->n_rows; i++)
     {
         n_items_read = fscanf(f, "%d\n", &python_states[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     

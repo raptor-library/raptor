@@ -47,7 +47,7 @@ TEST(TAPCommTest, TestsInCore)
     par_recv = A->comm->communicate(x);
     ASSERT_EQ(tap_recv.size(), par_recv.size());
     ASSERT_EQ(tap_recv.size(), tap_simp_recv.size());
-    for (int i = 0; i < par_recv.size(); i++)
+    for (int i = 0; i < (int)par_recv.size(); i++)
     {
         ASSERT_NEAR(par_recv[i], tap_recv[i], zero_tol);
         ASSERT_NEAR(tap_recv[i], tap_simp_recv[i], zero_tol);
@@ -59,7 +59,7 @@ TEST(TAPCommTest, TestsInCore)
     par_recv = A->comm->communicate(x);
     ASSERT_EQ(tap_recv.size(), par_recv.size());
     ASSERT_EQ(tap_simp_recv.size(), tap_recv.size());
-    for (int i = 0; i < par_recv.size(); i++)
+    for (int i = 0; i < (int)par_recv.size(); i++)
     {
         ASSERT_NEAR(par_recv[i], tap_recv[i], zero_tol);
         ASSERT_NEAR(tap_recv[i], tap_simp_recv[i], zero_tol);

@@ -35,6 +35,7 @@ TEST(RandomSpMVTest, TestsInUtil)
     for (int i = 0; i < A->n_rows; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(b[i], b_val, 1e-06);
     } 
     fclose(f);
@@ -46,6 +47,7 @@ TEST(RandomSpMVTest, TestsInUtil)
     for (int i = 0; i < A->n_cols; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(x[i],b_val, 1e-06);
     } 
     fclose(f);
@@ -60,6 +62,7 @@ TEST(RandomSpMVTest, TestsInUtil)
     for (int i = 0; i < A->n_rows; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(b[i], b_val, 1e-06);
     } 
     fclose(f);
@@ -74,6 +77,7 @@ TEST(RandomSpMVTest, TestsInUtil)
     for (int i = 0; i < A->n_cols; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(x[i], b_val, 1e-06);
     } 
     fclose(f);

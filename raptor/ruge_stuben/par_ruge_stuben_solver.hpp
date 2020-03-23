@@ -60,7 +60,7 @@ namespace raptor
 
             ParCSRMatrix* A = levels[level_ctr]->A;
             ParCSRMatrix* S;
-            ParCSRMatrix* P;
+            ParCSRMatrix* P = NULL;
             ParCSRMatrix* AP;
 
             aligned_vector<int> states;
@@ -100,6 +100,10 @@ namespace raptor
                     split_hmis(S, states, off_proc_states, tap_level, 
                             weights);
                     break;
+                default:
+                    split_falgout(S, states, off_proc_states, tap_level, 
+                            weights);
+                    break;
             }
 
             // Form modified classical interpolation
@@ -116,6 +120,10 @@ namespace raptor
                 case Extended:
                     P = extended_interpolation(A, S, states, off_proc_states, 
                             interp_filter, tap_level, num_variables, variables);
+                    break;
+                default:
+                    P = direct_interpolation(A, S, states, off_proc_states, 
+                            tap_level);
                     break;
             }
             levels[level_ctr]->P = P;
