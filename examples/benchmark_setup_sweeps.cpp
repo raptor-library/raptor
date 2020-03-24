@@ -21,6 +21,7 @@ int main(int argc, char* argv[])
     int system = 0;
     double strong_threshold = 0.25;
     int iter;
+    int num_variables;
 
     ParSmoothedAggregationSolver* ml;
     ParCSRMatrix* A = NULL;

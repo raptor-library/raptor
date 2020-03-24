@@ -148,6 +148,7 @@ int main(int argc, char* argv[])
     int n = 5;
     int system = 0;
     double strong_threshold = 0.25;
+    int num_variables;
 
     coarsen_t coarsen_type = HMIS;
     interp_t interp_type = Extended;

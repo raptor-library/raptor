@@ -161,6 +161,7 @@ int main(int argc, char* argv[])
     ParCSRMatrix* A = NULL;
     ParVector x;
     ParVector b;
+    int num_variables;
 
     if (argc > 1)
     {
