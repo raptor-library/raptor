@@ -221,7 +221,7 @@ int main(int argc, char *argv[])
         clear_cache(cache_array);
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        for (int i = 0; i < 100; i++)
+        for (int j = 0; j < 100; j++)
         {
             Al->mult(xl, bl);
         }
@@ -233,7 +233,7 @@ int main(int argc, char *argv[])
         clear_cache(cache_array);
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        for (int i = 0; i < 100; i++)
+        for (int j = 0; j < 100; j++)
         {
             Al->tap_mult(xl, bl);
         }
@@ -263,7 +263,7 @@ int main(int argc, char *argv[])
             + Al->tap_comm->local_R_par_comm->send_data->size_msgs;
 
         int rank_node = Al->partition->topology->get_node(rank);
-        for (int i = 0; i < Al->comm->send_data->num_msgs; i++)
+        for (int j = 0; j < Al->comm->send_data->num_msgs; j++)
         {
             proc = Al->comm->send_data->procs[i];
             start = Al->comm->send_data->indptr[i];

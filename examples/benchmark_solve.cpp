@@ -193,17 +193,17 @@ int main(int argc, char *argv[])
         int rank_node = Al->partition->topology->get_node(rank);
         int rank_socket = Al->partition->topology->get_local_proc(rank) / num_socket;
 
-        for (int i = 0; i < Al->comm->send_data->num_msgs; i++)
+        for (int j = 0; j < Al->comm->send_data->num_msgs; j++)
         {
-            int proc = Al->comm->send_data->procs[i];
-            int start = Al->comm->send_data->indptr[i];
-            int end = Al->comm->send_data->indptr[i+1];
+            int proc = Al->comm->send_data->procs[j];
+            int start = Al->comm->send_data->indptr[j];
+            int end = Al->comm->send_data->indptr[j+1];
             int node = Al->partition->topology->get_node(proc);
             int socket = Al->partition->topology->get_local_proc(proc) / num_socket;
 
             int size = (end - start) * sizeof(double);
 
- if (size < short_cutoff)
+             if (size < short_cutoff)
             {
                 if (node == rank_node)
                 {
@@ -289,32 +289,19 @@ int main(int argc, char *argv[])
             model_b += rend_size / b_tmp;
         }
         model = model_a + model_b;
+        MPI_Reduce(&model, &model_a, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank == 0) printf("Model : %e\n", model_a);
 
 
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        for (int i = 0; i < 100; i++)
+        for (int j = 0; j < 100; j++)
         {
             Al->comm->communicate(xl);
         }
         comm_time = (MPI_Wtime() - t0) / 100;
-       
-
-        /*MPI_Reduce(&ml->level_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Level Time: %e\n", t0);
-        MPI_Reduce(&ml->spmv_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("SpMV Time: %e\n", t0);
-        MPI_Reduce(&ml->spmv_comm_times[i], &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("SpMV Comm Time: %e\n", t0);
-
         MPI_Reduce(&comm_time, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Measured Comm Time: %e\n", t0);
-        MPI_Reduce(&model, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Model Time: %e\n", t0);
-        MPI_Reduce(&model_a, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Model Latency Time: %e\n", t0);
-        MPI_Reduce(&model_b, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Model BW Time: %e\n", t0);*/
+        if (rank == 0) printf("CommTime: %e\n", t0);
     }
 
 

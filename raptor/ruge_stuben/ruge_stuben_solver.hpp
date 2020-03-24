@@ -41,14 +41,14 @@ namespace raptor
             variables = NULL;
         }
        
-        void form_variable_list(const CSRMatrix* A, const int num_variables)
+        void form_variable_list(const CSRMatrix* A, const int num_var)
         {
-            if (A->n_rows == 0 || num_variables <= 1) return;
+            if (A->n_rows == 0 || num_var <= 1) return;
 
             variables = new int[A->n_rows];
             for (int i = 0; i < A->n_rows; i++)
             {
-                variables[i] = i % num_variables;
+                variables[i] = i % num_var;
             }
         }
 

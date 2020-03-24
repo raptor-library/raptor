@@ -193,19 +193,19 @@ int main(int argc, char *argv[])
         int num_socket = 8;
         int rank_node = Al->partition->topology->get_node(rank);
         int rank_socket = Al->partition->topology->get_local_proc(rank) / num_socket;
-        for (int i = 0; i < Al->comm->send_data->num_msgs; i++)
+        for (int j = 0; j < Al->comm->send_data->num_msgs; j++)
         {
-            int proc = Al->comm->send_data->procs[i];
-            int start = Al->comm->send_data->indptr[i];
-            int end = Al->comm->send_data->indptr[i+1];
+            int proc = Al->comm->send_data->procs[j];
+            int start = Al->comm->send_data->indptr[j];
+            int end = Al->comm->send_data->indptr[j+1];
             int node = Al->partition->topology->get_node(proc);
             int socket = Al->partition->topology->get_local_proc(proc) / num_socket;
 
             int size = end - start;
             int row_size = 0;
-            for (int j = start; j < end; j++)
+            for (int k = start; k < end; k++)
             {
-                int idx = Al->comm->send_data->indices[j];
+                int idx = Al->comm->send_data->indices[k];
                 row_size += (Pl->on_proc->idx1[idx+1] - Pl->on_proc->idx1[idx])
                     + (Pl->off_proc->idx1[idx+1] - Pl->off_proc->idx1[idx]);
             }

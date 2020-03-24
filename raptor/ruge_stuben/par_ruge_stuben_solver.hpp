@@ -42,14 +42,14 @@ namespace raptor
             variables = NULL;
         }
        
-        void form_variable_list(const ParCSRMatrix* A, const int num_variables)
+        void form_variable_list(const ParCSRMatrix* A, const int num_var)
         {
-            if (A->local_num_rows == 0 || num_variables <= 1) return;
+            if (A->local_num_rows == 0 || num_var <= 1) return;
             
             variables = new int[A->local_num_rows];
             for (int i = 0; i < A->local_num_rows; i++)
             {
-                variables[i] = A->local_row_map[i] % num_variables;
+                variables[i] = A->local_row_map[i] % num_var;
             }
         }
 

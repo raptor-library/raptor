@@ -23,7 +23,7 @@ int main(int argc, char* argv[])
     int num_variables = 1;
 
     ParMultilevel* ml;
-    ParCSRMatrix* A;
+    ParCSRMatrix* A = NULL;
     ParVector x;
     ParVector b;
 

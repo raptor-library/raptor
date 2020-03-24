@@ -973,15 +973,15 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
     return A;
 }
 
-void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm comm)
+void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm mpi_comm)
 {
     /*********************************
      * Initialize 
      * *******************************/
     // Get RAPtor_MPI Information
     int rank, num_procs;
-    RAPtor_MPI_Comm_rank(comm, &rank);
-    RAPtor_MPI_Comm_size(comm, &num_procs);
+    RAPtor_MPI_Comm_rank(mpi_comm, &rank);
+    RAPtor_MPI_Comm_size(mpi_comm, &num_procs);
 
     // Initialize standard tap_comm
     tap_comm = new TAPComm(partition, true);    
@@ -998,11 +998,11 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm comm)
     aligned_vector<int> orig_procs;
     aligned_vector<int> node_to_local_proc;
     aligned_vector<int> on_proc_to_new;
-    int on_proc_num_cols = on_proc_column_map.size();
+    int on_proc_nc = on_proc_column_map.size();
     if (partition->local_num_cols)
     {
         on_proc_to_new.resize(partition->local_num_cols);
-        for (int i = 0; i < on_proc_num_cols; i++)
+        for (int i = 0; i < on_proc_nc; i++)
         {
             on_proc_to_new[on_proc_column_map[i] - partition->first_local_col] = i;
         }

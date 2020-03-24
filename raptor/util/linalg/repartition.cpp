@@ -22,10 +22,8 @@ void make_contiguous(ParCSRMatrix* A)
     int assumed_col, local_col;
     int msg_avail, finished, count;
     RAPtor_MPI_Request barrier_request;
-    
 
     aligned_vector<int> assumed_col_to_new;
-
     aligned_vector<int> proc_num_cols(num_procs);
     aligned_vector<int> send_procs;
     aligned_vector<int> send_ptr;
@@ -414,11 +412,9 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
     int num_sends;
     int row_key = 370284;
     int key = 204853;
-    int msg_avail, finished;
     int count;
     double val;
     RAPtor_MPI_Status recv_status;
-    RAPtor_MPI_Request barrier_request;
     aligned_vector<int> send_procs;
     aligned_vector<int> send_ptr;
     aligned_vector<int> proc_sizes(num_procs, 0);

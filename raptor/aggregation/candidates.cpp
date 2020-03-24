@@ -70,7 +70,7 @@ CSRMatrix* fit_candidates(const int n_aggs, const aligned_vector<int>& aggregate
             // Calculate norm of column
             for (int k = col_start_j; k < col_end_j; k++)
             {
-                double val = T_csc->vals[k];
+                val = T_csc->vals[k];
                 norm_j += val * val;
             }
             norm_j = sqrt(norm_j);
@@ -106,7 +106,7 @@ CSRMatrix* fit_candidates(const int n_aggs, const aligned_vector<int>& aggregate
             norm_j = 0;
             for (int k = col_start_j; k < col_end_j; k++)
             {
-                double val = T_csc->vals[k];
+                val = T_csc->vals[k];
                 norm_j += val * val;
             }
             norm_j = sqrt(norm_j);
