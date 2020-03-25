@@ -26,10 +26,6 @@ int* parmetis_partition(ParCSRMatrix* A)
     // Range of vertices local to each processor
     int* vtxdist = A->partition->first_cols.data();
 
-    if (rank == 0) for (int i = 0; i <= num_procs; i++)
-        printf("FirstCols[%d] = %d\n", i, vtxdist[i]);
-    if (rank == 0) printf("A %d x %d \n", A->global_num_rows, A->global_num_cols);
-
     // Local adjacency structure
     aligned_vector<int> xadj(A->local_num_rows+1);
     aligned_vector<int> adjncy(A->local_nnz);
