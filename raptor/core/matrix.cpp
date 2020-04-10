@@ -16,7 +16,6 @@ template <typename T>
 void print_helper(const COOMatrix* A, const aligned_vector<T>& vals)
 {
     int row, col;
-    double val;
 
     for (int i = 0; i < A->nnz; i++)
     {
@@ -61,7 +60,6 @@ template <typename T>
 void bcoo_print_helper(const BCOOMatrix* A, const aligned_vector<T>& vals)
 {
     int row, col;
-    double val;
 
     for (int i = 0; i < A->nnz; i++)
     {

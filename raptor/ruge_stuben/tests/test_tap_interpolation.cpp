@@ -9,13 +9,20 @@
 
 using namespace raptor;
 
-ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, int* first_row_ptr, int* first_col_ptr, int interp_option = 0)
+// Define Private Methods
+ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, 
+        int* first_row_ptr, int* first_col_ptr, int interp_option = 0);
+
+
+ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, 
+        int* first_row_ptr, int* first_col_ptr, int interp_option)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     int first_row, first_col;
+    int n_items_read;
     FILE* f;
     ParCSRMatrix* P_rap = NULL;
     aligned_vector<int> proc_sizes(num_procs);
@@ -35,11 +42,13 @@ ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename, 
     int cf;
     for (int i = 0; i < first_row; i++)
     {
-        fscanf(f, "%d\n", &cf);
+        n_items_read = fscanf(f, "%d\n", &cf);
+        if (n_items_read == EOF) return NULL;
     }
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        fscanf(f, "%d\n", &splitting[i]);
+        n_items_read = fscanf(f, "%d\n", &splitting[i]);
+        if (n_items_read == EOF) return NULL;
     }
     fclose(f);
 
@@ -90,22 +99,18 @@ TEST(TestTAPInterpolation, TestsInRuge_Stuben)
 
     setenv("PPN", "4", 1);
 
-    int first_row, first_col, col;
-    int start, end;
-    FILE* f;
+    int first_row, first_col;
     ParCSRMatrix* A;
     ParCSRMatrix* S;
     ParCSRMatrix* P;
     ParCSRMatrix* P_rap;
 
     const char* Aniso_fn = "../../../../test_data/aniso.pm";
-    const char* Aniso_S_fn = "../../../../test_data/aniso_S.pm";
     const char* Aniso_split_fn = "../../../../test_data/aniso_split.txt";
     const char* Aniso_P_d_fn = "../../../../test_data/aniso_P_direct.pm";
     const char* Aniso_P_mc_fn = "../../../../test_data/aniso_P_mod_class.pm";
     const char* Aniso_P_e_fn = "../../../../test_data/aniso_P_extend.pm";
     const char* Laplacian_fn = "../../../../test_data/laplacian.pm";
-    const char* Laplacian_S_fn = "../../../../test_data/laplacian_S.pm";
     const char* Laplacian_split_fn = "../../../../test_data/laplacian_split.txt";
     const char* Laplacian_P_d_fn = "../../../../test_data/laplacian_P_direct.pm";
     const char* Laplacian_P_mc_fn = "../../../../test_data/laplacian_P_mod_class.pm";

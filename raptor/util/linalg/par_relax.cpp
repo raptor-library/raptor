@@ -5,6 +5,20 @@
 #include "util/linalg/par_relax.hpp"
 #include "core/par_matrix.hpp"
 
+// Declare Private Methods
+void SOR_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
+        const aligned_vector<double>& dist_x, double omega);
+void SOR_backward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
+        const aligned_vector<double>& dist_x, double omega);
+void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
+        int num_sweeps, double omega, CommPkg* comm);
+void sor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
+        int num_sweeps, double omega, CommPkg* comm);
+void ssor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
+        int num_sweeps, double omega, CommPkg* comm);
+
+
+
 /**************************************************************
  *****   Hybrid Gauss-Seidel / Jacobi Parallel Relaxation
  **************************************************************

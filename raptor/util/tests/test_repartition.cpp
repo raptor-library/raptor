@@ -23,9 +23,7 @@ TEST(Repartition, TestsInUtil)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    double t0, tfinal;
     int* proc_part;
-    double bnorm;
     aligned_vector<int> new_local_rows;
 
     const char* filename = "../../../../test_data/random.pm";

@@ -29,6 +29,7 @@ TEST(ParBiCGStabTest, TestsInKrylov)
     ParVector x(A->global_num_rows, A->local_num_rows);
     ParVector b(A->global_num_rows, A->local_num_rows);
     aligned_vector<double> residuals;
+    int n_items_read;
 
     x.set_const_value(1.0);
     A->mult(x, b);
@@ -42,7 +43,8 @@ TEST(ParBiCGStabTest, TestsInKrylov)
         double res;
         for (int i = 0; i < 10; i++)
         {
-            fscanf(f, "%lf\n", &res);
+            n_items_read = fscanf(f, "%lf\n", &res);
+            ASSERT_EQ(n_items_read, 1);
             ASSERT_NEAR(res, residuals[i], 1e-06);
         }
         fclose(f);

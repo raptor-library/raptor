@@ -38,6 +38,7 @@ TEST(TestTAPRugeStuben, TestsInRuge_Stuben)
     aligned_vector<int> off_proc_splitting;
     aligned_vector<double> rand_vals;
     int first_row;
+    int n_items_read;
 
     // Read in weights
     int max_n = 5000;
@@ -46,7 +47,8 @@ TEST(TestTAPRugeStuben, TestsInRuge_Stuben)
     FILE* f = fopen(weights_fn, "r");
     for (int i = 0; i < max_n; i++)
     {
-        fscanf(f, "%lf\n", &weights[i]);
+        n_items_read = fscanf(f, "%lf\n", &weights[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 

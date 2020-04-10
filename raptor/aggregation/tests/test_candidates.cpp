@@ -28,6 +28,7 @@ TEST(TestCandidates, TestsInAggregation)
     const char* mis0_fn = "../../../../test_data/sas_mis0.txt";
     const char* T0_fn = "../../../../test_data/sas_T0.pm";
     const char* weights_fn = "../../../../test_data/weights.txt";
+    int n_items_read;
 
     A = readMatrix(A0_fn);
     S = readMatrix(S0_fn);
@@ -36,7 +37,8 @@ TEST(TestCandidates, TestsInAggregation)
     aligned_vector<double> weights(S->n_rows);
     for (int i = 0; i < S->n_rows; i++)
     {
-        fscanf(f, "%lf\n", &weights[i]);
+        n_items_read = fscanf(f, "%lf\n", &weights[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 
@@ -44,7 +46,8 @@ TEST(TestCandidates, TestsInAggregation)
     f = fopen(mis0_fn, "r");
     for (int i = 0; i < S->n_rows; i++)
     {
-        fscanf(f, "%d\n", &python_states[i]);
+        n_items_read = fscanf(f, "%d\n", &python_states[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     aligned_vector<int> aggregates;
@@ -80,7 +83,8 @@ TEST(TestCandidates, TestsInAggregation)
     f = fopen(mis1_fn, "r");
     for (int i = 0; i < S->n_rows; i++)
     {
-        fscanf(f, "%d\n", &python_states[i]);
+        n_items_read = fscanf(f, "%d\n", &python_states[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     n_aggs = aggregate(A, S, python_states, aggregates, weights.data());

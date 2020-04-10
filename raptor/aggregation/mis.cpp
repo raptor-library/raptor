@@ -7,7 +7,7 @@ void mis2(CSRMatrix* A, aligned_vector<int>& states,
 {
     int start, end, col;
     int start_k, end_k;
-    int remaining, iterate;
+    int remaining;
     int ctr, v, w, u, tmp;
     bool found;
 
@@ -71,7 +71,6 @@ void mis2(CSRMatrix* A, aligned_vector<int>& states,
 
     // Main MIS2 Loop
     remaining = A->n_rows;
-    iterate = 0;
     while (remaining)
     {
         for (int i = 0; i < remaining; i++)

@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
-    int dim;
+    int dim = 3;
     int n = 5;
     int system = 0;
 
@@ -42,15 +42,10 @@ int main(int argc, char *argv[])
         system = atoi(argv[1]);
     }
 
-    ParCSRMatrix* A;
+    ParCSRMatrix* A = NULL;
     ParVector x;
     ParVector b;
 
-    double t0, tfinal;
-    double t0_comm, tfinal_comm;
-    int n0, s0;
-    int nfinal, sfinal;
-    double raptor_setup, raptor_solve;
     int num_variables = 1;
     relax_t relax_type = SOR;
     coarsen_t coarsen_type = CLJP;
@@ -171,11 +166,9 @@ int main(int argc, char *argv[])
 
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
-    t0 = MPI_Wtime();
     ml = new ParRugeStubenSolver(strong_threshold, coarsen_type, interp_type, Classical, relax_type);
     ml->num_variables = num_variables;
     ml->setup(A);
-    raptor_setup = MPI_Wtime() - t0;
 
     for (int i = 0; i < ml->num_levels - 1; i++)
     {

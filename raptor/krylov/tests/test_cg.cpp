@@ -26,15 +26,17 @@ TEST(CGTest, TestsInKrylov)
     x.set_const_value(1.0);
     A->mult(x, b);
     x.set_const_value(0.0);
+    int n_items_read;
 
     CG(A, x, b, residuals);
     printf("Residuals[0] = %e\n", residuals[0]);
 
     FILE* f = fopen("../../../../test_data/cg_res.txt", "r");
     double res;
-    for (int i = 0; i < residuals.size(); i++)
+    for (int i = 0; i < (int)residuals.size(); i++)
     {
-        fscanf(f, "%lf\n", &res);
+        n_items_read = fscanf(f, "%lf\n", &res);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(res, residuals[i], 1e-06);
     }
     fclose(f);

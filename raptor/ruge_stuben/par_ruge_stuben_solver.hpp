@@ -42,15 +42,14 @@ namespace raptor
             variables = NULL;
         }
        
-        void form_variable_list(const ParCSRMatrix* A, const int num_variables)
+        void form_variable_list(const ParCSRMatrix* A, const int num_var)
         {
-            if (A->local_num_rows == 0 || num_variables <= 1) return;
+            if (A->local_num_rows == 0 || num_var <= 1) return;
             
             variables = new int[A->local_num_rows];
-            int var_dist = A->global_num_rows / num_variables;
             for (int i = 0; i < A->local_num_rows; i++)
             {
-                variables[i] = A->local_row_map[i] % num_variables;
+                variables[i] = A->local_row_map[i] % num_var;
             }
         }
 
@@ -61,7 +60,7 @@ namespace raptor
 
             ParCSRMatrix* A = levels[level_ctr]->A;
             ParCSRMatrix* S;
-            ParCSRMatrix* P;
+            ParCSRMatrix* P = NULL;
             ParCSRMatrix* AP;
 
             aligned_vector<int> states;
@@ -101,6 +100,10 @@ namespace raptor
                     split_hmis(S, states, off_proc_states, tap_level, 
                             weights);
                     break;
+                default:
+                    split_falgout(S, states, off_proc_states, tap_level, 
+                            weights);
+                    break;
             }
 
             // Form modified classical interpolation
@@ -117,6 +120,10 @@ namespace raptor
                 case Extended:
                     P = extended_interpolation(A, S, states, off_proc_states, 
                             interp_filter, tap_level, num_variables, variables);
+                    break;
+                default:
+                    P = direct_interpolation(A, S, states, off_proc_states, 
+                            tap_level);
                     break;
             }
             levels[level_ctr]->P = P;

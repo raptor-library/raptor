@@ -4,6 +4,11 @@
 
 using namespace raptor;
 
+// Declare Private Methods
+CSRMatrix* classical_strength(CSRMatrix* A, double theta, int num_variables, int* variables);
+CSRMatrix* symmetric_strength(CSRMatrix* A, double theta);
+
+
 CSRMatrix* classical_strength(CSRMatrix* A, double theta, int num_variables, int* variables)
 {
     int start, end, col;
@@ -328,6 +333,8 @@ CSRMatrix* CSRMatrix::strength(strength_t strength_type,
         case Classical:
             return classical_strength(this, theta, num_variables, variables);
         case Symmetric:
+            return symmetric_strength(this, theta);
+        default:
             return symmetric_strength(this, theta);
     }
 

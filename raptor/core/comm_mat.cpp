@@ -54,7 +54,7 @@ void CommPkg::init_par_mat_comm(ParCSRMatrix* A, aligned_vector<char>& send_buff
         const bool has_vals)
 {
     int start, end;
-    int ctr, idx;
+    int ctr;
     int global_col;
 
     int nnz = A->on_proc->nnz + A->off_proc->nnz;
@@ -98,7 +98,7 @@ void CommPkg::init_par_mat_comm(ParBSRMatrix* A, aligned_vector<char>& send_buff
         const bool has_vals)
 {
     int start, end;
-    int ctr, idx;
+    int ctr;
     int global_col;
 
     int nnz = A->on_proc->nnz + A->off_proc->nnz;
@@ -345,8 +345,6 @@ void TAPComm::init_mat_comm(aligned_vector<char>& send_buffer, const aligned_vec
 
 CSRMatrix* TAPComm::complete_mat_comm(const int b_rows, const int b_cols, const bool has_vals)
 {  
-    int block_size = b_rows * b_cols;
-
     CSRMatrix* G_mat = global_par_comm->complete_mat_comm(b_rows, b_cols, has_vals);
     CSRMatrix* L_mat = local_L_par_comm->complete_mat_comm(b_rows, b_cols, has_vals);
 
@@ -672,7 +670,7 @@ CSRMatrix* combine_recvs(CSRMatrix* L_mat, CSRMatrix* R_mat,
         NonContigData* local_L_recv, NonContigData* local_R_recv,
         aligned_vector<int>& row_sizes)
 {
-    int ctr, idx, row;
+    int row;
     int start, end;
 
     CSRMatrix* recv_mat;

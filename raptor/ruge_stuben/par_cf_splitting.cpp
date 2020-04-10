@@ -4,6 +4,59 @@
 
 using namespace raptor;
 
+// Declare Private Methods
+void transpose(const ParCSRMatrix* S, aligned_vector<int>& on_col_ptr, 
+        aligned_vector<int>& off_col_ptr, aligned_vector<int>& on_col_indices,
+        aligned_vector<int>& off_col_indices);
+void initial_weights(const ParCSRMatrix* S, CommPkg* comm, aligned_vector<double>& weights, 
+        double* rand_vals = NULL);
+void find_max_off_weights(CommPkg* comm, const aligned_vector<int>& off_col_ptr,
+        const aligned_vector<int>& off_col_indices, const aligned_vector<int>& states,
+        const aligned_vector<int>& off_proc_states, const aligned_vector<double>& weights,
+        aligned_vector<double>& max_weights, bool first_pass = false,
+        const int block_size = 1);
+int select_independent_set(const ParCSRMatrix* S, const int remaining,
+        const aligned_vector<int>& unassigned, const aligned_vector<double>& weights, 
+        const aligned_vector<double>& off_proc_weights, const aligned_vector<double>& max_off_weights,
+        const aligned_vector<int>& on_col_ptr, const aligned_vector<int>& on_col_indices,
+        aligned_vector<int>& states, const aligned_vector<int>& off_proc_states,
+        aligned_vector<int>& new_coarse_list);
+void update_row_weights(const ParCSRMatrix* S, const int num_new_coarse,
+        const aligned_vector<int>& new_coarse_list, aligned_vector<int>& on_edgemark, 
+        aligned_vector<int>& off_edgemark, const aligned_vector<int>& states,
+        const aligned_vector<int>& off_proc_states, aligned_vector<double>& weights,
+        aligned_vector<int>& off_proc_weight_updates);
+void update_local_dist2_weights(const ParCSRMatrix* S, const int num_new_coarse,
+        const aligned_vector<int>& new_coarse_list, const int off_num_new_coarse, 
+        const aligned_vector<int>& off_new_coarse_list, const aligned_vector<int>& on_col_ptr,
+        const aligned_vector<int>& on_col_indices, const aligned_vector<int>& off_col_ptr,
+        const aligned_vector<int>& off_col_indices, aligned_vector<int>& on_edgemark, 
+        const aligned_vector<int>& states, aligned_vector<double>& weights);
+void update_off_proc_dist2_weights(const ParCSRMatrix* S, const int num_new_coarse,
+        const int off_num_new_coarse, const aligned_vector<int> new_coarse_list,
+        const aligned_vector<int> off_new_coarse_list, const aligned_vector<int>& recv_off_col_ptr,
+        const aligned_vector<int>& recv_off_col_coarse, const aligned_vector<int>& on_col_ptr,
+        const aligned_vector<int>& on_col_indices, const aligned_vector<int>& off_col_ptr,
+        const aligned_vector<int>& off_col_indices, aligned_vector<int>& off_edgemark, 
+        const aligned_vector<int>& off_proc_states, aligned_vector<int>& off_proc_weight_updates);
+void find_off_proc_weights(CommPkg* comm, const aligned_vector<int>& states,
+        const aligned_vector<int>& off_proc_states, const aligned_vector<double>& weights,
+        aligned_vector<double>& off_proc_weights, bool first_pass = false);
+int find_off_proc_states(CommPkg* comm, const aligned_vector<int>& states,
+        aligned_vector<int>& off_proc_states, bool first_pass = false);
+void find_off_proc_new_coarse(const ParCSRMatrix* S, CommPkg* comm,
+        const std::map<int, int>& global_to_local, const aligned_vector<int>& states,
+        const aligned_vector<int>& off_proc_states, const int* part_to_col,
+        aligned_vector<int>& off_proc_col_ptr, aligned_vector<int>& off_proc_col_coarse,
+        bool first_pass = false);
+void combine_weight_updates(CommPkg* comm, const aligned_vector<int>&states,
+        const aligned_vector<int>& off_proc_states, const aligned_vector<int>& off_proc_weight_updates,
+        aligned_vector<double>& weights, bool first_pass = false);
+int update_states(aligned_vector<double>& weights, 
+        aligned_vector<int>& states, const int remaining, aligned_vector<int>& unassigned);
+
+
+
 void split_rs(ParCSRMatrix* S, aligned_vector<int>& states, 
         aligned_vector<int>& off_proc_states, bool tap_cf)
 {
@@ -76,8 +129,6 @@ void split_pmis(ParCSRMatrix* S, aligned_vector<int>& states,
         aligned_vector<int>& off_proc_states, bool tap_cf, 
         double* rand_vals)
 {
-    int remaining;
-
     S->on_proc->move_diag();
 
     set_initial_states(S, states);
@@ -246,16 +297,11 @@ void transpose(const ParCSRMatrix* S,
 void initial_weights(const ParCSRMatrix* S,
         CommPkg* comm, 
         aligned_vector<double>& weights, 
-        double* rand_vals = NULL)
+        double* rand_vals)
 {
     int start, end;
     int idx;
     
-    
-    int proc;
-    int tag = 3029;
-    
-
     aligned_vector<int> off_proc_weights;
 
     if (S->off_proc_num_cols)
@@ -313,7 +359,7 @@ void find_off_proc_weights(CommPkg* comm,
         const aligned_vector<int>& off_proc_states,
         const aligned_vector<double>& weights,
         aligned_vector<double>& off_proc_weights,
-        bool first_pass = false)
+        bool first_pass)
 {
     int off_proc_num_cols = off_proc_states.size();
 
@@ -347,8 +393,8 @@ void find_max_off_weights(CommPkg* comm,
         const aligned_vector<int>& off_proc_states,
         const aligned_vector<double>& weights,
         aligned_vector<double>& max_weights,
-        bool first_pass = false,
-        const int block_size = 1)
+        bool first_pass,
+        const int block_size)
 {
     int start, end, idx;
     double max_weight;
@@ -886,7 +932,7 @@ void update_off_proc_dist2_weights(const ParCSRMatrix* S,
 int find_off_proc_states(CommPkg* comm,
         const aligned_vector<int>& states,
         aligned_vector<int>& off_proc_states,
-        bool first_pass = false)
+        bool first_pass)
 {
     int new_state;
     int num_new_coarse = 0;
@@ -939,7 +985,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
         const int* part_to_col,
         aligned_vector<int>& off_proc_col_ptr,
         aligned_vector<int>& off_proc_col_coarse,
-        bool first_pass = false)
+        bool first_pass)
 {
     int start, end;
     int idx, idx_k;
@@ -972,7 +1018,7 @@ void find_off_proc_new_coarse(const ParCSRMatrix* S,
         {
             start = S->on_proc->idx1[i];
             end = S->on_proc->idx1[i+1];
-            if (S->on_proc->idx2[idx_start] == idx)
+            if (S->on_proc->idx2[start] == i)
             {
                 start++;
             }
@@ -1175,7 +1221,7 @@ void combine_weight_updates(CommPkg* comm,
         const aligned_vector<int>& off_proc_states,
         const aligned_vector<int>& off_proc_weight_updates,
         aligned_vector<double>& weights,
-        bool first_pass = false)
+        bool first_pass)
 {
     std::function<double(double, int)> result_func = 
         [](const double a, const int b)
@@ -1200,8 +1246,6 @@ void combine_weight_updates(CommPkg* comm,
 int update_states(aligned_vector<double>& weights, 
         aligned_vector<int>& states, const int remaining, aligned_vector<int>& unassigned)
 {
-    int num_states = states.size();
-
     int ctr = 0;
     int u;
     for (int i = 0; i < remaining; i++)
@@ -1232,7 +1276,7 @@ void pmis_main_loop(ParCSRMatrix* S,
         bool tap_comm, double* rand_vals)
 {
     int start, end, row;
-    int idx, ctr;
+    int idx;
     int num_new_coarse;
     int num_remaining;
     int num_remaining_off;
@@ -1388,15 +1432,10 @@ void cljp_main_loop(ParCSRMatrix* S,
     /**********************************************
      * Declare and Initialize Variables
      **********************************************/
-    int proc, idx, ctr;
-    int start, end;
+    int ctr;
     int num_new_coarse;
     int off_num_new_coarse;
-    int num_fine;
-    int off_num_fine;
-    int unassigned_off_proc;
     int remaining, off_remaining;
-    int size, global_col;
 
     CommPkg* comm = S->comm;
     CommPkg* mat_comm = S->comm;
@@ -1424,12 +1463,6 @@ void cljp_main_loop(ParCSRMatrix* S,
     aligned_vector<int> on_edgemark;
     aligned_vector<int> off_edgemark;
     aligned_vector<double> weights;
-
-    int count;
-    int n_sends, n_recvs;
-    int prev_ctr;
-    int msg_avail;
-    RAPtor_MPI_Status recv_status;
 
     int* part_to_col = S->map_partition_to_local();
 

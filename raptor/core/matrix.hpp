@@ -225,69 +225,69 @@ namespace raptor
         delete[] *addl_val;
     }
     void mult_vals(double val, double addl_val, double* sum, 
-            int n_rows, int n_cols, int n_inner) const
+            int nr, int nc0, int n_inner) const
     {
         *sum += (val * addl_val);
     }
     void mult_vals(double* val, double* addl_val, double** sum,
-            int n_rows, int n_cols, int n_inner) const
+            int nr, int nc, int n_inner) const
     {
-        for (int i = 0; i < n_rows; i++) // Go through b_rows of A
+        for (int i = 0; i < nr; i++) // Go through b_rows of A
         { 
-            for (int j = 0; j < n_cols; j++) // Go through b_cols of B
+            for (int j = 0; j < nc; j++) // Go through b_cols of B
             {
                 double s = 0;
                 for (int k = 0; k < n_inner; k++) // Go through b_cols of A (== b_rows of B)
                 {
                     s += val[i*n_inner + k] * addl_val[k*n_inner + j];
                 }
-                (*sum)[i*n_cols + j] += s;
+                (*sum)[i*nc + j] += s;
             }
         }
     }
     void mult_T_vals(double val, double addl_val, double* sum,
-            int n_rows, int n_cols, int n_inner) const
+            int nr, int nc, int n_inner) const
     {
         *sum += (val * addl_val);
     }
     void mult_T_vals(double* val, double* addl_val, double** sum,
-            int n_rows, int n_cols, int n_inner) const
+            int nr, int nc, int n_inner) const
     {
-        for (int i = 0; i < n_rows; i++) // Go through b_rows of A
+        for (int i = 0; i < nr; i++) // Go through b_rows of A
         { 
-            for (int j = 0; j < n_cols; j++) // Go through b_cols of B
+            for (int j = 0; j < nc; j++) // Go through b_cols of B
             {
                 double s = 0;
                 for (int k = 0; k < n_inner; k++) // Go through b_cols of A (== b_rows of B)
                 {
                     s += val[k*n_inner + i] * addl_val[k*n_inner + j];
                 }
-                (*sum)[i*n_cols + j] += s;
+                (*sum)[i*nc + j] += s;
             }
         }
     }
 
 
-    void append(int idx1, int idx2, double* b, const double* x, const double val) const
+    void append(int _idx1, int _idx2, double* b, const double* x, const double val) const
     {
-        b[idx1] += val*x[idx2];
+        b[_idx1] += val*x[_idx2];
     }
-    void append_T(int idx1, int idx2, double* b, const double* x, const double val) const
+    void append_T(int _idx1, int _idx2, double* b, const double* x, const double val) const
     {
-        b[idx2] += val*x[idx1];
+        b[_idx2] += val*x[_idx1];
     }
-    void append_neg(int idx1, int idx2, double* b, const double* x, const double val) const
+    void append_neg(int _idx1, int _idx2, double* b, const double* x, const double val) const
     {
-        b[idx1] -= val*x[idx2];
+        b[_idx1] -= val*x[_idx2];
     }
-    void append_neg_T(int idx1, int idx2, double* b, const double* x, const double val) const
+    void append_neg_T(int _idx1, int _idx2, double* b, const double* x, const double val) const
     {
-        b[idx2] -= val*x[idx1];
+        b[_idx2] -= val*x[_idx1];
     }
-    void append(int idx1, int idx2, double* b, const double* x, const double* val) const
+    void append(int _idx1, int _idx2, double* b, const double* x, const double* val) const
     {
-        int first_row = idx1*b_rows;
-        int first_col = idx2*b_cols;
+        int first_row = _idx1*b_rows;
+        int first_col = _idx2*b_cols;
         for (int row = 0; row < b_rows; row++)
         {
             for (int col = 0; col < b_cols; col++)
@@ -296,10 +296,10 @@ namespace raptor
             }
         }
     }
-    void append_T(int idx1, int idx2, double* b, const double* x, const double* val) const
+    void append_T(int _idx1, int _idx2, double* b, const double* x, const double* val) const
     {
-        int first_row = idx1*b_rows;
-        int first_col = idx2*b_cols;
+        int first_row = _idx1*b_rows;
+        int first_col = _idx2*b_cols;
 
         for (int row = 0; row < b_rows; row++)
         {
@@ -310,10 +310,10 @@ namespace raptor
             }
         }
     }
-    void append_neg(int idx1, int idx2, double* b, const double* x, const double* val) const
+    void append_neg(int _idx1, int _idx2, double* b, const double* x, const double* val) const
     {
-        int first_row = idx1*b_rows;
-        int first_col = idx2*b_cols;
+        int first_row = _idx1*b_rows;
+        int first_col = _idx2*b_cols;
         for (int row = 0; row < b_rows; row++)
         {
             for (int col = 0; col < b_cols; col++)
@@ -322,10 +322,10 @@ namespace raptor
             }
         }
     }
-    void append_neg_T(int idx1, int idx2, double* b, const double* x, const double* val) const
+    void append_neg_T(int _idx1, int _idx2, double* b, const double* x, const double* val) const
     {
-        int first_row = idx1*b_rows;
-        int first_col = idx1*b_cols;
+        int first_row = _idx1*b_rows;
+        int first_col = _idx1*b_cols;
         for (int row = 0; row < b_rows; row++)
         {
             for (int col = 0; col < b_cols; col++)

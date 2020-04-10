@@ -107,12 +107,12 @@ void TAPComm::form_local_R_par_comm(const aligned_vector<int>& off_node_column_m
     int node;
     int num_recv_nodes;
     int local_proc;
-    int idx, proc;
+    int idx, idx_p, proc;
     int start_ctr, ctr;
     int local_num_sends;
     int recv_start, recv_end;
-    int recv_proc, recv_size;
-    int count;
+    int recv_proc, recv_s;
+    int count, pos;
     int off_node_num_cols = off_node_column_map.size();
     int N = topology->num_nodes / int_size;
     if (topology->num_nodes % int_size)
@@ -141,8 +141,8 @@ void TAPComm::form_local_R_par_comm(const aligned_vector<int>& off_node_column_m
             it != off_node_col_to_proc.end(); ++it)
     {
         node = topology->get_node(*it);
-        int idx = node / int_size;
-        int pos = node % int_size;
+        idx = node / int_size;
+        pos = node % int_size;
         tmp_recv_nodes[idx] |= 1 << pos;
         node_sizes[node]++;
     }
@@ -242,16 +242,16 @@ void TAPComm::form_local_R_par_comm(const aligned_vector<int>& off_node_column_m
     }
 
     // Create displs based on local_recv_sizes
-    recv_size = 0;
+    recv_s = 0;
     aligned_vector<int> proc_to_idx(topology->PPN);
     for (int i = 0; i < topology->PPN; i++)
     {
         if (local_recv_sizes[i])
         {
-            recv_size += local_recv_sizes[i];
+            recv_s += local_recv_sizes[i];
             proc_to_idx[i] = local_R_recv->procs.size();
             local_R_recv->procs.emplace_back(i);
-            local_R_recv->indptr.emplace_back(recv_size);
+            local_R_recv->indptr.emplace_back(recv_s);
             local_recv_sizes[i] = 0;
             local_recv_procs[i] = 1;
         }
@@ -261,8 +261,8 @@ void TAPComm::form_local_R_par_comm(const aligned_vector<int>& off_node_column_m
     for (int i = 0; i < off_node_num_cols; i++)
     {
         local_proc = off_node_col_to_lcl_proc[i];
-        int proc_idx = proc_to_idx[local_proc];
-        idx = local_R_recv->indptr[proc_idx] + local_recv_sizes[local_proc]++;
+        idx_p = proc_to_idx[local_proc];
+        idx = local_R_recv->indptr[idx_p] + local_recv_sizes[local_proc]++;
         local_R_recv->indices[idx] = i;
     }
     local_R_recv->num_msgs = local_R_recv->procs.size();
@@ -362,16 +362,14 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs)
 
     int n_sends;
     int proc, node;
-    int finished, msg_avail;
     int recvbuf;
     int n_send_procs;
-    int recv_size;
+    int recv_s;
     int idx, node_idx;
     int ctr;
     int start, end, size;
     int count;
     RAPtor_MPI_Status recv_status;
-    RAPtor_MPI_Request barrier_request;
 
     aligned_vector<int> node_list(topology->num_nodes, 0);
     aligned_vector<int> sendbuf;
@@ -401,23 +399,23 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs)
     }
 
     // Form recv procs and indptr, based on node_sizes
-    recv_size = 0;
+    recv_s = 0;
     for (int i = 0; i < topology->num_nodes; i++)
     {
         if (node_sizes[i])
         {
-            recv_size += node_sizes[i];
+            recv_s += node_sizes[i];
             node_to_idx[i] = global_recv->procs.size();
-            global_recv->indptr.emplace_back(recv_size);
+            global_recv->indptr.emplace_back(recv_s);
             global_recv->procs.emplace_back(i);  // currently have node 
             node_sizes[i] = 0;
         }
     }
     global_recv->num_msgs = global_recv->procs.size();
-    global_recv->size_msgs = recv_size;
+    global_recv->size_msgs = recv_s;
 
     // Form recv indices, placing global column in correct position
-    global_recv->indices.resize(recv_size);
+    global_recv->indices.resize(recv_s);
     for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
     {
         proc = orig_procs[i];
@@ -630,12 +628,12 @@ void TAPComm::form_global_par_comm(aligned_vector<int>& orig_procs)
         proc = global_par_comm->send_data->procs[i];
         RAPtor_MPI_Probe(proc, 5432, RAPtor_MPI_COMM_WORLD, &recv_status);
         RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_INT, &count);
-        int recvbuf[count];
-        RAPtor_MPI_Recv(recvbuf, count, RAPtor_MPI_INT, proc, 5432, RAPtor_MPI_COMM_WORLD, &recv_status);
+        int commbuf[count];
+        RAPtor_MPI_Recv(commbuf, count, RAPtor_MPI_INT, proc, 5432, RAPtor_MPI_COMM_WORLD, &recv_status);
         for (int j = 0; j < count; j += 2)
         {
-           global_par_comm->send_data->indices.emplace_back(recvbuf[j]);
-           orig_procs.emplace_back(topology->get_local_proc(recvbuf[j+1]));
+           global_par_comm->send_data->indices.emplace_back(commbuf[j]);
+           orig_procs.emplace_back(topology->get_local_proc(commbuf[j+1]));
         }
         global_par_comm->send_data->indptr.emplace_back(
                 global_par_comm->send_data->indices.size()); 
@@ -702,15 +700,15 @@ void TAPComm::form_local_S_par_comm(aligned_vector<int>& orig_procs)
     int n_recvs = recv_procs[local_rank];
 
     // Form local_S_par_comm recv_data
-    int recv_size = 0;
+    int recv_s = 0;
     for (int i = 0; i < topology->PPN; i++)
     {
         if (proc_sizes[i])
         {
-            recv_size += proc_sizes[i];
+            recv_s += proc_sizes[i];
             proc_to_idx[i] = local_S_recv->procs.size();
             local_S_recv->procs.emplace_back(i);
-            local_S_recv->indptr.emplace_back(recv_size);
+            local_S_recv->indptr.emplace_back(recv_s);
         }
         proc_sizes[i] = 0;
     }
@@ -962,9 +960,9 @@ void TAPComm::form_local_L_par_comm(const aligned_vector<int>& on_node_column_ma
         proc = recv_status.RAPtor_MPI_SOURCE;
         int recvbuf[count];
         RAPtor_MPI_Recv(recvbuf, count, RAPtor_MPI_INT, proc, 7890, topology->local_comm, &recv_status);
-        for (int i = 0; i < count; i++)
+        for (int j = 0; j < count; j++)
         {
-            recvbuf[i] -= first_local_col;
+            recvbuf[j] -= first_local_col;
         }
         local_L_par_comm->send_data->add_msg(proc, count, recvbuf);
     }
@@ -987,9 +985,6 @@ void TAPComm::form_simple_R_par_comm(aligned_vector<int>& off_node_column_map,
 
     int proc, local_proc;
     int proc_idx, idx;
-    int start, end;
-    int count;
-    RAPtor_MPI_Status recv_status;
     int off_node_num_cols = off_node_column_map.size();
     aligned_vector<int> local_proc_sizes(topology->PPN, 0);
     aligned_vector<int> proc_size_idx(topology->PPN);
@@ -1049,12 +1044,8 @@ void TAPComm::form_simple_global_comm(aligned_vector<int>& off_proc_col_to_proc)
     int rank;
     int num_procs;
     int proc, start, end;
-    int finished, msg_avail;
-    int count;
     int idx, proc_idx;
     int global_idx;
-    RAPtor_MPI_Status recv_status;
-    RAPtor_MPI_Request barrier_request;
 
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
     RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
@@ -1062,16 +1053,15 @@ void TAPComm::form_simple_global_comm(aligned_vector<int>& off_proc_col_to_proc)
     aligned_vector<int> proc_sizes(num_procs, 0);
     aligned_vector<int> proc_ctr;
 
-    NonContigData* local_R_recv = (NonContigData*) local_R_par_comm->recv_data;
     NonContigData* global_recv = (NonContigData*) global_par_comm->recv_data;
 
     // Communicate processes on which each index originates
     local_R_par_comm->communicate_T(off_proc_col_to_proc.data());
-    aligned_vector<int>& int_buffer = local_R_par_comm->send_data->get_buffer<int>();
+    aligned_vector<int>& int_send_buffer = local_R_par_comm->send_data->get_buffer<int>();
 
     for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
     {
-        proc = int_buffer[i];
+        proc = int_send_buffer[i];
         if (proc_sizes[proc] == 0)
         {
             global_recv->procs.emplace_back(proc);
@@ -1098,7 +1088,7 @@ void TAPComm::form_simple_global_comm(aligned_vector<int>& off_proc_col_to_proc)
     for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
     {
         global_idx = local_R_par_comm->send_data->indices[i];
-        proc = int_buffer[i];
+        proc = int_send_buffer[i];
         proc_idx = proc_sizes[proc];
         idx = global_recv->indptr[proc_idx] + proc_ctr[proc_idx]++;
         global_recv->indices[idx] = global_idx;

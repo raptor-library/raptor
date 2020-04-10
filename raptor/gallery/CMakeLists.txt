@@ -10,6 +10,8 @@ if (WITH_MPI)
         gallery/par_matrix_market.hpp
         )
     set(par_gallery_SOURCES
+        gallery/par_stencil.cpp
+        gallery/par_random.cpp
         gallery/par_matrix_IO.cpp
         gallery/par_matrix_market.cpp
         )
@@ -33,6 +35,10 @@ set(gallery_HEADERS
     PARENT_SCOPE)
 
 set(gallery_SOURCES
+    gallery/diffusion.cpp
+    gallery/laplacian27pt.cpp
+    gallery/stencil.cpp
+    gallery/random.cpp
     gallery/matrix_IO.cpp
     gallery/matrix_market.cpp
     ${par_gallery_SOURCES}

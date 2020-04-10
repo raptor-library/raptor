@@ -35,9 +35,9 @@ TEST(TestTAPCandidates, TestsInAggregation)
 
     const char* A0_fn = "../../../../test_data/sas_A0.pm";
     const char* S0_fn = "../../../../test_data/sas_S0.pm";
-    const char* mis0_fn = "../../../../test_data/sas_mis0.txt";
     const char* T0_fn = "../../../../test_data/sas_T0.pm";
     const char* weights_fn = "../../../../test_data/weights.txt";
+    int n_items_read;
 
     A = readParMatrix(A0_fn);
     S = readParMatrix(S0_fn);
@@ -47,11 +47,13 @@ TEST(TestTAPCandidates, TestsInAggregation)
     f = fopen(weights_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
-        fscanf(f, "%lf\n", &weights[0]);
+        n_items_read = fscanf(f, "%lf\n", &weights[0]);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        fscanf(f, "%lf\n", &weights[i]);
+        n_items_read = fscanf(f, "%lf\n", &weights[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 

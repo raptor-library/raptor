@@ -51,14 +51,14 @@ namespace raptor
             int level_ctr = levels.size() - 1;
             CSRMatrix* A = levels[level_ctr]->A;
             CSRMatrix* S;
-            CSRMatrix* P;
+            CSRMatrix* P = NULL;
             CSRMatrix* AP;
             CSRMatrix* T;
             CSCMatrix* P_csc;
             aligned_vector<int> states;
             aligned_vector<int> aggregates;
             aligned_vector<double> R;
-            int n_aggs;
+            int n_aggs = 0;
 
             // Form Strength Matrix
             printf("Forming S..\n");
@@ -71,6 +71,10 @@ namespace raptor
                     mis2(S, states, weights);
                     n_aggs = aggregate(A, S, states, aggregates);
                     break;
+                default:
+                    mis2(S, states, weights);
+                    n_aggs = aggregate(A, S, states, aggregates);
+                    break;
             }
             
             // Form tentative interpolation
@@ -79,6 +83,9 @@ namespace raptor
             switch (prolong_type)
             {
                 case JacobiProlongation:
+                    P = jacobi_prolongation(A, T, prolong_weight, prolong_smooth_steps);
+                    break;
+                default:
                     P = jacobi_prolongation(A, T, prolong_weight, prolong_smooth_steps);
                     break;
             }

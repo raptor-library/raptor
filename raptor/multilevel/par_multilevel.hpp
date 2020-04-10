@@ -66,12 +66,6 @@
 
 namespace raptor
 {
-    // BLAS LU routine that is used for coarse solve
-    extern "C" void dgetrf_(int* dim1, int* dim2, double* a, int* lda, 
-            int* ipiv, int* info);
-    extern "C" void dgetrs_(char *TRANS, int *N, int *NRHS, double *A, 
-            int *LDA, int *IPIV, double *B, int *LDB, int *INFO );
-
     class ParMultilevel
     {
         public:
@@ -403,6 +397,10 @@ namespace raptor
                             ssor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
                                     tap_level);
                             break;
+                        default:
+                            sor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
+                                    tap_level);
+                            break;
                     }
 
 
@@ -441,6 +439,10 @@ namespace raptor
                             break;
                         case SSOR:
                             ssor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
+                                    tap_level);
+                            break;
+                        default:
+                            sor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
                                     tap_level);
                             break;
                      }

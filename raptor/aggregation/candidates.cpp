@@ -8,7 +8,6 @@ CSRMatrix* fit_candidates(const int n_aggs, const aligned_vector<int>& aggregate
 {
     int col_start, col_end;
     int row, idx_B;
-    int col_start_k;
     double val;
 
     // Create CSC Matrix Holding Aggregates
@@ -29,7 +28,6 @@ CSRMatrix* fit_candidates(const int n_aggs, const aligned_vector<int>& aggregate
     CSCMatrix* T_csc = new CSCMatrix(n_rows, n_aggs * num_candidates, n_rows * num_candidates);
     
     // Set near nullspace candidates in R to 0
-    int size_R = n_aggs * num_candidates;
     R.resize(n_aggs);
     for (int i = 0; i < n_aggs; i++)
     {
@@ -72,7 +70,7 @@ CSRMatrix* fit_candidates(const int n_aggs, const aligned_vector<int>& aggregate
             // Calculate norm of column
             for (int k = col_start_j; k < col_end_j; k++)
             {
-                double val = T_csc->vals[k];
+                val = T_csc->vals[k];
                 norm_j += val * val;
             }
             norm_j = sqrt(norm_j);
@@ -108,7 +106,7 @@ CSRMatrix* fit_candidates(const int n_aggs, const aligned_vector<int>& aggregate
             norm_j = 0;
             for (int k = col_start_j; k < col_end_j; k++)
             {
-                double val = T_csc->vals[k];
+                val = T_csc->vals[k];
                 norm_j += val * val;
             }
             norm_j = sqrt(norm_j);

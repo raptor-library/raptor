@@ -5,6 +5,13 @@
 
 using namespace raptor;
 
+// Declare Private Methods
+void CSR_spmv(const CSRMatrix* A, const double* x, double* b);
+void CSR_residual(const CSRMatrix* A, const double* x, 
+        const double* b, double* r);
+void CSR_append(const CSRMatrix* A, const double* x, double* b);
+void BSR_spmv(const BSRMatrix* A, const double* x, double* b);
+
 // COOMatrix SpMV Methods (or BCOO)
 template <typename T>
 void COO_append(const COOMatrix* A, const aligned_vector<T>& vals,

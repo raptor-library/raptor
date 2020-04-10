@@ -5,6 +5,13 @@
 
 using namespace raptor;
 
+// BLAS LU routine that is used for coarse solve
+extern "C" void dgetrf_(int* dim1, int* dim2, double* a, int* lda, 
+        int* ipiv, int* info);
+extern "C" void dgetrs_(char *TRANS, int *N, int *NRHS, double *A, 
+        int *LDA, int *IPIV, double *B, int *LDB, int *INFO );
+
+
 template <typename T, typename U>
 void vec_sort(aligned_vector<T>& vec1, aligned_vector<U>& vec2, int start = 0, int end = -1)
 {

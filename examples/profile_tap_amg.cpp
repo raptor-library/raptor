@@ -21,18 +21,16 @@ int main(int argc, char* argv[])
     int n = 5;
     int system = 0;
     double strong_threshold = 0.25;
-    int iter;
     int num_variables = 1;
+    int iter;
 
     coarsen_t coarsen_type = PMIS;
     interp_t interp_type = Extended;
 
     ParMultilevel* ml;
-    ParCSRMatrix* A;
+    ParCSRMatrix* A = NULL;
     ParVector x;
     ParVector b;
-
-    double t0, tfinal;
 
     if (argc > 1)
     {
@@ -40,7 +38,7 @@ int main(int argc, char* argv[])
     }
     if (system < 2)
     {
-        int dim;
+        int dim = 3;
         double* stencil = NULL;
         aligned_vector<int> grid;
         if (argc > 2)

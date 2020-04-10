@@ -722,11 +722,11 @@ namespace raptor
         }
     }
 
-    ParCSCMatrix(index_t glob_rows, index_t glob_cols, int local_num_rows, 
-            int local_num_cols, index_t first_local_row, index_t first_col, 
+    ParCSCMatrix(index_t glob_rows, index_t glob_cols, int local_n_rows, 
+            int local_n_cols, index_t first_row, index_t first_col, 
             int nnz_per_row = 5, bool form_mat = true) 
-        : ParMatrix(glob_rows, glob_cols, local_num_rows, local_num_cols, 
-                first_local_row, first_col)
+        : ParMatrix(glob_rows, glob_cols, local_n_rows, local_n_cols, 
+                first_row, first_col)
     {
         if (form_mat)
         {

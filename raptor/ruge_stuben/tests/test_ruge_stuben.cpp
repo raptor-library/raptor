@@ -32,11 +32,13 @@ TEST(TestRugeStuben, TestsInRuge_Stuben)
     // Read in weights (for max num rows)
     FILE* f;
     int max_n = 5000;
+    int n_items_read;
     aligned_vector<double> weights(max_n);
     f = fopen(weight_fn, "r");
     for (int i = 0; i < max_n; i++)
     {
-        fscanf(f, "%lf\n", &weights[i]);
+        n_items_read = fscanf(f, "%lf\n", &weights[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 

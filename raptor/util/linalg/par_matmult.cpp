@@ -4,6 +4,12 @@
 
 using namespace raptor;
 
+// Declare Private Methods
+ParCSRMatrix* init_mat(ParCSCMatrix* A);
+ParCSRMatrix* init_mat(ParCSRMatrix* A);
+ParBSRMatrix* init_mat(ParBSRMatrix* A);
+ParBSRMatrix* init_mat(ParBSCMatrix* A);
+
 ParCSRMatrix* init_mat(ParCSCMatrix* A)
 {
     return new ParCSRMatrix(A->partition);
@@ -161,9 +167,6 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap)
         return this->tap_mult_T(A);
     }
 
-    int start, end;
-    int row, col, idx;
-
     if (A->comm == NULL)
     {
         A->comm = new ParComm(A->partition, A->off_proc_column_map, A->on_proc_column_map);
@@ -197,9 +200,6 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap)
 
 ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A)
 {
-    int start, end;
-    int row, col, idx;
-
     if (A->tap_mat_comm == NULL)
     {
         A->tap_mat_comm = new TAPComm(A->partition, A->off_proc_column_map, 
@@ -258,11 +258,7 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C,
 
     // Declare Variables
     int row_start, row_end;
-    int row_start_B, row_end_B;
-    int row_start_recv, row_end_recv;
-    int global_col, col, col_B, col_C;
-    int tmp;
-    double val;
+    int global_col;
             
     // Split recv_mat into on and off proc portions
     CSRMatrix* recv_on = new CSRMatrix(recv_mat->n_rows, -1);
@@ -388,11 +384,7 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
         CSRMatrix* C_on_on, CSRMatrix* C_off_on)
 { 
     int start, end, ctr;
-    int head, length, tmp;
-    int row_start_PT, row_end_PT;
-    int row_start, row_end;
-    int col_PT, col, col_C;
-    double val_PT, val;
+    int col, col_C;
 
     aligned_vector<double> sums;
     aligned_vector<int> next;

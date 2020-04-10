@@ -20,11 +20,10 @@ int main(int argc, char* argv[])
     int n = 5;
     int system = 0;
     double strong_threshold = 0.25;
-    int iter;
     int num_variables = 1;
 
     ParMultilevel* ml;
-    ParCSRMatrix* A;
+    ParCSRMatrix* A = NULL;
     ParVector x;
     ParVector b;
 
@@ -34,7 +33,7 @@ int main(int argc, char* argv[])
     }
     if (system < 2)
     {
-        int dim;
+        int dim = 3;
         double* stencil = NULL;
         aligned_vector<int> grid;
         if (argc > 2)
@@ -293,7 +292,6 @@ int main(int argc, char* argv[])
          *********************************/
         n_aggs = aggregate(level->A, S, states, off_proc_states, aggregates, false,
                     NULL);
-        double interp_tol = 1e-10;
         ParCSRMatrix* T = fit_candidates(level->A, n_aggs, aggregates, B, R, 
                     1, false, 1e-10);
         for (int test = 0; test < n_tests; test++)

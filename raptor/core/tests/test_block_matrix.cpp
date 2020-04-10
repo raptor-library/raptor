@@ -16,12 +16,13 @@ void compare_vals(CSRMatrix* A, BSRMatrix* B)
         {
             for (int j = B->idx1[i]; j < B->idx1[i+1]; j++)
             {
-                int b_col = B->idx2[j];
                 double* val = B->block_vals[j];
                 for (int l = 0; l < B->b_cols; l++)
                 {
                     if (fabs(val[k*B->b_cols + l]) > zero_tol)
+                    {
                         ASSERT_NEAR(val[k*B->b_cols + l], A->vals[ctr++], 1e-10);
+                    }
 
                 }
             }

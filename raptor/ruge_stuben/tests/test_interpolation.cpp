@@ -24,6 +24,7 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     CSRMatrix* P_rap;
     aligned_vector<int> splitting;
     FILE* f;
+    int n_items_read;
 
     const char* Aniso_fn = "../../../../test_data/aniso.pm";
     const char* Aniso_S_fn = "../../../../test_data/aniso_S.pm";
@@ -45,7 +46,8 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     f = fopen(Aniso_split_fn, "r");
     for (int i = 0; i < A->n_rows; i++)
     {
-        fscanf(f, "%d\n", &splitting[i]);
+        n_items_read = fscanf(f, "%d\n", &splitting[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 
@@ -80,7 +82,8 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     f = fopen(Laplacian_split_fn, "r");
     for (int i = 0; i < A->n_rows; i++)
     {
-        fscanf(f, "%d\n", &splitting[i]);
+        n_items_read = fscanf(f, "%d\n", &splitting[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 

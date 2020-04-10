@@ -37,6 +37,7 @@ ParCSRMatrix* readParMatrix(const char* filename,
     int32_t global_num_cols;
     int32_t global_nnz;
     int32_t idx;
+    int n_items_read;
     double val;
 
     bool is_little_endian = false;
@@ -50,7 +51,8 @@ ParCSRMatrix* readParMatrix(const char* filename,
     if (fseek(ifile, 0, SEEK_SET)) printf("Error seeking beginning of file\n"); 
     
     // Read code, and determine if little endian, or if long int
-    fread(&code, sizeof_int32, 1, ifile);
+    n_items_read = fread(&code, sizeof_int32, 1, ifile);
+    if (n_items_read == EOF) printf("EOF reading code\n");
     if (ferror(ifile)) printf("Error reading code\n");
     if (code != PETSC_MAT_CODE)
     {
@@ -58,11 +60,14 @@ ParCSRMatrix* readParMatrix(const char* filename,
         is_little_endian = true;
     }
 
-    fread(&global_num_rows, sizeof_int32, 1, ifile);
+    n_items_read = fread(&global_num_rows, sizeof_int32, 1, ifile);
+    if (n_items_read == EOF) printf("EOF reading code\n");
     if (ferror(ifile)) printf("Error reading N\n");
-    fread(&global_num_cols, sizeof_int32, 1, ifile);
+    n_items_read = fread(&global_num_cols, sizeof_int32, 1, ifile);
+    if (n_items_read == EOF) printf("EOF reading code\n");
     if (ferror(ifile)) printf("Error reading M\n");
-    fread(&global_nnz, sizeof_int32, 1, ifile);
+    n_items_read = fread(&global_nnz, sizeof_int32, 1, ifile);
+    if (n_items_read == EOF) printf("EOF reading code\n");
     if (ferror(ifile)) printf("Error reading nnz\n");
 
     if (is_little_endian)
@@ -96,7 +101,8 @@ ParCSRMatrix* readParMatrix(const char* filename,
     if (fseek(ifile, pos, SEEK_SET)) printf("Error seeking pos\n"); 
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        fread(&idx, sizeof_int32, 1, ifile);
+        n_items_read = fread(&idx, sizeof_int32, 1, ifile);
+        if (n_items_read == EOF) printf("EOF reading code\n");
         if (ferror(ifile)) printf("Error reading row_size\n");
         if (is_little_endian) endian_swap(&idx);
         row_sizes[i] = idx;
@@ -124,7 +130,8 @@ ParCSRMatrix* readParMatrix(const char* filename,
     if (fseek(ifile, pos, SEEK_SET)) printf("Error seeking pos\n"); 
     for (int i = 0; i < nnz; i++)
     {
-        fread(&idx, sizeof_int32, 1, ifile);
+        n_items_read = fread(&idx, sizeof_int32, 1, ifile);
+        if (n_items_read == EOF) printf("EOF reading code\n");
         if (ferror(ifile)) printf("Error reading col idx\n");
         if (is_little_endian) endian_swap(&idx);
         col_indices[i] = idx;
@@ -134,7 +141,8 @@ ParCSRMatrix* readParMatrix(const char* filename,
     if (fseek(ifile, pos, SEEK_SET)) printf("Error seeking pos\n"); 
     for (int i = 0; i < nnz; i++)
     {
-        fread(&val, sizeof_dbl, 1, ifile);
+        n_items_read = fread(&val, sizeof_dbl, 1, ifile);
+        if (n_items_read == EOF) printf("EOF reading code\n");
         if (ferror(ifile)) printf("Error reading value\n");
         if (is_little_endian) endian_swap(&val);
         vals[i] = val;

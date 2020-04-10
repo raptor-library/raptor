@@ -1,6 +1,24 @@
 #include "core/matrix.hpp"
 
 using namespace raptor;
+
+// Declare Private Methods
+aligned_vector<double>& form_new(const CSRMatrix* A, const CSRMatrix* B, 
+        CSRMatrix** C_ptr, aligned_vector<double>& A_vals);
+aligned_vector<double*>& form_new(const CSRMatrix* A, const CSRMatrix* B, 
+        CSRMatrix** C_ptr, aligned_vector<double*>& A_vals);
+aligned_vector<double>& form_new(const CSCMatrix* A, const CSRMatrix* B,
+        CSRMatrix** C_ptr, aligned_vector<double>& A_vals);
+aligned_vector<double*>& form_new(const CSCMatrix* A, const CSRMatrix* B,
+        CSRMatrix** C_ptr, aligned_vector<double*>& A_vals);
+void init_sums(aligned_vector<double>& sums, int size, int b_size);
+void init_sums(aligned_vector<double*>& sums, int size, int b_size);
+void zero_sum(double* sum, int b_size);
+void zero_sum(double** sum, int b_size);
+void finalize_sums(aligned_vector<double>& sums);
+void finalize_sums(aligned_vector<double*>& sums);
+
+
 aligned_vector<double>& form_new(const CSRMatrix* A, const CSRMatrix* B, 
         CSRMatrix** C_ptr, aligned_vector<double>& A_vals)
 {

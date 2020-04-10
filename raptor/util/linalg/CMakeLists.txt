@@ -3,16 +3,6 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
  
 #Create a variable called linalg_SOURCES containing all .cpp files:
 
-if (WITH_PTSCOTCH)
-    set(external_linalg_HEADERS
-        util/linalg/external/ptscotch_wrapper.hpp
-        )
-else()
-    set(external_linalg_HEADERS
-        ""
-        )
-endif()
-
 if (WITH_MPI)
     set(par_linalg_HEADERS
         util/linalg/repartition.hpp
@@ -25,6 +15,7 @@ if (WITH_MPI)
         util/linalg/par_add.cpp
         util/linalg/par_relax.cpp
         util/linalg/repartition.cpp
+        util/linalg/par_diag_scale.cpp
         )
 else ()
     set(par_linalg_HEADERS

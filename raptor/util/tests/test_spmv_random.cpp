@@ -28,12 +28,14 @@ TEST(RandomSpMVTest, TestsInUtil)
     Vector b(A->n_rows);
     
     // Test b <- A*ones
+    int n_items_read;
     x.set_const_value(1.0);
     A->mult(x, b);
     FILE* f = fopen(b_ones, "r");
     for (int i = 0; i < A->n_rows; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(b[i], b_val, 1e-06);
     } 
     fclose(f);
@@ -44,7 +46,8 @@ TEST(RandomSpMVTest, TestsInUtil)
     f = fopen(b_T_ones, "r");
     for (int i = 0; i < A->n_cols; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(x[i],b_val, 1e-06);
     } 
     fclose(f);
@@ -58,7 +61,8 @@ TEST(RandomSpMVTest, TestsInUtil)
     f = fopen(b_inc, "r");
     for (int i = 0; i < A->n_rows; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(b[i], b_val, 1e-06);
     } 
     fclose(f);
@@ -72,7 +76,8 @@ TEST(RandomSpMVTest, TestsInUtil)
     f = fopen(b_T_inc, "r");
     for (int i = 0; i < A->n_cols; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(x[i], b_val, 1e-06);
     } 
     fclose(f);

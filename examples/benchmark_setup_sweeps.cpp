@@ -21,13 +21,10 @@ int main(int argc, char* argv[])
     int system = 0;
     double strong_threshold = 0.25;
     int iter;
-    int num_variables = 1;
-
-    coarsen_t coarsen_type = HMIS;
-    interp_t interp_type = Extended;
+    int num_variables;
 
     ParSmoothedAggregationSolver* ml;
-    ParCSRMatrix* A;
+    ParCSRMatrix* A = NULL;
     ParVector x;
     ParVector b;
 
@@ -39,7 +36,7 @@ int main(int argc, char* argv[])
     }
     if (system < 2)
     {
-        int dim;
+        int dim = 3;
         double* stencil = NULL;
         aligned_vector<int> grid;
         if (argc > 2)
@@ -55,9 +52,6 @@ int main(int argc, char* argv[])
         }
         else if (system == 1)
         {
-            coarsen_type = Falgout;
-            interp_type = ModClassical;
-
             dim = 2;
             grid.resize(dim, n);
             double eps = 0.001;
@@ -102,8 +96,6 @@ int main(int argc, char* argv[])
             }
         }
 
-        coarsen_type = HMIS;
-        interp_type = Extended;
         switch (mfem_system)
         {
             case 0:

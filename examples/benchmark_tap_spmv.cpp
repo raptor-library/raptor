@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
-    int dim;
+    int dim = 3;
     int n = 5;
     int system = 0;
     int num_variables = 1;
@@ -44,12 +44,11 @@ int main(int argc, char *argv[])
         system = atoi(argv[1]);
     }
 
-    ParCSRMatrix* A;
+    ParCSRMatrix* A = NULL;
     ParVector x;
     ParVector b;
 
     double t0, tfinal;
-    double raptor_setup, raptor_solve;
 
     double strong_threshold = 0.25;
     int cache_len = 10000;
@@ -179,14 +178,9 @@ int main(int argc, char *argv[])
     else if (system == 3)
     {
         const char* file = "../../examples/LFAT5.mtx";
-        int sym = 1;
         if (argc > 2)
         {
             file = argv[2];
-            if (argc > 3)
-            {
-                sym = atoi(argv[3]);
-            }
         }
         A = readParMatrix(file);
     }
@@ -206,11 +200,9 @@ int main(int argc, char *argv[])
 
     // Setup Raptor Hierarchy
     MPI_Barrier(MPI_COMM_WORLD);    
-    t0 = MPI_Wtime();
     ml = new ParRugeStubenSolver(strong_threshold, RS, Direct, Classical, SOR);
     ml->num_variables = num_variables;
     ml->setup(A);
-    raptor_setup = MPI_Wtime() - t0;
     clear_cache(cache_array);
 
     for (int i = 0; i < ml->num_levels; i++)
@@ -229,7 +221,7 @@ int main(int argc, char *argv[])
         clear_cache(cache_array);
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        for (int i = 0; i < 100; i++)
+        for (int j = 0; j < 100; j++)
         {
             Al->mult(xl, bl);
         }
@@ -241,7 +233,7 @@ int main(int argc, char *argv[])
         clear_cache(cache_array);
         MPI_Barrier(MPI_COMM_WORLD);
         t0 = MPI_Wtime();
-        for (int i = 0; i < 100; i++)
+        for (int j = 0; j < 100; j++)
         {
             Al->tap_mult(xl, bl);
         }
@@ -271,7 +263,7 @@ int main(int argc, char *argv[])
             + Al->tap_comm->local_R_par_comm->send_data->size_msgs;
 
         int rank_node = Al->partition->topology->get_node(rank);
-        for (int i = 0; i < Al->comm->send_data->num_msgs; i++)
+        for (int j = 0; j < Al->comm->send_data->num_msgs; j++)
         {
             proc = Al->comm->send_data->procs[i];
             start = Al->comm->send_data->indptr[i];

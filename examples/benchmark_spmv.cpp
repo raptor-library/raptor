@@ -39,7 +39,6 @@ int main(int argc, char *argv[])
 
     double t0, tfinal;
 
-    int cache_len = 10000;
     int num_tests = 2;
 
     if (system < 2)
@@ -89,8 +88,6 @@ int main(int argc, char *argv[])
 
     x = Vector(A->n_rows);
     b = Vector(A->n_rows);
-    double* x_data = x.values.data();
-    double* b_data = b.values.data();
 
     x.set_const_value(1.0);
 

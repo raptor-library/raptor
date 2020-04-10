@@ -138,7 +138,7 @@ void SeqInner_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vect
     ParVector Ap;
     ParVector As;
 
-    int iter;
+    int iter = 0;
     data_t alpha, beta, omega;
     data_t rr_inner, next_inner, Apr_inner, As_inner, AsAs_inner;
     double norm_r;
@@ -260,9 +260,8 @@ void Pre_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, ParMultilevel *ml
     ParVector As;
     ParVector p_hat;
     ParVector s_hat;
-    int amg_iter;
 
-    int iter;
+    int iter = 0;
     data_t alpha, beta, omega;
     data_t rr_inner, next_inner, Apr_inner, As_inner, AsAs_inner;
     double norm_r;
@@ -383,7 +382,7 @@ void SeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vecto
     ParVector Ap;
     ParVector As;
 
-    int iter;
+    int iter = 0;
     data_t alpha, beta, omega;
     data_t rr_inner, next_inner, Apr_inner, As_inner, AsAs_inner;
     double norm_r;
@@ -492,7 +491,7 @@ void SeqInnerSeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, align
     ParVector Ap;
     ParVector As;
 
-    int iter;
+    int iter = 0;
     data_t alpha, beta, omega;
     data_t rr_inner, next_inner, Apr_inner, As_inner, AsAs_inner;
     double norm_r;
@@ -626,7 +625,7 @@ void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<dou
     ParVector Ap;
     ParVector As;
 
-    int iter;
+    int iter = 0;
     data_t alpha, beta, omega;
     data_t rr_inner, next_inner, Apr_inner, As_inner, AsAs_inner;
     double norm_r;
@@ -755,7 +754,7 @@ void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<
      *       max_iter : maximum number of iterations
      */
 
-    int rank, num_procs;
+/*    int rank, num_procs;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
     RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
     
@@ -768,17 +767,16 @@ void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<
     ParVector p;
     ParVector Ap;
     ParVector As;
-    ParMultilevel* ml;
+    ParMultilevel* ml = new ParRugeStubenSolver(0.0); // ToDo - Options to set this up
     ParVector p_hat;
     ParVector s_hat;
-    int amg_iter;
 
     // Setup AMG hierarchy
     ml->max_levels = 3;
     ml = new ParSmoothedAggregationSolver(0.0);
     ml->setup(A);
 
-    int iter;
+    int iter = 0;
     data_t alpha, beta, omega;
     data_t rr_inner, next_inner, Apr_inner, As_inner, AsAs_inner;
     double norm_r;
@@ -841,16 +839,16 @@ void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<
         AsAs_inner = As.inner_product(As);
         // Replace single inner product with half inner for testing
         // UPDATE THESE PARTIAL INNER PRODUCT CALCULATIONS
-        /*if (iter % 2 == 0) {
-            //As_inner = half_inner(inner_comm, As, s, my_color, 0, first_root, second_root, part_global);
-            As_inner = half_inner(inner_comm, As, s, my_color, 1, second_root, first_root, part_global);
-            AsAs_inner = half_inner(inner_comm, As, As, my_color, 0, first_root, second_root, part_global);
-        }
-        else {
-            //As_inner = half_inner(inner_comm, As, s, my_color, 1, second_root, first_root, part_global);
-            As_inner = half_inner(inner_comm, As, s, my_color, 0, first_root, second_root, part_global);
-            AsAs_inner = half_inner(inner_comm, As, As, my_color, 1, second_root, first_root, part_global);
-        }*/
+        //if (iter % 2 == 0) {
+        //    //As_inner = half_inner(inner_comm, As, s, my_color, 0, first_root, second_root, part_global);
+        //    As_inner = half_inner(inner_comm, As, s, my_color, 1, second_root, first_root, part_global);
+        //    AsAs_inner = half_inner(inner_comm, As, As, my_color, 0, first_root, second_root, part_global);
+        //}
+        //else {
+        //    //As_inner = half_inner(inner_comm, As, s, my_color, 1, second_root, first_root, part_global);
+        //    As_inner = half_inner(inner_comm, As, s, my_color, 0, first_root, second_root, part_global);
+        //    AsAs_inner = half_inner(inner_comm, As, As, my_color, 1, second_root, first_root, part_global);
+        //}
         omega = As_inner / AsAs_inner;
 
         // x_{i+1} = x_i + alpha_i * p_i + omega_i * s_i
@@ -891,6 +889,6 @@ void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<
             printf("2 Norm of Residual: %lg\n\n", norm_r);
         }
     }
-
+*/
     return;
 }

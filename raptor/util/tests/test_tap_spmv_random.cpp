@@ -35,16 +35,19 @@ TEST(TAPRandomSpMVTest, TestsInUtil)
     ParVector x(A->global_num_cols, A->on_proc_num_cols);
     ParVector b(A->global_num_rows, A->local_num_rows);
 
+    int n_items_read;
     x.set_const_value(1.0);
     A->tap_mult(x, b);
     f = fopen(b_ones, "r");
     for (int i = 0; i < A->partition->first_local_row; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(b[i], b_val, 1e-06);
     }
     fclose(f);
@@ -54,11 +57,13 @@ TEST(TAPRandomSpMVTest, TestsInUtil)
     f = fopen(b_T_ones, "r");
     for (int i = 0; i < A->partition->first_local_col; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < A->on_proc_num_cols; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(x[i],b_val, 1e-06);
     }
     fclose(f);
@@ -71,11 +76,13 @@ TEST(TAPRandomSpMVTest, TestsInUtil)
     f = fopen(b_inc, "r");
     for (int i = 0; i < A->partition->first_local_row; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(b[i], b_val, 1e-06);
     }
     fclose(f);
@@ -88,11 +95,13 @@ TEST(TAPRandomSpMVTest, TestsInUtil)
     f = fopen(b_T_inc, "r");
     for (int i = 0; i < A->partition->first_local_col; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < A->on_proc_num_cols; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(x[i], b_val, 1e-06);
     }
     fclose(f);
@@ -106,11 +115,13 @@ TEST(TAPRandomSpMVTest, TestsInUtil)
     f = fopen(b_ones, "r");
     for (int i = 0; i < A->partition->first_local_row; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(b[i], b_val, 1e-06);
     }
     fclose(f);
@@ -120,11 +131,13 @@ TEST(TAPRandomSpMVTest, TestsInUtil)
     f = fopen(b_T_ones, "r");
     for (int i = 0; i < A->partition->first_local_col; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < A->on_proc_num_cols; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(x[i],b_val, 1e-06);
     }
     fclose(f);
@@ -137,11 +150,13 @@ TEST(TAPRandomSpMVTest, TestsInUtil)
     f = fopen(b_inc, "r");
     for (int i = 0; i < A->partition->first_local_row; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(b[i], b_val, 1e-06);
     }
     fclose(f);
@@ -154,11 +169,13 @@ TEST(TAPRandomSpMVTest, TestsInUtil)
     f = fopen(b_T_inc, "r");
     for (int i = 0; i < A->partition->first_local_col; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < A->on_proc_num_cols; i++)
     {
-        fscanf(f, "%lg\n", &b_val);
+        n_items_read = fscanf(f, "%lg\n", &b_val);
+        ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(x[i], b_val, 1e-06);
     }
     fclose(f);

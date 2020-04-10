@@ -32,6 +32,7 @@ TEST(TestSplitting, TestsInRuge_Stuben)
     const char* cf1 = "../../../../test_data/rss_cf1.txt";
     const char* cf1_pmis = "../../../../test_data/rss_cf1_pmis.txt";
     const char* weights_fn = "../../../../test_data/weights.txt";
+    int n_items_read;
    
     // TEST LAPLACIAN SPLITTINGS ON LEVEL 0 
     S = readMatrix(S0_fn);
@@ -42,7 +43,8 @@ TEST(TestSplitting, TestsInRuge_Stuben)
     f = fopen(cf0_rs, "r");
     for (int i = 0; i < S->n_rows; i++)
     {
-        fscanf(f, "%d\n", &splitting[i]);
+        n_items_read = fscanf(f, "%d\n", &splitting[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     ASSERT_EQ(splitting_rap.size(), splitting.size());
@@ -56,14 +58,16 @@ TEST(TestSplitting, TestsInRuge_Stuben)
     aligned_vector<double> weights(S->n_rows);
     for (int i = 0; i < S->n_rows; i++)
     {
-        fscanf(f, "%lf\n", &weights[i]);
+        n_items_read = fscanf(f, "%lf\n", &weights[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     split_cljp(S, splitting_rap, weights.data());
     f = fopen(cf0, "r");
     for (int i = 0; i < S->n_rows; i++)
     {
-        fscanf(f, "%d\n", &splitting[i]);
+        n_items_read = fscanf(f, "%d\n", &splitting[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     ASSERT_EQ(splitting_rap.size(), splitting.size());
@@ -78,7 +82,8 @@ TEST(TestSplitting, TestsInRuge_Stuben)
     f = fopen(cf0_pmis, "r");
     for (int i = 0; i < S->n_rows; i++)
     {
-        fscanf(f, "%d\n", &splitting[i]);
+        n_items_read = fscanf(f, "%d\n", &splitting[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     ASSERT_EQ(splitting_rap.size(), splitting.size());
@@ -101,7 +106,8 @@ TEST(TestSplitting, TestsInRuge_Stuben)
     f = fopen(cf1_rs, "r");
     for (int i = 0; i < S->n_rows; i++)
     {
-        fscanf(f, "%d\n", &splitting[i]);
+        n_items_read = fscanf(f, "%d\n", &splitting[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     ASSERT_EQ(splitting_rap.size(), splitting.size());
@@ -115,14 +121,16 @@ TEST(TestSplitting, TestsInRuge_Stuben)
     weights.resize(S->n_rows);
     for (int i = 0; i < S->n_rows; i++)
     {
-        fscanf(f, "%lf\n", &weights[i]);
+        n_items_read = fscanf(f, "%lf\n", &weights[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     split_cljp(S, splitting_rap, weights.data());
     f = fopen(cf1, "r");
     for (int i = 0; i < S->n_rows; i++)
     {
-        fscanf(f, "%d\n", &splitting[i]);
+        n_items_read = fscanf(f, "%d\n", &splitting[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     ASSERT_EQ(splitting_rap.size(), splitting.size());
@@ -136,7 +144,8 @@ TEST(TestSplitting, TestsInRuge_Stuben)
     f = fopen(cf1_pmis, "r");
     for (int i = 0; i < S->n_rows; i++)
     {
-        fscanf(f, "%d\n", &splitting[i]);
+        n_items_read = fscanf(f, "%d\n", &splitting[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
     ASSERT_EQ(splitting_rap.size(), splitting.size());

@@ -24,7 +24,6 @@ TEST(TestParProlongation, TestsInAggregation)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    FILE* f;
     aligned_vector<int> states;
     aligned_vector<int> off_proc_states;
 

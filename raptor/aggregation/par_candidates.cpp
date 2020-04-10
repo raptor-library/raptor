@@ -14,10 +14,8 @@ ParCSRMatrix* fit_candidates(ParCSRMatrix* A,
     // Currently only implemented for this
     assert(num_candidates == 1);
     
-    int col_start, col_end;
-    int row, idx_B, ctr;
-    int col_start_k;
-    int global_col, local_col, col;
+    int col_start, col_end, row;
+    int global_col, local_col;
     double val, scale;
     CommPkg* comm;
 
@@ -90,7 +88,6 @@ ParCSRMatrix* fit_candidates(ParCSRMatrix* A,
 
     // Map on proc columns to new, contiguous cols
     // Create on_proc_column_map of T
-    ctr = 0;
     for (int i = 0; i < A->on_proc_num_cols; i++)
     {
         if (on_proc_cols[i])

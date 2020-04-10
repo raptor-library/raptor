@@ -16,7 +16,7 @@ data_t half_inner_contig(ParVector &x, ParVector &y, int half, int part_global){
      * part_global : number of values being used in inner product
      */
 
-    int rank, num_procs, comm_rank, inner_root, recv_root, color;
+    int rank, num_procs, inner_root, recv_root, color;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
     RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
@@ -179,8 +179,6 @@ void create_partial_inner_comm(RAPtor_MPI_Comm &inner_comm, RAPtor_MPI_Comm &roo
        return; 
     }
 
-    int inner_comm_size, recv_comm_size;
-
     // Calculate number of processes in group
     procs_in_group = num_procs * frac; 
     if (num_procs % 2) procs_in_group++;
@@ -219,7 +217,7 @@ data_t half_inner(RAPtor_MPI_Comm &inner_comm, ParVector &x, ParVector &y, int &
      * part_global : number of values being used in inner product
      */
 
-    int rank, num_procs, inner_comm_size, comm_rank;
+    int rank, num_procs, inner_comm_size;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
     RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
     RAPtor_MPI_Request req;
@@ -293,11 +291,9 @@ data_t partial_inner(RAPtor_MPI_Comm &inner_comm, RAPtor_MPI_Comm &root_comm, Pa
      *    part_global : number of values being used in inner product for scaling inner product accordingly
      */
 
-    int rank, num_procs, inner_comm_size, comm_rank;
+    int rank, num_procs, inner_comm_size;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
     RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
-    RAPtor_MPI_Request req;
-    RAPtor_MPI_Status stat;
 
     data_t inner_prod = 0.0;
 

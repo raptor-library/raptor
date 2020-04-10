@@ -28,6 +28,7 @@ TEST(TestTAPAggregate, TestsInAggregation)
     FILE* f;
     aligned_vector<int> states;
     aligned_vector<int> off_proc_states;
+    int n_items_read;
 
     ParCSRMatrix* A;
     ParCSRMatrix* S;
@@ -45,11 +46,13 @@ TEST(TestTAPAggregate, TestsInAggregation)
     f = fopen(weights_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
-        fscanf(f, "%lf\n", &weights[0]);
+        n_items_read = fscanf(f, "%lf\n", &weights[0]);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        fscanf(f, "%lf\n", &weights[i]);
+        n_items_read = fscanf(f, "%lf\n", &weights[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 
@@ -59,11 +62,13 @@ TEST(TestTAPAggregate, TestsInAggregation)
     f = fopen(agg0_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
-        fscanf(f, "%d\n", &py_aggregates[0]);
+        n_items_read = fscanf(f, "%d\n", &py_aggregates[0]);
+        ASSERT_EQ(n_items_read, 1);
     }
     for (int i = 0; i < S->local_num_rows; i++)
     {
-        fscanf(f, "%d\n", &py_aggregates[i]);
+        n_items_read = fscanf(f, "%d\n", &py_aggregates[i]);
+        ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
 
@@ -77,7 +82,7 @@ TEST(TestTAPAggregate, TestsInAggregation)
     aligned_vector<int> agg_displ(num_procs+1);
     aligned_vector<int> agg_list;
     aligned_vector<int> total_agg_list;
-    int global_col, local_col;
+    int global_col;
     MPI_Allgather(&n_aggs, 1, MPI_INT, agg_sizes.data(), 1, MPI_INT, MPI_COMM_WORLD);
     agg_displ[0] = 0;
     int first_n = 0;

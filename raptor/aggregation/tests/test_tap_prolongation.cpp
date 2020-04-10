@@ -26,7 +26,6 @@ TEST(TestTAPProlongation, TestsInAggregation)
 
     setenv("PPN", "16", 1);
 
-    FILE* f;
     aligned_vector<int> states;
     aligned_vector<int> off_proc_states;
 

@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     
-    int dim;
+    int dim = 3;
     int n = 5;
     int system = 0;
 
@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
         system = atoi(argv[1]);
     }
 
-    ParCSRMatrix* A;
+    ParCSRMatrix* A = NULL;
     ParVector x;
     ParVector b;
 
@@ -86,14 +86,9 @@ int main(int argc, char *argv[])
     else if (system == 3)
     {
         const char* file = "../../examples/LFAT5.mtx";
-        int sym = 1;
         if (argc > 2)
         {
             file = argv[2];
-            if (argc > 3)
-            {
-                sym = atoi(argv[3]);
-            }
         }
         A = readParMatrix(file);
     }
@@ -141,7 +136,7 @@ int main(int argc, char *argv[])
 
     if (rank == 0)
     {
-        for (int i = 0; i < res.size(); i++)
+        for (int i = 0; i < (int)res.size(); i++)
         {
             printf("Res[%d] = %e\n", i, res[i]);
         }
@@ -198,19 +193,19 @@ int main(int argc, char *argv[])
         int num_socket = 8;
         int rank_node = Al->partition->topology->get_node(rank);
         int rank_socket = Al->partition->topology->get_local_proc(rank) / num_socket;
-        for (int i = 0; i < Al->comm->send_data->num_msgs; i++)
+        for (int j = 0; j < Al->comm->send_data->num_msgs; j++)
         {
-            int proc = Al->comm->send_data->procs[i];
-            int start = Al->comm->send_data->indptr[i];
-            int end = Al->comm->send_data->indptr[i+1];
+            int proc = Al->comm->send_data->procs[j];
+            int start = Al->comm->send_data->indptr[j];
+            int end = Al->comm->send_data->indptr[j+1];
             int node = Al->partition->topology->get_node(proc);
             int socket = Al->partition->topology->get_local_proc(proc) / num_socket;
 
             int size = end - start;
             int row_size = 0;
-            for (int j = start; j < end; j++)
+            for (int k = start; k < end; k++)
             {
-                int idx = Al->comm->send_data->indices[j];
+                int idx = Al->comm->send_data->indices[k];
                 row_size += (Pl->on_proc->idx1[idx+1] - Pl->on_proc->idx1[idx])
                     + (Pl->off_proc->idx1[idx+1] - Pl->off_proc->idx1[idx]);
             }
