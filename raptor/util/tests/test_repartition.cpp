@@ -87,6 +87,8 @@ TEST(Repartition, TestsInUtil)
             ASSERT_NEAR(rr_sol[i], orig_sol[orig_to_rr[i]], 1e-06);
         }
     }
+
+
     delete A_rr;
 
     delete A_orig;
