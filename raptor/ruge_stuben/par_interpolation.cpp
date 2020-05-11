@@ -354,7 +354,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     // Communicate parallel matrix A (portion needed)
     recv_mat = communicate(A, S, states, off_proc_states, mat_comm);
 
-    int tmp_col = col;
+    int tmp_col;
     int* on_proc_partition_to_col = A->map_partition_to_local();
     
     aligned_vector<int> A_recv_on_ptr(recv_mat->n_rows + 1);

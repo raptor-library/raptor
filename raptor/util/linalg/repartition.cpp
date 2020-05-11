@@ -19,18 +19,16 @@ void make_contiguous(ParCSRMatrix* A)
     
     int start, end;
     int assumed_col, local_col;
-    int msg_avail, finished, count;
-    RAPtor_MPI_Request barrier_request;
+    int count;
 
     aligned_vector<int> assumed_col_to_new;
     aligned_vector<int> proc_num_cols(num_procs);
-    aligned_vector<int> send_procs;
+    aligned_vector<int> send_procs(num_procs);
     aligned_vector<int> send_ptr;
     aligned_vector<int> send_ctr;
     aligned_vector<int> send_buffer;
     aligned_vector<int> recv_buffer;
     aligned_vector<MPI_Request> send_requests;
-
     aligned_vector<MPI_Request> recv_requests;
 
     std::map<int, int> global_to_local;
@@ -77,31 +75,29 @@ void make_contiguous(ParCSRMatrix* A)
     }
 
     // Determine number of local cols assumed to be on each distant proc
-    for (int i = 0; i < num_procs; i++)
-    {
-        proc_num_cols[i] = 0;
-    }
+    std::fill(proc_num_cols.begin(), proc_num_cols.end(), 0);
+    num_sends = 0;
     for (int i = 0; i < A->on_proc_num_cols; i++)
     {
         orig_col = A->on_proc_column_map[i];
         assumed_proc = orig_col / assumed_num_cols;
+        if (proc_num_cols[assumed_proc] == 0)
+        {
+            send_procs[num_sends++] = assumed_proc;
+        }
         proc_num_cols[assumed_proc]++;
     }
+    send_ptr.resize(num_sends+1);
+    send_ptr[0] = 0;
+    for (int i = 0; i < num_sends; i++)
+    {
+        proc = send_procs[i];
+        send_ptr[i+1] = send_ptr[i] + proc_num_cols[proc];
+        proc_num_cols[proc] = i;
+    }
+    send_size = send_ptr[num_sends];
 
     // Re-arrange on_proc cols, ordered by assumed proc
-    send_size = 0;
-    send_ptr.push_back(send_size);
-    for (int i = 0; i < num_procs; i++)
-    {
-        if (proc_num_cols[i])
-        {
-            send_size += proc_num_cols[i];
-            proc_num_cols[i] = send_procs.size();
-            send_procs.push_back(i);
-            send_ptr.push_back(send_size);
-        }
-    }
-    num_sends = send_procs.size();
     if (send_size)
     {
         send_ctr.resize(num_sends, 0);
@@ -146,13 +142,15 @@ void make_contiguous(ParCSRMatrix* A)
     }
 
     RAPtor_MPI_Status recv_status;
+    aligned_vector<int> recvbuf;
     while (size_recvs < local_assumed_num_cols)
     {
         RAPtor_MPI_Probe(RAPtor_MPI_ANY_SOURCE, send_key, RAPtor_MPI_COMM_WORLD, &recv_status);
         RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_INT, &count);
         proc = recv_status.MPI_SOURCE;
-        int recvbuf[count];
-        RAPtor_MPI_Recv(recvbuf, count, RAPtor_MPI_INT, proc, send_key, RAPtor_MPI_COMM_WORLD, &recv_status);
+        if (count > recvbuf.size()) recvbuf.resize(count);
+        RAPtor_MPI_Recv(recvbuf.data(), count, RAPtor_MPI_INT, proc, send_key, 
+                RAPtor_MPI_COMM_WORLD, &recv_status);
         for (int i = 0; i < count; i+= 2)
         {
             orig_col = recvbuf[i];
@@ -177,40 +175,41 @@ void make_contiguous(ParCSRMatrix* A)
     }
 
     // Clear send info from previous communication
-    send_procs.clear();
-    send_ptr.clear();
-    send_ctr.clear();
 
     // Go through off_proc columns, and find which proc with which each is
     // assumed to be associated
+    send_procs.resize(num_procs);
+    num_sends = 0;
     for (int i = 0; i < A->off_proc_num_cols; i++)
     {
         orig_col = A->off_proc_column_map[i];
         assumed_proc = orig_col / assumed_num_cols;
+        if (proc_num_cols[assumed_proc] == 0)
+        {
+            send_procs[num_sends++] = assumed_proc;
+        }
         proc_num_cols[assumed_proc]++;
     }
+    send_ptr.resize(num_sends+1);
+    send_size = 0;
+    send_ptr[0] = 0;
+    for (int i = 0; i < num_sends; i++)
+    {
+        proc = send_procs[i];
+        send_ptr[i+1] = send_ptr[i] + proc_num_cols[proc];
+        proc_num_cols[i] = proc;
+    }
+    send_size = send_ptr[num_sends];
+
 
     // Create send_procs, send_ptr
-    send_size = 0;
-    send_ptr.push_back(send_size);
-    for (int i = 0; i < num_procs; i++)
-    {
-        if (proc_num_cols[i])
-        {
-            send_size += proc_num_cols[i];
-            proc_num_cols[i] = send_procs.size();
-            send_procs.push_back(i);
-            send_ptr.push_back(send_size);
-        }
-    }
-    num_sends = send_procs.size();
     if (num_sends)
     {
-        send_ctr.resize(num_sends, 0);
+        send_ctr.resize(num_sends);
+        std::fill(send_ctr.begin(), send_ctr.end(), 0);
         send_buffer.resize(send_size);
         recv_buffer.resize(send_size);
         send_requests.resize(num_sends);
-        recv_requests.resize(num_sends);
     }
     
     // Add columns to send buffer, ordered by assumed process
@@ -222,6 +221,19 @@ void make_contiguous(ParCSRMatrix* A)
         idx = send_ptr[proc_idx] + send_ctr[proc_idx]++;
         send_buffer[idx] = orig_col;
     }
+    for (int i = 0; i < num_sends; i++)
+    {
+        proc = send_procs[i];
+        proc_num_cols[proc] = 1;
+    }
+    proc_num_cols[rank] = 0;
+    MPI_Allreduce(MPI_IN_PLACE, proc_num_cols.data(), num_procs, MPI_INT,
+            MPI_SUM, MPI_COMM_WORLD);
+    int num_recvs = proc_num_cols[rank];
+    if (num_recvs)
+    {
+        recv_requests.resize(num_recvs);
+    }
 
     // Send off_proc_columns to proc assumed to hold col and recv new global idx
     // of column.  If assumed proc is rank, find new col and add to
@@ -232,15 +244,14 @@ void make_contiguous(ParCSRMatrix* A)
     for (int i = 0; i < num_sends; i++)
     {
         proc = send_procs[i];
+        proc_num_cols[proc] = i;
         start = send_ptr[i];
         end = send_ptr[i+1];
 
         if (proc != rank)
         {
             RAPtor_MPI_Issend(&(send_buffer[start]), end - start, RAPtor_MPI_INT, proc, send_key, 
-                    RAPtor_MPI_COMM_WORLD, &(send_requests[n_sent]));
-            RAPtor_MPI_Irecv(&(recv_buffer[start]), end - start, RAPtor_MPI_INT, proc, recv_key, 
-                    RAPtor_MPI_COMM_WORLD, &(recv_requests[n_sent++]));
+                    RAPtor_MPI_COMM_WORLD, &(send_requests[n_sent++]));
         }
         else
         {
@@ -256,61 +267,54 @@ void make_contiguous(ParCSRMatrix* A)
     }
 
     // Recv columns corresponding to my assumed cols, and return their new cols
-    if (n_sent)
+    for (int i = 0; i < num_recvs; i++)
     {
-        RAPtor_MPI_Testall(n_sent, send_requests.data(), &finished, RAPtor_MPI_STATUSES_IGNORE);
-        while (!finished)
+        RAPtor_MPI_Probe(RAPtor_MPI_ANY_SOURCE, send_key, RAPtor_MPI_COMM_WORLD,
+                &recv_status);
+        RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_INT, &count);
+        proc = recv_status.MPI_SOURCE;
+        if (count > recvbuf.size()) recvbuf.resize(count);
+        RAPtor_MPI_Recv(recvbuf.data(), count, RAPtor_MPI_INT, proc, send_key, RAPtor_MPI_COMM_WORLD, 
+                &recv_status);
+        for (int j = 0; j < count; j++)
         {
-            RAPtor_MPI_Iprobe(RAPtor_MPI_ANY_SOURCE, send_key, RAPtor_MPI_COMM_WORLD, &msg_avail, &recv_status);
-            if (msg_avail)
-            {
-                RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_INT, &count);
-                proc = recv_status.MPI_SOURCE;
-                int recvbuf[count];
-                RAPtor_MPI_Recv(recvbuf, count, RAPtor_MPI_INT, proc, send_key, RAPtor_MPI_COMM_WORLD, 
-                        &recv_status);
-                for (int i = 0; i < count; i++)
-                {
-                    orig_col = recvbuf[i];
-                    assumed_col = orig_col - assumed_first_col;
-                    new_col = assumed_col_to_new[assumed_col];
-                    recvbuf[i] = new_col;
-                }
-                RAPtor_MPI_Send(recvbuf, count, RAPtor_MPI_INT, proc, recv_key, RAPtor_MPI_COMM_WORLD);
-            }
-            RAPtor_MPI_Testall(n_sent, send_requests.data(), &finished, RAPtor_MPI_STATUSES_IGNORE);
+            orig_col = recvbuf[j];
+            assumed_col = orig_col - assumed_first_col;
+            new_col = assumed_col_to_new[assumed_col];
+            recvbuf[j] = new_col;
         }
-    }
-    RAPtor_MPI_Ibarrier(RAPtor_MPI_COMM_WORLD, &barrier_request);
-    RAPtor_MPI_Test(&barrier_request, &finished, RAPtor_MPI_STATUS_IGNORE);
-    while (!finished)
-    {
-        RAPtor_MPI_Iprobe(RAPtor_MPI_ANY_SOURCE, send_key, RAPtor_MPI_COMM_WORLD, &msg_avail, &recv_status);
-        if (msg_avail)
-        {
-            RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_INT, &count);
-            proc = recv_status.MPI_SOURCE;
-            int recvbuf[count];
-            RAPtor_MPI_Recv(recvbuf, count, RAPtor_MPI_INT, proc, send_key, RAPtor_MPI_COMM_WORLD, 
-                    &recv_status);
-            for (int i = 0; i < count; i++)
-            {
-                orig_col = recvbuf[i];
-                assumed_col = orig_col - assumed_first_col;
-                new_col = assumed_col_to_new[assumed_col];
-                recvbuf[i] = new_col;
-            }
-            RAPtor_MPI_Send(recvbuf, count, RAPtor_MPI_INT, proc, recv_key, RAPtor_MPI_COMM_WORLD);
-        }
-        RAPtor_MPI_Test(&barrier_request, &finished, RAPtor_MPI_STATUS_IGNORE);
+        RAPtor_MPI_Isend(recvbuf.data(), count, RAPtor_MPI_INT, proc, recv_key, 
+                RAPtor_MPI_COMM_WORLD, &(recv_requests[i]));
     }
 
     // Wait for recvs to complete, and map original local cols to new global
     // columns
     if (n_sent)
     {
-        RAPtor_MPI_Waitall(n_sent, recv_requests.data(), RAPtor_MPI_STATUSES_IGNORE);
+        RAPtor_MPI_Waitall(n_sent, send_requests.data(), RAPtor_MPI_STATUSES_IGNORE);
     }
+
+    n_sent = 0;
+    for (int i = 0; i < num_sends; i++)
+    {
+        proc = send_procs[i];
+        start = send_ptr[i];
+        end = send_ptr[i+1];
+        if (proc != rank)
+        {
+            RAPtor_MPI_Irecv(&(recv_buffer[start]), end - start, RAPtor_MPI_INT, proc,
+                    recv_key, RAPtor_MPI_COMM_WORLD, &(send_requests[n_sent++]));
+        }
+    }
+    if (num_recvs)
+    {
+        RAPtor_MPI_Waitall(num_recvs, recv_requests.data(), RAPtor_MPI_STATUSES_IGNORE);
+    }
+    if (n_sent)
+    {
+        RAPtor_MPI_Waitall(n_sent, send_requests.data(), RAPtor_MPI_STATUSES_IGNORE);
+    }
+
     for (int i = 0; i < num_sends; i++)
     {
         proc = send_procs[i];
@@ -521,8 +525,6 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
                 MPI_COMM_WORLD, &(send_requests[i]));
     }
 
-
-    int matsize = 0;
     for (int i = 0; i < num_recvs; i++)
     {
         MPI_Probe(MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, &recv_status);

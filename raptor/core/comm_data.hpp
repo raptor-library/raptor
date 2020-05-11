@@ -1146,7 +1146,7 @@ public:
         send(values, key, mpi_comm, block_size, init_result_func,
                 init_result_func_val);
     }
-    void int_send(const double* values, int key, RAPtor_MPI_Comm mpi_comm,
+    void int_send(const int* values, int key, RAPtor_MPI_Comm mpi_comm,
             const aligned_vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size)
     {
