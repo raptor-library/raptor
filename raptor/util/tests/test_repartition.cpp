@@ -41,7 +41,7 @@ TEST(Repartition, TestsInUtil)
     proc_part = new int[A_orig->local_num_rows];
     for (int i = 0; i < A_orig->local_num_rows; i++)
     {
-        proc_part[i] = i % num_procs;
+        proc_part[i] = A_orig->local_row_map[i] % num_procs;
     }
     ParCSRMatrix* A_rr = repartition_matrix(A_orig, proc_part, new_local_rows);
     ParVector x_rr(A_rr->global_num_rows, A_rr->local_num_rows);
@@ -88,9 +88,9 @@ TEST(Repartition, TestsInUtil)
         }
     }
 
-
     delete A_rr;
 
     delete A_orig;
+
 }
 

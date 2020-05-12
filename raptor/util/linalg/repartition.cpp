@@ -42,7 +42,7 @@ void make_contiguous(ParCSRMatrix* A)
     // Find how many columns are local to each process
     RAPtor_MPI_Allgather(&(A->on_proc_num_cols), 1, RAPtor_MPI_INT, proc_num_cols.data(), 1, RAPtor_MPI_INT,
             RAPtor_MPI_COMM_WORLD);
-
+  
     // Determine the new first local row / first local col of rank
     A->partition->first_local_col = 0;
     for (int i = 0; i < rank; i++)
@@ -197,7 +197,7 @@ void make_contiguous(ParCSRMatrix* A)
     {
         proc = send_procs[i];
         send_ptr[i+1] = send_ptr[i] + proc_num_cols[proc];
-        proc_num_cols[i] = proc;
+        proc_num_cols[proc] = i;
     }
     send_size = send_ptr[num_sends];
 
