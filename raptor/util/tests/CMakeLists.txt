@@ -85,6 +85,7 @@ if (WITH_MPI)
     add_test(RepartitionTest ${MPIRUN} -n 2 ${HOST} ./test_repartition)
     add_test(RepartitionTest ${MPIRUN} -n 3 ${HOST} ./test_repartition)
     add_test(RepartitionTest ${MPIRUN} -n 6 ${HOST} ./test_repartition)
+    add_test(RepartitionTest ${MPIRUN} -n 16 ${HOST} ./test_repartition)
 
     if (WITH_PTSCOTCH)
         add_executable(test_ptscotch test_ptscotch.cpp)
