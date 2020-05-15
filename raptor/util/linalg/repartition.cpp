@@ -42,11 +42,6 @@ void make_contiguous(ParCSRMatrix* A, aligned_vector<int>& off_proc_part_map)
     A->comm = new ParComm(A->partition->topology, A->off_proc_column_map,
             off_proc_part_map, A->local_row_map);
 
-    recvvec = A->comm->communicate(A->local_row_map);
-    for (int i = 0; i < A->off_proc_num_cols; i++)
-        if (A->off_proc_column_map[i] != recvvec[i])
-            printf("OffProcCol[%d] = %d, Recvvec %d\n", i, A->off_proc_column_map[i], recvvec[i]);
-
     for (int i = 0; i < A->local_num_rows; i++)
     {
         A->on_proc_column_map[i] = A->partition->first_local_col + i;
