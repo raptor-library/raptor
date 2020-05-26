@@ -38,6 +38,9 @@ if (WITH_MPI)
     
     add_executable(par_cg_profiling par_cg_profiling.cpp)
     target_link_libraries(par_cg_profiling raptor ${MPI_LIBRARIES} googletest pthread)
+    
+    add_executable(Hook_convergence Hook_convergence.cpp)
+    target_link_libraries(Hook_convergence raptor ${MPI_LIBRARIES} googletest pthread)
 
 endif()
 

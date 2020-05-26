@@ -16,7 +16,7 @@ int main(int _argc, char** _argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    if (_argc < 2)
+    if (_argc < 3)
     {
         printf("Usage: <mat#> <nrhs> <nap_version>\n");
         exit(-1);
@@ -29,15 +29,15 @@ int main(int _argc, char** _argv)
 
     // Matrix market filenames
     const char* mat1 = "../../../../../mtx_market_matrices/Bump_2911.mtx";
-    const char* mat2 = "../../../../../mtx_market_matrices/G3_circuit.mtx";
-    const char* mat3 = "../../../../../mtx_market_matrices/Hook_1498.mtx";
+    const char* mat2 = "../../../../../mtx_market_matrices/G3_circuit.pm";
+    const char* mat3 = "../../../../../mtx_market_matrices/Hook_1498.pm";
     // Residual output filenames
-    const char* res_filename1 = "Bump_2911_res.txt";
-    const char* res_filename2 = "G3_circuit_res.txt";
-    const char* res_filename3 = "Hook_1498_res.txt";
-    const char* min_res_filename1 = "Bump_2911_res_mincomm.txt";
-    const char* min_res_filename2 = "G3_circuit_res_mincomm.txt";
-    const char* min_res_filename3 = "Hook_1498_res_mincomm.txt";
+    const char* res_filename1 = "Bump_2911_res_ekcg.txt";
+    const char* res_filename2 = "G3_circuit_res_ekcg.txt";
+    const char* res_filename3 = "Hook_1498_res_ekcg.txt";
+    const char* min_res_filename1 = "Bump_2911_res_ekcgmincomm.txt";
+    const char* min_res_filename2 = "G3_circuit_res_ekcgmincomm.txt";
+    const char* min_res_filename3 = "Hook_1498_res_ekcgmincomm.txt";
     // For writing out residual files
     FILE* f;
 
@@ -49,11 +49,11 @@ int main(int _argc, char** _argv)
     }
     else if (mat == 2)
     {
-        A = read_par_mm(mat2);
+        A = readParMatrix(mat2);
     }
     else if (mat == 3)
     {
-        A = read_par_mm(mat3);
+        A = readParMatrix(mat3);
     }
 
     // Declare vectors and residual variables
