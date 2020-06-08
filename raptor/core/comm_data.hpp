@@ -7,7 +7,11 @@
 
 #include <mpi.h>
 #include "mpi_types.hpp"
-#include "vector.hpp"
+#ifndef NO_CUDA
+    #include "cuda/vector_cuda.hpp"
+#else
+    #include "serial/vector.hpp"
+#endif
 #include "matrix.hpp"
 #include "utilities.hpp"
 

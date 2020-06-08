@@ -31,17 +31,48 @@ else ()
         )
 endif()
 
-set(core_SOURCES 
-    core/vector.cpp
-    core/matrix.cpp
-    ${par_core_SOURCES}
-    PARENT_SCOPE
-    )
-set(core_HEADERS
-    core/types.hpp
-    core/vector.hpp
-    core/matrix.hpp
-    core/utilities.hpp
-    ${par_core_HEADERS}
-    PARENT_SCOPE
-    )
+if (WITH_CUDA)
+    set(core_SOURCES 
+        core/cuda/vector_cuda.cu
+        core/serial/matrix.cpp
+        ${par_core_SOURCES}
+        PARENT_SCOPE
+        )
+    set(core_HEADERS
+        core/types.hpp
+        core/cuda/vector_cuda.hpp
+        core/matrix.hpp
+        core/utilities.hpp
+        ${par_core_HEADERS}
+        PARENT_SCOPE
+        )
+else ()
+    set(core_SOURCES 
+        core/serial/vector.cpp
+        core/serial/matrix.cpp
+        ${par_core_SOURCES}
+        PARENT_SCOPE
+        )
+    set(core_HEADERS
+        core/types.hpp
+        core/serial/vector.hpp
+        core/matrix.hpp
+        core/utilities.hpp
+        ${par_core_HEADERS}
+        PARENT_SCOPE
+        )
+endif()
+#set(core_SOURCES 
+#    core/vector.cpp
+#    core/matrix.cpp
+#    ${par_core_SOURCES}
+#    PARENT_SCOPE
+#    )
+#set(core_HEADERS
+#    core/types.hpp
+#    core/vector.hpp
+#    core/matrix.hpp
+#    core/utilities.hpp
+#    ${par_core_HEADERS}
+#    PARENT_SCOPE
+#    )

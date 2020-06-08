@@ -1,6 +1,7 @@
 // Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#include "vector.hpp"
+#include "vector_cuda.hpp"
+#include "vector_cuda_kernels.cuh"
 
 using namespace raptor;
 
@@ -16,10 +17,9 @@ using namespace raptor;
 **************************************************************/
 void Vector::set_const_value(data_t alpha)
 {
-    for (index_t i = 0; i < num_values * b_vecs; i++)
-    {
-        values[i] = alpha;
-    }
+    printf("before cuda kernel\n");
+    set_const_value_kernel<<<tblocks,blocksize>>>(alpha, dev_ptr, values.size());
+    printf("after cuda kernel\n");
 }
 
 /**************************************************************
@@ -30,12 +30,7 @@ void Vector::set_const_value(data_t alpha)
 **************************************************************/
 void Vector::set_rand_values(int seed)
 {
-    if (seed) srand(seed);
-    else srand(time(NULL));
-    for (index_t i = 0; i < num_values * b_vecs; i++)
-    {
-        values[i] = ((double)rand()) / RAND_MAX;
-    }
+    set_rand_values_kernel<<<tblocks,blocksize>>>(seed, dev_ptr, values.size());
 }
 
 /**************************************************************
@@ -55,6 +50,10 @@ void Vector::copy(const Vector& y)
     b_vecs = y.b_vecs;
     values.resize(num_values * b_vecs);
     std::copy(y.values.begin(), y.values.end(), values.begin());
+
+    // Allocate on device memory and copy 
+    cudaMalloc(&dev_ptr, num_values * b_vecs * sizeof(double));
+    copy_kernel<<<tblocks,blocksize>>>(y.dev_ptr, dev_ptr, num_values * b_vecs);
 }
 
 /**************************************************************
@@ -69,6 +68,8 @@ void Vector::copy(const Vector& y)
 **************************************************************/
 void Vector::print(const char* vec_name)
 {
+    // Leaving alone -- assuming user will copy from device
+    // first then print
     index_t offset;
     printf("Size = %d\n", num_values);
     for (int j = 0; j < b_vecs; j++)
@@ -93,7 +94,31 @@ void Vector::print(const char* vec_name)
 **************************************************************/
 data_t& Vector::operator[](const int index)
 {
+    // Leaving alone -- assuming user will copy from device
+    // first then print
     return values[index];
+}
+
+/**************************************************************
+*****   Vector Copy from Device 
+**************************************************************
+***** Function that copies vector values from device into
+***** host vector array
+**************************************************************/
+void Vector::copy_from_device()
+{
+    cudaMemcpy(dev_ptr, values.data(), values.size()*sizeof(double), cudaMemcpyHostToDevice);
+}
+
+/**************************************************************
+*****   Vector Copy from Host 
+**************************************************************
+***** Function that copies vector values from host into
+***** device vector array
+**************************************************************/
+void Vector::copy_from_host()
+{
+    cudaMemcpy(values.data(), dev_ptr, values.size()*sizeof(double), cudaMemcpyDeviceToHost);
 }
 
 /**************************************************************
@@ -109,6 +134,8 @@ data_t& Vector::operator[](const int index)
 **************************************************************/
 void Vector::append(Vector& P)
 {
+    // RESIZE ON DEVICE VECTOR
+    // STORE NEW VALUES IN APPROPRIATE PLACE ON DEVICE
     values.resize(num_values * (b_vecs + P.b_vecs));
     std::copy(P.values.begin(), P.values.end(), values.begin() + (num_values * b_vecs));
     b_vecs += P.b_vecs;
@@ -131,10 +158,14 @@ void Vector::append(Vector& P)
 **************************************************************/
 void Vector::split(Vector& W, int t, int i)
 {
+    // COPY VECTOR FROM DEV 
+    // SPLIT VECTOR ON HOST	
     W.b_vecs = t;
     W.resize(num_values);
     W.set_const_value(0.0);
     std::copy(values.begin(), values.end(), W.values.begin() + (num_values * i));
+    // RESIZE VECTOR ON DEV
+    // COPY VECTOR BACK TO DEV
 }
 
 /**************************************************************
@@ -156,6 +187,8 @@ void Vector::split(Vector& W, int t, int i)
 **************************************************************/
 void Vector::split_range(Vector& W, int t, int start)
 {
+    // COPY VECTOR FROM DEV 
+    // SPLIT VECTOR ON HOST	
     W.b_vecs = t;
     W.resize(num_values);
     W.set_const_value(0.0);
@@ -165,6 +198,8 @@ void Vector::split_range(Vector& W, int t, int start)
         W.values[start*num_values + i] = values[i];
         start = (start + 1) % t;
     }
+    // RESIZE VECTOR ON DEV
+    // COPY VECTOR BACK TO DEV
 }
 
 /**************************************************************
@@ -186,6 +221,8 @@ void Vector::split_range(Vector& W, int t, int start)
 **************************************************************/
 void Vector::split_contig(Vector& W, int t, int first_global_index, int glob_vals)
 {
+    // COPY VECTOR FROM DEV 
+    // SPLIT VECTOR ON HOST	
     int glob_index, bvec, pos_in_bvec, end;
     int chunk_size = glob_vals / t;
 
@@ -204,5 +241,8 @@ void Vector::split_contig(Vector& W, int t, int first_global_index, int glob_val
             W.values[bvec*num_values + bvec*chunk_size + j] = values[i + j];
         }
     }
+    
+    // RESIZE VECTOR ON DEV
+    // COPY VECTOR BACK TO DEV
 }
 

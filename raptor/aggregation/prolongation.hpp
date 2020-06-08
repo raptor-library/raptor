@@ -5,7 +5,7 @@
 
 #include "core/types.hpp"
 #include "core/matrix.hpp"
-#include "core/vector.hpp"
+//#include "core/vector.hpp"
 
 using namespace raptor;
 

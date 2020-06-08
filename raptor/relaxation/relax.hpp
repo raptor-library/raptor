@@ -4,7 +4,11 @@
 #define RAPTOR_SEQ_RELAX_H
 #include <float.h>
 
-#include "core/vector.hpp"
+#ifndef NO_CUDA
+    #include "core/cuda/vector_cuda.hpp"
+#else
+    #include "core/serial/vector.hpp"
+#endif
 #include "core/matrix.hpp"
 #include "multilevel/level.hpp"
 

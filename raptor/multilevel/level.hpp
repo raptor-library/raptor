@@ -5,7 +5,11 @@
 
 #include "core/types.hpp"
 #include "core/matrix.hpp"
-#include "core/vector.hpp"
+#ifndef NO_CUDA
+    #include "core/cuda/vector_cuda.hpp"
+#else
+    #include "core/serial/vector.hpp"
+#endif
 
 // Coarse Matrices (A) are CSC
 // Prolongation Matrices (P) are CSC

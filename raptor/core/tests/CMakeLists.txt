@@ -49,6 +49,12 @@ if (WITH_MPI)
 
 endif ()
 
+if (WITH_CUDA)
+    add_executable(test_cuda_vector test_cuda_vector.cu)
+    target_link_libraries(test_cuda_vector raptor ${CUDA_LIBRARIES} ${MPI_LIBRARIES} googletest pthread )
+    add_test(CudaVectorTest ./test_cuda_vector)
+endif ()
+
 add_executable(test_matrix test_matrix.cpp)
 target_link_libraries(test_matrix raptor ${MPI_LIBRARIES} googletest pthread )
 add_test(MatrixTest ./test_matrix)

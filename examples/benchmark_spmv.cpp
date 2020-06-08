@@ -8,7 +8,11 @@
 #include <ctime>
 
 #include "core/matrix.hpp"
-#include "core/vector.hpp"
+#ifndef NO_CUDA
+    #include "core/vector_cuda.hpp"
+#else
+    #include "core/vector.hpp"
+#endif
 #include "core/types.hpp"
 #include "gallery/stencil.hpp"
 #include "gallery/laplacian27pt.hpp"

@@ -14,17 +14,33 @@
 #endif 
 
 // Matrix and vector classes
-#include "core/matrix.hpp"
-#include "core/vector.hpp"
+#ifndef NO_CUDA
+    #include "core/matrix.hpp"
+    #include "core/cuda/vector_cuda.hpp"
+#else
+    #include "core/matrix.hpp"
+    #include "core/serial/vector.hpp"
+#endif
+
 #ifndef NO_MPI
-    #include "core/par_matrix.hpp"
-    #include "core/par_vector.hpp"
+    //#ifndef NO_CUDA
+    //    #include "core/par_matrix_cuda.hpp"
+    //    #include "core/par_vector_cuda.hpp"
+    //#else
+        #include "core/par_matrix.hpp"
+        #include "core/par_vector.hpp"
+    //#endif
 #endif 
 
 // Communication classes
 #ifndef NO_MPI
-    #include "core/comm_data.hpp"
-    #include "core/comm_pkg.hpp"
+    //#ifndef NO_CUDA
+    //    #include "core/comm_data_cuda.hpp"
+    //    #include "core/comm_pkg_cuda.hpp"
+    //#else
+        #include "core/comm_data.hpp"
+        #include "core/comm_pkg.hpp"
+    //#endif
 #endif
 
 // Stencil and diffusion classes
