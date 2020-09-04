@@ -26,6 +26,7 @@
 #define eager_cutoff 1000
 #define short_cutoff 62
 
+
 int main(int argc, char *argv[])
 {
 
@@ -33,7 +34,7 @@ int main(int argc, char *argv[])
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-    
+
     int dim = 3;
     int n = 5;
     int system = 0;
@@ -147,7 +148,7 @@ int main(int argc, char *argv[])
                 }
             }
         }
-        
+
         switch (mfem_system)
         {
             case 0:
@@ -158,7 +159,7 @@ int main(int argc, char *argv[])
                 break;
             case 2:
                 strong_threshold = 0.5;
-                A = mfem_linear_elasticity(x, b, &num_variables, mesh_file, order, 
+                A = mfem_linear_elasticity(x, b, &num_variables, mesh_file, order,
                         seq_refines, par_refines);
                 break;
             case 3:
@@ -171,13 +172,13 @@ int main(int argc, char *argv[])
                 A = mfem_dg_diffusion(x, b, mesh_file, order, seq_refines, par_refines);
             case 5:
                 A = mfem_dg_elasticity(x, b, &num_variables, mesh_file, order, seq_refines, par_refines);
-        }                
+        }
     }
 #endif
 
     else if (system == 3)
     {
-        const char* file = "../../examples/LFAT5.mtx";
+        const char* file = "../../examples/LFAT5.pm";
         if (argc > 2)
         {
             file = argv[2];
@@ -195,117 +196,95 @@ int main(int argc, char *argv[])
         A->mult(x, b);
     }
 
-    ParMultilevel* ml;
+    // Time SpMV on Level i
+    int n_tests = 100;
     clear_cache(cache_array);
-
-    // Setup Raptor Hierarchy
-    MPI_Barrier(MPI_COMM_WORLD);    
-    ml = new ParRugeStubenSolver(strong_threshold, RS, Direct, Classical, SOR);
-    ml->num_variables = num_variables;
-    ml->setup(A);
-    clear_cache(cache_array);
-
-    for (int i = 0; i < ml->num_levels; i++)
+    MPI_Barrier(MPI_COMM_WORLD);
+    t0 = MPI_Wtime();
+    for (int i = 0; i < n_tests; i++)
     {
-        ParCSRMatrix* Al = ml->levels[i]->A;
-        ParVector& xl = ml->levels[i]->x;
-        ParVector& bl = ml->levels[i]->b;
-        xl.set_rand_values();
-        if (!Al->tap_comm) Al->tap_comm = new TAPComm(Al->partition,
-                Al->off_proc_column_map, Al->on_proc_column_map);
+        A->mult(x, b);
+    }
+    tfinal = (MPI_Wtime() - t0) / n_tests;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("SpMV Time: %e\n", t0);
 
-        if (rank == 0) printf("Level %d\n", i);
+    // Time TAPSpMV on Level i
+    clear_cache(cache_array);
+    MPI_Barrier(MPI_COMM_WORLD);
+    t0 = MPI_Wtime();
+    for (int i = 0; i < n_tests; i++)
+    {
+        A->tap_mult(x, b);
+    }
+    tfinal = (MPI_Wtime() - t0) / 100;
+    MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("TAPSpMV Time: %e\n", t0);
 
+    // Gather number of messages / size (by inter/intra)
+    int n_inter = 0;
+    int n_intra = 0;
+    int s_inter = 0;
+    int s_intra = 0;
+    int tap_n_inter = 0;
+    int tap_n_intra = 0;
+    int tap_s_inter = 0;
+    int tap_s_intra = 0;
+    int proc, node;
+    int start, end;
 
-        // Time SpMV on Level i
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        for (int j = 0; j < 100; j++)
+    tap_n_inter = A->tap_comm->global_par_comm->send_data->num_msgs;
+    tap_s_inter = A->tap_comm->global_par_comm->send_data->size_msgs;
+    tap_n_intra = A->tap_comm->local_L_par_comm->send_data->num_msgs
+        + A->tap_comm->local_S_par_comm->send_data->num_msgs
+        + A->tap_comm->local_R_par_comm->send_data->num_msgs;
+    tap_s_intra = A->tap_comm->local_L_par_comm->send_data->size_msgs
+        + A->tap_comm->local_S_par_comm->send_data->size_msgs
+        + A->tap_comm->local_R_par_comm->send_data->size_msgs;
+
+    int rank_node = A->partition->topology->get_node(rank);
+    for (int i = 0; i < A->comm->send_data->num_msgs; i++)
+    {
+        proc = A->comm->send_data->procs[i];
+        start = A->comm->send_data->indptr[i];
+        end = A->comm->send_data->indptr[i+1];
+        node = A->partition->topology->get_node(proc);
+        if (node == rank_node)
         {
-            Al->mult(xl, bl);
+            n_intra++;
+            s_intra += (end - start);
         }
-        tfinal = (MPI_Wtime() - t0) / 100;
-        MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("SpMV Time: %e\n", t0);
-
-        // Time TAPSpMV on Level i
-        clear_cache(cache_array);
-        MPI_Barrier(MPI_COMM_WORLD);
-        t0 = MPI_Wtime();
-        for (int j = 0; j < 100; j++)
+        else
         {
-            Al->tap_mult(xl, bl);
+            n_inter++;
+            s_inter += (end - start);
         }
-        tfinal = (MPI_Wtime() - t0) / 100;
-        MPI_Reduce(&tfinal, &t0, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("TAPSpMV Time: %e\n", t0);
-
-        // Gather number of messages / size (by inter/intra)
-        int n_inter = 0;
-        int n_intra = 0;
-        int s_inter = 0;
-        int s_intra = 0;
-        int tap_n_inter = 0;
-        int tap_n_intra = 0;
-        int tap_s_inter = 0;
-        int tap_s_intra = 0;
-        int proc, node;
-        int start, end;
-
-        tap_n_inter = Al->tap_comm->global_par_comm->send_data->num_msgs;
-        tap_s_inter = Al->tap_comm->global_par_comm->send_data->size_msgs;
-        tap_n_intra = Al->tap_comm->local_L_par_comm->send_data->num_msgs 
-            + Al->tap_comm->local_S_par_comm->send_data->num_msgs
-            + Al->tap_comm->local_R_par_comm->send_data->num_msgs;
-        tap_s_intra = Al->tap_comm->local_L_par_comm->send_data->size_msgs 
-            + Al->tap_comm->local_S_par_comm->send_data->size_msgs
-            + Al->tap_comm->local_R_par_comm->send_data->size_msgs;
-
-        int rank_node = Al->partition->topology->get_node(rank);
-        for (int j = 0; j < Al->comm->send_data->num_msgs; j++)
-        {
-            proc = Al->comm->send_data->procs[i];
-            start = Al->comm->send_data->indptr[i];
-            end = Al->comm->send_data->indptr[i+1];
-            node = Al->partition->topology->get_node(proc);
-            if (node == rank_node)
-            {
-                n_intra++;
-                s_intra += (end - start);
-            }
-            else
-            {
-                n_inter++;
-                s_inter += (end - start);
-            }
-        }
-
-        int comm;
-        MPI_Reduce(&n_intra, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Num Intra Msgs: %d\n", comm);
-        MPI_Reduce(&n_inter, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Num Inter Msgs: %d\n", comm);
-        MPI_Reduce(&s_intra, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Size Intra Msgs: %d\n", comm);
-        MPI_Reduce(&s_inter, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("Size Inter Msgs: %d\n", comm);
-        MPI_Reduce(&tap_n_intra, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("TAP Num Intra Msgs: %d\n", comm);
-        MPI_Reduce(&tap_n_inter, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("TAP Num Inter Msgs: %d\n", comm);
-        MPI_Reduce(&tap_s_intra, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("TAP Size Intra Msgs: %d\n", comm);
-        MPI_Reduce(&tap_s_inter, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-        if (rank == 0) printf("TAP Size Inter Msgs: %d\n", comm);
     }
 
+    int comm;
+    MPI_Reduce(&n_intra, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Intra Msgs: %d\n", comm);
+    MPI_Reduce(&n_inter, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Num Inter Msgs: %d\n", comm);
+    MPI_Reduce(&s_intra, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Intra Msgs: %d\n", comm);
+    MPI_Reduce(&s_inter, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("Size Inter Msgs: %d\n", comm);
+    MPI_Reduce(&tap_n_intra, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("TAP Num Intra Msgs: %d\n", comm);
+    MPI_Reduce(&tap_n_inter, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("TAP Num Inter Msgs: %d\n", comm);
+    MPI_Reduce(&tap_s_intra, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("TAP Size Intra Msgs: %d\n", comm);
+    MPI_Reduce(&tap_s_inter, &comm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (rank == 0) printf("TAP Size Inter Msgs: %d\n", comm);
 
     // Delete raptor hierarchy
-    delete ml;
     delete A;
     MPI_Finalize();
 
     return 0;
+                       
 }
+
 
