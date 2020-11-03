@@ -50,15 +50,15 @@ TEST(BlockMatrixTest, TestsInCore)
     int num_cols = block_num_cols * block_col_size;
     int nnz = block_nnz * block_size;
 
-    aligned_vector<int> rows = {0, 0, 1, 1, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 4, 4, 5, 5};
-    aligned_vector<int> cols = {0, 1, 0, 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, 5, 4, 5};
-    aligned_vector<double> vals = {1.0, 0.0, 2.0, 1.0, 6.0, 7.0, 8.0, 2.0, 1.0, 4.0, 5.0, 1.0,
+    std::vector<int> rows = {0, 0, 1, 1, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 4, 4, 5, 5};
+    std::vector<int> cols = {0, 1, 0, 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, 5, 4, 5};
+    std::vector<double> vals = {1.0, 0.0, 2.0, 1.0, 6.0, 7.0, 8.0, 2.0, 1.0, 4.0, 5.0, 1.0,
                                 4.0, 3.0, 0.0, 0.0, 7.0, 2.0, 0.0, 0.0};
 
-    aligned_vector<int> block_row_ptr = {0,2,3,5};    
-    aligned_vector<int> block_rows = {0, 0, 1, 2, 2};
-    aligned_vector<int> block_cols = {0, 1, 1, 1, 2};
-    aligned_vector<double*> block_vals;
+    std::vector<int> block_row_ptr = {0,2,3,5};    
+    std::vector<int> block_rows = {0, 0, 1, 2, 2};
+    std::vector<int> block_cols = {0, 1, 1, 1, 2};
+    std::vector<double*> block_vals;
     for (int i = 0; i < block_nnz; i++)
     {
         double* block = new double[block_size];
@@ -203,7 +203,7 @@ TEST(BlockMatrixTest, TestsInCore)
     delete D_bsr;
     delete D_csr_from_bsr;
     
-    for (aligned_vector<double*>::iterator it = block_vals.begin();
+    for (std::vector<double*>::iterator it = block_vals.begin();
             it != block_vals.end(); ++it)
         delete[] *it;
 

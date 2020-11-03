@@ -29,7 +29,7 @@ Epetra_CrsMatrix* epetra_convert(raptor::ParCSRMatrix* A_rap,
     Epetra_Map rowMap(A_rap->global_num_rows, A_rap->local_num_rows, 0, Comm);
 
     // Calculate size of each local row
-    aligned_vector<int> rowSizes(A_rap->local_num_rows);
+    std::vector<int> rowSizes(A_rap->local_num_rows);
     for (int i = 0; i < A_rap->local_num_rows; i++)
         rowSizes[i] = ((A_rap->on_proc->idx1[i+1] - A_rap->on_proc->idx1[i]) 
             + (A_rap->off_proc->idx1[i+1] - A_rap->off_proc->idx1[i]));
@@ -38,8 +38,8 @@ Epetra_CrsMatrix* epetra_convert(raptor::ParCSRMatrix* A_rap,
     const bool staticProfile = true;
     Epetra_CrsMatrix* A = new Epetra_CrsMatrix(Copy, rowMap, rowSizes.data(), staticProfile);
 
-    aligned_vector<int> indices;
-    aligned_vector<double> values;
+    std::vector<int> indices;
+    std::vector<double> values;
     for (int i = 0; i < A_rap->local_num_rows; i++)
     {
         if (rowSizes[i] > indices.size())

@@ -5,7 +5,7 @@
 
 using namespace raptor;
 
-void CG(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol, int max_iter, double* comm_t)
+void CG(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, double tol, int max_iter, double* comm_t)
 {
     int rank;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
@@ -118,7 +118,7 @@ if (comm_t) *comm_t += RAPtor_MPI_Wtime();
 }
 
 
-void PCG(ParCSRMatrix* A, ParMultilevel* ml, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol, int max_iter, double* precond_t, double* comm_t)
+void PCG(ParCSRMatrix* A, ParMultilevel* ml, ParVector& x, ParVector& b, std::vector<double>& res, double tol, int max_iter, double* precond_t, double* comm_t)
 {
     int rank;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);

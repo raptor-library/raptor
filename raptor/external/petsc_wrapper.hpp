@@ -75,8 +75,8 @@ PetscErrorCode petsc_create_preconditioner(ParCSRMatrix* A, KSP* ksp_ptr, Mat* m
   PetscInt       *global_col_map = B->garray;
 
   PetscInt global_num_rows, global_num_cols;
-  aligned_vector<int> row_size(num_procs);
-  aligned_vector<int> col_size(num_procs);
+  std::vector<int> row_size(num_procs);
+  std::vector<int> col_size(num_procs);
   RAPtor_MPI_Allgather(&local_num_rows, 1, RAPtor_MPI_INT, row_size.data(), 1, RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD);  
   RAPtor_MPI_Allgather(&local_num_cols, 1, RAPtor_MPI_INT, col_size.data(), 1, RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD);  
   PetscInt first_local_row = 0;

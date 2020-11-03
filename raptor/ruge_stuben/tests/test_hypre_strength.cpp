@@ -26,8 +26,8 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     FILE* f;
-    aligned_vector<int> states;
-    aligned_vector<int> off_proc_states;
+    std::vector<int> states;
+    std::vector<int> off_proc_states;
     int cf;
 
     ParCSRMatrix* A;

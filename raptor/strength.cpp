@@ -206,8 +206,8 @@ CSRMatrix* symmetric_strength(CSRMatrix* A, double theta)
     double threshold;
     double diag;
 
-    aligned_vector<int> neg_diags;
-    aligned_vector<double> row_scales;
+    std::vector<int> neg_diags;
+    std::vector<double> row_scales;
     if (A->n_rows)
     {
         neg_diags.resize(A->n_rows);

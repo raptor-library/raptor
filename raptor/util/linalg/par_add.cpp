@@ -21,8 +21,8 @@ ParCSRMatrix* ParCSRMatrix::add(ParCSRMatrix* B)
             local_num_rows, on_proc_num_cols, 0);
     int start, end;
 
-    aligned_vector<int> off_proc_to_new;
-    aligned_vector<int> B_off_proc_to_new;
+    std::vector<int> off_proc_to_new;
+    std::vector<int> B_off_proc_to_new;
     if (off_proc_num_cols) off_proc_to_new.resize(off_proc_num_cols, 0);
     if (B->off_proc_num_cols) B_off_proc_to_new.resize(B->off_proc_num_cols, 0);
 
@@ -105,7 +105,7 @@ ParCSRMatrix* ParCSRMatrix::add(ParCSRMatrix* B)
         std::copy(off_proc->vals.begin() + start,
                 off_proc->vals.begin() + end,
                 C->off_proc->vals.begin() + off_nnz);
-        for (aligned_vector<int>::iterator it = C->off_proc->idx2.begin() + off_nnz;
+        for (std::vector<int>::iterator it = C->off_proc->idx2.begin() + off_nnz;
                 it != C->off_proc->idx2.begin() + off_nnz + (end - start); ++it)
         {
             *it = off_proc_to_new[*it];
@@ -121,7 +121,7 @@ ParCSRMatrix* ParCSRMatrix::add(ParCSRMatrix* B)
         std::copy(B->off_proc->vals.begin() + start,
                 B->off_proc->vals.begin() + end,
                 C->off_proc->vals.begin() + off_nnz);
-        for (aligned_vector<int>::iterator it = C->off_proc->idx2.begin() + off_nnz;
+        for (std::vector<int>::iterator it = C->off_proc->idx2.begin() + off_nnz;
                 it != C->off_proc->idx2.begin() + off_nnz + (end - start); ++it)
         {
             *it = off_proc_to_new[*it];
@@ -150,8 +150,8 @@ ParCSRMatrix* ParCSRMatrix::add(ParCSRMatrix* B)
 
     if (C->off_proc_num_cols)
     {
-        aligned_vector<int> new_col(C->off_proc_num_cols, 0);
-        for (aligned_vector<int>::iterator it = C->off_proc->idx2.begin();
+        std::vector<int> new_col(C->off_proc_num_cols, 0);
+        for (std::vector<int>::iterator it = C->off_proc->idx2.begin();
                 it != C->off_proc->idx2.end(); ++it)
         {
             new_col[*it] = 1;
@@ -168,7 +168,7 @@ ParCSRMatrix* ParCSRMatrix::add(ParCSRMatrix* B)
         C->off_proc->n_cols = ctr;
         C->off_proc_column_map.resize(ctr);
 
-        for (aligned_vector<int>::iterator it = C->off_proc->idx2.begin();
+        for (std::vector<int>::iterator it = C->off_proc->idx2.begin();
                 it != C->off_proc->idx2.end(); ++it)
         {
             *it = new_col[*it];
@@ -187,8 +187,8 @@ ParCSRMatrix* ParCSRMatrix::subtract(ParCSRMatrix* B)
             local_num_rows, on_proc_num_cols, 0);
     int start, end;
 
-    aligned_vector<int> off_proc_to_new;
-    aligned_vector<int> B_off_proc_to_new;
+    std::vector<int> off_proc_to_new;
+    std::vector<int> B_off_proc_to_new;
     if (off_proc_num_cols) off_proc_to_new.resize(off_proc_num_cols, 0);
     if (B->off_proc_num_cols) B_off_proc_to_new.resize(B->off_proc_num_cols, 0);
 
@@ -278,8 +278,8 @@ ParCSRMatrix* ParCSRMatrix::subtract(ParCSRMatrix* B)
 
     if (C->off_proc_num_cols)
     {
-        aligned_vector<int> new_col(C->off_proc_num_cols, 0);
-        for (aligned_vector<int>::iterator it = C->off_proc->idx2.begin();
+        std::vector<int> new_col(C->off_proc_num_cols, 0);
+        for (std::vector<int>::iterator it = C->off_proc->idx2.begin();
                 it != C->off_proc->idx2.end(); ++it)
         {
             new_col[*it] = 1;
@@ -296,7 +296,7 @@ ParCSRMatrix* ParCSRMatrix::subtract(ParCSRMatrix* B)
         C->off_proc->n_cols = ctr;
         C->off_proc_column_map.resize(ctr);
 
-        for (aligned_vector<int>::iterator it = C->off_proc->idx2.begin();
+        for (std::vector<int>::iterator it = C->off_proc->idx2.begin();
                 it != C->off_proc->idx2.end(); ++it)
         {
             *it = new_col[*it];

@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
     {
         int dim = 3;
         double* stencil = NULL;
-        aligned_vector<int> grid;
+        std::vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);

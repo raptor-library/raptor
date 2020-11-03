@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
 
     ParVector x(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    aligned_vector<double> residuals, residuals2, residuals3, residuals4;
+    std::vector<double> residuals, residuals2, residuals3, residuals4;
 
     x.set_const_value(1.0);
     A->mult(x, b);

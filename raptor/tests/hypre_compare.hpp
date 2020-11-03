@@ -6,7 +6,7 @@
 #include "gtest/gtest.h"
 
 void compare_dimensions(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h,
-        aligned_vector<int>& new_off_proc_map)
+        std::vector<int>& new_off_proc_map)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -23,8 +23,8 @@ void compare_dimensions(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h,
     HYPRE_Int global_cols = hypre_ParCSRMatrixGlobalNumCols(A_h);
 
     int first_row, first_col;
-    aligned_vector<int> proc_sizes(num_procs+1);
-    aligned_vector<int> new_on_proc_col_map;
+    std::vector<int> proc_sizes(num_procs+1);
+    std::vector<int> new_on_proc_col_map;
 
     // Gather raptor proc sizes, and create array of global col
     // indices (corresponding to hypre's)
@@ -85,7 +85,7 @@ void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h, double tol = 1e-05)
     int start, end;
     int ctrA, endA;
 
-    aligned_vector<int> new_off_proc_map;
+    std::vector<int> new_off_proc_map;
     compare_dimensions(A, A_h, new_off_proc_map);
 
     // Declare Hypre Variable/s
@@ -196,7 +196,7 @@ void compareS(ParCSRMatrix* S, hypre_ParCSRMatrix* S_h)
     int start, end;
     int ctrA, endA;
 
-    aligned_vector<int> new_off_proc_map;
+    std::vector<int> new_off_proc_map;
     compare_dimensions(S, S_h, new_off_proc_map);
 
     // Declare Hypre Variables
@@ -269,7 +269,7 @@ void compareS(ParCSRMatrix* S, hypre_ParCSRMatrix* S_h)
 }
 
 
-void compare_states(int n, aligned_vector<int>& states, int* states_hypre)
+void compare_states(int n, std::vector<int>& states, int* states_hypre)
 {
     for (int i = 0; i < n; i++)
     {

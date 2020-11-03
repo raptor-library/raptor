@@ -25,8 +25,8 @@ ParCSRMatrix* form_Prap(ParCSRMatrix* A, ParCSRMatrix* S, const char* filename,
     int n_items_read;
     FILE* f;
     ParCSRMatrix* P_rap = NULL;
-    aligned_vector<int> proc_sizes(num_procs);
-    aligned_vector<int> splitting;
+    std::vector<int> proc_sizes(num_procs);
+    std::vector<int> splitting;
     if (A->local_num_rows)
     {
         splitting.resize(A->local_num_rows);

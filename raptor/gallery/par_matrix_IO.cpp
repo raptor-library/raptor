@@ -88,10 +88,10 @@ ParCSRMatrix* readParMatrix(const char* filename,
         A = new ParCSRMatrix(global_num_rows, global_num_cols);
     }
 
-    aligned_vector<int32_t> row_sizes;
-    aligned_vector<int32_t> col_indices;
-    aligned_vector<double> vals;
-    aligned_vector<int> proc_nnz(num_procs);
+    std::vector<int32_t> row_sizes;
+    std::vector<int32_t> col_indices;
+    std::vector<double> vals;
+    std::vector<int> proc_nnz(num_procs);
     if (A->local_num_rows)
         row_sizes.resize(A->local_num_rows);
     int nnz = 0;

@@ -26,7 +26,7 @@ TEST(TrilinosWrapperTest, TestsInExternal)
     // Create RAPtor Matrix to be solved
     int n = 100;
     int dim = 2;
-    aligned_vector<int> grid;
+    std::vector<int> grid;
     grid.resize(dim, n);
     double eps = 0.001;
     double theta = M_PI/4.0;
@@ -42,8 +42,8 @@ TEST(TrilinosWrapperTest, TestsInExternal)
     Epetra_Vector* x_epetra = epetra_convert(x);
     Epetra_Vector* b_epetra = epetra_convert(b);
 
-    aligned_vector<double> x_data(A->local_num_rows);
-    aligned_vector<double> b_data(A->local_num_rows);
+    std::vector<double> x_data(A->local_num_rows);
+    std::vector<double> b_data(A->local_num_rows);
     x_epetra->ExtractCopy(x_data.data());
 
     for (int i = 0; i < A->local_num_rows; i++)
@@ -60,7 +60,7 @@ TEST(TrilinosWrapperTest, TestsInExternal)
         ASSERT_NEAR(b[i], b_data[i], 1e-06);
     }
 
-    aligned_vector<int> coords(A->local_num_rows * dim);
+    std::vector<int> coords(A->local_num_rows * dim);
     int global_row;
     // global row i is at coord ((i / n) , (i % n))
     for (int i = 0; i < A->local_num_rows; i++)

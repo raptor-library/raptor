@@ -2,8 +2,8 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "aggregation/candidates.hpp"
 
-CSRMatrix* fit_candidates(const int n_aggs, const aligned_vector<int>& aggregates, 
-        const aligned_vector<double>& B, aligned_vector<double>& R,
+CSRMatrix* fit_candidates(const int n_aggs, const std::vector<int>& aggregates, 
+        const std::vector<double>& B, std::vector<double>& R,
         int num_candidates, double tol)
 {
     int col_start, col_end;

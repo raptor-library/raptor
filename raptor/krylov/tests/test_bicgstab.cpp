@@ -21,7 +21,7 @@ TEST(BiCGStabTest, TestsInKrylov)
     CSRMatrix* A = stencil_grid(stencil, grid, 2);
     Vector x(A->n_rows);
     Vector b(A->n_rows);
-    aligned_vector<double> residuals;
+    std::vector<double> residuals;
     int n_items_read;
 
     x.set_const_value(1.0);

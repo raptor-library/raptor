@@ -26,8 +26,8 @@ TEST(TestTAPAggregate, TestsInAggregation)
     setenv("PPN", "4", 1);
 
     FILE* f;
-    aligned_vector<int> states;
-    aligned_vector<int> off_proc_states;
+    std::vector<int> states;
+    std::vector<int> off_proc_states;
     int n_items_read;
 
     ParCSRMatrix* A;
@@ -42,7 +42,7 @@ TEST(TestTAPAggregate, TestsInAggregation)
     S = readParMatrix(S0_fn);
     S->tap_comm = new TAPComm(S->partition, S->off_proc_column_map, S->on_proc_column_map);
 
-    aligned_vector<double> weights(S->local_num_rows);
+    std::vector<double> weights(S->local_num_rows);
     f = fopen(weights_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
@@ -58,7 +58,7 @@ TEST(TestTAPAggregate, TestsInAggregation)
 
     mis2(S, states, off_proc_states, false, weights.data());
 
-    aligned_vector<int> py_aggregates(S->local_num_rows);
+    std::vector<int> py_aggregates(S->local_num_rows);
     f = fopen(agg0_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
@@ -72,16 +72,16 @@ TEST(TestTAPAggregate, TestsInAggregation)
     }
     fclose(f);
 
-    aligned_vector<int> aggregates;
+    std::vector<int> aggregates;
     int n_aggs = aggregate(A, S, states, off_proc_states, aggregates, 
             true, weights.data());
 
     // Aggregates returns global indices of original global rows
     // Gather list of all aggregates, in order, holding original global cols
-    aligned_vector<int> agg_sizes(num_procs);
-    aligned_vector<int> agg_displ(num_procs+1);
-    aligned_vector<int> agg_list;
-    aligned_vector<int> total_agg_list;
+    std::vector<int> agg_sizes(num_procs);
+    std::vector<int> agg_displ(num_procs+1);
+    std::vector<int> agg_list;
+    std::vector<int> total_agg_list;
     int global_col;
     MPI_Allgather(&n_aggs, 1, MPI_INT, agg_sizes.data(), 1, MPI_INT, MPI_COMM_WORLD);
     agg_displ[0] = 0;

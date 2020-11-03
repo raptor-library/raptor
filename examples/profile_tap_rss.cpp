@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
     {
         int dim = 3;
         double* stencil = NULL;
-        aligned_vector<int> grid;
+        std::vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);
@@ -237,8 +237,8 @@ int main(int argc, char* argv[])
         /*********************************
          * Profile Time to Split C/F
          *********************************/
-        aligned_vector<int> states;
-        aligned_vector<int> off_proc_states;
+        std::vector<int> states;
+        std::vector<int> off_proc_states;
         for (int test = 0; test < n_tests; test++)
         {
             // Standard HMIS

@@ -21,7 +21,7 @@ TEST(CGTest, TestsInKrylov)
     CSRMatrix* A = stencil_grid(stencil, grid, 2);
     Vector x(A->n_rows);
     Vector b(A->n_rows);
-    aligned_vector<double> residuals;
+    std::vector<double> residuals;
 
     x.set_const_value(1.0);
     A->mult(x, b);

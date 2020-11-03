@@ -4,7 +4,7 @@
 
 using namespace raptor;
 
-void CG(CSRMatrix* A, Vector& x, Vector& b, aligned_vector<double>& res, double tol, int max_iter)
+void CG(CSRMatrix* A, Vector& x, Vector& b, std::vector<double>& res, double tol, int max_iter)
 {
     Vector r;
     Vector p;

@@ -33,16 +33,16 @@ TEST(TestTAPRugeStuben, TestsInRuge_Stuben)
     ParCSRMatrix* AP;
     ParCSRMatrix* Ac;
     ParCSRMatrix* Ac_rap;
-    aligned_vector<int> proc_sizes(num_procs);
-    aligned_vector<int> splitting;
-    aligned_vector<int> off_proc_splitting;
-    aligned_vector<double> rand_vals;
+    std::vector<int> proc_sizes(num_procs);
+    std::vector<int> splitting;
+    std::vector<int> off_proc_splitting;
+    std::vector<double> rand_vals;
     int first_row;
     int n_items_read;
 
     // Read in weights
     int max_n = 5000;
-    aligned_vector<double> weights(max_n);
+    std::vector<double> weights(max_n);
     const char* weights_fn = "../../../../test_data/weights.txt";
     FILE* f = fopen(weights_fn, "r");
     for (int i = 0; i < max_n; i++)

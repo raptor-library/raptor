@@ -58,7 +58,7 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
     HYPRE_IJMatrix Aij;
     hypre_ParCSRMatrix* A_hyp;
     int n;
-    aligned_vector<int> grid;
+    std::vector<int> grid;
     double* stencil;
 
     hypre_ParVector* x_hyp;
@@ -119,8 +119,8 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
 //        compareS(S, S_h);
 
         int* CF_marker;
-        aligned_vector<int> states;
-        aligned_vector<int> off_proc_states;
+        std::vector<int> states;
+        std::vector<int> off_proc_states;
         hypre_BoomerAMGCoarsenPMIS(S_h, A_h, 0, 0, &CF_marker);
         split_pmis(S, states, off_proc_states, false, weights);
         compare_states(Al->local_num_rows, states, CF_marker);

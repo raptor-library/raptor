@@ -30,7 +30,7 @@ TEST(AMGTest, TestsInMultilevel)
     Vector b;
 
     double strong_threshold = 0.0;
-    aligned_vector<double> res;
+    std::vector<double> res;
     int iter;
     
 

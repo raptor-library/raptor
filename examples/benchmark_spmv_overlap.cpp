@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
     {
         int dim;
         double* stencil = NULL;
-        aligned_vector<int> grid;
+        std::vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);
@@ -170,7 +170,7 @@ int main(int argc, char* argv[])
         ParComm* comm = Al->comm;
         
         // SpMV Without Overlap
-        aligned_vector<double>& x_tmp = comm->communicate(xl);
+        std::vector<double>& x_tmp = comm->communicate(xl);
         if (Al->local_num_rows) Al->on_proc->mult(xl.local, bl.local);
         if (Al->off_proc_num_cols) Al->off_proc->mult_append(x_tmp, bl.local);
         for (int j = 0; j < num_tests; j++)

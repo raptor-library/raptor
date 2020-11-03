@@ -2,8 +2,8 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "aggregation/aggregate.hpp"
 
-int aggregate(CSRMatrix* A, CSRMatrix* S, aligned_vector<int>& states,
-        aligned_vector<int>& aggregates, double* rand_vals)
+int aggregate(CSRMatrix* A, CSRMatrix* S, std::vector<int>& states,
+        std::vector<int>& aggregates, double* rand_vals)
 {
     if (A->n_rows == 0)
     {
@@ -11,7 +11,7 @@ int aggregate(CSRMatrix* A, CSRMatrix* S, aligned_vector<int>& states,
     }
 
     // Set random values
-    aligned_vector<double> r(A->n_rows, 0);
+    std::vector<double> r(A->n_rows, 0);
     if (rand_vals)
     {
         for (int i = 0; i < A->n_rows; i++)

@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
     {
         int dim;
         double* stencil = NULL;
-        aligned_vector<int> grid;
+        std::vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);
@@ -172,7 +172,7 @@ int main(int argc, char* argv[])
         CSRMatrix* recv_mat;
         Partition* part = new Partition(Al->partition, Pl->partition);
         ParComm* comm = Al->comm;
-        aligned_vector<char> send_buffer;
+        std::vector<char> send_buffer;
 
         // SpGEMM Without Overlap
         comm->init_par_mat_comm(Pl, send_buffer);

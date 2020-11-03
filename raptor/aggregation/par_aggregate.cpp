@@ -2,8 +2,8 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "aggregation/par_aggregate.hpp"
 
-int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
-        aligned_vector<int>& off_proc_states, aligned_vector<int>& aggregates,
+int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, std::vector<int>& states,
+        std::vector<int>& off_proc_states, std::vector<int>& aggregates,
         bool tap_comm, double* rand_vals)
 {
     int rank, num_procs;
@@ -16,16 +16,16 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
     A->on_proc->move_diag();
 
     // Initialize Variables
-    aligned_vector<int> off_proc_S_to_A;
+    std::vector<int> off_proc_S_to_A;
     int n_aggs = 0;
     int start, end, col;
     int global_col;
     int ctr, max_agg, j;
     double max_val, val;
 
-    aligned_vector<int> off_proc_aggregates;
-    aligned_vector<double> r;
-    aligned_vector<double> off_proc_r;
+    std::vector<int> off_proc_aggregates;
+    std::vector<double> r;
+    std::vector<double> off_proc_r;
 
     CommPkg* comm = S->comm;
     if (tap_comm)
@@ -51,7 +51,7 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
             r[i] = rand_vals[i];
         }
     }
-    aligned_vector<double>& rands = comm->communicate(r);
+    std::vector<double>& rands = comm->communicate(r);
     std::copy(rands.begin(), rands.end(), off_proc_r.begin());
 
     if (S->off_proc_num_cols)
@@ -82,7 +82,7 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
         }
     }
 
-    aligned_vector<int>& init_aggs = comm->communicate(aggregates);
+    std::vector<int>& init_aggs = comm->communicate(aggregates);
 
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
@@ -123,7 +123,7 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, aligned_vector<int>& states,
     }
 
     // Communicate aggregates (global rows)
-    aligned_vector<int>& recvbuf = comm->communicate(aggregates);
+    std::vector<int>& recvbuf = comm->communicate(aggregates);
 
     std::copy(recvbuf.begin(), recvbuf.end(), off_proc_aggregates.begin());
 

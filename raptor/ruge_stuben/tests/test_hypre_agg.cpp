@@ -58,7 +58,7 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
     HYPRE_IJMatrix Aij;
     hypre_ParCSRMatrix* A_hyp;
     int n;
-    aligned_vector<int> grid;
+    std::vector<int> grid;
     double* stencil;
 
 

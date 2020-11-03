@@ -14,7 +14,7 @@ void BSR_spmv(const BSRMatrix* A, const double* x, double* b);
 
 // COOMatrix SpMV Methods (or BCOO)
 template <typename T>
-void COO_append(const COOMatrix* A, const aligned_vector<T>& vals,
+void COO_append(const COOMatrix* A, const std::vector<T>& vals,
         const double* x, double* b)
 {
     for (int i = 0; i < A->nnz; i++)
@@ -23,7 +23,7 @@ void COO_append(const COOMatrix* A, const aligned_vector<T>& vals,
     }
 }
 template <typename T>
-void COO_append_T(const COOMatrix* A, const aligned_vector<T>& vals,
+void COO_append_T(const COOMatrix* A, const std::vector<T>& vals,
         const double* x, double* b)
 {
     for (int i = 0; i < A->nnz; i++)
@@ -32,7 +32,7 @@ void COO_append_T(const COOMatrix* A, const aligned_vector<T>& vals,
     }
 }
 template <typename T>
-void COO_append_neg(const COOMatrix* A, const aligned_vector<T>& vals,
+void COO_append_neg(const COOMatrix* A, const std::vector<T>& vals,
         const double* x, double* b)
 {
     for (int i = 0; i < A->nnz; i++)
@@ -41,7 +41,7 @@ void COO_append_neg(const COOMatrix* A, const aligned_vector<T>& vals,
     }
 }
 template <typename T>
-void COO_append_neg_T(const COOMatrix* A, const aligned_vector<T>& vals,
+void COO_append_neg_T(const COOMatrix* A, const std::vector<T>& vals,
         const double* x, double* b)
 {
     for (int i = 0; i < A->nnz; i++)
@@ -110,7 +110,7 @@ void CSR_append(const CSRMatrix* A, const double* x, double* b)
 }
 
 template <typename T>
-void BSR_append(const CSRMatrix* A, const aligned_vector<T>& vals,
+void BSR_append(const CSRMatrix* A, const std::vector<T>& vals,
         const double* x, double* b)
 {
     int start, end;
@@ -154,7 +154,7 @@ void BSR_spmv(const BSRMatrix* A, const double* x, double* b)
     }
 }
 template <typename T>
-void CSR_append_T(const CSRMatrix* A, const aligned_vector<T>& vals,
+void CSR_append_T(const CSRMatrix* A, const std::vector<T>& vals,
         const double* x, double* b)
 {
     int start, end;
@@ -169,7 +169,7 @@ void CSR_append_T(const CSRMatrix* A, const aligned_vector<T>& vals,
     }
 }
 template <typename T>
-void CSR_append_neg(const CSRMatrix* A, const aligned_vector<T>& vals,
+void CSR_append_neg(const CSRMatrix* A, const std::vector<T>& vals,
         const double* x, double* b)
 {
     int start, end;
@@ -184,7 +184,7 @@ void CSR_append_neg(const CSRMatrix* A, const aligned_vector<T>& vals,
     }
 }
 template <typename T>
-void CSR_append_neg_T(const CSRMatrix* A, const aligned_vector<T>& vals,
+void CSR_append_neg_T(const CSRMatrix* A, const std::vector<T>& vals,
         const double* x, double* b)
 {
     int start, end;
@@ -203,7 +203,7 @@ void CSR_append_neg_T(const CSRMatrix* A, const aligned_vector<T>& vals,
 
 // CSCMatrix SpMV Methods (or BSC)
 template <typename T>
-void CSC_append(const CSCMatrix* A, const aligned_vector<T>& vals,
+void CSC_append(const CSCMatrix* A, const std::vector<T>& vals,
         const double* x, double* b)
 {
     int start, end;
@@ -218,7 +218,7 @@ void CSC_append(const CSCMatrix* A, const aligned_vector<T>& vals,
     }
 }
 template <typename T>
-void CSC_append_T(const CSCMatrix* A, const aligned_vector<T>& vals,
+void CSC_append_T(const CSCMatrix* A, const std::vector<T>& vals,
         const double* x, double* b)
 {
     int start, end;
@@ -233,7 +233,7 @@ void CSC_append_T(const CSCMatrix* A, const aligned_vector<T>& vals,
     }
 }
 template <typename T>
-void CSC_append_neg(const CSCMatrix* A, const aligned_vector<T>& vals,
+void CSC_append_neg(const CSCMatrix* A, const std::vector<T>& vals,
         const double* x, double* b)
 {
     int start, end;
@@ -248,7 +248,7 @@ void CSC_append_neg(const CSCMatrix* A, const aligned_vector<T>& vals,
     }
 }
 template <typename T>
-void CSC_append_neg_T(const CSCMatrix* A, const aligned_vector<T>& vals,
+void CSC_append_neg_T(const CSCMatrix* A, const std::vector<T>& vals,
         const double* x, double* b)
 {
     int start, end;

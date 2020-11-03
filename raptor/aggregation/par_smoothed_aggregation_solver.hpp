@@ -59,10 +59,10 @@ namespace raptor
             ParCSRMatrix* P = NULL;
             ParCSRMatrix* AP;
 
-            aligned_vector<int> states;
-            aligned_vector<int> off_proc_states;
-            aligned_vector<int> aggregates;
-            aligned_vector<double> R;
+            std::vector<int> states;
+            std::vector<int> off_proc_states;
+            std::vector<int> aggregates;
+            std::vector<double> R;
             int n_aggs = 0;
 
             // Form strength of connection
@@ -140,7 +140,7 @@ namespace raptor
 
         agg_t agg_type;
         prolong_t prolong_type;
-        aligned_vector<double> B;
+        std::vector<double> B;
 
         double interp_tol;
         double prolong_weight;

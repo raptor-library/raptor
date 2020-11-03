@@ -53,13 +53,13 @@ int main(int argc, char *argv[])
 
     double strong_threshold = 0.25;
     int cache_len = 10000;
-    aligned_vector<double> cache_array(cache_len);
-    aligned_vector<double> residuals;
+    std::vector<double> cache_array(cache_len);
+    std::vector<double> residuals;
 
     if (system < 2)
     {
         double* stencil = NULL;
-        aligned_vector<int> grid;
+        std::vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);
@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
     if (system < 2)
     {
         double* stencil = NULL;
-        aligned_vector<int> grid;
+        std::vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);

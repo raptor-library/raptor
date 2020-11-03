@@ -27,8 +27,8 @@ TEST(TestTAPCandidates, TestsInAggregation)
     setenv("PPN", "4", 1);
 
     FILE* f;
-    aligned_vector<int> states;
-    aligned_vector<int> off_proc_states;
+    std::vector<int> states;
+    std::vector<int> off_proc_states;
 
     ParCSRMatrix* A;
     ParCSRMatrix* S;
@@ -43,7 +43,7 @@ TEST(TestTAPCandidates, TestsInAggregation)
     S = readParMatrix(S0_fn);
     A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, A->on_proc_column_map);
 
-    aligned_vector<double> weights(S->local_num_rows);
+    std::vector<double> weights(S->local_num_rows);
     f = fopen(weights_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
@@ -58,11 +58,11 @@ TEST(TestTAPCandidates, TestsInAggregation)
     fclose(f);
 
     mis2(S, states, off_proc_states, false, weights.data());
-    aligned_vector<int> aggregates;
+    std::vector<int> aggregates;
     int n_aggs = aggregate(A, S, states, off_proc_states, aggregates, 
             false, weights.data());
 
-    aligned_vector<int> proc_aggs(num_procs);
+    std::vector<int> proc_aggs(num_procs);
     int first_col = 0;
     MPI_Allgather(&n_aggs, 1, MPI_INT, proc_aggs.data(), 1, MPI_INT, MPI_COMM_WORLD);
     for (int i = 0; i < rank; i++)
@@ -73,8 +73,8 @@ TEST(TestTAPCandidates, TestsInAggregation)
     ParCSRMatrix* T_py = readParMatrix(T0_fn, A->local_num_rows, n_aggs, 
             A->partition->first_local_row, first_col);
 
-    aligned_vector<double> B;
-    aligned_vector<double> R;
+    std::vector<double> B;
+    std::vector<double> R;
     if (A->local_num_rows)
         B.resize(A->local_num_rows, 1.0);
     int num_candidates = 1;

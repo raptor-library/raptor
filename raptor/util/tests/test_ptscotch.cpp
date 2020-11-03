@@ -26,7 +26,7 @@ TEST(ParMetisTest, TestsInUtil)
 
     const char* filename = "../../../../test_data/aniso.pm";
     int n_tests = 100;
-    aligned_vector<int> new_local_rows;
+    std::vector<int> new_local_rows;
 
     // Create RowWise Partition 
     ParCSRMatrix* A_orig = readParMatrix(filename);

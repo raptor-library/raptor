@@ -13,7 +13,7 @@ extern "C" void dgetrs_(char *TRANS, int *N, int *NRHS, double *A,
 
 
 template <typename T, typename U>
-void vec_sort(aligned_vector<T>& vec1, aligned_vector<U>& vec2, int start = 0, int end = -1)
+void vec_sort(std::vector<T>& vec1, std::vector<U>& vec2, int start = 0, int end = -1)
 {
     vec1.shrink_to_fit();
     vec2.shrink_to_fit();
@@ -23,8 +23,8 @@ void vec_sort(aligned_vector<T>& vec1, aligned_vector<U>& vec2, int start = 0, i
     if (end < 0) end = n;
     int size = end - start;
 
-    aligned_vector<int> p(size);
-    aligned_vector<bool> done(size, false);
+    std::vector<int> p(size);
+    std::vector<bool> done(size, false);
 
     std::iota(p.begin(), p.end(), 0);
     std::sort(p.begin(), p.end(),
@@ -50,8 +50,8 @@ void vec_sort(aligned_vector<T>& vec1, aligned_vector<U>& vec2, int start = 0, i
 }
 
 template <typename T, typename U>
-void vec_sort(aligned_vector<T>& vec1, aligned_vector<T>& vec2, 
-        aligned_vector<U>& vec3,
+void vec_sort(std::vector<T>& vec1, std::vector<T>& vec2, 
+        std::vector<U>& vec3,
         int start = 0, int end = -1)
 {
     vec1.shrink_to_fit();
@@ -63,8 +63,8 @@ void vec_sort(aligned_vector<T>& vec1, aligned_vector<T>& vec2,
     if (end < 0) end = n;
     int size = end - start;
 
-    aligned_vector<int> p(size);
-    aligned_vector<bool> done(size, false);
+    std::vector<int> p(size);
+    std::vector<bool> done(size, false);
 
     std::iota(p.begin(), p.end(), 0);
     std::sort(p.begin(), p.end(),

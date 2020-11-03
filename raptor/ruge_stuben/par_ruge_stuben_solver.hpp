@@ -63,8 +63,8 @@ namespace raptor
             ParCSRMatrix* P = NULL;
             ParCSRMatrix* AP;
 
-            aligned_vector<int> states;
-            aligned_vector<int> off_proc_states;
+            std::vector<int> states;
+            std::vector<int> off_proc_states;
 
             // Form strength of connection
             S = A->strength(strength_type, strong_threshold, tap_level, 

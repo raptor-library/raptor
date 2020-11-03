@@ -13,7 +13,7 @@ using namespace raptor;
 ***** and column according to each nonzero
 **************************************************************/
 template <typename T>
-void print_helper(const COOMatrix* A, const aligned_vector<T>& vals)
+void print_helper(const COOMatrix* A, const std::vector<T>& vals)
 {
     int row, col;
 
@@ -25,7 +25,7 @@ void print_helper(const COOMatrix* A, const aligned_vector<T>& vals)
     }
 }
 template <typename T>
-void print_helper(const CSRMatrix* A, const aligned_vector<T>& vals)
+void print_helper(const CSRMatrix* A, const std::vector<T>& vals)
 {
     int col, start, end;
 
@@ -41,7 +41,7 @@ void print_helper(const CSRMatrix* A, const aligned_vector<T>& vals)
     }
 }
 template <typename T>
-void print_helper(const CSCMatrix* A, const aligned_vector<T>& vals)
+void print_helper(const CSCMatrix* A, const std::vector<T>& vals)
 {
     int row, start, end;
 
@@ -57,7 +57,7 @@ void print_helper(const CSCMatrix* A, const aligned_vector<T>& vals)
     }
 }
 template <typename T>
-void bcoo_print_helper(const BCOOMatrix* A, const aligned_vector<T>& vals)
+void bcoo_print_helper(const BCOOMatrix* A, const std::vector<T>& vals)
 {
     int row, col;
 
@@ -69,7 +69,7 @@ void bcoo_print_helper(const BCOOMatrix* A, const aligned_vector<T>& vals)
     }
 }
 template <typename T>
-void bsr_print_helper(const BSRMatrix* A, const aligned_vector<T>& vals)
+void bsr_print_helper(const BSRMatrix* A, const std::vector<T>& vals)
 {
     int col, start, end;
 
@@ -85,7 +85,7 @@ void bsr_print_helper(const BSRMatrix* A, const aligned_vector<T>& vals)
     }
 }
 template <typename T>
-void bsc_print_helper(const BSCMatrix* A, const aligned_vector<T>& vals)
+void bsc_print_helper(const BSCMatrix* A, const std::vector<T>& vals)
 {
     int row, start, end;
 
@@ -203,8 +203,8 @@ void Matrix::resize(int _n_rows, int _n_cols)
 ***** Matrix* A : original matrix to copy (of some type)
 **************************************************************/
 template <typename T>
-void COO_to_COO(const COOMatrix* A, COOMatrix* B, aligned_vector<T>& A_vals,
-        aligned_vector<T>& B_vals)
+void COO_to_COO(const COOMatrix* A, COOMatrix* B, std::vector<T>& A_vals,
+        std::vector<T>& B_vals)
 {
     B->n_rows = A->n_rows;
     B->n_cols = A->n_cols;
@@ -225,8 +225,8 @@ void COO_to_COO(const COOMatrix* A, COOMatrix* B, aligned_vector<T>& A_vals,
     }
 }
 template <typename T>
-void CSR_to_COO(const CSRMatrix* A, COOMatrix* B, aligned_vector<T>& A_vals,
-        aligned_vector<T>& B_vals)
+void CSR_to_COO(const CSRMatrix* A, COOMatrix* B, std::vector<T>& A_vals,
+        std::vector<T>& B_vals)
 {
     B->n_rows = A->n_rows;
     B->n_cols = A->n_cols;
@@ -252,8 +252,8 @@ void CSR_to_COO(const CSRMatrix* A, COOMatrix* B, aligned_vector<T>& A_vals,
     }
 }
 template <typename T>
-void CSC_to_COO(const CSCMatrix* A, COOMatrix* B, aligned_vector<T>& A_vals,
-        aligned_vector<T>& B_vals)
+void CSC_to_COO(const CSCMatrix* A, COOMatrix* B, std::vector<T>& A_vals,
+        std::vector<T>& B_vals)
 {
     B->n_rows = A->n_rows;
     B->n_cols = A->n_cols;
@@ -280,8 +280,8 @@ void CSC_to_COO(const CSCMatrix* A, COOMatrix* B, aligned_vector<T>& A_vals,
 
 }
 template <typename T>
-void COO_to_CSR(const COOMatrix* A, CSRMatrix* B, aligned_vector<T>& A_vals,
-        aligned_vector<T>& B_vals)
+void COO_to_CSR(const COOMatrix* A, CSRMatrix* B, std::vector<T>& A_vals,
+        std::vector<T>& B_vals)
 {
     B->n_rows = A->n_rows;
     B->n_cols = A->n_cols;
@@ -308,7 +308,7 @@ void COO_to_CSR(const COOMatrix* A, CSRMatrix* B, aligned_vector<T>& A_vals,
     }
 
     // Add indices and data
-    aligned_vector<int> ctr;
+    std::vector<int> ctr;
     if (B->n_rows)
     {
             ctr.resize(B->n_rows, 0);
@@ -327,8 +327,8 @@ void COO_to_CSR(const COOMatrix* A, CSRMatrix* B, aligned_vector<T>& A_vals,
 
 }
 template <typename T>
-void CSR_to_CSR(const CSRMatrix* A, CSRMatrix* B, aligned_vector<T>& A_vals,
-        aligned_vector<T>& B_vals)
+void CSR_to_CSR(const CSRMatrix* A, CSRMatrix* B, std::vector<T>& A_vals,
+        std::vector<T>& B_vals)
 {
     B->n_rows = A->n_rows;
     B->n_cols = A->n_cols;
@@ -353,8 +353,8 @@ void CSR_to_CSR(const CSRMatrix* A, CSRMatrix* B, aligned_vector<T>& A_vals,
 
 }
 template <typename T>
-void BSR_to_CSR(const BSRMatrix* A, CSRMatrix* B, aligned_vector<T*>& A_vals,
-        aligned_vector<T>& B_vals)
+void BSR_to_CSR(const BSRMatrix* A, CSRMatrix* B, std::vector<T*>& A_vals,
+        std::vector<T>& B_vals)
 {
     B->n_rows = A->n_rows * A->b_rows;
     B->n_cols = A->n_cols * A->b_cols;
@@ -392,8 +392,8 @@ void BSR_to_CSR(const BSRMatrix* A, CSRMatrix* B, aligned_vector<T*>& A_vals,
 
 }
 template <typename T>
-void CSC_to_CSR(const CSCMatrix* A, CSRMatrix* B, aligned_vector<T>& A_vals,
-        aligned_vector<T>& B_vals)
+void CSC_to_CSR(const CSCMatrix* A, CSRMatrix* B, std::vector<T>& A_vals,
+        std::vector<T>& B_vals)
 {
     B->n_rows = A->n_rows;
     B->n_cols = A->n_cols;
@@ -421,7 +421,7 @@ void CSC_to_CSR(const CSCMatrix* A, CSRMatrix* B, aligned_vector<T>& A_vals,
     }
 
     // Add values to indices and data
-    aligned_vector<int> ctr(B->n_rows, 0);
+    std::vector<int> ctr(B->n_rows, 0);
     for (int i = 0; i < A->n_cols; i++)
     {
         int col_start = A->idx1[i];
@@ -440,8 +440,8 @@ void CSC_to_CSR(const CSCMatrix* A, CSRMatrix* B, aligned_vector<T>& A_vals,
 
 }
 template <typename T>
-void COO_to_CSC(const COOMatrix* A, CSCMatrix* B, aligned_vector<T>& A_vals,
-        aligned_vector<T>& B_vals)
+void COO_to_CSC(const COOMatrix* A, CSCMatrix* B, std::vector<T>& A_vals,
+        std::vector<T>& B_vals)
 {
     B->n_rows = A->n_rows;
     B->n_cols = A->n_cols;
@@ -468,7 +468,7 @@ void COO_to_CSC(const COOMatrix* A, CSCMatrix* B, aligned_vector<T>& A_vals,
     }
 
     // Add indices and data
-    aligned_vector<int> ctr;
+    std::vector<int> ctr;
     if (B->n_cols)
     {
         ctr.resize(B->n_cols, 0);
@@ -487,8 +487,8 @@ void COO_to_CSC(const COOMatrix* A, CSCMatrix* B, aligned_vector<T>& A_vals,
 
 }
 template <typename T>
-void CSR_to_CSC(const CSRMatrix* A, CSCMatrix* B, aligned_vector<T>& A_vals,
-        aligned_vector<T>& B_vals)
+void CSR_to_CSC(const CSRMatrix* A, CSCMatrix* B, std::vector<T>& A_vals,
+        std::vector<T>& B_vals)
 {
     B->n_rows = A->n_rows;
     B->n_cols = A->n_cols;
@@ -516,7 +516,7 @@ void CSR_to_CSC(const CSRMatrix* A, CSCMatrix* B, aligned_vector<T>& A_vals,
     }
 
     // Add values to indices and data
-    aligned_vector<int> ctr(B->n_cols, 0);
+    std::vector<int> ctr(B->n_cols, 0);
     for (int i = 0; i < A->n_rows; i++)
     {
         int row_start = A->idx1[i];
@@ -535,8 +535,8 @@ void CSR_to_CSC(const CSRMatrix* A, CSCMatrix* B, aligned_vector<T>& A_vals,
 
 }
 template <typename T>
-void CSC_to_CSC(const CSCMatrix* A, CSCMatrix* B, aligned_vector<T>& A_vals,
-        aligned_vector<T>& B_vals)
+void CSC_to_CSC(const CSCMatrix* A, CSCMatrix* B, std::vector<T>& A_vals,
+        std::vector<T>& B_vals)
 {
     B->n_rows = A->n_rows;
     B->n_cols = A->n_cols;
@@ -567,7 +567,7 @@ void CSC_to_CSC(const CSCMatrix* A, CSCMatrix* B, aligned_vector<T>& A_vals,
 ***** Sorts the sparse matrix by row and column
 **************************************************************/
 template <typename T>
-void sort_helper(COOMatrix* A, aligned_vector<T>& vals)
+void sort_helper(COOMatrix* A, std::vector<T>& vals)
 {
     if (A->sorted || A->nnz == 0)
     {
@@ -583,7 +583,7 @@ void sort_helper(COOMatrix* A, aligned_vector<T>& vals)
 }
 
 template <typename T>
-void sort_helper(CSRMatrix* A, aligned_vector<T>& vals)
+void sort_helper(CSRMatrix* A, std::vector<T>& vals)
 {
     int start, end, row_size;
 
@@ -616,7 +616,7 @@ void sort_helper(CSRMatrix* A, aligned_vector<T>& vals)
 }
 
 template <typename T>
-void sort_helper(CSCMatrix* A, aligned_vector<T>& vals)
+void sort_helper(CSCMatrix* A, std::vector<T>& vals)
 {
     int start, end, col_size;
 
@@ -681,7 +681,7 @@ void BSCMatrix::sort()
 ***** If matrix is not sorted, sorts before moving
 **************************************************************/
 template <typename T>
-void move_diag_helper(COOMatrix* A, aligned_vector<T>& vals)
+void move_diag_helper(COOMatrix* A, std::vector<T>& vals)
 {
     if (A->diag_first || A->nnz == 0)
     {
@@ -725,7 +725,7 @@ void move_diag_helper(COOMatrix* A, aligned_vector<T>& vals)
 }
 
 template <typename T>
-void move_diag_helper(CSRMatrix* A, aligned_vector<T>& vals)
+void move_diag_helper(CSRMatrix* A, std::vector<T>& vals)
 {
     int start, end;
     int col;
@@ -785,7 +785,7 @@ void move_diag_helper(CSRMatrix* A, aligned_vector<T>& vals)
 }
 
 template <typename T>
-void move_diag_helper(CSCMatrix* A, aligned_vector<T>& vals)
+void move_diag_helper(CSCMatrix* A, std::vector<T>& vals)
 {
     int start, end;
     int row;
@@ -876,7 +876,7 @@ void BSCMatrix::move_diag()
 ***** entries, summing associated values
 **************************************************************/
 template <typename T>
-void remove_duplicates_helper(COOMatrix* A, aligned_vector<T>& vals)
+void remove_duplicates_helper(COOMatrix* A, std::vector<T>& vals)
 {
     if (!A->sorted)
     {
@@ -918,7 +918,7 @@ void remove_duplicates_helper(COOMatrix* A, aligned_vector<T>& vals)
 }
 
 template <typename T>
-void remove_duplicates_helper(CSRMatrix* A, aligned_vector<T>& vals)
+void remove_duplicates_helper(CSRMatrix* A, std::vector<T>& vals)
 {
     int orig_start, orig_end;
     int new_start;
@@ -984,7 +984,7 @@ void remove_duplicates_helper(CSRMatrix* A, aligned_vector<T>& vals)
 }
 
 template <typename T>
-void remove_duplicates_helper(CSCMatrix* A, aligned_vector<T>& vals)
+void remove_duplicates_helper(CSCMatrix* A, std::vector<T>& vals)
 {
     int orig_start, orig_end;
     int new_start;

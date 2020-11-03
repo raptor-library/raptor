@@ -297,8 +297,8 @@ namespace raptor
         first_cols[num_procs] = global_num_cols;
     }
 
-    void form_col_to_proc (const aligned_vector<int>& off_proc_column_map,
-            aligned_vector<int>& off_proc_col_to_proc) 
+    void form_col_to_proc (const std::vector<int>& off_proc_column_map,
+            std::vector<int>& off_proc_col_to_proc) 
     {
         int rank, num_procs;
         RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
@@ -307,7 +307,7 @@ namespace raptor
         int global_col, assumed_proc;
         int ctr = 0;
         off_proc_col_to_proc.resize(off_proc_column_map.size());
-        for (aligned_vector<int>::const_iterator it = off_proc_column_map.begin();
+        for (std::vector<int>::const_iterator it = off_proc_column_map.begin();
                         it != off_proc_column_map.end(); ++it)
         {
             global_col = *it;
@@ -335,7 +335,7 @@ namespace raptor
     index_t last_local_col;
 
     int assumed_num_cols;
-    aligned_vector<int> first_cols;
+    std::vector<int> first_cols;
 
     Topology* topology;
 

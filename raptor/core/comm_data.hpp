@@ -83,14 +83,14 @@ public:
     virtual void probe(int size, int key, RAPtor_MPI_Comm mpi_comm) = 0;
 
     virtual CommData* copy() = 0;
-    virtual CommData* copy(const aligned_vector<int>& col_to_new) = 0;
+    virtual CommData* copy(const std::vector<int>& col_to_new) = 0;
 
     template <typename T>
     static RAPtor_MPI_Datatype get_type();
 
 
     template <typename T>
-    aligned_vector<T>& get_buffer(const int block_size = 1);
+    std::vector<T>& get_buffer(const int block_size = 1);
 
     template <typename T>
     void send(const T* values, int key, RAPtor_MPI_Comm mpi_comm, const int block_size = 1,
@@ -105,13 +105,13 @@ public:
 
     template <typename T>
     void send(const T* values, int key, RAPtor_MPI_Comm mpi_comm,
-            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            const std::vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size = 1);
     virtual void int_send(const int* values, int key, RAPtor_MPI_Comm mpi_comm,
-            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            const std::vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size) = 0;
     virtual void double_send(const double* values, int key, RAPtor_MPI_Comm mpi_comm,
-            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            const std::vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size) = 0;
 
 
@@ -140,7 +140,7 @@ public:
         int proc, start, end;
         int size = size_msgs * block_size;
         RAPtor_MPI_Datatype datatype = get_type<T>();
-        aligned_vector<T>& buf = get_buffer<T>();
+        std::vector<T>& buf = get_buffer<T>();
         if ((int) buf.size() < size) buf.resize(size);
 
         for (int i = 0; i < num_msgs; i++)
@@ -155,15 +155,15 @@ public:
 
     template <typename T>
     void recv(int key, RAPtor_MPI_Comm mpi_comm, 
-            const aligned_vector<int>& off_proc_states,
+            const std::vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1);
     virtual void int_recv(int key, RAPtor_MPI_Comm mpi_comm, 
-            const aligned_vector<int>& off_proc_states,
+            const std::vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1) = 0;
     virtual void double_recv(int key, RAPtor_MPI_Comm mpi_comm, 
-            const aligned_vector<int>& off_proc_states,
+            const std::vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1) = 0;
 
@@ -176,7 +176,7 @@ public:
         int ctr, row_size, row_count;
         int count, recv_size;
         RAPtor_MPI_Status recv_status;
-        aligned_vector<char> recv_buffer;
+        std::vector<char> recv_buffer;
 
         recv_size = 0;
         row_count = 0;
@@ -271,7 +271,7 @@ public:
     }
 
     template <typename T>
-    void unpack(aligned_vector<T>& unpacked_buffer, RAPtor_MPI_Comm mpi_comm, const int block_size = 1)
+    void unpack(std::vector<T>& unpacked_buffer, RAPtor_MPI_Comm mpi_comm, const int block_size = 1)
     {
         if (num_msgs == 0) return;
 
@@ -290,12 +290,12 @@ public:
 
     int num_msgs;
     int size_msgs;
-    aligned_vector<int> procs;
-    aligned_vector<int> indptr;
-    aligned_vector<RAPtor_MPI_Request> requests;
-    aligned_vector<double> buffer;
-    aligned_vector<int> int_buffer;
-    aligned_vector<char> pack_buffer;
+    std::vector<int> procs;
+    std::vector<int> indptr;
+    std::vector<RAPtor_MPI_Request> requests;
+    std::vector<double> buffer;
+    std::vector<int> int_buffer;
+    std::vector<char> pack_buffer;
 
 };
 
@@ -319,7 +319,7 @@ public:
     {
         return new ContigData(this);
     }
-    ContigData* copy(const aligned_vector<int>& col_to_new)
+    ContigData* copy(const std::vector<int>& col_to_new)
     {
         bool comm_proc;
         int proc, start, end;
@@ -401,13 +401,13 @@ public:
     }
 
     void int_send(const int* values, int key, RAPtor_MPI_Comm mpi_comm,
-            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            const std::vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size)
     {
         send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
     }
     void double_send(const double* values, int key, RAPtor_MPI_Comm mpi_comm,
-            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            const std::vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size)
     {
         send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
@@ -438,7 +438,7 @@ public:
 
     template <typename T>
     void send(const T* values, int key, RAPtor_MPI_Comm mpi_comm,
-            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            const std::vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size = 1)
     {
         if (num_msgs == 0)
@@ -454,7 +454,7 @@ public:
         int size = size_msgs * block_size; 
 
         RAPtor_MPI_Datatype datatype = get_type<T>();
-        aligned_vector<T>& buf = get_buffer<T>();
+        std::vector<T>& buf = get_buffer<T>();
         if ((int)buf.size() < size) buf.resize(size);
 
         n_sends = 0;
@@ -591,7 +591,7 @@ public:
     } 
 
     void int_recv(int key, RAPtor_MPI_Comm mpi_comm, 
-            const aligned_vector<int>& off_proc_states,
+            const std::vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
     {
@@ -599,7 +599,7 @@ public:
                 n_recv_ptr, block_size);
     }
     void double_recv(int key, RAPtor_MPI_Comm mpi_comm, 
-            const aligned_vector<int>& off_proc_states,
+            const std::vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
     {
@@ -609,7 +609,7 @@ public:
 
     template <typename T>
     void cond_recv(int key, RAPtor_MPI_Comm mpi_comm, 
-            const aligned_vector<int>& off_proc_states,
+            const std::vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
    {
@@ -625,7 +625,7 @@ public:
         int size = size_msgs * block_size;
 
         RAPtor_MPI_Datatype datatype = get_type<T>();
-        aligned_vector<T>& buf = get_buffer<T>();
+        std::vector<T>& buf = get_buffer<T>();
         if ((int)buf.size() < size) buf.resize(size);
 
         n_recvs = 0;
@@ -684,7 +684,7 @@ public:
         return new NonContigData(this);
     }
 
-    NonContigData* copy(const aligned_vector<int>& col_to_new)
+    NonContigData* copy(const std::vector<int>& col_to_new)
     {
         bool comm_proc;
         int proc, start, end;
@@ -781,13 +781,13 @@ public:
                 init_result_func_val);
     }
     void int_send(const int* values, int key, RAPtor_MPI_Comm mpi_comm,
-            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            const std::vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size)
     {
         send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
     }
     void double_send(const double* values, int key, RAPtor_MPI_Comm mpi_comm,
-            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            const std::vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size)
     {
         send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
@@ -806,7 +806,7 @@ public:
         int size = size_msgs * block_size;
 
         RAPtor_MPI_Datatype datatype = get_type<T>();
-        aligned_vector<T>& buf = get_buffer<T>();
+        std::vector<T>& buf = get_buffer<T>();
         if ((int)buf.size() < size) buf.resize(size);
 
         for (int i = 0; i < num_msgs; i++)
@@ -830,7 +830,7 @@ public:
 
     template <typename T>
     void send(const T* values, int key, RAPtor_MPI_Comm mpi_comm,
-            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            const std::vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size = 1)
     {
         if (num_msgs == 0)
@@ -847,7 +847,7 @@ public:
         int size = size_msgs * block_size; 
 
         RAPtor_MPI_Datatype datatype = get_type<T>();
-        aligned_vector<T>& buf = get_buffer<T>();
+        std::vector<T>& buf = get_buffer<T>();
         if ((int)buf.size() < size) buf.resize(size);
 
         n_sends = 0;
@@ -922,7 +922,7 @@ public:
         // Calculate message size
         num_ints = indptr[num_msgs] - indptr[0];
         num_doubles = 0;
-        for (aligned_vector<int>::iterator it = indices.begin();
+        for (std::vector<int>::iterator it = indices.begin();
                 it != indices.end(); ++it)
         {
             num_doubles += (rowptr[*it+1] - rowptr[*it]);
@@ -988,7 +988,7 @@ public:
 
  
     void int_recv(int key, RAPtor_MPI_Comm mpi_comm, 
-            const aligned_vector<int>& off_proc_states,
+            const std::vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
     {
@@ -996,7 +996,7 @@ public:
                 n_recv_ptr, block_size);
     }
     void double_recv(int key, RAPtor_MPI_Comm mpi_comm, 
-            const aligned_vector<int>& off_proc_states,
+            const std::vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
     {
@@ -1006,7 +1006,7 @@ public:
 
     template <typename T>
     void cond_recv(int key, RAPtor_MPI_Comm mpi_comm, 
-            const aligned_vector<int>& off_proc_states,
+            const std::vector<int>& off_proc_states,
             std::function<bool(int)> compare_func,
             int* s_recv_ptr, int* n_recv_ptr, const int block_size = 1)
    {
@@ -1022,7 +1022,7 @@ public:
         int size = size_msgs * block_size;
 
         RAPtor_MPI_Datatype datatype = get_type<T>();
-        aligned_vector<T>& buf = get_buffer<T>();
+        std::vector<T>& buf = get_buffer<T>();
         if ((int)buf.size() < size) buf.resize(size);
 
         n_recvs = 0;
@@ -1057,7 +1057,7 @@ public:
         *s_recv_ptr = ctr;    
    }
 
-    aligned_vector<int> indices;
+    std::vector<int> indices;
 
 }; 
 
@@ -1082,7 +1082,7 @@ public:
     {
         return new DuplicateData(this);
     }
-    DuplicateData* copy(const aligned_vector<int>& col_to_new)
+    DuplicateData* copy(const std::vector<int>& col_to_new)
     {
         bool comm_proc, comm_idx;
         int proc, start, end;
@@ -1147,13 +1147,13 @@ public:
                 init_result_func_val);
     }
     void int_send(const int* values, int key, RAPtor_MPI_Comm mpi_comm,
-            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            const std::vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size)
     {
         send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
     }
     void double_send(const double* values, int key, RAPtor_MPI_Comm mpi_comm,
-            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            const std::vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size)
     {
         send(values, key, mpi_comm, states, compare_func, n_send_ptr, block_size);
@@ -1174,10 +1174,10 @@ public:
         int pos;
 
         RAPtor_MPI_Datatype datatype = get_type<T>();
-        aligned_vector<T>& buf = get_buffer<T>();
+        std::vector<T>& buf = get_buffer<T>();
         if ((int)buf.size() < size) buf.resize(size);
 
-        aligned_vector<T> tmp(block_size);
+        std::vector<T> tmp(block_size);
 
         for (int i = 0; i < num_msgs; i++)
         {
@@ -1210,17 +1210,17 @@ public:
 
     template <typename T>
     void send(const T* values, int key, RAPtor_MPI_Comm mpi_comm,
-            const aligned_vector<int>& states, std::function<bool(int)> compare_func,
+            const std::vector<int>& states, std::function<bool(int)> compare_func,
             int* n_send_ptr, const int block_size = 1)
     {
 
     }
 
-    void append_val(aligned_vector<double>& vec, const double val, int block_size)
+    void append_val(std::vector<double>& vec, const double val, int block_size)
     {
         vec.emplace_back(val);
     }
-    void append_val(aligned_vector<double>& vec, const double* val, int block_size)
+    void append_val(std::vector<double>& vec, const double* val, int block_size)
     {
         for (int i = 0; i < block_size; i++)
             vec.emplace_back(val[i]);
@@ -1228,8 +1228,8 @@ public:
     
     template <typename T>
     void combine_entries(int j, const int* rowptr, const int* col_indices, 
-            const T& values, int block_size, aligned_vector<int>& send_indices, 
-            aligned_vector<double>& send_values, int* size_ptr)
+            const T& values, int block_size, std::vector<int>& send_indices, 
+            std::vector<double>& send_values, int* size_ptr)
     {
         int idx_start, idx_end;
         int row_start, row_end;
@@ -1282,7 +1282,7 @@ public:
     }
     
     void combine_entries(int j, const int* rowptr, const int* col_indices, 
-            aligned_vector<int>& send_indices, int* size_ptr)
+            std::vector<int>& send_indices, int* size_ptr)
     {
         int idx_start, idx_end;
         int row_start, row_end;
@@ -1349,7 +1349,7 @@ public:
         // Calculate message size (upper bound)
         num_ints = indptr[num_msgs] - indptr[0];
         num_doubles = 0;
-        for (aligned_vector<int>::iterator it = indices.begin();
+        for (std::vector<int>::iterator it = indices.begin();
                 it != indices.end(); ++it)
         {
             num_doubles += (rowptr[*it+1] - rowptr[*it]);
@@ -1391,8 +1391,8 @@ public:
             end = indptr[i+1];
             for (int j = start; j < end; j++)
             {
-                aligned_vector<int> send_indices;
-                aligned_vector<double> send_values;
+                std::vector<int> send_indices;
+                std::vector<double> send_values;
                 
                 if (values)
                 {
@@ -1419,7 +1419,7 @@ public:
         }
     }
 
-     aligned_vector<int> indptr_T;
+     std::vector<int> indptr_T;
 
 }; 
 

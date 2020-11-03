@@ -16,7 +16,7 @@ int main(int argc, char** argv)
 TEST(BSRMatrixTest, TestsInCore)
 {
 /*    
-    aligned_vector<aligned_vector<int>> indx = {{0,0}, {0,1}, {1,1}, {2,1}, {2,2}};
+    std::vector<std::vector<int>> indx = {{0,0}, {0,1}, {1,1}, {2,1}, {2,2}};
 
     int rows_in_block = 2;
     int cols_in_block = 2;

@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
     {
         int dim = 3;
         double* stencil = NULL;
-        aligned_vector<int> grid;
+        std::vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);
@@ -152,8 +152,8 @@ int main(int argc, char* argv[])
     ml->track_times = false;
     ml->setup(A);
 
-    aligned_vector<double> B(A->local_num_rows);
-    aligned_vector<double> R;
+    std::vector<double> B(A->local_num_rows);
+    std::vector<double> R;
     for (int i = 0; i < A->local_num_rows; i++)
     {
         B[i] = 1.0;
@@ -239,8 +239,8 @@ int main(int argc, char* argv[])
         /*********************************
          * Profile MIS Time
          *********************************/
-        aligned_vector<int> states;
-        aligned_vector<int> off_proc_states;
+        std::vector<int> states;
+        std::vector<int> off_proc_states;
         for (int test = 0; test < n_tests; test++)
         {
             // Standard MIS
@@ -263,7 +263,7 @@ int main(int argc, char* argv[])
          * Profile Aggregation Time
          *********************************/
         int n_aggs = 0;
-        aligned_vector<int> aggregates;
+        std::vector<int> aggregates;
         for (int test = 0; test < n_tests; test++)
         {
             // Standard Aggregation

@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
     {
         int dim;
         double* stencil = NULL;
-        aligned_vector<int> grid;
+        std::vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);
@@ -520,8 +520,8 @@ int main(int argc, char* argv[])
         }
 
         // Time C/F Splitting (HMIS)
-        aligned_vector<int> states;
-        aligned_vector<int> off_proc_states;
+        std::vector<int> states;
+        std::vector<int> off_proc_states;
         for (int test = 0; test < n_tests; test++)
         {
             MPI_Barrier(MPI_COMM_WORLD);

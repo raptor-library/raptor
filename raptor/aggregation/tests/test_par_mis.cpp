@@ -24,8 +24,8 @@ TEST(TestParMIS, TestsInAggregation)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     FILE* f;
-    aligned_vector<int> states;
-    aligned_vector<int> off_proc_states;
+    std::vector<int> states;
+    std::vector<int> off_proc_states;
     int n_items_read;
 
     ParCSRMatrix* S;
@@ -37,7 +37,7 @@ TEST(TestParMIS, TestsInAggregation)
     S = readParMatrix(S0_fn);
 
     f = fopen(weights_fn, "r");
-    aligned_vector<double> weights(S->local_num_rows);
+    std::vector<double> weights(S->local_num_rows);
     for (int i = 0; i < S->partition->first_local_row; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[0]);
@@ -50,7 +50,7 @@ TEST(TestParMIS, TestsInAggregation)
     }
     fclose(f);
 
-    aligned_vector<int> python_states(S->local_num_rows);
+    std::vector<int> python_states(S->local_num_rows);
     f = fopen(mis0_fn, "r");
     for (int i = 0; i < S->partition->first_local_row; i++)
     {

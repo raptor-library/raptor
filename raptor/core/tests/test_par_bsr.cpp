@@ -22,18 +22,18 @@ TEST(ParBSRMatrixTest, TestsInCore)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    aligned_vector<int> row_ptr = {0, 3, 5, 8, 11, 13, 16};
-    aligned_vector<int> indices = {0, 1, 4, 1, 3, 1, 2, 5, 1, 3, 4, 0, 4, 2, 4, 5};
-    aligned_vector<double> data = {1,0,2,1, 6,7,8,2, 1,0,0,1, 1,4,5,1, 2,0,0,0, 4,3,0,0,
+    std::vector<int> row_ptr = {0, 3, 5, 8, 11, 13, 16};
+    std::vector<int> indices = {0, 1, 4, 1, 3, 1, 2, 5, 1, 3, 4, 0, 4, 2, 4, 5};
+    std::vector<double> data = {1,0,2,1, 6,7,8,2, 1,0,0,1, 1,4,5,1, 2,0,0,0, 4,3,0,0,
     				7,2,0,0, 3,0,1,0, 1,0,0,1, 1,0,2,1, 6,7,8,2, 2,0,0,0,
     				1,4,5,1, 3,0,1,0, 4,3,0,0, 7,2,0,0};
     
-    aligned_vector<aligned_vector<double>> on_blocks = {{1,0,2,1}, {6,7,8,2}, {1,4,5,1}, 
+    std::vector<std::vector<double>> on_blocks = {{1,0,2,1}, {6,7,8,2}, {1,4,5,1}, 
 		    						{4,3,0,0}, {7,2,0,0}};
-    aligned_vector<aligned_vector<int>> on_indx = {{0,0}, {0,1}, {1,1}, {2,1}, {2,2}};
+    std::vector<std::vector<int>> on_indx = {{0,0}, {0,1}, {1,1}, {2,1}, {2,2}};
 
-    aligned_vector<aligned_vector<double>> off_blocks = {{1,0,0,1}, {2,0,0,0}, {3,0,1,0}};
-    aligned_vector<aligned_vector<int>> off_indx = {{0,4}, {1,3}, {2,5}};
+    std::vector<std::vector<double>> off_blocks = {{1,0,0,1}, {2,0,0,0}, {3,0,1,0}};
+    std::vector<std::vector<int>> off_indx = {{0,4}, {1,3}, {2,5}};
 
     // Create matrices for comparison
     BSRMatrix* A_bsr = new BSRMatrix(12, 12, 2, 2, row_ptr, indices, data);
@@ -68,7 +68,7 @@ TEST(ParBSRMatrixTest, TestsInCore)
     ASSERT_EQ(A_bsr->n_blocks, nblocks);
 
     // Create dense matrix to compare against
-    aligned_vector<double> A_dense = A_bsr->to_dense();
+    std::vector<double> A_dense = A_bsr->to_dense();
 
     // Compare row_ptrs, indices, and data
     if (num_procs <= 1)

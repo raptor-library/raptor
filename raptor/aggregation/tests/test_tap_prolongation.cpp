@@ -26,8 +26,8 @@ TEST(TestTAPProlongation, TestsInAggregation)
 
     setenv("PPN", "16", 1);
 
-    aligned_vector<int> states;
-    aligned_vector<int> off_proc_states;
+    std::vector<int> states;
+    std::vector<int> off_proc_states;
 
     ParCSRMatrix* A;
     ParCSRMatrix* T;

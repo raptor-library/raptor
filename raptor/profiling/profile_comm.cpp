@@ -5,16 +5,16 @@ using namespace raptor;
 #define eager_cutoff 8000
 
 // Declare Private Methods
-void print_internode_comm(Topology* topology, aligned_vector<int> num_msgs, aligned_vector<int> size_msgs,
-        aligned_vector<int> node_size_msgs);
-void print_comm(aligned_vector<int>& num_msgs, aligned_vector<int>& size_msgs, 
-        aligned_vector<int>& node_size_msgs);
+void print_internode_comm(Topology* topology, std::vector<int> num_msgs, std::vector<int> size_msgs,
+        std::vector<int> node_size_msgs);
+void print_comm(std::vector<int>& num_msgs, std::vector<int>& size_msgs, 
+        std::vector<int>& node_size_msgs);
 void calc_and_print(Topology* topology, CommData* comm_data);
 int get_idx(NonContigData* comm_data, int j);
 int get_idx(ContigData* comm_data, int j);
 
-void print_internode_comm(Topology* topology, aligned_vector<int> num_msgs, aligned_vector<int> size_msgs,
-        aligned_vector<int> node_size_msgs)
+void print_internode_comm(Topology* topology, std::vector<int> num_msgs, std::vector<int> size_msgs,
+        std::vector<int> node_size_msgs)
 {
     int n, max_n;
     int rank, rank_node;
@@ -84,8 +84,8 @@ void print_internode_comm(Topology* topology, aligned_vector<int> num_msgs, alig
 
 
 
-void print_comm(aligned_vector<int>& num_msgs, aligned_vector<int>& size_msgs, 
-        aligned_vector<int>& node_size_msgs)
+void print_comm(std::vector<int>& num_msgs, std::vector<int>& size_msgs, 
+        std::vector<int>& node_size_msgs)
 {
     int rank;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
@@ -101,7 +101,7 @@ void print_comm(aligned_vector<int>& num_msgs, aligned_vector<int>& size_msgs,
     // Total Number of Messages
     nl = 0;
     n = 0;
-    for (aligned_vector<int>::iterator it = num_msgs.begin(); it != num_msgs.end(); ++it)
+    for (std::vector<int>::iterator it = num_msgs.begin(); it != num_msgs.end(); ++it)
     {
         nl += *it;
         n += *it;
@@ -116,7 +116,7 @@ void print_comm(aligned_vector<int>& num_msgs, aligned_vector<int>& size_msgs,
     if (rank == 0) printf("Max Num Msgs: %d\n", max_n);
     if (n < max_n)
     {
-        for (aligned_vector<int>::iterator it = num_msgs.begin(); it != num_msgs.end(); ++it)
+        for (std::vector<int>::iterator it = num_msgs.begin(); it != num_msgs.end(); ++it)
         {
             *it = 0;
         }
@@ -125,7 +125,7 @@ void print_comm(aligned_vector<int>& num_msgs, aligned_vector<int>& size_msgs,
     // Total Size of Messages
     nl = 0;
     n = 0;
-    for (aligned_vector<int>::iterator it = size_msgs.begin(); it != size_msgs.end(); ++it)
+    for (std::vector<int>::iterator it = size_msgs.begin(); it != size_msgs.end(); ++it)
     {
         nl += *it;
         n += *it;
@@ -140,14 +140,14 @@ void print_comm(aligned_vector<int>& num_msgs, aligned_vector<int>& size_msgs,
     if (rank == 0) printf("Max Size Msgs: %d\n", max_n);
     if (n < max_n)
     {
-        for (aligned_vector<int>::iterator it = size_msgs.begin(); it != size_msgs.end(); ++it)
+        for (std::vector<int>::iterator it = size_msgs.begin(); it != size_msgs.end(); ++it)
         {
             *it = 0;
         }
     }
 
-    aligned_vector<int> max_num_msgs(num_msgs.size());
-    aligned_vector<int> max_size_msgs(size_msgs.size());
+    std::vector<int> max_num_msgs(num_msgs.size());
+    std::vector<int> max_size_msgs(size_msgs.size());
     RAPtor_MPI_Reduce(num_msgs.data(), max_num_msgs.data(), num_msgs.size(), RAPtor_MPI_INT,
             RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     RAPtor_MPI_Reduce(size_msgs.data(), max_size_msgs.data(), size_msgs.size(), RAPtor_MPI_INT,
@@ -182,16 +182,16 @@ void calc_and_print(Topology* topology, CommData* comm_data)
 
     int n_arch_types = 3;
     int n_protocols = 3;
-    aligned_vector<bool> arch_types(n_arch_types, true);
-    aligned_vector<bool>protocol(n_protocols, true);
+    std::vector<bool> arch_types(n_arch_types, true);
+    std::vector<bool>protocol(n_protocols, true);
 
     int start, end;
     int proc, node, socket;
     int size;
 
-    aligned_vector<int> num_msgs(n_arch_types * n_protocols, 0);
-    aligned_vector<int> size_msgs(n_arch_types * n_protocols, 0); 
-    aligned_vector<int> node_size_msgs(num_nodes, 0);
+    std::vector<int> num_msgs(n_arch_types * n_protocols, 0);
+    std::vector<int> size_msgs(n_arch_types * n_protocols, 0); 
+    std::vector<int> node_size_msgs(num_nodes, 0);
 
     for (int i = 0; i < comm_data->num_msgs; i++)
     {
@@ -256,15 +256,15 @@ void calc_and_print(CSRMatrix* A, CSRMatrix* B, Topology* topology, T* comm_data
 
     int n_arch_types = 3;
     int n_protocols = 3;
-    aligned_vector<bool> arch_types(n_arch_types, true);
-    aligned_vector<bool>protocol(n_protocols, true);
+    std::vector<bool> arch_types(n_arch_types, true);
+    std::vector<bool>protocol(n_protocols, true);
 
     int start, end, proc, node, socket;
     int size, idx;
 
-    aligned_vector<int> num_msgs(n_arch_types * n_protocols, 0);
-    aligned_vector<int> size_msgs(n_arch_types * n_protocols, 0); 
-    aligned_vector<int> node_size_msgs(num_nodes, 0);
+    std::vector<int> num_msgs(n_arch_types * n_protocols, 0);
+    std::vector<int> size_msgs(n_arch_types * n_protocols, 0); 
+    std::vector<int> node_size_msgs(num_nodes, 0);
 
     for (int i = 0; i < comm_data->num_msgs; i++)
     {

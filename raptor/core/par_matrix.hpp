@@ -41,7 +41,7 @@
  *****    Matrix storing local off-diagonal block
  ***** offd_num_cols : index_t
  *****    Number of columns in the off-diagonal matrix
- ***** offd_column_map : aligned_vector<int>
+ ***** offd_column_map : std::vector<int>
  *****    Maps local columns of offd Matrix to global
  ***** comm : ParComm*
  *****    Parallel communicator for matrix
@@ -258,14 +258,14 @@ namespace raptor
     ParMatrix* subtract(ParCSRMatrix* A);
 
     void init_tap_communicators(RAPtor_MPI_Comm comm = RAPtor_MPI_COMM_WORLD);
-    void update_tap_comm(ParMatrix* old, const aligned_vector<int>& old_to_new)
+    void update_tap_comm(ParMatrix* old, const std::vector<int>& old_to_new)
     {
         tap_comm = new TAPComm((TAPComm*) old->tap_comm, old_to_new, NULL);
         tap_mat_comm = new TAPComm((TAPComm*) old->tap_mat_comm, old_to_new, 
                 tap_comm->local_L_par_comm);
     }
-    void update_tap_comm(ParMatrix* old, const aligned_vector<int>& on_old_to_new,
-            const aligned_vector<int>& off_old_to_new)
+    void update_tap_comm(ParMatrix* old, const std::vector<int>& on_old_to_new,
+            const std::vector<int>& off_old_to_new)
     {
         tap_comm = new TAPComm((TAPComm*) old->tap_comm, on_old_to_new, off_old_to_new, 
                 NULL);
@@ -283,17 +283,17 @@ namespace raptor
 
     virtual ParMatrix* transpose() = 0;
 
-    aligned_vector<int>& get_off_proc_column_map()
+    std::vector<int>& get_off_proc_column_map()
     {
         return off_proc_column_map;
     }
 
-    aligned_vector<int>& get_on_proc_column_map()
+    std::vector<int>& get_on_proc_column_map()
     {
         return on_proc_column_map;
     }
 
-    aligned_vector<int>& get_local_row_map()
+    std::vector<int>& get_local_row_map()
     {
         return local_row_map;
     }
@@ -329,9 +329,9 @@ namespace raptor
     // It will be condensed to only store columns with 
     // nonzeros, and these must be mapped to 
     // global column indices
-    aligned_vector<int> off_proc_column_map; // Maps off_proc local to global
-    aligned_vector<int> on_proc_column_map; // Maps on_proc local to global
-    aligned_vector<int> local_row_map; // Maps local rows to global
+    std::vector<int> off_proc_column_map; // Maps off_proc local to global
+    std::vector<int> on_proc_column_map; // Maps on_proc local to global
+    std::vector<int> local_row_map; // Maps local rows to global
 
     // Parallel communication package indicating which 
     // processes hold vector values associated with off_proc,
@@ -579,8 +579,8 @@ namespace raptor
     ParCSRMatrix* aggregate();
     ParCSRMatrix* fit_candidates(double* B, double* R, int num_candidates, 
             double tol = 1e-10);
-    int maximal_independent_set(aligned_vector<int>& local_states,
-            aligned_vector<int>& off_proc_states, int max_iters = -1);
+    int maximal_independent_set(std::vector<int>& local_states,
+            std::vector<int>& off_proc_states, int max_iters = -1);
 
     void mult(ParVector& x, ParVector& b, bool tap = false);
     void tap_mult(ParVector& x, ParVector& b);

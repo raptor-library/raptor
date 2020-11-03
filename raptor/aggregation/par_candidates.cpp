@@ -4,8 +4,8 @@
 
 // TODO -- currently assumes B with single candidate
 ParCSRMatrix* fit_candidates(ParCSRMatrix* A, 
-        const int n_aggs, const aligned_vector<int>& aggregates, 
-        const aligned_vector<double>& B, aligned_vector<double>& R,
+        const int n_aggs, const std::vector<int>& aggregates, 
+        const std::vector<double>& B, std::vector<double>& R,
         int num_candidates, bool tap_comm, double tol)
 {
     int rank;
@@ -22,8 +22,8 @@ ParCSRMatrix* fit_candidates(ParCSRMatrix* A,
     // Calculate off_proc_column_map and num off_proc cols
     int off_proc_num_cols;
     std::set<int> off_proc_col_set;
-    aligned_vector<int> off_proc_column_map;
-    for (aligned_vector<int>::const_iterator it = aggregates.begin();
+    std::vector<int> off_proc_column_map;
+    for (std::vector<int>::const_iterator it = aggregates.begin();
             it != aggregates.end(); ++it)
     {
         if (*it < 0) continue;
@@ -42,7 +42,7 @@ ParCSRMatrix* fit_candidates(ParCSRMatrix* A,
     }
     off_proc_num_cols = off_proc_column_map.size();
 
-    aligned_vector<int> on_proc_cols(A->on_proc_num_cols, 0);
+    std::vector<int> on_proc_cols(A->on_proc_num_cols, 0);
     // Create AggOp matrices
     int* on_proc_partition_to_col = A->map_partition_to_local();
     CSRMatrix* AggOp_on = new CSRMatrix(A->local_num_rows, -1);
@@ -116,7 +116,7 @@ ParCSRMatrix* fit_candidates(ParCSRMatrix* A,
         R[i] = 0.0;
     }
 
-    aligned_vector<double> off_proc_norms(off_proc_num_cols, 0);
+    std::vector<double> off_proc_norms(off_proc_num_cols, 0);
     // Add columns of B to T (corresponding to pattern in AggOp)
     // Add on_process columns
     T_csc->on_proc->idx1[0] = 0;
@@ -186,7 +186,7 @@ ParCSRMatrix* fit_candidates(ParCSRMatrix* A,
         }
     }
     
-    aligned_vector<double>& off_proc_R = comm->communicate(R);
+    std::vector<double>& off_proc_R = comm->communicate(R);
 
     for (int i = 0; i < off_proc_num_cols; i++)
     {

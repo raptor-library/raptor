@@ -26,7 +26,7 @@ TEST(ParCGTest, TestsInKrylov)
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
     ParVector x(A->global_num_rows, A->local_num_rows);
     ParVector b(A->global_num_rows, A->local_num_rows);
-    aligned_vector<double> residuals;
+    std::vector<double> residuals;
     int n_items_read;
 
     x.set_const_value(1.0);

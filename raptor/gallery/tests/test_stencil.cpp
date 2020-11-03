@@ -16,15 +16,15 @@ TEST(StencilTest, TestsInGallery)
 {
     // Create A from diffusion stencil
     int dim = 2;
-    aligned_vector<int> grid(2, 4);
+    std::vector<int> grid(2, 4);
     double eps = 0.001;
     double theta = M_PI / 8.0;
     double* stencil = diffusion_stencil_2d(eps, theta);
     CSRMatrix* A = stencil_grid(stencil, grid.data(), dim);
     delete[] stencil;
 
-    aligned_vector<double> A_python(16 * 16, 0);
-    aligned_vector<double> A_dense(16 * 16, 0);
+    std::vector<double> A_python(16 * 16, 0);
+    std::vector<double> A_dense(16 * 16, 0);
 
     // Add values ot A_python
     int rows[100] = {0, 0, 0, 0, 

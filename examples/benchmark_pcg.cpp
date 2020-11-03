@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
     {
         int dim;
         double* stencil = NULL;
-        aligned_vector<int> grid;
+        std::vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);
@@ -170,7 +170,7 @@ int main(int argc, char* argv[])
     MPI_Barrier(MPI_COMM_WORLD);
     ParVector sas_sol = ParVector(x);
     t0 = MPI_Wtime();
-    aligned_vector<double> res;
+    std::vector<double> res;
     double precond_t = 0;
     double comm_t = 0;
     PCG(A, ml, sas_sol, b, res, 1e-07, -1, &precond_t, &comm_t);
@@ -189,7 +189,7 @@ int main(int argc, char* argv[])
     delete ml;
 
     t0 = MPI_Wtime();
-    aligned_vector<double> new_res;
+    std::vector<double> new_res;
     comm_t = 0;
     CG(A, x, b, new_res, 1e-07, -1, &comm_t);
     iter = new_res.size() - 1;

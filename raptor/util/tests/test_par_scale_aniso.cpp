@@ -29,7 +29,7 @@ TEST(ParAnisoSpMVTest, TestsInUtil)
     ParCSRMatrix* A = par_stencil_grid(stencil, grid, 2);
     ParCSRMatrix* A_scale = A->copy();
 
-    aligned_vector<double> scales;
+    std::vector<double> scales;
 
     ParVector x(A->global_num_cols, A->on_proc_num_cols);
     ParVector x_scale(A->global_num_cols, A->on_proc_num_cols);

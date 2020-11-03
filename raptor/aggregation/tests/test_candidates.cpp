@@ -34,7 +34,7 @@ TEST(TestCandidates, TestsInAggregation)
     S = readMatrix(S0_fn);
 
     f = fopen(weights_fn, "r");
-    aligned_vector<double> weights(S->n_rows);
+    std::vector<double> weights(S->n_rows);
     for (int i = 0; i < S->n_rows; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[i]);
@@ -42,7 +42,7 @@ TEST(TestCandidates, TestsInAggregation)
     }
     fclose(f);
 
-    aligned_vector<int> python_states(S->n_rows);
+    std::vector<int> python_states(S->n_rows);
     f = fopen(mis0_fn, "r");
     for (int i = 0; i < S->n_rows; i++)
     {
@@ -50,13 +50,13 @@ TEST(TestCandidates, TestsInAggregation)
         ASSERT_EQ(n_items_read, 1);
     }
     fclose(f);
-    aligned_vector<int> aggregates;
+    std::vector<int> aggregates;
     int n_aggs = aggregate(A, S, python_states, aggregates, weights.data());
 
     CSRMatrix* T_py = readMatrix(T0_fn);
 
-    aligned_vector<double> B;
-    aligned_vector<double> R;
+    std::vector<double> B;
+    std::vector<double> R;
     B.resize(A->n_rows, 1.0);
     int num_candidates = 1;
 
