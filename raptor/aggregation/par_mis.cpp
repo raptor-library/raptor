@@ -4,24 +4,24 @@
 
 // Declare Private Methods
 void comm_states(const ParCSRMatrix* A, CommPkg* comm, 
-        const aligned_vector<int>& states, aligned_vector<int>& recv_indices, 
-        aligned_vector<int>& off_proc_states, bool first_pass = false);
+        const std::vector<int>& states, std::vector<int>& recv_indices, 
+        std::vector<int>& off_proc_states, bool first_pass = false);
 void comm_off_proc_states(const ParCSRMatrix* A, CommPkg* comm,
-        const aligned_vector<int>& off_proc_states, aligned_vector<int>& recv_indices, 
-        aligned_vector<int>& states, bool first_pass = false);
-void comm_finished(const ParCSRMatrix* A, aligned_vector<int>& active_sends,
-        aligned_vector<int>& active_recvs,  int remaining);
-void comm_coarse_dist1(const ParCSRMatrix* A, CommPkg* comm, aligned_vector<int>& active_sends,
-        aligned_vector<int>& active_recvs, aligned_vector<int>& C, bool first_pass = false);
+        const std::vector<int>& off_proc_states, std::vector<int>& recv_indices, 
+        std::vector<int>& states, bool first_pass = false);
+void comm_finished(const ParCSRMatrix* A, std::vector<int>& active_sends,
+        std::vector<int>& active_recvs,  int remaining);
+void comm_coarse_dist1(const ParCSRMatrix* A, CommPkg* comm, std::vector<int>& active_sends,
+        std::vector<int>& active_recvs, std::vector<int>& C, bool first_pass = false);
 
 
 void comm_states(const ParCSRMatrix* A, CommPkg* comm, 
-        const aligned_vector<int>& states, aligned_vector<int>& recv_indices, 
-        aligned_vector<int>& off_proc_states, bool first_pass)
+        const std::vector<int>& states, std::vector<int>& recv_indices, 
+        std::vector<int>& off_proc_states, bool first_pass)
 {
     if (first_pass)
     {
-        aligned_vector<int>& recvbuf = comm->communicate(states);
+        std::vector<int>& recvbuf = comm->communicate(states);
         std::copy(recvbuf.begin(), recvbuf.end(), off_proc_states.begin());
     }
     else
@@ -31,7 +31,7 @@ void comm_states(const ParCSRMatrix* A, CommPkg* comm,
         {
             return a == Unassigned || a > Selected;
         };
-        aligned_vector<int>& recvbuf = pc->conditional_comm(states, states, 
+        std::vector<int>& recvbuf = pc->conditional_comm(states, states, 
                 off_proc_states, compare_func);
         int off_proc_num_cols = off_proc_states.size();
         for (int i = 0; i < off_proc_num_cols; i++)
@@ -43,8 +43,8 @@ void comm_states(const ParCSRMatrix* A, CommPkg* comm,
 }
 
 void comm_off_proc_states(const ParCSRMatrix* A, CommPkg* comm,
-        const aligned_vector<int>& off_proc_states, aligned_vector<int>& recv_indices, 
-        aligned_vector<int>& states, bool first_pass)
+        const std::vector<int>& off_proc_states, std::vector<int>& recv_indices, 
+        std::vector<int>& states, bool first_pass)
 {
     std::function<int(int,int)> result_func = [](const int a, const int b)
     {
@@ -70,8 +70,8 @@ void comm_off_proc_states(const ParCSRMatrix* A, CommPkg* comm,
 }
 
 void comm_finished(const ParCSRMatrix* A, 
-        aligned_vector<int>& active_sends,
-        aligned_vector<int>& active_recvs, 
+        std::vector<int>& active_sends,
+        std::vector<int>& active_recvs, 
         int remaining)
 {
     int n_sends, n_recvs;
@@ -153,9 +153,9 @@ void comm_finished(const ParCSRMatrix* A,
 
 void comm_coarse_dist1(const ParCSRMatrix* A, 
         CommPkg* comm,
-        aligned_vector<int>& active_sends,
-        aligned_vector<int>& active_recvs,
-        aligned_vector<int>& C,
+        std::vector<int>& active_sends,
+        std::vector<int>& active_recvs,
+        std::vector<int>& C,
         bool first_pass)
 {
     int n_sends, n_recvs;
@@ -212,8 +212,8 @@ void comm_coarse_dist1(const ParCSRMatrix* A,
     }
 }
 
-int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
-        aligned_vector<int>& off_proc_states, 
+int mis2(const ParCSRMatrix* A, std::vector<int>& states,
+        std::vector<int>& off_proc_states, 
         bool tap_comm, double* rand_vals)
 {
     // Get MPI Information
@@ -235,7 +235,7 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         comm = A->tap_comm;
     }
 
-    aligned_vector<int> recv_indices;
+    std::vector<int> recv_indices;
     if (A->comm->recv_data->size_msgs || A->comm->send_data->size_msgs)
     {
         ctr = A->comm->recv_data->size_msgs; 
@@ -245,15 +245,15 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
     }
 
     // Initialize vector of random values associated with each row
-    aligned_vector<double> r;
-    aligned_vector<double> off_proc_r;
-    aligned_vector<int> V;
-    aligned_vector<int> off_V;
-    aligned_vector<int> C;
-    aligned_vector<int> next;
-    aligned_vector<int> active_sends;
-    aligned_vector<int> active_recvs;
-    aligned_vector<double> row_max;
+    std::vector<double> r;
+    std::vector<double> off_proc_r;
+    std::vector<int> V;
+    std::vector<int> off_V;
+    std::vector<int> C;
+    std::vector<int> next;
+    std::vector<int> active_sends;
+    std::vector<int> active_recvs;
+    std::vector<double> row_max;
     int tmp;
     if (A->local_num_rows)
     {
@@ -288,7 +288,7 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         std::fill(off_proc_states.begin(), off_proc_states.end(), Unassigned);
         off_proc_r.resize(A->off_proc_num_cols);
     }
-    aligned_vector<double>& recvbuf = comm->communicate(r);
+    std::vector<double>& recvbuf = comm->communicate(r);
 
     for (int i = 0; i < A->off_proc_num_cols; i++)
     {
@@ -533,7 +533,7 @@ int mis2(const ParCSRMatrix* A, aligned_vector<int>& states,
         // Communicate updated states (if states[v] == NewUnselection, there exists 
         // and idx in row v such that states[idx] is new coarse)
         comm_coarse_dist1(A, comm, active_sends, active_recvs, C, first_pass);
-        aligned_vector<int>& recv_C = comm->get_int_buffer();
+        std::vector<int>& recv_C = comm->get_int_buffer();
 
 
         for (int i = 0; i < remaining; i++)

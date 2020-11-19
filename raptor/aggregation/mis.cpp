@@ -2,7 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "aggregation/mis.hpp"
 
-void mis2(CSRMatrix* A, aligned_vector<int>& states,
+void mis2(CSRMatrix* A, std::vector<int>& states,
         double* rand_vals)
 {
     int start, end, col;
@@ -11,10 +11,10 @@ void mis2(CSRMatrix* A, aligned_vector<int>& states,
     int ctr, v, w, u, tmp;
     bool found;
 
-    aligned_vector<double> r;
-    aligned_vector<int> V;
-    aligned_vector<int> C;
-    aligned_vector<int> next;
+    std::vector<double> r;
+    std::vector<int> V;
+    std::vector<int> C;
+    std::vector<int> next;
     if (A->n_rows)
     {
         r.resize(A->n_rows);

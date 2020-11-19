@@ -7,9 +7,9 @@
 
 // Declare Private Methods
 void SOR_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
-        const aligned_vector<double>& dist_x, double omega);
+        const std::vector<double>& dist_x, double omega);
 void SOR_backward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
-        const aligned_vector<double>& dist_x, double omega);
+        const std::vector<double>& dist_x, double omega);
 void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
         int num_sweeps, double omega, CommPkg* comm);
 void sor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
@@ -41,7 +41,7 @@ void ssor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
  *****    Vector of distant x-values recvd from other processes
  **************************************************************/
 void SOR_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
-        const aligned_vector<double>& dist_x, double omega)
+        const std::vector<double>& dist_x, double omega)
 {
     int start_on, end_on;
     int start_off, end_off;
@@ -82,7 +82,7 @@ void SOR_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
 }
 
 void SOR_backward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
-        const aligned_vector<double>& dist_x, double omega)
+        const std::vector<double>& dist_x, double omega)
 {
     int start, end, col;
     double diag;
@@ -130,7 +130,7 @@ void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     for (int iter = 0; iter < num_sweeps; iter++)
     {
         comm->communicate(x);
-        aligned_vector<double>& dist_x = comm->get_buffer<double>();
+        std::vector<double>& dist_x = comm->get_buffer<double>();
         for (int i = 0; i < A->local_num_rows; i++)
         {
             tmp[i] = x[i];

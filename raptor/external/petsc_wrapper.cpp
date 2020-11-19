@@ -4,7 +4,7 @@
 PetscErrorCode RAPtorConvert(const double* x_ptr, ParVector* x_vec)
 {
     int n = x_vec->local_n;
-    aligned_vector<double>& x = x_vec->local.values;
+    std::vector<double>& x = x_vec->local.values;
     x.assign(x_ptr, x_ptr + n);
 
     return 0;
@@ -14,7 +14,7 @@ PetscErrorCode RAPtorConvert(const double* x_ptr, ParVector* x_vec)
 PetscErrorCode RAPtorConvert(const ParVector* x_vec, double* x_ptr)
 {
     int n = x_vec->local_n;
-    const aligned_vector<double>& x = x_vec->local.values;
+    const std::vector<double>& x = x_vec->local.values;
     std::copy(x.begin(), x.end(), x_ptr);
 
     return 0;

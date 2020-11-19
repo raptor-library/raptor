@@ -25,17 +25,17 @@ TEST(TestCandidates, TestsInAggregation)
     CSRMatrix* T;
     CSRMatrix* P;
     CSRMatrix* Ac;
-    aligned_vector<int> states;
-    aligned_vector<int> aggs;
-    aligned_vector<double> weights;
+    std::vector<int> states;
+    std::vector<int> aggs;
+    std::vector<double> weights;
     int n_items_read;
 
     CSRMatrix* S_py;
     CSRMatrix* T_py;
     CSRMatrix* P_py;
     CSRMatrix* Ac_py;
-    aligned_vector<int> py_states;
-    aligned_vector<int> py_aggs;
+    std::vector<int> py_states;
+    std::vector<int> py_aggs;
 
     const char* A0_fn = "../../../../test_data/sas_A0.pm";
     const char* S0_fn = "../../../../test_data/sas_S0.pm";
@@ -102,8 +102,8 @@ TEST(TestCandidates, TestsInAggregation)
 
     // Test tentative interpolation
     int num_candidates = 1;
-    aligned_vector<double> B;
-    aligned_vector<double> R;
+    std::vector<double> B;
+    std::vector<double> R;
     B.resize(A->n_rows, 1.0);
     T_py = readMatrix(T0_fn);
     T = fit_candidates(n_aggs, aggs, B, R, num_candidates, 1e-10);

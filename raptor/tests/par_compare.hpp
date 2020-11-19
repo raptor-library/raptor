@@ -93,8 +93,8 @@ void compare_pattern(ParCSRMatrix* A, ParCSRMatrix* A_rap)
 
 void remove_empty_cols(ParCSRMatrix* S)
 {
-    aligned_vector<int> col_exists(S->off_proc_num_cols, 0);
-    for (aligned_vector<int>::iterator it = S->off_proc->idx2.begin();
+    std::vector<int> col_exists(S->off_proc_num_cols, 0);
+    for (std::vector<int>::iterator it = S->off_proc->idx2.begin();
             it != S->off_proc->idx2.end(); ++it)
     {
         col_exists[*it] = 1;
@@ -110,7 +110,7 @@ void remove_empty_cols(ParCSRMatrix* S)
     }
     S->off_proc_column_map.resize(ctr);
     S->off_proc_num_cols = ctr;
-    for (aligned_vector<int>::iterator it = S->off_proc->idx2.begin();
+    for (std::vector<int>::iterator it = S->off_proc->idx2.begin();
             it != S->off_proc->idx2.end(); ++it)
     {
         *it = col_exists[*it];

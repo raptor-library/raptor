@@ -8,7 +8,7 @@
 
 using namespace raptor;
 
-void mis2(CSRMatrix* A, aligned_vector<int>& states,
+void mis2(CSRMatrix* A, std::vector<int>& states,
         double* rand_vals = NULL);
 
 #endif

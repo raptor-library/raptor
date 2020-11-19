@@ -22,7 +22,7 @@ TEST(TestInterpolation, TestsInRuge_Stuben)
     CSRMatrix* S;
     CSRMatrix* P;
     CSRMatrix* P_rap;
-    aligned_vector<int> splitting;
+    std::vector<int> splitting;
     FILE* f;
     int n_items_read;
 

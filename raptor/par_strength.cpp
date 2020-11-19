@@ -34,7 +34,7 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
     int* off_variables = NULL;
     if (num_variables > 1)
     {
-        aligned_vector<int>& recvbuf = comm->communicate(variables);
+        std::vector<int>& recvbuf = comm->communicate(variables);
         off_variables = recvbuf.data();
     }
 
@@ -360,8 +360,8 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg)
         comm = A->tap_comm;
     }
 
-    aligned_vector<int> neg_diags;
-    aligned_vector<double> row_scales;
+    std::vector<int> neg_diags;
+    std::vector<double> row_scales;
     if (A->local_num_rows) 
     {
         row_scales.resize(A->local_num_rows, 0);
@@ -454,8 +454,8 @@ ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg)
         }
     }
 
-    aligned_vector<double>& off_proc_row_scales = comm->communicate(row_scales);
-    aligned_vector<int>& off_proc_neg_diags = comm->communicate(neg_diags);
+    std::vector<double>& off_proc_row_scales = comm->communicate(row_scales);
+    std::vector<int>& off_proc_neg_diags = comm->communicate(neg_diags);
     
     S->on_proc->idx1[0] = 0;
     S->off_proc->idx1[0] = 0;

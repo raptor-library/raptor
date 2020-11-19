@@ -20,8 +20,8 @@ TEST(TestSplitting, TestsInRuge_Stuben)
 { 
     FILE* f;
     CSRMatrix* S;
-    aligned_vector<int> splitting;
-    aligned_vector<int> splitting_rap;
+    std::vector<int> splitting;
+    std::vector<int> splitting_rap;
 
     const char* S0_fn = "../../../../test_data/rss_S0.pm";
     const char* S1_fn = "../../../../test_data/rss_S1.pm";
@@ -55,7 +55,7 @@ TEST(TestSplitting, TestsInRuge_Stuben)
 
     // Test CLJP Splittings
     f = fopen(weights_fn, "r");
-    aligned_vector<double> weights(S->n_rows);
+    std::vector<double> weights(S->n_rows);
     for (int i = 0; i < S->n_rows; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[i]);

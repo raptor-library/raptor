@@ -24,7 +24,7 @@ TEST(Repartition, TestsInUtil)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     int* proc_part;
-    aligned_vector<int> new_local_rows;
+    std::vector<int> new_local_rows;
 
     const char* filename = "../../../../test_data/random.pm";
     ParCSRMatrix* A_orig = readParMatrix(filename);
@@ -54,14 +54,14 @@ TEST(Repartition, TestsInUtil)
     delete[] proc_part;
     x_orig.set_const_value(1.0);
     A_orig->mult(x_orig, b_orig);
-    aligned_vector<int> row_sizes(num_procs);
-    aligned_vector<int> row_displs(num_procs+1);
+    std::vector<int> row_sizes(num_procs);
+    std::vector<int> row_displs(num_procs+1);
     MPI_Allgather(&(A_orig->local_num_rows), 1, MPI_INT, row_sizes.data(), 1, 
             MPI_INT, MPI_COMM_WORLD);
     row_displs[0] = 0;
     for (int i = 0; i < num_procs; i++)
         row_displs[i+1] = row_displs[i] + row_sizes[i];
-    aligned_vector<double> orig_sol(A_orig->global_num_rows);
+    std::vector<double> orig_sol(A_orig->global_num_rows);
     MPI_Gatherv(b_orig.local.data(), A_orig->local_num_rows, MPI_DOUBLE, 
            orig_sol.data(), row_sizes.data(), row_displs.data(), 
            MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -72,11 +72,11 @@ TEST(Repartition, TestsInUtil)
     row_displs[0] = 0;
     for (int i = 0; i < num_procs; i++)
         row_displs[i+1] = row_displs[i] + row_sizes[i];
-    aligned_vector<double> rr_sol(A_rr->global_num_rows);
+    std::vector<double> rr_sol(A_rr->global_num_rows);
     MPI_Gatherv(b_rr.local.data(), A_rr->local_num_rows, MPI_DOUBLE, 
            rr_sol.data(), row_sizes.data(), row_displs.data(), 
            MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    aligned_vector<int> orig_to_rr(A_orig->global_num_rows);
+    std::vector<int> orig_to_rr(A_orig->global_num_rows);
     MPI_Gatherv(new_local_rows.data(), A_rr->local_num_rows, MPI_INT, 
            orig_to_rr.data(), row_sizes.data(), row_displs.data(), 
            MPI_INT, 0, MPI_COMM_WORLD);

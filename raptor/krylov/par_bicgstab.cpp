@@ -8,7 +8,7 @@ using namespace raptor;
 /**************************************************************************************
  BiCGStab 
  **************************************************************************************/
-void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol, int max_iter)
+void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, double tol, int max_iter)
 {
     /*           A : ParCSRMatrix for system to solve
      *           x : ParVector solution to solve for
@@ -125,7 +125,7 @@ void BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double
     }
 }
 
-void SeqInner_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol, int max_iter)
+void SeqInner_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, double tol, int max_iter)
 {
     int rank, num_procs;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
@@ -237,7 +237,7 @@ void SeqInner_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vect
 /**************************************************************************************
  AMG Preconditioned BiCGStab 
  **************************************************************************************/
-void Pre_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, ParMultilevel *ml, aligned_vector<double>& res, double tol,
+void Pre_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, ParMultilevel *ml, std::vector<double>& res, double tol,
                   int max_iter)
 {
     /*           A : ParCSRMatrix for system to solve
@@ -369,7 +369,7 @@ void Pre_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, ParMultilevel *ml
     return;
 }
 
-void SeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol, int max_iter)
+void SeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, double tol, int max_iter)
 {
     int rank, num_procs;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
@@ -478,7 +478,7 @@ void SeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vecto
     return;
 }
 
-void SeqInnerSeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, double tol, int max_iter)
+void SeqInnerSeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, double tol, int max_iter)
 {
     int rank, num_procs;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
@@ -590,7 +590,7 @@ void SeqInnerSeqNorm_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, align
 /**************************************************************************************
  BiCGStab with some inner products replaced with partial inner product approximations
  **************************************************************************************/
-void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, RAPtor_MPI_Comm &inner_comm,
+void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, RAPtor_MPI_Comm &inner_comm,
                  RAPtor_MPI_Comm &root_comm, double frac, int inner_color, int root_color, int inner_root, int procs_in_group,
                  int part_global, double tol, int max_iter)
 {
@@ -735,7 +735,7 @@ void PI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<dou
 /**************************************************************************************
  Preconditioned BiCGStab with some inner products replaced with partial inner product approximations
  **************************************************************************************/
-void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res, RAPtor_MPI_Comm &inner_comm,
+void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, RAPtor_MPI_Comm &inner_comm,
                  RAPtor_MPI_Comm &root_comm, double frac, int inner_color, int root_color, int inner_root, int procs_in_group,
                  int part_global, double tol, int max_iter)
 {

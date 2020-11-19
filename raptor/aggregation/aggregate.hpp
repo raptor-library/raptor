@@ -9,8 +9,8 @@
 
 using namespace raptor;
 
-int aggregate(CSRMatrix* A, CSRMatrix* S, aligned_vector<int>& states,
-        aligned_vector<int>& aggregates, double* rand_vals = NULL);
+int aggregate(CSRMatrix* A, CSRMatrix* S, std::vector<int>& states,
+        std::vector<int>& aggregates, double* rand_vals = NULL);
 
 #endif
 

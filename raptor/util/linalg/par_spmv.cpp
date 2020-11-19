@@ -48,7 +48,7 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap)
     }
 
     // Wait for Isends and Irecvs to complete
-    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
+    std::vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -78,7 +78,7 @@ void ParMatrix::tap_mult(ParVector& x, ParVector& b)
     }
 
     // Wait for Isends and Irecvs to complete
-    aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols);
+    std::vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols);
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -114,7 +114,7 @@ void ParMatrix::mult_append(ParVector& x, ParVector& b, bool tap)
     }
 
     // Wait for Isends and Irecvs to complete
-    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
+    std::vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -144,7 +144,7 @@ void ParMatrix::tap_mult_append(ParVector& x, ParVector& b)
     }
 
     // Wait for Isends and Irecvs to complete
-    aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols);
+    std::vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols);
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -168,7 +168,7 @@ void ParMatrix::mult_T(ParVector& x, ParVector& b, bool tap)
         comm = new ParComm(partition, off_proc_column_map, on_proc_column_map);
     }
 
-    aligned_vector<double>& x_tmp = comm->get_buffer<double>();
+    std::vector<double>& x_tmp = comm->get_buffer<double>();
     if ((int)x_tmp.size() < comm->recv_data->size_msgs * off_proc->b_cols)
         x_tmp.resize(comm->recv_data->size_msgs * off_proc->b_cols);
 
@@ -192,7 +192,7 @@ void ParMatrix::tap_mult_T(ParVector& x, ParVector& b)
         tap_comm = new TAPComm(partition, off_proc_column_map, on_proc_column_map);
     }
 
-    aligned_vector<double>& x_tmp = tap_comm->get_buffer<double>();
+    std::vector<double>& x_tmp = tap_comm->get_buffer<double>();
     if ((int)x_tmp.size() < tap_comm->recv_size * off_proc->b_cols)
         x_tmp.resize(tap_comm->recv_size * off_proc->b_cols);
 
@@ -237,7 +237,7 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap)
     }
 
     // Wait for Isends and Irecvs to complete
-    aligned_vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
+    std::vector<double>& x_tmp = comm->complete_comm<double>(off_proc->b_cols);
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)
@@ -269,7 +269,7 @@ void ParMatrix::tap_residual(ParVector& x, ParVector& b, ParVector& r)
     }
 
     // Wait for Isends and Irecvs to complete
-    aligned_vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols);
+    std::vector<double>& x_tmp = tap_comm->complete_comm<double>(off_proc->b_cols);
 
     // Multiply remaining columns, appending to previous
     // solution in b (b += A_offd * x_distant)

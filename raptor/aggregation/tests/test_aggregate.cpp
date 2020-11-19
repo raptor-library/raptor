@@ -33,7 +33,7 @@ TEST(TestAggregate, TestsInAggregation)
     int n_items_read;
 
     f = fopen(weights_fn, "r");
-    aligned_vector<double> weights(S->n_rows);
+    std::vector<double> weights(S->n_rows);
     for (int i = 0; i < S->n_rows; i++)
     {
         n_items_read = fscanf(f, "%lf\n", &weights[i]);
@@ -41,7 +41,7 @@ TEST(TestAggregate, TestsInAggregation)
     }
     fclose(f);
 
-    aligned_vector<int> python_states(S->n_rows);
+    std::vector<int> python_states(S->n_rows);
     f = fopen(mis0_fn, "r");
     for (int i = 0; i < S->n_rows; i++)
     {
@@ -50,7 +50,7 @@ TEST(TestAggregate, TestsInAggregation)
     }
     fclose(f);
 
-    aligned_vector<int> python_aggs(S->n_rows);
+    std::vector<int> python_aggs(S->n_rows);
     f = fopen(agg0_fn, "r");
     for (int i = 0; i < S->n_rows; i++)
     {
@@ -60,7 +60,7 @@ TEST(TestAggregate, TestsInAggregation)
     fclose(f);
 
 
-    aligned_vector<int> aggregates;
+    std::vector<int> aggregates;
     int n_aggs =  aggregate(A, S, python_states, aggregates, weights.data());
 
     for (int i = 0; i < S->n_rows; i++)

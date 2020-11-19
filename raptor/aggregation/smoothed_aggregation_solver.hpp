@@ -55,9 +55,9 @@ namespace raptor
             CSRMatrix* AP;
             CSRMatrix* T;
             CSCMatrix* P_csc;
-            aligned_vector<int> states;
-            aligned_vector<int> aggregates;
-            aligned_vector<double> R;
+            std::vector<int> states;
+            std::vector<int> aggregates;
+            std::vector<double> R;
             int n_aggs = 0;
 
             // Form Strength Matrix
@@ -115,7 +115,7 @@ namespace raptor
 
         agg_t agg_type;
         prolong_t prolong_type;
-        aligned_vector<double> B;
+        std::vector<double> B;
 
         double interp_tol;
         double prolong_weight;

@@ -60,7 +60,7 @@ namespace raptor
             CSRMatrix* P = NULL;
             CSRMatrix* AP;
             CSCMatrix* P_csc;
-            aligned_vector<int> states;
+            std::vector<int> states;
 
             // Form Strength Matrix
             S = A->strength(strength_type, strong_threshold, num_variables, variables);

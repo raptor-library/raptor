@@ -20,11 +20,11 @@
  *****    Number of columns
  ***** nnz : int
  *****    Number of nonzeros
- ***** idx1 : aligned_vector<int>
+ ***** idx1 : std::vector<int>
  *****    List of position indices, specific to type of matrix
- ***** idx2 : aligned_vector<int>
+ ***** idx2 : std::vector<int>
  *****    List of position indices, specific to type of matrix
- ***** vals : aligned_vector<double>
+ ***** vals : std::vector<double>
  *****    List of values in matrix
  *****
  ***** Methods
@@ -107,8 +107,8 @@ namespace raptor
     virtual ~Matrix(){}
 
     template <typename T>
-    void init_from_lists(aligned_vector<int>& _idx1, aligned_vector<int>& _idx2, 
-            aligned_vector<T>& data)
+    void init_from_lists(std::vector<int>& _idx1, std::vector<int>& _idx2, 
+            std::vector<T>& data)
     {
         nnz = data.size();
         resize_data(nnz);
@@ -154,7 +154,7 @@ namespace raptor
     {
         return x.values.data();
     }
-    template<typename T> T* get_values(aligned_vector<T>& x) const
+    template<typename T> T* get_values(std::vector<T>& x) const
     {
         return x.data();
     }
@@ -389,9 +389,9 @@ namespace raptor
     virtual void reserve_size(int size) = 0;
     virtual double get_val(const int j, const int k) = 0;
 
-    aligned_vector<int> idx1;
-    aligned_vector<int> idx2;
-    aligned_vector<double> vals;
+    std::vector<int> idx1;
+    std::vector<int> idx2;
+    std::vector<double> vals;
 
     int b_rows;
     int b_cols;
@@ -421,13 +421,13 @@ namespace raptor
  ***** add_value(int row, int col, double val)
  *****     Adds val to position (row, col)
  ***** rows()
- *****     Returns aligned_vector<int>& containing the rows corresponding
+ *****     Returns std::vector<int>& containing the rows corresponding
  *****     to each nonzero
  ***** cols()
- *****     Returns aligned_vector<int>& containing the cols corresponding
+ *****     Returns std::vector<int>& containing the cols corresponding
  *****     to each nonzero
  ***** data()
- *****     Returns aligned_vector<double>& containing the nonzero values
+ *****     Returns std::vector<double>& containing the nonzero values
  **************************************************************/
   class COOMatrix : public Matrix
   {
@@ -465,8 +465,8 @@ namespace raptor
         init_from_dense(_data);
     }
 
-    COOMatrix(int _nrows, int _ncols, aligned_vector<int>& rows, aligned_vector<int>& cols, 
-            aligned_vector<double>& data) : Matrix(_nrows, _ncols)
+    COOMatrix(int _nrows, int _ncols, std::vector<int>& rows, std::vector<int>& cols, 
+            std::vector<double>& data) : Matrix(_nrows, _ncols)
     {
         init_from_lists(rows, cols, data);
     }
@@ -607,14 +607,14 @@ namespace raptor
  ***** add_value(int row, int col, double val)
  *****     TODO -- add this functionality
  ***** indptr()
- *****     Returns aligned_vector<int>& row pointer.  The ith element points to
+ *****     Returns std::vector<int>& row pointer.  The ith element points to
  *****     the index of indices() corresponding to the first column to lie on 
  *****     row i.
  ***** indices()
- *****     Returns aligned_vector<int>& containing the cols corresponding
+ *****     Returns std::vector<int>& containing the cols corresponding
  *****     to each nonzero
  ***** data()
- *****     Returns aligned_vector<double>& containing the nonzero values
+ *****     Returns std::vector<double>& containing the nonzero values
  **************************************************************/
   class CSRMatrix : public Matrix
   {
@@ -651,8 +651,8 @@ namespace raptor
         init_from_dense(_data);
     }
 
-    CSRMatrix(int _nrows, int _ncols, aligned_vector<int>& rowptr, 
-            aligned_vector<int>& cols, aligned_vector<double>& data) : Matrix(_nrows, _ncols)
+    CSRMatrix(int _nrows, int _ncols, std::vector<int>& rowptr, 
+            std::vector<int>& cols, std::vector<double>& data) : Matrix(_nrows, _ncols)
     {
         init_from_lists(rowptr, cols, data);
     }
@@ -796,14 +796,14 @@ namespace raptor
  ***** add_value(int row, int col, double val)
  *****     TODO -- add this functionality
  ***** indptr()
- *****     Returns aligned_vector<int>& column pointer.  The ith element points to
+ *****     Returns std::vector<int>& column pointer.  The ith element points to
  *****     the index of indices() corresponding to the first row to lie on 
  *****     column i.
  ***** indices()
- *****     Returns aligned_vector<int>& containing the rows corresponding
+ *****     Returns std::vector<int>& containing the rows corresponding
  *****     to each nonzero
  ***** data()
- *****     Returns aligned_vector<double>& containing the nonzero values
+ *****     Returns std::vector<double>& containing the nonzero values
  **************************************************************/
   class CSCMatrix : public Matrix
   {
@@ -826,8 +826,8 @@ namespace raptor
         init_from_dense(_data);
     }
 
-    CSCMatrix(int _nrows, int _ncols, aligned_vector<int>& colptr, 
-            aligned_vector<int>& rows, aligned_vector<double>& data) : Matrix(_nrows, _ncols)
+    CSCMatrix(int _nrows, int _ncols, std::vector<int>& colptr, 
+            std::vector<int>& rows, std::vector<double>& data) : Matrix(_nrows, _ncols)
     {
         init_from_lists(colptr, rows, data);
     }
@@ -984,8 +984,8 @@ class BSRMatrix : public CSRMatrix
 
 
     BSRMatrix(int num_block_rows, int num_block_cols, 
-            int block_row_size, int block_col_size, aligned_vector<int>& rowptr, 
-            aligned_vector<int>& cols, aligned_vector<double*>& data)
+            int block_row_size, int block_col_size, std::vector<int>& rowptr, 
+            std::vector<int>& cols, std::vector<double*>& data)
         :  CSRMatrix(num_block_rows, num_block_cols, 0)
     {
         b_rows = block_row_size;
@@ -1005,7 +1005,7 @@ class BSRMatrix : public CSRMatrix
 
     ~BSRMatrix()
     {
-        for (aligned_vector<double*>::iterator it = block_vals.begin();
+        for (std::vector<double*>::iterator it = block_vals.begin();
                 it != block_vals.end(); ++it)
             delete[] *it;
     }
@@ -1072,7 +1072,7 @@ class BSRMatrix : public CSRMatrix
         return block_vals[j][k];
     }
 
-    aligned_vector<double*> block_vals;
+    std::vector<double*> block_vals;
 };
 
 class BCOOMatrix : public COOMatrix
@@ -1100,8 +1100,8 @@ class BCOOMatrix : public COOMatrix
 
     BCOOMatrix(int num_block_rows, int num_block_cols,
             int block_row_size, int block_col_size,
-            aligned_vector<int>& rows, aligned_vector<int>& cols, 
-            aligned_vector<double*>& data)
+            std::vector<int>& rows, std::vector<int>& cols, 
+            std::vector<double*>& data)
        : COOMatrix(num_block_rows, num_block_cols, 0) 
     {
         b_rows = block_row_size;
@@ -1120,7 +1120,7 @@ class BCOOMatrix : public COOMatrix
 
     ~BCOOMatrix()
     {
-        for (aligned_vector<double*>::iterator it = block_vals.begin();
+        for (std::vector<double*>::iterator it = block_vals.begin();
                 it != block_vals.end(); ++it)
             delete[] *it;
     }
@@ -1188,7 +1188,7 @@ class BCOOMatrix : public COOMatrix
         return block_vals[j][k];
     }
 
-    aligned_vector<double*> block_vals;
+    std::vector<double*> block_vals;
 };
 
 // Blocks are still stored row-wise in BSC matrix...
@@ -1217,8 +1217,8 @@ class BSCMatrix : public CSCMatrix
 
 
     BSCMatrix(int num_block_rows, int num_block_cols, 
-            int block_row_size, int block_col_size, aligned_vector<int>& colptr, 
-            aligned_vector<int>& rows, aligned_vector<double*>& data)
+            int block_row_size, int block_col_size, std::vector<int>& colptr, 
+            std::vector<int>& rows, std::vector<double*>& data)
         :  CSCMatrix(num_block_rows, num_block_cols, 0)
     {
         b_rows = block_row_size;
@@ -1238,7 +1238,7 @@ class BSCMatrix : public CSCMatrix
 
     ~BSCMatrix()
     {
-        for (aligned_vector<double*>::iterator it = block_vals.begin();
+        for (std::vector<double*>::iterator it = block_vals.begin();
                 it != block_vals.end(); ++it)
             delete[] *it;
     }
@@ -1305,7 +1305,7 @@ class BSCMatrix : public CSCMatrix
         return block_vals[j][k];
     }
 
-    aligned_vector<double*> block_vals;
+    std::vector<double*> block_vals;
 };
 
 

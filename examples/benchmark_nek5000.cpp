@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 
     // Declare Variables
     int cache_len = 10000;
-    aligned_vector<double> cache_array(cache_len);
+    std::vector<double> cache_array(cache_len);
     HYPRE_IJMatrix A_ij; 
     HYPRE_IJVector x_ij;
     HYPRE_IJVector b_ij;
@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 
     // Solve Raptor Hierarchy
     int iter;
-    aligned_vector<double> res;
+    std::vector<double> res;
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
     iter = ml->solve(x, b, res);
@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
 
     // TAP Solve Raptor Hierarchy
     x.set_const_value(0.0);
-    aligned_vector<double> tap_res;
+    std::vector<double> tap_res;
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
     iter = ml->tap_solve(x, b, res, 3);

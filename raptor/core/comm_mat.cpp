@@ -9,7 +9,7 @@ using namespace raptor;
 // Forward Declarations
 
 // Helper Methods
-template <typename T> aligned_vector<T>& create_mat(int n, int m, int b_n, int b_m,
+template <typename T> std::vector<T>& create_mat(int n, int m, int b_n, int b_m,
         CSRMatrix** mat_ptr);
 template <typename T> CSRMatrix* communication_helper(const int* rowptr,
         const int* col_indices, const T& values,
@@ -24,33 +24,33 @@ CSRMatrix* complete_comm_helper(CommData* send_comm,
         const int b_cols, const bool has_vals = true);
 
 template <typename T> CSRMatrix* transpose_recv(CSRMatrix* recv_mat_T, 
-        aligned_vector<T>& T_vals, NonContigData* send_data, int n);
+        std::vector<T>& T_vals, NonContigData* send_data, int n);
 template <typename T> CSRMatrix* combine_recvs(CSRMatrix* L_mat, CSRMatrix* R_mat, 
-        aligned_vector<T>& L_vals, aligned_vector<T>& R_vals, const int b_rows, 
+        std::vector<T>& L_vals, std::vector<T>& R_vals, const int b_rows, 
         const int b_cols, NonContigData* local_L_recv, NonContigData* local_R_recv, 
-        aligned_vector<int>& row_sizes);
+        std::vector<int>& row_sizes);
 template <typename T> CSRMatrix* combine_recvs_T(CSRMatrix* L_mat, 
         CSRMatrix* final_mat, NonContigData* local_L_send, NonContigData* final_send, 
-        aligned_vector<T>& L_vals, aligned_vector<T>& final_vals, int n, 
+        std::vector<T>& L_vals, std::vector<T>& final_vals, int n, 
         int b_rows, int b_cols);
 
 
 // Main Methods
 CSRMatrix* CommPkg::communicate(ParCSRMatrix* A, const bool has_vals)
 {
-    aligned_vector<char> send_buffer;
+    std::vector<char> send_buffer;
     init_par_mat_comm(A, send_buffer, has_vals);
     return complete_mat_comm(A->on_proc->b_rows, A->on_proc->b_cols,
             has_vals);
 }
 CSRMatrix* CommPkg::communicate(ParBSRMatrix* A, const bool has_vals)
 {
-    aligned_vector<char> send_buffer;
+    std::vector<char> send_buffer;
     init_par_mat_comm(A, send_buffer, has_vals);
     return complete_mat_comm(A->on_proc->b_rows, A->on_proc->b_cols,
             has_vals);
 }
-void CommPkg::init_par_mat_comm(ParCSRMatrix* A, aligned_vector<char>& send_buffer,
+void CommPkg::init_par_mat_comm(ParCSRMatrix* A, std::vector<char>& send_buffer,
         const bool has_vals)
 {
     int start, end;
@@ -58,9 +58,9 @@ void CommPkg::init_par_mat_comm(ParCSRMatrix* A, aligned_vector<char>& send_buff
     int global_col;
 
     int nnz = A->on_proc->nnz + A->off_proc->nnz;
-    aligned_vector<int> rowptr(A->local_num_rows + 1);
-    aligned_vector<int> col_indices;
-    aligned_vector<double> values;
+    std::vector<int> rowptr(A->local_num_rows + 1);
+    std::vector<int> col_indices;
+    std::vector<double> values;
     if (nnz)
     {
         col_indices.resize(nnz);
@@ -94,7 +94,7 @@ void CommPkg::init_par_mat_comm(ParCSRMatrix* A, aligned_vector<char>& send_buff
     return init_mat_comm(send_buffer, rowptr, col_indices, values, 
             A->on_proc->b_rows, A->on_proc->b_cols, has_vals);
 }
-void CommPkg::init_par_mat_comm(ParBSRMatrix* A, aligned_vector<char>& send_buffer,
+void CommPkg::init_par_mat_comm(ParBSRMatrix* A, std::vector<char>& send_buffer,
         const bool has_vals)
 {
     int start, end;
@@ -102,9 +102,9 @@ void CommPkg::init_par_mat_comm(ParBSRMatrix* A, aligned_vector<char>& send_buff
     int global_col;
 
     int nnz = A->on_proc->nnz + A->off_proc->nnz;
-    aligned_vector<int> rowptr(A->local_num_rows + 1);
-    aligned_vector<int> col_indices;
-    aligned_vector<double*> values;
+    std::vector<int> rowptr(A->local_num_rows + 1);
+    std::vector<int> col_indices;
+    std::vector<double*> values;
     if (nnz)
     {
         col_indices.resize(nnz);
@@ -142,26 +142,26 @@ void CommPkg::init_par_mat_comm(ParBSRMatrix* A, aligned_vector<char>& send_buff
             A->on_proc->b_rows, A->on_proc->b_cols, has_vals);
 }
 
-CSRMatrix* ParComm::communicate(const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices, const aligned_vector<double>& values, 
+CSRMatrix* ParComm::communicate(const std::vector<int>& rowptr, 
+        const std::vector<int>& col_indices, const std::vector<double>& values, 
         const int b_rows, const int b_cols, const bool has_vals)
 {
-    aligned_vector<char> send_buffer;
+    std::vector<char> send_buffer;
     init_mat_comm(send_buffer, rowptr, col_indices, values, b_rows, b_cols, has_vals);
     return complete_mat_comm(b_rows, b_cols, has_vals);
 }
-CSRMatrix* ParComm::communicate(const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices, const aligned_vector<double*>& values, 
+CSRMatrix* ParComm::communicate(const std::vector<int>& rowptr, 
+        const std::vector<int>& col_indices, const std::vector<double*>& values, 
         const int b_rows, const int b_cols, const bool has_vals)
 {
-    aligned_vector<char> send_buffer;
+    std::vector<char> send_buffer;
     init_mat_comm(send_buffer, rowptr, col_indices, values, b_rows, b_cols, has_vals);
     return complete_mat_comm(b_rows, b_cols, has_vals);
 }
 
-void ParComm::init_mat_comm(aligned_vector<char>& send_buffer,
-        const aligned_vector<int>& rowptr, const aligned_vector<int>& col_indices, 
-        const aligned_vector<double>& values, const int b_rows, const int b_cols, 
+void ParComm::init_mat_comm(std::vector<char>& send_buffer,
+        const std::vector<int>& rowptr, const std::vector<int>& col_indices, 
+        const std::vector<double>& values, const int b_rows, const int b_cols, 
         const bool has_vals)
 {
     int s = send_data->get_msg_size(rowptr.data(), values.data(), mpi_comm, b_rows * b_cols);
@@ -169,9 +169,9 @@ void ParComm::init_mat_comm(aligned_vector<char>& send_buffer,
     init_comm_helper(send_buffer.data(), rowptr.data(), col_indices.data(), values.data(),
             send_data, key, mpi_comm, b_rows, b_cols);
 }
-void ParComm::init_mat_comm(aligned_vector<char>& send_buffer,
-        const aligned_vector<int>& rowptr, const aligned_vector<int>& col_indices, 
-        const aligned_vector<double*>& values, const int b_rows, const int b_cols,
+void ParComm::init_mat_comm(std::vector<char>& send_buffer,
+        const std::vector<int>& rowptr, const std::vector<int>& col_indices, 
+        const std::vector<double*>& values, const int b_rows, const int b_cols,
         const bool has_vals)
 {
     int s = send_data->get_msg_size(rowptr.data(), values.data(), mpi_comm, b_rows * b_cols);
@@ -190,24 +190,24 @@ CSRMatrix* ParComm::complete_mat_comm(const int b_rows, const int b_cols,
 }
 
 
-CSRMatrix* ParComm::communicate_T(const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
+CSRMatrix* ParComm::communicate_T(const std::vector<int>& rowptr, 
+        const std::vector<int>& col_indices, const std::vector<double>& values,
         const int n_result_rows, const int b_rows, const int b_cols, const bool has_vals)
 {
-    aligned_vector<char> send_buffer;
+    std::vector<char> send_buffer;
     init_mat_comm_T(send_buffer, rowptr, col_indices, values, b_rows, b_cols, has_vals);
     return complete_mat_comm_T(n_result_rows, b_rows, b_cols, has_vals);
 }
-CSRMatrix* ParComm::communicate_T(const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices, const aligned_vector<double*>& values,
+CSRMatrix* ParComm::communicate_T(const std::vector<int>& rowptr, 
+        const std::vector<int>& col_indices, const std::vector<double*>& values,
         const int n_result_rows, const int b_rows, const int b_cols, const bool has_vals)
 {
-    aligned_vector<char> send_buffer;
+    std::vector<char> send_buffer;
     init_mat_comm_T(send_buffer, rowptr, col_indices, values, b_rows, b_cols, has_vals);
     return complete_mat_comm_T(n_result_rows, b_rows, b_cols, has_vals);
 }
-void ParComm::init_mat_comm_T(aligned_vector<char>& send_buffer, const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
+void ParComm::init_mat_comm_T(std::vector<char>& send_buffer, const std::vector<int>& rowptr, 
+        const std::vector<int>& col_indices, const std::vector<double>& values,
         const int b_rows, const int b_cols, const bool has_vals)
 {
     int s = recv_data->get_msg_size(rowptr.data(), values.data(), mpi_comm, b_rows * b_cols);
@@ -215,8 +215,8 @@ void ParComm::init_mat_comm_T(aligned_vector<char>& send_buffer, const aligned_v
     init_comm_helper(send_buffer.data(), rowptr.data(), col_indices.data(), values.data(),
             recv_data, key, mpi_comm, b_rows, b_cols);
 }
-void ParComm::init_mat_comm_T(aligned_vector<char>& send_buffer, const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices, const aligned_vector<double*>& values,
+void ParComm::init_mat_comm_T(std::vector<char>& send_buffer, const std::vector<int>& rowptr, 
+        const std::vector<int>& col_indices, const std::vector<double*>& values,
         const int b_rows, const int b_cols, const bool has_vals)
 {
     int s = recv_data->get_msg_size(rowptr.data(), values.data(), mpi_comm, b_rows * b_cols);
@@ -251,25 +251,25 @@ CSRMatrix* ParComm::complete_mat_comm_T(const int n_result_rows, const int b_row
 
 
 
-CSRMatrix* TAPComm::communicate(const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
+CSRMatrix* TAPComm::communicate(const std::vector<int>& rowptr, 
+        const std::vector<int>& col_indices, const std::vector<double>& values,
         const int b_rows, const int b_cols, const bool has_vals)
 {
-    aligned_vector<char> send_buffer;  
+    std::vector<char> send_buffer;  
     init_mat_comm(send_buffer, rowptr, col_indices, values, b_rows, b_cols, has_vals);
     return complete_mat_comm(b_rows, b_cols, has_vals);
 }
 
-CSRMatrix* TAPComm::communicate(const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices, const aligned_vector<double*>& values,
+CSRMatrix* TAPComm::communicate(const std::vector<int>& rowptr, 
+        const std::vector<int>& col_indices, const std::vector<double*>& values,
         const int b_rows, const int b_cols, const bool has_vals)
 {   
-    aligned_vector<char> send_buffer;  
+    std::vector<char> send_buffer;  
     init_mat_comm(send_buffer, rowptr, col_indices, values, b_rows, b_cols, has_vals);
     return complete_mat_comm(b_rows, b_cols, has_vals);
 }
-void TAPComm::init_mat_comm(aligned_vector<char>& send_buffer, const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
+void TAPComm::init_mat_comm(std::vector<char>& send_buffer, const std::vector<int>& rowptr, 
+        const std::vector<int>& col_indices, const std::vector<double>& values,
         const int b_rows, const int b_cols, const bool has_vals)
 {  
     int block_size = b_rows * b_cols;
@@ -306,8 +306,8 @@ void TAPComm::init_mat_comm(aligned_vector<char>& send_buffer, const aligned_vec
 }
 
 
-void TAPComm::init_mat_comm(aligned_vector<char>& send_buffer, const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices, const aligned_vector<double*>& values,
+void TAPComm::init_mat_comm(std::vector<char>& send_buffer, const std::vector<int>& rowptr, 
+        const std::vector<int>& col_indices, const std::vector<double*>& values,
         const int b_rows, const int b_cols, const bool has_vals)
 {  
     int block_size = b_rows * b_cols;
@@ -386,25 +386,25 @@ CSRMatrix* TAPComm::complete_mat_comm(const int b_rows, const int b_cols, const 
 }
 
 
-CSRMatrix* TAPComm::communicate_T(const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
+CSRMatrix* TAPComm::communicate_T(const std::vector<int>& rowptr, 
+        const std::vector<int>& col_indices, const std::vector<double>& values,
         const int n_result_rows, const int b_rows, const int b_cols, const bool has_vals)
 {   
-    aligned_vector<char> send_buffer;
+    std::vector<char> send_buffer;
     init_mat_comm_T(send_buffer, rowptr, col_indices, values, b_rows, b_cols, has_vals);
     return complete_mat_comm_T(n_result_rows, b_rows, b_cols, has_vals);
 }
 
-CSRMatrix* TAPComm::communicate_T(const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices, const aligned_vector<double*>& values,
+CSRMatrix* TAPComm::communicate_T(const std::vector<int>& rowptr, 
+        const std::vector<int>& col_indices, const std::vector<double*>& values,
         const int n_result_rows, const int b_rows, const int b_cols, const bool has_vals)
 {  
-    aligned_vector<char> send_buffer;
+    std::vector<char> send_buffer;
     init_mat_comm_T(send_buffer, rowptr, col_indices, values, b_rows, b_cols, has_vals);
     return complete_mat_comm_T(n_result_rows, b_rows, b_cols, has_vals);    
 }
-void TAPComm::init_mat_comm_T(aligned_vector<char>& send_buffer, const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices, const aligned_vector<double>& values,
+void TAPComm::init_mat_comm_T(std::vector<char>& send_buffer, const std::vector<int>& rowptr, 
+        const std::vector<int>& col_indices, const std::vector<double>& values,
         const int b_rows, const int b_cols, const bool has_vals)
 {
     int block_size = b_rows * b_cols;
@@ -435,8 +435,8 @@ void TAPComm::init_mat_comm_T(aligned_vector<char>& send_buffer, const aligned_v
             local_L_par_comm->key, local_L_par_comm->mpi_comm, 
             b_rows, b_cols);
 }
-void TAPComm::init_mat_comm_T(aligned_vector<char>& send_buffer, const aligned_vector<int>& rowptr, 
-        const aligned_vector<int>& col_indices, const aligned_vector<double*>& values,
+void TAPComm::init_mat_comm_T(std::vector<char>& send_buffer, const std::vector<int>& rowptr, 
+        const std::vector<int>& col_indices, const std::vector<double*>& values,
         const int b_rows, const int b_cols, const bool has_vals)
 {
     int block_size = b_rows * b_cols;
@@ -548,14 +548,14 @@ CSRMatrix* TAPComm::complete_mat_comm_T(const int n_result_rows, const int b_row
 
 // Helper Methods
 // Create matrix (either CSR or BSR)
-template<> aligned_vector<double>& create_mat<double>(int n, int m, int b_n, int b_m, 
+template<> std::vector<double>& create_mat<double>(int n, int m, int b_n, int b_m, 
         CSRMatrix** mat_ptr)
 {  
     CSRMatrix* recv_mat = new CSRMatrix(n, m);
     *mat_ptr = recv_mat;
     return recv_mat->vals;
 }
-template<> aligned_vector<double*>& create_mat<double*>(int n, int m, int b_n, int b_m, 
+template<> std::vector<double*>& create_mat<double*>(int n, int m, int b_n, int b_m, 
         CSRMatrix** mat_ptr)
 {  
     BSRMatrix* recv_mat = new BSRMatrix(n, m, b_n, b_m);
@@ -569,7 +569,7 @@ CSRMatrix* communication_helper(const int* rowptr,
         CommData* send_comm, CommData* recv_comm, int key, RAPtor_MPI_Comm mpi_comm, 
         const int b_rows, const int b_cols, const bool has_vals)
 {
-    aligned_vector<char> send_buffer;
+    std::vector<char> send_buffer;
     int s = send_comm->get_msg_size(rowptr, values, mpi_comm, b_rows * b_cols);
     send_buffer.resize(s);
     init_comm_helper(send_buffer.data(), rowptr, col_indices, values, send_comm,
@@ -614,19 +614,19 @@ CSRMatrix* complete_comm_helper(CommData* send_comm, CommData* recv_comm, int ke
 
 
 template <typename T>
-CSRMatrix* transpose_recv(CSRMatrix* recv_mat_T, aligned_vector<T>& T_vals,
+CSRMatrix* transpose_recv(CSRMatrix* recv_mat_T, std::vector<T>& T_vals,
         NonContigData* send_data, int n)
 {
     int idx, ptr;
     int start, end;
 
     CSRMatrix* recv_mat;
-    aligned_vector<T>& vals = create_mat<T>(n, -1, recv_mat_T->b_rows, 
+    std::vector<T>& vals = create_mat<T>(n, -1, recv_mat_T->b_rows, 
             recv_mat_T->b_cols, &recv_mat);
 
     if (n == 0) return recv_mat;
 
-    aligned_vector<int> row_sizes(n, 0);
+    std::vector<int> row_sizes(n, 0);
     for (int i = 0; i < send_data->size_msgs; i++)
     {
         idx = send_data->indices[i];
@@ -665,16 +665,16 @@ CSRMatrix* transpose_recv(CSRMatrix* recv_mat_T, aligned_vector<T>& T_vals,
 
 template <typename T>
 CSRMatrix* combine_recvs(CSRMatrix* L_mat, CSRMatrix* R_mat, 
-        aligned_vector<T>& L_vals, aligned_vector<T>& R_vals,
+        std::vector<T>& L_vals, std::vector<T>& R_vals,
         const int b_rows, const int b_cols,
         NonContigData* local_L_recv, NonContigData* local_R_recv,
-        aligned_vector<int>& row_sizes)
+        std::vector<int>& row_sizes)
 {
     int row;
     int start, end;
 
     CSRMatrix* recv_mat;
-    aligned_vector<T>& vals = create_mat<T>(L_mat->n_rows + R_mat->n_rows, -1, b_rows, b_cols,
+    std::vector<T>& vals = create_mat<T>(L_mat->n_rows + R_mat->n_rows, -1, b_rows, b_cols,
             &recv_mat);
     recv_mat->nnz = L_mat->nnz + R_mat->nnz;
     int ptr;
@@ -738,17 +738,17 @@ CSRMatrix* combine_recvs(CSRMatrix* L_mat, CSRMatrix* R_mat,
 template <typename T>
 CSRMatrix* combine_recvs_T(CSRMatrix* L_mat, CSRMatrix* final_mat,
         NonContigData* local_L_send, NonContigData* final_send,
-        aligned_vector<T>& L_vals, aligned_vector<T>& final_vals,
+        std::vector<T>& L_vals, std::vector<T>& final_vals,
         int n, int b_rows, int b_cols)
 {
     int row_start, row_end, row_size;
     int row, idx;
 
     CSRMatrix* recv_mat;
-    aligned_vector<T>& vals = create_mat<T>(n, -1, b_rows, b_cols,
+    std::vector<T>& vals = create_mat<T>(n, -1, b_rows, b_cols,
             &recv_mat);
 
-    aligned_vector<int> row_sizes(n, 0);
+    std::vector<int> row_sizes(n, 0);
     int nnz = L_mat->nnz + final_mat->nnz;
     if (nnz)
     {

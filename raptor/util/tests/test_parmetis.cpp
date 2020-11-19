@@ -26,9 +26,9 @@ TEST(Repartition, TestsInUtil)
     double t0, tfinal;
     int* proc_part;
     double bnorm;
-    aligned_vector<int> new_local_rows;
-    aligned_vector<int> row_sizes(num_procs);
-    aligned_vector<int> row_displs(num_procs+1);
+    std::vector<int> new_local_rows;
+    std::vector<int> row_sizes(num_procs);
+    std::vector<int> row_displs(num_procs+1);
 
     const char* filename = "../../../../test_data/random.pm";
     ParCSRMatrix* A_orig = readParMatrix(filename);
@@ -42,7 +42,7 @@ TEST(Repartition, TestsInUtil)
     row_displs[0] = 0;
     for (int i = 0; i < num_procs; i++)
         row_displs[i+1] = row_displs[i] + row_sizes[i];
-    aligned_vector<double> orig_sol(A_orig->global_num_rows);
+    std::vector<double> orig_sol(A_orig->global_num_rows);
     MPI_Gatherv(b_orig.local.data(), A_orig->local_num_rows, MPI_DOUBLE, 
            orig_sol.data(), row_sizes.data(), row_displs.data(), 
            MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -66,11 +66,11 @@ TEST(Repartition, TestsInUtil)
     row_displs[0] = 0;
     for (int i = 0; i < num_procs; i++)
         row_displs[i+1] = row_displs[i] + row_sizes[i];
-    aligned_vector<double> rr_sol(A_rr->global_num_rows);
+    std::vector<double> rr_sol(A_rr->global_num_rows);
     MPI_Gatherv(b_rr.local.data(), A_rr->local_num_rows, MPI_DOUBLE, 
            rr_sol.data(), row_sizes.data(), row_displs.data(), 
            MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    aligned_vector<int> orig_to_rr(A_orig->global_num_rows);
+    std::vector<int> orig_to_rr(A_orig->global_num_rows);
     MPI_Gatherv(new_local_rows.data(), A_rr->local_num_rows, MPI_INT, 
            orig_to_rr.data(), row_sizes.data(), row_displs.data(), 
            MPI_INT, 0, MPI_COMM_WORLD);
@@ -96,11 +96,11 @@ TEST(Repartition, TestsInUtil)
     row_displs[0] = 0;
     for (int i = 0; i < num_procs; i++)
         row_displs[i+1] = row_displs[i] + row_sizes[i];
-    aligned_vector<double> part_sol(A_part->global_num_rows);
+    std::vector<double> part_sol(A_part->global_num_rows);
     MPI_Gatherv(b_part.local.data(), A_part->local_num_rows, MPI_DOUBLE, 
            part_sol.data(), row_sizes.data(), row_displs.data(), 
            MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    aligned_vector<int> orig_to_part(A_orig->global_num_rows);
+    std::vector<int> orig_to_part(A_orig->global_num_rows);
     MPI_Gatherv(new_local_rows.data(), A_part->local_num_rows, MPI_INT, 
            orig_to_part.data(), row_sizes.data(), row_displs.data(), 
            MPI_INT, 0, MPI_COMM_WORLD);

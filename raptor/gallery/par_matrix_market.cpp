@@ -168,7 +168,7 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
     int num_ints, num_doubles;
     int comm_size;
 
-    aligned_vector<char> buffer;
+    std::vector<char> buffer;
 
     int nnz = A->local_nnz;
     int global_nnz;
@@ -208,11 +208,11 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
         first_row += A->local_num_rows;
 
         // Write data from other processes
-        aligned_vector<int> idx1;
-        aligned_vector<int> idx2;
-        aligned_vector<double> vals;
-        aligned_vector<int> row_map;
-        aligned_vector<int> col_map; 
+        std::vector<int> idx1;
+        std::vector<int> idx2;
+        std::vector<double> vals;
+        std::vector<int> row_map;
+        std::vector<int> col_map; 
         for (int i = 1; i < num_procs; i++)
         {
             // Calculate comm_size and allocate recv_buf

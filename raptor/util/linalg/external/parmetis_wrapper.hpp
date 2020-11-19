@@ -27,8 +27,8 @@ int* parmetis_partition(ParCSRMatrix* A)
     int* vtxdist = A->partition->first_cols.data();
 
     // Local adjacency structure
-    aligned_vector<int> xadj(A->local_num_rows+1);
-    aligned_vector<int> adjncy(A->local_nnz);
+    std::vector<int> xadj(A->local_num_rows+1);
+    std::vector<int> adjncy(A->local_nnz);
     xadj[0] = 0;
     int nnz = 0;
     for (int i = 0; i < A->local_num_rows; i++)
@@ -79,20 +79,20 @@ int* parmetis_partition(ParCSRMatrix* A)
     // Fraction of vertex weight distributed to each subdomain
     // Array size ncon x nparts
     // For balanced sub-domains, each part gets 1/nparts
-    aligned_vector<float> tpwgts(nparts, 1.0/nparts);
+    std::vector<float> tpwgts(nparts, 1.0/nparts);
 
     // Imbalance tolerance for each vertex weight
     // Array size ncon 
     // Perfect balance: 1
     // Perfect imblance: nparts
     // Recommended: 1.05
-    aligned_vector<float> ubvec(1, 1.05);
+    std::vector<float> ubvec(1, 1.05);
 
     // Additional Options:
     // Options[0] = 0 (default values) or 1 (specify options[1], options[2])
     // Options[1]: levels of info to be returned (0-default, 1-timing info)
     // Options[2]: random number seed for routine
-    aligned_vector<int> options(3, 0);
+    std::vector<int> options(3, 0);
 
     // Return value: Number of edges that are cut by partitioning
     int edgecut;

@@ -3,46 +3,46 @@
 using namespace raptor;
 
 // Declare Private Methods
-aligned_vector<double>& form_new(const CSRMatrix* A, const CSRMatrix* B, 
-        CSRMatrix** C_ptr, aligned_vector<double>& A_vals);
-aligned_vector<double*>& form_new(const CSRMatrix* A, const CSRMatrix* B, 
-        CSRMatrix** C_ptr, aligned_vector<double*>& A_vals);
-aligned_vector<double>& form_new(const CSCMatrix* A, const CSRMatrix* B,
-        CSRMatrix** C_ptr, aligned_vector<double>& A_vals);
-aligned_vector<double*>& form_new(const CSCMatrix* A, const CSRMatrix* B,
-        CSRMatrix** C_ptr, aligned_vector<double*>& A_vals);
-void init_sums(aligned_vector<double>& sums, int size, int b_size);
-void init_sums(aligned_vector<double*>& sums, int size, int b_size);
+std::vector<double>& form_new(const CSRMatrix* A, const CSRMatrix* B, 
+        CSRMatrix** C_ptr, std::vector<double>& A_vals);
+std::vector<double*>& form_new(const CSRMatrix* A, const CSRMatrix* B, 
+        CSRMatrix** C_ptr, std::vector<double*>& A_vals);
+std::vector<double>& form_new(const CSCMatrix* A, const CSRMatrix* B,
+        CSRMatrix** C_ptr, std::vector<double>& A_vals);
+std::vector<double*>& form_new(const CSCMatrix* A, const CSRMatrix* B,
+        CSRMatrix** C_ptr, std::vector<double*>& A_vals);
+void init_sums(std::vector<double>& sums, int size, int b_size);
+void init_sums(std::vector<double*>& sums, int size, int b_size);
 void zero_sum(double* sum, int b_size);
 void zero_sum(double** sum, int b_size);
-void finalize_sums(aligned_vector<double>& sums);
-void finalize_sums(aligned_vector<double*>& sums);
+void finalize_sums(std::vector<double>& sums);
+void finalize_sums(std::vector<double*>& sums);
 
 
-aligned_vector<double>& form_new(const CSRMatrix* A, const CSRMatrix* B, 
-        CSRMatrix** C_ptr, aligned_vector<double>& A_vals)
+std::vector<double>& form_new(const CSRMatrix* A, const CSRMatrix* B, 
+        CSRMatrix** C_ptr, std::vector<double>& A_vals)
 {
     CSRMatrix* C = new CSRMatrix(A->n_rows, B->n_cols);
     *C_ptr = C;
     return C->vals;
 }
-aligned_vector<double*>& form_new(const CSRMatrix* A, const CSRMatrix* B, 
-        CSRMatrix** C_ptr, aligned_vector<double*>& A_vals)
+std::vector<double*>& form_new(const CSRMatrix* A, const CSRMatrix* B, 
+        CSRMatrix** C_ptr, std::vector<double*>& A_vals)
 {
     BSRMatrix* C = new BSRMatrix(A->n_rows, B->n_cols, 
             A->b_rows, B->b_cols);
     *C_ptr = C;
     return C->block_vals;
 }
-aligned_vector<double>& form_new(const CSCMatrix* A, const CSRMatrix* B,
-        CSRMatrix** C_ptr, aligned_vector<double>& A_vals)
+std::vector<double>& form_new(const CSCMatrix* A, const CSRMatrix* B,
+        CSRMatrix** C_ptr, std::vector<double>& A_vals)
 {
     CSRMatrix* C = new CSRMatrix(A->n_cols, B->n_cols);
     *C_ptr = C;
     return C->vals;
 }
-aligned_vector<double*>& form_new(const CSCMatrix* A, const CSRMatrix* B,
-        CSRMatrix** C_ptr, aligned_vector<double*>& A_vals)
+std::vector<double*>& form_new(const CSCMatrix* A, const CSRMatrix* B,
+        CSRMatrix** C_ptr, std::vector<double*>& A_vals)
 {
     BSRMatrix* C = new BSRMatrix(A->n_cols, B->n_cols,
             A->b_cols, B->b_cols);
@@ -50,11 +50,11 @@ aligned_vector<double*>& form_new(const CSCMatrix* A, const CSRMatrix* B,
     return C->block_vals;
 }
 
-void init_sums(aligned_vector<double>& sums, int size, int b_size)
+void init_sums(std::vector<double>& sums, int size, int b_size)
 {
     sums.resize(size, 0);
 }
-void init_sums(aligned_vector<double*>& sums, int size, int b_size)
+void init_sums(std::vector<double*>& sums, int size, int b_size)
 {
     for (int i = 0; i < size; i++)
     {
@@ -75,28 +75,28 @@ void zero_sum(double** sum, int b_size)
         (*sum)[i] = 0;
 }
 
-void finalize_sums(aligned_vector<double>& sums)
+void finalize_sums(std::vector<double>& sums)
 {
     return;
 }
-void finalize_sums(aligned_vector<double*>& sums)
+void finalize_sums(std::vector<double*>& sums)
 {
-    for (aligned_vector<double*>::iterator it = sums.begin();
+    for (std::vector<double*>::iterator it = sums.begin();
             it != sums.end(); ++it)
         delete[] *it;
 }
 
 template <typename T>
 CSRMatrix* spgemm_helper(const CSRMatrix* A, const CSRMatrix* B, 
-        aligned_vector<T>& A_vals, aligned_vector<T>& B_vals,
+        std::vector<T>& A_vals, std::vector<T>& B_vals,
         int* B_to_C = NULL)
 {
-    aligned_vector<int> next(B->n_cols, -1);
-    aligned_vector<T> sums;
+    std::vector<int> next(B->n_cols, -1);
+    std::vector<T> sums;
     init_sums(sums, B->n_cols, B->b_size);
 
     CSRMatrix* C = NULL;
-    aligned_vector<T>& C_vals = form_new(A, B, &C, A_vals);
+    std::vector<T>& C_vals = form_new(A, B, &C, A_vals);
     C->reserve_size(1.5*A->nnz);
 
     C->idx1[0] = 0;
@@ -156,15 +156,15 @@ CSRMatrix* spgemm_helper(const CSRMatrix* A, const CSRMatrix* B,
 
 template <typename T>
 CSRMatrix* spgemm_T_helper(const CSCMatrix* A, const CSRMatrix* B,
-        aligned_vector<T>& A_vals, aligned_vector<T>& B_vals,
+        std::vector<T>& A_vals, std::vector<T>& B_vals,
         int* C_map = NULL)
 {
     CSRMatrix* C;
-    aligned_vector<T>& C_vals = form_new(A, B, &C, A_vals);
+    std::vector<T>& C_vals = form_new(A, B, &C, A_vals);
     C->reserve_size(1.5*B->nnz);
 
-    aligned_vector<int> next(B->n_cols, -1); 
-    aligned_vector<T> sums;
+    std::vector<int> next(B->n_cols, -1); 
+    std::vector<T> sums;
     init_sums(sums, B->n_cols, A->b_size);
 
     C->idx1[0] = 0;

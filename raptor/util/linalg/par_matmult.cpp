@@ -91,7 +91,7 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap)
 
     // Initialize C (matrix to be returned)
     ParCSRMatrix* C = init_matrix(this, B);
-    aligned_vector<char> send_buffer;
+    std::vector<char> send_buffer;
 
     // Communicate data and multiply
     comm->init_par_mat_comm(B, send_buffer);
@@ -124,7 +124,7 @@ ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B)
 
     // Initialize C (matrix to be returned)
     ParCSRMatrix* C = init_matrix(this, B);;
-    aligned_vector<char> send_buffer;
+    std::vector<char> send_buffer;
 
     // Communicate data and multiply
     tap_mat_comm->init_par_mat_comm(B, send_buffer);
@@ -176,7 +176,7 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap)
     ParCSRMatrix* C = init_matrix(this, A);;
 
     CSRMatrix* Ctmp = mult_T_partial(A);
-    aligned_vector<char> send_buffer;
+    std::vector<char> send_buffer;
 
     A->comm->init_mat_comm_T(send_buffer, Ctmp->idx1, Ctmp->idx2, 
             Ctmp->vals);
@@ -210,7 +210,7 @@ ParCSRMatrix* ParCSRMatrix::tap_mult_T(ParCSCMatrix* A)
     ParCSRMatrix* C = init_matrix(this, A);
 
     CSRMatrix* Ctmp = mult_T_partial(A);
-    aligned_vector<char> send_buffer;
+    std::vector<char> send_buffer;
 
     A->tap_mat_comm->init_mat_comm_T(send_buffer, Ctmp->idx1, Ctmp->idx2, 
             Ctmp->vals);
@@ -296,11 +296,11 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C,
 
     // Calculate global_to_C and B_to_C column maps
     std::map<int, int> global_to_C;
-    aligned_vector<int> B_to_C(B->off_proc_num_cols);
+    std::vector<int> B_to_C(B->off_proc_num_cols);
 
     std::copy(recv_off->idx2.begin(), recv_off->idx2.end(),
             std::back_inserter(C->off_proc_column_map));
-    for (aligned_vector<int>::iterator it = B->off_proc_column_map.begin();
+    for (std::vector<int>::iterator it = B->off_proc_column_map.begin();
             it != B->off_proc_column_map.end(); ++it)
     {
         C->off_proc_column_map.emplace_back(*it);
@@ -309,7 +309,7 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C,
 
     int prev_col = -1;
     C->off_proc_num_cols = 0;
-    for (aligned_vector<int>::iterator it = C->off_proc_column_map.begin();
+    for (std::vector<int>::iterator it = C->off_proc_column_map.begin();
             it != C->off_proc_column_map.end(); ++it)
     {
         if (*it != prev_col)
@@ -326,13 +326,13 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C,
         global_col = B->off_proc_column_map[i];
         B_to_C[i] = global_to_C[global_col];
     }
-    for (aligned_vector<int>::iterator it = recv_off->idx2.begin(); 
+    for (std::vector<int>::iterator it = recv_off->idx2.begin(); 
             it != recv_off->idx2.end(); ++it)
     {
         *it = global_to_C[*it];
     }
 
-    for (aligned_vector<int>::iterator it = C_on_off->idx2.begin();
+    for (std::vector<int>::iterator it = C_on_off->idx2.begin();
             it != C_on_off->idx2.end(); ++it)
     {
         *it = B_to_C[*it];
@@ -386,8 +386,8 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
     int start, end, ctr;
     int col, col_C;
 
-    aligned_vector<double> sums;
-    aligned_vector<int> next;
+    std::vector<double> sums;
+    std::vector<int> next;
 
     // Split recv_mat into recv_on and recv_off
     // Split recv_mat into on and off proc portions
@@ -437,7 +437,7 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
 
     // Update recv_on columns (to match local cols)
     int* part_to_col = map_partition_to_local();
-    for (aligned_vector<int>::iterator it = recv_on->idx2.begin();
+    for (std::vector<int>::iterator it = recv_on->idx2.begin();
             it != recv_on->idx2.end(); ++it)
     {
         *it = part_to_col[(*it - partition->first_local_col)];
@@ -453,7 +453,7 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
      ******************************/
     // Calculate global_to_C and map_to_C column maps
     std::map<int, int> global_to_C;
-    aligned_vector<int> map_to_C;
+    std::vector<int> map_to_C;
     if (off_proc_num_cols)
     {
         map_to_C.reserve(off_proc_num_cols);
@@ -461,12 +461,12 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
 
     // Create set of global columns in B_off_proc and recv_mat
     std::set<int> C_col_set;
-    for (aligned_vector<int>::iterator it = recv_off->idx2.begin(); 
+    for (std::vector<int>::iterator it = recv_off->idx2.begin(); 
             it != recv_off->idx2.end(); ++it)
     {
         C_col_set.insert(*it);
     }
-    for (aligned_vector<int>::iterator it = off_proc_column_map.begin(); 
+    for (std::vector<int>::iterator it = off_proc_column_map.begin(); 
             it != off_proc_column_map.end(); ++it)
     {
         C_col_set.insert(*it);
@@ -485,7 +485,7 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
     }
 
     // Map local off_proc_cols to C->off_proc_column_map
-    for (aligned_vector<int>::iterator it = off_proc_column_map.begin();
+    for (std::vector<int>::iterator it = off_proc_column_map.begin();
             it != off_proc_column_map.end(); ++it)
     {
         col_C = global_to_C[*it];
@@ -493,14 +493,14 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
     }
 
     // Update recvd cols from global_col to local col in C
-    for (aligned_vector<int>::iterator it = recv_off->idx2.begin();
+    for (std::vector<int>::iterator it = recv_off->idx2.begin();
             it != recv_off->idx2.end(); ++it)
     {
         *it = global_to_C[*it];
     }
 
     recv_off->n_cols = C->off_proc_num_cols;
-    for (aligned_vector<int>::iterator it = C_off_on->idx2.begin();
+    for (std::vector<int>::iterator it = C_off_on->idx2.begin();
             it != C_off_on->idx2.end(); ++it)
     {
         *it = map_to_C[*it];
@@ -511,8 +511,8 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
 
     // Condense columns!  A lot of them are zero columns...
     // Could instead add global column indices, and then map to local
-    aligned_vector<int> off_col_sizes;
-    aligned_vector<int> col_orig_to_new;
+    std::vector<int> off_col_sizes;
+    std::vector<int> col_orig_to_new;
     if (C->off_proc_num_cols)
     {
         off_col_sizes.resize(C->off_proc_num_cols, 0);

@@ -10,7 +10,7 @@ using namespace raptor;
 
 // TODO -- currently only accepts constant vector
 ParCSRMatrix* fit_candidates(ParCSRMatrix* A, const int n_aggs, 
-        const aligned_vector<int>& aggregates, 
-        const aligned_vector<double>& B, aligned_vector<double>& R,
+        const std::vector<int>& aggregates, 
+        const std::vector<double>& B, std::vector<double>& R,
         int num_candidates, bool tag_comm = false, double tol = 1e-10);
 #endif

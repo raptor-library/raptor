@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
     double strong_threshold = 0.25;
     int iter;
     int num_variables = 1;
-    aligned_vector<double> cache_array(10000);
+    std::vector<double> cache_array(10000);
 
     coarsen_t coarsen_type = PMIS;
     interp_t interp_type = Extended;
@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
     {
         int dim;
         double* stencil = NULL;
-        aligned_vector<int> grid;
+        std::vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);
@@ -172,7 +172,7 @@ int main(int argc, char *argv[])
     ml->setup(A);
     ml->print_hierarchy();
 
-    aligned_vector<double> weights(A->local_num_rows);
+    std::vector<double> weights(A->local_num_rows);
     srand(time(NULL) + rank);
     for (int r = 0; r < A->local_num_rows; r++)
         weights[r] = rand() / RAND_MAX;
@@ -188,8 +188,8 @@ int main(int argc, char *argv[])
         ParVector& tmpl = ml->levels[i]->tmp;
         ParVector& bl1 = ml->levels[i+1]->b;
         ParVector& xl1 = ml->levels[i+1]->x;
-        aligned_vector<int> states;
-        aligned_vector<int> off_proc_states;
+        std::vector<int> states;
+        std::vector<int> off_proc_states;
 
         if (!Al->tap_comm)
             Al->tap_comm = new TAPComm(Al->partition,

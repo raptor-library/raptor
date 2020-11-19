@@ -44,10 +44,10 @@ int main(int argc, char *argv[])
     const char* rand_fn = "../../test_data/random.pm";    
     A = readParMatrix(rand_fn);
     A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, A->on_proc_column_map);
-    aligned_vector<double> comm_doubles(A->on_proc_num_cols);
-    aligned_vector<double> comm_T_doubles(A->off_proc_num_cols);
-    aligned_vector<int> comm_ints(A->on_proc_num_cols);    
-    aligned_vector<int> comm_T_ints(A->off_proc_num_cols);
+    std::vector<double> comm_doubles(A->on_proc_num_cols);
+    std::vector<double> comm_T_doubles(A->off_proc_num_cols);
+    std::vector<int> comm_ints(A->on_proc_num_cols);    
+    std::vector<int> comm_T_ints(A->off_proc_num_cols);
     for (int i = 0; i < A->on_proc_num_cols; i++)
     {
         comm_doubles[i] = A->on_proc_column_map[i] + (rand() / RAND_MAX);
@@ -59,10 +59,10 @@ int main(int argc, char *argv[])
         comm_T_ints[i] = A->off_proc_column_map[i];
     }
 
-    aligned_vector<double> recv_buf;
-    aligned_vector<double> tap_recv_buf;
-    aligned_vector<int> int_recv_buf;
-    aligned_vector<int> tap_int_recv_buf;
+    std::vector<double> recv_buf;
+    std::vector<double> tap_recv_buf;
+    std::vector<int> int_recv_buf;
+    std::vector<int> tap_int_recv_buf;
 
     recv_buf = A->comm->communicate(comm_doubles);
     tap_recv_buf = A->tap_comm->communicate(comm_doubles);

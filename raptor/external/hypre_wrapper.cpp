@@ -13,7 +13,7 @@ HYPRE_IJVector convert(raptor::ParVector& x_rap, RAPtor_MPI_Comm comm_mat)
     HYPRE_IJVector x;
 
     HYPRE_Int local_n = x_rap.local_n;
-    aligned_vector<int> first_n(num_procs);
+    std::vector<int> first_n(num_procs);
     RAPtor_MPI_Allgather(&local_n, 1, RAPtor_MPI_INT, first_n.data(), 1, RAPtor_MPI_INT, comm_mat);
     HYPRE_Int first_local = 0;
     for (int i = 0; i < rank; i++)
@@ -55,8 +55,8 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, RAPtor_MPI_Comm comm_mat)
     RAPtor_MPI_Comm_rank(comm_mat, &rank);
     RAPtor_MPI_Comm_size(comm_mat, &num_procs);
 
-    aligned_vector<int> row_sizes(num_procs);
-    aligned_vector<int> col_sizes(num_procs);
+    std::vector<int> row_sizes(num_procs);
+    std::vector<int> col_sizes(num_procs);
     RAPtor_MPI_Allgather(&(A_rap->local_num_rows), 1, RAPtor_MPI_INT, row_sizes.data(), 1, RAPtor_MPI_INT,
             RAPtor_MPI_COMM_WORLD);
     RAPtor_MPI_Allgather(&(A_rap->on_proc_num_cols), 1, RAPtor_MPI_INT, col_sizes.data(), 1, RAPtor_MPI_INT,
@@ -68,15 +68,15 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, RAPtor_MPI_Comm comm_mat)
     }
 
     // Send new global cols (to update off_proc_col_map)
-    aligned_vector<int> new_cols(A_rap->on_proc_num_cols);
+    std::vector<int> new_cols(A_rap->on_proc_num_cols);
     for (int i = 0; i < A_rap->on_proc_num_cols; i++)
     {
         new_cols[i] = i + local_col_start;
     }
     if (!A_rap->comm) A_rap->comm = new ParComm(A_rap->partition,
             A_rap->off_proc_column_map, A_rap->on_proc_column_map);
-    aligned_vector<int>& recvbuf = A_rap->comm->communicate(new_cols);
-    aligned_vector<int> off_proc_cols(A_rap->off_proc_num_cols);
+    std::vector<int>& recvbuf = A_rap->comm->communicate(new_cols);
+    std::vector<int> off_proc_cols(A_rap->off_proc_num_cols);
     std::copy(recvbuf.begin(), recvbuf.begin() + A_rap->off_proc_num_cols,
             off_proc_cols.begin());
 

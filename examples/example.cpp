@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     int dim = 2;
     int n = 100;
 
-    aligned_vector<int> grid;
+    std::vector<int> grid;
     grid.resize(dim, n);
 
     // Anisotropic diffusion

@@ -2,18 +2,18 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "repartition.hpp"
 
-void make_contiguous(ParCSRMatrix* A, aligned_vector<int>& off_proc_part_map)
+void make_contiguous(ParCSRMatrix* A, std::vector<int>& off_proc_part_map)
 {
     int rank, num_procs;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
     RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
     std::map<int, int> global_to_local;
-    aligned_vector<int> proc_num_cols(num_procs);
-    aligned_vector<int> recvvec;
+    std::vector<int> proc_num_cols(num_procs);
+    std::vector<int> recvvec;
 
     int ctr = 0;
-    for (aligned_vector<int>::const_iterator it = A->off_proc_column_map.begin();  
+    for (std::vector<int>::const_iterator it = A->off_proc_column_map.begin();  
             it != A->off_proc_column_map.end(); ++it)
     {
         global_to_local[*it] = ctr++;
@@ -60,7 +60,7 @@ void make_contiguous(ParCSRMatrix* A, aligned_vector<int>& off_proc_part_map)
 
 }
 
-ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector<int>& new_local_rows)
+ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, std::vector<int>& new_local_rows)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -77,18 +77,18 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
     int count, first_row;
     int recv_size;
     double val;
-    aligned_vector<int> proc_rows(num_procs, 0);
-    aligned_vector<int> proc_to_idx(num_procs);
-    aligned_vector<int> send_procs(num_procs);
-    aligned_vector<int> send_ptr;
-    aligned_vector<MPI_Request> send_requests;
-    aligned_vector<int> send_indices;
-    aligned_vector<char> send_buffer;
-    aligned_vector<char> recv_buffer;
-    aligned_vector<int> recv_rows;
-    aligned_vector<int> recv_row_ptr;
-    aligned_vector<int> recv_cols;
-    aligned_vector<double> recv_vals;
+    std::vector<int> proc_rows(num_procs, 0);
+    std::vector<int> proc_to_idx(num_procs);
+    std::vector<int> send_procs(num_procs);
+    std::vector<int> send_ptr;
+    std::vector<MPI_Request> send_requests;
+    std::vector<int> send_indices;
+    std::vector<char> send_buffer;
+    std::vector<char> recv_buffer;
+    std::vector<int> recv_rows;
+    std::vector<int> recv_row_ptr;
+    std::vector<int> recv_cols;
+    std::vector<double> recv_vals;
     MPI_Status recv_status;
 
     int num_ints = 2*A->local_num_rows + A->local_nnz;
@@ -99,8 +99,8 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
 
     int tag = 29485;
 
-    aligned_vector<int> off_parts(A->off_proc_num_cols);
-    aligned_vector<int>& recvvec = A->comm->communicate(partition);
+    std::vector<int> off_parts(A->off_proc_num_cols);
+    std::vector<int>& recvvec = A->comm->communicate(partition);
     std::copy(recvvec.begin(), recvvec.end(), off_parts.begin());
 
     num_sends = 0;
@@ -145,10 +145,10 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
     num_recvs = proc_rows[rank];
 
     // TODO -- send partitions for each global col (both on and off proc) if part[row] != part[col]
-    aligned_vector<int> col_bool(A->local_num_rows, 0);
-    aligned_vector<int> off_col_bool(A->off_proc_num_cols, 0);
-    aligned_vector<int> send_cols(A->local_num_rows);
-    aligned_vector<int> off_send_cols(A->off_proc_num_cols);
+    std::vector<int> col_bool(A->local_num_rows, 0);
+    std::vector<int> off_col_bool(A->off_proc_num_cols, 0);
+    std::vector<int> send_cols(A->local_num_rows);
+    std::vector<int> off_send_cols(A->off_proc_num_cols);
     int n_cols, off_n_cols;
     int n_rows, part;
     int off_col_size = 2 * (A->off_proc_num_cols + A->local_num_rows) * num_sends;
@@ -243,8 +243,8 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
     }
 
     std::map<int,int> off_proc_to_local;
-    aligned_vector<int> off_col_to_global;
-    aligned_vector<int> off_col_parts;
+    std::vector<int> off_col_to_global;
+    std::vector<int> off_col_parts;
     recv_size = 0;
     recv_row_ptr.push_back(recv_size);
     for (int i = 0; i < num_recvs; i++)
@@ -310,8 +310,8 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
     A_part->off_proc_column_map.resize(A_part->off_proc_num_cols);
     A_part->on_proc_column_map.resize(A_part->local_num_rows);
 
-    aligned_vector<int> off_proc_part_map(A_part->off_proc_num_cols);
-    aligned_vector<int> off_col_order(A_part->off_proc_num_cols);
+    std::vector<int> off_proc_part_map(A_part->off_proc_num_cols);
+    std::vector<int> off_col_order(A_part->off_proc_num_cols);
     std::iota(off_col_order.begin(), off_col_order.end(), 0);
     std::sort(off_col_order.begin(), off_col_order.end(), 
             [&](const int i, const int j)
@@ -331,7 +331,7 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, aligned_vector
 
     // Create row_ptr
     // Add values/indices to appropriate positions
-    aligned_vector<int> row_order(A_part->local_num_rows);
+    std::vector<int> row_order(A_part->local_num_rows);
     std::iota(row_order.begin(), row_order.end(), 0);
     std::sort(row_order.begin(), row_order.end(),
             [&](const int i, const int j)

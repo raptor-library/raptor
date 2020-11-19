@@ -92,7 +92,7 @@ void ParMatrix::condense_off_proc()
     std::sort(off_proc_column_map.begin(), off_proc_column_map.end());
 
     off_proc_num_cols = 0;
-    for (aligned_vector<int>::iterator it = off_proc_column_map.begin(); 
+    for (std::vector<int>::iterator it = off_proc_column_map.begin(); 
             it != off_proc_column_map.end(); ++it)
     {
         if (*it != prev_col)
@@ -104,7 +104,7 @@ void ParMatrix::condense_off_proc()
     }
     off_proc_column_map.resize(off_proc_num_cols);
 
-    for (aligned_vector<int>::iterator it = off_proc->idx2.begin();
+    for (std::vector<int>::iterator it = off_proc->idx2.begin();
             it != off_proc->idx2.end(); ++it)
     {
         *it = orig_to_new[*it];
@@ -707,9 +707,9 @@ ParCSRMatrix* ParCSRMatrix::transpose()
     CSCMatrix* recv_mat;
     ParCSRMatrix* T = NULL;
 
-    aligned_vector<PairData> send_buffer;
-    aligned_vector<PairData> recv_buffer;
-    aligned_vector<int> send_ptr(comm->recv_data->num_msgs+1);
+    std::vector<PairData> send_buffer;
+    std::vector<PairData> recv_buffer;
+    std::vector<int> send_ptr(comm->recv_data->num_msgs+1);
 
     // Transpose partition
     part_T = partition->transpose();
@@ -785,7 +785,7 @@ ParCSRMatrix* ParCSRMatrix::transpose()
     RAPtor_MPI_Waitall(comm->recv_data->num_msgs, comm->recv_data->requests.data(), RAPtor_MPI_STATUSES_IGNORE);
 
     off_proc_T = new CSRMatrix(on_proc_num_cols, -1);
-    aligned_vector<int> off_T_sizes(on_proc_num_cols, 0);
+    std::vector<int> off_T_sizes(on_proc_num_cols, 0);
     for (int i = 0; i < comm->send_data->size_msgs; i++)
     {
         row = comm->send_data->indices[i];
@@ -863,7 +863,7 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
 
     // Get local to global mappings for block matrix
     prev_row = -1;
-    for (aligned_vector<int>::iterator it = local_row_map.begin();
+    for (std::vector<int>::iterator it = local_row_map.begin();
             it != local_row_map.end(); ++it)
     {
         block_row = *it / block_row_size;
@@ -880,7 +880,7 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
     else
     {
         prev_col = -1;        
-        for (aligned_vector<int>::iterator it = on_proc_column_map.begin();
+        for (std::vector<int>::iterator it = on_proc_column_map.begin();
                 it != on_proc_column_map.end(); ++it)
         {
             block_col = *it / block_col_size;
@@ -894,7 +894,7 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
 
     prev_col = -1;
     std::map<int, int> global_to_block_local;
-    for (aligned_vector<int>::iterator it = off_proc_column_map.begin();
+    for (std::vector<int>::iterator it = off_proc_column_map.begin();
             it != off_proc_column_map.end(); ++it)
     {
         block_col = *it / block_col_size;
@@ -987,17 +987,17 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm mpi_comm)
     tap_comm = new TAPComm(partition, true);    
 
     // Initialize Variables
-    aligned_vector<int> off_proc_col_to_proc;
-    aligned_vector<int> on_node_column_map;
-    aligned_vector<int> on_node_col_to_proc;
-    aligned_vector<int> off_node_column_map;
-    aligned_vector<int> off_node_col_to_proc;
-    aligned_vector<int> on_node_to_off_proc;
-    aligned_vector<int> off_node_to_off_proc;
-    aligned_vector<int> recv_nodes;
-    aligned_vector<int> orig_procs;
-    aligned_vector<int> node_to_local_proc;
-    aligned_vector<int> on_proc_to_new;
+    std::vector<int> off_proc_col_to_proc;
+    std::vector<int> on_node_column_map;
+    std::vector<int> on_node_col_to_proc;
+    std::vector<int> off_node_column_map;
+    std::vector<int> off_node_col_to_proc;
+    std::vector<int> on_node_to_off_proc;
+    std::vector<int> off_node_to_off_proc;
+    std::vector<int> recv_nodes;
+    std::vector<int> orig_procs;
+    std::vector<int> node_to_local_proc;
+    std::vector<int> on_proc_to_new;
     int on_proc_nc = on_proc_column_map.size();
     if (partition->local_num_cols)
     {
@@ -1025,7 +1025,7 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm mpi_comm)
     // destination processes both local to node)
     tap_comm->form_local_L_par_comm(on_node_column_map, on_node_col_to_proc,
             partition->first_local_col);
-    for (aligned_vector<int>::iterator it = tap_comm->local_L_par_comm->send_data->indices.begin();
+    for (std::vector<int>::iterator it = tap_comm->local_L_par_comm->send_data->indices.begin();
             it != tap_comm->local_L_par_comm->send_data->indices.end(); ++it)
     {
         *it = on_proc_to_new[*it];
@@ -1053,7 +1053,7 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm mpi_comm)
 
 
     tap_comm->update_recv(on_node_to_off_proc, off_node_to_off_proc);
-    for (aligned_vector<int>::iterator it = tap_comm->local_S_par_comm->send_data->indices.begin();
+    for (std::vector<int>::iterator it = tap_comm->local_S_par_comm->send_data->indices.begin();
             it != tap_comm->local_S_par_comm->send_data->indices.end(); ++it)
     {
         *it = on_proc_to_new[*it];
@@ -1085,7 +1085,7 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm mpi_comm)
 
     tap_mat_comm->update_recv(on_node_to_off_proc, off_node_to_off_proc, false);
 
-    for (aligned_vector<int>::iterator it = 
+    for (std::vector<int>::iterator it = 
             tap_mat_comm->global_par_comm->send_data->indices.begin();
             it != tap_mat_comm->global_par_comm->send_data->indices.end(); ++it)
     {

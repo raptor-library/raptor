@@ -106,7 +106,7 @@ TEST(ParAMGTest, TestsInMultilevel)
     {
         printf("\nSolve Phase Relative Residuals:\n");
     }
-    aligned_vector<double>& sa_res = ml->get_residuals();
+    std::vector<double>& sa_res = ml->get_residuals();
     if (rank == 0) for (int i = 0; i < iter; i++)
     {
         printf("Res[%d] = %e\n", i, sa_res[i]);

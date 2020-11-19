@@ -242,7 +242,7 @@ namespace raptor
                 return iter;
             } 
 
-            aligned_vector<double>& get_residuals()
+            std::vector<double>& get_residuals()
             {
                 return residuals;
             }
@@ -260,11 +260,11 @@ namespace raptor
             bool store_residuals;
 
             double* weights;
-            aligned_vector<double> residuals;
+            std::vector<double> residuals;
 
             std::vector<Level*> levels;
-            aligned_vector<double> A_coarse;
-            aligned_vector<int> LU_permute;
+            std::vector<double> A_coarse;
+            std::vector<int> LU_permute;
             int coarse_n;
             int num_levels;
 

@@ -64,8 +64,8 @@ TEST(ParBlockMatrixTest, TestsInCore)
     x.set_const_value(1.0);
 
     // Test Blocked Communication
-    aligned_vector<double> std;
-    aligned_vector<double> blocked;
+    std::vector<double> std;
+    std::vector<double> blocked;
     std = A->comm->communicate(x);
     blocked = A_bsr->comm->communicate(x, A_bsr->off_proc->b_cols);
     ASSERT_EQ(std.size(), blocked.size());

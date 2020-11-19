@@ -37,12 +37,12 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     ParCSRMatrix* Ac_py;
     int n_items_read;
 
-    aligned_vector<int> states;
-    aligned_vector<int> off_proc_states;
-    aligned_vector<int> py_states;
-    aligned_vector<int> aggs;
-    aligned_vector<int> py_aggs;
-    aligned_vector<double> weights;
+    std::vector<int> states;
+    std::vector<int> off_proc_states;
+    std::vector<int> py_states;
+    std::vector<int> aggs;
+    std::vector<int> py_aggs;
+    std::vector<double> weights;
 
     const char* A0_fn = "../../../../test_data/sas_A0.pm";
     const char* S0_fn = "../../../../test_data/sas_S0.pm";
@@ -125,10 +125,10 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
 
     // Aggregates returns global indices of original global rows
     // Gather list of all aggregates, in order, holding original global cols
-    aligned_vector<int> agg_sizes(num_procs);
-    aligned_vector<int> agg_displ(num_procs+1);
-    aligned_vector<int> agg_list;
-    aligned_vector<int> total_agg_list;
+    std::vector<int> agg_sizes(num_procs);
+    std::vector<int> agg_displ(num_procs+1);
+    std::vector<int> agg_list;
+    std::vector<int> total_agg_list;
     int global_col;
     MPI_Allgather(&n_aggs, 1, MPI_INT, agg_sizes.data(), 1, MPI_INT, MPI_COMM_WORLD);
     agg_displ[0] = 0;
@@ -156,7 +156,7 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     }
 
     // Test fitting candidates
-    aligned_vector<int> proc_aggs(num_procs);
+    std::vector<int> proc_aggs(num_procs);
     int first_col = 0;
     MPI_Allgather(&n_aggs, 1, MPI_INT, proc_aggs.data(), 1, MPI_INT, MPI_COMM_WORLD);
     for (int i = 0; i < rank; i++)
@@ -166,8 +166,8 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     T_py = readParMatrix(T0_fn, A->local_num_rows, n_aggs, 
             A->partition->first_local_row, first_col);
 
-    aligned_vector<double> B;
-    aligned_vector<double> R;
+    std::vector<double> B;
+    std::vector<double> R;
     if (A->local_num_rows)
         B.resize(A->local_num_rows, 1.0);
     int num_candidates = 1;

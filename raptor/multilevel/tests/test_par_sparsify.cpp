@@ -34,8 +34,8 @@ TEST(ParSparsifyTest, TestsInMultilevel)
     int cf;
 
     ParCSRMatrix* A;
-    aligned_vector<int> states;
-    aligned_vector<double> weights;
+    std::vector<int> states;
+    std::vector<double> weights;
     ParCSRMatrix* S;
     ParCSRMatrix* P;
     ParCSRMatrix* I;
@@ -78,7 +78,7 @@ TEST(ParSparsifyTest, TestsInMultilevel)
 
     P = mod_classical_interpolation(A, S, states, S->comm->recv_data->int_buffer);
 
-    aligned_vector<int> first_rows(num_procs+1);
+    std::vector<int> first_rows(num_procs+1);
     first_rows[0] = 0;
     MPI_Allgather(&P->on_proc_num_cols, 1, MPI_INT, &first_rows[1], 1, MPI_INT, MPI_COMM_WORLD);
     for (int i = 0; i < num_procs; i++)

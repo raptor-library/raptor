@@ -29,7 +29,7 @@ TEST(PetscWrapperTest, TestsInExternal)
     // Create RAPtor Matrix to be solved
     int n = 15;
     int dim = 2;
-    aligned_vector<int> grid;
+    std::vector<int> grid;
     grid.resize(dim, n);
     double eps = 0.001;
     double theta = M_PI/4.0;

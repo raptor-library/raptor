@@ -33,8 +33,8 @@ int main(int argc, char* argv[])
     ParVector x_part(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector x_true(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
     ParVector b(A->global_num_rows, A->local_num_rows, A->partition->first_local_row);
-    aligned_vector<double> residuals_true;
-    aligned_vector<double> residuals_part;
+    std::vector<double> residuals_true;
+    std::vector<double> residuals_part;
 
     x_true.set_const_value(1.0);
     A->mult(x_true, b);

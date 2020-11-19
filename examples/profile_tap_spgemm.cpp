@@ -52,12 +52,12 @@ int main(int argc, char *argv[])
     interp_t interp_type = ModClassical;
     double strong_threshold = 0.25;
 
-    aligned_vector<double> residuals;
+    std::vector<double> residuals;
 
     if (system < 2)
     {
         double* stencil = NULL;
-        aligned_vector<int> grid;
+        std::vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);

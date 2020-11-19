@@ -32,7 +32,7 @@ void sparsify(ParCSRMatrix* A, ParCSRMatrix* P, ParCSRMatrix* I,
     double val_A;
     double diag;
 
-    aligned_vector<int> off_proc_col_exists;
+    std::vector<int> off_proc_col_exists;
 
     Ac->sort();
     M->sort();
@@ -152,7 +152,7 @@ void sparsify(ParCSRMatrix* A, ParCSRMatrix* P, ParCSRMatrix* I,
     Ac->off_proc->nnz = ctr_off;
     Ac->local_nnz = ctr_on + ctr_off;
 
-    aligned_vector<int> off_proc_col_to_new;
+    std::vector<int> off_proc_col_to_new;
     if (Ac->off_proc_num_cols)
     {
         off_proc_col_to_new.resize(Ac->off_proc_num_cols);
@@ -169,7 +169,7 @@ void sparsify(ParCSRMatrix* A, ParCSRMatrix* P, ParCSRMatrix* I,
     Ac->off_proc_column_map.resize(ctr);
     Ac->off_proc_num_cols = ctr;
 
-    for (aligned_vector<int>::iterator it = Ac->off_proc->idx2.begin();
+    for (std::vector<int>::iterator it = Ac->off_proc->idx2.begin();
             it != Ac->off_proc->idx2.end(); ++it)
     {
         *it = off_proc_col_to_new[*it];

@@ -56,7 +56,7 @@ void time_spgemm(ParCSRMatrix* A, ParCSRMatrix* P, bool tap)
 
     int n_tests = 10;
     int cache_len = 10000;
-    aligned_vector<double> cache_array(cache_len);
+    std::vector<double> cache_array(cache_len);
 
     init_profile();
     for (int i = 1; i < n_tests; i++)
@@ -89,7 +89,7 @@ void time_spgemm_T(ParCSRMatrix* A, ParCSCMatrix* P, bool tap)
 
     int n_tests = 10;
     int cache_len = 10000;
-    aligned_vector<double> cache_array(cache_len);
+    std::vector<double> cache_array(cache_len);
 
     // Time SpGEMM on Level i
     double tfinal;
@@ -145,12 +145,12 @@ int main(int argc, char *argv[])
     interp_t interp_type = ModClassical;
     double strong_threshold = 0.25;
 
-    aligned_vector<double> residuals;
+    std::vector<double> residuals;
 
     if (system < 2)
     {
         double* stencil = NULL;
-        aligned_vector<int> grid;
+        std::vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);

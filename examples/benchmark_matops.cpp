@@ -25,12 +25,12 @@
 #define eager_cutoff 1000
 #define short_cutoff 62
 
-void fast_waitall(int n_msgs, aligned_vector<MPI_Request>& requests)
+void fast_waitall(int n_msgs, std::vector<MPI_Request>& requests)
 {
     if (n_msgs == 0) return;
 
     int recv_n, idx;
-    aligned_vector<int> recv_indices(n_msgs);
+    std::vector<int> recv_indices(n_msgs);
     while (n_msgs)
     {
         MPI_Waitsome(n_msgs, requests.data(), &recv_n, recv_indices.data(), MPI_STATUSES_IGNORE);
@@ -77,14 +77,14 @@ int main(int argc, char *argv[])
     int y_pos = (node / x_dim) % num_dir;
     int z_pos = (node / y_dim) % num_dir;
 
-    aligned_vector<int> my_cube_pos(3);
+    std::vector<int> my_cube_pos(3);
     my_cube_pos[0] = x_pos;
     my_cube_pos[1] = y_pos;
     my_cube_pos[2] = z_pos;
-    aligned_vector<int> cube_pos(3*num_procs);
+    std::vector<int> cube_pos(3*num_procs);
     MPI_Allgather(my_cube_pos.data(), 3, MPI_INT, cube_pos.data(), 3, MPI_INT, MPI_COMM_WORLD);
  
-    aligned_vector<int> proc_distances(num_procs);
+    std::vector<int> proc_distances(num_procs);
     for (int i = 0; i < num_procs; i++)
     {
         proc_distances[i] = (fabs(cube_pos[i*3] - x_pos) + fabs(cube_pos[i*3+1] - y_pos)
@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
     my_cube_pos[0] = x_pos;
     my_cube_pos[1] = y_pos;
     MPI_Allgather(my_cube_pos.data(), 2, MPI_INT, cube_pos.data(), 2, MPI_INT, MPI_COMM_WORLD);
-    aligned_vector<int> worst_proc_distances(num_procs);
+    std::vector<int> worst_proc_distances(num_procs);
     for (int i = 0; i < num_procs; i++)
     {
         worst_proc_distances[i] = (fabs(cube_pos[i*2] - x_pos) + fabs(cube_pos[i*2+1] - y_pos));
@@ -126,12 +126,12 @@ int main(int argc, char *argv[])
     interp_t interp_type = ModClassical;
     double strong_threshold = 0.25;
 
-    aligned_vector<double> residuals;
+    std::vector<double> residuals;
 
     if (system < 2)
     {
         double* stencil = NULL;
-        aligned_vector<int> grid;
+        std::vector<int> grid;
         if (argc > 2)
         {
             n = atoi(argv[2]);
@@ -252,10 +252,10 @@ int main(int argc, char *argv[])
         ParCSRMatrix* Pl = ml->levels[i]->P;
 
         if (rank == 0) printf("Level %d\n", i);
-        aligned_vector<int> rowptr(Pl->local_num_rows + 1);
+        std::vector<int> rowptr(Pl->local_num_rows + 1);
         int nnz = Pl->on_proc->nnz + Pl->off_proc->nnz;
-        aligned_vector<int> col_indices;
-        aligned_vector<double> values;
+        std::vector<int> col_indices;
+        std::vector<double> values;
         if (nnz)
         {
             col_indices.resize(nnz);
@@ -289,7 +289,7 @@ int main(int argc, char *argv[])
         int queue_search = 0;
         MPI_Status status;
         int msg_s;
-        aligned_vector<int> recv_idx(Al->comm->recv_data->num_msgs, 1);
+        std::vector<int> recv_idx(Al->comm->recv_data->num_msgs, 1);
         for (int send = 0; send < Al->comm->send_data->num_msgs; send++)
         {   
             int proc = Al->comm->send_data->procs[send];
