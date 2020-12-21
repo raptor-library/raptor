@@ -54,7 +54,7 @@ void CG(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res
     while (norm_r > tol && iter < max_iter)
     {
         // alpha_i = (r_i, r_i) / (A*p_i, p_i)
-        A->mult(p, Ap, comp_t);
+        A->mult(p, Ap, false, comp_t);
         App_inner = Ap.inner_product(p, NULL, comp_t);
         if (App_inner < 0.0)
         {

@@ -266,7 +266,7 @@ void EKCG_MinComm(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_ve
         // P = Z * (Z^T * A * Z)^{-1/2}
         // Cholesky of (Z^T * A * Z)
     if (bv_t) *bv_t -= RAPtor_MPI_Wtime();
-        A->mult(*Z, *AP, comp_t);
+        A->mult(*Z, *AP, tap, comp_t);
     if (bv_t) *bv_t += RAPtor_MPI_Wtime();
         Z->mult_T(*AP, rho, comp_t);
 
@@ -340,6 +340,7 @@ void EKCG_MinComm(ParCSRMatrix* A, ParVector& x, ParVector& b, int t, aligned_ve
         rho.values.assign(temp.begin()+(t*t), temp.end());
         temp.clear();
         // 4. Compute Z as usual 
+        RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, &(temp[0]), 2*t*t, RAPtor_MPI_DATA_T, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
 
         //AP->mult_T(*AP, gamma, comp_t);
         //AP_1->mult_T(*AP, rho, comp_t);

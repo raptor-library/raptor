@@ -33,7 +33,7 @@ void ParMatrix::mult(ParVector& x, ParVector& b, bool tap, double* comp_t)
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-    
+
     // Check that communication package has been initialized
     if (comm == NULL)
     {

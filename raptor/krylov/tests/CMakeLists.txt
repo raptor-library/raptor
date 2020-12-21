@@ -38,6 +38,21 @@ if (WITH_MPI)
     
     add_executable(par_cg_profiling par_cg_profiling.cpp)
     target_link_libraries(par_cg_profiling raptor ${MPI_LIBRARIES} googletest pthread)
+    
+    add_executable(par_cg_profiling_v2 par_cg_profiling_v2.cpp)
+    target_link_libraries(par_cg_profiling_v2 raptor ${MPI_LIBRARIES} googletest pthread)
+    
+    add_executable(par_ecg_profiling par_ecg_profiling.cpp)
+    target_link_libraries(par_ecg_profiling raptor ${MPI_LIBRARIES} googletest pthread)
+    
+    add_executable(mfem_convergence mfem_convergence.cpp)
+    target_link_libraries(mfem_convergence raptor ${MPI_LIBRARIES} googletest pthread)
+    
+    add_executable(mfem_convergence_10 mfem_convergence_10.cpp)
+    target_link_libraries(mfem_convergence_10 raptor ${MPI_LIBRARIES} googletest pthread)
+    
+    add_executable(mfem_convergence_25 mfem_convergence_25.cpp)
+    target_link_libraries(mfem_convergence_25 raptor ${MPI_LIBRARIES} googletest pthread)
 
 endif()
 

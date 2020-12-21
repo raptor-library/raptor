@@ -127,6 +127,9 @@ if (WITH_MPI)
     #add_test(ParBVectorRectangularTAPSpMVTest ${MPIRUN} -n 4 ./test_bv_tap_spmv_rectangular)
     #add_test(ParBVectorRectangularTAPSpMVTest ${MPIRUN} -n 8 ./test_bv_tap_spmv_rectangular)
     
+    add_executable(test_tap_25step_comm test_tap_25step_comm.cpp)
+    target_link_libraries(test_tap_25step_comm raptor ${MPI_LIBRARIES} googletest pthread )
+    
     add_executable(test_bv_tap_spmv_rectangular_tiny test_bv_tap_spmv_rectangular_tiny.cpp)
     target_link_libraries(test_bv_tap_spmv_rectangular_tiny raptor ${MPI_LIBRARIES} googletest pthread )
     add_test(ParBVectorRectangularTAPSpMVTinyTest ${MPIRUN} -n 8 ./test_bv_tap_spmv_rectangular_tiny)
@@ -134,5 +137,20 @@ if (WITH_MPI)
     add_executable(test_bv_tap_spmv_rectangular_medium test_bv_tap_spmv_rectangular_medium.cpp)
     target_link_libraries(test_bv_tap_spmv_rectangular_medium raptor ${MPI_LIBRARIES} googletest pthread )
     add_test(ParBVectorRectangularTAPSpMVMedTest ${MPIRUN} -n 12 ./test_bv_tap_spmv_rectangular_medium)
+    
+    add_executable(par_bvspmv_profiling par_bvspmv_profiling.cpp)
+    target_link_libraries(par_bvspmv_profiling raptor ${MPI_LIBRARIES} googletest pthread )
+    
+    add_executable(allreduce_profiling allreduce_profiling.cpp)
+    target_link_libraries(allreduce_profiling raptor ${MPI_LIBRARIES} googletest pthread )
+    
+    add_executable(par_spmv_profiling par_spmv_profiling.cpp)
+    target_link_libraries(par_spmv_profiling raptor ${MPI_LIBRARIES} googletest pthread )
+    
+    add_executable(par_bvinner_profiling par_bvinner_profiling.cpp)
+    target_link_libraries(par_bvinner_profiling raptor ${MPI_LIBRARIES} googletest pthread )
+    
+    add_executable(par_bvspmv_messages_profiling par_bvspmv_messages_profiling.cpp)
+    target_link_libraries(par_bvspmv_messages_profiling raptor ${MPI_LIBRARIES} googletest pthread )
     
 endif()
