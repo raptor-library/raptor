@@ -39,7 +39,8 @@ void CG(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res
 
     rr_inner = r.inner_product(r, NULL, comp_t);
     norm_r = sqrt(rr_inner);
-    res.emplace_back(norm_r / b_norm);
+    //res.emplace_back(norm_r / b_norm);
+    res.emplace_back(norm_r);
 
     if (norm_r != 0.0)
     {
@@ -91,7 +92,8 @@ void CG(ParCSRMatrix* A, ParVector& x, ParVector& b, aligned_vector<double>& res
         // Update next inner product
         rr_inner = next_inner;
         norm_r = sqrt(rr_inner);
-        res.emplace_back(norm_r / b_norm);
+        //res.emplace_back(norm_r / b_norm);
+        res.emplace_back(norm_r);
 
         iter++;
     }

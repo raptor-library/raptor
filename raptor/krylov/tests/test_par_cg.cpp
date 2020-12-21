@@ -45,7 +45,8 @@ TEST(ParCGTest, TestsInKrylov)
     for (int i = 0; i < residuals.size(); i++)
     {
         fscanf(f, "%lf\n", &res);
-        ASSERT_NEAR(res, residuals[i] * b_norm, 1e-06);
+        //ASSERT_NEAR(res, residuals[i] * b_norm, 1e-06);
+        ASSERT_NEAR(res, residuals[i], 1e-06);
     }
     fclose(f);
     
