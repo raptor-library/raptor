@@ -22,7 +22,7 @@ TEST(TAPAnisoSpMVTest, TestsInUtil)
     
     setenv("PPN", "4", 1);
     
-    int dim = 2;
+    /*int dim = 2;
     int grid[2] = {10, 10};
     double eps = 0.001;
     double theta = M_PI / 8.0;
@@ -32,12 +32,29 @@ TEST(TAPAnisoSpMVTest, TestsInUtil)
     //ParVector x;
 
     double* stencil = diffusion_stencil_2d(eps, theta);
-    A = par_stencil_grid(stencil, grid, dim);
+    A = par_stencil_grid(stencil, grid, dim);*/
 
-    // 1. SETUP TAP COMMUNICATORS THE WAY WE DO IN EXTEND HIERARCHY - INIT_TAP_COMMUNICATORS
+    int grid[3] = {5, 5, 5};
+    double* stencil = laplace_stencil_27pt();
+    ParCSRMatrix* A = par_stencil_grid(stencil, grid, 3);
+    if(rank==0) printf("A %d x %d\n", A->global_num_rows, A->global_num_rows);
 
-    // TEST SIMPLE TAP COMM
-    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, A->on_proc_column_map, false);
+    // SETUP DIFFERENT TAP COMMUNICATORS FOR DIFFERENT RANKS - INIT_TAP_COMMUNICATORS
+
+    /*if (rank % 2)
+    {
+        // SIMPLE TAP COMM
+        A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, A->on_proc_column_map, false);
+    }
+    else
+    {
+        // 3-step TAP COMM
+        A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, A->on_proc_column_map);
+    }*/
+   
+    int msg_cap = 1; 
+    // Optimal TAP COMM    
+    A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, A->on_proc_column_map, true, RAPtor_MPI_COMM_WORLD, msg_cap);
     
     // INSERT 2-step COMMUNICATION TEST HERE
     aligned_vector<int> states(5);
