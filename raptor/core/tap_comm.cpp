@@ -282,7 +282,8 @@ void TAPComm::form_local_R_par_comm(const aligned_vector<int>& off_node_column_m
         send_buffer.resize(2*local_R_recv->size_msgs);
     }
 
-
+    // Sending a message to each process this rank is supposed to receive from -- telling
+    // that process which values to send this rank
     ctr = 0;
     start_ctr = 0;
     for (int i = 0; i < local_R_recv->num_msgs; i++)
@@ -1249,6 +1250,22 @@ void TAPComm::form_optimal_R_par_comm(aligned_vector<int>& off_node_column_map,
         proc_idx = proc_size_idx[local_proc];
         idx = local_R_recv->indptr[proc_idx] + local_proc_sizes[local_proc]++;
         local_R_recv->indices[idx] = i;
+    }
+    
+    // --------------------- ADDED CODE --------------------- 
+    for (int i =0; i < num_procs; i++)
+    {
+        if (i == global_rank)
+        {
+            printf("%d %d indices: ", global_rank, local_rank);
+            for (int j = 0; j < local_R_recv->indices.size(); j++)
+            {
+                printf("%d ", local_R_recv->indices[j]);
+            }
+            printf("\n");
+        }
+        fflush(stdout);
+        RAPtor_MPI_Barrier(RAPtor_MPI_COMM_WORLD);
     }
     local_R_recv->finalize();
 
