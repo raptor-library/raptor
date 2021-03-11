@@ -104,7 +104,7 @@ ParCSRMatrix* readParMatrix(const char* filename,
         {
             for (int i = 0; i < A->local_num_rows; i++)
             {
-                nnz += idx;
+                nnz += row_sizes[i];
             }
         }
     }
