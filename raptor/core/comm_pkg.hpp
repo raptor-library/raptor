@@ -1675,7 +1675,7 @@ namespace raptor
 
             // Form global par comm.. Will recv from proc on which data
             // originates
-            form_simple_global_comm(off_node_col_to_proc);
+            form_optimal_global_comm(off_node_col_to_proc);
 
             // Adjust send indices (currently global vector indices) to be
             // index of global vector value from previous recv (only updating
@@ -1717,6 +1717,7 @@ namespace raptor
                 const aligned_vector<int>& off_node_to_off_proc, bool update_L = true);
         void form_optimal_R_par_comm(aligned_vector<int>& off_node_column_map,
                 aligned_vector<int>& off_node_col_to_proc);
+        void form_optimal_global_comm(aligned_vector<int>& off_node_col_to_proc);
 
         // Class Methods
         void init_double_comm(const double* values, const int block_size,

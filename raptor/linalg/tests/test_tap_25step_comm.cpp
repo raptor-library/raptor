@@ -23,20 +23,24 @@ TEST(TAPAnisoSpMVTest, TestsInUtil)
     setenv("PPN", "4", 1);
     
     int dim = 2;
-    int grid[2] = {10, 10};
+    int grid[2] = {5, 5};
     double eps = 0.001;
     double theta = M_PI / 8.0;
 
     ParCSRMatrix* A;
     ParCSRMatrix* A_3step;
     ParCSRMatrix* A_2step;
+    ParCSRMatrix* A_opt;
     ParCSRMatrix* S;
     //ParVector x;
 
     double* stencil = diffusion_stencil_2d(eps, theta);
     A_3step = par_stencil_grid(stencil, grid, dim);
     A_2step = par_stencil_grid(stencil, grid, dim);
+    A_opt = par_stencil_grid(stencil, grid, dim);
     A = par_stencil_grid(stencil, grid, dim);
+
+    //if (rank == 0) printf("A %d x %d\n", A->global_num_rows, A->global_num_rows);
 
     /*int grid[3] = {5, 5, 5};
     double* stencil = laplace_stencil_27pt();
@@ -60,11 +64,18 @@ TEST(TAPAnisoSpMVTest, TestsInUtil)
     A_2step->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, A->on_proc_column_map, false);
     // 3-step TAP COMM
     A_3step->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, A->on_proc_column_map);
+    // Optimal TAP COMM
+    A_opt->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, A->on_proc_column_map, false, RAPtor_MPI_COMM_WORLD, 1);
 
     NonContigData* local_R_recv_3step = (NonContigData*) A_3step->tap_comm->local_R_par_comm->recv_data;
     NonContigData* local_R_recv_2step = (NonContigData*) A_2step->tap_comm->local_R_par_comm->recv_data;
+    NonContigData* local_R_recv_opt = (NonContigData*) A_opt->tap_comm->local_R_par_comm->recv_data;
     NonContigData* local_R_send_3step = (NonContigData*) A_3step->tap_comm->local_R_par_comm->send_data;
     NonContigData* local_R_send_2step = (NonContigData*) A_2step->tap_comm->local_R_par_comm->send_data;
+    NonContigData* local_R_send_opt = (NonContigData*) A_opt->tap_comm->local_R_par_comm->send_data;
+
+    fflush(stdout);
+    MPI_Barrier(MPI_COMM_WORLD);
 
     for (int p = 0; p < num_procs; p++)
     {
@@ -87,6 +98,11 @@ TEST(TAPAnisoSpMVTest, TestsInUtil)
         fflush(stdout);
         MPI_Barrier(MPI_COMM_WORLD);
     }
+    
+    fflush(stdout);
+    if (rank == 0) printf("-------------------------------------\n");
+    fflush(stdout);
+    MPI_Barrier(MPI_COMM_WORLD);
     
     for (int p = 0; p < num_procs; p++)
     {
@@ -175,6 +191,7 @@ TEST(TAPAnisoSpMVTest, TestsInUtil)
     delete A;
     delete A_3step;
     delete A_2step;
+    delete A_opt;
     delete[] stencil;
 
     setenv("PPN", "16", 1);
