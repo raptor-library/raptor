@@ -971,7 +971,7 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
     return A;
 }
 
-void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm comm, bool simple)
+void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm comm, bool simple, double agg_percent)
 {
     /*********************************
      * Initialize 
@@ -1054,6 +1054,63 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm comm, bool simple)
         {
             *it = on_proc_to_new[*it];
         }
+    }
+    else if ((0.0 < agg_percent) && (agg_percent < 1.0))
+    {
+        // Initialize standard tap_comm
+        tap_comm = new TAPComm(partition, true);    
+        
+        /*********************************
+         * Split columns by processes, 
+         * on-node, and off-node 
+         * *******************************/
+        // Find process on which vector value associated with each column is
+        // stored
+        partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
+        
+        // Partition off_proc cols into on_node and off_node
+        tap_comm->split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
+               on_node_column_map, on_node_col_to_proc, on_node_to_off_proc,
+               off_node_column_map, off_node_col_to_proc, off_node_to_off_proc);
+
+        // Form local_L_par_comm: fully local communication (origin and
+        // destination processes both local to node)
+        tap_comm->form_local_L_par_comm(on_node_column_map, on_node_col_to_proc,
+                partition->first_local_col);
+        for (aligned_vector<int>::iterator it = tap_comm->local_L_par_comm->send_data->indices.begin();
+                it != tap_comm->local_L_par_comm->send_data->indices.end(); ++it)
+        {
+            *it = on_proc_to_new[*it];
+        }
+
+        // Form local recv communicator.  Will recv from local rank
+        // corresponding to global rank on which data originates.  E.g. if
+        // data is on rank r = (p, n), and my rank is s = (q, m), I will
+        // recv data from (p, m) OR will recv from a preceding rank that had
+        // additional space in its send buffer.
+        // **
+        tap_comm->form_optimal_R_par_comm(off_node_column_map, off_node_col_to_proc);
+
+        // Form global par comm.. Will recv from proc on which data
+        // originates OR will recv from a preceding rank that had additional space in its buffer
+        // ** Might also need to update this to take an "orig_procs" parameter
+        tap_comm->form_optimal_global_comm(off_node_col_to_proc);
+        
+        // Adjust send indices (currently global vector indices) to be
+        // index of global vector value from previous recv (only updating
+        // local_R to match position in global)
+        tap_comm->adjust_send_indices(partition->first_local_col);
+       
+        // ** TBD on whether this needs to be updated as well
+        tap_comm->update_recv(on_node_to_off_proc, off_node_to_off_proc, false);
+
+        for (aligned_vector<int>::iterator it = 
+                tap_comm->global_par_comm->send_data->indices.begin();
+                it != tap_comm->global_par_comm->send_data->indices.end(); ++it)
+        {
+            *it = on_proc_to_new[*it];
+        }
+    
     }
     else
     {

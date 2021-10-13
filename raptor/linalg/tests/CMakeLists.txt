@@ -153,4 +153,13 @@ if (WITH_MPI)
     add_executable(par_bvspmv_messages_profiling par_bvspmv_messages_profiling.cpp)
     target_link_libraries(par_bvspmv_messages_profiling raptor ${MPI_LIBRARIES} googletest pthread )
     
+    add_executable(par_bvspmv_messages_profiling_all par_bvspmv_messages_profiling_all.cpp)
+    target_link_libraries(par_bvspmv_messages_profiling_all raptor ${MPI_LIBRARIES} googletest pthread )
+    
+    add_executable(par_bvspmv_2step_messages par_bvspmv_2step_messages.cpp)
+    target_link_libraries(par_bvspmv_2step_messages raptor ${MPI_LIBRARIES} googletest pthread )
+    
+    add_executable(par_bvspmv_3step_messages par_bvspmv_3step_messages.cpp)
+    target_link_libraries(par_bvspmv_3step_messages raptor ${MPI_LIBRARIES} googletest pthread )
+    
 endif()

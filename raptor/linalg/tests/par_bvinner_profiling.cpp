@@ -58,7 +58,7 @@ int main(int _argc, char** _argv)
     temp = x.inner_product(x, inner_prods);
 
     // Perform profiling
-    int iterations = 100;
+    int iterations = 5;
     init_profile();
     for (int i =0; i < iterations; i++) temp = x.inner_product(x, inner_prods);
     // Finalize profile for communication timings
