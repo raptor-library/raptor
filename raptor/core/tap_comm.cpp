@@ -282,7 +282,8 @@ void TAPComm::form_local_R_par_comm(const aligned_vector<int>& off_node_column_m
         send_buffer.resize(2*local_R_recv->size_msgs);
     }
 
-
+    // Sending a message to each process this rank is supposed to receive from -- telling
+    // that process which values to send this rank
     ctr = 0;
     start_ctr = 0;
     for (int i = 0; i < local_R_recv->num_msgs; i++)
@@ -1163,6 +1164,194 @@ void TAPComm::update_recv(const aligned_vector<int>& on_node_to_off_proc,
     }
 }
 
+/**************************************************************
+*****   Gather off node nodes
+**************************************************************
+***** Gathers nodes with which any local processes communicates
+*****
+***** Parameters
+***** -------------
+***** off_node_column_map : aligned_vector<int>&
+*****    Vector holding rank's off_node_columns
+***** recv_nodes : aligned_vector<int>&
+*****    Returned holding all nodes with which any local
+*****    process communicates (union of off_node_col_to_node)
+***** msg_cap : int
+*****    Number of values to cap the message size at -- used
+*****    to determine which off-node received messages should
+*****    be conglomerated and which should be split
+**************************************************************/
+void TAPComm::form_optimal_R_par_comm(aligned_vector<int>& off_node_column_map,
+        aligned_vector<int>& off_node_col_to_proc)
+{
+    int rank, local_rank;
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_rank(topology->local_comm, &local_rank);
 
+    int proc, local_proc;
+    int proc_idx, idx;
+    int start, end;
+    int count;
+    RAPtor_MPI_Status recv_status;
+    int off_node_num_cols = off_node_column_map.size();
+    aligned_vector<int> local_proc_sizes(topology->PPN, 0);
+    aligned_vector<int> proc_size_idx(topology->PPN);
 
+    NonContigData* local_R_recv = (NonContigData*) local_R_par_comm->recv_data;
 
+    // Form local_R_par_comm recv_data (currently with global recv indices)
+    for (aligned_vector<int>::iterator it = off_node_col_to_proc.begin();
+            it != off_node_col_to_proc.end(); ++it)
+    {
+        local_proc = topology->get_local_proc(*it);
+        local_proc_sizes[local_proc]++;
+    }
+
+    // What we need to receive never changes -- but who we receive from
+    // might need to change
+    local_R_recv->size_msgs = 0;
+    local_R_recv->indptr[0] = local_R_recv->size_msgs;
+    for (int i = 0; i < topology->PPN; i++)
+    {
+        if (local_proc_sizes[i])
+        {
+            printf("%d local_proc_sizes[%d] %d\n", rank, i, local_proc_sizes[i]);
+            local_R_recv->num_msgs++;
+            local_R_recv->size_msgs += local_proc_sizes[i];
+            local_proc_sizes[i] = 0;
+
+            proc_size_idx[i] = local_R_recv->procs.size();
+            local_R_recv->procs.emplace_back(i);
+            local_R_recv->indptr.emplace_back(
+                    local_R_recv->size_msgs);
+        }
+    }
+    printf("%d num_msgs %d\n", rank, local_R_recv->num_msgs);
+    if (local_R_recv->size_msgs)
+    {
+        local_R_recv->indices.resize(local_R_recv->size_msgs);
+    }
+
+    for (int i = 0; i < off_node_num_cols; i++)
+    {
+        proc = off_node_col_to_proc[i];
+        local_proc = topology->get_local_proc(proc);
+        proc_idx = proc_size_idx[local_proc];
+        idx = local_R_recv->indptr[proc_idx] + local_proc_sizes[local_proc]++;
+        local_R_recv->indices[idx] = i;
+    }
+    local_R_recv->finalize();
+
+    // Communicate local_R recv_data so send_data can be formed
+    RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, local_proc_sizes.data(), topology->PPN, RAPtor_MPI_INT,
+            RAPtor_MPI_SUM, topology->local_comm);
+
+    printf("%d local_proc_sizes[local_rank] %d\n", rank, local_proc_sizes[local_rank]);
+
+    local_R_par_comm->recv_data->send(off_node_column_map.data(), 6543, topology->local_comm);
+    local_R_par_comm->send_data->probe(local_proc_sizes[local_rank], 6543, topology->local_comm);
+    local_R_par_comm->recv_data->waitall();
+}
+
+/**************************************************************
+***** Form Global Communication - for optimal multi-step comm 
+**************************************************************
+***** Determines inter-node communication based on the formation
+***** of local_R_par_comm 
+*****
+***** Parameters
+***** -------------
+***** off_node_column_map : aligned_vector<int>&
+*****    Vector holding rank's off_node_columns
+***** recv_nodes : aligned_vector<int>&
+*****    Returned holding all nodes with which any local
+*****    process communicates (union of off_node_col_to_node)
+***** msg_cap : int
+*****    Number of values to cap the message size at -- used
+*****    to determine which off-node received messages should
+*****    be conglomerated and which should be split
+**************************************************************/
+void TAPComm::form_optimal_global_comm(aligned_vector<int>& off_proc_col_to_proc)
+{
+    int rank;
+    int num_procs;
+    int proc, start, end;
+    int finished, msg_avail;
+    int count;
+    int idx, proc_idx;
+    int global_idx;
+    RAPtor_MPI_Status recv_status;
+    RAPtor_MPI_Request barrier_request;
+
+    RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+    RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
+
+    aligned_vector<int> proc_sizes(num_procs, 0);
+    aligned_vector<int> proc_ctr;
+
+    NonContigData* local_R_recv = (NonContigData*) local_R_par_comm->recv_data;
+    NonContigData* global_recv = (NonContigData*) global_par_comm->recv_data;
+
+    // 1. Conglomerate messages from the 2-step communicator
+    // 2. Messages that are consumed result in adding a message to local S par comm
+    // 3. Update the message sender for the coinciding message in local R par comm,
+    //    the local sender should now be the paired process of the one that consumed the message 
+
+    // Communicate processes on which each index originates
+    local_R_par_comm->communicate_T(off_proc_col_to_proc.data());
+    aligned_vector<int>& int_buffer = local_R_par_comm->send_data->get_buffer<int>();
+
+    for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
+    {
+        proc = int_buffer[i];
+        if (proc_sizes[proc] == 0)
+        {
+            global_recv->procs.emplace_back(proc);
+        }
+        proc_sizes[proc]++;
+    }
+
+    global_recv->num_msgs = global_recv->procs.size();
+    printf("%d global_recv->num_msgs %d\n", rank, global_recv->num_msgs);
+    global_recv->indptr[0] = 0;
+    global_recv->size_msgs = 0;
+    for (int i = 0; i < global_recv->num_msgs; i++)
+    {
+        proc = global_recv->procs[i];
+        global_recv->size_msgs += proc_sizes[proc];
+        proc_sizes[proc] = i; // Will now use this for proc_idx
+        global_recv->indptr.emplace_back(global_recv->size_msgs);
+    }
+    if (global_recv->size_msgs)
+    {
+        global_recv->indices.resize(global_recv->size_msgs);
+        proc_ctr.resize(global_recv->num_msgs, 0);
+    }
+
+    for (int i = 0; i < local_R_par_comm->send_data->size_msgs; i++)
+    {
+        global_idx = local_R_par_comm->send_data->indices[i];
+        proc = int_buffer[i];
+        proc_idx = proc_sizes[proc];
+        idx = global_recv->indptr[proc_idx] + proc_ctr[proc_idx]++;
+        global_recv->indices[idx] = global_idx;
+    }
+    global_recv->finalize();
+
+    // Communicate global recv_data so send_data can be formed (dynamic comm)
+    aligned_vector<int> recv_sizes(num_procs, 0);
+    for (int i = 0; i < global_recv->num_msgs; i++)
+        recv_sizes[global_recv->procs[i]] = global_recv->indptr[i+1] - global_recv->indptr[i];
+    RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, recv_sizes.data(), num_procs, RAPtor_MPI_INT, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
+
+    for (int i = 0; i < global_recv->num_msgs; i++)
+    {
+        proc = global_recv->procs[i];
+        start = global_recv->indptr[i];
+        end = global_recv->indptr[i+1];
+        RAPtor_MPI_Isend(&(global_recv->indices[start]), end - start, RAPtor_MPI_INT,
+                proc, 6789, RAPtor_MPI_COMM_WORLD, &(global_recv->requests[i]));
+    }
+    global_par_comm->send_data->probe(recv_sizes[rank], 6789, RAPtor_MPI_COMM_WORLD);
+    global_par_comm->recv_data->waitall();
+}

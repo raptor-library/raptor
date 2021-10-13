@@ -13,7 +13,7 @@ using namespace raptor;
 
 // Functions used to help with message profiling
 void print_internode_comm(Topology* topology, aligned_vector<int> num_msgs, aligned_vector<int> size_msgs,
-        aligned_vector<int> node_size_msgs, FILE* filename)
+        aligned_vector<int> node_size_msgs)
 {
     int n, max_n;
     int rank, rank_node, rank_socket;
@@ -28,8 +28,8 @@ void print_internode_comm(Topology* topology, aligned_vector<int> num_msgs, alig
 
     // Number of processes each process talks to 
     n = num_msgs[6] + num_msgs[7] + num_msgs[8];
-    fprintf(filename, "Num processes with which proc communicates: %d\n", n);
-    //printf("Rank %d Rank Node %d Num processes with which proc communicates: %d\n", rank, rank_node, n);
+    //fprintf(filename, "Num processes with which proc communicates: %d\n", n);
+    printf("Rank %d Rank Node %d Num processes with which proc communicates: %d\n", rank, rank_node, n);
     //RAPtor_MPI_Reduce(&n, &max_n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     //if (rank == 0) printf("Max num processes with which each proc communicates: %d\n", max_n);
 
@@ -40,8 +40,8 @@ void print_internode_comm(Topology* topology, aligned_vector<int> num_msgs, alig
     {
         if (node_size_msgs[i]) n++;
     }
-    fprintf(filename, "Num nodes with which proc communicates: %d\n", n);
-    //printf("Rank %d Rank Node %d Num nodes with which proc communicates: %d\n", rank, rank_node, n);
+    //fprintf(filename, "Num nodes with which proc communicates: %d\n", n);
+    printf("Rank %d Rank Node %d Num nodes with which proc communicates: %d\n", rank, rank_node, n);
     //RAPtor_MPI_Reduce(&n, &max_n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     //if (rank == 0) printf("Max num nodes with with each process communicates: %d\n", max_n);
 
@@ -53,16 +53,16 @@ void print_internode_comm(Topology* topology, aligned_vector<int> num_msgs, alig
     {
         if (node_size_msgs[i]) n++;
     }
-    fprintf(filename, "Num nodes with which node communicates: %d\n", n);
-    //printf("Rank %d Rank Node %d Num nodes with which node communicates: %d\n", rank, rank_node, n);
+    //fprintf(filename, "Num nodes with which node communicates: %d\n", n);
+    printf("Rank %d Rank Node %d Num nodes with which node communicates: %d\n", rank, rank_node, n);
     //RAPtor_MPI_Reduce(&n, &max_n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     //if (rank == 0) printf("Max num nodes with with each node communicates: %d\n", max_n);
 
     // Inter-node bytes sent by process
     // Procwise bytes (total sent by process)
     n = size_msgs[6] + size_msgs[7] + size_msgs[8];
-    fprintf(filename, "Inter-node bytes sent by proc: %d\n", n);
-    //printf("Rank %d Rank Node %d Inter-node bytes sent by proc: %d\n", rank, rank_node, n);
+    //fprintf(filename, "Inter-node bytes sent by proc: %d\n", n);
+    printf("Rank %d Rank Node %d Inter-node bytes sent by proc: %d\n", rank, rank_node, n);
     //RAPtor_MPI_Reduce(&n, &max_n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     //if (rank == 0) printf("Max bytes sent by any process: %d\n", max_n);
 
@@ -75,8 +75,8 @@ void print_internode_comm(Topology* topology, aligned_vector<int> num_msgs, alig
         if (node_size_msgs[i] > n)
             n = node_size_msgs[i];
     }
-    fprintf(filename, "Max inter-node bytes sent beween this node and another node: %d\n", n);
-    //printf("Rank %d Rank Node %d Max inter-node bytes sent beween this node and another node: %d\n", rank, rank_node, n);
+    //fprintf(filename, "Max inter-node bytes sent beween this node and another node: %d\n", n);
+    printf("Rank %d Rank Node %d Max inter-node bytes sent beween this node and another node: %d\n", rank, rank_node, n);
     //RAPtor_MPI_Reduce(&n, &max_n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     //if (rank == 0) printf("Max bytes sent between any pair of nodes: %d\n", max_n);
 
@@ -88,15 +88,15 @@ void print_internode_comm(Topology* topology, aligned_vector<int> num_msgs, alig
         // Nodewise Bytes (total sent by node)
         n += node_size_msgs[i];
     }
-    fprintf(filename, "Max bytes sent by node: %d\n", n);
-    //printf("Rank %d Rank Node %d Max bytes sent by node: %d\n", rank, rank_node, n);
+    //fprintf(filename, "Max bytes sent by node: %d\n", n);
+    printf("Rank %d Rank Node %d Max bytes sent by node: %d\n", rank, rank_node, n);
     //RAPtor_MPI_Reduce(&n, &max_n, 1, RAPtor_MPI_INT, RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
     //if (rank == 0) printf("Max bytes sent by any node: %d\n", max_n);
      
 }
 
 void print_comm(aligned_vector<int>& num_msgs, aligned_vector<int>& size_msgs, 
-        aligned_vector<int>& node_size_msgs, FILE* filename)
+        aligned_vector<int>& node_size_msgs)
 {
     int rank;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
@@ -117,8 +117,8 @@ void print_comm(aligned_vector<int>& num_msgs, aligned_vector<int>& size_msgs,
         nl += *it;
         n += *it;
     }
-    fprintf(filename, "Total Num Msgs Sent by Proc: %ld\n", nl);
-    //printf("Rank %d Rank Node -- Total Num Msgs Sent by Proc: %ld\n", rank, nl);
+    //fprintf(filename, "Total Num Msgs Sent by Proc: %ld\n", nl);
+    printf("Rank %d Rank Node -- Total Num Msgs Sent by Proc: %ld\n", rank, nl);
 
     // Sum Messages Among Processes
     //RAPtor_MPI_Reduce(&nl, &sum_nl, 1, RAPtor_MPI_LONG, RAPtor_MPI_SUM, 0, RAPtor_MPI_COMM_WORLD);
@@ -144,8 +144,8 @@ void print_comm(aligned_vector<int>& num_msgs, aligned_vector<int>& size_msgs,
         n += *it;
     }
 
-    fprintf(filename, "Total Size Msgs for Proc: %ld\n", nl);
-    //printf("Rank %d Rank Node -- Total Size Msgs for Proc: %ld\n", rank, nl);
+    //fprintf(filename, "Total Size Msgs for Proc: %ld\n", nl);
+    printf("Rank %d Rank Node -- Total Size Msgs for Proc: %ld\n", rank, nl);
     // Sum Message Sizes Among Processes
     //RAPtor_MPI_Allreduce(&nl, &sum_nl, 1, RAPtor_MPI_LONG, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
     //if (rank == 0) printf("Total Size Msgs: %ld\n", sum_nl);
@@ -161,7 +161,7 @@ void print_comm(aligned_vector<int>& num_msgs, aligned_vector<int>& size_msgs,
         }
     }
 
-    aligned_vector<int> max_num_msgs(num_msgs.size());
+    /*aligned_vector<int> max_num_msgs(num_msgs.size());
     aligned_vector<int> max_size_msgs(size_msgs.size());
     RAPtor_MPI_Reduce(num_msgs.data(), max_num_msgs.data(), num_msgs.size(), RAPtor_MPI_INT,
             RAPtor_MPI_MAX, 0, RAPtor_MPI_COMM_WORLD);
@@ -180,10 +180,10 @@ void print_comm(aligned_vector<int>& num_msgs, aligned_vector<int>& size_msgs,
                         max_size_msgs[i*n_protocols + j]);
             }
         }
-    }
+    }*/
 }
 
-void calc_and_print(Topology* topology, CommData* comm_data, FILE* filename)
+void calc_and_print(Topology* topology, CommData* comm_data)
 {
     int rank, rank_node, rank_socket;
     int ranks_per_socket;
@@ -244,11 +244,11 @@ void calc_and_print(Topology* topology, CommData* comm_data, FILE* filename)
         }
     }
 
-    print_internode_comm(topology, num_msgs, size_msgs, node_size_msgs, filename);
-    print_comm(num_msgs, size_msgs, node_size_msgs, filename);
+    print_internode_comm(topology, num_msgs, size_msgs, node_size_msgs);
+    print_comm(num_msgs, size_msgs, node_size_msgs);
 }
 
-void calc_and_print_all_messages(Topology* topology, CommData* comm_data, FILE* filename)
+void calc_and_print_all_messages(Topology* topology, CommData* comm_data)
 {
     int rank, rank_node, rank_socket;
     int ranks_per_socket;
@@ -309,8 +309,8 @@ void calc_and_print_all_messages(Topology* topology, CommData* comm_data, FILE* 
         }
     }
 
-    print_internode_comm(topology, num_msgs, size_msgs, node_size_msgs, filename);
-    print_comm(num_msgs, size_msgs, node_size_msgs, filename);
+    print_internode_comm(topology, num_msgs, size_msgs, node_size_msgs);
+    print_comm(num_msgs, size_msgs, node_size_msgs);
 }
 
 int get_idx(NonContigData* comm_data, int j)
@@ -327,7 +327,7 @@ int main(int _argc, char** _argv)
 {
     MPI_Init(&_argc, &_argv);
 
-    //setenv("PPN", "16", 1);
+    setenv("PPN", "16", 1);
 
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -344,7 +344,7 @@ int main(int _argc, char** _argv)
     int nrhs = atoi(_argv[2]);
 
     // Matrix market filenames
-    const char* mat1 = "../../../../../mfem_matrices/mfem_dg_diffusion_331.pm";
+    const char* mat1 = "../../../../../mtx_market_matrices/mfem_dg_diffusion_331.pm";
     const char* mat2 = "../../../../../mtx_market_matrices/G3_circuit.pm";
     const char* mat3 = "../../../../../mtx_market_matrices/Hook_1498.pm";
 
@@ -355,33 +355,12 @@ int main(int _argc, char** _argv)
 
     // Process filename
     char filename[150];
-    if (mat == 1)
-    {
-        //strcpy(filename, "../../../../../modelling_output/mfem_dg_diffusion/procs256/p");
-        //strcpy(filename, "../../../../../modelling_output/mfem_dg_diffusion/procs512/p");
-        //strcpy(filename, "../../../../../modelling_output/mfem_dg_diffusion/procs1024/p");
-        //strcpy(filename, "../../../../../modelling_output/mfem_dg_diffusion/procs2048/p");
-        //strcpy(filename, "../../../../../modelling_output/mfem_dg_diffusion/procs4096/p");
-        strcpy(filename, "../../../../../modelling_output/mfem_dg_diffusion/procs8192/p");
-    }
-    else if (mat == 2)
-    {
-        //strcpy(filename, "../../../../../modelling_output/g3circuit/procs256/p");
-        //strcpy(filename, "../../../../../modelling_output/g3circuit/procs512/p");
-        //strcpy(filename, "../../../../../modelling_output/g3circuit/procs1024/p");
-        //strcpy(filename, "../../../../../modelling_output/g3circuit/procs2048/p");
-        //strcpy(filename, "../../../../../modelling_output/g3circuit/procs4096/p");
-        strcpy(filename, "../../../../../modelling_output/g3circuit/procs8192/p");
-    }
-    else if (mat == 3)
-    {
-        //strcpy(filename, "../../../../../modelling_output/hook1498/procs256/p");
-        //strcpy(filename, "../../../../../modelling_output/hook1498/procs512/p");
-        //strcpy(filename, "../../../../../modelling_output/hook1498/procs1024/p");
-        //strcpy(filename, "../../../../../modelling_output/hook1498/procs2048/p");
-        //strcpy(filename, "../../../../../modelling_output/hook1498/procs4096/p");
-        strcpy(filename, "../../../../../modelling_output/hook1498/procs8192/p");
-    }
+    //strcpy(filename, "../../../../../modelling_output/mfem_dg_diffusion/procs_256/p");
+    strcpy(filename, "../../../../../modelling_output/mfem_dg_diffusion/procs_512/p");
+    //strcpy(filename, "../../../../../modelling_output/mfem_dg_diffusion/procs_1024/p");
+    //strcpy(filename, "../../../../../modelling_output/mfem_dg_diffusion/procs_2048/p");
+    //strcpy(filename, "../../../../../modelling_output/mfem_dg_diffusion/procs_4096/p");
+    //strcpy(filename, "../../../../../modelling_output/mfem_dg_diffusion/procs_8192/p");
     strcat(filename, p_string.c_str());
     strcat(filename, ".out");
 
@@ -411,17 +390,25 @@ int main(int _argc, char** _argv)
     // Perform bvspmv to make sure communicator is setup
     A->mult(x, b);
     MPI_Barrier(MPI_COMM_WORLD);
-    
-    //calc_and_print(A->comm->topology, A->comm->send_data);
 
     // Print message profiling
     // Print out residuals to file
-    FILE *f;
-    f = fopen(filename, "w");
-    calc_and_print(A->comm->topology, A->comm->send_data, f);
-    fclose(f);
+    int rank_node = A->comm->topology->get_node(rank);
+    int num_nodes = num_procs / A->comm->topology->PPN;
+    for (int i=0; i < num_nodes; i++)
+    {
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (i == rank_node)
+        {
+            //FILE *f;
+            //f = fopen(filename, "w");
+            calc_and_print(A->comm->topology, A->comm->send_data);
+            //fclose(f);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
     
-    //setenv("PPN", "16", 1);
+    setenv("PPN", "16", 1);
     
     delete A;
     MPI_Finalize();
