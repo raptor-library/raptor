@@ -971,7 +971,7 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
     return A;
 }
 
-void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm comm, bool simple, double agg_percent)
+void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm comm, bool simple, int msg_cap)
 {
     /*********************************
      * Initialize 
@@ -1055,7 +1055,7 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm comm, bool simple, double
             *it = on_proc_to_new[*it];
         }
     }
-    else if ((0.0 < agg_percent) && (agg_percent < 1.0))
+    else if (0 < msg_cap)
     {
         // Initialize standard tap_comm
         tap_comm = new TAPComm(partition, true);    
@@ -1089,12 +1089,12 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm comm, bool simple, double
         // recv data from (p, m) OR will recv from a preceding rank that had
         // additional space in its send buffer.
         // **
-        tap_comm->form_optimal_R_par_comm(off_node_column_map, off_node_col_to_proc);
+        tap_comm->form_optimal_R_par_comm(off_node_column_map, off_node_col_to_proc, orig_procs, msg_cap);
 
         // Form global par comm.. Will recv from proc on which data
         // originates OR will recv from a preceding rank that had additional space in its buffer
         // ** Might also need to update this to take an "orig_procs" parameter
-        tap_comm->form_optimal_global_comm(off_node_col_to_proc);
+        tap_comm->form_optimal_global_comm(orig_procs);
         
         // Adjust send indices (currently global vector indices) to be
         // index of global vector value from previous recv (only updating

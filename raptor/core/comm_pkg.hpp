@@ -1624,8 +1624,9 @@ namespace raptor
             RAPtor_MPI_Comm_size(comm, &num_procs);
 
             // Initialize class variables
-            local_S_par_comm = NULL;
-            local_R_par_comm = new ParComm(partition, 3456, partition->topology->local_comm, 
+            local_S_par_comm = new ParComm(partition, 2345, partition->topology->local_comm, 
+                    new DuplicateData());
+            local_R_par_comm = new ParComm(partition, 3456, partition->topology->local_comm,
                     new NonContigData());
             local_L_par_comm = new ParComm(partition, 4567, partition->topology->local_comm,
                     new NonContigData());
@@ -1637,9 +1638,12 @@ namespace raptor
             aligned_vector<int> on_node_column_map;
             aligned_vector<int> on_node_col_to_proc;
             aligned_vector<int> off_node_column_map;
-            aligned_vector<int> off_node_col_to_proc;
+            aligned_vector<int> off_node_col_to_node;
             aligned_vector<int> on_node_to_off_proc;
             aligned_vector<int> off_node_to_off_proc;
+            aligned_vector<int> recv_nodes;
+            aligned_vector<int> orig_procs;
+            aligned_vector<int> node_to_local_proc;
 
             // Find process on which vector value associated with each column is
             // stored
@@ -1648,9 +1652,9 @@ namespace raptor
             // Partition off_proc cols into on_node and off_node
             split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
                    on_node_column_map, on_node_col_to_proc, on_node_to_off_proc,
-                   off_node_column_map, off_node_col_to_proc, off_node_to_off_proc);
+                   off_node_column_map, off_node_col_to_node, off_node_to_off_proc);
 
-            for (int i =0; i < num_procs; i++)
+            /*for (int i =0; i < num_procs; i++)
             {
                 if (i == rank)
                 {
@@ -1663,23 +1667,24 @@ namespace raptor
                 }
                 fflush(stdout);
                 RAPtor_MPI_Barrier(RAPtor_MPI_COMM_WORLD);
-            }
+            }*/
 
-            // Form local recv communicator.  Will recv from local rank
-            // corresponding to global rank on which data originates.  E.g. if
-            // data is on rank r = (p, n), and my rank is s = (q, m), I will
-            // recv data from (p, m).
-            form_optimal_R_par_comm(off_node_column_map, off_node_col_to_proc);
+            // NEED TO INSERT A CHECK TO DETERMINE IF WE SHOULD FALL BACK TO 2-STEP OR 3-STEP
 
-            // Rebalance R_par_comm -- conglomerating some of the messages
+            // Gather all nodes with which any local process must communication
+            form_optimal_R_par_comm(off_node_column_map, off_node_col_to_node, 
+                    orig_procs, msg_cap);
 
-            // Form global par comm.. Will recv from proc on which data
-            // originates
-            form_optimal_global_comm(off_node_col_to_proc);
+            // Find global processes with which rank communications
+            form_optimal_global_comm(orig_procs);
 
-            // Adjust send indices (currently global vector indices) to be
-            // index of global vector value from previous recv (only updating
-            // local_R to match position in global)
+            // THIS NEEDS TO BE UPDATED TO BE AN OPTIMAL S PAR COMM CALL
+            // Form local_S_par_comm: initial distribution of values among local
+            // processes, before inter-node communication
+            form_local_S_par_comm(orig_procs);
+
+            // Adjust send indices (currently global vector indices) to be index 
+            // of global vector value from previous recv
             adjust_send_indices(partition->first_local_col);
 
             // Form local_L_par_comm: fully local communication (origin and
@@ -1715,8 +1720,9 @@ namespace raptor
         void form_simple_global_comm(aligned_vector<int>& off_node_col_to_proc);
         void update_recv(const aligned_vector<int>& on_node_to_off_proc,
                 const aligned_vector<int>& off_node_to_off_proc, bool update_L = true);
-        void form_optimal_R_par_comm(aligned_vector<int>& off_node_column_map,
-                aligned_vector<int>& off_node_col_to_proc);
+        void form_optimal_R_par_comm(const aligned_vector<int>& off_node_column_map,
+                const aligned_vector<int>& off_node_col_to_node,
+                aligned_vector<int>& orig_procs, int msg_cap);
         void form_optimal_global_comm(aligned_vector<int>& off_node_col_to_proc);
 
         // Class Methods
