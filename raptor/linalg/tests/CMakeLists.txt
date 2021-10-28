@@ -127,9 +127,6 @@ if (WITH_MPI)
     #add_test(ParBVectorRectangularTAPSpMVTest ${MPIRUN} -n 4 ./test_bv_tap_spmv_rectangular)
     #add_test(ParBVectorRectangularTAPSpMVTest ${MPIRUN} -n 8 ./test_bv_tap_spmv_rectangular)
     
-    add_executable(test_tap_25step_comm test_tap_25step_comm.cpp)
-    target_link_libraries(test_tap_25step_comm raptor ${MPI_LIBRARIES} googletest pthread )
-    
     add_executable(test_bv_tap_spmv_rectangular_tiny test_bv_tap_spmv_rectangular_tiny.cpp)
     target_link_libraries(test_bv_tap_spmv_rectangular_tiny raptor ${MPI_LIBRARIES} googletest pthread )
     add_test(ParBVectorRectangularTAPSpMVTinyTest ${MPIRUN} -n 8 ./test_bv_tap_spmv_rectangular_tiny)

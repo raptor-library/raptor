@@ -1181,9 +1181,9 @@ void TAPComm::update_recv(const aligned_vector<int>& on_node_to_off_proc,
 *****                        to determine which off-node received messages should
 *****                        be conglomerated and which should be split
 **************************************************************/
-void TAPComm::form_optimal_R_par_comm(const aligned_vector<int>& off_node_column_map,
-        const aligned_vector<int>& off_node_col_to_proc,
-        aligned_vector<int>& orig_procs, int msg_cap)
+void TAPComm::form_optimal_local_R_par_comm(const aligned_vector<int>& off_node_column_map,
+                                            const aligned_vector<int>& off_node_col_to_proc,
+                                            aligned_vector<int>& orig_procs, int msg_cap)
 {
     int local_rank;
     RAPtor_MPI_Comm_rank(topology->local_comm, &local_rank);
@@ -1302,7 +1302,7 @@ void TAPComm::form_optimal_R_par_comm(const aligned_vector<int>& off_node_column
                 j = p[j];
             }
         }
-
+        
         // ** SHOULD CHECK MESSAGE SIZES AND SPLIT THEM HERE
         aligned_vector<int> tmp_recv_data;
         aligned_vector<int> all_node_msg_counts(topology->PPN, 0);
@@ -1383,11 +1383,12 @@ void TAPComm::form_optimal_R_par_comm(const aligned_vector<int>& off_node_column
         }
         // **
 
+        // ** UPDATED TO RUN THROUGH NEW RECV NODES
         // Map recv nodes to local processes
         local_proc = 0;
         node_to_local_proc.resize(topology->num_nodes);
-        for (aligned_vector<int>::iterator it = recv_nodes.begin();
-                it != recv_nodes.end(); ++it)
+        for (aligned_vector<int>::iterator it = new_recv_nodes.begin();
+                it != new_recv_nodes.end(); ++it)
         {
             node_to_local_proc[*it] = local_proc++ ;
             if (local_proc >= topology->PPN)

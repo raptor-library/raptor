@@ -26,6 +26,8 @@ int main(int _argc, char** _argv)
     int mat = atoi(_argv[1]);
     int nrhs = atoi(_argv[2]);
     int nap_version = atoi(_argv[3]);
+    int msg_cap;
+    if (nap_version == 4) msg_cap = atoi(_argv[4]);
 
     // Matrix market filenames
     const char* mat1 = "../../../../../mfem_matrices/mfem_dg_diffusion_331.pm";
@@ -68,6 +70,13 @@ int main(int _argc, char** _argv)
         if (rank == 0) printf("3-step Comm\n");
         // tap comm will get created when first tap aware spmv called
         A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, A->on_proc_column_map);
+        tap_comm = true;
+    }
+    else if (nap_version == 4) 
+    {
+        if (rank == 0) printf("Optimal Comm\n");
+        // tap comm will get created when first tap aware spmv called
+        A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map, A->on_proc_column_map, true, RAPtor_MPI_COMM_WORLD, msg_cap);
         tap_comm = true;
     }
     else

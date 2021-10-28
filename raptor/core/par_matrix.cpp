@@ -1057,9 +1057,9 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm comm, bool simple, int ms
     }
     else if (0 < msg_cap)
     {
-        // Initialize standard tap_comm
+        // Initialize optimal tap_comm
         tap_comm = new TAPComm(partition, true);    
-        
+
         /*********************************
          * Split columns by processes, 
          * on-node, and off-node 
@@ -1067,7 +1067,7 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm comm, bool simple, int ms
         // Find process on which vector value associated with each column is
         // stored
         partition->form_col_to_proc(off_proc_column_map, off_proc_col_to_proc);
-        
+
         // Partition off_proc cols into on_node and off_node
         tap_comm->split_off_proc_cols(off_proc_column_map, off_proc_col_to_proc,
                on_node_column_map, on_node_col_to_proc, on_node_to_off_proc,
@@ -1083,30 +1083,30 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm comm, bool simple, int ms
             *it = on_proc_to_new[*it];
         }
 
-        // Form local recv communicator.  Will recv from local rank
-        // corresponding to global rank on which data originates.  E.g. if
-        // data is on rank r = (p, n), and my rank is s = (q, m), I will
-        // recv data from (p, m) OR will recv from a preceding rank that had
-        // additional space in its send buffer.
-        // **
-        tap_comm->form_optimal_R_par_comm(off_node_column_map, off_node_col_to_proc, orig_procs, msg_cap);
 
-        // Form global par comm.. Will recv from proc on which data
-        // originates OR will recv from a preceding rank that had additional space in its buffer
-        // ** Might also need to update this to take an "orig_procs" parameter
-        tap_comm->form_optimal_global_comm(orig_procs);
-        
-        // Adjust send indices (currently global vector indices) to be
-        // index of global vector value from previous recv (only updating
-        // local_R to match position in global)
+        /*********************************
+         * Form standard 3-step 
+         * node-aware communicator 
+         * *******************************/
+        // Gather all nodes with which any local process must communication
+        tap_comm->form_optimal_local_R_par_comm(off_node_column_map, off_node_col_to_proc, 
+                                                orig_procs, msg_cap);
+
+        // Find global processes with which rank communications
+        tap_comm->form_optimal_global_par_comm(orig_procs);
+
+        // Form local_S_par_comm: initial distribution of values among local
+        // processes, before inter-node communication
+        tap_comm->form_optimal_local_S_par_comm(orig_procs);
+
+        // Adjust send indices (currently global vector indices) to be index 
+        // of global vector value from previous recv
         tap_comm->adjust_send_indices(partition->first_local_col);
-       
-        // ** TBD on whether this needs to be updated as well
-        tap_comm->update_recv(on_node_to_off_proc, off_node_to_off_proc, false);
 
-        for (aligned_vector<int>::iterator it = 
-                tap_comm->global_par_comm->send_data->indices.begin();
-                it != tap_comm->global_par_comm->send_data->indices.end(); ++it)
+
+        tap_comm->update_recv(on_node_to_off_proc, off_node_to_off_proc);
+        for (aligned_vector<int>::iterator it = tap_comm->local_S_par_comm->send_data->indices.begin();
+                it != tap_comm->local_S_par_comm->send_data->indices.end(); ++it)
         {
             *it = on_proc_to_new[*it];
         }
