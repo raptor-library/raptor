@@ -83,13 +83,11 @@ void vec_sort(std::vector<T>& vec1, std::vector<T>& vec2,
         done[i] = true;
         prev_k = i;
         k = p[i];
-        int idx1 = prev_k + start;
-        int idx2 = k + start;
         while (i != k)
         {
-            std::swap(vec1[idx1], vec1[idx2]);
-            std::swap(vec2[idx1], vec2[idx2]);
-            std::swap(vec3[idx1], vec3[idx2]);
+            std::swap(vec1[prev_k + start], vec1[k + start]);
+            std::swap(vec2[prev_k + start], vec2[k + start]);
+            std::swap(vec3[prev_k + start], vec3[k + start]);
             done[k] = true;
             prev_k = k;
             k = p[k];

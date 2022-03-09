@@ -593,8 +593,7 @@ void sort_helper(CSRMatrix* A, std::vector<T>& vals)
         return;
     }
 
-    // Sort the columns of each row (and data accordingly) and remove
-    // duplicates (summing values together)
+    // Sort the columns of each row (and data accordingly) 
     for (int row = 0; row < A->n_rows; row++)
     {
         start = A->idx1[row];

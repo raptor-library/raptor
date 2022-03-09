@@ -1,8 +1,5 @@
 include_directories(${raptor_INCDIR})
 
-add_executable(example example.cpp)
-target_link_libraries(example raptor ${MPI_LIBRARIES})
-
 add_executable(benchmark_spmv benchmark_spmv.cpp)
 target_link_libraries(benchmark_spmv raptor)
 
@@ -21,8 +18,20 @@ if (WITH_HYPRE)
 
 endif()
 if (WITH_MPI)
+    add_executable(example example.cpp)
+    target_link_libraries(example raptor ${MPI_LIBRARIES})
+
+    add_executable(matop_example matop_example.cpp)
+    target_link_libraries(matop_example raptor ${MPI_LIBRARIES})
+
     add_executable(benchmark_setup benchmark_setup.cpp)
     target_link_libraries(benchmark_setup raptor ${MPI_LIBRARIES})
+
+    add_executable(coo_example coo_example.cpp)
+    target_link_libraries(coo_example raptor ${MPI_LIBRARIES})
+
+    add_executable(csr_example csr_example.cpp)
+    target_link_libraries(csr_example raptor ${MPI_LIBRARIES})
 
     add_executable(benchmark_solve benchmark_solve.cpp)
     target_link_libraries(benchmark_solve raptor ${MPI_LIBRARIES})

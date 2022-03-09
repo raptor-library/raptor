@@ -114,7 +114,9 @@ void ParMatrix::condense_off_proc()
 void ParMatrix::finalize(bool create_comm)
 {
     on_proc->sort();
+    on_proc->remove_duplicates();
     off_proc->sort();
+    off_proc->remove_duplicates();
 
     int rank, num_procs;
     RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
