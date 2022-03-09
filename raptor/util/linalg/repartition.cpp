@@ -160,7 +160,7 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, std::vector<in
     for (int i = 0; i < num_sends; i++)
     {
         prev_ctr = ctr;
-        proc = partition[i];
+        proc = send_procs[i];
         start = send_ptr[i];
         end = send_ptr[i+1];
         n_rows = end - start;

@@ -138,11 +138,16 @@ void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 
         for (int i = 0; i < A->local_num_rows; i++)
         {    
-            diag = 0;
             row_sum = 0;
 
-            start = A->on_proc->idx1[i]+1;
+      
+            start = A->on_proc->idx1[i];
             end = A->on_proc->idx1[i+1];
+            if (start == end)
+                continue;
+
+            diag = A->on_proc->vals[start++];
+
             for (int j = start; j < end; j++)
             {
                 col = A->on_proc->idx2[j];
