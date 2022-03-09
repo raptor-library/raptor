@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    // Create Two Laplacian Matrices (nxm and mxn)
+    // Create Two Empty Parallel Matrices (nxm and mxn)
     int n = 10;
     int m = 12;
     ParCSRMatrix* A = new ParCSRMatrix(n, m);
