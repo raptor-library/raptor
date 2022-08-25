@@ -31,6 +31,7 @@ set(linalg_SOURCES
     linalg/add.cpp
     linalg/spmv.cpp
     linalg/vecops.cpp
+    linalg/lu_factorization.cpp
     ${par_linalg_SOURCES}
     PARENT_SCOPE
     )

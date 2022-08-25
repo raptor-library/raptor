@@ -408,6 +408,10 @@ namespace raptor
     void add_append(CSRMatrix* A, CSRMatrix* C, bool remove_dup = true);
     Matrix* subtract(CSRMatrix* A);
 
+    void gaussian_elimination(CSRMatrix* L, CSRMatrix* U);
+    void forward_substitution(Vector &x, Vector& b);
+    void backward_substitution(Vector &x, Vector& b);
+
     void resize(int _n_rows, int _n_cols);
 
     virtual void resize_data(int size) = 0;

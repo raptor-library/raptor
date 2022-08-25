@@ -17,6 +17,5 @@ void sor(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp,
 void ssor(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, 
         int num_sweeps = 1, double omega = 1.0);
 
-
 #endif
 

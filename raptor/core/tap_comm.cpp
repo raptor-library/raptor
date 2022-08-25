@@ -1258,6 +1258,7 @@ void TAPComm::form_optimal_local_R_par_comm(const aligned_vector<int>& off_node_
 
     // Find the number of nodes from which rank node recvs
     num_recv_nodes = recv_nodes.size();
+    int total_msg_vol = 0;
 
     // Find the size of each nodal recv
     if (num_recv_nodes)
@@ -1268,6 +1269,7 @@ void TAPComm::form_optimal_local_R_par_comm(const aligned_vector<int>& off_node_
         {
             node = recv_nodes[i];
             nodal_off_node_sizes[i] = node_sizes[node];
+            total_msg_vol += nodal_off_node_sizes[i];
         }
         // ** nodal_off_node_sizes is being summed with every other local ranks nodal_off_node_sizes to get
         // ** the total size of the off node receive for this node
@@ -1302,6 +1304,25 @@ void TAPComm::form_optimal_local_R_par_comm(const aligned_vector<int>& off_node_
                 j = p[j];
             }
         }
+       
+        // SETTING MESSAGE CAP SIZE HERE 
+        // balance the messages -- might increase the number of messages being sent slightly, if most of the message volume
+        // was in a single buffer
+        int eager_cut = 4096;
+        if ((num_recv_nodes > topology->PPN) || (nodal_off_node_sizes[0] <= eager_cut)) msg_cap = 2*nodal_off_node_sizes[0];
+        else msg_cap = ceil(total_msg_vol / num_recv_nodes);
+        // else msg_cap = -1; // ADD CHECKS FOR IF MSG_CAP IS -1 THEN USE ALL THE OLD NODAL_SIZES RECEIVER LISTS
+
+        /*for (int i = 0; i < num_recv_nodes; i++) total_msg_vol += nodal_off_node_sizes[i];
+        int potential_msg_cap = ceil(total_msg_vol/topology->PPN);
+        int short_cut = 250;
+        int eager_cut = 4096;
+        int P_SHORT = ceil(total_msg_vol / short_cut);
+        int P_EAGER = ceil(total_msg_vol / eager_cut);
+
+        if (P_SHORT <= topology->PPN) msg_cap = short_cut;
+        else if (P_EAGER <= topology->PPN) msg_cap = eager_cut;
+        else msg_cap = potential_msg_cap;*/
         
         // ** SHOULD CHECK MESSAGE SIZES AND SPLIT THEM HERE
         aligned_vector<int> tmp_recv_data;
@@ -1353,6 +1374,20 @@ void TAPComm::form_optimal_local_R_par_comm(const aligned_vector<int>& off_node_
             // The list might look like [9,9,10,11,11,11,12,13,14]
             std::sort( tmp_recv_data.begin(), tmp_recv_data.end() );
             tmp_recv_data.erase( std::unique(tmp_recv_data.begin(), tmp_recv_data.end()), tmp_recv_data.end() );
+
+            // Reset msg_cap so that all data is split across all procs on node if it was previously too small 
+            /*int total_msg_vol = nodal_off_node_sizes[node];
+            int potential_msg_cap = ceil(total_msg_vol/topology->PPN);
+            if (potential_msg_cap > msg_cap) msg_cap = potential_msg_cap;*/
+
+            int short_cut = 250;
+            int eager_cut = 4096;
+            int P_SHORT = ceil(total_msg_vol / short_cut);
+            int P_EAGER = ceil(total_msg_vol / eager_cut);
+
+            /*if (P_SHORT <= topology->PPN) msg_cap = short_cut;
+            else if (P_EAGER <= topology->PPN) msg_cap = eager_cut;
+            else msg_cap = potential_msg_cap;*/
 
             // Determine which procs these messages are coming from
             // Run through the list and split it into different messages

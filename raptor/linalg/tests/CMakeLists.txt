@@ -30,6 +30,10 @@ add_executable(test_bvector_mult test_bvector_mult.cpp)
 target_link_libraries(test_bvector_mult raptor ${MPI_LIBRARIES} googletest pthread )
 add_test(BVectorMultTest ./test_bvector_mult)
 
+add_executable(test_gaussian_elimination test_gaussian_elimination.cpp)
+target_link_libraries(test_gaussian_elimination raptor ${MPI_LIBRARIES} googletest pthread )
+add_test(GaussianEliminationTest ./test_gaussian_elimination)
+
 if (WITH_MPI)
     add_executable(test_par_add test_par_add.cpp)
     target_link_libraries(test_par_add raptor ${MPI_LIBRARIES} googletest pthread )
