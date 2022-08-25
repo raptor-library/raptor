@@ -163,4 +163,7 @@ if (WITH_MPI)
     add_executable(par_bvspmv_3step_messages par_bvspmv_3step_messages.cpp)
     target_link_libraries(par_bvspmv_3step_messages raptor ${MPI_LIBRARIES} googletest pthread )
     
+    add_executable(block_jacobi_profiling block_jacobi_profiling.cpp)
+    target_link_libraries(block_jacobi_profiling raptor ${MPI_LIBRARIES} googletest pthread )
+    
 endif()
