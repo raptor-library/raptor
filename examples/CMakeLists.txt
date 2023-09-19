@@ -68,6 +68,9 @@ if (WITH_MPI)
 
     add_executable(model_tap_steps model_tap_steps.cpp)
     target_link_libraries(model_tap_steps raptor ${MPI_LIBRARIES})
+
+    add_executable(benchmark_amg_spgemm benchmark_amg_spgemm.cpp)
+    target_link_libraries(benchmark_amg_spgemm raptor ${MPI_LIBRARIES})
 endif()
 
 
