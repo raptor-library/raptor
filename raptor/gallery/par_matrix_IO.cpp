@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include "limits.h"
 
+namespace {
 bool little_endian()
 {
     int num = 1;
@@ -17,6 +18,7 @@ void endian_swap(T *objp)
 {
   unsigned char *memp = reinterpret_cast<unsigned char*>(objp);
   std::reverse(memp, memp + sizeof(T));
+}
 }
 
 ParCSRMatrix* readParMatrix(const char* filename, 

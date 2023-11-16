@@ -1,10 +1,6 @@
 // Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
-// Declare private methods
-bool little_endian();
-
-
 #include "matrix_IO.hpp"
 #include <assert.h>
 #include <float.h>
@@ -12,6 +8,7 @@ bool little_endian();
 #include <iostream>     // std::cout
 #include <fstream>      // std::ifstream
 
+namespace {
 bool little_endian()
 {
     int num = 1;
@@ -23,6 +20,7 @@ void endian_swap(T *objp)
 {
   unsigned char *memp = reinterpret_cast<unsigned char*>(objp);
   std::reverse(memp, memp + sizeof(T));
+}
 }
 
 CSRMatrix* readMatrix(const char* filename)

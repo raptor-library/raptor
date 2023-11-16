@@ -1,9 +1,7 @@
 #ifndef RAPTOR_CORE_UTILITIES_HPP
 #define RAPTOR_CORE_UTILITIES_HPP
 
-#include "core/types.hpp"
-
-using namespace raptor;
+#include "types.hpp"
 
 // BLAS LU routine that is used for coarse solve
 extern "C" void dgetrf_(int* dim1, int* dim2, double* a, int* lda, 
