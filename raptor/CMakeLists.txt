@@ -1,5 +1,3 @@
-include_directories(.)
-
 add_subdirectory(core)
 add_subdirectory(gallery)
 add_subdirectory(util)
@@ -19,7 +17,7 @@ else()
         )
 endif()
 
-add_library(raptor STATIC ${core_SOURCES} ${core_HEADERS} 
+add_library(raptor ${core_SOURCES} ${core_HEADERS} 
 	${gallery_SOURCES} ${gallery_HEADERS} ${ext_gallery_HEADERS} 
 	${util_SOURCES} ${util_HEADERS}
 	${par_SOURCES} strength.cpp 
@@ -30,10 +28,20 @@ add_library(raptor STATIC ${core_SOURCES} ${core_HEADERS}
         ${profile_SOURCES} ${profile_HEADERS}
         ${external_SOURCES} ${external_HEADERS})
 
-target_link_libraries(raptor ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
-    ${MUELU_LIBRARIES} ${PETSC_LIBRARIES} ${PTSCOTCH_LIBRARIES} ${PARMETIS_LIBRARIES} ${EXTERNAL_LIBS} )
+target_link_libraries(raptor PUBLIC ${MPI_C_LIBRARIES} ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
+    ${MUELU_LIBRARIES} ${PETSC_LIBRARIES} ${PTSCOTCH_LIBRARIES} ${PARMETIS_LIBRARIES} ${EXTERNAL_LIBS})
 
-install(TARGETS raptor DESTINATION "lib")
+target_include_directories(raptor
+  PUBLIC
+  $<INSTALL_INTERFACE:include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> # TODO: remove this
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+
+include(GNUInstallDirs)
+install(TARGETS raptor
+  EXPORT raptorTargets
+  DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES raptor.hpp DESTINATION "include/raptor")
 install(FILES ${core_HEADERS} DESTINATION "include/raptor/core")
 install(FILES ${gallery_HEADERS}  DESTINATION "include/raptor/gallery")
@@ -46,9 +54,23 @@ install(FILES ${multilevel_HEADERS} DESTINATION "include/raptor/multilevel")
 install(FILES ${krylov_HEADERS} DESTINATION "include/raptor/krylov")
 install(FILES ${profile_HEADERS} DESTINATION "include/raptor/profiling")
 install(FILES ${external_HEADERS} DESTINATION "include/raptor/external")
+install(EXPORT raptorTargets
+  FILE raptorTargets.cmake
+  NAMESPACE "raptor::"
+  DESTINATION
+  ${CMAKE_INSTALL_LIBDIR}/cmake/raptor)
+export(EXPORT raptorTargets
+  FILE ${CMAKE_CURRENT_BINARY_DIR}/raptorTargets.cmake
+  NAMESPACE "raptor::")
+export(PACKAGE raptor)
 
+configure_file(${PROJECT_SOURCE_DIR}/config/raptorConfig.cmake.in
+  ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/raptorConfig.cmake @ONLY)
 
-include_directories(".")
+install(
+  FILES ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/raptorConfig.cmake
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/cmake/raptor)
+
 if(ENABLE_UNIT_TESTS)
     add_subdirectory(tests)
     add_subdirectory(core/tests)

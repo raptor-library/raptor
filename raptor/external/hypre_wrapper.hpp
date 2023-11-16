@@ -4,9 +4,9 @@
 #ifndef RAPTOR_HYPRE_WRAPPER_H
 #define RAPTOR_HYPRE_WRAPPER_H
 
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "core/comm_pkg.hpp"
+#include "raptor/core/types.hpp"
+#include "raptor/core/par_matrix.hpp"
+#include "raptor/core/comm_pkg.hpp"
 #include "_hypre_utilities.h"
 #include "HYPRE.h"
 #include "_hypre_parcsr_mv.h"

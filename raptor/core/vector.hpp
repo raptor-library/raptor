@@ -3,7 +3,7 @@
 #ifndef RAPTOR_CORE_VECTOR_HPP_
 #define RAPTOR_CORE_VECTOR_HPP_
 
-#include "core/types.hpp"
+#include "types.hpp"
 
 // Vector Class
 //
