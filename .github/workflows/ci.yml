@@ -1,0 +1,24 @@
+name: ci
+
+env:
+    CTEST_NO_TEST_ACTION: error
+    HOMEBREW_NO_INSTALL_CLEANUP: 1
+
+on:
+  push:
+
+jobs:
+  core:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Configure code
+        run: cmake -Bbuild
+      - name: Build code
+        run: cmake --build build --parallel
+      - name: Test code
+        run: ctest --test-dir build -V
