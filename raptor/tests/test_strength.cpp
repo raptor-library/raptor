@@ -4,7 +4,7 @@
 // The ASSERT_* variants abort the program execution if an assertion fails 
 // while EXPECT_* variants continue with the run.
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 #include "raptor.hpp"
 #include "tests/compare.hpp"
 

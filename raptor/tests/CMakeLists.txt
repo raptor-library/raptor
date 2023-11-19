@@ -4,7 +4,7 @@ add_test(StrengthTest ./test_strength)
 
 if (WITH_MPI)
     add_executable(test_par_strength test_par_strength.cpp)
-    target_link_libraries(test_par_strength raptor ${MPI_LIBRARIES}  googletest pthread )
+    target_link_libraries(test_par_strength raptor ${MPI_LIBRARIES} googletest pthread )
     add_test(ParStrengthTest ${MPIRUN} -n 1 ${HOST} ./test_par_strength)
     add_test(ParStrengthTest ${MPIRUN} -n 2 ${HOST} ./test_par_strength)
     add_test(ParStrengthTest ${MPIRUN} -n 16 ${HOST} ./test_par_strength)
