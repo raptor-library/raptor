@@ -190,3 +190,21 @@ add_subdirectory(raptor)
 if (BUILD_EXAMPLES)
   add_subdirectory(examples)
 endif()
+
+find_package(Doxygen)
+
+if (DOXYGEN_FOUND)
+    set(DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/docs/doxygen/Doxyfile.in)
+    set(DOXYGEN_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile.out)
+
+    configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
+    message("build Doxygen files")
+
+    add_custom_target( docs
+        COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "generating Doxygen output"
+        VERBATIM )
+else (DOXYGEN_FOUND)
+    message("install Doxygen")
+endif (DOXYGEN_FOUND)
