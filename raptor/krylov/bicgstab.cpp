@@ -15,7 +15,7 @@ void BiCGStab(CSRMatrix* A, Vector& x, Vector& b, std::vector<double>& res, doub
     
     int iter;
     data_t alpha, beta, omega;
-    data_t rrstar_inner, next_rrstar_inner, Apr_inner, As_inner, AsAs_inner;
+    data_t rrstar_inner, next_rrstar_inner, As_inner, AsAs_inner;
     double norm_r;
 
     if (max_iter <= 0)
@@ -59,7 +59,6 @@ void BiCGStab(CSRMatrix* A, Vector& x, Vector& b, std::vector<double>& res, doub
     {
         // alpha_i = (r_i, rstar_i) / (A*p_i, pstar_i)
         A->mult(p, Ap);
-        alpha = rrstar_inner / Apr_inner;
 	alpha = rrstar_inner / Ap.inner_product(rstar);
 
         // s_{i} = r_i - alpha_i * Ap_i

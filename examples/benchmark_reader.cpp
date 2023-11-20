@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <assert.h>
+#include <stdexcept>
 
 #include "raptor.hpp"
 
@@ -17,23 +18,23 @@ int main(int argc, char* argv[])
 
     int n = 5;
     int system = 0;
-    double strong_threshold = 0.25;
-    int iter;
-    int num_variables = 1;
+    //double strong_threshold = 0.25;
+    //int iter;
 
-    coarsen_t coarsen_type = PMIS;
-    interp_t interp_type = Extended;
-    ParMultilevel* ml;
+    //coarsen_t coarsen_type = PMIS;
+    //interp_t interp_type = Extended;
+    //ParMultilevel* ml;
     ParCSRMatrix* A;
     ParVector x;
     ParVector b;
 
-    double t0, tfinal;
+    //double t0, tfinal;
 
     if (argc > 1)
     {
         system = atoi(argv[1]);
     }
+
     if (system < 2)
     {
         int dim;
@@ -52,8 +53,8 @@ int main(int argc, char* argv[])
         }
         else if (system == 1)
         {
-            coarsen_type = Falgout;
-            interp_type = ModClassical;
+            //coarsen_type = Falgout;
+            //interp_type = ModClassical;
 
             dim = 2;
             grid.resize(dim, n);
@@ -76,6 +77,7 @@ int main(int argc, char* argv[])
     else if (system == 2)
     {
         const char* mesh_file = argv[2];
+        int num_variables = 1;
         int mfem_system = 0;
         int order = 2;
         int seq_refines = 1;
@@ -99,20 +101,20 @@ int main(int argc, char* argv[])
             }
         }
 
-        coarsen_type = PMIS;
-        interp_type = Extended;
-        strong_threshold = 0.5;
+        //coarsen_type = PMIS;
+        //interp_type = Extended;
+        //strong_threshold = 0.5;
         switch (mfem_system)
         {
             case 0:
                 A = mfem_laplacian(x, b, mesh_file, order, seq_refines, par_refines);
                 break;
             case 1:
-                strong_threshold = 0.25;
+                //strong_threshold = 0.25;
                 A = mfem_grad_div(x, b, mesh_file, order, seq_refines, par_refines);
                 break;
             case 2:
-                strong_threshold = 0.9;
+                //strong_threshold = 0.9;
                 A = mfem_linear_elasticity(x, b, &num_variables, mesh_file, order, 
                         seq_refines, par_refines);
                 break;
@@ -136,6 +138,10 @@ int main(int argc, char* argv[])
         if (argc > 2) A = readParMatrix(argv[2]);
 	else A = readParMatrix("../../examples/LFAT5.pm");
     }
+    else {
+        throw std::invalid_argument("Specify a valid system/matrix id.");
+    }
+
     if (system != 2)
     {
         A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
