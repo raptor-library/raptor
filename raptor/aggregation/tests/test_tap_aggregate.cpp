@@ -85,11 +85,9 @@ TEST(TestTAPAggregate, TestsInAggregation)
     int global_col;
     MPI_Allgather(&n_aggs, 1, MPI_INT, agg_sizes.data(), 1, MPI_INT, MPI_COMM_WORLD);
     agg_displ[0] = 0;
-    int first_n = 0;
     for (int i = 0; i < num_procs; i++)
     {
         agg_displ[i+1] = agg_displ[i] + agg_sizes[i];
-        if (i < rank) first_n += agg_sizes[i];
     }
     int total_size = agg_displ[num_procs];
     for (int i = 0; i < S->local_num_rows; i++)

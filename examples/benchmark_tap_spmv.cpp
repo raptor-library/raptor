@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
     int dim = 3;
     int n = 5;
     int system = 0;
-    int num_variables = 1;
+    //int num_variables = 1;
 
     if (argc > 1)
     {
@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
 
     double t0, tfinal;
 
-    double strong_threshold = 0.25;
+    //double strong_threshold = 0.25;
     int cache_len = 10000;
     std::vector<double> cache_array(cache_len);
     std::vector<double> residuals;

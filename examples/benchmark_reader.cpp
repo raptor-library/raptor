@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
             grid.resize(dim, n);
             stencil = laplace_stencil_27pt();
         }
-        else if (system == 1)
+        else // system == 1
         {
             //coarsen_type = Falgout;
             //interp_type = ModClassical;

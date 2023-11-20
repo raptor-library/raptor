@@ -172,6 +172,7 @@ int main(int argc, char* argv[])
     MPI_Barrier(MPI_COMM_WORLD);
     iter = ml->solve(rss_sol, b);
 
+    if (rank == 0) printf("\n    iterations: %d", iter);
     ml->print_setup_times();
     ml->print_solve_times();
     delete ml;
@@ -193,6 +194,7 @@ int main(int argc, char* argv[])
     MPI_Barrier(MPI_COMM_WORLD);
     iter = ml->solve(tap_rss_sol, b);
 
+    if (rank == 0) printf("\n    iterations: %d", iter);
     ml->print_setup_times();
     ml->print_solve_times();
     delete ml;
@@ -222,6 +224,7 @@ int main(int argc, char* argv[])
     MPI_Barrier(MPI_COMM_WORLD);
     iter = ml->solve(sas_sol, b);
 
+    if (rank == 0) printf("\n    iterations: %d", iter);
     ml->print_setup_times();
     ml->print_solve_times();
     delete ml;
@@ -242,7 +245,8 @@ int main(int argc, char* argv[])
     ParVector tap_sas_sol = ParVector(x);
     MPI_Barrier(MPI_COMM_WORLD);
     iter = ml->solve(tap_sas_sol, b);
-
+    
+    if (rank == 0) printf("\n    iterations: %d", iter);
     ml->print_setup_times();
     ml->print_solve_times();
     delete ml;
