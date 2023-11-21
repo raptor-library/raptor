@@ -1,15 +1,16 @@
 if (ENABLE_UNIT_TESTS)
   enable_testing()
-  #find_package(GTest QUIET)
-  #if (GTEST_FOUND)
-  #	include_directories(${GTEST_INCLUDE_DIRS})
-  #else()
-  #	add_subdirectory(${CMAKE_SOURCE_DIR}/external/gtest-1.7.0)
-  #	include_directories(${CMAKE_SOURCE_DIR}/external/gtest-1.7.0/include)
-  #	set(GTEST_BOTH_LIBRARIES gtest gtest_main)
-  #endif()
-endif()
 
+  include(FetchContent)
+  FetchContent_Declare(
+      googletest
+      GIT_REPOSITORY https://github.com/google/googletest.git
+      GIT_TAG        release-1.12.1
+  )
+  FetchContent_MakeAvailable(googletest)
+  add_library(googletest INTERFACE IMPORTED)
+  target_link_libraries(googletest INTERFACE gtest_main)
+endif()
 
 #function(add_unit target sources)
 #  set(mpimain_SRC ${CMAKE_SOURCE_DIR}/raptor/tests/mpi_main.cpp)

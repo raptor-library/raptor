@@ -1,7 +1,6 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.12...3.20)
 project(raptor)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-
 
 enable_language(CXX)
 set(CMAKE_CXX_STANDARD 11)
@@ -47,7 +46,7 @@ if (WITH_MPI)
     SET(MPIRUN mpirun)
 endif (WITH_MPI)
 
-include_directories("external")
+#include_directories("external")
 set(raptor_INCDIR ${CMAKE_CURRENT_SOURCE_DIR}/raptor)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
@@ -67,7 +66,6 @@ if (CRAYXE)
     set(CMAKE_AR  "gcc-ar-4.7")
     set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
     set(CMAKE_CXX_ARCHIVE_FINISH   true)
-
 elseif (BGQ)
     find_library(LAPACK_LIB NAMES liblapack lapack HINTS
         "/soft/libraries/alcf/current/xl/LAPACK/lib")
@@ -85,7 +83,6 @@ elseif (BGQ)
         "/soft/compilers/ibmcmp-may2016/xlf/bg/14.1/bglib64")
     find_library(XLSMP_LIB NAMES libxlomp_ser.a xlomp_ser HINTS
         "/soft/compilers/ibmcmp-may2016/xlsmp/bg/3.1/bglib64")
-
     set(EXTERNAL_LIBS ${LAPACK_LIB} ${BLAS_LIB} ${ESSL_LIB} ${XLF_LIB}
         ${XLOPT_LIB} ${XLFMATH_LIB} ${XL_LIB} ${XLSMP_LIB})
 else()
@@ -96,9 +93,8 @@ endif()
 
 if (WITH_HOSTFILE)
     find_file (FILE_OF_HOST, ${HOSTFILE})
-    set(HOST "--hostfile ${HOSTFILE}")
+    set(HOST "--hostfile" "${HOSTFILE}")
 endif()
-
 
 if (WITH_PTSCOTCH)
     add_definitions ( -DUSING_PTSCOTCH )
@@ -121,7 +117,6 @@ if (WITH_PARMETIS)
         set(WITH_PARMETIS ON)
     endif(PARMETIS_FOUND)
 endif(WITH_PARMETIS)
-
 
 if(WITH_HYPRE)
     add_definitions ( -DUSING_HYPRE )
@@ -189,32 +184,6 @@ endif(WITH_PETSC)
 if (WITH_AMPI)
 	add_definitions(-DUSE_AMPI)
 endif(WITH_AMPI)
-
-#/////////////////////////// star information of google test ///////////////////////////////
-set(GOOGLETEST_ROOT external/googletest CACHE STRING "Google Test source root")
-#MESSAGE( STATUS "GOOGLETEST_ROOT: "    ${GOOGLETEST_ROOT} )
-
-include_directories(
-    ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}
-    ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/include
-    )
-
-#MESSAGE( STATUS "PROJECT_SOURCE_DIR: "    ${PROJECT_SOURCE_DIR} )
-
-set(GOOGLETEST_SOURCES
-    ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/src/gtest-all.cc
-    ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/src/gtest_main.cc
-    )
-
-
-foreach(_source ${GOOGLETEST_SOURCES})
-    set_source_files_properties(${_source} PROPERTIES GENERATED 1)
-    #MESSAGE( STATUS "_source: "                 ${_source} )
-endforeach()
-
-
-add_library(googletest STATIC ${GOOGLETEST_SOURCES})
-#///////////////////////////// end information of google test //////////////////////////////
 
 add_subdirectory(raptor)
 

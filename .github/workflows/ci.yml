@@ -1,0 +1,35 @@
+name: ci
+
+env:
+    CTEST_NO_TEST_ACTION: error
+    HOMEBREW_NO_INSTALL_CLEANUP: 1
+
+on:
+  push:
+
+jobs:
+  core:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install cmake mpich libmpich-dev liblapack-dev
+      - name: Install MacOS dependencies
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+          brew install mpich2 lapack cmake
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Configure code
+        run: cmake -Bbuild
+      - name: Build code
+        run: cmake --build build --parallel
+      - name: Test code
+        run: ctest --test-dir build -V
