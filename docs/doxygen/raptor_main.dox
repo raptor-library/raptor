@@ -1,0 +1,26 @@
+namespace raptor {
+
+/*! \mainpage RAPtor code documentation
+ *
+ * <H3>Main multigrid and linear algbra classes</H3>
+ *
+ * - Multilevel and ParMultilevel
+ * - Level and ParLevel
+ * - Vector and ParVector
+ * - Matrix and ParMatrix
+ * - Coordinate and compressed matrices: ParCOOMatrix, ParCSRMatrix, ParCSCMatrix
+ * - Block matrices: ParBCOOMatrix, ParBSRMatrix, ParBSCMatrix
+ *
+ * <H3>Parallel communication classes</H3>
+ * - Communicator CommPkg
+ * - Communication Topology
+ * - Communication Partition
+ * 
+ * <H3>Multigrid solver classes</H3>
+ * - ParSmoothedAggregationSolver  with components:
+ *   - Strength: ParCSRMatrix::strength
+ *   - Aggregation: ParCSRMatrix::aggregate and \link par_mis.hpp mis2 \endlink
+ *   - Tentative prolongation: ParCSRMatrix::fit_candidates 
+ *   - Smoothed prolongation: \link par_prolongation.hpp jacobi_prolongation \endlink
+ */ 
+}
