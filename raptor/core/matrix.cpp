@@ -1131,7 +1131,7 @@ CSCMatrix* COOMatrix::to_BSC()
 }
 CSCMatrix* BCOOMatrix::to_CSC()
 {
-    return this->to_CSC();
+    return this->to_BSC();
 }
 CSCMatrix* BCOOMatrix::to_BSC()
 {

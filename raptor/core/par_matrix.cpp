@@ -696,7 +696,7 @@ ParCSRMatrix* ParCSRMatrix::transpose()
     int start, end;
     int proc;
     int col, col_start, col_end;
-    int ctr, size;
+    int ctr, prev_ctr, size, bytes;
     int col_count, count;
     int col_size;
     int idx, row;
@@ -709,9 +709,8 @@ ParCSRMatrix* ParCSRMatrix::transpose()
     CSCMatrix* recv_mat;
     ParCSRMatrix* T = NULL;
 
-    std::vector<PairData> send_buffer;
-    std::vector<PairData> recv_buffer;
-    std::vector<int> send_ptr(comm->recv_data->num_msgs+1);
+    std::vector<char> send_buffer;
+    std::vector<char> recv_buffer;
 
     // Transpose partition
     part_T = partition->transpose();
@@ -723,40 +722,55 @@ ParCSRMatrix* ParCSRMatrix::transpose()
     send_mat = off_proc->to_CSC();
     recv_mat = new CSCMatrix(local_num_rows, comm->send_data->size_msgs);
 
-    // Add off_proc cols of matrix to send buffer
-    ctr = 0;
-    send_ptr[0] = 0;
+    int int_size, dbl_size;
+    MPI_Pack_size(1, RAPtor_MPI_INT, comm->mpi_comm, &int_size);
+    MPI_Pack_size(1, RAPtor_MPI_DOUBLE, comm->mpi_comm, &dbl_size);
+
+    bytes = 0;
     for (int i = 0; i < comm->recv_data->num_msgs; i++)
     {
         start = comm->recv_data->indptr[i];
         end = comm->recv_data->indptr[i+1];
-        for (int j = start; j < end; j++)
+        for (col = start; col < end; col++)
         {
-            col = j;
             col_start = send_mat->idx1[col];
             col_end = send_mat->idx1[col+1];
-            send_buffer.emplace_back(PairData());
-            send_buffer[ctr++].index = col_end - col_start;
-            for (int k = col_start; k < col_end; k++)
-            {
-                send_buffer.emplace_back(PairData());
-                send_buffer[ctr].index = local_row_map[send_mat->idx2[k]];
-                send_buffer[ctr++].val = send_mat->vals[k];
-            }
+            col_size = col_end - col_start;
+            bytes += col_size * (int_size + dbl_size) + int_size;
         }
-        send_ptr[i+1] = send_buffer.size();
     }
-	/*
+    send_buffer.resize(bytes);
+
+    // Add off_proc cols of matrix to send buffer
+    ctr = 0;
+    prev_ctr = 0;
     for (int i = 0; i < comm->recv_data->num_msgs; i++)
     {
         proc = comm->recv_data->procs[i];
-        start = send_ptr[i];
-        end = send_ptr[i+1];
-        RAPtor_MPI_Isend(&(send_buffer[start]), end - start, RAPtor_MPI_DOUBLE_INT, proc,
+        start = comm->recv_data->indptr[i];
+        end = comm->recv_data->indptr[i+1];
+        for (col = start; col < end; col++)
+        {
+            col_start = send_mat->idx1[col];
+            col_end = send_mat->idx1[col+1];
+            col_size = col_end - col_start;
+            RAPtor_MPI_Pack(&col_size, 1, RAPtor_MPI_INT, send_buffer.data(), bytes, &ctr, comm->mpi_comm);
+            for (int k = col_start; k < col_end; k++)
+            {
+                RAPtor_MPI_Pack(&(local_row_map[send_mat->idx2[k]]), 1, RAPtor_MPI_INT,
+                        send_buffer.data(), bytes, &ctr, comm->mpi_comm);
+            }
+            RAPtor_MPI_Pack(&(send_mat->vals[col_start]), col_end - col_start, RAPtor_MPI_DOUBLE,
+                    send_buffer.data(), bytes, &ctr, comm->mpi_comm);
+        }
+
+        RAPtor_MPI_Isend(&(send_buffer[prev_ctr]), ctr - prev_ctr, RAPtor_MPI_PACKED, proc,
                 comm->key, comm->mpi_comm, &(comm->recv_data->requests[i]));
     }
+
     col_count = 0;
     recv_mat->idx1[0] = 0;
+    recv_mat->nnz = 0;
     for (int i = 0; i < comm->send_data->num_msgs; i++)
     {
         proc = comm->send_data->procs[i];
@@ -764,24 +778,25 @@ ParCSRMatrix* ParCSRMatrix::transpose()
         end = comm->send_data->indptr[i+1];
         size = end - start;
         RAPtor_MPI_Probe(proc, comm->key, comm->mpi_comm, &recv_status);
-        RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_DOUBLE_INT, &count);
+        RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_PACKED, &count);
         if (count > (int)recv_buffer.size())
         {
             recv_buffer.resize(count);
         }
-        RAPtor_MPI_Recv(&(recv_buffer[0]), count, RAPtor_MPI_DOUBLE_INT, proc,
+        RAPtor_MPI_Recv(&(recv_buffer[0]), count, RAPtor_MPI_PACKED, proc,
                 comm->key, comm->mpi_comm, &recv_status);
         ctr = 0;
         for (int j = 0; j < size; j++)
         {
-            col_size = recv_buffer[ctr++].index;
-            recv_mat->idx1[col_count+1] = recv_mat->idx1[col_count] + col_size;
-            col_count++;
-            for (int k = 0; k < col_size; k++)
-            {
-                recv_mat->idx2.emplace_back(recv_buffer[ctr].index);
-                recv_mat->vals.emplace_back(recv_buffer[ctr++].val);
-            }
+            RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr, &col_size, 1, RAPtor_MPI_INT, comm->mpi_comm);
+            recv_mat->idx2.resize(recv_mat->nnz + col_size);
+            recv_mat->vals.resize(recv_mat->nnz + col_size);
+            RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr, &(recv_mat->idx2[recv_mat->nnz]), col_size, 
+                    RAPtor_MPI_INT, comm->mpi_comm);
+            RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr, &(recv_mat->vals[recv_mat->nnz]), col_size,
+                    RAPtor_MPI_DOUBLE, comm->mpi_comm);
+            recv_mat->nnz += col_size;
+            recv_mat->idx1[++col_count] = recv_mat->nnz;
         }
     }
     recv_mat->nnz = recv_mat->idx2.size();
@@ -824,9 +839,8 @@ ParCSRMatrix* ParCSRMatrix::transpose()
     delete recv_mat;
 
     return T;
-    */ 
-	return NULL;
 }
+
 ParCOOMatrix* ParCOOMatrix::transpose()
 {
     ParCSRMatrix* A_csr = to_ParCSR();
