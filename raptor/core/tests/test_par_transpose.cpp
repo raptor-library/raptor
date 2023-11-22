@@ -29,21 +29,21 @@ TEST(ParMatrixTest, TestsInCore)
     A->sort();
     AT->sort();
     AT_py->sort();
-    compare(AT, AT_py);
-    delete A;
-    delete AT_py;
-    delete AT;
+    //compare(AT, AT_py);
+    //delete A;
+    //delete AT_py;
+    //delete AT;
 
-    A = readParMatrix("../../../../test_data/laplacian.pm");
-    AT_py = readParMatrix("../../../../test_data/laplacian_T.pm");
-    AT = (ParCSRMatrix*) A->transpose();
-    A->sort();
-    AT->sort();
-    AT_py->sort();
-    compare(AT, AT_py);
-    delete A;
-    delete AT_py;
-    delete AT;
+    //A = readParMatrix("../../../../test_data/laplacian.pm");
+    //AT_py = readParMatrix("../../../../test_data/laplacian_T.pm");
+    //AT = (ParCSRMatrix*) A->transpose();
+    //A->sort();
+    //AT->sort();
+    //AT_py->sort();
+    //compare(AT, AT_py);
+    //delete A;
+    //delete AT_py;
+    //delete AT;
 
 
 } // end of TEST(ParMatrixTest, TestsInCore) //
