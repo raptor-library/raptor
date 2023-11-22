@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/raptor-library/raptor.svg?branch=master)](https://travis-ci.org/raptor-library/raptor)
+![ci](https://img.shields.io/github/actions/workflow/status/raptor-library/raptor/ci.yml?style=flat-square&label=tests)
 
 ![](docs/logo/raptor-logo.png)
 
