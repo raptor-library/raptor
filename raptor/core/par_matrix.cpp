@@ -723,6 +723,7 @@ ParCSRMatrix* ParCSRMatrix::transpose()
     send_mat = off_proc->to_CSC();
     recv_mat = new CSCMatrix(local_num_rows, comm->send_data->size_msgs);
 
+	/*
     // Add off_proc cols of matrix to send buffer
     ctr = 0;
     send_ptr[0] = 0;
@@ -823,6 +824,8 @@ ParCSRMatrix* ParCSRMatrix::transpose()
     delete recv_mat;
 
     return T;
+    */ 
+	return NULL;
 }
 ParCOOMatrix* ParCOOMatrix::transpose()
 {
