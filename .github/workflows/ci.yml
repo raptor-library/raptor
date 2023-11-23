@@ -36,6 +36,6 @@ jobs:
       - name: Build code
         run: cmake --build build --parallel
       - name: Test code
-        run: ctest --test-dir build -V
+        run: ctest --test-dir build -V --build-config Debug
       - name: collect code coverage
         run: bash <(curl -s https://codecov.io/bash) || echo "codecov failure"
