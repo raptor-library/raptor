@@ -11,7 +11,7 @@ if (ENABLE_UNIT_TESTS)
   add_library(googletest INTERFACE IMPORTED)
   target_link_libraries(googletest INTERFACE gtest_main)
 
-  if(ENABLE_TEST_COVERAGE)
+  if(ENABLE_COVERAGE)
     target_compile_options(googletest INTERFACE -O0 -g -fprofile-arcs -ftest-coverage)
     target_link_options(googletest INTERFACE -fprofile-arcs -ftest-coverage)
   endif()
