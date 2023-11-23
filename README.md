@@ -1,4 +1,5 @@
 [![ci](https://img.shields.io/github/actions/workflow/status/raptor-library/raptor/ci.yml?style=flat-square&label=tests)](https://github.com/raptor-library/raptor/actions?query=workflow%3Aci+branch%3Amain)
+[![Codecov](https://img.shields.io/codecov/c/github/raptor-library/raptor?style=flat-square)](https://app.codecov.io/gh/raptor-library/raptor)
 
 ![](docs/logo/raptor-logo.png)
 
