@@ -28,8 +28,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Configure code
+        if: matrix.os == 'ubuntu-latest'
+        run: cmake -Bbuild -DENABLE_COVERAGE
+      - name: Configure code
+        if: matrix.os == 'macos-latest'
         run: cmake -Bbuild
       - name: Build code
         run: cmake --build build --parallel
       - name: Test code
         run: ctest --test-dir build -V
+      - name: collect code coverage
+        run: bash <(curl -s https://codecov.io/bash) || echo "codecov failure"
