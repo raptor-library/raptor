@@ -10,7 +10,14 @@ if (ENABLE_UNIT_TESTS)
   FetchContent_MakeAvailable(googletest)
   add_library(googletest INTERFACE IMPORTED)
   target_link_libraries(googletest INTERFACE gtest_main)
+
+  if(ENABLE_TEST_COVERAGE)
+    target_compile_options(googletest INTERFACE -O0 -g -fprofile-arcs -ftest-coverage)
+    target_link_options(googletest INTERFACE -fprofile-arcs -ftest-coverage)
+  endif()
 endif()
+
+
 
 #function(add_unit target sources)
 #  set(mpimain_SRC ${CMAKE_SOURCE_DIR}/raptor/tests/mpi_main.cpp)
