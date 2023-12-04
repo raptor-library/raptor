@@ -7,7 +7,7 @@
 #include <iostream>
 
 // Include raptor
-#include "raptor.hpp"
+#include "raptor/raptor.hpp"
 
 // This is a basic use case.
 int main(int argc, char *argv[])

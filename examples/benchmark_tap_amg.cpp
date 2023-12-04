@@ -8,7 +8,7 @@
 
 #include "clear_cache.hpp"
 
-#include "raptor.hpp"
+#include "raptor/raptor.hpp"
 
 void form_hypre_weights(double** weight_ptr, int n_rows)
 {

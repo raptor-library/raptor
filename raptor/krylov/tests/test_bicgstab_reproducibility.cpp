@@ -1,5 +1,5 @@
 #include <assert.h>
-#include "raptor.hpp"
+#include "raptor/raptor.hpp"
 
 using namespace raptor;
 

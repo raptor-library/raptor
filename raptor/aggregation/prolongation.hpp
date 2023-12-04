@@ -3,9 +3,9 @@
 #ifndef RAPTOR_AGGREGATION_PROLONGATION_HPP
 #define RAPTOR_AGGREGATION_PROLONGATION_HPP
 
-#include "core/types.hpp"
-#include "core/matrix.hpp"
-#include "core/vector.hpp"
+#include "raptor/core/types.hpp"
+#include "raptor/core/matrix.hpp"
+#include "raptor/core/vector.hpp"
 
 using namespace raptor;
 

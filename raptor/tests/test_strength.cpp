@@ -5,8 +5,8 @@
 // while EXPECT_* variants continue with the run.
 
 #include <gtest/gtest.h>
-#include "raptor.hpp"
-#include "tests/compare.hpp"
+#include "raptor/raptor.hpp"
+#include "compare.hpp"
 
 using namespace raptor;
 

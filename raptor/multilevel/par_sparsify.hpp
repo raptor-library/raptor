@@ -3,8 +3,8 @@
 #ifndef RAPTOR_MULTILEVEL_SPARSIFY
 #define RAPTOR_MULTILEVEL_SPARSIFY
 
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
+#include "raptor/core/types.hpp"
+#include "raptor/core/par_matrix.hpp"
 
 using namespace raptor;
 

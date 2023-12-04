@@ -4,7 +4,7 @@
 #define LAPLACIAN27PT_HPP
 
 //#include <mpi.h>
-#include "core/types.hpp"
+#include "raptor/core/types.hpp"
 #include <stdlib.h>
 
 using namespace raptor;

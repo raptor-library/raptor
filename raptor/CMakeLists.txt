@@ -34,7 +34,6 @@ target_link_libraries(raptor PUBLIC ${MPI_C_LIBRARIES} ${MFEM_LIBRARIES} ${METIS
 target_include_directories(raptor
   PUBLIC
   $<INSTALL_INTERFACE:include>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> # TODO: remove this
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
 )
 

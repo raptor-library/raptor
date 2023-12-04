@@ -9,8 +9,8 @@
 #ifndef MM_IO_H
 #define MM_IO_H
 
-#include "core/types.hpp"
-#include "core/matrix.hpp"
+#include "raptor/core/types.hpp"
+#include "raptor/core/matrix.hpp"
 using namespace raptor;
 
 #define MM_MAX_LINE_LENGTH 1025

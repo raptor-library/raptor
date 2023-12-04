@@ -3,8 +3,8 @@
 #ifndef RAPTOR_AGGREGATION_CANDIDATES_HPP
 #define RAPTOR_AGGREGATION_CANDIDATES_HPP
 
-#include "core/types.hpp"
-#include "core/matrix.hpp"
+#include "raptor/core/types.hpp"
+#include "raptor/core/matrix.hpp"
 
 using namespace raptor;
 

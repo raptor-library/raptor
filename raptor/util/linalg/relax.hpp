@@ -4,9 +4,9 @@
 #define RAPTOR_UTILS_LINALG_SEQ_RELAX_H
 #include <float.h>
 
-#include "core/vector.hpp"
-#include "core/matrix.hpp"
-#include "multilevel/level.hpp"
+#include "raptor/core/vector.hpp"
+#include "raptor/core/matrix.hpp"
+#include "raptor/multilevel/level.hpp"
 
 using namespace raptor;
 

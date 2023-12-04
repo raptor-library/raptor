@@ -12,8 +12,8 @@
 #include <iostream>     // std::cout
 #include <fstream>      // std::ifstream
 
-#include "core/par_matrix.hpp"
-#include "core/types.hpp"
+#include "raptor/core/par_matrix.hpp"
+#include "raptor/core/types.hpp"
 
 using namespace raptor;
 

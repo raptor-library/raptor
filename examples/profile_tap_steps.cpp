@@ -8,7 +8,7 @@
 
 #include "clear_cache.hpp"
 
-#include "raptor.hpp"
+#include "raptor/raptor.hpp"
 
 
 void time_AP(ParCSRMatrix* A, ParCSRMatrix* P, int n_tests, bool tap, const char* name)

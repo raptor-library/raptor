@@ -7,7 +7,7 @@
 #include <assert.h>
 #include <stdexcept>
 
-#include "raptor.hpp"
+#include "raptor/raptor.hpp"
 
 int main(int argc, char* argv[])
 {

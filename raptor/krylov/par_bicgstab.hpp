@@ -1,12 +1,13 @@
 #ifndef RAPTOR_KRYLOV_PAR_BICGSTAB_HPP
 #define RAPTOR_KRYLOV_PAR_BICGSTAB_HPP
 
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "core/par_vector.hpp"
-#include "multilevel/par_multilevel.hpp"
-#include "aggregation/par_smoothed_aggregation_solver.hpp"
 #include <vector>
+
+#include "raptor/core/types.hpp"
+#include "raptor/core/par_matrix.hpp"
+#include "raptor/core/par_vector.hpp"
+#include "raptor/multilevel/par_multilevel.hpp"
+#include "raptor/aggregation/par_smoothed_aggregation_solver.hpp"
 
 using namespace raptor;
 

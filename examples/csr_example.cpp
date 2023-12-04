@@ -7,7 +7,7 @@
 #include <iostream>
 
 // Include raptor
-#include "raptor.hpp"
+#include "raptor/raptor.hpp"
 
 // This example creates a random ParCSRMatrix
 // All values are added directly into ParCSR format.

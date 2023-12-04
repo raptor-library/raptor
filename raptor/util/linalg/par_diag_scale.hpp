@@ -6,8 +6,8 @@
 #include <mpi.h>
 #include <float.h>
 
-#include "core/par_vector.hpp"
-#include "core/par_matrix.hpp"
+#include "raptor/core/par_vector.hpp"
+#include "raptor/core/par_matrix.hpp"
 
 using namespace raptor;
 

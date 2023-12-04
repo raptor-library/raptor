@@ -1,7 +1,7 @@
 // Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#include "krylov/par_bicgstab.hpp"
-#include "krylov/partial_inner.hpp"
+#include "par_bicgstab.hpp"
+#include "partial_inner.hpp"
 
 using namespace raptor;
 

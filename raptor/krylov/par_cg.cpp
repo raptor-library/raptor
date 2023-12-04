@@ -1,7 +1,7 @@
 // Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#include "krylov/par_cg.hpp"
-#include "multilevel/par_multilevel.hpp"
+#include "par_cg.hpp"
+#include "raptor/multilevel/par_multilevel.hpp"
 
 using namespace raptor;
 

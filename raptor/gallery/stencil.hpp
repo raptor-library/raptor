@@ -8,8 +8,8 @@
 #include <cmath>
 #include <stdlib.h>
 
-#include "core/types.hpp"
-#include "core/matrix.hpp"
+#include "raptor/core/types.hpp"
+#include "raptor/core/matrix.hpp"
 
 using namespace raptor;
 
