@@ -23,8 +23,7 @@ jobs:
       - name: Install MacOS dependencies
         if: matrix.os == 'macos-latest'
         run: |
-          brew install --force --overwrite python@3.11    
-          brew update
+          # brew update # fails
           brew install mpich2 lapack cmake
       - name: Checkout code
         uses: actions/checkout@v3
