@@ -2,9 +2,9 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "partial_inner.hpp"
 
-using namespace raptor;
+namespace raptor {
 
-/********************************************************************** 
+/**********************************************************************
  Performs approximate inner product using contiguous half of processes
  *********************************************************************/
 data_t half_inner_contig(ParVector &x, ParVector &y, int half, int part_global){
@@ -46,7 +46,7 @@ data_t half_inner_contig(ParVector &x, ParVector &y, int half, int part_global){
 	inner_root = half_procs;
 	recv_root = 0;
     }
-    else{	
+    else{
 	if (rank < half_procs) color = 0;
 	else color = 1;
         inner_root = 0;
@@ -97,8 +97,8 @@ data_t half_inner_contig(ParVector &x, ParVector &y, int half, int part_global){
 }
 
 
-/***************************************************************** 
- Performs sequential inner product for testing reproducibility 
+/*****************************************************************
+ Performs sequential inner product for testing reproducibility
  ****************************************************************/
 data_t sequential_inner(ParVector &x, ParVector &y){
     int rank, num_procs;
@@ -137,8 +137,8 @@ data_t sequential_inner(ParVector &x, ParVector &y){
 }
 
 
-/***************************************************************** 
- Performs sequential vector norm with parallel vector 
+/*****************************************************************
+ Performs sequential vector norm with parallel vector
  ****************************************************************/
 data_t sequential_norm(ParVector &x, index_t p){
     int rank, num_procs;
@@ -171,16 +171,16 @@ void create_partial_inner_comm(RAPtor_MPI_Comm &inner_comm, RAPtor_MPI_Comm &roo
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
     RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
 
-    if (num_procs <= 1) 
+    if (num_procs <= 1)
     {
        inner_comm = RAPtor_MPI_COMM_NULL;
        root_comm = RAPtor_MPI_COMM_NULL;
        part_global = x.local_n;
-       return; 
+       return;
     }
 
     // Calculate number of processes in group
-    procs_in_group = num_procs * frac; 
+    procs_in_group = num_procs * frac;
     if (num_procs % 2) procs_in_group++;
 
     // Split into contigous groups by color and get root for each group
@@ -202,15 +202,15 @@ void create_partial_inner_comm(RAPtor_MPI_Comm &inner_comm, RAPtor_MPI_Comm &roo
     return;
 }
 
-/***************************************************************** 
+/*****************************************************************
  Performs approximate inner product using half of the processes
  ****************************************************************/
 data_t half_inner(RAPtor_MPI_Comm &inner_comm, ParVector &x, ParVector &y, int &my_color, int send_color, int &inner_root,
                   int &recv_root, int part_global) {
-    /*  inner_comm : MPI communicator containing the processes to use in the inner product 
+    /*  inner_comm : MPI communicator containing the processes to use in the inner product
      *           x : ParVector for calculating inner product
      *           y : ParVector for calculating inner product
-     *    my_color : color corresponding to the procs communicator 
+     *    my_color : color corresponding to the procs communicator
      *  send_color : color calculating the inner product and sending to the other half of processes
      *  inner_root : root of inner_comm
      *   recv_root : root of recv_comm
@@ -234,7 +234,7 @@ data_t half_inner(RAPtor_MPI_Comm &inner_comm, ParVector &x, ParVector &y, int &
         inner_prod = x.local.inner_product(y.local);
         return inner_prod;
     }
-    
+
     // Get communicator sizes
     RAPtor_MPI_Comm_size(inner_comm, &inner_comm_size);
     //MPI_Comm_size(recv_comm, &recv_comm_size);
@@ -275,16 +275,16 @@ data_t half_inner(RAPtor_MPI_Comm &inner_comm, ParVector &x, ParVector &y, int &
     return inner_prod;
 }
 
-/***************************************************************** 
+/*****************************************************************
  Performs approximate inner product using part of the processes
  ****************************************************************/
 data_t partial_inner(RAPtor_MPI_Comm &inner_comm, RAPtor_MPI_Comm &root_comm, ParVector &x, ParVector &y, int my_color,
                      int send_color, int inner_root, int procs_in_group, int part_global) {
-    /*     inner_comm : MPI communicator containing the processes to use in the inner product 
+    /*     inner_comm : MPI communicator containing the processes to use in the inner product
      *      root_comm : MPI communicator containing the root processes for each inner_comm communicator
      *              x : ParVector for calculating inner product
      *              y : ParVector for calculating inner product
-     *       my_color : color corresponding to the processes' communicator 
+     *       my_color : color corresponding to the processes' communicator
      *     send_color : color calculating the inner product and sending to the other processes
      *     inner_root : root of the processes' inner_comm
      * procs_in_group : average number of processes in group - rounded up if uneven
@@ -299,9 +299,9 @@ data_t partial_inner(RAPtor_MPI_Comm &inner_comm, RAPtor_MPI_Comm &root_comm, Pa
 
     // Check if single process or inner_comm undefined - then default to full inner product
     if (num_procs <= 1 || inner_comm == RAPtor_MPI_COMM_NULL){
-        return y.inner_product(x); 
+        return y.inner_product(x);
     }
-    
+
     // Get communicator sizes
     RAPtor_MPI_Comm_size(inner_comm, &inner_comm_size);
 
@@ -333,4 +333,5 @@ data_t partial_inner(RAPtor_MPI_Comm &inner_comm, RAPtor_MPI_Comm &root_comm, Pa
 
     // Return partial inner_prod scaled by global percentage
     return inner_prod;
+}
 }

@@ -11,10 +11,10 @@
 #include "raptor/raptor.hpp"
 
 #ifdef USING_MFEM
-#include "external/mfem_wrapper.hpp"
+#include "raptor/external/mfem_wrapper.hpp"
 #endif
 
-//using namespace raptor;
+using namespace raptor;
 int main(int argc, char *argv[])
 {
     MPI_Init(&argc, &argv);

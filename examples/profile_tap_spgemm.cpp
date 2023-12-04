@@ -8,23 +8,25 @@
 
 #include "clear_cache.hpp"
 
-#include "core/par_matrix.hpp"
-#include "core/par_vector.hpp"
-#include "core/types.hpp"
-#include "gallery/par_stencil.hpp"
-#include "gallery/laplacian27pt.hpp"
-#include "gallery/diffusion.hpp"
-#include "gallery/par_matrix_IO.hpp"
-#include "multilevel/par_multilevel.hpp"
-#include "ruge_stuben/par_ruge_stuben_solver.hpp"
+#include "raptor/core/par_matrix.hpp"
+#include "raptor/core/par_vector.hpp"
+#include "raptor/core/types.hpp"
+#include "raptor/gallery/par_stencil.hpp"
+#include "raptor/gallery/laplacian27pt.hpp"
+#include "raptor/gallery/diffusion.hpp"
+#include "raptor/gallery/par_matrix_IO.hpp"
+#include "raptor/multilevel/par_multilevel.hpp"
+#include "raptor/ruge_stuben/par_ruge_stuben_solver.hpp"
 
 #ifdef USING_MFEM
-  #include "external/mfem_wrapper.hpp"
+  #include "raptor/external/mfem_wrapper.hpp"
 #endif
 
 
 #define eager_cutoff 1000
 #define short_cutoff 62
+
+using namespace raptor;
 
 int main(int argc, char *argv[])
 {

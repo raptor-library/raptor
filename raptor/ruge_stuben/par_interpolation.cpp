@@ -4,7 +4,7 @@
 #include "raptor/core/types.hpp"
 #include "raptor/core/par_matrix.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 // Declare Private Methods
 CSRMatrix* communicate(ParCSRMatrix* A, ParCSRMatrix* S, const std::vector<int>& states,
@@ -1772,4 +1772,5 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
 
 
     return P;
+}
 }

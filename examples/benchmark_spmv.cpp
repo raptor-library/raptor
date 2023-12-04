@@ -7,15 +7,15 @@
 #include "clear_cache.hpp"
 #include <ctime>
 
-#include "core/matrix.hpp"
-#include "core/vector.hpp"
-#include "core/types.hpp"
-#include "gallery/stencil.hpp"
-#include "gallery/laplacian27pt.hpp"
-#include "gallery/diffusion.hpp"
-#include "gallery/matrix_IO.hpp"
+#include "raptor/core/matrix.hpp"
+#include "raptor/core/vector.hpp"
+#include "raptor/core/types.hpp"
+#include "raptor/gallery/stencil.hpp"
+#include "raptor/gallery/laplacian27pt.hpp"
+#include "raptor/gallery/diffusion.hpp"
+#include "raptor/gallery/matrix_IO.hpp"
 
-//using namespace raptor;
+using namespace raptor;
 
 double wtime()
 {

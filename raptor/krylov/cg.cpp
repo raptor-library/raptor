@@ -2,14 +2,14 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "cg.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 void CG(CSRMatrix* A, Vector& x, Vector& b, std::vector<double>& res, double tol, int max_iter)
 {
     Vector r;
     Vector p;
     Vector Ap;
-    
+
     int iter, recompute_r;
     data_t alpha, beta;
     data_t rr_inner, next_inner, App_inner;
@@ -58,7 +58,7 @@ void CG(CSRMatrix* A, Vector& x, Vector& b, std::vector<double>& res, double tol
             exit(-1);
         }
         alpha = rr_inner / App_inner;
-        
+
         x.axpy(p, alpha);
 
         // x_{i+1} = x_i + alpha_i * p_i
@@ -100,4 +100,5 @@ void CG(CSRMatrix* A, Vector& x, Vector& b, std::vector<double>& res, double tol
     }
 
     return;
+}
 }

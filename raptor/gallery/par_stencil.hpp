@@ -11,10 +11,9 @@
 #include "raptor/core/types.hpp"
 #include "raptor/core/par_matrix.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 ParCSRMatrix* par_stencil_grid(data_t* stencil, int* grid, int dim);
 
+}
 #endif
-
-

@@ -7,7 +7,7 @@
 #include "raptor/core/par_matrix.hpp"
 #include "cf_splitting.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 void set_initial_states(ParCSRMatrix* S, std::vector<int>& states);
 void reset_boundaries(ParCSRMatrix* S, std::vector<int>& states);
@@ -37,4 +37,5 @@ void split_pmis(ParCSRMatrix* S, std::vector<int>& states,
 void split_hmis(ParCSRMatrix* S, std::vector<int>& states,
         std::vector<int>& off_proc_states, bool tap_cf = false, 
         double* rand_vals = NULL);
+}
 #endif

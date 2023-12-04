@@ -9,14 +9,12 @@
 #include "raptor/core/par_vector.hpp"
 #include "raptor/core/par_matrix.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 void row_scale(ParCSRMatrix* A, ParVector& rhs);
 void diagonally_scale(ParCSRMatrix* A, ParVector& rhs, std::vector<double>& row_scales);
 void diagonally_unscale(ParVector& sol, const std::vector<double>& row_scales);
 
-
-
+}
 
 #endif
-

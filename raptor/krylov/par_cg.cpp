@@ -3,7 +3,7 @@
 #include "par_cg.hpp"
 #include "raptor/multilevel/par_multilevel.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 void CG(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<double>& res, double tol, int max_iter, double* comm_t)
 {
@@ -262,3 +262,4 @@ if (comm_t) *comm_t += RAPtor_MPI_Wtime();
     return;
 }
 
+}

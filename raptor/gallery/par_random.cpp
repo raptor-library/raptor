@@ -2,6 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "par_random.hpp"
 
+namespace raptor {
 ParCSRMatrix* par_random(int global_rows, int global_cols, int nnz_per_row)
 {
     int rank, num_procs;
@@ -10,7 +11,7 @@ ParCSRMatrix* par_random(int global_rows, int global_cols, int nnz_per_row)
 
     ParCOOMatrix* A_coo;
     double val = 1.0;
-    
+
     A_coo = new ParCOOMatrix(global_rows, global_cols);
     int local_nnz = nnz_per_row * A_coo->local_num_rows;
     for (int i = 0; i < local_nnz; i++)
@@ -26,3 +27,4 @@ ParCSRMatrix* par_random(int global_rows, int global_cols, int nnz_per_row)
 
 }
 
+}

@@ -8,7 +8,7 @@
 #include "raptor/core/matrix.hpp"
 #include "raptor/multilevel/level.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 void jacobi(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, 
         int num_sweeps = 1, double omega = 1.0);
@@ -17,6 +17,5 @@ void sor(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp,
 void ssor(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, 
         int num_sweeps = 1, double omega = 1.0);
 
-
+}
 #endif
-

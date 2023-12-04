@@ -8,9 +8,11 @@
 
 #include "clear_cache.hpp"
 
-#include "core/types.hpp"
-#include "multilevel/par_multilevel.hpp"
-#include "external/hypre_wrapper.hpp"
+#include "raptor/core/types.hpp"
+#include "raptor/multilevel/par_multilevel.hpp"
+#include "raptor/external/hypre_wrapper.hpp"
+
+using namespace raptor;
 
 int main(int argc, char *argv[])
 {

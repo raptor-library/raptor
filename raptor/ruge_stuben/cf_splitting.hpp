@@ -6,7 +6,7 @@
 #include "raptor/core/types.hpp"
 #include "raptor/core/matrix.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 void cljp_update_weights(CSRMatrix* S, std::vector<int>& col_ptr, 
         std::vector<int>& col_indices, std::vector<int>& edgemark, 
@@ -16,4 +16,5 @@ void split_rs(CSRMatrix* S, std::vector<int>& states, bool has_states = false, b
 void split_cljp(CSRMatrix* S, std::vector<int>& states, double* rand_vals = NULL);
 void split_pmis(CSRMatrix* S, std::vector<int>& states, double* rand_vals = NULL);
 
+}
 #endif

@@ -6,10 +6,11 @@
 #include "raptor/core/types.hpp"
 #include "raptor/core/par_matrix.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 int mis2(const ParCSRMatrix* A, std::vector<int>& states, 
         std::vector<int>& off_proc_states, bool tap_comm = false, 
         double* rand_vals = NULL);
 
+}
 #endif

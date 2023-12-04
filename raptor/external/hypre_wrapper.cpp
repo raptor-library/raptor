@@ -4,6 +4,8 @@
 
 #include "hypre_wrapper.hpp"
 
+using namespace raptor;
+
 HYPRE_IJVector convert(raptor::ParVector& x_rap, RAPtor_MPI_Comm comm_mat)
 {
     int num_procs, rank;

@@ -3,6 +3,7 @@
 
 #include "diffusion.hpp"
 
+namespace raptor {
 // diffusion_stencil_2d
 //
 // Generate a diffusion stencil
@@ -79,3 +80,4 @@ data_t* diffusion_stencil_2d(data_t eps, data_t theta)
     return stencil;
 }
 
+}

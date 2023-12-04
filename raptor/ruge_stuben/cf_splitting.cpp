@@ -4,7 +4,7 @@
 
 // TODO - parts of cf_splitting were taken from pyamg... how to cite this?
 
-using namespace raptor;
+namespace raptor {
 
 // Declare Private Methods
 void transpose(const CSRMatrix* S, std::vector<int>& col_ptr, std::vector<int>& col_indices);
@@ -723,3 +723,4 @@ void split_pmis(CSRMatrix* S, std::vector<int>& states, double* rand_vals)
 }
 
 
+}

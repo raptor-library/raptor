@@ -7,11 +7,10 @@
 #include "raptor/core/matrix.hpp"
 #include "mis.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 int aggregate(CSRMatrix* A, CSRMatrix* S, std::vector<int>& states,
         std::vector<int>& aggregates, double* rand_vals = NULL);
 
+}
 #endif
-
-

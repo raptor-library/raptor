@@ -3,6 +3,7 @@
 
 #include "par_prolongation.hpp"
 
+namespace raptor {
 // Assuming weighting = local (not getting approx spectral radius)
 ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, bool tap_comm,
         double omega, int num_smooth_steps)
@@ -102,3 +103,4 @@ ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, bool tap_com
     return P;
 }
 
+}

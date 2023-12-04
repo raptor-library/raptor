@@ -13,10 +13,10 @@
 #include "raptor/core/mpi_types.hpp"
 #include "raptor/core/par_matrix.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, std::vector<int>& new_local_rows);
 void make_contiguous(ParCSRMatrix* A);
 
+}
 #endif
-

@@ -21,6 +21,7 @@ void endian_swap(T *objp)
 }
 }
 
+namespace raptor {
 ParCSRMatrix* readParMatrix(const char* filename, 
         int local_num_rows, int local_num_cols,
         int first_local_row, int first_local_col, 
@@ -182,4 +183,5 @@ ParCSRMatrix* readParMatrix(const char* filename,
     A->finalize();
 
     return A;
+}
 }

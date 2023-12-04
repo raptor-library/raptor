@@ -22,6 +22,8 @@
   #include "external/mfem_wrapper.hpp"
 #endif
 
+using namespace raptor;
+
 #define eager_cutoff 1000
 #define short_cutoff 62
 

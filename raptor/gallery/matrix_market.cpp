@@ -13,7 +13,7 @@
 
 #include "matrix_market.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 // Declare Private Methods
 char *mm_strdup(const char *s);
@@ -535,3 +535,4 @@ char  *mm_typecode_to_str(MM_typecode matcode)
 
 }
 
+}

@@ -2,6 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "par_stencil.hpp"
 
+namespace raptor {
 ParCSRMatrix* par_stencil_grid(data_t* stencil, int* grid, int dim)
 {
     // Get MPI Information
@@ -19,7 +20,7 @@ ParCSRMatrix* par_stencil_grid(data_t* stencil, int* grid, int dim)
     int N_v;  // Number of rows (and cols) in matrix
     int N_s;  // Number of nonzero stencil entries
     int n_v;  // Local number of rows (and cols)
-    
+
     int init_step, idx;
     int len, step, current_step;
     int col;
@@ -101,7 +102,7 @@ ParCSRMatrix* par_stencil_grid(data_t* stencil, int* grid, int dim)
         {
             diags[j] += strides[i] * indices[j][dim-i-1];
         }
-    } 
+    }
 
     //Initial data array
     data.resize(N_s*n_v);
@@ -126,7 +127,7 @@ ParCSRMatrix* par_stencil_grid(data_t* stencil, int* grid, int dim)
     //Zero boundary conditions
     for (index_t i = 0; i < N_s; i++)
     {
-        //get correct chunk of data 
+        //get correct chunk of data
         //(corresponding to single stencil entry)
         init_step = i*n_v;
         for (index_t j = 0; j < dim; j++)
@@ -204,7 +205,7 @@ ParCSRMatrix* par_stencil_grid(data_t* stencil, int* grid, int dim)
     {
         for (index_t d = 0; d < N_s; d++)
         {
-            //add data[i] if nonzero 
+            //add data[i] if nonzero
             col = diags[d] + i + first_local_row;
             value = data[(N_s-d-1)*n_v+i];
             if (col >= 0 && col < N_v && fabs(value) > zero_tol)
@@ -218,10 +219,10 @@ ParCSRMatrix* par_stencil_grid(data_t* stencil, int* grid, int dim)
 
     A->on_proc->nnz = A->on_proc->idx2.size();
     A->off_proc->nnz = A->off_proc->idx2.size();
-    
+
     A->finalize();
 
     return A;
-} 
+}
 
-
+}

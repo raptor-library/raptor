@@ -2,6 +2,8 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "par_aggregate.hpp"
 
+namespace raptor {
+
 int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, std::vector<int>& states,
         std::vector<int>& off_proc_states, std::vector<int>& aggregates,
         bool tap_comm, double* rand_vals)
@@ -166,7 +168,7 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, std::vector<int>& states,
                     max_agg = off_proc_aggregates[col];
                 }
             }
-            
+
             aggregates[i] = - (max_agg + 1);
         }
     }
@@ -182,3 +184,4 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, std::vector<int>& states,
     return n_aggs;
 }
 
+}

@@ -9,6 +9,7 @@
 // Include raptor
 #include "raptor/raptor.hpp"
 
+using namespace raptor;
 // This example creates a random ParCSRMatrix
 // All values are added directly into ParCSR format.
 // The example then performs a SpMV on this matrix

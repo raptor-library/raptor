@@ -2,6 +2,8 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "candidates.hpp"
 
+namespace raptor {
+
 CSRMatrix* fit_candidates(const int n_aggs, const std::vector<int>& aggregates, 
         const std::vector<double>& B, std::vector<double>& R,
         int num_candidates, double tol)
@@ -134,4 +136,6 @@ CSRMatrix* fit_candidates(const int n_aggs, const std::vector<int>& aggregates,
     delete T_csc;
 
     return T;
+}
+
 }

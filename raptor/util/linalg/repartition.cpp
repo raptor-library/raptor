@@ -2,6 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "repartition.hpp"
 
+namespace raptor {
 void make_contiguous(ParCSRMatrix* A, std::vector<int>& off_proc_part_map)
 {
     int rank, num_procs;
@@ -388,4 +389,4 @@ ParCSRMatrix* repartition_matrix(ParCSRMatrix* A, int* partition, std::vector<in
     return A_part;
 }
 
-
+}

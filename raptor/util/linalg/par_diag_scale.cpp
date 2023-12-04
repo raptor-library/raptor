@@ -2,6 +2,8 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "par_diag_scale.hpp"
 
+namespace raptor {
+
 void row_scale(ParCSRMatrix* A, ParVector& rhs)
 {
     int start, end;
@@ -78,4 +80,4 @@ void diagonally_unscale(ParVector& sol, const std::vector<double>& row_scales)
     }
 }
 
-
+}

@@ -2,7 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "par_sparsify.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 void sparsify(ParCSRMatrix* A, ParCSRMatrix* P, ParCSRMatrix* I, 
         ParCSRMatrix* AP, ParCSRMatrix* Ac, const double theta)
@@ -182,4 +182,5 @@ void sparsify(ParCSRMatrix* A, ParCSRMatrix* P, ParCSRMatrix* I,
     }
 
     delete M;
+}
 }

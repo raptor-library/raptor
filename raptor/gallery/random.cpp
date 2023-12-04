@@ -3,6 +3,7 @@
 
 #include "random.hpp"
 
+namespace raptor {
 CSRMatrix* random(int rows, int cols, int nnz_per_row)
 {
     CSRMatrix* A;
@@ -24,3 +25,4 @@ CSRMatrix* random(int rows, int cols, int nnz_per_row)
 
 }
 
+}

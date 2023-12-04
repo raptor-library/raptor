@@ -8,23 +8,23 @@
 
 #include "clear_cache.hpp"
 
-#include "core/par_matrix.hpp"
-#include "core/par_vector.hpp"
-#include "core/types.hpp"
-#include "gallery/par_stencil.hpp"
-#include "gallery/laplacian27pt.hpp"
-#include "gallery/diffusion.hpp"
-#include "gallery/par_matrix_IO.hpp"
-#include "ruge_stuben/par_ruge_stuben_solver.hpp"
-#include "external/hypre_wrapper.hpp"
-#include "krylov/par_cg.hpp"
+#include "raptor/core/par_matrix.hpp"
+#include "raptor/core/par_vector.hpp"
+#include "raptor/core/types.hpp"
+#include "raptor/gallery/par_stencil.hpp"
+#include "raptor/gallery/laplacian27pt.hpp"
+#include "raptor/gallery/diffusion.hpp"
+#include "raptor/gallery/par_matrix_IO.hpp"
+#include "raptor/ruge_stuben/par_ruge_stuben_solver.hpp"
+#include "raptor/external/hypre_wrapper.hpp"
+#include "raptor/krylov/par_cg.hpp"
 
 #ifdef USING_MFEM
-  #include "external/mfem_wrapper.hpp"
+  #include "raptorexternal/mfem_wrapper.hpp"
 #endif
 
-//using namespace raptor;
-//
+using namespace raptor;
+
 
 void form_hypre_weights(std::vector<double>& weights, int n_rows)
 {

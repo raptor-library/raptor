@@ -6,9 +6,10 @@
 #include "raptor/core/types.hpp"
 #include "raptor/core/matrix.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 void mis2(CSRMatrix* A, std::vector<int>& states,
         double* rand_vals = NULL);
 
+}
 #endif

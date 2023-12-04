@@ -3,7 +3,7 @@
 #include "par_bicgstab.hpp"
 #include "partial_inner.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 /**************************************************************************************
  BiCGStab 
@@ -891,4 +891,5 @@ void PrePI_BiCGStab(ParCSRMatrix* A, ParVector& x, ParVector& b, std::vector<dou
     }
 */
     return;
+}
 }
