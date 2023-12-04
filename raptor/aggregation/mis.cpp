@@ -2,6 +2,8 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "mis.hpp"
 
+namespace raptor {
+
 void mis2(CSRMatrix* A, std::vector<int>& states,
         double* rand_vals)
 {
@@ -217,3 +219,4 @@ void mis2(CSRMatrix* A, std::vector<int>& states,
     delete A_csc;
 }
 
+}

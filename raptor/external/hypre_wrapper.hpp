@@ -12,8 +12,6 @@
 #include "_hypre_parcsr_mv.h"
 #include "_hypre_parcsr_ls.h"
 
-using namespace raptor;
-
 HYPRE_IJVector convert(raptor::ParVector& x_rap,
                        RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
 HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap,

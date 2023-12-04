@@ -21,8 +21,6 @@
 #include <vector>
 #include <stdexcept>
 
-using namespace std;
-
 #define zero_tol 1e-16
 #define RAPtor_MPI_INDEX_T MPI_INT
 #define RAPtor_MPI_DATA_T MPI_DOUBLE
@@ -38,7 +36,7 @@ using namespace std;
 
 
 // Global Timing Variables
-struct PairData 
+struct PairData
 {
     double val;
     int index;
@@ -56,7 +54,7 @@ namespace raptor
     enum prolong_t {JacobiProlongation};
     enum relax_t {Jacobi, SOR, SSOR};
 
-    template<typename T, typename U> 
+    template<typename T, typename U>
     U sum_func(const U& a, const T&b)
     {
         return a + b;

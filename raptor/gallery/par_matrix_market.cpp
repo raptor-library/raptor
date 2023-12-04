@@ -1,4 +1,4 @@
-/* 
+/*
 *   Matrix Market I/O library for ANSI C
 *
 *   See http://math.nist.gov/MatrixMarket for details.
@@ -13,7 +13,7 @@
 
 #include "par_matrix_market.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 // Declare Private Methods
 void write_par_data(FILE* f, int n, int* rowptr, int* col_idx,
@@ -28,19 +28,19 @@ ParCSRMatrix* read_par_mm(const char *fname)
     int row, col;
     int n_items_read;
     double val;
- 
+
     if ((f = fopen(fname, "r")) == NULL)
             return NULL;
- 
- 
+
+
     if (mm_read_banner(f, &matcode) != 0)
     {
         printf("mm_read_unsymetric: Could not process Matrix Market banner ");
         printf(" in file [%s]\n", fname);
         return NULL;
     }
- 
- 
+
+
     if ( !(mm_is_real(matcode) && mm_is_matrix(matcode) &&
             mm_is_sparse(matcode)))
     {
@@ -49,15 +49,15 @@ ParCSRMatrix* read_par_mm(const char *fname)
                 mm_typecode_to_str(matcode));
         return NULL;
     }
- 
+
     /* find out size of sparse matrix: M, N, nz .... */
- 
+
     if (mm_read_mtx_crd_size(f, &M, &N, &nz) !=0)
     {
         fprintf(stderr, "read_unsymmetric_sparse(): could not parse matrix size.\n");
         return NULL;
     }
- 
+
     int row_nnz = nz / M;
     ParCOOMatrix* A = new ParCOOMatrix(M, N);
     A->on_proc->vals.reserve(row_nnz);
@@ -66,7 +66,7 @@ ParCSRMatrix* read_par_mm(const char *fname)
     /* NOTE: when reading in doubles, ANSI C requires the use of the "l"  */
     /*   specifier as in "%lg", "%lf", "%le", otherwise errors will occur */
     /*  (ANSI C X3.159-1989, Sec. 4.9.6.2, p. 136 lines 13-15)            */
- 
+
     bool symmetric = mm_is_symmetric(matcode);
     bool row_local;
     bool col_local;
@@ -84,7 +84,7 @@ ParCSRMatrix* read_par_mm(const char *fname)
         else
         {
             row_local = false;
-            if (!symmetric) 
+            if (!symmetric)
                 continue;
         }
         if (col >= A->partition->first_local_col && col <= A->partition->last_local_col)
@@ -95,7 +95,7 @@ ParCSRMatrix* read_par_mm(const char *fname)
         else
         {
             col_local = false;
-            if (!row_local) 
+            if (!row_local)
                 continue;
         }
 
@@ -132,7 +132,7 @@ ParCSRMatrix* read_par_mm(const char *fname)
     delete A;
 
     fclose(f);
- 
+
     return A_csr;
 }
 
@@ -148,7 +148,7 @@ void write_par_data(FILE* f, int n, int* rowptr, int* col_idx,
         end = rowptr[i+1];
         for (int j = start; j < end; j++)
         {
-            fprintf(f, "%d %d %2.15e\n", global_row + 1, 
+            fprintf(f, "%d %d %2.15e\n", global_row + 1,
                     col_map[col_idx[j]] + 1, vals[j]);
         }
     }
@@ -178,7 +178,7 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
     int dims[5];
     dims[0] = A->local_num_rows + 1;
     dims[1] = A->on_proc_num_cols;
-    dims[2] = A->off_proc_num_cols; 
+    dims[2] = A->off_proc_num_cols;
     dims[3] = A->on_proc->nnz;
     dims[4] = A->off_proc->nnz;
     RAPtor_MPI_Gather(dims, 5, RAPtor_MPI_INT, proc_dims.data(), 5, RAPtor_MPI_INT, 0, RAPtor_MPI_COMM_WORLD);
@@ -212,7 +212,7 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
         std::vector<int> idx2;
         std::vector<double> vals;
         std::vector<int> row_map;
-        std::vector<int> col_map; 
+        std::vector<int> col_map;
         for (int i = 1; i < num_procs; i++)
         {
             // Calculate comm_size and allocate recv_buf
@@ -252,7 +252,7 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
                     RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD);
             RAPtor_MPI_Unpack(buffer.data(), comm_size, &pos, vals.data(), i_dims[3],
                     RAPtor_MPI_DOUBLE, RAPtor_MPI_COMM_WORLD);
-            write_par_data(f, i_dims[0] - 1, idx1.data(), idx2.data(), 
+            write_par_data(f, i_dims[0] - 1, idx1.data(), idx2.data(),
                     vals.data(), first_row, col_map.data());
 
             RAPtor_MPI_Unpack(buffer.data(), comm_size, &pos, col_map.data(), i_dims[2],
@@ -263,7 +263,7 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
                     RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD);
             RAPtor_MPI_Unpack(buffer.data(), comm_size, &pos, vals.data(), i_dims[4],
                     RAPtor_MPI_DOUBLE, RAPtor_MPI_COMM_WORLD);
-            write_par_data(f, i_dims[0] - 1, idx1.data(), idx2.data(), 
+            write_par_data(f, i_dims[0] - 1, idx1.data(), idx2.data(),
                     vals.data(), first_row, col_map.data());
 
             first_row += i_dims[0] - 1;
@@ -283,17 +283,17 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
 
         // Pack Data
         pos = 0;
-        RAPtor_MPI_Pack(A->on_proc_column_map.data(), dims[1], RAPtor_MPI_INT, buffer.data(), comm_size, 
-               &pos, RAPtor_MPI_COMM_WORLD); 
+        RAPtor_MPI_Pack(A->on_proc_column_map.data(), dims[1], RAPtor_MPI_INT, buffer.data(), comm_size,
+               &pos, RAPtor_MPI_COMM_WORLD);
         RAPtor_MPI_Pack(A->on_proc->idx1.data(), dims[0], RAPtor_MPI_INT, buffer.data(), comm_size,
                 &pos, RAPtor_MPI_COMM_WORLD);
         RAPtor_MPI_Pack(A->on_proc->idx2.data(), dims[3], RAPtor_MPI_INT, buffer.data(), comm_size,
                 &pos, RAPtor_MPI_COMM_WORLD);
         RAPtor_MPI_Pack(A->on_proc->vals.data(), dims[3], RAPtor_MPI_DOUBLE, buffer.data(), comm_size,
                 &pos, RAPtor_MPI_COMM_WORLD);
-        
-        RAPtor_MPI_Pack(A->off_proc_column_map.data(), dims[2], RAPtor_MPI_INT, buffer.data(), comm_size, 
-               &pos, RAPtor_MPI_COMM_WORLD); 
+
+        RAPtor_MPI_Pack(A->off_proc_column_map.data(), dims[2], RAPtor_MPI_INT, buffer.data(), comm_size,
+               &pos, RAPtor_MPI_COMM_WORLD);
         RAPtor_MPI_Pack(A->off_proc->idx1.data(), dims[0], RAPtor_MPI_INT, buffer.data(), comm_size,
                 &pos, RAPtor_MPI_COMM_WORLD);
         RAPtor_MPI_Pack(A->off_proc->idx2.data(), dims[4], RAPtor_MPI_INT, buffer.data(), comm_size,
@@ -306,3 +306,4 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
     }
 }
 
+}

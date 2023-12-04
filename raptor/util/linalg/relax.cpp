@@ -5,7 +5,7 @@
 #include "raptor/core/vector.hpp"
 #include "relax.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 void jacobi(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps, 
         double omega)
@@ -112,5 +112,4 @@ void ssor(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps,
     }
 }
 
-
-
+}

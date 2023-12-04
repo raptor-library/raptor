@@ -10,6 +10,8 @@
 
 #include "raptor/raptor.hpp"
 
+using namespace raptor;
+
 void form_hypre_weights(double** weight_ptr, int n_rows)
 {
     int rank;

@@ -7,9 +7,9 @@
 #include "raptor/core/par_matrix.hpp"
 #include "raptor/core/par_vector.hpp"
 
-using namespace raptor;
-
+namespace raptor {
 ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, bool tap_comm = false,
         double omega = 4.0/3, int num_smooth_steps = 1);
+}
 #endif
 

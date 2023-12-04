@@ -7,12 +7,13 @@
 #include "raptor/core/par_matrix.hpp"
 #include "par_mis.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, std::vector<int>& states,
         std::vector<int>& off_proc_states, std::vector<int>& aggregates,
         bool tap_comm = false, double* rand_vals = NULL);
 
+}
 #endif
 
 

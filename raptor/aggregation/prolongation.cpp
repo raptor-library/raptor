@@ -3,6 +3,7 @@
 
 #include "prolongation.hpp"
 
+namespace raptor {
 // Assuming weighting = local (not getting approx spectral radius)
 CSRMatrix* jacobi_prolongation(CSRMatrix* A, CSRMatrix* T, double omega, 
         int num_smooth_steps)
@@ -51,4 +52,5 @@ CSRMatrix* jacobi_prolongation(CSRMatrix* A, CSRMatrix* T, double omega,
     delete scaled_A;
     
     return P;
+}
 }

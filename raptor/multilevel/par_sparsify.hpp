@@ -6,9 +6,10 @@
 #include "raptor/core/types.hpp"
 #include "raptor/core/par_matrix.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 void sparsify(ParCSRMatrix* A, ParCSRMatrix* P, ParCSRMatrix* I, 
         ParCSRMatrix* AP, ParCSRMatrix* Ac, const double theta = 0.1);
 
+}
 #endif

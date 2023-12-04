@@ -7,7 +7,7 @@
 #include "raptor/core/types.hpp"
 #include <stdlib.h>
 
-using namespace raptor;
+namespace raptor {
 
 // 27 Point Laplacian Stencil
 //
@@ -26,4 +26,5 @@ using namespace raptor;
 
 data_t* laplace_stencil_27pt();
 
+}
 #endif

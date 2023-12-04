@@ -9,6 +9,8 @@
 // Include raptor
 #include "raptor/raptor.hpp"
 
+using namespace raptor;
+
 // This is a basic use case.
 int main(int argc, char *argv[])
 {

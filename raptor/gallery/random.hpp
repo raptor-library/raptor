@@ -12,8 +12,8 @@
 #include "raptor/core/matrix.hpp"
 #include "raptor/core/types.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 CSRMatrix* random(int rows, int cols, int nnz_per_row);
-
+}
 #endif

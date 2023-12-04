@@ -7,7 +7,7 @@
 #include <time.h>
 #include <math.h>
 #include <vector>
-#include "core/types.hpp"
+#include "raptor/core/types.hpp"
 
 using namespace raptor;
 

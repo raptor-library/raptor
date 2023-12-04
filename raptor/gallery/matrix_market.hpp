@@ -11,7 +11,8 @@
 
 #include "raptor/core/types.hpp"
 #include "raptor/core/matrix.hpp"
-using namespace raptor;
+
+namespace raptor {
 
 #define MM_MAX_LINE_LENGTH 1025
 #define MatrixMarketBanner "%%MatrixMarket"
@@ -119,7 +120,6 @@ int mm_is_valid(MM_typecode matcode);		/* too complex for a macro */
 #define MM_SKEW_STR		"skew-symmetric"
 #define MM_PATTERN_STR  "pattern"
 
-
 /*  high level routines */
 
 int mm_write_mtx_crd(char fname[], int M, int N, int nz, int I[], int J[],
@@ -132,7 +132,6 @@ int mm_read_mtx_crd_entry(FILE *f, int *I, int *J, double *real, double *img,
 CSRMatrix* read_mm(const char* fname);
 void write_mm(CSRMatrix* A, const char* fname);
 
+}
 
 #endif
-
-

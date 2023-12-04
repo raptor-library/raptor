@@ -6,7 +6,7 @@
 #include "raptor/core/types.hpp"
 #include "raptor/core/par_matrix.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 ParCSRMatrix* direct_interpolation(ParCSRMatrix* A, 
         ParCSRMatrix* S, const std::vector<int>& states,
@@ -24,4 +24,5 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         const double filter_threshold = 0.3,
         bool tap_amg = false, int num_variables = 1, int* variables = NULL);
 
+}
 #endif

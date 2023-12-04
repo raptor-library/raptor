@@ -3,6 +3,7 @@
 
 #include "laplacian27pt.hpp"
 
+namespace raptor {
 // 27 Point Laplacian Stencil
 //
 // Generate a 27-point laplacian stencil
@@ -32,3 +33,4 @@ data_t* laplace_stencil_27pt()
     return stencil;
 }
 
+}

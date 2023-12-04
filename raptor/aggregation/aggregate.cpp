@@ -2,6 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "aggregate.hpp"
 
+namespace raptor {
 int aggregate(CSRMatrix* A, CSRMatrix* S, std::vector<int>& states,
         std::vector<int>& aggregates, double* rand_vals)
 {
@@ -92,4 +93,5 @@ int aggregate(CSRMatrix* A, CSRMatrix* S, std::vector<int>& states,
     }
 
     return n_aggs;
+}
 }

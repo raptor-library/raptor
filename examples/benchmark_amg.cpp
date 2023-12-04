@@ -10,6 +10,8 @@
 
 #include "raptor/raptor.hpp"
 
+using namespace raptor;
+
 int main(int argc, char* argv[])
 {
     MPI_Init(&argc, &argv);

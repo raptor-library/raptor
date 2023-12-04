@@ -12,8 +12,8 @@
 #include "raptor/core/par_matrix.hpp"
 #include "raptor/core/types.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 ParCSRMatrix* par_random(int global_rows, int global_cols, int nnz_per_row);
-
+}
 #endif

@@ -9,6 +9,8 @@
 // Include raptor
 #include "raptor/raptor.hpp"
 
+using namespace raptor;
+
 // This example creates a random ParCSRMatrix
 // All values are added into COO format and then converted.
 // The example then performs a SpMV on this matrix

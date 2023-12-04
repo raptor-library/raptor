@@ -7,8 +7,8 @@
 #include "raptor/core/matrix.hpp"
 #include "raptor/core/vector.hpp"
 
-using namespace raptor;
-
+namespace raptor {
 CSRMatrix* jacobi_prolongation(CSRMatrix* A, CSRMatrix* T, double omega = 4.0/3, 
         int num_smooth_steps = 1);
+}
 #endif

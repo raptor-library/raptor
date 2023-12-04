@@ -2,6 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "par_mis.hpp"
 
+namespace raptor {
 // Declare Private Methods
 void comm_states(const ParCSRMatrix* A, CommPkg* comm, 
         const std::vector<int>& states, std::vector<int>& recv_indices, 
@@ -651,3 +652,4 @@ int mis2(const ParCSRMatrix* A, std::vector<int>& states,
     return iterate;
 }
 
+}

@@ -13,13 +13,11 @@
 #include "raptor/core/types.hpp"
 #include "raptor/core/par_matrix.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 /*  high level routines */
 ParCSRMatrix* read_par_mm(const char *fname);
 void write_par_mm(ParCSRMatrix* A, const char *fname);
-
+}
 
 #endif
-
-

@@ -11,6 +11,7 @@
 #include "raptor/core/types.hpp"
 #include "raptor/core/par_matrix.hpp"
 
+namespace raptor {
 void compare(ParCSRMatrix* A, ParCSRMatrix* A_rap)
 {
     int start, end;
@@ -117,4 +118,5 @@ void remove_empty_cols(ParCSRMatrix* S)
     }
 }
 
+}
 #endif

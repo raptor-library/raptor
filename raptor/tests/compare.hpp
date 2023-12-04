@@ -12,6 +12,7 @@
 #include "raptor/core/types.hpp"
 #include "raptor/core/matrix.hpp"
 
+namespace raptor {
 void compare(CSRMatrix* A, CSRMatrix* A_rap)
 {
     int start, end;
@@ -66,5 +67,5 @@ void compare_pattern(CSRMatrix* A, CSRMatrix* A_rap)
         }
     }
 }
-
+}
 #endif

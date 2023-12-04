@@ -2,7 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "par_cf_splitting.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 // Declare Private Methods
 void transpose(const ParCSRMatrix* S, std::vector<int>& on_col_ptr, 
@@ -1638,3 +1638,4 @@ void cljp_main_loop(ParCSRMatrix* S,
     delete[] part_to_col;
 }
 
+}

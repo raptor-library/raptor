@@ -2,6 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "par_candidates.hpp"
 
+namespace raptor {
 // TODO -- currently assumes B with single candidate
 ParCSRMatrix* fit_candidates(ParCSRMatrix* A, 
         const int n_aggs, const std::vector<int>& aggregates, 
@@ -206,8 +207,4 @@ ParCSRMatrix* fit_candidates(ParCSRMatrix* A,
     return T;
 }
 
-
-
-
-
-
+}

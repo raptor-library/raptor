@@ -6,10 +6,10 @@
 #include "raptor/core/types.hpp"
 #include "raptor/core/matrix.hpp"
 
-using namespace raptor;
-
+namespace raptor {
 // TODO -- currently only accepts constant vector
 CSRMatrix* fit_candidates(const int n_aggs, const std::vector<int>& aggregates, 
         const std::vector<double>& B, std::vector<double>& R,
         int num_candidates, double tol = 1e-10);
+}
 #endif

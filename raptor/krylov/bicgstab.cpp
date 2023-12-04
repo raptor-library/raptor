@@ -2,7 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "bicgstab.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 void BiCGStab(CSRMatrix* A, Vector& x, Vector& b, std::vector<double>& res, double tol, int max_iter)
 {
@@ -12,7 +12,7 @@ void BiCGStab(CSRMatrix* A, Vector& x, Vector& b, std::vector<double>& res, doub
     Vector s;
     Vector Ap;
     Vector As;
-    
+
     int iter;
     data_t alpha, beta, omega;
     data_t rrstar_inner, next_rrstar_inner, As_inner, AsAs_inner;
@@ -53,7 +53,7 @@ void BiCGStab(CSRMatrix* A, Vector& x, Vector& b, std::vector<double>& res, doub
     }
 
     iter = 0;
-    
+
     // Main BiCGStab Loop
     while (true)
     {
@@ -76,7 +76,7 @@ void BiCGStab(CSRMatrix* A, Vector& x, Vector& b, std::vector<double>& res, doub
 	x.axpy(s, omega);
 
         // r_{i+1} = s_i - omega_i * As_i
-	r.copy(s);	
+	r.copy(s);
         r.axpy(As, -1.0*omega);
 
         // beta_i = (r_{i+1}, rstar) / (r_i, rstar)
@@ -99,7 +99,7 @@ void BiCGStab(CSRMatrix* A, Vector& x, Vector& b, std::vector<double>& res, doub
 	    return;
 
        	}
-	
+
 	if (iter == max_iter)
 	{
             printf("Max Iterations Reached.\n");
@@ -110,5 +110,4 @@ void BiCGStab(CSRMatrix* A, Vector& x, Vector& b, std::vector<double>& res, doub
 	iter++;
     }
 }
-
-
+}

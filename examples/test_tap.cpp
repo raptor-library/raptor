@@ -8,19 +8,19 @@
 
 #include "clear_cache.hpp"
 
-#include "core/par_matrix.hpp"
-#include "core/par_vector.hpp"
-#include "core/types.hpp"
-#include "gallery/par_stencil.hpp"
-#include "gallery/laplacian27pt.hpp"
-#include "gallery/diffusion.hpp"
-#include "gallery/par_matrix_IO.hpp"
+#include "raptor/core/par_matrix.hpp"
+#include "raptor/core/par_vector.hpp"
+#include "raptor/core/types.hpp"
+#include "raptor/gallery/par_stencil.hpp"
+#include "raptor/gallery/laplacian27pt.hpp"
+#include "raptor/gallery/diffusion.hpp"
+#include "raptor/gallery/par_matrix_IO.hpp"
 
 #ifdef USING_MFEM
-#include "external/mfem_wrapper.hpp"
+#include "raptor/external/mfem_wrapper.hpp"
 #endif
 
-//using namespace raptor;
+using namespace raptor;
 int main(int argc, char *argv[])
 {
     MPI_Init(&argc, &argv);

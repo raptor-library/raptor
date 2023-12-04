@@ -3,6 +3,7 @@
 
 #include "stencil.hpp"
 
+namespace raptor {
 // Stencils are symmetric, so A could be CSR or CSC
 CSRMatrix* stencil_grid(data_t* stencil, int* grid, int dim)
 {
@@ -192,3 +193,4 @@ CSRMatrix* stencil_grid(data_t* stencil, int* grid, int dim)
     return A;
 }
 
+}

@@ -5,6 +5,7 @@
 #include "par_relax.hpp"
 #include "raptor/core/par_matrix.hpp"
 
+namespace raptor {
 // Declare Private Methods
 void SOR_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
         const std::vector<double>& dist_x, double omega);
@@ -289,8 +290,4 @@ void ssor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 }
 
 
-
-
-
-
-
+}

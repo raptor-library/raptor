@@ -6,7 +6,7 @@
 #include "raptor/core/types.hpp"
 #include "raptor/core/matrix.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 CSRMatrix* direct_interpolation(CSRMatrix* A, 
         CSRMatrix* S, const std::vector<int>& states);
@@ -19,5 +19,5 @@ CSRMatrix* extended_interpolation(CSRMatrix* A,
         CSRMatrix* S, const std::vector<int>& states, int num_variables = 1,
         int* variables = NULL);
 
+}
 #endif
-

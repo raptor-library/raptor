@@ -23,6 +23,7 @@ void endian_swap(T *objp)
 }
 }
 
+namespace raptor {
 CSRMatrix* readMatrix(const char* filename)
 {
     CSRMatrix* A;
@@ -88,7 +89,7 @@ CSRMatrix* readMatrix(const char* filename)
             ifs.read(reinterpret_cast<char *>(&idx), sizeof_int32);
             displ += idx;
             A->idx1[i+1] = displ;
-        }   
+        }
         for (int32_t i = 0; i < nnz; i++)
         {
             ifs.read(reinterpret_cast<char *>(&idx), sizeof_int32);
@@ -106,7 +107,6 @@ CSRMatrix* readMatrix(const char* filename)
     ifs.close();
 
     return A;
-    
+
 }
-
-
+}
