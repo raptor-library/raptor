@@ -3,11 +3,11 @@
 #ifndef RAPTOR_ML_MULTILEVEL_H
 #define RAPTOR_ML_MULTILEVEL_H
 
-#include "core/types.hpp"
-#include "core/matrix.hpp"
-#include "core/vector.hpp"
+#include "raptor/core/types.hpp"
+#include "raptor/core/matrix.hpp"
+#include "raptor/core/vector.hpp"
 #include "level.hpp"
-#include "util/linalg/relax.hpp"
+#include "raptor/util/linalg/relax.hpp"
 
 // Coarse Matrices (A) are CSC
 // Prolongation Matrices (P) are CSC

@@ -3,9 +3,9 @@
 #ifndef RAPTOR_PAR_RUGE_STUBEN_SOLVER_HPP
 #define RAPTOR_PAR_RUGE_STUBEN_SOLVER_HPP
 
-#include "multilevel/par_multilevel.hpp"
-#include "ruge_stuben/par_cf_splitting.hpp"
-#include "ruge_stuben/par_interpolation.hpp"
+#include "raptor/multilevel/par_multilevel.hpp"
+#include "par_cf_splitting.hpp"
+#include "par_interpolation.hpp"
 
 namespace raptor
 {

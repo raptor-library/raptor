@@ -3,7 +3,7 @@
 
 
 #include "gtest/gtest.h"
-#include "raptor.hpp"
+#include "raptor/raptor.hpp"
 #include <iostream>
 #include <fstream>
 

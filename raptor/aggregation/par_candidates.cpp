@@ -1,6 +1,6 @@
 // Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#include "aggregation/par_candidates.hpp"
+#include "par_candidates.hpp"
 
 // TODO -- currently assumes B with single candidate
 ParCSRMatrix* fit_candidates(ParCSRMatrix* A, 

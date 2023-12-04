@@ -1,9 +1,10 @@
 #ifndef RAPTOR_KRYLOV_PAR_INNER_HPP
 #define RAPTOR_KRYLOV_PAR_INNER_HPP
 
-#include "core/types.hpp"
-#include "core/par_vector.hpp"
 #include <vector>
+
+#include "raptor/core/types.hpp"
+#include "raptor/core/par_vector.hpp"
 
 using namespace raptor;
 

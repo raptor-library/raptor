@@ -1,8 +1,8 @@
 // Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
-#include "core/comm_pkg.hpp"
-#include "core/par_matrix.hpp"
+#include "comm_pkg.hpp"
+#include "par_matrix.hpp"
 
 namespace raptor
 {

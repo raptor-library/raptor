@@ -12,8 +12,8 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-#include "core/matrix.hpp"
-#include "core/types.hpp"
+#include "raptor/core/matrix.hpp"
+#include "raptor/core/types.hpp"
 
 using namespace raptor;
 

@@ -3,8 +3,8 @@
 #ifndef RAPTOR_PAR_SPLITTING_HPP
 #define RAPTOR_PAR_SPLITTING_HPP
 
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
+#include "raptor/core/types.hpp"
+#include "raptor/core/par_matrix.hpp"
 #include "cf_splitting.hpp"
 
 using namespace raptor;

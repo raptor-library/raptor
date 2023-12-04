@@ -3,11 +3,11 @@
 #ifndef RAPTOR_PAR_SMOOTHED_AGGREGATION_SOLVER_HPP
 #define RAPTOR_PAR_SMOOTHED_AGGREGATION_SOLVER_HPP
 
-#include "multilevel/par_multilevel.hpp"
-#include "aggregation/par_mis.hpp"
-#include "aggregation/par_aggregate.hpp"
-#include "aggregation/par_candidates.hpp"
-#include "aggregation/par_prolongation.hpp"
+#include "raptor/multilevel/par_multilevel.hpp"
+#include "par_mis.hpp"
+#include "par_aggregate.hpp"
+#include "par_candidates.hpp"
+#include "par_prolongation.hpp"
 
 namespace raptor
 {

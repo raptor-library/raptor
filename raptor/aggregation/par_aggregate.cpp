@@ -1,6 +1,6 @@
 // Copyright (c) 2015, Raptor Developer Team, University of Illinois at Urbana-Champaign
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#include "aggregation/par_aggregate.hpp"
+#include "par_aggregate.hpp"
 
 int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, std::vector<int>& states,
         std::vector<int>& off_proc_states, std::vector<int>& aggregates,

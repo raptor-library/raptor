@@ -8,7 +8,7 @@
 
 #include "clear_cache.hpp"
 
-#include "raptor.hpp"
+#include "raptor/raptor.hpp"
 
 #ifdef USING_MFEM
 #include "external/mfem_wrapper.hpp"

@@ -1,11 +1,12 @@
 #ifndef RAPTOR_KRYLOV_PAR_CG_HPP
 #define RAPTOR_KRYLOV_PAR_CG_HPP
 
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "core/par_vector.hpp"
-#include "multilevel/par_multilevel.hpp"
 #include <vector>
+
+#include "raptor/core/types.hpp"
+#include "raptor/core/par_matrix.hpp"
+#include "raptor/core/par_vector.hpp"
+#include "raptor/multilevel/par_multilevel.hpp"
 
 using namespace raptor;
 

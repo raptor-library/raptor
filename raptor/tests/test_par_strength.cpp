@@ -6,8 +6,8 @@
 
 
 #include "gtest/gtest.h"
-#include "raptor.hpp"
-#include "tests/par_compare.hpp"
+#include "raptor/raptor.hpp"
+#include "par_compare.hpp"
 
 using namespace raptor;
 

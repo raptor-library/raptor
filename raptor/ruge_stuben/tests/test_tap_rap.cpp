@@ -2,8 +2,8 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
-#include "raptor.hpp"
-#include "tests/par_compare.hpp"
+#include "raptor/raptor.hpp"
+#include "raptor/tests/par_compare.hpp"
 
 using namespace raptor;
 int main(int argc, char** argv)

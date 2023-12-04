@@ -1,8 +1,9 @@
 #ifndef RAPTOR_TEST_HYPRE_COMPARE_HPP
 #define RAPTOR_TEST_HYPRE_COMPARE_HPP
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "external/hypre_wrapper.hpp"
+
+#include "raptor/core/types.hpp"
+#include "raptor/core/par_matrix.hpp"
+#include "raptor/external/hypre_wrapper.hpp"
 #include "gtest/gtest.h"
 
 void compare_dimensions(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h,

@@ -2,7 +2,7 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
-#include "raptor.hpp"
+#include "raptor/raptor.hpp"
 
 #include <iostream>
 #include <fstream>

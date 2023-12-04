@@ -4,7 +4,7 @@
 #ifndef DIFFUSION_HPP
 #define DIFFUSION_HPP
 
-#include "core/types.hpp"
+#include "raptor/core/types.hpp"
 
 using namespace raptor;
 

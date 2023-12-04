@@ -3,9 +3,9 @@
 #ifndef RAPTOR_AGGREGATION_PAR_PROLONGATION_HPP
 #define RAPTOR_AGGREGATION_PAR_PROLONGATION_HPP
 
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "core/par_vector.hpp"
+#include "raptor/core/types.hpp"
+#include "raptor/core/par_matrix.hpp"
+#include "raptor/core/par_vector.hpp"
 
 using namespace raptor;
 

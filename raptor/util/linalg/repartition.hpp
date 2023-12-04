@@ -5,12 +5,13 @@
 #define RAPTOR_GALLERY_REPARTITION_HPP
 
 #include <mpi.h>
-#include "core/types.hpp"
-#include "core/mpi_types.hpp"
 #include <unistd.h>
 #include <set>
-#include "core/par_matrix.hpp"
 #include <stdio.h>
+
+#include "raptor/core/types.hpp"
+#include "raptor/core/mpi_types.hpp"
+#include "raptor/core/par_matrix.hpp"
 
 using namespace raptor;
 

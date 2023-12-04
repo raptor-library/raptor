@@ -3,8 +3,8 @@
 #ifndef RAPTOR_DIRECT_INTERPOLATION_HPP
 #define RAPTOR_DIRECT_INTERPOLATION_HPP
 
-#include "core/types.hpp"
-#include "core/matrix.hpp"
+#include "raptor/core/types.hpp"
+#include "raptor/core/matrix.hpp"
 
 using namespace raptor;
 

@@ -1,9 +1,9 @@
 // Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-#include "core/types.hpp"
-#include "core/matrix.hpp"
-#include "core/vector.hpp"
-#include "util/linalg/relax.hpp"
+#include "raptor/core/types.hpp"
+#include "raptor/core/matrix.hpp"
+#include "raptor/core/vector.hpp"
+#include "relax.hpp"
 
 using namespace raptor;
 

@@ -3,9 +3,9 @@
 #ifndef RAPTOR_ML_PARLEVEL_H
 #define RAPTOR_ML_PARLEVEL_H
 
-#include "core/types.hpp"
-#include "core/par_matrix.hpp"
-#include "core/par_vector.hpp"
+#include "raptor/core/types.hpp"
+#include "raptor/core/par_matrix.hpp"
+#include "raptor/core/par_vector.hpp"
 
 // Coarse Matrices (A) are CSR
 // Prolongation Matrices (P) are CSR

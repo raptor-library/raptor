@@ -1,10 +1,11 @@
 #ifndef RAPTOR_KRYLOV_BICGSTAB_HPP
 #define RAPTOR_KRYLOV_BICGSTAB_HPP
 
-#include "core/types.hpp"
-#include "core/matrix.hpp"
-#include "core/vector.hpp"
 #include <vector>
+
+#include "raptor/core/types.hpp"
+#include "raptor/core/matrix.hpp"
+#include "raptor/core/vector.hpp"
 
 using namespace raptor;
 

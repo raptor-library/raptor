@@ -2,8 +2,8 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "gtest/gtest.h"
-#include "raptor.hpp"
-#include "tests/compare.hpp"
+#include "raptor/raptor.hpp"
+#include "raptor/tests/compare.hpp"
 
 #include <iostream>
 #include <fstream>
