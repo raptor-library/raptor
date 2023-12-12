@@ -6,7 +6,8 @@
 #include "raptor/external/hypre_wrapper.hpp"
 #include "gtest/gtest.h"
 
-void compare_dimensions(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h,
+namespace raptor {
+inline void compare_dimensions(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h,
         std::vector<int>& new_off_proc_map)
 {
     int rank, num_procs;
@@ -14,10 +15,8 @@ void compare_dimensions(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h,
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     hypre_CSRMatrix* A_h_diag = hypre_ParCSRMatrixDiag(A_h);
-    hypre_CSRMatrix* A_h_offd = hypre_ParCSRMatrixOffd(A_h);
     HYPRE_Int diag_rows = hypre_CSRMatrixNumRows(A_h_diag);
     HYPRE_Int diag_cols = hypre_CSRMatrixNumCols(A_h_diag);
-    HYPRE_Int offd_cols = hypre_CSRMatrixNumCols(A_h_offd);
     HYPRE_Int first_local_row = hypre_ParCSRMatrixFirstRowIndex(A_h);
     HYPRE_Int first_local_col = hypre_ParCSRMatrixFirstColDiag(A_h);
     HYPRE_Int global_rows = hypre_ParCSRMatrixGlobalNumRows(A_h);
@@ -76,13 +75,12 @@ void compare_dimensions(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h,
     ASSERT_EQ(A->on_proc_num_cols, diag_cols);
 }
 
-void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h, double tol = 1e-05)
+inline void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h, double tol = 1e-05)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    int first_row, first_col;
     int start, end;
     int ctrA, endA;
 
@@ -187,13 +185,12 @@ void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h, double tol = 1e-05)
     }
 }
 
-void compareS(ParCSRMatrix* S, hypre_ParCSRMatrix* S_h)
+inline void compareS(ParCSRMatrix* S, hypre_ParCSRMatrix* S_h)
 {
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    int first_row, first_col;
     int start, end;
     int ctrA, endA;
 
@@ -270,17 +267,19 @@ void compareS(ParCSRMatrix* S, hypre_ParCSRMatrix* S_h)
 }
 
 
-void compare_states(int n, std::vector<int>& states, int* states_hypre)
+inline void compare_states(int n, std::vector<int>& states, hypre_IntArray* states_hypre)
 {
     for (int i = 0; i < n; i++)
     {
-        if (states[i] == Selected)
-            ASSERT_EQ(states_hypre[i], 1);
-        else if (states[i] == Unselected)
-            ASSERT_EQ(states_hypre[i], -1);
-        else if (states[i] == NoNeighbors)
-            ASSERT_EQ(states_hypre[i], -3);
+	    if (states[i] == Selected) {
+	        ASSERT_EQ(hypre_IntArrayData(states_hypre)[i], 1);
+	    } else if (states[i] == Unselected) {
+	        ASSERT_EQ(hypre_IntArrayData(states_hypre)[i], -1);
+	    } else if (states[i] == NoNeighbors) {
+	        ASSERT_EQ(hypre_IntArrayData(states_hypre)[i], -3);
+	    }
     }
 }
 
+}
 #endif
