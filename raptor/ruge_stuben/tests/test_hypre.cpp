@@ -16,7 +16,7 @@ void form_hypre_weights(double** weight_ptr, int n_rows)
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     hypre_SeedRand(2747 + rank);
-    double* weights;
+    double* weights = nullptr;
     if (n_rows)
     {
         weights = new double[n_rows];
@@ -39,17 +39,14 @@ int main(int argc, char** argv)
 } // end of main() //
 
 TEST(TestHypre, TestsInRuge_Stuben)
-{ 
+{
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    FILE* f;
-    int cf;
-
     double strong_threshold = 0.25;
-    int hyp_coarsen_type = 0; // CLJP 
-    int hyp_interp_type = 0; // ModClassical 
+    int hyp_coarsen_type = 0; // CLJP
+    int hyp_interp_type = 0; // ModClassical
     int p_max_elmts = 0;
     int agg_num_levels = 0;
     ParCSRMatrix* A;
@@ -63,7 +60,7 @@ TEST(TestHypre, TestsInRuge_Stuben)
 
 
     /************************************
-     **** Test Laplacian 
+     **** Test Laplacian
      ***********************************/
     n = 25;
     grid.resize(3);
@@ -91,27 +88,27 @@ TEST(TestHypre, TestsInRuge_Stuben)
     HYPRE_IJVectorGetObject(b_h_ij, (void **) &b_hyp);
 
     // Setup Hypre Hierarchy
-    HYPRE_Solver solver_data = hypre_create_hierarchy(A_hyp, x_hyp, b_hyp, 
-            hyp_coarsen_type, hyp_interp_type, p_max_elmts, agg_num_levels, 
+    HYPRE_Solver solver_data = hypre_create_hierarchy(A_hyp, x_hyp, b_hyp,
+            hyp_coarsen_type, hyp_interp_type, p_max_elmts, agg_num_levels,
             strong_threshold, 0.0);
 
     hypre_ParCSRMatrix** A_array = hypre_ParAMGDataAArray((hypre_ParAMGData*) solver_data);
     hypre_ParCSRMatrix** P_array = hypre_ParAMGDataPArray((hypre_ParAMGData*) solver_data);
 
-    for (int level = 0; level < ml->num_levels - 1; level++) 
+    for (int level = 0; level < ml->num_levels - 1; level++)
     {
         compare(ml->levels[level]->P, P_array[level]);
         compare(ml->levels[level+1]->A, A_array[level+1]);
     }
 
-    hypre_BoomerAMGDestroy(solver_data);    
+    hypre_BoomerAMGDestroy(solver_data);
     HYPRE_IJMatrixDestroy(Aij);
     delete ml;
     delete A;
 
 
     /************************************
-     **** Test Anisotropic Diffusion 
+     **** Test Anisotropic Diffusion
      ***********************************/
     n = 100;
     grid.resize(2);
@@ -137,30 +134,23 @@ TEST(TestHypre, TestsInRuge_Stuben)
     HYPRE_IJVectorGetObject(b_h_ij, (void **) &b_hyp);
 
     // Setup Hypre Hierarchy
-    solver_data = hypre_create_hierarchy(A_hyp, x_hyp, b_hyp, 
-            hyp_coarsen_type, hyp_interp_type, p_max_elmts, agg_num_levels, 
+    solver_data = hypre_create_hierarchy(A_hyp, x_hyp, b_hyp,
+            hyp_coarsen_type, hyp_interp_type, p_max_elmts, agg_num_levels,
             strong_threshold, 0.0);
 
     A_array = hypre_ParAMGDataAArray((hypre_ParAMGData*) solver_data);
     P_array = hypre_ParAMGDataPArray((hypre_ParAMGData*) solver_data);
 
-    for (int level = 0; level < ml->num_levels - 1; level++) 
+    for (int level = 0; level < ml->num_levels - 1; level++)
     {
         compare(ml->levels[level]->P, P_array[level]);
         compare(ml->levels[level+1]->A, A_array[level+1]);
     }
 
-    hypre_BoomerAMGDestroy(solver_data);    
+    hypre_BoomerAMGDestroy(solver_data);
     HYPRE_IJMatrixDestroy(Aij);
     delete ml;
     delete A;
 
 
 } // end of TEST(TestHypre, TestsInRuge_Stuben) //
-
-
-
-
-
-
-

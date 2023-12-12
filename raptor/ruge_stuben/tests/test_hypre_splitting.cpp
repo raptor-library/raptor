@@ -16,7 +16,7 @@ void form_hypre_weights(double** weight_ptr, int n_rows)
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     hypre_SeedRand(2747 + rank);
-    double* weights;
+    double* weights = nullptr;
     if (n_rows)
     {
         weights = new double[n_rows];
@@ -39,23 +39,21 @@ int main(int argc, char** argv)
 } // end of main() //
 
 TEST(TestParSplitting, TestsInRuge_Stuben)
-{ 
+{
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    FILE* f;
     std::vector<int> states;
     std::vector<int> off_proc_states;
     double* weights;
-    int cf;
 
     ParCSRMatrix* A;
     ParCSRMatrix* S_rap;
     HYPRE_IJMatrix Aij;
     hypre_ParCSRMatrix* A_hyp;
     hypre_ParCSRMatrix* S_hyp;
-    int* states_hypre;
+    hypre_IntArray * states_hypre = NULL;
 
     const char* A0_fn = "../../../../test_data/rss_A0.pm";
     const char* A1_fn = "../../../../test_data/rss_A1.pm";
@@ -69,7 +67,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     compare(A, A_hyp);
     S_rap = A->strength(Classical, 0.25);
     hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, 1, NULL, &S_hyp);
-    
+
     // Ruge
     // p
 
@@ -81,15 +79,16 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     {
         if (states[i] == 1)
         {
-            ASSERT_EQ(states[i], states_hypre[i]);
+	        ASSERT_EQ(states[i], hypre_IntArrayData(states_hypre)[i]);
         }
         else
         {
             ASSERT_EQ(states[i], 0);
-            ASSERT_EQ(states_hypre[i], -1);
+            ASSERT_EQ(hypre_IntArrayData(states_hypre)[i], -1);
         }
     }
-    hypre_TFree(states_hypre, HYPRE_MEMORY_HOST);
+    hypre_IntArrayDestroy(states_hypre);
+    states_hypre = NULL;
 
     // Falgout
     // TODO --Ruge stuben doesnt match hypre
@@ -117,15 +116,16 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     {
         if (states[i] == 1)
         {
-            ASSERT_EQ(states[i], states_hypre[i]);
+	        ASSERT_EQ(states[i], hypre_IntArrayData(states_hypre)[i]);
         }
         else
         {
             ASSERT_EQ(states[i], 0);
-            ASSERT_EQ(states_hypre[i], -1);
+            ASSERT_EQ(hypre_IntArrayData(states_hypre)[i], -1);
         }
     }
-    hypre_TFree(states_hypre, HYPRE_MEMORY_HOST);
+    hypre_IntArrayDestroy(states_hypre);
+    states_hypre = NULL;
 
     // HMIS -- TODO
     // TODO --Ruge stuben doesnt match hypre
@@ -163,7 +163,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     compare(A, A_hyp);
     S_rap = A->strength(Classical, 0.25);
     hypre_BoomerAMGCreateS(A_hyp, 0.25, 1.0, 1, NULL, &S_hyp);
-    
+
     // Ruge
     // TODO - implementation doesnt match hypre
 
@@ -175,15 +175,16 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     {
         if (states[i] == 1)
         {
-            ASSERT_EQ(states[i], states_hypre[i]);
+	        ASSERT_EQ(states[i], hypre_IntArrayData(states_hypre)[i]);
         }
         else
         {
             ASSERT_EQ(states[i], 0);
-            ASSERT_EQ(states_hypre[i], -1);
+            ASSERT_EQ(hypre_IntArrayData(states_hypre)[i], -1);
         }
     }
-    hypre_TFree(states_hypre, HYPRE_MEMORY_HOST);
+    hypre_IntArrayDestroy(states_hypre);
+    states_hypre = NULL;
 
     // Falgout
     // TODO - RS implementation doesnt match hypre
@@ -196,20 +197,20 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     {
         if (states[i] == 1)
         {
-            ASSERT_EQ(states[i], states_hypre[i]);
+	        ASSERT_EQ(states[i], hypre_IntArrayData(states_hypre)[i]);
         }
         else
         {
             ASSERT_EQ(states[i], 0);
-            ASSERT_EQ(states_hypre[i], -1);
+            ASSERT_EQ(hypre_IntArrayData(states_hypre)[i], -1);
         }
     }
-    hypre_TFree(states_hypre, HYPRE_MEMORY_HOST);
+    hypre_IntArrayDestroy(states_hypre);
 
     // HMIS
     // TODO - RS implementation doesnt match hypre
 
- 
+
 
     HYPRE_IJMatrixDestroy(Aij);
     hypre_ParCSRMatrixDestroy(S_hyp);
@@ -219,6 +220,3 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
 
 
 } // end of TEST(TestParSplitting, TestsInRuge_Stuben) //
-
-
-
