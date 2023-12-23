@@ -48,7 +48,7 @@
  ***** 
  ***** Methods
  ***** -------
- ***** initalize_partition()
+ ***** initialize_partition()
  *****    Determines which rows are local to process and which 
  *****    columns fall in local block 
  ***** add_value()

@@ -678,7 +678,7 @@ void update_local_dist2_weights(const ParCSRMatrix* S,
             }
         }
 
-        // Go through each row i strongly conected to c, and see if any column
+        // Go through each row i strongly connected to c, and see if any column
         // in Si is also in c_dep_cache (and edge not already removed), reduce
         // weight and remove edge
         for (int j = start; j < end; j++)

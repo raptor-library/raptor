@@ -871,7 +871,7 @@ void BSCMatrix::move_diag()
 /**************************************************************
 *****   Matrix Removes Duplicates
 **************************************************************
-***** Goes thorugh each sorted row, and removes duplicate
+***** Goes through each sorted row, and removes duplicate
 ***** entries, summing associated values
 **************************************************************/
 template <typename T>

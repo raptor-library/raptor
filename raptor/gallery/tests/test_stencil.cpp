@@ -26,7 +26,7 @@ TEST(StencilTest, TestsInGallery)
     std::vector<double> A_python(16 * 16, 0);
     std::vector<double> A_dense(16 * 16, 0);
 
-    // Add values ot A_python
+    // Add values of A_python
     int rows[100] = {0, 0, 0, 0, 
         1, 1, 1, 1, 1, 1, 
         2, 2, 2, 2, 2, 2,

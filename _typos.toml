@@ -1,0 +1,15 @@
+[default.extend-words]
+preconditioner = "preconditioner"
+MIS = "MIS"
+Cleary = "Cleary"
+ser = "ser"
+[default.extend-identifiers]
+hypre_BoomerAMGCoarseParms = "hypre_BoomerAMGCoarseParms"
+[default]
+extend-ignore-identifiers-re = [
+"sort_2nd",
+".*_fiter",
+"SCOTCH_.*",
+]
+[type.cpp]
+extend-glob = ["*.h"]

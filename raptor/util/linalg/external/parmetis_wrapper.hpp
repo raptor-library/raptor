@@ -84,7 +84,7 @@ int* parmetis_partition(ParCSRMatrix* A)
     // Imbalance tolerance for each vertex weight
     // Array size ncon 
     // Perfect balance: 1
-    // Perfect imblance: nparts
+    // Perfect imbalance: nparts
     // Recommended: 1.05
     std::vector<float> ubvec(1, 1.05);
 
