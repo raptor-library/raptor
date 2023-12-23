@@ -47,7 +47,7 @@
  *****      - Jacobi: weighted jacobi for both on and off proc
  *****      - SOR: weighted jacobi off_proc, SOR on_proc
  *****      - SSOR : weighted jacobi off_proc, SSOR on_proc
- ***** num_smooth_sweeps : int (defualt 1)
+ ***** num_smooth_sweeps : int (default 1)
  *****    Number of relaxation sweeps (both pre and post smoothing)
  *****    to be performed during each cycle of the AMG solve.
  ***** relax_weight : double

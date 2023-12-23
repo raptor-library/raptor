@@ -53,7 +53,7 @@ TEST(PetscWrapperTest, TestsInExternal)
     KSPGetResidualNorm(ksp, &rnorm);
     ASSERT_LE(rnorm, 1e-05); 
 
-    // Detroy RAPtor Preconditioner
+    // Destroy RAPtor Preconditioner
     VecDestroy(&rhs);
     VecDestroy(&sol);
     MatDestroy(&pmat);

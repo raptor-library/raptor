@@ -70,7 +70,7 @@ namespace raptor
         /**************************************************************
         *****   ParVector Class Constructor
         **************************************************************
-        ***** Creates an empy ParVector (local_n = 0)
+        ***** Creates an empty ParVector (local_n = 0)
         **************************************************************/
         ParVector()
         {

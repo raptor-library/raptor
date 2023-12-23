@@ -183,7 +183,7 @@ void create_partial_inner_comm(RAPtor_MPI_Comm &inner_comm, RAPtor_MPI_Comm &roo
     procs_in_group = num_procs * frac;
     if (num_procs % 2) procs_in_group++;
 
-    // Split into contigous groups by color and get root for each group
+    // Split into contiguous groups by color and get root for each group
     my_inner_color = rank / procs_in_group;
     inner_root = my_inner_color * procs_in_group;
     if (rank == inner_root) my_root_color = 0;
