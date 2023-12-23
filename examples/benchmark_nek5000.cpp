@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    // Set HYPRE AMG Perferences
+    // Set HYPRE AMG Preferences
     int coarsen_type = 0; // CLJP = 0, Falgout = 6
     int interp_type = 0; // Classical 0, Direct 3 
     double strong_threshold = 0.25;

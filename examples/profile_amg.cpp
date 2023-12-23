@@ -268,7 +268,7 @@ int main(int argc, char* argv[])
         // Form Coarse Grid Operator (P^TAP)
         for (int test = 0; test < n_tests; test++)
         {
-            // Time Ac Contruction
+            // Time Ac Construction
             MPI_Barrier(MPI_COMM_WORLD);
             t0 = MPI_Wtime();
             hypre_BoomerAMGBuildCoarseOperatorKT(P, A_h, P, keepTranspose, &Ac);
@@ -399,7 +399,7 @@ int main(int argc, char* argv[])
         // Form Coarse Grid Operator (P^TAP)
         for (int test = 0; test < n_tests; test++)
         {
-            // Time Ac Contruction
+            // Time Ac Construction
             MPI_Barrier(MPI_COMM_WORLD);
             t0 = MPI_Wtime();
             hypre_BoomerAMGBuildCoarseOperatorKT(P, A_array[i], P, keepTranspose, &Ac);
