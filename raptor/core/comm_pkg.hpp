@@ -24,7 +24,7 @@
  *****    Communicates values to processes, based on underlying
  *****    communication package
  ***** form_col_to_proc(...)
- *****    Maps each column in off_proc_column_map to process 
+ *****    Maps each column in off_proc_column_map to process
  *****    on which corresponding values are stored
  **************************************************************/
 namespace raptor
@@ -41,7 +41,7 @@ namespace raptor
             topology->num_shared++;
             num_shared = 0;
         }
-        
+
         CommPkg(Topology* _topology)
         {
             topology = _topology;
@@ -74,38 +74,38 @@ namespace raptor
         // Matrix Communication
         // TODO -- Block transpose communication
         //      -- Should b_rows / b_cols be switched?
-        virtual CSRMatrix* communicate(const std::vector<int>& rowptr, 
+        virtual CSRMatrix* communicate(const std::vector<int>& rowptr,
                 const std::vector<int>& col_indices, const std::vector<double>& values,
                 const int b_rows = 1, const int b_cols = 1, const bool has_vals = true) = 0;
-        virtual CSRMatrix* communicate(const std::vector<int>& rowptr, 
+        virtual CSRMatrix* communicate(const std::vector<int>& rowptr,
                 const std::vector<int>& col_indices, const std::vector<double*>& values,
                 const int b_rows = 1, const int b_cols = 1, const bool has_vals = true) = 0;
-        virtual void init_mat_comm(std::vector<char>& send_buffer, const std::vector<int>& rowptr, 
+        virtual void init_mat_comm(std::vector<char>& send_buffer, const std::vector<int>& rowptr,
                 const std::vector<int>& col_indices, const std::vector<double>& values,
                 const int b_rows = 1, const int b_cols = 1, const bool has_vals = true) = 0;
-        virtual void init_mat_comm(std::vector<char>& send_buffer, const std::vector<int>& rowptr, 
+        virtual void init_mat_comm(std::vector<char>& send_buffer, const std::vector<int>& rowptr,
                 const std::vector<int>& col_indices, const std::vector<double*>& values,
                 const int b_rows = 1, const int b_cols = 1, const bool has_vals = true) = 0;
-        virtual CSRMatrix* complete_mat_comm(const int b_rows = 1, const int b_cols = 1, 
+        virtual CSRMatrix* complete_mat_comm(const int b_rows = 1, const int b_cols = 1,
                 const bool has_vals = true) = 0;
 
         virtual CSRMatrix* communicate_T(const std::vector<int>& rowptr,
-                const std::vector<int>& col_indices, const std::vector<double>& values, 
+                const std::vector<int>& col_indices, const std::vector<double>& values,
                 const int n_result_rows, const int b_rows = 1, const int b_cols = 1,
                 const bool has_vals = true) = 0;
         virtual CSRMatrix* communicate_T(const std::vector<int>& rowptr,
-                const std::vector<int>& col_indices, const std::vector<double*>& values, 
+                const std::vector<int>& col_indices, const std::vector<double*>& values,
                 const int n_result_rows, const int b_rows = 1, const int b_cols = 1,
                 const bool has_vals = true) = 0;
-        virtual void init_mat_comm_T(std::vector<char>& send_buffer, 
-                const std::vector<int>& rowptr, const std::vector<int>& col_indices, 
-                const std::vector<double>& values, const int b_rows = 1, 
+        virtual void init_mat_comm_T(std::vector<char>& send_buffer,
+                const std::vector<int>& rowptr, const std::vector<int>& col_indices,
+                const std::vector<double>& values, const int b_rows = 1,
                 const int b_cols = 1, const bool has_vals = true) = 0;
         virtual void init_mat_comm_T(std::vector<char>& send_buffer,
-                const std::vector<int>& rowptr, const std::vector<int>& col_indices, 
-                const std::vector<double*>& values, const int b_rows = 1, 
+                const std::vector<int>& rowptr, const std::vector<int>& col_indices,
+                const std::vector<double*>& values, const int b_rows = 1,
                 const int b_cols = 1, const bool has_vals = true) = 0;
-        virtual CSRMatrix* complete_mat_comm_T(const int n_result_rows, 
+        virtual CSRMatrix* complete_mat_comm_T(const int n_result_rows,
                 const int b_rows = 1, const int b_cols = 1,
                 const bool has_vals = true) = 0;
 
@@ -136,7 +136,7 @@ namespace raptor
         }
         CSRMatrix* communicate_T(CSRMatrix* A, const int has_vals = true)
         {
-            return communicate_T(A->idx1, A->idx2, get_vals(A), A->n_rows, A->b_rows, 
+            return communicate_T(A->idx1, A->idx2, get_vals(A), A->n_rows, A->b_rows,
                     A->b_cols, has_vals);
         }
 
@@ -147,7 +147,7 @@ namespace raptor
         // Standard Communication
         template<typename T>
         std::vector<T>& communicate(const std::vector<T>& values, const int block_size = 1)
-        {  
+        {
             return communicate(values.data(), block_size);
         }
         template<typename T>
@@ -170,44 +170,44 @@ namespace raptor
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
-        {  
-            communicate_T(values.data(), result, block_size, result_func, 
+        {
+            communicate_T(values.data(), result, block_size, result_func,
                     init_result_func, init_result_func_val);
         }
         template<typename T>
         void communicate_T(const std::vector<T>& values,
-                const int block_size = 1, 
+                const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
-        {  
+        {
             communicate_T(values.data(), block_size, init_result_func,
                     init_result_func_val);
         }
         template<typename T>
         void init_comm_T(const std::vector<T>& values,
-                const int block_size = 1, 
+                const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
             init_comm_T(values.data(), block_size, init_result_func, init_result_func_val);
         }
         template<typename T> void init_comm_T(const T* values,
-                const int block_size = 1, 
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
+                const int block_size = 1,
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0);
-        template<typename T, typename U> void complete_comm_T(std::vector<U>& result,
+        template<typename T, typename U> void complete_comm_T(span<U> result,
                 const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0);
         template<typename T> void complete_comm_T(
                 const int block_size = 1,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0);
-        template<typename T, typename U> void communicate_T(const T* values, 
-                std::vector<U>& result, const int block_size = 1, 
+        template<typename T, typename U> void communicate_T(const T* values,
+                std::vector<U>& result, const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0);
         template<typename T> void communicate_T(const T* values,
                 const int block_size = 1,
@@ -215,35 +215,35 @@ namespace raptor
                 T init_result_func_val = 0);
         virtual void init_double_comm_T(const double* values,
                 const int block_size,
-                std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>, 
+                std::function<double(double, double)> init_result_func =
+                    &sum_func<double, double>,
                     double init_result_func_val = 0) = 0;
         virtual void init_int_comm_T(const int* values,
                 const int block_size,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
                 int init_result_func_val = 0) = 0;
-        virtual void complete_double_comm_T(std::vector<double>& result,
+        virtual void complete_double_comm_T(span<double> result,
                 const int block_size,
                 std::function<double(double, double)> result_func = &sum_func<double, double>,
-                std::function<double(double, double)> init_result_func = 
+                std::function<double(double, double)> init_result_func =
                     &sum_func<double, double>, double init_result_func_val = 0) = 0;
-        virtual void complete_double_comm_T(std::vector<int>& result,
+        virtual void complete_double_comm_T(span<int> result,
                 const int block_size,
                 std::function<int(int, double)> result_func = &sum_func<double, int>,
-                std::function<double(double, double)> init_result_func = 
+                std::function<double(double, double)> init_result_func =
                     &sum_func<double, double>, double init_result_func_val = 0) = 0;
-        virtual void complete_int_comm_T(std::vector<int>& result,
+        virtual void complete_int_comm_T(span<int> result,
                 const int block_size,
                 std::function<int(int, int)> result_func = &sum_func<int, int>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
                 int init_result_func_val = 0) = 0;
-        virtual void complete_int_comm_T(std::vector<double>& result,
+        virtual void complete_int_comm_T(span<double> result,
                 const int block_size,
                 std::function<double(double, int)> result_func = &sum_func<int, double>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
                 int init_result_func_val = 0) = 0;
         virtual void complete_double_comm_T(const int block_size,
-                std::function<double(double, double)> init_result_func = 
+                std::function<double(double, double)> init_result_func =
                     &sum_func<double, double>, double init_result_func_val = 0) = 0;
         virtual void complete_int_comm_T(const int block_size,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
@@ -265,21 +265,21 @@ namespace raptor
     /**************************************************************
     *****   ParComm Class
     **************************************************************
-    ***** This class constructs a standard parallel communicator: 
+    ***** This class constructs a standard parallel communicator:
     ***** which messages must be sent/recieved for matrix operations
     *****
     ***** Attributes
     ***** -------------
     ***** num_sends : index_t
-    *****    Number of messages this process must send during 
+    *****    Number of messages this process must send during
     *****    matrix operations
     ***** num_recvs : index_t
     *****    Number of messages this process will recv during
     *****    matrix operations
-    ***** size_sends : index_t 
+    ***** size_sends : index_t
     *****    Total number of elements this process sends in all
     *****    messages
-    ***** size_recvs : index_t 
+    ***** size_recvs : index_t
     *****    Total number of elements this process recvs from
     *****    all messages
     ***** send_procs : std::vector<int>
@@ -287,7 +287,7 @@ namespace raptor
     ***** send_row_starts : std::vector<int>
     *****    Pointer to first position in send_row_indices
     *****    that a given process will send.
-    ***** send_row_indices : std::vector<int> 
+    ***** send_row_indices : std::vector<int>
     *****    The indices of values that must be sent to each
     *****    process in send_procs
     ***** recv_procs : std::vector<int>
@@ -313,7 +313,7 @@ namespace raptor
         ***** _key : int (optional)
         *****    Tag to be used in RAPtor_MPI Communication (default 0)
         **************************************************************/
-        ParComm(Partition* partition, int _key = 0, 
+        ParComm(Partition* partition, int _key = 0,
                 RAPtor_MPI_Comm _comm = RAPtor_MPI_COMM_WORLD,
                 CommData* r_data = NULL) : CommPkg(partition)
         {
@@ -326,7 +326,7 @@ namespace raptor
                 recv_data = new ContigData();
         }
 
-        ParComm(Topology* topo, int _key = 0, 
+        ParComm(Topology* topo, int _key = 0,
                 RAPtor_MPI_Comm _comm = RAPtor_MPI_COMM_WORLD,
                 CommData* r_data = NULL) : CommPkg(topo)
         {
@@ -370,7 +370,7 @@ namespace raptor
         ParComm(Partition* partition,
                 const std::vector<int>& off_proc_column_map,
                 const std::vector<int>& on_proc_column_map,
-                int _key = 9999, 
+                int _key = 9999,
                 RAPtor_MPI_Comm comm = RAPtor_MPI_COMM_WORLD,
                 CommData* r_data = NULL) : CommPkg(partition)
         {
@@ -386,7 +386,7 @@ namespace raptor
             {
                 send_data->indices[i] -= partition->first_local_col;
             }
-            
+
             if (partition->local_num_cols)
             {
                 part_col_to_new.resize(partition->local_num_cols, -1);
@@ -403,7 +403,7 @@ namespace raptor
                 send_data->indices[i] = part_col_to_new[idx];
                 assert(part_col_to_new[idx] >= 0);
             }
-	    
+
         }
 
         ParComm(Topology* _topology,
@@ -480,10 +480,10 @@ namespace raptor
             }
 
             // For each process I recv from, send the global column indices
-            // for which I must recv corresponding rows 
+            // for which I must recv corresponding rows
             std::vector<int> recv_sizes(num_procs, 0);
             for (int i = 0; i < recv_data->num_msgs; i++)
-                recv_sizes[recv_data->procs[i]] = 
+                recv_sizes[recv_data->procs[i]] =
                     recv_data->indptr[i+1] - recv_data->indptr[i];
             RAPtor_MPI_Allreduce(RAPtor_MPI_IN_PLACE, recv_sizes.data(), num_procs, RAPtor_MPI_INT,
                     RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
@@ -516,9 +516,9 @@ namespace raptor
 
             init_off_proc_new(comm, off_proc_col_to_new);
         }
-        
+
         ParComm(ParComm* comm, const std::vector<int>& on_proc_col_to_new,
-                const std::vector<int>& off_proc_col_to_new) 
+                const std::vector<int>& off_proc_col_to_new)
             : CommPkg(comm->topology)
         {
             mpi_comm = comm->mpi_comm;
@@ -584,13 +584,13 @@ namespace raptor
             send_data->size_msgs = send_data->indices.size();
             send_data->finalize();
 
-            
+
         }
 
         /**************************************************************
         *****   ParComm Class Destructor
         **************************************************************
-        ***** 
+        *****
         **************************************************************/
         ~ParComm()
         {
@@ -654,39 +654,39 @@ namespace raptor
         // Transpose Communication
         void init_double_comm_T(const double* values,
                 const int block_size = 1,
-                std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>, 
+                std::function<double(double, double)> init_result_func =
+                    &sum_func<double, double>,
                     double init_result_func_val = 0)
         {
             initialize_T(values, block_size, init_result_func, init_result_func_val);
         }
         void init_int_comm_T(const int* values,
                 const int block_size = 1,
-                std::function<int(int, int)> init_result_func = 
-                    &sum_func<int, int>, 
+                std::function<int(int, int)> init_result_func =
+                    &sum_func<int, int>,
                     int init_result_func_val = 0)
         {
             initialize_T(values, block_size, init_result_func, init_result_func_val);
         }
-        void complete_double_comm_T(std::vector<double>& result,
+        void complete_double_comm_T(span<double> result,
                 const int block_size = 1,
                 std::function<double(double, double)> result_func = &sum_func<double, double>,
-                std::function<double(double, double)> init_result_func = 
+                std::function<double(double, double)> init_result_func =
                     &sum_func<double, double>,
                     double init_result_func_val = 0)
         {
             complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
         }
-        void complete_double_comm_T(std::vector<int>& result,
+        void complete_double_comm_T(span<int> result,
                 const int block_size = 1,
                 std::function<int(int, double)> result_func = &sum_func<double, int>,
-                std::function<double(double, double)> init_result_func = 
+                std::function<double(double, double)> init_result_func =
                     &sum_func<double, double>,
                     double init_result_func_val = 0)
         {
             complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
         }
-        void complete_int_comm_T(std::vector<double>& result,
+        void complete_int_comm_T(span<double> result,
                 const int block_size = 1,
                 std::function<double(double, int)> result_func = &sum_func<int, double>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
@@ -694,7 +694,7 @@ namespace raptor
         {
             complete_T<int>(result, block_size, result_func, init_result_func, init_result_func_val);
         }
-        void complete_int_comm_T(std::vector<int>& result,
+        void complete_int_comm_T(span<int> result,
                 const int block_size = 1,
                 std::function<int(int, int)> result_func = &sum_func<int, int>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
@@ -704,7 +704,7 @@ namespace raptor
         }
         void complete_double_comm_T(const int block_size = 1,
                 std::function<double(double, double)> init_result_func =
-                &sum_func<double, double>, 
+                &sum_func<double, double>,
                 double init_result_func_val = 0)
         {
             complete_T<double>(block_size, init_result_func, init_result_func_val);
@@ -719,7 +719,7 @@ namespace raptor
         void communicate_T(const std::vector<T>& values, std::vector<U>& result,
                 const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
             CommPkg::communicate_T(values.data(), result, block_size,
@@ -754,7 +754,7 @@ namespace raptor
 
         template<typename T>
         void initialize_T(const T* values, const int block_size = 1,
-                std::function<T(T, T)> init_result_func = &sum_func<T, T>, 
+                std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
         {
             if (profile) vec_t -= RAPtor_MPI_Wtime();
@@ -764,7 +764,7 @@ namespace raptor
         }
 
         template<typename T, typename U>
-        void complete_T(std::vector<U>& result, 
+        void complete_T(span<U> result,
                 const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
@@ -802,8 +802,8 @@ namespace raptor
         // Conditional communication
         template <typename T>
         std::vector<T>& conditional_comm(
-                const std::vector<T>& vals,  
-                const std::vector<int>& states, 
+                const std::vector<T>& vals,
+                const std::vector<int>& states,
                 const std::vector<int>& off_proc_states,
                 std::function<bool(int)> compare_func,
                 const int block_size = 1)
@@ -811,10 +811,10 @@ namespace raptor
             int ctr, n_sends, n_recvs;
             int tag = 325493;
             bool comparison;
-            
+
             if (profile) vec_t -= RAPtor_MPI_Wtime();
             send_data->send(vals.data(), tag, mpi_comm, states, compare_func, &n_sends, block_size);
-            recv_data->recv<T>(tag, mpi_comm, off_proc_states, 
+            recv_data->recv<T>(tag, mpi_comm, off_proc_states,
                     compare_func, &ctr, &n_recvs, block_size);
 
             send_data->waitall(n_sends);
@@ -856,11 +856,11 @@ namespace raptor
         }
 
         template <typename T, typename U>
-        void conditional_comm_T(const std::vector<T>& vals,  
-                const std::vector<int>& states, 
+        void conditional_comm_T(const std::vector<T>& vals,
+                const std::vector<int>& states,
                 const std::vector<int>& off_proc_states,
                 std::function<bool(int)> compare_func,
-                std::vector<U>& result, 
+                std::vector<U>& result,
                 std::function<U(U, T)> result_func,
                 const int block_size = 1)
         {
@@ -873,7 +873,7 @@ namespace raptor
             recv_data->send(vals.data(), tag, mpi_comm, off_proc_states, compare_func,
                     &n_sends, block_size);
             send_data->recv<T>(tag, mpi_comm, states, compare_func, &ctr, &n_recvs, block_size);
-            
+
             recv_data->waitall(n_sends);
             send_data->waitall(n_recvs);
             if (profile) vec_t += RAPtor_MPI_Wtime();
@@ -905,38 +905,38 @@ namespace raptor
 
 
         // Matrix Communication
-        CSRMatrix* communicate(const std::vector<int>& rowptr, 
+        CSRMatrix* communicate(const std::vector<int>& rowptr,
                 const std::vector<int>& col_indices, const std::vector<double>& values,
                 const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
-        CSRMatrix* communicate(const std::vector<int>& rowptr, 
+        CSRMatrix* communicate(const std::vector<int>& rowptr,
                 const std::vector<int>& col_indices, const std::vector<double*>& values,
                 const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
-        void init_mat_comm(std::vector<char>& send_buffer, const std::vector<int>& rowptr, 
+        void init_mat_comm(std::vector<char>& send_buffer, const std::vector<int>& rowptr,
                 const std::vector<int>& col_indices, const std::vector<double>& values,
                 const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
-        void init_mat_comm(std::vector<char>& send_buffer, const std::vector<int>& rowptr, 
+        void init_mat_comm(std::vector<char>& send_buffer, const std::vector<int>& rowptr,
                 const std::vector<int>& col_indices, const std::vector<double*>& values,
                 const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
-        CSRMatrix* complete_mat_comm(const int b_rows = 1, const int b_cols = 1, 
+        CSRMatrix* complete_mat_comm(const int b_rows = 1, const int b_cols = 1,
                 const bool has_vals = true);
 
-        CSRMatrix* communicate_T(const std::vector<int>& rowptr, 
-                const std::vector<int>& col_indices, const std::vector<double>& values, 
-                const int n_result_rows, const int b_rows = 1, const int b_cols = 1, 
+        CSRMatrix* communicate_T(const std::vector<int>& rowptr,
+                const std::vector<int>& col_indices, const std::vector<double>& values,
+                const int n_result_rows, const int b_rows = 1, const int b_cols = 1,
                 const bool has_vals = true);
-        CSRMatrix* communicate_T(const std::vector<int>& rowptr, 
-                const std::vector<int>& col_indices, const std::vector<double*>& values, 
-                const int n_result_rows, const int b_rows = 1, const int b_cols = 1, 
+        CSRMatrix* communicate_T(const std::vector<int>& rowptr,
+                const std::vector<int>& col_indices, const std::vector<double*>& values,
+                const int n_result_rows, const int b_rows = 1, const int b_cols = 1,
                 const bool has_vals = true);
-        void init_mat_comm_T(std::vector<char>& send_buffer, 
-                const std::vector<int>& rowptr, const std::vector<int>& col_indices, 
-                const std::vector<double>& values, const int b_rows = 1, 
+        void init_mat_comm_T(std::vector<char>& send_buffer,
+                const std::vector<int>& rowptr, const std::vector<int>& col_indices,
+                const std::vector<double>& values, const int b_rows = 1,
                 const int b_cols = 1, const bool has_vals = true) ;
         void init_mat_comm_T(std::vector<char>& send_buffer,
-                const std::vector<int>& rowptr, const std::vector<int>& col_indices, 
-                const std::vector<double*>& values, const int b_rows = 1, 
+                const std::vector<int>& rowptr, const std::vector<int>& col_indices,
+                const std::vector<double*>& values, const int b_rows = 1,
                 const int b_cols = 1, const bool has_vals = true) ;
-        CSRMatrix* complete_mat_comm_T(const int n_result_rows, 
+        CSRMatrix* complete_mat_comm_T(const int n_result_rows,
                 const int b_rows = 1, const int b_cols = 1,
                 const bool has_vals = true) ;
 
@@ -990,7 +990,7 @@ namespace raptor
     /**************************************************************
     *****   TAPComm Class
     **************************************************************
-    ***** This class constructs a topology-aware parallel communicator: 
+    ***** This class constructs a topology-aware parallel communicator:
     ***** which messages must be sent/recieved for matrix operations,
     ***** using topology-aware methods to limit the number and size
     ***** of inter-node messages
@@ -1003,9 +1003,9 @@ namespace raptor
     *****    communication occurs.
     ***** local_R_par_comm : ParComm*
     *****    Parallel communication package for redistributing previously
-    *****    received values (from inter-node communication step) to 
+    *****    received values (from inter-node communication step) to
     *****    processes local to rank which need said values
-    ***** local_L_par_comm : ParComm* 
+    ***** local_L_par_comm : ParComm*
     *****    Parallel communication package for communicating values
     *****    that both originate and have a final destination on node
     *****    (fully intra-node communication)
@@ -1053,7 +1053,7 @@ namespace raptor
         **************************************************************
         ***** Initializes a TAPComm for a matrix without contiguous
         ***** row-wise partitions across processes.  Instead, each
-        ***** process holds a random assortment of rows. 
+        ***** process holds a random assortment of rows.
         *****
         ***** Parameters
         ***** -------------
@@ -1064,7 +1064,7 @@ namespace raptor
         ***** local_num_cols : int
         *****    Number of columns local to rank
         **************************************************************/
-        TAPComm(Partition* partition, 
+        TAPComm(Partition* partition,
                 const std::vector<int>& off_proc_column_map,
                 bool form_S = true,
                 RAPtor_MPI_Comm comm = RAPtor_MPI_COMM_WORLD)
@@ -1129,7 +1129,7 @@ namespace raptor
         /**************************************************************
         *****   TAPComm Class Constructor
         **************************************************************
-        ***** Create topology-aware communication class from 
+        ***** Create topology-aware communication class from
         ***** original communication package (which processes rank
         ***** communication which, and what is sent to / recv from
         ***** each process.
@@ -1160,14 +1160,14 @@ namespace raptor
             }
         }
 
-        TAPComm(TAPComm* tap_comm, const std::vector<int>& off_proc_col_to_new, 
+        TAPComm(TAPComm* tap_comm, const std::vector<int>& off_proc_col_to_new,
                 ParComm* local_L = NULL) : CommPkg(tap_comm->topology)
         {
             init_off_proc_new(tap_comm, off_proc_col_to_new, local_L);
         }
 
         TAPComm(TAPComm* tap_comm, const std::vector<int>& on_proc_col_to_new,
-                const std::vector<int>& off_proc_col_to_new, 
+                const std::vector<int>& off_proc_col_to_new,
                 ParComm* local_L = NULL) : CommPkg(tap_comm->topology)
         {
             int idx;
@@ -1222,9 +1222,9 @@ namespace raptor
             local_R_par_comm = new ParComm(tap_comm->local_R_par_comm, off_proc_col_to_new);
 
             // Create global par comm / update R send indices
-            std::vector<int>& local_R_int_buffer = 
+            std::vector<int>& local_R_int_buffer =
                 tap_comm->local_R_par_comm->send_data->get_buffer<int>();
-            std::vector<int>& global_int_buffer = 
+            std::vector<int>& global_int_buffer =
                 tap_comm->global_par_comm->send_data->get_buffer<int>();
 
             std::vector<int> G_to_new(tap_comm->global_par_comm->recv_data->size_msgs, -1);
@@ -1255,7 +1255,7 @@ namespace raptor
                 if (*it != -1) *it = idx++;
             }
 
-            global_par_comm = new ParComm(tap_comm->global_par_comm, 
+            global_par_comm = new ParComm(tap_comm->global_par_comm,
                     local_R_int_buffer);
 
 
@@ -1285,7 +1285,7 @@ namespace raptor
                     *it = S_to_new[*it];
                 }
                 idx = 0;
-                for (std::vector<int>::iterator it = global_int_buffer.begin(); 
+                for (std::vector<int>::iterator it = global_int_buffer.begin();
                         it != global_int_buffer.end(); ++it)
                 {
                     if (*it != -1) *it = idx++;
@@ -1296,7 +1296,7 @@ namespace raptor
             }
             else local_S_par_comm = NULL;
 
-            // Determine size of final recvs (should be equal to 
+            // Determine size of final recvs (should be equal to
             // number of off_proc cols)
             recv_size = local_R_par_comm->recv_data->size_msgs +
                 local_L_par_comm->recv_data->size_msgs;
@@ -1305,13 +1305,13 @@ namespace raptor
                 // Want a single recv buffer local_R and local_L par_comms
                 buffer.resize(recv_size);
                 int_buffer.resize(recv_size);
-            }        
+            }
         }
 
         /**************************************************************
         *****   ParComm Class Destructor
         **************************************************************
-        ***** 
+        *****
         **************************************************************/
         ~TAPComm()
         {
@@ -1335,7 +1335,7 @@ namespace raptor
             RAPtor_MPI_Comm_size(comm, &num_procs);
 
             // Initialize class variables
-            local_S_par_comm = new ParComm(partition, 2345, partition->topology->local_comm, 
+            local_S_par_comm = new ParComm(partition, 2345, partition->topology->local_comm,
                     new DuplicateData());
             local_R_par_comm = new ParComm(partition, 3456, partition->topology->local_comm,
                     new NonContigData());
@@ -1365,7 +1365,7 @@ namespace raptor
                    off_node_column_map, off_node_col_to_node, off_node_to_off_proc);
 
             // Gather all nodes with which any local process must communication
-            form_local_R_par_comm(off_node_column_map, off_node_col_to_node, 
+            form_local_R_par_comm(off_node_column_map, off_node_col_to_node,
                     orig_procs);
 
             // Find global processes with which rank communications
@@ -1375,7 +1375,7 @@ namespace raptor
             // processes, before inter-node communication
             form_local_S_par_comm(orig_procs);
 
-            // Adjust send indices (currently global vector indices) to be index 
+            // Adjust send indices (currently global vector indices) to be index
             // of global vector value from previous recv
             adjust_send_indices(partition->first_local_col);
 
@@ -1384,7 +1384,7 @@ namespace raptor
             form_local_L_par_comm(on_node_column_map, on_node_col_to_proc,
                     partition->first_local_col);
 
-            // Determine size of final recvs (should be equal to 
+            // Determine size of final recvs (should be equal to
             // number of off_proc cols)
             update_recv(on_node_to_off_proc, off_node_to_off_proc);
         }
@@ -1400,7 +1400,7 @@ namespace raptor
 
             // Initialize class variables
             local_S_par_comm = NULL;
-            local_R_par_comm = new ParComm(partition, 3456, partition->topology->local_comm, 
+            local_R_par_comm = new ParComm(partition, 3456, partition->topology->local_comm,
                     new NonContigData());
             local_L_par_comm = new ParComm(partition, 4567, partition->topology->local_comm,
                     new NonContigData());
@@ -1444,7 +1444,7 @@ namespace raptor
             form_local_L_par_comm(on_node_column_map, on_node_col_to_proc,
                     partition->first_local_col);
 
-            // Determine size of final recvs (should be equal to 
+            // Determine size of final recvs (should be equal to
             // number of off_proc cols)
             update_recv(on_node_to_off_proc, off_node_to_off_proc);
 
@@ -1491,9 +1491,9 @@ namespace raptor
         {
             return complete<int>(block_size);
         }
-        
+
         template<typename T>
-        std::vector<T>& communicate(const std::vector<T>& values, 
+        std::vector<T>& communicate(const std::vector<T>& values,
                 const int block_size = 1)
         {
             return CommPkg::communicate<T>(values.data(), block_size);
@@ -1516,7 +1516,7 @@ namespace raptor
                 // Initial redistribution among node
                 std::vector<T>& S_vals = local_S_par_comm->communicate<T>(values, block_size);
 
-                // Begin inter-node communication 
+                // Begin inter-node communication
                 global_par_comm->initialize(S_vals.data(), block_size);
             }
             else
@@ -1542,7 +1542,7 @@ namespace raptor
             if ((int)recvbuf.size() < recv_size * block_size)
                 recvbuf.resize(recv_size * block_size);
 
-            // Add values from L_recv and R_recv to appropriate positions in 
+            // Add values from L_recv and R_recv to appropriate positions in
             // Vector recv
             int idx, pos;
             int R_recv_size = local_R_par_comm->recv_data->size_msgs;
@@ -1576,7 +1576,7 @@ namespace raptor
         // Transpose Communication
         void init_double_comm_T(const double* values,
                 const int block_size,
-                std::function<double(double, double)> init_result_func = 
+                std::function<double(double, double)> init_result_func =
                     &sum_func<double, double>,
                     double init_result_func_val = 0)
         {
@@ -1589,25 +1589,25 @@ namespace raptor
         {
             initialize_T(values, block_size, init_result_func, init_result_func_val);
         }
-        void complete_double_comm_T(std::vector<double>& result,
+        void complete_double_comm_T(span<double> result,
                 const int block_size,
                 std::function<double(double, double)> result_func = &sum_func<double, double>,
-                std::function<double(double, double)> init_result_func = 
-                    &sum_func<double, double>,
-                    double init_result_func_val = 0)
-        {
-            complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
-        }        
-        void complete_double_comm_T(std::vector<int>& result,
-                const int block_size,
-                std::function<int(int, double)> result_func = &sum_func<double, int>,
-                std::function<double(double, double)> init_result_func = 
+                std::function<double(double, double)> init_result_func =
                     &sum_func<double, double>,
                     double init_result_func_val = 0)
         {
             complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
         }
-        void complete_int_comm_T(std::vector<double>& result,
+        void complete_double_comm_T(span<int> result,
+                const int block_size,
+                std::function<int(int, double)> result_func = &sum_func<double, int>,
+                std::function<double(double, double)> init_result_func =
+                    &sum_func<double, double>,
+                    double init_result_func_val = 0)
+        {
+            complete_T<double>(result, block_size, result_func, init_result_func, init_result_func_val);
+        }
+        void complete_int_comm_T(span<double> result,
                 const int block_size,
                 std::function<double(double, int)> result_func = &sum_func<int, double>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
@@ -1615,7 +1615,7 @@ namespace raptor
         {
             complete_T<int>(result, block_size, result_func, init_result_func, init_result_func_val);
         }
-        void complete_int_comm_T(std::vector<int>& result,
+        void complete_int_comm_T(span<int> result,
                 const int block_size,
                 std::function<int(int, int)> result_func = &sum_func<int, int>,
                 std::function<int(int, int)> init_result_func = &sum_func<int, int>,
@@ -1625,14 +1625,14 @@ namespace raptor
         }
 
         void complete_double_comm_T(const int block_size,
-                std::function<double(double, double)> init_result_func = 
+                std::function<double(double, double)> init_result_func =
                 &sum_func<double, double>,
                 double init_result_func_val = 0)
         {
             complete_T<double>(block_size, init_result_func, init_result_func_val);
         }
         void complete_int_comm_T(const int block_size,
-                std::function<int(int, int)> init_result_func = 
+                std::function<int(int, int)> init_result_func =
                     &sum_func<int, int>,
                 int init_result_func_val = 0)
         {
@@ -1686,13 +1686,13 @@ namespace raptor
             // Initial redistribution among node
             local_R_par_comm->communicate_T(values, block_size, init_result_func, init_result_func_val);
 
-            // Begin inter-node communication 
+            // Begin inter-node communication
             std::vector<T>& R_sendbuf = local_R_par_comm->send_data->get_buffer<T>();
             global_par_comm->init_comm_T(R_sendbuf, block_size, init_result_func, init_result_func_val);
         }
 
         template<typename T, typename U>
-        void complete_T(std::vector<U>& result, const int block_size = 1,
+        void complete_T(span<U> result, const int block_size = 1,
                 std::function<U(U, T)> result_func = &sum_func<T, U>,
                 std::function<T(T, T)> init_result_func = &sum_func<T, T>,
                 T init_result_func_val = 0)
@@ -1745,7 +1745,7 @@ namespace raptor
         {
             // Complete inter-node communication
             global_par_comm->complete_comm_T<T>(block_size, init_result_func, init_result_func_val);
-    
+
             if (local_S_par_comm)
             {
                 std::vector<T>& G_sendbuf = global_par_comm->send_data->get_buffer<T>();
@@ -1756,38 +1756,38 @@ namespace raptor
 
 
         // Matrix Communication
-        CSRMatrix* communicate(const std::vector<int>& rowptr, 
+        CSRMatrix* communicate(const std::vector<int>& rowptr,
                 const std::vector<int>& col_indices, const std::vector<double>& values,
                 const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
-        CSRMatrix* communicate(const std::vector<int>& rowptr, 
+        CSRMatrix* communicate(const std::vector<int>& rowptr,
                 const std::vector<int>& col_indices, const std::vector<double*>& values,
                 const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
-        void init_mat_comm(std::vector<char>& send_buffer, const std::vector<int>& rowptr, 
+        void init_mat_comm(std::vector<char>& send_buffer, const std::vector<int>& rowptr,
                 const std::vector<int>& col_indices, const std::vector<double>& values,
                 const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
-        void init_mat_comm(std::vector<char>& send_buffer, const std::vector<int>& rowptr, 
+        void init_mat_comm(std::vector<char>& send_buffer, const std::vector<int>& rowptr,
                 const std::vector<int>& col_indices, const std::vector<double*>& values,
                 const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
-        CSRMatrix* complete_mat_comm(const int b_rows = 1, const int b_cols = 1, 
+        CSRMatrix* complete_mat_comm(const int b_rows = 1, const int b_cols = 1,
                 const bool has_vals = true);
 
-        CSRMatrix* communicate_T(const std::vector<int>& rowptr, 
-                const std::vector<int>& col_indices, const std::vector<double>& values, 
-                const int n_result_rows, const int b_rows = 1, const int b_cols = 1, 
+        CSRMatrix* communicate_T(const std::vector<int>& rowptr,
+                const std::vector<int>& col_indices, const std::vector<double>& values,
+                const int n_result_rows, const int b_rows = 1, const int b_cols = 1,
                 const bool has_vals = true);
-        CSRMatrix* communicate_T(const std::vector<int>& rowptr, 
-                const std::vector<int>& col_indices, const std::vector<double*>& values, 
-                const int n_result_rows, const int b_rows = 1, const int b_cols = 1, 
+        CSRMatrix* communicate_T(const std::vector<int>& rowptr,
+                const std::vector<int>& col_indices, const std::vector<double*>& values,
+                const int n_result_rows, const int b_rows = 1, const int b_cols = 1,
                 const bool has_vals = true);
-        void init_mat_comm_T(std::vector<char>& send_buffer, 
-                const std::vector<int>& rowptr, const std::vector<int>& col_indices, 
-                const std::vector<double>& values, const int b_rows = 1, 
+        void init_mat_comm_T(std::vector<char>& send_buffer,
+                const std::vector<int>& rowptr, const std::vector<int>& col_indices,
+                const std::vector<double>& values, const int b_rows = 1,
                 const int b_cols = 1, const bool has_vals = true) ;
         void init_mat_comm_T(std::vector<char>& send_buffer,
-                const std::vector<int>& rowptr, const std::vector<int>& col_indices, 
-                const std::vector<double*>& values, const int b_rows = 1, 
+                const std::vector<int>& rowptr, const std::vector<int>& col_indices,
+                const std::vector<double*>& values, const int b_rows = 1,
                 const int b_cols = 1, const bool has_vals = true) ;
-        CSRMatrix* complete_mat_comm_T(const int n_result_rows, 
+        CSRMatrix* complete_mat_comm_T(const int n_result_rows,
                 const int b_rows = 1, const int b_cols = 1,
                 const bool has_vals = true);
 
@@ -1808,7 +1808,7 @@ namespace raptor
             return CommPkg::communicate_T(A, has_vals);
         }
 
-        // Vector Communication        
+        // Vector Communication
         std::vector<double>& communicate(ParVector& v,
                 const int block_size = 1)
         {

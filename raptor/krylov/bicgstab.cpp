@@ -20,7 +20,7 @@ void BiCGStab(CSRMatrix* A, Vector& x, Vector& b, std::vector<double>& res, doub
 
     if (max_iter <= 0)
     {
-        max_iter = x.num_values + 5;
+	    max_iter = x.size() + 5;
     }
 
     // Fixed Constructors

@@ -3,7 +3,10 @@
 #ifndef RAPTOR_CORE_VECTOR_HPP_
 #define RAPTOR_CORE_VECTOR_HPP_
 
+#include <memory>
+
 #include "types.hpp"
+#include "utilities.hpp"
 
 // Vector Class
 //
@@ -35,11 +38,10 @@
 // data()
 //    Returns the data values as a data_t*
 //
-namespace raptor
-{
+namespace raptor {
+
 class Vector
 {
-
 public:
     /**************************************************************
     *****   Vector Class Constructor
@@ -51,31 +53,43 @@ public:
     ***** len : index_t
     *****    Size of the vector
     **************************************************************/
-    Vector(int len)
-    {
-        resize(len);
-    }
+	Vector(int len) :
+		storage(std::make_shared<storage_type>(len)),
+		values(*storage)
+	{}
 
     /**************************************************************
     *****   Vector Class Constructor
     **************************************************************
     ***** Initializes an empty vector without setting the size
     **************************************************************/
-    Vector()
-    {
-        num_values = 0;
-    }
+	Vector() :
+		storage(std::make_shared<storage_type>()),
+		values(*storage)
+	{}
+
+	Vector(double * base, std::size_t len) :
+		values(base, len) {}
 
     Vector(const Vector& v)
     {
        copy(v);
     }
 
-    void resize(int len)
+	void resize(std::size_t len)
     {
-        values.resize(len);
-        num_values = len;
+	    if (owns_data()) {
+		    storage->resize(len);
+		    values = span<double>(*storage);
+	    } else {
+		    assert(len <= values.size());
+		    values = values.first(len);
+	    }
     }
+
+	bool owns_data() {
+		return static_cast<bool>(storage);
+	}
 
     /**************************************************************
     *****   Vector Set Constant Value
@@ -186,15 +200,22 @@ public:
         return values.data();
     }
 
-    index_t size()
+    index_t size() const
     {
-        return num_values;
+	    return values.size();
     }
 
     data_t inner_product(Vector& x);
 
-    std::vector<double> values;
-    index_t num_values;
+	void set_base(double *base) {
+		auto sz = size();
+		if (storage) storage.reset();
+		values = span<double>(base, sz);
+	}
+
+	using storage_type = std::vector<double>;
+	std::shared_ptr<storage_type> storage;
+	span<double> values;
 };
 
 }
