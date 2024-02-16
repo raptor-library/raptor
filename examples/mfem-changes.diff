@@ -1,0 +1,16 @@
+diff --git a/examples/ex0.cpp b/examples/ex0.cpp
+index f9ab4f606..f02483074 100644
+--- a/examples/ex0.cpp
++++ b/examples/ex0.cpp
+@@ -67,6 +67,11 @@ int main(int argc, char *argv[])
+    Vector B, X;
+    a.FormLinearSystem(boundary_dofs, x, b, A, X, B);
+ 
++   std::ofstream afile("A.mtx"), bfile("b.txt"), xfile("x.txt");
++   A.PrintMM(afile);
++   for (auto bv : B) bfile << bv << '\n';
++   for (auto xv : X) xfile << xv << '\n';
++
+    // 9. Solve the system using PCG with symmetric Gauss-Seidel preconditioner.
+    GSSmoother M(A);
+    PCG(A, M, B, X, 1, 200, 1e-12, 0.0);
