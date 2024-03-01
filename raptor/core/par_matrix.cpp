@@ -11,29 +11,29 @@ void bsr_to_csr_copy_helper(ParBSRMatrix* A, ParCSRMatrix* B);
 *****   ParMatrix Add Value
 **************************************************************
 ***** Adds a value to the local portion of the parallel matrix,
-***** determining whether it should be added to diagonal or 
-***** off-diagonal block. 
+***** determining whether it should be added to diagonal or
+***** off-diagonal block.
 *****
 ***** Parameters
 ***** -------------
 ***** row : index_t
 *****    Local row of value
-***** global_col : index_t 
+***** global_col : index_t
 *****    Global column of value
 ***** value : data_t
 *****    Value to be added to parallel matrix
-**************************************************************/    
+**************************************************************/
 void ParMatrix::add_value(
-        int row, 
-        index_t global_col, 
+        int row,
+        index_t global_col,
         data_t value)
 {
-    if (global_col >= partition->first_local_col 
+    if (global_col >= partition->first_local_col
             && global_col <= partition->last_local_col)
     {
         on_proc->add_value(row, global_col - partition->first_local_col, value);
     }
-    else 
+    else
     {
         off_proc->add_value(row, global_col, value);
     }
@@ -43,21 +43,21 @@ void ParMatrix::add_value(
 *****   ParMatrix Add Global Value
 **************************************************************
 ***** Adds a value to the local portion of the parallel matrix,
-***** determining whether it should be added to diagonal or 
-***** off-diagonal block. 
+***** determining whether it should be added to diagonal or
+***** off-diagonal block.
 *****
 ***** Parameters
 ***** -------------
 ***** global_row : index_t
 *****    Global row of value
-***** global_col : index_t 
+***** global_col : index_t
 *****    Global column of value
 ***** value : data_t
 *****    Value to be added to parallel matrix
-**************************************************************/ 
+**************************************************************/
 void ParMatrix::add_global_value(
-        index_t global_row, 
-        index_t global_col, 
+        index_t global_row,
+        index_t global_col,
         data_t value)
 {
     add_value(global_row - partition->first_local_row, global_col, value);
@@ -73,7 +73,7 @@ void ParMatrix::add_global_value(
 ***** Parameters
 ***** -------------
 ***** create_comm : bool (optional)
-*****    Boolean for whether parallel communicator should be 
+*****    Boolean for whether parallel communicator should be
 *****    created (default is true)
 **************************************************************/
 void ParMatrix::condense_off_proc()
@@ -92,7 +92,7 @@ void ParMatrix::condense_off_proc()
     std::sort(off_proc_column_map.begin(), off_proc_column_map.end());
 
     off_proc_num_cols = 0;
-    for (std::vector<int>::iterator it = off_proc_column_map.begin(); 
+    for (std::vector<int>::iterator it = off_proc_column_map.begin();
             it != off_proc_column_map.end(); ++it)
     {
         if (*it != prev_col)
@@ -180,7 +180,7 @@ int* ParMatrix::map_partition_to_local()
 void bsr_to_csr_copy_helper(ParBSRMatrix* A, ParCSRMatrix* B)
 {
     if (B->on_proc)
-    {   
+    {
         delete B->on_proc;
     }
     if (B->off_proc)
@@ -198,7 +198,7 @@ void bsr_to_csr_copy_helper(ParBSRMatrix* A, ParCSRMatrix* B)
 
     B->on_proc_num_cols = B->on_proc->n_cols;
     B->off_proc_num_cols = B->off_proc->n_cols;
-    
+
     // Updated partition
     B->partition = new Partition(B->global_num_rows, B->global_num_cols,
                         B->on_proc->n_rows, B->on_proc->n_cols,
@@ -206,9 +206,9 @@ void bsr_to_csr_copy_helper(ParBSRMatrix* A, ParCSRMatrix* B)
                         A->partition->first_local_col * A->on_proc->b_cols);
     B->local_num_rows = B->partition->local_num_rows;
 
-    // Updated column and row maps - 
+    // Updated column and row maps -
     B->finalize(false);
-        
+
     // Determine which cols of blocks are non-zero
     bool* off_proc_nz_cols = new bool[A->off_proc_num_cols * A->off_proc->b_cols];
     A->off_proc->block_removal_col_check(off_proc_nz_cols);
@@ -223,10 +223,10 @@ void bsr_to_csr_copy_helper(ParBSRMatrix* A, ParCSRMatrix* B)
         {
             if (off_proc_nz_cols[i*A->off_proc->b_cols + j])
             {
-                B->off_proc_column_map[off_proc_map_indx] = first_col + j; 
+                B->off_proc_column_map[off_proc_map_indx] = first_col + j;
                 off_proc_map_indx++;
             }
-        } 
+        }
     }
 
     // Updated how communicators are created
@@ -348,11 +348,11 @@ ParCOOMatrix* ParBSRMatrix::to_ParBCOO()
 }
 ParCSRMatrix* ParCSRMatrix::to_ParCSR()
 {
-    return this; 
+    return this;
 }
 ParCSRMatrix* ParCSRMatrix::to_ParBSR()
 {
-    return this->to_ParCSR(); 
+    return this->to_ParCSR();
 }
 ParCSRMatrix* ParBSRMatrix::to_ParCSR()
 {
@@ -454,7 +454,7 @@ void ParCSRMatrix::copy_structure(ParBSRMatrix* A)
 		std::back_inserter(on_proc->idx1));
     std::copy(A->on_proc->idx2.begin(), A->on_proc->idx2.end(),
 		std::back_inserter(on_proc->idx2));
-    
+
     std::copy(A->off_proc->idx1.begin(), A->off_proc->idx1.end(),
 		std::back_inserter(off_proc->idx1));
     std::copy(A->off_proc->idx2.begin(), A->off_proc->idx2.end(),
@@ -540,7 +540,7 @@ void ParMatrix::copy_helper(ParCSCMatrix* A)
 void ParCOOMatrix::copy_helper(ParCOOMatrix* A)
 {
     if (on_proc)
-    {   
+    {
         delete on_proc;
     }
     if (off_proc)
@@ -557,7 +557,7 @@ void ParCOOMatrix::copy_helper(ParCOOMatrix* A)
 void ParCOOMatrix::copy_helper(ParCSRMatrix* A)
 {
     if (on_proc)
-    {   
+    {
         delete on_proc;
     }
     if (off_proc)
@@ -591,7 +591,7 @@ void ParCOOMatrix::copy_helper(ParCSCMatrix* A)
 void ParCSRMatrix::copy_helper(ParCSRMatrix* A)
 {
     if (on_proc)
-    {   
+    {
         delete on_proc;
     }
     if (off_proc)
@@ -608,7 +608,7 @@ void ParCSRMatrix::copy_helper(ParCSRMatrix* A)
 void ParCSRMatrix::copy_helper(ParCSCMatrix* A)
 {
     if (on_proc)
-    {   
+    {
         delete on_proc;
     }
     if (off_proc)
@@ -625,7 +625,7 @@ void ParCSRMatrix::copy_helper(ParCSCMatrix* A)
 void ParCSRMatrix::copy_helper(ParCOOMatrix* A)
 {
     if (on_proc)
-    {   
+    {
         delete on_proc;
     }
     if (off_proc)
@@ -642,7 +642,7 @@ void ParCSRMatrix::copy_helper(ParCOOMatrix* A)
 void ParCSCMatrix::copy_helper(ParCSRMatrix* A)
 {
     if (on_proc)
-    {   
+    {
         delete on_proc;
     }
     if (off_proc)
@@ -659,7 +659,7 @@ void ParCSCMatrix::copy_helper(ParCSRMatrix* A)
 void ParCSCMatrix::copy_helper(ParCSCMatrix* A)
 {
     if (on_proc)
-    {   
+    {
         delete on_proc;
     }
     if (off_proc)
@@ -676,7 +676,7 @@ void ParCSCMatrix::copy_helper(ParCSCMatrix* A)
 void ParCSCMatrix::copy_helper(ParCOOMatrix* A)
 {
     if (on_proc)
-    {   
+    {
         delete on_proc;
     }
     if (off_proc)
@@ -793,7 +793,7 @@ ParCSRMatrix* ParCSRMatrix::transpose()
             RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr, &col_size, 1, RAPtor_MPI_INT, comm->mpi_comm);
             recv_mat->idx2.resize(recv_mat->nnz + col_size);
             recv_mat->vals.resize(recv_mat->nnz + col_size);
-            RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr, &(recv_mat->idx2[recv_mat->nnz]), col_size, 
+            RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr, &(recv_mat->idx2[recv_mat->nnz]), col_size,
                     RAPtor_MPI_INT, comm->mpi_comm);
             RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr, &(recv_mat->vals[recv_mat->nnz]), col_size,
                     RAPtor_MPI_DOUBLE, comm->mpi_comm);
@@ -901,7 +901,7 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
     }
     else
     {
-        prev_col = -1;        
+        prev_col = -1;
         for (std::vector<int>::iterator it = on_proc_column_map.begin();
                 it != on_proc_column_map.end(); ++it)
         {
@@ -998,7 +998,7 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
 void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm mpi_comm)
 {
     /*********************************
-     * Initialize 
+     * Initialize
      * *******************************/
     // Get RAPtor_MPI Information
     int rank, num_procs;
@@ -1006,7 +1006,7 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm mpi_comm)
     RAPtor_MPI_Comm_size(mpi_comm, &num_procs);
 
     // Initialize standard tap_comm
-    tap_comm = new TAPComm(partition, true);    
+    tap_comm = new TAPComm(partition, true);
 
     // Initialize Variables
     std::vector<int> off_proc_col_to_proc;
@@ -1031,8 +1031,8 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm mpi_comm)
     }
 
     /*********************************
-     * Split columns by processes, 
-     * on-node, and off-node 
+     * Split columns by processes,
+     * on-node, and off-node
      * *******************************/
     // Find process on which vector value associated with each column is
     // stored
@@ -1055,11 +1055,11 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm mpi_comm)
 
 
     /*********************************
-     * Form standard 3-step 
-     * node-aware communicator 
+     * Form standard 3-step
+     * node-aware communicator
      * *******************************/
     // Gather all nodes with which any local process must communication
-    tap_comm->form_local_R_par_comm(off_node_column_map, off_node_col_to_proc, 
+    tap_comm->form_local_R_par_comm(off_node_column_map, off_node_col_to_proc,
             orig_procs);
 
     // Find global processes with which rank communications
@@ -1069,7 +1069,7 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm mpi_comm)
     // processes, before inter-node communication
     tap_comm->form_local_S_par_comm(orig_procs);
 
-    // Adjust send indices (currently global vector indices) to be index 
+    // Adjust send indices (currently global vector indices) to be index
     // of global vector value from previous recv
     tap_comm->adjust_send_indices(partition->first_local_col);
 
@@ -1083,8 +1083,8 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm mpi_comm)
 
 
     /*********************************
-     * Form simple 2-step 
-     * node-aware communicator 
+     * Form simple 2-step
+     * node-aware communicator
      * *******************************/
     // Create simple (2-step) TAPComm for matrix communication
     // Copy local_L_par_comm from 3-step tap_comm
@@ -1107,11 +1107,10 @@ void ParMatrix::init_tap_communicators(RAPtor_MPI_Comm mpi_comm)
 
     tap_mat_comm->update_recv(on_node_to_off_proc, off_node_to_off_proc, false);
 
-    for (std::vector<int>::iterator it = 
+    for (std::vector<int>::iterator it =
             tap_mat_comm->global_par_comm->send_data->indices.begin();
             it != tap_mat_comm->global_par_comm->send_data->indices.end(); ++it)
     {
         *it = on_proc_to_new[*it];
     }
 }
-

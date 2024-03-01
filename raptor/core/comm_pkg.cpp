@@ -3,6 +3,7 @@
 
 #include "comm_pkg.hpp"
 #include "par_matrix.hpp"
+#include "utilities.hpp"
 
 namespace raptor
 {
@@ -57,7 +58,7 @@ namespace raptor
 
     template<>
     void CommPkg::communicate_T(const double* values,
-            std::vector<double>& result, 
+            std::vector<double>& result,
             const int block_size,
             std::function<double(double, double)> result_func,
             std::function<double(double, double)> init_result_func,
@@ -68,7 +69,7 @@ namespace raptor
     }
     template<>
     void CommPkg::communicate_T(const double* values,
-            std::vector<int>& result, 
+            std::vector<int>& result,
             const int block_size,
             std::function<int(int, double)> result_func,
             std::function<double(double, double)> init_result_func,
@@ -79,7 +80,7 @@ namespace raptor
     }
     template<>
     void CommPkg::communicate_T(const int* values,
-            std::vector<int>& result, 
+            std::vector<int>& result,
             const int block_size,
             std::function<int(int, int)> result_func,
             std::function<int(int, int)> init_result_func,
@@ -90,10 +91,10 @@ namespace raptor
     }
     template<>
     void CommPkg::communicate_T(const int* values,
-            std::vector<double>& result, 
+            std::vector<double>& result,
             const int block_size,
             std::function<double(double, int)> result_func,
-            std::function<int(int, int)> init_result_func, 
+            std::function<int(int, int)> init_result_func,
             int init_result_func_val)
     {
         init_int_comm_T(values, block_size, init_result_func, init_result_func_val);
@@ -136,7 +137,7 @@ namespace raptor
     }
 
     template<>
-    void CommPkg::complete_comm_T<double, double>(std::vector<double>& result,
+    void CommPkg::complete_comm_T<double, double>(span<double> result,
             const int block_size,
             std::function<double(double, double)> result_func,
             std::function<double(double, double)> init_result_func,
@@ -145,7 +146,7 @@ namespace raptor
         complete_double_comm_T(result, block_size, result_func, init_result_func, init_result_func_val);
     }
     template<>
-    void CommPkg::complete_comm_T<double, int>(std::vector<int>& result,
+    void CommPkg::complete_comm_T<double, int>(span<int> result,
             const int block_size,
             std::function<int(int, double)> result_func,
             std::function<double(double, double)> init_result_func,
@@ -154,7 +155,7 @@ namespace raptor
         complete_double_comm_T(result, block_size, result_func, init_result_func, init_result_func_val);
     }
     template<>
-    void CommPkg::complete_comm_T<int, int>(std::vector<int>& result,
+    void CommPkg::complete_comm_T<int, int>(span<int> result,
             const int block_size,
             std::function<int(int, int)> result_func,
             std::function<int(int, int)> init_result_func,
@@ -163,7 +164,7 @@ namespace raptor
         complete_int_comm_T(result, block_size, result_func, init_result_func, init_result_func_val);
     }
     template<>
-    void CommPkg::complete_comm_T<int, double>(std::vector<double>& result,
+    void CommPkg::complete_comm_T<int, double>(span<double> result,
             const int block_size,
             std::function<double(double, int)> result_func,
             std::function<int(int, int)> init_result_func,
@@ -200,4 +201,3 @@ void CommPkg::init_comm(ParVector& v, const int block_size)
 {
     init_double_comm(v.local.data(), block_size);
 }
-
