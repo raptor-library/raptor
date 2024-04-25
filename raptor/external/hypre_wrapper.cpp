@@ -1,10 +1,11 @@
 // Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
+#include <iostream>
 
 #include "hypre_wrapper.hpp"
 
-using namespace raptor;
+namespace raptor {
 
 HYPRE_IJVector convert(raptor::ParVector& x_rap, RAPtor_MPI_Comm comm_mat)
 {
@@ -140,7 +141,6 @@ raptor::ParCSRMatrix* convert(hypre_ParCSRMatrix* A_hypre, RAPtor_MPI_Comm comm_
     HYPRE_Real* diag_data = hypre_CSRMatrixData(A_hypre_diag);
     HYPRE_Int* diag_i = hypre_CSRMatrixI(A_hypre_diag);
     HYPRE_Int* diag_j = hypre_CSRMatrixJ(A_hypre_diag);
-    HYPRE_Int  diag_nnz = hypre_CSRMatrixNumNonzeros(A_hypre_diag);
     HYPRE_Int diag_rows = hypre_CSRMatrixNumRows(A_hypre_diag);
     HYPRE_Int diag_cols = hypre_CSRMatrixNumCols(A_hypre_diag);
 
@@ -160,8 +160,8 @@ raptor::ParCSRMatrix* convert(hypre_ParCSRMatrix* A_hypre, RAPtor_MPI_Comm comm_
     HYPRE_Int global_rows = hypre_ParCSRMatrixGlobalNumRows(A_hypre);
     HYPRE_Int global_cols = hypre_ParCSRMatrixGlobalNumCols(A_hypre);
 
-    ParCSRMatrix* A = new ParCSRMatrix(global_rows, global_cols, 
-            diag_rows, diag_cols, 
+    ParCSRMatrix* A = new ParCSRMatrix(global_rows, global_cols,
+            diag_rows, diag_cols,
             first_local_row, first_local_col);
 
     A->on_proc->idx1[0] = 0;
@@ -177,7 +177,7 @@ raptor::ParCSRMatrix* convert(hypre_ParCSRMatrix* A_hypre, RAPtor_MPI_Comm comm_
         A->on_proc->idx1[i+1] = A->on_proc->idx2.size();
     }
     A->on_proc->nnz = A->on_proc->idx2.size();
-    
+
     A->off_proc->idx1[0] = 0;
     for (int i = 0; i < diag_rows; i++)
     {
@@ -202,9 +202,137 @@ raptor::ParCSRMatrix* convert(hypre_ParCSRMatrix* A_hypre, RAPtor_MPI_Comm comm_
 
 }
 
+raptor::ParBSRMatrix* convert(hypre_ParCSRMatrix* A_hypre,
+                              int b_rows, int b_cols,
+                              RAPtor_MPI_Comm comm_mat)
+{
+    int num_procs;
+    int rank;
+    RAPtor_MPI_Comm_size(comm_mat, &num_procs);
+    RAPtor_MPI_Comm_rank(comm_mat, &rank);
+
+    hypre_CSRMatrix* A_hypre_diag = hypre_ParCSRMatrixDiag(A_hypre);
+    HYPRE_Real* diag_data = hypre_CSRMatrixData(A_hypre_diag);
+    HYPRE_Int* diag_i = hypre_CSRMatrixI(A_hypre_diag);
+    HYPRE_Int* diag_j = hypre_CSRMatrixJ(A_hypre_diag);
+    HYPRE_Int diag_rows = hypre_CSRMatrixNumRows(A_hypre_diag);
+    HYPRE_Int diag_cols = hypre_CSRMatrixNumCols(A_hypre_diag);
+
+    hypre_CSRMatrix* A_hypre_offd = hypre_ParCSRMatrixOffd(A_hypre);
+    HYPRE_Int num_cols_offd = hypre_CSRMatrixNumCols(A_hypre_offd);
+    HYPRE_Int* offd_i = hypre_CSRMatrixI(A_hypre_offd);
+    HYPRE_Int* offd_j = hypre_CSRMatrixJ(A_hypre_offd);
+    HYPRE_Real* offd_data;
+    if (num_cols_offd)
+    {
+        offd_data = hypre_CSRMatrixData(A_hypre_offd);
+    }
+
+    HYPRE_Int first_local_row = hypre_ParCSRMatrixFirstRowIndex(A_hypre);
+    HYPRE_Int first_local_col = hypre_ParCSRMatrixFirstColDiag(A_hypre);
+    HYPRE_Int* col_map_offd = hypre_ParCSRMatrixColMapOffd(A_hypre);
+    HYPRE_Int global_rows = hypre_ParCSRMatrixGlobalNumRows(A_hypre);
+    HYPRE_Int global_cols = hypre_ParCSRMatrixGlobalNumCols(A_hypre);
+
+    { // check inputs
+	    // TODO: reduce on local check and check row_starts
+	    if ((diag_rows % b_rows) ||
+	        (diag_cols % b_cols) ||
+	        (global_rows % b_rows) ||
+	        (global_cols % b_cols)) {
+		    if (rank == 0)
+			    std::cout << "raptor: Global and local dimensions must evenly block dimensions for ParBSR conversion" << std::endl;
+		    return nullptr;
+	    }
+    }
+
+    auto *A = new ParBSRMatrix(global_rows / b_rows,
+                               global_cols / b_cols,
+                               diag_rows / b_rows,
+                               diag_cols / b_cols,
+                               first_local_row / b_rows,
+                               first_local_col / b_cols,
+                               b_rows, b_cols);
+
+    using block_map = std::map<int, double*>;
+    { // process on_proc
+	    auto & diag = dynamic_cast<raptor::BSRMatrix&>(*A->on_proc);
+	    auto & browptr = diag.idx1;
+	    auto & bcolind = diag.idx2;
+	    auto & bvalues = diag.block_vals;
+	    for (std::size_t block_index = 0; block_index < browptr.size() - 1; ++block_index) {
+		    block_map bmap;
+		    // local sort likely faster than map insertion
+		    for (int i = 0; i < b_rows; ++i) {
+			    int row = block_index * b_rows + i;
+			    for (int off = diag_i[row]; off < diag_i[row+1]; ++off) {
+				    int pos = diag_j[off] / b_cols;
+				    auto blkit = bmap.find(pos);
+				    double * blk;
+				    if (blkit == bmap.end()) {
+					    blk = new double[b_rows * b_cols]();
+					    bmap[pos] = blk;
+				    } else
+					    blk = blkit->second;
+				    blk[(diag_j[off] % b_cols) * b_rows + i] = diag_data[off];
+			    }
+		    }
+		    // add blocks to A
+		    for (auto & blk : bmap) {
+			    bcolind.emplace_back(blk.first);
+			    bvalues.emplace_back(blk.second);
+		    }
+		    browptr[block_index + 1] = browptr[block_index] + bmap.size();
+	    }
+    }
+
+    { // process off_proc
+	    auto & offd = dynamic_cast<raptor::BSRMatrix&>(*A->off_proc);
+	    auto & browptr = offd.idx1;
+	    auto & bcolind = offd.idx2;
+	    auto & bvalues = offd.block_vals;
+	    for (std::size_t block_index = 0; block_index < browptr.size() - 1; ++block_index) {
+		    if (num_cols_offd) {
+			    block_map bmap;
+			    // local sort likely faster than map insertion
+			    for (int i = 0; i < b_rows; ++i) {
+				    int row = block_index * b_rows + i;
+				    for (int off = offd_i[row]; off < offd_i[row+1]; ++off) {
+					    int global_col = col_map_offd[offd_j[off]];
+					    int pos = global_col / b_cols;
+					    auto blkit = bmap.find(pos);
+					    double * blk;
+					    if (blkit == bmap.end()) {
+						    blk = new double[b_rows * b_cols]();
+						    bmap[pos] = blk;
+					    } else
+						    blk = blkit->second;
+					    blk[(global_col % b_cols) * b_rows + i] = offd_data[off];
+				    }
+			    }
+			    // add blocks to A
+			    for (auto & blk : bmap) {
+				    bcolind.emplace_back(blk.first);
+				    bvalues.emplace_back(blk.second);
+			    }
+			    browptr[block_index + 1] = browptr[block_index] + bmap.size();
+		    }
+	    }
+    }
+
+    A->off_proc->nnz = A->off_proc->idx2.size();
+    A->on_proc->nnz = A->on_proc->idx2.size();
+
+    A->finalize();
+
+    return A;
+
+}
+
+
 HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
                                 hypre_ParVector* b,
-                                hypre_ParVector* x, 
+                                hypre_ParVector* x,
                                 HYPRE_Int coarsen_type,
                                 HYPRE_Int interp_type,
                                 HYPRE_Int p_max_elmts,
@@ -216,7 +344,7 @@ HYPRE_Solver hypre_create_hierarchy(hypre_ParCSRMatrix* A,
     // Create AMG solver struct
     HYPRE_Solver amg_data;
     HYPRE_BoomerAMGCreate(&amg_data);
-      
+
     // Set Boomer AMG Parameters
     HYPRE_BoomerAMGSetMaxRowSum(amg_data, 1);
     HYPRE_BoomerAMGSetCoarsenType(amg_data, coarsen_type);
@@ -333,4 +461,6 @@ HYPRE_Solver hypre_create_BiCGSTAB(hypre_ParCSRMatrix* A,
 
     *precond_ptr = amg_data;
     return bicgstab_data;
+}
+
 }
