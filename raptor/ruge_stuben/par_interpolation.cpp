@@ -14,11 +14,11 @@ CSRMatrix*  communicate(ParCSRMatrix* A, const std::vector<int>& states,
 void filter_interp(ParCSRMatrix* P, const double filter_threshold);
 ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states, const double filter_threshold, 
+        const std::vector<int>& off_proc_states, const double filter_threshold,
         bool tap_interp, int num_variables, int* variables);
 ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states, 
+        const std::vector<int>& off_proc_states,
         bool tap_interp, int num_variables, int* variables);
 ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const std::vector<int>& states,
@@ -43,7 +43,7 @@ CSRMatrix* communicate(ParCSRMatrix* A, ParCSRMatrix* S, const std::vector<int>&
         col_indices.reserve(A->local_nnz);
         values.reserve(A->local_nnz);
     }
-    
+
     rowptr[0] = 0;
     for (int i = 0; i < A->local_num_rows; i++)
     {
@@ -112,10 +112,10 @@ CSRMatrix* communicate(ParCSRMatrix* A, ParCSRMatrix* S, const std::vector<int>&
                     ctr_S++;
                 }
             }
-            else if (ctr_S < end_S && S->off_proc->idx2[ctr_S] == col) 
+            else if (ctr_S < end_S && S->off_proc->idx2[ctr_S] == col)
             {
                 // Selected and in S
-                if (val * sign < 0) //Only add needed cols 
+                if (val * sign < 0) //Only add needed cols
                 {
                     col_indices.push_back(-(global_col+1));
                     values.push_back(val);
@@ -136,7 +136,7 @@ CSRMatrix* communicate(ParCSRMatrix* A, ParCSRMatrix* S, const std::vector<int>&
     }
 
     return comm->communicate(rowptr, col_indices, values);
-   
+
 }
 
 
@@ -221,14 +221,14 @@ void filter_interp(ParCSRMatrix* P, const double filter_threshold)
             {
                 val = P->on_proc->vals[j];
                 abs_val = fabs(val);
-                if (abs_val > row_max) 
+                if (abs_val > row_max)
                     row_max = abs_val;
             }
             for (int j = row_start_off; j < row_end_off; j++)
             {
                 val = P->off_proc->vals[j];
                 abs_val = fabs(val);
-                if (abs_val > row_max) 
+                if (abs_val > row_max)
                     row_max = abs_val;
             }
 
@@ -285,7 +285,7 @@ void filter_interp(ParCSRMatrix* P, const double filter_threshold)
     P->on_proc->nnz = ctr_on;
     P->off_proc->nnz = ctr_off;
     P->local_nnz = ctr_on + ctr_off;
-   
+
     P->on_proc->idx2.resize(ctr_on);
     P->on_proc->vals.resize(ctr_on);
     P->off_proc->idx2.resize(ctr_off);
@@ -301,7 +301,7 @@ void filter_interp(ParCSRMatrix* P, const double filter_threshold)
 ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const std::vector<int>& states,
         const std::vector<int>& off_proc_states,
-        const double filter_threshold, 
+        const double filter_threshold,
         bool tap_interp, int num_variables, int* variables)
 {
     int start, end, idx;
@@ -344,7 +344,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     if (num_variables > 1)
     {
         comm->communicate(variables);
-        
+
         for (int i = 0; i < A->off_proc_num_cols; i++)
         {
             off_variables[i] = comm->get_int_buffer()[i];
@@ -356,7 +356,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
 
     int tmp_col;
     int* on_proc_partition_to_col = A->map_partition_to_local();
-    
+
     std::vector<int> A_recv_on_ptr(recv_mat->n_rows + 1);
     std::vector<int> S_recv_on_ptr(recv_mat->n_rows + 1);
     std::vector<int> A_recv_off_ptr(recv_mat->n_rows + 1);
@@ -385,7 +385,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
             val = recv_mat->vals[j];
 
             tmp_col = col;
-            if (col < 0) 
+            if (col < 0)
             {
                 col = (-col) - 1;
             }
@@ -401,7 +401,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                 }
             }
             // Otherwise, add every value to A (and neg values also to S)
-            else if (col < A->partition->first_local_col || 
+            else if (col < A->partition->first_local_col ||
                     col > A->partition->last_local_col)
             {
                 if (tmp_col < 0) // Only add to S if neg
@@ -464,7 +464,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     }
     off_proc_cols = off_proc_column_map.size();
 
-    for (std::vector<int>::iterator it = A_recv_off_idx.begin(); 
+    for (std::vector<int>::iterator it = A_recv_off_idx.begin();
             it != A_recv_off_idx.end(); ++it)
     {
         recv_mat->idx2[*it] = global_to_local[recv_mat->idx2[*it]];
@@ -492,10 +492,10 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     // Initialize AllReduce to determine global num cols
     RAPtor_MPI_Request reduce_request;
     int reduce_buf = on_proc_cols;
-    RAPtor_MPI_Iallreduce(&(reduce_buf), &global_num_cols, 1, RAPtor_MPI_INT, RAPtor_MPI_SUM, 
+    RAPtor_MPI_Iallreduce(&(reduce_buf), &global_num_cols, 1, RAPtor_MPI_INT, RAPtor_MPI_SUM,
             RAPtor_MPI_COMM_WORLD, &reduce_request);
-   
-    ParCSRMatrix* P = new ParCSRMatrix(A->partition, A->global_num_rows, -1, 
+
+    ParCSRMatrix* P = new ParCSRMatrix(A->partition, A->global_num_rows, -1,
             A->local_num_rows, on_proc_cols, off_proc_cols);
 
     for (int i = 0; i < S->on_proc_num_cols; i++)
@@ -509,7 +509,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     P->local_row_map = S->get_local_row_map();
 
     std::vector<int> off_proc_A_to_P;
-    if (A->off_proc_num_cols) 
+    if (A->off_proc_num_cols)
     {
 	    off_proc_A_to_P.resize(A->off_proc_num_cols, -1);
     }
@@ -528,7 +528,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         off_proc_A_to_P[i] = ctr;
     }
 
-    // For each row, will calculate coarse sums and store 
+    // For each row, will calculate coarse sums and store
     // strong connections in vector
     std::vector<int> pos;
     std::vector<int> off_proc_pos;
@@ -609,7 +609,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
             continue;
         }
 
-        // Go through strong coarse points, 
+        // Go through strong coarse points,
         // add to row coarse and create sparsity of P (dist1)
         row_start_on = nnz_on;
         row_start_off = nnz_off;
@@ -737,7 +737,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                 ctr++;
 
                 if (states[col] != Unselected) continue;
-                
+
                 // sum a_kl for k in F-points of S and l in C^_i U {i}
                 // k = col (unselected, in S)
                 col_sum = 0;
@@ -786,7 +786,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                 {
                     col_sum = val / col_sum;  // product = a_ik / col_sum
 
-                    start_k = A->on_proc->idx1[col]+1; 
+                    start_k = A->on_proc->idx1[col]+1;
                     end_k = A->on_proc->idx1[col+1];
                     for (int k = start_k; k < end_k; k++)
                     {
@@ -806,7 +806,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                             }
                         }
                     }
-                
+
                     start_k = A->off_proc->idx1[col];
                     end_k = A->off_proc->idx1[col+1];
                     for (int k = start_k; k < end_k; k++)
@@ -816,7 +816,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                         if (col_P >= 0) // If column not in P, col not in C^_{i}
                         {
                             val_k = A->off_proc->vals[k];
-                            idx = off_proc_pos[col_P]; // Find idx of w_ij 
+                            idx = off_proc_pos[col_P]; // Find idx of w_ij
                             // If sign(a_kj) != sign(a_kk) and j in C^_{i}
                             if (val_k * sign < 0 && idx >= row_start_off)
                             {
@@ -824,7 +824,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
                                 P->off_proc->vals[idx] += (col_sum * val_k);
                             }
                         }
-                    } 
+                    }
                 }
             }
             else // Weak connection, add to weak_sum if not in C^_{i}
@@ -959,7 +959,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
             }
         }
         pos[i] = -1;
-   
+
         P->on_proc->idx1[i+1] = row_end_on;
         P->off_proc->idx1[i+1] = row_end_off;
     }
@@ -978,7 +978,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
             	P->off_proc_column_map.push_back(off_proc_column_map[i]);
         	}
     	}
-        for (std::vector<int>::iterator it = P->off_proc->idx2.begin(); 
+        for (std::vector<int>::iterator it = P->off_proc->idx2.begin();
                 it != P->off_proc->idx2.end(); ++it)
         {
             *it = P_to_new[*it];
@@ -1011,7 +1011,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
 
 ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states, 
+        const std::vector<int>& off_proc_states,
         bool tap_interp, int num_variables, int* variables)
 {
     int rank;
@@ -1086,8 +1086,8 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
         }
     }
     RAPtor_MPI_Allreduce(&(on_proc_cols), &global_num_cols, 1, RAPtor_MPI_INT, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
-   
-    ParCSRMatrix* P = new ParCSRMatrix(A->partition, A->global_num_rows, global_num_cols, 
+
+    ParCSRMatrix* P = new ParCSRMatrix(A->partition, A->global_num_rows, global_num_cols,
             A->local_num_rows, on_proc_cols, off_proc_cols);
 
     for (int i = 0; i < A->on_proc_num_cols; i++)
@@ -1172,7 +1172,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
     recv_off->idx2.resize(ctr);
     recv_off->vals.resize(ctr);
 
-    // For each row, will calculate coarse sums and store 
+    // For each row, will calculate coarse sums and store
     // strong connections in vector
     std::vector<int> pos;
     std::vector<int> off_proc_pos;
@@ -1279,7 +1279,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
                         coarse_sum += val_k;
                     }
                 }
-                        
+
                 if (fabs(coarse_sum) < zero_tol)
                 {
                     weak_sum += val;
@@ -1347,7 +1347,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
                 if (off_proc_states[col] == Selected) continue;
 
-                // Strong connection... create 
+                // Strong connection... create
                 coarse_sum = 0;
                 start_k = recv_on->idx1[col];
                 end_k = recv_on->idx1[col+1];
@@ -1444,7 +1444,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
             P->off_proc_column_map.push_back(S->off_proc_column_map[i]);
         }
     }
-    for (std::vector<int>::iterator it = P->off_proc->idx2.begin(); 
+    for (std::vector<int>::iterator it = P->off_proc->idx2.begin();
             it != P->off_proc->idx2.end(); ++it)
     {
         *it = off_proc_col_to_new[*it];
@@ -1473,7 +1473,7 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
 ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         ParCSRMatrix* S, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states, 
+        const std::vector<int>& off_proc_states,
         bool tap_interp)
 {
     int start, end, col;
@@ -1557,8 +1557,8 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
         }
     }
     RAPtor_MPI_Allreduce(&(on_proc_cols), &global_num_cols, 1, RAPtor_MPI_INT, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
-   
-    ParCSRMatrix* P = new ParCSRMatrix(S->partition, S->global_num_rows, global_num_cols, 
+
+    ParCSRMatrix* P = new ParCSRMatrix(S->partition, S->global_num_rows, global_num_cols,
             S->local_num_rows, on_proc_cols, off_proc_cols);
 
     for (int i = 0; i < S->on_proc_num_cols; i++)
@@ -1598,7 +1598,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
             }
             for (int j = start; j < end; j++)
             {
-                col = S->on_proc->idx2[j]; 
+                col = S->on_proc->idx2[j];
                 if (states[col] == 1)
                 {
                     val = sa_on[j];
@@ -1664,7 +1664,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
             }
 
             alpha = sum_all_neg / sum_strong_neg;
-           
+
 
             //if (sum_strong_neg == 0)
             //{
@@ -1701,7 +1701,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
                 {
                     val = sa_on[j];
                     P->on_proc->idx2.push_back(on_proc_col_to_new[col]);
-                    
+
                     if (val < 0)
                     {
                         P->on_proc->vals.push_back(neg_coeff * val);
@@ -1740,7 +1740,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
     P->on_proc->nnz = P->on_proc->idx2.size();
     P->off_proc->nnz = P->off_proc->idx2.size();
     P->local_nnz = P->on_proc->nnz + P->off_proc->nnz;
-    
+
     for (int i = 0; i < S->off_proc_num_cols; i++)
     {
         if (col_exists[i])
@@ -1749,7 +1749,7 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
             P->off_proc_column_map.push_back(S->off_proc_column_map[i]);
         }
     }
-    for (std::vector<int>::iterator it = P->off_proc->idx2.begin(); 
+    for (std::vector<int>::iterator it = P->off_proc->idx2.begin();
             it != P->off_proc->idx2.end(); ++it)
     {
         *it = off_proc_col_to_new[*it];
@@ -1773,4 +1773,256 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
 
     return P;
 }
+
+namespace one_point {
+namespace {
+ParCSRMatrix * create_P(const ParCSRMatrix & A,
+                        const ParCSRMatrix & S,
+                        const splitting_t splitting) {
+	bool isbsr = dynamic_cast<const ParBSRMatrix*>(&A);
+
+	auto count_cols = [](int n, const std::vector<int> & split) {
+		int cols{0};
+		for (int i = 0; i < n; ++i) {
+			if (split[i]) ++cols;
+		}
+		return cols;
+	};
+	auto on_proc_cols = count_cols(S.on_proc_num_cols, splitting.on_proc);
+	auto off_proc_cols = count_cols(S.off_proc_num_cols, splitting.off_proc);
+	auto global_cols = [](int local) {
+		int global;
+		RAPtor_MPI_Allreduce(&local, &global, 1, RAPtor_MPI_INT, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
+		return global;
+	}(on_proc_cols);
+
+	if (isbsr) {
+		auto & bsr = dynamic_cast<const ParBSRMatrix&>(A);
+		return new ParBSRMatrix(S.partition, S.global_num_rows, global_cols,
+		                        S.local_num_rows, on_proc_cols, off_proc_cols,
+		                        bsr.on_proc->b_rows, bsr.on_proc->b_cols);
+	} else {
+		return new ParCSRMatrix(S.partition, S.global_num_rows, global_cols,
+		                        S.local_num_rows, on_proc_cols, off_proc_cols);
+	}
 }
+
+std::vector<int> map_on_proc_cpoints(ParCSRMatrix & P,
+                                     const std::vector<int> & colmap,
+                                     const decltype(splitting_t::on_proc) & splitting) {
+	std::vector<int> cpoint_map;
+	cpoint_map.resize(colmap.size(), -1);
+
+	for (int i = 0; i < colmap.size(); ++i) {
+		if (splitting[i] == Selected) {
+			cpoint_map[i] = P.on_proc_column_map.size();
+			P.on_proc_column_map.push_back(colmap[i]);
+		}
+	}
+
+	return cpoint_map;
+}
+
+void push_identity(Matrix & mat) {
+	bool isbsr = dynamic_cast<BSRMatrix*>(&mat);
+	if (isbsr) {
+		auto & bsr = dynamic_cast<BSRMatrix&>(mat);
+		auto bvals = new double[bsr.b_size]();
+		for (int i = 0; i < bsr.b_rows; ++i) {
+			bvals[i * bsr.b_cols + i] = 1.;
+		}
+		bsr.block_vals.push_back(bvals);
+	} else {
+		mat.vals.push_back(1.);
+	}
+}
+
+inline bool find_strongest(int row,
+                           const Matrix & soc_mat,
+                           const decltype(splitting_t::on_proc) & splitting,
+                           double & max,
+                           int & ind) {
+	auto & soc = dynamic_cast<const CSRMatrix&>(soc_mat);
+	bool found = false;
+	for (int off = soc.idx1[row]; off < soc.idx1[row+1]; ++off) {
+		auto col = soc.idx2[off];
+		if (splitting[col] == Selected) {
+			double vv = std::abs(soc.vals[off]);
+			if (vv > max) {
+				max = vv;
+				ind = col;
+				found = true;
+			}
+		}
+	}
+	return found;
+}
+
+void set_nnz(ParCSRMatrix & P) {
+	auto set = [](Matrix & mat) {
+		mat.nnz = mat.idx2.size();
+	};
+	set(*P.on_proc);
+	set(*P.off_proc);
+	P.local_nnz = P.on_proc->nnz + P.off_proc->nnz;
+}
+
+std::vector<int> remap_off_proc(ParCSRMatrix & P,
+                                const ParCSRMatrix & S,
+                                const std::vector<bool> & col_exists) {
+	std::vector<int> cpoint_map;
+	if (S.off_proc_num_cols) {
+		cpoint_map.resize(S.off_proc_num_cols, -1);
+	}
+
+	for (int i = 0; i < S.off_proc_num_cols; ++i) {
+		if (col_exists[i]) {
+			cpoint_map[i] = P.off_proc_column_map.size();
+			P.off_proc_column_map.push_back(S.off_proc_column_map[i]);
+		}
+	}
+
+	std::transform(
+		P.off_proc->idx2.cbegin(),
+		P.off_proc->idx2.cend(),
+		P.off_proc->idx2.begin(),
+		[&](int ind) { return cpoint_map[ind]; });
+
+	return cpoint_map;
+}
+
+
+void finalize_sizes(ParCSRMatrix & P) {
+	P.off_proc_num_cols = P.off_proc_column_map.size();
+	P.on_proc_num_cols = P.on_proc_column_map.size();
+	P.off_proc->n_cols = P.off_proc_num_cols;
+	P.on_proc->n_cols = P.on_proc_num_cols;
+}
+
+} // namespace
+} // namespace one_point
+
+ParCSRMatrix *one_point_interpolation(const ParCSRMatrix & A,
+                                      const ParCSRMatrix & S,
+                                      const splitting_t & splitting) {
+	using namespace one_point;
+	auto *P = create_P(A, S, splitting);
+	// map cpoints in S and splitting to P indexing
+	auto on_proc_cpoint_map = map_on_proc_cpoints(*P, S.on_proc_column_map, splitting.on_proc);
+	P->get_local_row_map() = S.get_local_row_map();
+
+	std::vector<bool> col_exists;
+	if (S.off_proc_num_cols) col_exists.resize(S.off_proc_num_cols, false);
+
+	for (int i = 0; i < A.local_num_rows; ++i) {
+		if (splitting.on_proc[i] == Selected) {
+			// Set C-point as identity
+			P->on_proc->idx2.push_back(on_proc_cpoint_map[i]);
+			push_identity(*P->on_proc);
+		} else {
+			/* find strongest connection to C-point and interpolate
+			   directly from the C-point.
+			*/
+			double max = -1;
+			int ind = -1;
+			// search on_proc
+			find_strongest(i, *S.on_proc,
+			               splitting.on_proc,
+			               max, ind);
+			// search off_proc
+			bool found_off_proc =
+				find_strongest(i, *S.off_proc,
+				               splitting.off_proc,
+				               max, ind);
+			if (found_off_proc) {
+				col_exists[ind] = true;
+				P->off_proc->idx2.push_back(ind);
+				push_identity(*P->off_proc);
+			} else if (ind > -1) {
+				P->on_proc->idx2.push_back(on_proc_cpoint_map[ind]);
+				push_identity(*P->on_proc);
+			}
+		}
+		auto inc_rowptr = [=](Matrix & mat) {
+			mat.idx1[i+1] = mat.idx2.size();
+		};
+		inc_rowptr(*P->on_proc);
+		inc_rowptr(*P->off_proc);
+	}
+	set_nnz(*P);
+
+	// remap off_proc columns
+	auto off_proc_cpoint_map = remap_off_proc(*P, S, col_exists);
+
+	finalize_sizes(*P);
+
+	P->comm = new ParComm(S.comm, on_proc_cpoint_map, off_proc_cpoint_map);
+
+	return P;
+}
+
+ParBSRMatrix * one_point_interpolation(const ParBSRMatrix & A,
+                                       const ParCSRMatrix & S,
+                                       const splitting_t & splitting)
+{
+	auto ret = dynamic_cast<ParBSRMatrix*>(
+		one_point_interpolation(
+			dynamic_cast<const ParCSRMatrix&>(A), S, splitting));
+
+	assert(ret);
+	return ret;
+}
+
+namespace lair {
+namespace {
+ParCSRMatrix * create_R(const ParCSRMatrix & A,
+                        const ParCSRMatrix & S,
+                        const splitting_t & splitting) {
+
+	bool isbsr = dynamic_cast<const ParBSRMatrix*>(&A);
+
+	int local_rows = std::count(splitting.on_proc.cbegin(),
+	                            splitting.on_proc.cend(),
+	                            Selected);
+	auto global_rows = [](int local) {
+		int global;
+		RAPtor_MPI_Allreduce(&local, &global, 1, RAPtor_MPI_INT, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
+		return global;
+	}(local_rows);
+
+	if (isbsr) {
+		auto & bsr = dynamic_cast<const ParBSRMatrix&>(A);
+		return new ParBSRMatrix(S.partition, global_rows, S.global_num_cols,
+		                        local_rows, S.on_proc_num_cols, S.off_proc_num_cols,
+		                        bsr.on_proc->b_rows, bsr.on_proc->b_cols);
+	} else {
+		return new ParCSRMatrix(S.partition, global_rows, S.global_num_cols,
+		                        local_rows, S.on_proc_num_cols, S.off_proc_num_cols);
+	}
+}
+} // namespace
+} // namespace lair
+
+ParCSRMatrix * local_air(const ParCSRMatrix & A,
+                         const ParCSRMatrix & S,
+                         const splitting_t & splitting)
+{
+	using namespace lair;
+	auto R = create_R(A, S, splitting);
+
+	return R;
+}
+
+ParBSRMatrix * local_air(const ParBSRMatrix & A,
+                         const ParCSRMatrix & S,
+                         const splitting_t & splitting) {
+	auto R = dynamic_cast<ParBSRMatrix*>(
+		local_air(
+			dynamic_cast<const ParCSRMatrix&>(A), S, splitting));
+	assert(R);
+
+	return R;
+}
+
+} // namespace raptor
+

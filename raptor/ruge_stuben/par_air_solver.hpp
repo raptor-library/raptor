@@ -1,0 +1,33 @@
+// Copyright (c) 2015-2017, RAPtor Developer Team
+// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
+
+#ifndef RAPTOR_PAR_AIR_SOLVER_HPP
+#define RAPTOR_PAR_AIR_SOLVER_HPP
+
+#include "raptor/multilevel/par_multilevel.hpp"
+
+namespace raptor {
+
+struct ParAIRSolver : ParMultilevel {
+
+	ParAIRSolver(double strong_threshold = 0.0,
+	             coarsen_t coarsen_type = RS,
+	             interp_t interp_type = OnePoint,
+	             strength_t strength_type = Classical,
+	             restrict_t restrict_type = AIR,
+	             relax_t relax_type = FCJacobi) :
+		ParMultilevel(strong_threshold, strength_type, relax_type),
+		coarsen_type(coarsen_type),
+		interp_type(interp_type),
+		restrict_type(restrict_type)
+	{
+	}
+
+private:
+	coarsen_t coarsen_type;
+	interp_t interp_type;
+	restrict_t restrict_type;
+}
+
+
+#endif

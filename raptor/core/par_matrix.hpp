@@ -298,6 +298,8 @@ namespace raptor
         return local_row_map;
     }
 
+	const std::vector<int> & get_local_row_map() const { return local_row_map; }
+
     virtual ParCOOMatrix* to_ParCOO() = 0;
     virtual ParCSRMatrix* to_ParCSR() = 0;
     virtual ParCSCMatrix* to_ParCSC() = 0;
