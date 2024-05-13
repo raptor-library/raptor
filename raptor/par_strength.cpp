@@ -10,16 +10,113 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
         int* variables);
 ParCSRMatrix* symmetric_strength(ParCSRMatrix* A, double theta, bool tap_amg);
 
+namespace raptor::classical {
+namespace {
+void init_strength(const Matrix & A, Matrix & S) {
+	    if (A.nnz) {
+		    S.idx2.resize(A.nnz);
+		    S.vals.resize(A.nnz);
+	    }
+	    S.idx1[0] = 0;
+	    S.nnz = 0;
+}
+void finalize_strength(const ParCSRMatrix & A, ParCSRMatrix & S) {
+	auto finalize_vecs = [](Matrix & mat) {
+		mat.idx2.resize(mat.nnz);
+		mat.idx2.shrink_to_fit();
+		mat.vals.resize(mat.nnz);
+		mat.vals.shrink_to_fit();
+	};
+	finalize_vecs(*S.on_proc);
+	finalize_vecs(*S.off_proc);
+
+	S.local_nnz = S.on_proc->nnz + S.off_proc->nnz;
+
+	S.on_proc_column_map = A.on_proc_column_map;
+    S.local_row_map = A.get_local_row_map();
+    S.off_proc_column_map = A.off_proc_column_map;
+
+    S.comm = A.comm;
+    S.tap_comm = A.tap_comm;
+    S.tap_mat_comm = A.tap_mat_comm;
+
+    if (S.comm) S.comm->num_shared++;
+    if (S.tap_comm) S.tap_comm->num_shared++;
+    if (S.tap_mat_comm) S.tap_mat_comm->num_shared++;
+}
+struct positive_coupling {
+	static constexpr inline double init = std::numeric_limits<double>::lowest();
+	static constexpr bool comp(double a, double b) { return a > b; }
+	static constexpr double strongest(double a, double b) { return std::max(a, b); }
+};
+struct negative_coupling {
+	static constexpr inline double init = std::numeric_limits<double>::max();
+	static constexpr bool comp(double a, double b) { return a < b; }
+	static constexpr double strongest(double a, double b) { return std::min(a, b); }
+};
+struct mat_args { const Matrix & mat; const int * variables; int beg; };
+template <class P, bool filter>
+constexpr double strongest_element(int i, int row_var, const mat_args & a) {
+	auto curr = P::init;
+	for (int j = a.beg; j < a.mat.idx1[i+1]; ++j) {
+		auto col = a.mat.idx2[j];
+		if constexpr (filter)
+			if (row_var != a.variables[col]) continue;
+		auto val = a.mat.vals[j];
+		if (P::comp(val, curr))
+			curr = val;
+	}
+	return curr;
+}
+template <class P>
+constexpr double strongest_connection(int row, int row_var, int num_variables,
+                                      mat_args on_proc, mat_args off_proc) {
+	if (num_variables == 1) {
+		return P::strongest(
+			strongest_element<P, false>(row, row_var, on_proc),
+			strongest_element<P, false>(row, row_var, off_proc));
+	} else {
+		return P::strongest(
+			strongest_element<P, true>(row, row_var, on_proc),
+			strongest_element<P, true>(row, row_var, off_proc));
+	}
+}
+struct append_args : mat_args { Matrix & soc; };
+template <class P, bool filter>
+constexpr void add_connections(int row, int row_var, double threshold,
+                               const append_args & args) {
+	for (int j = args.beg; j < args.mat.idx1[row+1]; ++j) {
+		auto col = args.mat.idx2[j];
+		if constexpr (filter)
+			if (row_var != args.variables[col]) continue;
+		auto val = args.mat.vals[j];
+		if (P::comp(val, threshold)) {
+			args.soc.idx2[args.soc.nnz] = col;
+			args.soc.vals[args.soc.nnz] = val;
+			++args.soc.nnz;
+		}
+	}
+}
+template <class P>
+constexpr void add_strong_connections(int row, int row_var, int num_variables, double threshold,
+                                      append_args on_proc, append_args off_proc) {
+	if (num_variables == 1) {
+		add_connections<P, false>(row, row_var, threshold, on_proc);
+		add_connections<P, false>(row, row_var, threshold, off_proc);
+	} else {
+		add_connections<P, true>(row, row_var, threshold, on_proc);
+		add_connections<P, true>(row, row_var, threshold, off_proc);
+	}
+}
+
+} // namespace
+} // namespace raptor::classical
 
 ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, int num_variables,
         int* variables)
 {
     int row_start_on, row_end_on;
     int row_start_off, row_end_off;
-    int col;
-    double val;
-    double row_scale;
-    double threshold;
     double diag;
 
     CommPkg* comm = A->comm;
@@ -42,21 +139,10 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
     A->sort();
     A->on_proc->move_diag();
 
-    if (A->on_proc->nnz)
-    {
-        S->on_proc->idx2.resize(A->on_proc->nnz);
-        S->on_proc->vals.resize(A->on_proc->nnz);
-    }
-    if (A->off_proc->nnz)
-    {
-        S->off_proc->idx2.resize(A->off_proc->nnz);
-        S->off_proc->vals.resize(A->off_proc->nnz);
-    }
+    using namespace classical;
+    init_strength(*A->on_proc, *S->on_proc);
+    init_strength(*A->off_proc, *S->off_proc);
 
-    S->on_proc->idx1[0] = 0;
-    S->off_proc->idx1[0] = 0;
-    S->on_proc->nnz = 0;
-    S->off_proc->nnz = 0;
     for (int i = 0; i < A->local_num_rows; i++)
     {
         row_start_on = A->on_proc->idx1[i];
@@ -75,114 +161,22 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
                 diag = 0.0;
             }
 
+            auto row_var = (num_variables > 1) ? variables[i] : -1;
             // Find value with max magnitude in row
-            if (num_variables == 1)
-            {
-                if (diag < 0.0)
-                {
-                    row_scale = -RAND_MAX;
-                    for (int j = row_start_on; j < row_end_on; j++)
-                    {
-                        val = A->on_proc->vals[j];
-                        if (val > row_scale)
-                        {
-                            row_scale = val;
-                        }
-                    }
-                    for (int j = row_start_off; j < row_end_off; j++)
-                    {
-                        val = A->off_proc->vals[j];
-                        if (val > row_scale)
-                        {
-                            row_scale = val;
-                        }
-                    }
-                }
-                else
-                {
-                    row_scale = RAND_MAX;
-                    for (int j = row_start_on; j < row_end_on; j++)
-                    {
-                        val = A->on_proc->vals[j];
-                        if (val < row_scale)
-                        {
-                            row_scale = val;
-                        }
-                    }
-                    for (int j = row_start_off; j < row_end_off; j++)
-                    {
-                        val = A->off_proc->vals[j];
-                        if (val < row_scale)
-                        {
-                            row_scale = val;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                if (diag < 0.0)
-                {
-                    row_scale = -RAND_MAX;
-                    for (int j = row_start_on; j < row_end_on; j++)
-                    {
-                        col = A->on_proc->idx2[j];
-                        if (variables[i] == variables[col])
-                        {
-                            val = A->on_proc->vals[j];
-                            if (val > row_scale)
-                            {
-                                row_scale = val;
-                            }
-                        }
-                    }
-                    for (int j = row_start_off; j < row_end_off; j++)
-                    {
-                        col = A->off_proc->idx2[j];
-                        if (variables[i] == off_variables[col])
-                        {
-                            val = A->off_proc->vals[j];
-                            if (val > row_scale)
-                            {
-                                row_scale = val;
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    row_scale = RAND_MAX;
-                    for (int j = row_start_on; j < row_end_on; j++)
-                    {
-                        col = A->on_proc->idx2[j];
-                        if (variables[i] == variables[col])
-                        {
-                            val = A->on_proc->vals[j];
-                            if (val < row_scale)
-                            {
-                                row_scale = val;
-                            }
-                        }
-                    }
-                    for (int j = row_start_off; j < row_end_off; j++)
-                    {
-                        col = A->off_proc->idx2[j];
-                        if (variables[i] == off_variables[col])
-                        {
-                            val = A->off_proc->vals[j];
-                            if (val < row_scale)
-                            {
-                                row_scale = val;
-                            }
-                        }
-                    }
-                }
-            }
-
-
+            auto row_scale = [=]() {
+	            auto get_row_scale = [=](auto comp) {
+		            using P = decltype(comp);
+		            return strongest_connection<P>(i, row_var, num_variables,
+		                                           {*A->on_proc, variables, row_start_on},
+		                                           {*A->off_proc, off_variables, row_start_off});
+	            };
+	            if (diag < 0.0)
+		            return get_row_scale(positive_coupling{});
+	            else return get_row_scale(negative_coupling{});
+            }();
 
             // Multiply row max magnitude by theta
-            threshold = row_scale * theta;
+            auto threshold = row_scale * theta;
 
             // Always add diagonal
             S->on_proc->idx2[S->on_proc->nnz] = i;
@@ -192,155 +186,22 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
             // Add all off-diagonal entries to strength
             // if magnitude greater than equal to
             // row_max * theta
-            if (num_variables == 1)
-            {
-                if (diag < 0)
-                {
-                    for (int j = row_start_on; j < row_end_on; j++)
-                    {
-                        val = A->on_proc->vals[j];
-                        if (val > threshold)
-                        {
-                            col = A->on_proc->idx2[j];
-                            S->on_proc->idx2[S->on_proc->nnz] = col;
-                            S->on_proc->vals[S->on_proc->nnz] = val;
-                            S->on_proc->nnz++;
-                        }
-                    }
-                    for (int j = row_start_off; j < row_end_off; j++)
-                    {
-                        val = A->off_proc->vals[j];
-                        if (val > threshold)
-                        {
-                            col = A->off_proc->idx2[j];
-                            S->off_proc->idx2[S->off_proc->nnz] = col;
-                            S->off_proc->vals[S->off_proc->nnz] = val;
-                            S->off_proc->nnz++;
-                        }
-                    }
-                }
-                else
-                {
-                    for (int j = row_start_on; j < row_end_on; j++)
-                    {
-                        val = A->on_proc->vals[j];
-                        if (val < threshold)
-                        {
-                            col = A->on_proc->idx2[j];
-                            S->on_proc->idx2[S->on_proc->nnz] = col;
-                            S->on_proc->vals[S->on_proc->nnz] = val;
-                            S->on_proc->nnz++;
-                        }
-                    }
-                    for (int j = row_start_off; j < row_end_off; j++)
-                    {
-                        val = A->off_proc->vals[j];
-                        if (val < threshold)
-                        {
-                            col = A->off_proc->idx2[j];
-                            S->off_proc->idx2[S->off_proc->nnz] = col;
-                            S->off_proc->vals[S->off_proc->nnz] = val;
-                            S->off_proc->nnz++;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                if (diag < 0)
-                {
-                    for (int j = row_start_on; j < row_end_on; j++)
-                    {
-                        col = A->on_proc->idx2[j];
-                        if (variables[i] == variables[col])
-                        {
-                            val = A->on_proc->vals[j];
-                            if (val > threshold)
-                            {
-                                S->on_proc->idx2[S->on_proc->nnz] = col;
-                                S->on_proc->vals[S->on_proc->nnz] = val;
-                                S->on_proc->nnz++;
-                            }
-                        }
-                    }
-                    for (int j = row_start_off; j < row_end_off; j++)
-                    {
-                        col = A->off_proc->idx2[j];
-                        if (variables[i] == off_variables[col])
-                        {
-                            val = A->off_proc->vals[j];
-                            if (val > threshold)
-                            {
-                                S->off_proc->idx2[S->off_proc->nnz] = col;
-                                S->off_proc->vals[S->off_proc->nnz] = val;
-                                S->off_proc->nnz++;
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    for (int j = row_start_on; j < row_end_on; j++)
-                    {
-                        col = A->on_proc->idx2[j];
-                        if (variables[i] == variables[col])
-                        {
-                            val = A->on_proc->vals[j];
-                            if (val < threshold)
-                            {
-                                S->on_proc->idx2[S->on_proc->nnz] = col;
-                                S->on_proc->vals[S->on_proc->nnz] = val;
-                                S->on_proc->nnz++;
-                            }
-                        }
-                    }
-                    for (int j = row_start_off; j < row_end_off; j++)
-                    {
-                        col = A->off_proc->idx2[j];
-                        if (variables[i] == off_variables[col])
-                        {
-                            val = A->off_proc->vals[j];
-                            if (val < threshold)
-                            {
-                                S->off_proc->idx2[S->off_proc->nnz] = col;
-                                S->off_proc->vals[S->off_proc->nnz] = val;
-                                S->off_proc->nnz++;
-                            }
-                        }
-                    }
-                }
-            }
-
+            auto add_row = [=](auto comp) {
+	            using P = decltype(comp);
+	            add_strong_connections<P>(i, row_var, num_variables, threshold,
+	                                      {{*A->on_proc, variables, row_start_on}, *S->on_proc},
+	                                      {{*A->off_proc, off_variables, row_start_off}, *S->off_proc});
+            };
+            if (diag < 0) add_row(positive_coupling{});
+            else add_row(negative_coupling{});
         }
         S->on_proc->idx1[i+1] = S->on_proc->nnz;
         S->off_proc->idx1[i+1] = S->off_proc->nnz;
     }
-    S->on_proc->idx2.resize(S->on_proc->nnz);
-    S->on_proc->idx2.shrink_to_fit();
-    S->off_proc->idx2.resize(S->off_proc->nnz);
-    S->off_proc->idx2.shrink_to_fit();
 
-    S->on_proc->vals.resize(S->on_proc->nnz);
-    S->on_proc->vals.shrink_to_fit();
-    S->off_proc->vals.resize(S->off_proc->nnz);
-    S->off_proc->vals.shrink_to_fit();
-
-    S->local_nnz = S->on_proc->nnz + S->off_proc->nnz;
-
-    S->on_proc_column_map = A->get_on_proc_column_map();
-    S->local_row_map = A->get_local_row_map();
-    S->off_proc_column_map = A->get_off_proc_column_map();
-
-    S->comm = A->comm;
-    S->tap_comm = A->tap_comm;
-    S->tap_mat_comm = A->tap_mat_comm;
-
-    if (S->comm) S->comm->num_shared++;
-    if (S->tap_comm) S->tap_comm->num_shared++;
-    if (S->tap_mat_comm) S->tap_mat_comm->num_shared++;
+    finalize_strength(*A, *S);
 
     return S;
-
 }
 
 // TODO -- currently this assumes all diags are same sign...
