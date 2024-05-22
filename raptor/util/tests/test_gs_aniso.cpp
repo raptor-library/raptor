@@ -29,10 +29,10 @@ TEST(AnisoJacobiTest, TestsInUtil)
     Vector b(A_sten->n_rows);
     Vector tmp(A_sten->n_rows);
 
-    const char* x_ones_1 = "../../../../test_data/aniso_sor_ones_1.txt";
-    const char* x_ones_2 = "../../../../test_data/aniso_sor_ones_2.txt";
-    const char* x_inc_1 = "../../../../test_data/aniso_sor_inc_1.txt";
-    const char* x_inc_2 = "../../../../test_data/aniso_sor_inc_2.txt";
+    const char* x_ones_1 = "../../../../test_data/aniso_gs_ones_1.txt";
+    const char* x_ones_2 = "../../../../test_data/aniso_gs_ones_2.txt";
+    const char* x_inc_1 = "../../../../test_data/aniso_gs_inc_1.txt";
+    const char* x_inc_2 = "../../../../test_data/aniso_gs_inc_2.txt";
     
     /*********************************************
      *  Test sor when b is constant value 1.0 
@@ -44,7 +44,6 @@ TEST(AnisoJacobiTest, TestsInUtil)
     f = fopen(x_ones_1, "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
-        printf("x[%d] = %f\n", i, x[i]);
         n_items_read = fscanf(f, "%lg\n", &x_val);
         ASSERT_EQ(n_items_read, 1);
         ASSERT_NEAR(x[i],x_val,1e-06);

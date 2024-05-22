@@ -19,9 +19,6 @@ namespace raptor {
 void jacobi(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps, 
         double omega)
 {
-    A->sort();
-    A->move_diag();
-
     int row_start, row_end;
     double diag, row_sum;
 
@@ -57,9 +54,6 @@ void jacobi(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps,
 void sor(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps,
         double omega)
 {
-    A->sort();
-    A->move_diag();
-
     int row_start, row_end;
     double diag;
     double rsum;
@@ -72,22 +66,19 @@ void sor(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps,
             diag = 0;
             row_start = A->idx1[i];
             row_end = A->idx1[i+1];
-            if (row_start == row_end) continue;
-
-            if (A->idx2[row_start] == i)
-            {
-                diag = A->vals[row_start];
-                row_start;
-            }
-            else continue;
 
             for (int j = row_start; j < row_end; j++)
             {
-                rsum += A->vals[j] * x[A->idx2[j]];
+                int col = A->idx2[j];
+                if (i == col)
+                    diag = A->vals[j];
+                else
+                    rsum += A->vals[j] * x[col];
             }
             
-            if (diag)
+            if (fabs(diag) > zero_tol)
                 x[i] = omega*(b[i] - rsum)/diag + (1 - omega) * x[i];
+        //        x[i] = (b[i] - rsum) / diag;
         }
     }
 }
@@ -95,9 +86,6 @@ void sor(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps,
 void ssor(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps,
         double omega)
 {
-    A->sort();
-    A->move_diag();
-
     int row_start, row_end;
     double diag_inv;
     double orig_x = 0;
