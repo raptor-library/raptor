@@ -10,12 +10,24 @@
 
 namespace raptor {
 
+// Standard Methods (CSR Matrix)
 void jacobi(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, 
         int num_sweeps = 1, double omega = 1.0);
 void sor(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, 
         int num_sweeps = 1, double omega = 1.0);
 void ssor(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, 
         int num_sweeps = 1, double omega = 1.0);
+
+// Block Methods (BSR Matrix)
+void relax_init(BSRMatrix* A, double** D_inv_ptr, int n);
+void jacobi(BSRMatrix* A, double* D_inv, Vector& b, Vector& x, Vector& tmp, 
+        int num_sweeps = 1, double omega = 1.0);
+void sor(BSRMatrix* A, double* D_inv, Vector& b, Vector& x, Vector& tmp, 
+        int num_sweeps = 1, double omega = 1.0);
+void ssor(BSRMatrix* A, double* D_inv, Vector& b, Vector& x, Vector& tmp, 
+        int num_sweeps = 1, double omega = 1.0);
+void relax_free(double* D_inv);
+
 
 }
 #endif

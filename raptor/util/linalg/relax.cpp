@@ -11,6 +11,10 @@ extern "C" {
 
     // generate inverse of a matrix given its LU decomposition
     void dgetri_(int* N, double* A, int* lda, int* IPIV, double* WORK, int* lwork, int* INFO);
+
+    void dgemv_(char* TRANS, const int* M, const int* N,
+               double* alpha, double* A, const int* LDA, double* X,
+               const int* INCX, double* beta, double* C, const int* INCY); 
 }
 
 
@@ -132,25 +136,23 @@ void ssor(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps,
  **/
 
 
-/*
-
 // Inverts block at address A
 // Returns inverted block at address A_inv
-void invert_block(double* A, double* A_inv, int n)
+void invert_block(double* A, double* D_inv, int n)
 {
     int info;
     int *lu = new int[n];
     int block_size = n*n;
 
     dgetrf_(&n, &n, A, &n, lu, &info);
-    dgetri_(&n, A, &n, lu, A_inv, &block_size, &info);
+    dgetri_(&n, A, &n, lu, D_inv, &block_size, &info);
 
     delete[] lu;
 }
 
-void block_relax_init(BSRMatrix* A, double** A_inv_ptr)
+void block_relax_init(BSRMatrix* A, double** D_inv_ptr)
 {
-    double* A_inv = new double[A->n_rows*A->b_size];
+    double* D_inv = new double[A->n_rows*A->b_size];
     double** bdata = (double**)(A->get_data());
     int row_start, row_end;
 
@@ -165,31 +167,36 @@ void block_relax_init(BSRMatrix* A, double** A_inv_ptr)
             int col = A->idx2[j];
             if (i == col)
             {
-                invert_block(bdata[j], &(A_inv[i*A->b_size]), A->b_rows);
+                invert_block(bdata[j], &(D_inv[i*A->b_size]), A->b_rows);
                 break;
             }
         }
     }
 
-    *A_inv_ptr = A_inv;
+    *D_inv_ptr = D_inv;
 }
 
 
 // From Pyamg block_jacobi https://github.com/pyamg/pyamg/blob/e1fe54c93be1029c02ddcf84c2338a607b088703/pyamg/amg_core/relaxation.h#L914
-void jacobi(BSRMatrix* A, double* A_inv, Vector& b, Vector& x, Vector& tmp, int num_sweeps, 
+void jacobi(BSRMatrix* A, double* D_inv, Vector& b, Vector& x, Vector& tmp, int num_sweeps, 
        double omega)
 {
     double* rsum = new double[A->b_size];
     double* tmp_rsum = new double[A->b_size];
+
     double** bdata = (double**)(A->get_data());
     int row_start, row_end;
+    char trans = 'N';
+    int n = A->b_rows;
+    int incr = 1;
+    double one = 1.0;
+    double zero = 0.0;
 
     // Go through all sweeps
     for (int iter = 0; iter < num_sweeps; iter++)
     {
         // Copy x to tmp vector
-        for (int i = 0; i < tmp.size(); i++)
-            tmp[i] = x[i];
+        memcpy(tmp.data(), x.data(), tmp.size());
 
         // Begin block Jacobi sweep
         for (int row = 0; row < A->n_rows; row++)
@@ -208,45 +215,48 @@ void jacobi(BSRMatrix* A, double* A_inv, Vector& b, Vector& x, Vector& tmp, int 
                 int col = A->idx2[j];
                 if (row != col) //ignore diagonal
                 {
-                    gemm(&(bdata[j]), A->b_rows, A->b_rows, 'F',
-                            &(tmp[col * A->b_cols]),  A->b_rows, 1, 'F',
-                            tmp_rsum, A->b_rows, 1, 'F', 'T');
+                    dgemv_(&trans, &n, &n, &one, bdata[j], &n, &((tmp[col * A->b_cols])), &incr, &zero, tmp_rsum, &incr);
+
                     for (int k = 0; k < A->b_rows; k++)
                         rsum[k] += tmp_rsum[k];
                 }
             }
 
             // r = b - r / diag
-            // in block form, calculate as: block_r = (b - block_r)*A_inv
+            // in block form, calculate as: block_r = (b - block_r)*D_inv
+            // 
             for (int k = 0; k < A->b_rows; k++)
                 rsum[k] = b[b_row_idx + k] - rsum[k];
-            gemm(&(A_inv[row*A->b_size]), A->b_rows, A->b_rows, 'F',
-                    &(rsum[0]), A->b_rows, 1, 'F',
-                    tmp_rsum, A->b_rows, 1, 'F', 'T');
-
+            dgemv_(&trans, &n, &n, &one, &(D_inv[row*A->b_size]), &n, &(rsum[0]), &incr, &zero, tmp_rsum, &incr);
+            
             // Weighted Jacobi calculation for row
             for (int k = 0; k < A->b_rows; k++)
-                x[b_row_idx + k] = (1.0-omega)*tmp[b_row_idx + k] + omega*x[b_row_idx + k];
+                x[b_row_idx + k] = omega*tmp_rsum[k] + (1.0-omega)*tmp[b_row_idx + k];
 
         }
     } 
+
+    delete[] rsum;
+    delete[] tmp_rsum;
 }
 
-void gauss_seidel(BSRMatrix* A, double* A_inv, Vector& b, Vector& x, Vector& tmp, 
+void sor(BSRMatrix* A, double* D_inv, Vector& b, Vector& x, Vector& tmp, 
         int num_sweeps, double omega)
 {
     double* rsum = new double[A->b_size];
     double* tmp_rsum = new double[A->b_size];
+
     double** bdata = (double**)(A->get_data());
     int row_start, row_end;
+    char trans = 'N';
+    int n = A->b_rows;
+    int incr = 1;
+    double one = 1.0;
+    double zero = 0.0;
 
     // Go through all sweeps
     for (int iter = 0; iter < num_sweeps; iter++)
     {
-        // Copy x to tmp vector
-        for (int i = 0; i < tmp.size(); i++)
-            tmp[i] = x[i];
-
         // Begin block Jacobi sweep
         for (int row = 0; row < A->n_rows; row++)
         {
@@ -264,36 +274,35 @@ void gauss_seidel(BSRMatrix* A, double* A_inv, Vector& b, Vector& x, Vector& tmp
                 int col = A->idx2[j];
                 if (row != col) //ignore diagonal
                 {
-                    gemm(&(bdata[j]), A->b_rows, A->b_rows, 'F',
-                            &(tmp[col * A->b_cols]),  A->b_rows, 1, 'F',
-                            tmp_rsum, A->b_rows, 1, 'F', 'T');
+                    dgemv_(&trans, &n, &n, &one, bdata[j], &n, &((x[col * A->b_cols])), &incr, &zero, tmp_rsum, &incr);
+
                     for (int k = 0; k < A->b_rows; k++)
                         rsum[k] += tmp_rsum[k];
                 }
             }
 
             // r = b - r / diag
-            // in block form, calculate as: block_r = (b - block_r)*A_inv
+            // in block form, calculate as: block_r = (b - block_r)*D_inv
+            // 
             for (int k = 0; k < A->b_rows; k++)
                 rsum[k] = b[b_row_idx + k] - rsum[k];
-            gemm(&(A_inv[row*A->b_size]), A->b_rows, A->b_rows, 'F',
-                    &(rsum[0]), A->b_rows, 1, 'F',
-                    &(x[b_row_idx]), A->b_rows, 1, 'F', 'T');
-
+            dgemv_(&trans, &n, &n, &one, &(D_inv[row*A->b_size]), &n, &(rsum[0]), &incr, &zero, tmp_rsum, &incr);
+            
             // Weighted Jacobi calculation for row
             for (int k = 0; k < A->b_rows; k++)
-                x[b_row_idx + k] = (1.0-omega)*tmp[b_row_idx + k] + omega*v[k];
+                x[b_row_idx + k] = omega*tmp_rsum[k] + (1.0-omega)*x[b_row_idx + k];
 
         }
     } 
-}
 
+    delete[] rsum;
+    delete[] tmp_rsum;
+}
 
 void block_relax_free(double* A_inv)
 {
     delete[] A_inv;
 }
 
-*/
 
 }
