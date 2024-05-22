@@ -995,6 +995,43 @@ class BSRMatrix : public CSRMatrix
         init_from_lists(rowptr, cols, data);
     }
 
+    BSRMatrix(CSRMatrix* A, int block_row_size, int block_col_size) : CSRMatrix(A->n_rows / block_row_size, A->n_cols / block_col_size, 0)
+    {
+        b_rows = block_row_size;
+        b_cols = block_col_size;
+        b_size = b_rows * b_cols;
+
+        // Convert CSR to BSR
+        std::vector<int> idx(A->n_cols, -1);
+        for (int bsr_row = 0; bsr_row < n_rows; bsr_row++)
+        {
+            for (int block = 0; block < b_rows; block++)
+            {
+                int csr_row = bsr_row+block;
+
+                for (int j = A->idx1[csr_row]; j < A->idx1[csr_row+1]; j++)
+                {
+                    int csr_col = A->idx2[j];
+                    int bsr_col = csr_col / b_rows;
+                    if (idx[bsr_col] != -1)
+                    {
+                        idx[bsr_col] = idx2.size();
+                        idx2.push_back(bsr_col);
+                        block_vals.push_back(new double[b_size]());
+                    }
+                    int idx_row = csr_row % b_rows;
+                    int idx_col = csr_col % b_cols;
+                    block_vals[idx[bsr_col]][idx_row*b_rows + idx_col] = A->vals[j];
+                }
+            }       
+            idx1[bsr_row+1] = idx2.size();
+
+            // Reset IDX array for next BSR row
+            for (int j = idx1[bsr_row]; j < idx1[bsr_row+1]; j++)
+                idx[idx2[j]] = -1;
+        }
+    }
+
     
     BSRMatrix() : CSRMatrix()
     {

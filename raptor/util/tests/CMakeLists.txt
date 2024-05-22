@@ -38,6 +38,11 @@ add_test(LaplaceGSTest ./test_gs_laplacian)
 #target_link_libraries(test_sor_laplacian raptor ${MPI_LIBRARIES} googletest pthread )
 #add_test(LaplaceSORTest ./test_sor_laplacian)
 
+add_executable(test_bsr_jacobi_aniso test_bsr_jacobi_aniso.cpp)
+target_link_libraries(test_bsr_jacobi_aniso raptor ${MPI_LIBRARIES} googletest pthread )
+add_test(BSRAnisoJacobiTest ./test_bsr_jacobi_aniso)
+
+
 if (WITH_MPI)
     add_executable(test_par_add test_par_add.cpp)
     target_link_libraries(test_par_add raptor ${MPI_LIBRARIES} googletest pthread )

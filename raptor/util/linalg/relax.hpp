@@ -7,6 +7,7 @@
 #include "raptor/core/vector.hpp"
 #include "raptor/core/matrix.hpp"
 #include "raptor/multilevel/level.hpp"
+#include <cstring>
 
 namespace raptor {
 
