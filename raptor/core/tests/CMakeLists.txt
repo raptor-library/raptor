@@ -51,4 +51,6 @@ add_executable(test_transpose test_transpose.cpp)
 target_link_libraries(test_transpose raptor ${MPI_LIBRARIES} googletest pthread )
 add_test(TransposeTest ./test_transpose)
 
-
+add_executable(test_bsr_matrix test_bsr_matrix.cpp)
+target_link_libraries(test_bsr_matrix raptor ${MPI_LIBRARIES} googletest pthread )
+add_test(BSRMatrixTest ./test_bsr_matrix)

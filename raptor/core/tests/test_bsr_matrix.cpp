@@ -15,42 +15,65 @@ int main(int argc, char** argv)
 
 TEST(BSRMatrixTest, TestsInCore)
 {
-/*    
-    std::vector<std::vector<int>> indx = {{0,0}, {0,1}, {1,1}, {2,1}, {2,2}};
+    // Matrix [0, 1], [1, 0]
+    //        [2, 0], [0, 2]
+    //        [3, 0], [0, 0]
+    //        [0, 4], [0, 0]
+    int n_csr = 4;
+    int nnz_csr = 6;
+    std::vector<int> rowptr_csr = {0, 2, 4, 5, 6};
+    std::vector<int> col_idx_csr = {1, 2, 0, 3, 0, 1};
+    std::vector<double> data_csr = {1, 1, 2, 2, 3, 4};
+    CSRMatrix* A_csr = new CSRMatrix(n_csr, n_csr, rowptr_csr, col_idx_csr, data_csr);
+    
+    int n = 2;  // 2 blocks by 2 blocks
+    int br = 2; // blocks are each 2x2
+    int bs = 4; 
+    int nnz = 3; // 3 blocks
+    std::vector<int> rowptr = {0, 2, 3};
+    std::vector<int> col_idx = {0, 1, 0};
+    std::vector<double> data = {0, 1, 2, 0, 1, 0, 0, 2, 3, 0, 0, 4};
 
-    int rows_in_block = 2;
-    int cols_in_block = 2;
-    int n = 6;
-
-    // Create BSR Matrices (6x6)
-    const BSRMatrix A_BSR1(n, n, rows_in_block, cols_in_block, row_ptr, cols, vals);
-    BSRMatrix A_BSR2(n, n, rows_in_block, cols_in_block);
-
-    // Add blocks
-    for(int i=0; i<blocks.size(); i++){
-        A_BSR2.add_value(indx[i][0], indx[i][1], blocks[i]);
-    }
-
-    // Check dimensions of A_BSR2
-    ASSERT_EQ(A_BSR2.nnz, A_BSR1.nnz);
-    //ASSERT_EQ(A_BSR2.n_blocks, A_BSR2.n_blocks);
-
-    // Check row_ptr
-    for (int i=0; i<A_BSR1.idx1.size(); i++)
+    // Hardcode one BSR Matrix
+    BSRMatrix* A = new BSRMatrix(n, n, br, br, nnz);
+    A->idx1[0] = 0;
+    for (int i = 0; i < n; i++)
     {
-        ASSERT_EQ(A_BSR2.idx1[i], A_BSR1.idx1[i]);
+        A->idx1[i+1] = rowptr[i+1];
+        for (int j = A->idx1[i]; j < A->idx1[i+1]; j++)
+        {
+            A->idx2.push_back(col_idx[j]);
+            double* vals = new double[bs];
+            for (int k = 0; k < bs; k++)
+                vals[k] = data[j*bs + k];
+            A->block_vals.push_back(vals);
+        }
     }
 
-    // Check column indices
-    for (int i=0; i<A_BSR1.nnz; i++)
+    // Call method that converts CSR to BSR
+    BSRMatrix* A_conv = new BSRMatrix(A_csr, br, br);
+
+    // Check that both BSR matrices are equivalent
+    ASSERT_EQ(A_conv->n_rows, A->n_rows);
+    ASSERT_EQ(A_conv->n_cols, A->n_cols);
+    ASSERT_EQ(A_conv->b_rows, A->b_rows);
+    ASSERT_EQ(A_conv->b_cols, A->b_cols);
+    ASSERT_EQ(A_conv->b_size, A->b_size);
+
+    for (int i = 0; i < A->n_rows; i++)
     {
-        ASSERT_EQ(A_BSR2.idx2[i], A_BSR1.idx2[i]);
+        ASSERT_EQ(A_conv->idx1[i+1], A->idx1[i+1]);
+        for (int j = A->idx1[i]; j < A->idx1[i+1]; j++)
+        {
+            ASSERT_EQ(A_conv->idx2[j], A->idx2[j]);
+            for (int k = 0; k < A->b_size; k++)
+                ASSERT_EQ(A_conv->block_vals[j][k], A->block_vals[j][k]);
+        }
     }
+                 
+    delete A_csr;
+    delete A;
+    delete A_conv;
 
-    // Check data
-    //for (int i=0; i<A_BSR1.nnz; i++){
-    //    ASSERT_EQ(A_BSR2.vals[i], A_BSR1.vals[i]);
-    //}
-*/
 } // end of TEST(MatrixTest, TestsInCore) //
 

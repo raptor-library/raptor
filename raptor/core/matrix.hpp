@@ -1007,13 +1007,13 @@ class BSRMatrix : public CSRMatrix
         {
             for (int block = 0; block < b_rows; block++)
             {
-                int csr_row = bsr_row+block;
+                int csr_row = bsr_row*b_rows+block;
 
                 for (int j = A->idx1[csr_row]; j < A->idx1[csr_row+1]; j++)
                 {
                     int csr_col = A->idx2[j];
                     int bsr_col = csr_col / b_rows;
-                    if (idx[bsr_col] != -1)
+                    if (idx[bsr_col] == -1)
                     {
                         idx[bsr_col] = idx2.size();
                         idx2.push_back(bsr_col);
@@ -1023,7 +1023,7 @@ class BSRMatrix : public CSRMatrix
                     int idx_col = csr_col % b_cols;
                     block_vals[idx[bsr_col]][idx_row*b_rows + idx_col] = A->vals[j];
                 }
-            }       
+            }   
             idx1[bsr_row+1] = idx2.size();
 
             // Reset IDX array for next BSR row
