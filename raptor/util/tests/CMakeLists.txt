@@ -10,6 +10,18 @@ add_executable(test_spmv_random test_spmv_random.cpp)
 target_link_libraries(test_spmv_random raptor ${MPI_LIBRARIES} googletest pthread )
 add_test(RandomSpMVTest ./test_spmv_random)
 
+add_executable(test_bsr_spmv_laplacian test_bsr_spmv_laplacian.cpp)
+target_link_libraries(test_bsr_spmv_laplacian raptor ${MPI_LIBRARIES} googletest pthread )
+add_test(BSRLaplacianSpMVTest ./test_bsr_spmv_laplacian)
+
+add_executable(test_bsr_spmv_aniso test_bsr_spmv_aniso.cpp)
+target_link_libraries(test_bsr_spmv_aniso raptor ${MPI_LIBRARIES} googletest pthread )
+add_test(BSRAnisoSpMVTest ./test_bsr_spmv_aniso)
+
+add_executable(test_bsr_spmv_random test_bsr_spmv_random.cpp)
+target_link_libraries(test_bsr_spmv_random raptor ${MPI_LIBRARIES} googletest pthread )
+add_test(BSRRandomSpMVTest ./test_bsr_spmv_random)
+
 
 add_executable(test_jacobi_aniso test_jacobi_aniso.cpp)
 target_link_libraries(test_jacobi_aniso raptor ${MPI_LIBRARIES} googletest pthread )
