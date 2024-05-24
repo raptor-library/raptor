@@ -17,11 +17,9 @@ int main(int argc, char** argv)
 TEST(AnisoJacobiTest, TestsInUtil)
 {
     double x_val;
-    int grid[2] = {25, 25};
-    double eps = 0.001;
-    double theta = M_PI/8.0;
-    double* stencil = diffusion_stencil_2d(eps, theta);
-    CSRMatrix* A_sten = stencil_grid(stencil, grid, 2);
+    int grid[3] = {10, 10, 10};
+    double* stencil = laplace_stencil_27pt();
+    CSRMatrix* A_sten = stencil_grid(stencil, grid, 3);
     int n_items_read;
     FILE* f;
 
@@ -32,14 +30,14 @@ TEST(AnisoJacobiTest, TestsInUtil)
     BSRMatrix* A = new BSRMatrix(A_sten, 5, 5);
     double* D_inv;
 
-    const char* x_ones_1 = "../../../../test_data/aniso_block_jacobi_ones_1.txt";
-    const char* x_ones_2 = "../../../../test_data/aniso_block_jacobi_ones_2.txt";
-    const char* x_inc_1 = "../../../../test_data/aniso_block_jacobi_inc_1.txt";
-    const char* x_inc_2 = "../../../../test_data/aniso_block_jacobi_inc_2.txt";
-
+    const char* x_ones_1 = "../../../../test_data/laplace_block_jacobi_ones_1.txt";
+    const char* x_ones_2 = "../../../../test_data/laplace_block_jacobi_ones_2.txt";
+    const char* x_inc_1 = "../../../../test_data/laplace_block_jacobi_inc_1.txt";
+    const char* x_inc_2 = "../../../../test_data/laplace_block_jacobi_inc_2.txt";
+    
     // SETUP D_inv!
     block_relax_init(A, &D_inv);
-    
+
     /*********************************************
      *  Test jacobi when b is constant value 1.0 
      *********************************************/
@@ -66,7 +64,6 @@ TEST(AnisoJacobiTest, TestsInUtil)
         ASSERT_NEAR(x[i],x_val,1e-06);
     } 
     fclose(f);
-    
 
     /*********************************************
      *  Test jacobi when b[i] = i
@@ -97,13 +94,15 @@ TEST(AnisoJacobiTest, TestsInUtil)
         ASSERT_NEAR(x[i],x_val,1e-06);
     } 
     fclose(f);
-    
+
 
     // Free D_inv
     block_relax_free(D_inv);
 
     delete A;
     delete A_sten;
+
+
 
 } // end of TEST(AnisoSpMVTest, TestsInUtil) //
 
