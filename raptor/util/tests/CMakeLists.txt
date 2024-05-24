@@ -62,6 +62,13 @@ add_executable(test_bsr_jacobi_laplacian test_bsr_jacobi_laplacian.cpp)
 target_link_libraries(test_bsr_jacobi_laplacian raptor ${MPI_LIBRARIES} googletest pthread )
 add_test(BSRLaplaceJacobiTest ./test_bsr_jacobi_laplacian)
 
+add_executable(test_bsr_gs_aniso test_bsr_gs_aniso.cpp)
+target_link_libraries(test_bsr_gs_aniso raptor ${MPI_LIBRARIES} googletest pthread )
+add_test(BSRAnisoGSTest ./test_bsr_gs_aniso)
+
+add_executable(test_bsr_gs_laplacian test_bsr_gs_laplacian.cpp)
+target_link_libraries(test_bsr_gs_laplacian raptor ${MPI_LIBRARIES} googletest pthread )
+add_test(BSRLaplaceGSTest ./test_bsr_gs_laplacian)
 
 if (WITH_MPI)
     add_executable(test_par_add test_par_add.cpp)
