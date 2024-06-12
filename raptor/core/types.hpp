@@ -47,6 +47,7 @@ namespace raptor
     using data_t = double;
     using index_t = int;
     enum strength_t {Classical, Symmetric};
+    enum class strength_norm { abs };
     enum format_t {COO, CSR, CSC, BCOO, BSR, BSC};
     enum coarsen_t {RS, CLJP, Falgout, PMIS, HMIS};
     enum interp_t { Direct, ModClassical, Extended, OnePoint };

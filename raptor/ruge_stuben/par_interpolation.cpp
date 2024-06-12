@@ -1813,7 +1813,7 @@ std::vector<int> map_on_proc_cpoints(ParCSRMatrix & P,
 	std::vector<int> cpoint_map;
 	cpoint_map.resize(colmap.size(), -1);
 
-	for (int i = 0; i < colmap.size(); ++i) {
+	for (std::size_t i = 0; i < colmap.size(); ++i) {
 		if (splitting[i] == Selected) {
 			cpoint_map[i] = P.on_proc_column_map.size();
 			P.on_proc_column_map.push_back(colmap[i]);
@@ -1978,6 +1978,7 @@ namespace {
 ParCSRMatrix * create_R(const ParCSRMatrix & A,
                         const ParCSRMatrix & S,
                         const splitting_t & splitting) {
+
 
 	bool isbsr = dynamic_cast<const ParBSRMatrix*>(&A);
 
