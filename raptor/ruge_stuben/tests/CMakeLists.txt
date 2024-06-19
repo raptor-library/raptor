@@ -35,6 +35,10 @@ if (WITH_MPI)
     target_link_libraries(test_par_interpolation raptor ${MPI_LIBRARIES} googletest pthread )
     add_test(TestParInterpolation ${MPIRUN} -n 16 ${HOST} ./test_par_interpolation)
 
+    add_executable(test_air test_air.cpp)
+    target_link_libraries(test_air raptor ${MPI_LIBRARIES} googletest pthread )
+    add_test(TestAIR ${MPIRUN} -n 4 ${HOST} ./test_air)
+
     add_executable(test_tap_interpolation test_tap_interpolation.cpp)
     target_link_libraries(test_tap_interpolation raptor ${MPI_LIBRARIES} googletest pthread )
     add_test(TestTAPInterpolation ${MPIRUN} -n 16 ${HOST} ./test_tap_interpolation)
