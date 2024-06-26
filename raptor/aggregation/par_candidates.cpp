@@ -45,7 +45,7 @@ ParCSRMatrix* fit_candidates(ParCSRMatrix* A,
 
     std::vector<int> on_proc_cols(A->on_proc_num_cols, 0);
     // Create AggOp matrices
-    int* on_proc_partition_to_col = A->map_partition_to_local();
+    auto on_proc_partition_to_col = A->map_partition_to_local();
     CSRMatrix* AggOp_on = new CSRMatrix(A->local_num_rows, -1);
     CSRMatrix* AggOp_off = new CSRMatrix(A->local_num_rows, -1);
     AggOp_on->idx1[0] = 0;
@@ -74,7 +74,6 @@ ParCSRMatrix* fit_candidates(ParCSRMatrix* A,
     }
     AggOp_on->nnz = AggOp_on->idx2.size();
     AggOp_off->nnz = AggOp_off->idx2.size();
-    delete[] on_proc_partition_to_col;
 
     // Initialize CSC Matrix for tentative interpolation
     int global_num_cols;

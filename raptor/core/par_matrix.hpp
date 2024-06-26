@@ -237,7 +237,7 @@ namespace raptor
     **************************************************************/
     void finalize(bool create_comm = true); //b_cols added for BSR
 
-    int* map_partition_to_local();
+	std::vector<int> map_partition_to_local() const;
     void condense_off_proc();
 
     void residual(ParVector& x, ParVector& b, ParVector& r, bool tap = false);

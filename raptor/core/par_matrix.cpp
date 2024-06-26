@@ -161,10 +161,9 @@ void ParMatrix::finalize(bool create_comm)
         comm = new ParComm(partition);
 }
 
-int* ParMatrix::map_partition_to_local()
+std::vector<int> ParMatrix::map_partition_to_local() const
 {
-    int* on_proc_partition_to_col = new int[partition->local_num_cols+1];
-    for (int i = 0; i < partition->local_num_cols+1; i++) on_proc_partition_to_col[i] = -1;
+	std::vector<int> on_proc_partition_to_col(partition->local_num_cols+1, -1);
     for (int i = 0; i < on_proc_num_cols; i++)
     {
         on_proc_partition_to_col[on_proc_column_map[i] - partition->first_local_col] = i;

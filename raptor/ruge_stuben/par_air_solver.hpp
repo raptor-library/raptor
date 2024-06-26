@@ -19,15 +19,37 @@ struct ParAIRSolver : ParMultilevel {
 		ParMultilevel(strong_threshold, strength_type, relax_type),
 		coarsen_type(coarsen_type),
 		interp_type(interp_type),
-		restrict_type(restrict_type)
+		restrict_type(restrict_type),
+		variables(nullptr)
 	{
+		num_variables = 1;
+	}
+
+	void setup(ParCSRMatrix * Af) override {
+		setup_helper(Af);
+	}
+
+	void extend_hierarchy() override {
+		int level_ctr = levels.size() - 1;
+		bool tap_level = tap_amg >= 0 && tap_amg <= level_ctr;
+
+		ParCSRMatrix *A = levels[level_ctr]->A;
+
+		splitting_t split;
+		auto S = A->strength(strength_type, strong_threshold, tap_level,
+		                num_variables, variables);
+
+		split_rs(S, split.on_proc, split.off_proc, tap_level);
+		auto P = one_point_interpolation(A, S, split);
 	}
 
 private:
 	coarsen_t coarsen_type;
 	interp_t interp_type;
 	restrict_t restrict_type;
-}
+	int *variables;
+};
 
+}
 
 #endif

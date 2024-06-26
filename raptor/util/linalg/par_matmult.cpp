@@ -264,7 +264,7 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C,
     CSRMatrix* recv_on = new CSRMatrix(recv_mat->n_rows, -1);
     CSRMatrix* recv_off = new CSRMatrix(recv_mat->n_rows, -1);
 
-    int* part_to_col = B->map_partition_to_local();
+	auto part_to_col = B->map_partition_to_local();
     recv_on->idx1[0] = 0;
     recv_off->idx1[0] = 0;
     for (int i = 0; i < recv_mat->n_rows; i++)
@@ -292,7 +292,6 @@ void ParCSRMatrix::mult_helper(ParCSRMatrix* B, ParCSRMatrix* C,
     }
     recv_on->nnz = recv_on->idx2.size();
     recv_off->nnz = recv_off->idx2.size();
-    delete[] part_to_col;
 
     // Calculate global_to_C and B_to_C column maps
     std::map<int, int> global_to_C;
@@ -436,13 +435,12 @@ void ParCSRMatrix::mult_T_combine(ParCSCMatrix* P, ParCSRMatrix* C, CSRMatrix* r
     C->on_proc_num_cols = C->on_proc_column_map.size();
 
     // Update recv_on columns (to match local cols)
-    int* part_to_col = map_partition_to_local();
+    auto part_to_col = map_partition_to_local();
     for (std::vector<int>::iterator it = recv_on->idx2.begin();
             it != recv_on->idx2.end(); ++it)
     {
         *it = part_to_col[(*it - partition->first_local_col)];
     }
-    delete[] part_to_col;
 
     // Multiply on_proc    
     recv_on->n_cols = C->on_proc_num_cols;

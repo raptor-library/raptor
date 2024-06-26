@@ -14,8 +14,7 @@ int main(int argc, char** argv)
     return ret;
 }
 
-
-
+#if 0
 TEST(TestOnePointInterp, TestsInRuge_Stuben) {
 	int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	constexpr std::size_t n{16};
@@ -86,4 +85,53 @@ TEST(TestOnePointInterp, TestsInRuge_Stuben) {
 			ASSERT_EQ(c, 8);
 		}
 	}
+}
+#endif
+
+
+TEST(TestLocalAIR, TestsInRuge_Stuben) {
+	int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	constexpr std::size_t n{16};
+	// constexpr std::size_t n{5};
+	std::vector<int> grid;
+
+	grid.resize(1, n);
+
+	std::vector<double> stencil{{-1., 2, -1}};
+
+	auto A = par_stencil_grid(stencil.data(), grid.data(), 1);
+	// {
+	// 	int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	// 	if (rank == 1) {
+	// 		auto & offd = *A->off_proc;
+	// 		auto [rowptr, colind, values] = offd.vecs();
+	// 		for (int r = 0; r < A->local_num_rows; ++r) {
+	// 			for (int off = rowptr[r]; off < rowptr[r+1]; ++off) {
+	// 				auto & gcol = A->off_proc_column_map[colind[off]];
+	// 				std::cout << "here: " << r << " " << A->off_proc_column_map[colind[off]] << std::endl;
+	// 			}
+	// 		}
+	// 	}
+	// }
+	auto get_split = [](const Matrix &, const std::vector<int> & colmap) {
+		std::vector<int> split(colmap.size(), 0);
+
+		std::size_t i{0};
+		for (auto col : colmap) split[i++] = (col % 2 == 0) ? Selected : Unselected;
+
+		return split;
+	};
+	splitting_t split{get_split(*A->on_proc, A->on_proc_column_map),
+	                  get_split(*A->off_proc, A->off_proc_column_map)};
+
+	{
+		int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+		if (rank == 1)
+			split.on_proc[2] = Unselected;
+	}
+
+	auto S = A->copy();
+
+	auto R = local_air_interpolation(*A, *S, split);
+
 }

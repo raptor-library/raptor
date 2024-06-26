@@ -393,6 +393,15 @@ namespace raptor
     std::vector<int> idx2;
     std::vector<double> vals;
 
+	std::tuple<decltype(idx1)&, decltype(idx2)&, decltype(vals)&> vecs() {
+		return {idx1, idx2, vals};
+	}
+
+	auto ptrs() {
+		return std::make_tuple(span(idx1), span(idx2), span(vals));
+	}
+
+
     int b_rows;
     int b_cols;
     int b_size;

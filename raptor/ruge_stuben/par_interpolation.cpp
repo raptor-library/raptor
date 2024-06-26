@@ -3,6 +3,12 @@
 #include "assert.h"
 #include "raptor/core/types.hpp"
 #include "raptor/core/par_matrix.hpp"
+#include "raptor/ruge_stuben/par_interpolation.hpp"
+
+#include <iostream>
+#include <chrono>
+#include <thread>
+#include <optional>
 
 namespace raptor {
 
@@ -35,6 +41,7 @@ CSRMatrix* communicate(ParCSRMatrix* A, ParCSRMatrix* S, const std::vector<int>&
     int sign;
     double diag, val;
 
+	int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     std::vector<int> rowptr(A->local_num_rows + 1);
     std::vector<int> col_indices;
     std::vector<double> values;
@@ -355,7 +362,7 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     recv_mat = communicate(A, S, states, off_proc_states, mat_comm);
 
     int tmp_col;
-    int* on_proc_partition_to_col = A->map_partition_to_local();
+    auto on_proc_partition_to_col = A->map_partition_to_local();
 
     std::vector<int> A_recv_on_ptr(recv_mat->n_rows + 1);
     std::vector<int> S_recv_on_ptr(recv_mat->n_rows + 1);
@@ -434,8 +441,6 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
     A_recv_off_idx.shrink_to_fit();
     S_recv_off_idx.resize(S_recv_off_ctr);
     S_recv_off_idx.shrink_to_fit();
-
-    delete[] on_proc_partition_to_col;
 
     // Change off_proc_cols to local (remove cols not on rank)
     for (int i = 0; i < S->off_proc_num_cols; i++)
@@ -1133,13 +1138,12 @@ ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
 
     // Change on_proc_cols to local
     recv_on->n_cols = A->on_proc_num_cols;
-    int* on_proc_partition_to_col = A->map_partition_to_local();
+    auto on_proc_partition_to_col = A->map_partition_to_local();
     for (std::vector<int>::iterator it = recv_on->idx2.begin();
             it != recv_on->idx2.end(); ++it)
     {
         *it = on_proc_partition_to_col[*it - A->partition->first_local_row];
     }
-    delete[] on_proc_partition_to_col;
 
     // Change off_proc_cols to local (remove cols not on rank)
     ctr = 0;
@@ -1973,11 +1977,141 @@ ParBSRMatrix * one_point_interpolation(const ParBSRMatrix & A,
 	return ret;
 }
 
-namespace lair {
+namespace local_air {
 namespace {
+
+struct comm_rows {
+	comm_rows(const ParCSRMatrix & A,
+	          CSRMatrix * mat);
+	~comm_rows() {
+		if (rmat) delete rmat;
+	}
+
+	template<class F>
+	void iter_diag(int row, F && f) const {
+		iter(row, std::forward<F>(f), diag);
+	}
+	template<class F>
+	void iter_offd(int row, F && f) const {
+		iter(row, std::forward<F>(f), offd);
+	}
+
+	struct ptrs {
+		std::vector<int> ptr;
+		std::vector<int> idx;
+	} diag, offd;
+
+	template<class T>
+	struct row_view {
+		auto & idx2() {	return mat->idx2[off]; }
+		auto & val() { return mat->vals[off]; };
+
+		int off;
+		T * mat;
+	};
+
+private:
+	template<class F>
+	void iter(int row, F && f, const ptrs & pts) const {
+		for (int i = pts.ptr[row]; i < pts.ptr[row + 1]; ++i) {
+			std::forward<F>(f)(row_view<const CSRMatrix>{i, rmat});
+		}
+	}
+
+	CSRMatrix *rmat;
+};
+
+struct offd_map_rowptr {
+	std::vector<int> diag_rowptr;
+	std::vector<int> offd_rowptr;
+	std::vector<int> colmap; //offd colmap
+};
+
+/*
+  First pass: compute rowptr for R and discover off proc columns.
+
+  This computes the rowptr for R and discovers set of off proc columns.
+  Forward and backward column maps for off proc columns are also computed.
+ */
+offd_map_rowptr map_offd_fill_rowptr(const ParCSRMatrix & S,
+                                     const splitting_t & splitting,
+                                     const std::vector<int> & cpts,
+                                     fpoint_distance distance,
+                                     const comm_rows & recv_rows) {
+	offd_map_rowptr ret;
+
+	struct nnz_t {
+		int diag = 0;
+		int offd = 0;
+	} nnz;
+
+	[&](auto & ... v) {
+		((v.resize(cpts.size() + 1)), ...);
+		((v[0] = 0), ...);
+	}(ret.diag_rowptr, ret.offd_rowptr);
+
+	std::set<int> offd_cols;
+	auto expand = [&](const int row,
+	                  const auto & soc,
+	                  const auto & split,
+	                  auto && callback) {
+		for (int off = soc.idx1[row]; off < soc.idx1[row+1]; ++off) {
+			auto d2point = soc.idx2[off];
+			if (split[d2point] == Unselected &&
+			    d2point != row){
+				std::forward<decltype(callback)>(callback)(d2point);
+			}
+		}
+	};
+	for (std::size_t row = 0; row < cpts.size(); ++row) {
+		auto cpoint = cpts[row];
+		for (int off = S.on_proc->idx1[cpoint];
+		     off < S.on_proc->idx1[cpoint + 1]; ++off) {
+			auto this_point = S.on_proc->idx2[off];
+			if (splitting.on_proc[this_point] == Unselected) {
+				++nnz.diag;
+				if (distance == fpoint_distance::two) {
+					expand(this_point, *S.on_proc, splitting.on_proc, [&](int){ ++nnz.diag; });
+					expand(this_point, *S.off_proc, splitting.off_proc,
+					       [&](int col) {
+						       ++nnz.offd;
+						       offd_cols.insert(S.off_proc_column_map[col]);
+					       });
+				}
+			}
+		}
+		for (int off = S.off_proc->idx1[cpoint];
+		     off < S.off_proc->idx1[cpoint + 1]; ++off) {
+			auto this_point = S.off_proc->idx2[off];
+			if (splitting.off_proc[this_point] == Unselected) {
+				++nnz.offd;
+				offd_cols.insert(S.off_proc_column_map[this_point]);
+				if (distance == fpoint_distance::two) {
+					recv_rows.iter_diag(this_point, [&](auto) {
+						++nnz.diag;
+					});
+					recv_rows.iter_offd(this_point, [&](auto rview) {
+						++nnz.offd;
+						offd_cols.insert(rview.idx2());
+					});
+				}
+			}
+		}
+		++nnz.diag; // identity on cpoints
+		ret.diag_rowptr[row + 1] = nnz.diag;
+		ret.offd_rowptr[row + 1] = nnz.offd;
+	}
+
+	for (auto col : offd_cols) {
+		ret.colmap.push_back(col);
+	}
+
+	return ret;
+}
 ParCSRMatrix * create_R(const ParCSRMatrix & A,
                         const ParCSRMatrix & S,
-                        const splitting_t & splitting) {
+                        const splitting_t & splitting,
+                        offd_map_rowptr && rowptr_and_colmap) {
 
 
 	bool isbsr = dynamic_cast<const ParBSRMatrix*>(&A);
@@ -1991,35 +2125,335 @@ ParCSRMatrix * create_R(const ParCSRMatrix & A,
 		return global;
 	}(local_rows);
 
+	auto off_proc_num_cols = rowptr_and_colmap.colmap.size();
+	auto move_data = [](offd_map_rowptr && rac, ParMatrix & mat) {
+		mat.on_proc->idx1 = std::move(rac.diag_rowptr);
+		mat.off_proc->idx1 = std::move(rac.offd_rowptr);
+		mat.off_proc_column_map = std::move(rac.colmap);
+		[](auto & ... mats) {
+			(mats.idx2.resize(mats.idx1.back()),...);
+		}(*mat.on_proc, *mat.off_proc);
+	};
 	if (isbsr) {
 		auto & bsr = dynamic_cast<const ParBSRMatrix&>(A);
-		return new ParBSRMatrix(S.partition, global_rows, S.global_num_cols,
-		                        local_rows, S.on_proc_num_cols, S.off_proc_num_cols,
-		                        bsr.on_proc->b_rows, bsr.on_proc->b_cols);
+		auto * R = new ParBSRMatrix(S.partition, global_rows, S.global_num_cols,
+		                            local_rows, S.on_proc_num_cols, off_proc_num_cols,
+		                            bsr.on_proc->b_rows, bsr.on_proc->b_cols);
+		move_data(std::move(rowptr_and_colmap), *R);
+		return R;
 	} else {
-		return new ParCSRMatrix(S.partition, global_rows, S.global_num_cols,
-		                        local_rows, S.on_proc_num_cols, S.off_proc_num_cols);
+		auto * R = new ParCSRMatrix(S.partition, global_rows, S.global_num_cols,
+		                            local_rows, S.on_proc_num_cols, off_proc_num_cols);
+		move_data(std::move(rowptr_and_colmap), *R);
+		return R;
 	}
 }
-} // namespace
-} // namespace lair
 
-ParCSRMatrix * local_air(const ParCSRMatrix & A,
-                         const ParCSRMatrix & S,
-                         const splitting_t & splitting)
+auto get_cpoints(const std::vector<int> & split) {
+	std::vector<int> cpts;
+
+	for (std::size_t i = 0; i < split.size(); ++i) {
+		if (split[i] == Selected)
+			cpts.push_back(i);
+	}
+
+	return cpts;
+}
+
+
+void fill_colind_and_data(const ParCSRMatrix & A,
+                          const ParCSRMatrix &S,
+                          const comm_rows &recv_rows,
+                          const splitting_t &splitting,
+                          const std::vector<int> &cpts,
+                          fpoint_distance distance,
+                          ParCSRMatrix &R) {
+	auto expand = [&](const int row,
+	                  const Matrix & soc,
+	                  const auto & split,
+	                  Matrix & rmat,
+	                  int & ind, auto && colmap) {
+		for (int off = soc.idx1[row]; off < soc.idx1[row+1]; ++off) {
+			auto d2point = soc.idx2[off];
+			if (split[d2point] == Unselected && d2point != row) {
+				rmat.idx2[ind++] = std::forward<decltype(colmap)>(colmap)(d2point);
+			}
+		}
+	};
+	int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	// build column indices and data for each row of R
+	// Note: uses global indices for off_proc columns
+	for (std::size_t row = 0; row < cpts.size(); ++row) {
+		auto cpoint = cpts[row];
+		auto ind = R.on_proc->idx1[row];
+		auto ind_off = R.off_proc->idx1[row];
+		auto bounds = [=](const Matrix & mat) {
+			return std::make_pair(mat.idx1[cpoint], mat.idx1[cpoint + 1]);
+		};
+		auto & colmap = S.off_proc_column_map;
+		// set column indices for R as strongly connected F-points
+		auto [beg_on, end_on] = bounds(*S.on_proc);
+		for (int off = beg_on; off < end_on; ++off) {
+			auto this_point = S.on_proc->idx2[off];
+			if (splitting.on_proc[this_point] == Unselected) {
+				R.on_proc->idx2[ind++] = this_point;
+				// strong distance two F-to-F connections
+				if (distance == fpoint_distance::two) {
+					expand(this_point, *S.on_proc, splitting.on_proc, *R.on_proc, ind,
+					       [](int c) { return c; });
+					expand(this_point, *S.off_proc, splitting.off_proc, *R.off_proc, ind_off,
+					       [&](int c) { return colmap[c]; });
+				}
+			}
+		}
+
+		auto [beg_off, end_off] = bounds(*S.off_proc);
+		for (int off = beg_off; off < end_off; ++off) {
+			auto this_point = S.off_proc->idx2[off];
+			if (splitting.off_proc[this_point] == Unselected) {
+				R.off_proc->idx2[ind_off++] = colmap[this_point];
+				if (distance == fpoint_distance::two) {
+					recv_rows.iter_diag(this_point, [&](auto rview) {
+						R.on_proc->idx2[ind++] = rview.idx2();
+					});
+					recv_rows.iter_offd(this_point, [&](auto rview) {
+						R.off_proc->idx2[ind_off++] = rview.idx2();
+					});
+				}
+			}
+		}
+
+		if ((ind != R.on_proc->idx1[row+1] - 1) ||
+		    (ind_off != R.off_proc->idx1[row+1])) {
+			// int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+			std::cout << "ind: " << ind << std::endl;
+			std::cout << "rowptr: " << R.on_proc->idx1[row+1] - 1 << std::endl;
+			std::cout << "ind_off: " << ind_off << std::endl;
+			std::cout << "rowptr_off: " << R.off_proc->idx1[row+1] -1 << std::endl;
+			// todo: error checking in raptor
+			std::cerr << "Error air_restriction: row pointer does not agree with neighborhood size\n" << std::endl;
+		}
+
+        // Build local linear system as the submatrix A restricted to the neighborhood,
+        // Nf, of strongly connected F-points to the current C-point, that is A0 =
+        // A[Nf, Nf]^T, stored in column major form. Since A in row-major = A^T in
+        // column-major, A (CSR) is iterated through and A[Nf,Nf] stored in row-major.
+		auto size_n = (ind - R.on_proc->idx1[row]) + (ind_off - R.off_proc->idx1[row]);
+		std::vector<double> A0;
+		A0.reserve(size_n * size_n);
+		if (rank == 2 && cpoint == 2) {
+			// for (int j = R.on_proc->idx1[row]; j < ind; ++j) {
+
+			// }
+			auto print_row = [&](const char * pre, Matrix & mat) {
+				std::cout << pre << ": ";
+				for (int j = mat.idx1[row]; j < mat.idx1[row+1]; ++j) {
+					std::cout << mat.idx2[j] << ' ';
+				}
+				std::cout << '\n';
+			};
+			print_row("diag", *R.on_proc);
+			print_row("offd", *R.off_proc);
+		}
+		auto iter_neig = [&](auto && f) {
+			auto diag_finder = [&](int row) {
+				return [=](int col) {
+					std::optional<double> ret;
+					for (int off = A.on_proc->idx1[row]; off < A.on_proc->idx1[row + 1]; ++off) {
+						if (A.on_proc->idx2[off] == col) {
+							ret.emplace(A.on_proc->vals[off]);
+						}
+					}
+					return ret;
+				};
+			};
+
+			for (int off = R.on_proc->idx1[row]; off < ind; ++off) {
+				auto col = R.on_proc->idx2[off];
+				f(col, diag_finder(col));
+			}
+			for (int j = R.off_proc->idx1[row]; j < ind_off; ++j) {
+				f(R.off_proc->idx2[j]);
+			}
+		};
+		iter_neig([&](int i, auto && find_in_row){
+			iter_neig([&](int j, auto&&) {
+				auto maybe_val = find_in_row(j);
+				// If index not found, set element to 0
+				A0.push_back(maybe_val.value_or(0.));
+			});
+		});
+#if 0
+		for (int j = R.on_proc->idx1[row]; j < ind; ++j) {
+			int this_ind = R.on_proc->idx2[j];
+			for (int i = R.on_proc->idx1[row]; i < ind; ++i) {
+				// search for indice in row of A
+				bool found_ind = false;
+				for (int k = A.on_proc->idx1[this_ind]; k < A.on_proc->idx1[this_ind+1]; ++k) {
+					if (R.on_proc->idx2[i] == A.on_proc->idx2[k]) {
+						A0.push_back(A.on_proc->vals[k]);
+						found_ind = true;
+						break;
+					}
+				}
+
+				// for (int k = A.off_proc->idx1[this_ind]; k < A.off_proc->idx1[this_ind+1]; ++k) {
+				// 	if (R.on_proc->idx2[i] == A_recv[
+				// }
+			}
+
+		}
+#endif
+	}
+}
+
+
+CSRMatrix * communicate(const ParCSRMatrix & A, const ParCSRMatrix & S,
+                        const splitting_t & split, CommPkg & comm) {
+	std::vector<int>    rowptr(A.local_num_rows + 1);
+	std::vector<int>    colind;
+	std::vector<double> values;
+
+	if (A.local_nnz) {
+		colind.reserve(A.local_nnz);
+		values.reserve(A.local_nnz);
+	}
+
+	rowptr[0] = 0;
+	for (int i = 0; i < A.local_num_rows; ++i) {
+		auto get_bounds = [=](const Matrix & mat) {
+			return std::make_pair(mat.idx1[i] + 1, // skip diagonal
+			                      mat.idx1[i+1]);
+		};
+		auto add_neighborhood = [&](const Matrix & a,
+		                            const std::vector<int> & colmap,
+		                            const Matrix & s,
+		                            const std::vector<int> & splitting) {
+			auto [beg, end] = get_bounds(a);
+			auto [ctr_s, end_s] = get_bounds(s);
+
+			for (int j = beg; j < end; ++j) {
+				int col = a.idx2[j];
+				int val = a.vals[j];
+
+				if (splitting[col] == NoNeighbors) continue;
+
+				// add fpoint-fpoint neighborhood
+				if (splitting[col] == Unselected &&
+				    splitting[i] == Unselected) {
+					int global_col = colmap[col];
+					// add if strong connection
+					if (ctr_s < end_s && s.idx2[ctr_s] == col) {
+						colind.push_back(global_col);
+						values.push_back(val);
+						++ctr_s;
+					}
+				} else if (ctr_s < end_s && s.idx2[ctr_s] == col)
+					++ctr_s;
+			}
+		};
+
+		add_neighborhood(*A.on_proc, A.on_proc_column_map, *S.on_proc, split.on_proc);
+		add_neighborhood(*A.off_proc, A.off_proc_column_map, *S.off_proc, split.off_proc);
+
+		rowptr[i+1] = colind.size();
+	}
+
+	return comm.communicate(rowptr, colind, values);
+}
+
+
+
+comm_rows::comm_rows(const ParCSRMatrix &A, CSRMatrix *mat)
+	: rmat(mat)
 {
-	using namespace lair;
-	auto R = create_R(A, S, splitting);
+	if (!rmat) return;
+
+	/* split remote rows into on and off processor columns.
+	   Updates on processor column indices to local id.
+	 */
+	auto on_proc_partition_to_col = A.map_partition_to_local();
+	[&](auto & ... v) {
+		((v.resize(rmat->n_rows + 1)), ...);
+		((v[0] = 0), ...);
+	}(diag.ptr, offd.ptr);
+
+	[&](auto & ... v) {	((v.resize(rmat->nnz)), ...); }(diag.idx, offd.idx);
+
+	int diag_ctr = 0;
+	int offd_ctr = 0;
+	for (int i = 0; i < rmat->n_rows; ++i) {
+		for (int j = rmat->idx1[i]; j < rmat->idx1[i+1]; ++j) {
+			int col = rmat->idx2[j];
+			if (col < A.partition->first_local_col ||
+			    col > A.partition->last_local_col) {
+				offd.idx[offd_ctr++] = j;
+			} else {
+				col = on_proc_partition_to_col[col - A.partition->first_local_row];
+				diag.idx[diag_ctr++] = j;
+			}
+			rmat->idx2[j] = col;
+		}
+		diag.ptr[i+1] = diag_ctr;
+		offd.ptr[i+1] = offd_ctr;
+	}
+
+	diag.idx.resize(diag_ctr);
+	offd.idx.resize(offd_ctr);
+	[](auto & ... v) { ((v.shrink_to_fit()), ...); }(diag.idx, offd.idx);
+}
+
+} // namespace
+} // namespace local_air
+
+ParCSRMatrix * local_air_interpolation(ParCSRMatrix & A,
+                                       ParCSRMatrix & S,
+                                       const splitting_t & splitting,
+                                       fpoint_distance distance)
+{
+	using namespace local_air;
+
+	auto pre_init = [](auto & mat) {
+		mat.sort();
+		mat.on_proc->move_diag();
+	};
+	pre_init(A);
+	pre_init(S);
+
+    comm_rows recv_rows(A,
+                        (distance == fpoint_distance::two) ?
+                        communicate(A, S, splitting, *A.comm) : nullptr);
+
+    auto cpts = get_cpoints(splitting.on_proc);
+    ParCSRMatrix * R = create_R(A, S, splitting,
+                                map_offd_fill_rowptr(
+	                                S, splitting, cpts, distance, recv_rows));
+	fill_colind_and_data(A, S, recv_rows, splitting, cpts, distance, *R);
+
+	int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+	// if (rank == 2 && recv_mat) {
+	// 	for (int i = 0; i < recv_mat->n_rows; ++i) {
+	// 		auto beg = recv_mat->idx1[i];
+	// 		auto end = recv_mat->idx1[i+1];
+	// 		for (int j = beg; j < end; ++j) {
+	// 			auto col = recv_mat->idx2[j];
+	// 			auto val = recv_mat->vals[j];
+	// 			std::cout << i << " " << col << " " << val << std::endl;
+	// 		}
+	// 	}
+	// }
 
 	return R;
 }
 
-ParBSRMatrix * local_air(const ParBSRMatrix & A,
-                         const ParCSRMatrix & S,
-                         const splitting_t & splitting) {
+ParBSRMatrix * local_air_interpolation(ParBSRMatrix & A,
+                                       ParCSRMatrix & S,
+                                       const splitting_t & splitting,
+                                       fpoint_distance distance) {
 	auto R = dynamic_cast<ParBSRMatrix*>(
-		local_air(
-			dynamic_cast<const ParCSRMatrix&>(A), S, splitting));
+		local_air_interpolation(
+			dynamic_cast<ParCSRMatrix&>(A), S, splitting, distance));
 	assert(R);
 
 	return R;
