@@ -397,11 +397,6 @@ namespace raptor
 		return {idx1, idx2, vals};
 	}
 
-	auto ptrs() {
-		return std::make_tuple(span(idx1), span(idx2), span(vals));
-	}
-
-
     int b_rows;
     int b_cols;
     int b_size;

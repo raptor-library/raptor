@@ -132,6 +132,6 @@ TEST(TestLocalAIR, TestsInRuge_Stuben) {
 
 	auto S = A->copy();
 
-	auto R = local_air_interpolation(*A, *S, split);
+	auto R = local_air(*A, *S, split);
 
 }

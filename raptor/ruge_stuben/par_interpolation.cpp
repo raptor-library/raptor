@@ -1977,9 +1977,14 @@ ParBSRMatrix * one_point_interpolation(const ParBSRMatrix & A,
 	return ret;
 }
 
-namespace local_air {
+namespace lair {
 namespace {
 
+
+/*
+  Helper type providing access to received rows based
+  on whether they are on_proc or off_proc
+*/
 struct comm_rows {
 	comm_rows(const ParCSRMatrix & A,
 	          CSRMatrix * mat);
@@ -2024,7 +2029,7 @@ private:
 struct offd_map_rowptr {
 	std::vector<int> diag_rowptr;
 	std::vector<int> offd_rowptr;
-	std::vector<int> colmap; //offd colmap
+	std::vector<int> offd_colmap; //offd colmap
 };
 
 /*
@@ -2085,14 +2090,17 @@ offd_map_rowptr map_offd_fill_rowptr(const ParCSRMatrix & S,
 			auto this_point = S.off_proc->idx2[off];
 			if (splitting.off_proc[this_point] == Unselected) {
 				++nnz.offd;
-				offd_cols.insert(S.off_proc_column_map[this_point]);
+				auto global_col = S.off_proc_column_map[this_point];
+				offd_cols.insert(global_col);
 				if (distance == fpoint_distance::two) {
 					recv_rows.iter_diag(this_point, [&](auto) {
 						++nnz.diag;
 					});
 					recv_rows.iter_offd(this_point, [&](auto rview) {
-						++nnz.offd;
-						offd_cols.insert(rview.idx2());
+						if (rview.idx2() != global_col) {
+							++nnz.offd;
+							offd_cols.insert(rview.idx2());
+						}
 					});
 				}
 			}
@@ -2103,7 +2111,7 @@ offd_map_rowptr map_offd_fill_rowptr(const ParCSRMatrix & S,
 	}
 
 	for (auto col : offd_cols) {
-		ret.colmap.push_back(col);
+		ret.offd_colmap.push_back(col);
 	}
 
 	return ret;
@@ -2125,13 +2133,15 @@ ParCSRMatrix * create_R(const ParCSRMatrix & A,
 		return global;
 	}(local_rows);
 
-	auto off_proc_num_cols = rowptr_and_colmap.colmap.size();
-	auto move_data = [](offd_map_rowptr && rac, ParMatrix & mat) {
+	auto off_proc_num_cols = rowptr_and_colmap.offd_colmap.size();
+	auto move_data = [&](offd_map_rowptr && rac, ParMatrix & mat) {
 		mat.on_proc->idx1 = std::move(rac.diag_rowptr);
 		mat.off_proc->idx1 = std::move(rac.offd_rowptr);
-		mat.off_proc_column_map = std::move(rac.colmap);
+		mat.off_proc_column_map = std::move(rac.offd_colmap);
+		mat.on_proc_column_map = A.on_proc_column_map;
 		[](auto & ... mats) {
-			(mats.idx2.resize(mats.idx1.back()),...);
+			(mats.idx2.resize(mats.idx1.back()), ...);
+			(mats.vals.resize(mats.idx1.back()), ...);
 		}(*mat.on_proc, *mat.off_proc);
 	};
 	if (isbsr) {
@@ -2149,6 +2159,14 @@ ParCSRMatrix * create_R(const ParCSRMatrix & A,
 	}
 }
 
+
+ParComm create_neighborhood_comm(const ParCSRMatrix & R, const ParCSRMatrix & A) {
+	constexpr int tag = 9345;
+	return ParComm(A.partition, R.off_proc_column_map,
+	               A.on_proc_column_map, tag, RAPtor_MPI_COMM_WORLD);
+}
+
+
 auto get_cpoints(const std::vector<int> & split) {
 	std::vector<int> cpts;
 
@@ -2160,14 +2178,307 @@ auto get_cpoints(const std::vector<int> & split) {
 	return cpts;
 }
 
+namespace pyamg {
+/* Sign-of Function overloaded for int, float and double
+ * signof(x) =  1 if x > 0
+ * signof(x) = -1 if x < 0
+ * signof(0) =  1 if x = 0
+ */
+inline int signof(int a) { return (a<0 ? -1 : 1); }
+inline float signof(float a) { return (a<0.0 ? -1.0 : 1.0); }
+inline double signof(double a) { return (a<0.0 ? -1.0 : 1.0); }
+
+/*
+ * Return row-major index from 2d array index, A[row,col].
+ */
+template<class I>
+inline I row_major(const I row, const I col, const I num_cols)
+{
+    return row*num_cols + col;
+}
+
+/*
+ * Return column-major index from 2d array index, A[row,col].
+ */
+template<class I>
+inline I col_major(const I row, const I col, const I num_rows)
+{
+    return col*num_rows + row;
+}
+
+/* QR-decomposition using Householer transformations on dense
+ * 2d array stored in either column- or row-major form.
+ *
+ * Parameters
+ * ----------
+ * A : double array
+ *     2d matrix A stored in 1d column- or row-major.
+ * m : &int
+ *     Number of rows in A
+ * n : &int
+ *     Number of columns in A
+ * is_col_major : bool
+ *     True if A is stored in column-major, false
+ *     if A is stored in row-major.
+ *
+ * Returns
+ * -------
+ * Q : vector<double>
+ *     Matrix Q stored in same format as A.
+ * R : in-place
+ *     R is stored over A in place, in same format.
+ *
+ * Notes
+ * ------
+ * Currently only set up for real-valued matrices. May easily
+ * generalize to complex, but haven't checked.
+ *
+ */
+template<class I, class T>
+std::vector<T> QR(T A[],
+                  const I &m,
+                  const I &n,
+                  const I is_col_major)
+{
+    // Function pointer for row or column major matrices
+    I (*get_ind)(const I, const I, const I);
+    const I *C;
+    if (is_col_major) {
+        get_ind = &col_major;
+        C = &m;
+    }
+    else {
+        get_ind = &row_major;
+        C = &n;
+    }
+
+    // Initialize Q to identity
+    std::vector<T> Q(m*m,0);
+    for (I i=0; i<m; i++) {
+        Q[get_ind(i,i,m)] = 1;
+    }
+
+    // Loop over columns of A using Householder reflections
+    for (I j=0; j<n; j++) {
+
+        // Break loop for short fat matrices
+        if (m <= j) {
+            break;
+        }
+
+        // Get norm of next column of A to be reflected. Choose sign
+        // opposite that of A_jj to avoid catastrophic cancellation.
+        // Skip loop if norm is zero, as that means column of A is all
+        // zero.
+        T normx = 0;
+        for (I i=j; i<m; i++) {
+            T temp = A[get_ind(i,j,*C)];
+            normx += temp*temp;
+        }
+        normx = std::sqrt(normx);
+        if (normx < 1e-12) {
+            continue;
+        }
+        normx *= -1*signof(A[get_ind(j,j,*C)]);
+
+        // Form vector v for Householder matrix H = I - tau*vv^T
+        // where v = R(j:end,j) / scale, v[0] = 1.
+        T scale = A[get_ind(j,j,*C)] - normx;
+        T tau = -scale / normx;
+        std::vector<T> v(m-j,0);
+        v[0] = 1;
+        for (I i=1; i<(m-j); i++) {
+            v[i] = A[get_ind(j+i,j,*C)] / scale;
+        }
+
+        // Modify R in place, R := H*R, looping over columns then rows
+        for (I k=j; k<n; k++) {
+
+            // Compute the kth element of v^T * R
+            T vtR_k = 0;
+            for (I i=0; i<(m-j); i++) {
+                vtR_k += v[i] * A[get_ind(j+i,k,*C)];
+            }
+
+            // Correction for each row of kth column, given by
+            // R_ik -= tau * v_i * (vtR_k)_k
+            for (I i=0; i<(m-j); i++) {
+                A[get_ind(j+i,k,*C)] -= tau * v[i] * vtR_k;
+            }
+        }
+
+        // Modify Q in place, Q = Q*H
+        for (I i=0; i<m; i++) {
+
+            // Compute the ith element of Q * v
+            T Qv_i = 0;
+            for (I k=0; k<(m-j); k++) {
+                Qv_i += v[k] * Q[get_ind(i,k+j,m)];
+            }
+
+            // Correction for each column of ith row, given by
+            // Q_ik -= tau * Qv_i * v_k
+            for (I k=0; k<(m-j); k++) {
+                Q[get_ind(i,k+j,m)] -= tau * v[k] * Qv_i;
+            }
+        }
+    }
+
+    return Q;
+}
+
+/* Backward substitution solve on upper-triangular linear system,
+ * Rx = rhs, where R is stored in column- or row-major form.
+ *
+ * Parameters
+ * ----------
+ * R : double array, length m*n
+ *     Upper-triangular array stored in column- or row-major.
+ * rhs : double array, length m
+ *     Right hand side of linear system
+ * x : double array, length n
+ *     Preallocated array for solution
+ * m : &int
+ *     Number of rows in R
+ * n : &int
+ *     Number of columns in R
+ * is_col_major : bool
+ *     True if R is stored in column-major, false
+ *     if R is stored in row-major.
+ *
+ * Returns
+ * -------
+ * Nothing, solution is stored in x[].
+ *
+ * Notes
+ * -----
+ * R need not be square, the system will be solved over the
+ * upper-triangular block of size min(m,n). If remaining entries
+ * insolution are unused, they will be set to zero. If a zero
+ * is encountered on the ith diagonal, x[i] is set to zero.
+ *
+ */
+template<class I, class T>
+void upper_tri_solve(const T R[],
+                     const T rhs[],
+                     T x[],
+                     const I m,
+                     const I n,
+                     const I is_col_major)
+{
+    // Function pointer for row or column major matrices
+    I (*get_ind)(const I, const I, const I);
+    const I *C;
+    if (is_col_major) {
+        get_ind = &col_major;
+        C = &m;
+    }
+    else {
+        get_ind = &row_major;
+        C = &n;
+    }
+
+    // Backward substitution
+    I rank = std::min(m,n);
+    for (I i=(rank-1); i>=0; i--) {
+        T temp = rhs[i];
+        for (I j=(i+1); j<rank; j++) {
+            temp -= R[get_ind(i,j,*C)]*x[j];
+        }
+        if (std::abs(R[get_ind(i,i,*C)]) < 1e-12) {
+            x[i] = 0.0;
+        }
+        else {
+            x[i] = temp / R[get_ind(i,i,*C)];
+        }
+    }
+
+    // If rank < size of rhs, set free elements in x to zero
+    for (I i=m; i<n; i++) {
+        x[i] = 0;
+    }
+}
+
+/* Method to solve the linear least squares problem.
+ *
+ * Parameters
+ * ----------
+ * A : double array, length m*n
+ *     2d array stored in column- or row-major.
+ * b : double array, length m
+ *     Right hand side of unconstrained problem.
+ * x : double array, length n
+ *     Container for solution
+ * m : &int
+ *     Number of rows in A
+ * n : &int
+ *     Number of columns in A
+ * is_col_major : bool
+ *     True if A is stored in column-major, false
+ *     if A is stored in row-major.
+ *
+ * Returns
+ * -------
+ * x : vector<double>
+ *    Solution to constrained least squares problem.
+ *
+ * Notes
+ * -----
+ * If system is under determined, free entries are set to zero.
+ * Currently only set up for real-valued matrices. May easily
+ * generalize to complex, but haven't checked.
+ *
+ */
+template<class I, class T>
+void least_squares(T A[],
+                   T b[],
+                   T x[],
+                   const I &m,
+                   const I &n,
+                   const I is_col_major=0)
+{
+    // Function pointer for row or column major matrices
+    I (*get_ind)(const I, const I, const I);
+    if (is_col_major) {
+        get_ind = &col_major;
+    }
+    else {
+        get_ind = &row_major;
+    }
+
+    // Take QR of A
+    std::vector<T> Q = QR(A,m,n,is_col_major);
+
+    // Multiply right hand side, b:= Q^T*b. Have to make new vector, rhs.
+    std::vector<T> rhs(m,0);
+    for (I i=0; i<m; i++) {
+        for (I k=0; k<m; k++) {
+            rhs[i] += b[k] * Q[get_ind(k,i,m)];
+        }
+    }
+
+    // Solve upper triangular system, store solution in x.
+    upper_tri_solve(A,&rhs[0],x,m,n,is_col_major);
+}
+
+} // namespace pyamg
+
 
 void fill_colind_and_data(const ParCSRMatrix & A,
                           const ParCSRMatrix &S,
+                          const comm_rows & recv_neighbors,
                           const comm_rows &recv_rows,
                           const splitting_t &splitting,
                           const std::vector<int> &cpts,
                           fpoint_distance distance,
                           ParCSRMatrix &R) {
+	std::map<int, int> offd_g2l;
+	{
+		int i{0};
+		for (auto col : R.off_proc_column_map)
+			offd_g2l[col] = i++;
+	}
+
 	auto expand = [&](const int row,
 	                  const Matrix & soc,
 	                  const auto & split,
@@ -2180,7 +2491,6 @@ void fill_colind_and_data(const ParCSRMatrix & A,
 			}
 		}
 	};
-	int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	// build column indices and data for each row of R
 	// Note: uses global indices for off_proc columns
 	for (std::size_t row = 0; row < cpts.size(); ++row) {
@@ -2190,7 +2500,7 @@ void fill_colind_and_data(const ParCSRMatrix & A,
 		auto bounds = [=](const Matrix & mat) {
 			return std::make_pair(mat.idx1[cpoint], mat.idx1[cpoint + 1]);
 		};
-		auto & colmap = S.off_proc_column_map;
+		auto & offd_colmap = S.off_proc_column_map;
 		// set column indices for R as strongly connected F-points
 		auto [beg_on, end_on] = bounds(*S.on_proc);
 		for (int off = beg_on; off < end_on; ++off) {
@@ -2202,7 +2512,7 @@ void fill_colind_and_data(const ParCSRMatrix & A,
 					expand(this_point, *S.on_proc, splitting.on_proc, *R.on_proc, ind,
 					       [](int c) { return c; });
 					expand(this_point, *S.off_proc, splitting.off_proc, *R.off_proc, ind_off,
-					       [&](int c) { return colmap[c]; });
+					       [&](int c) { return offd_colmap[c]; });
 				}
 			}
 		}
@@ -2211,13 +2521,14 @@ void fill_colind_and_data(const ParCSRMatrix & A,
 		for (int off = beg_off; off < end_off; ++off) {
 			auto this_point = S.off_proc->idx2[off];
 			if (splitting.off_proc[this_point] == Unselected) {
-				R.off_proc->idx2[ind_off++] = colmap[this_point];
+				R.off_proc->idx2[ind_off++] = offd_colmap[this_point];
 				if (distance == fpoint_distance::two) {
-					recv_rows.iter_diag(this_point, [&](auto rview) {
+					recv_neighbors.iter_diag(this_point, [&](auto rview) {
 						R.on_proc->idx2[ind++] = rview.idx2();
 					});
-					recv_rows.iter_offd(this_point, [&](auto rview) {
-						R.off_proc->idx2[ind_off++] = rview.idx2();
+					recv_neighbors.iter_offd(this_point, [&](auto rview) {
+						if (offd_colmap[this_point] != rview.idx2())
+							R.off_proc->idx2[ind_off++] = rview.idx2();
 					});
 				}
 			}
@@ -2241,40 +2552,58 @@ void fill_colind_and_data(const ParCSRMatrix & A,
 		auto size_n = (ind - R.on_proc->idx1[row]) + (ind_off - R.off_proc->idx1[row]);
 		std::vector<double> A0;
 		A0.reserve(size_n * size_n);
-		if (rank == 2 && cpoint == 2) {
-			// for (int j = R.on_proc->idx1[row]; j < ind; ++j) {
-
-			// }
-			auto print_row = [&](const char * pre, Matrix & mat) {
-				std::cout << pre << ": ";
-				for (int j = mat.idx1[row]; j < mat.idx1[row+1]; ++j) {
-					std::cout << mat.idx2[j] << ' ';
+		auto row_search = [&](int local_row, int global_col) {
+			std::optional<double> ret;
+			auto search = [&](const Matrix & mat, const std::vector<int> & colmap) {
+				for (int off = mat.idx1[local_row]; off < mat.idx1[local_row + 1]; ++off) {
+					if (colmap[mat.idx2[off]] == global_col)
+						ret.emplace(mat.vals[off]);
 				}
-				std::cout << '\n';
 			};
-			print_row("diag", *R.on_proc);
-			print_row("offd", *R.off_proc);
-		}
+
+			search(*A.on_proc, A.on_proc_column_map);
+			search(*A.off_proc, A.off_proc_column_map);
+
+			return ret;
+		};
+		auto neig_loop = [&](auto && diag, auto && offd) {
+			for (int off = R.on_proc->idx1[row]; off < ind; ++off)
+				diag(off);
+			for (int off = R.off_proc->idx1[row]; off < ind_off; ++off)
+				offd(off);
+		};
 		auto iter_neig = [&](auto && f) {
-			auto diag_finder = [&](int row) {
-				return [=](int col) {
+			auto diag_finder = [&](int i) {
+				return [&, i](int col) {
+					return row_search(i, col);
+				};
+			};
+			auto offd_finder = [&](int i) {
+				return [&, i](int col) {
 					std::optional<double> ret;
-					for (int off = A.on_proc->idx1[row]; off < A.on_proc->idx1[row + 1]; ++off) {
-						if (A.on_proc->idx2[off] == col) {
-							ret.emplace(A.on_proc->vals[off]);
-						}
-					}
+
+					auto search = [&](auto rview) {
+						if (rview.idx2() == col)
+							ret.emplace(rview.val());
+					};
+					recv_rows.iter_diag(i, search);
+					recv_rows.iter_offd(i, search);
+
 					return ret;
 				};
 			};
 
-			for (int off = R.on_proc->idx1[row]; off < ind; ++off) {
-				auto col = R.on_proc->idx2[off];
-				f(col, diag_finder(col));
-			}
-			for (int j = R.off_proc->idx1[row]; j < ind_off; ++j) {
-				f(R.off_proc->idx2[j]);
-			}
+			neig_loop(
+				[&](int off) {
+					auto col = R.on_proc->idx2[off];
+					auto global_col = A.on_proc_column_map[col];
+					f(global_col, diag_finder(col));
+				},
+				[&](int off) {
+					auto global_col = R.off_proc->idx2[off];
+					auto col = offd_g2l[global_col];
+					f(global_col, offd_finder(col));
+				});
 		};
 		iter_neig([&](int i, auto && find_in_row){
 			iter_neig([&](int j, auto&&) {
@@ -2283,33 +2612,58 @@ void fill_colind_and_data(const ParCSRMatrix & A,
 				A0.push_back(maybe_val.value_or(0.));
 			});
 		});
-#if 0
-		for (int j = R.on_proc->idx1[row]; j < ind; ++j) {
-			int this_ind = R.on_proc->idx2[j];
-			for (int i = R.on_proc->idx1[row]; i < ind; ++i) {
-				// search for indice in row of A
-				bool found_ind = false;
-				for (int k = A.on_proc->idx1[this_ind]; k < A.on_proc->idx1[this_ind+1]; ++k) {
-					if (R.on_proc->idx2[i] == A.on_proc->idx2[k]) {
-						A0.push_back(A.on_proc->vals[k]);
-						found_ind = true;
-						break;
-					}
-				}
 
-				// for (int k = A.off_proc->idx1[this_ind]; k < A.off_proc->idx1[this_ind+1]; ++k) {
-				// 	if (R.on_proc->idx2[i] == A_recv[
-				// }
-			}
+		/* Build local right hand side given by b_j = -A_{cpt,N_j}, where N_j
+		   is the jth indice in the neighborhood of strongly connected F-points
+		   to the current C-point. */
+		std::vector<double> b0;
+		b0.reserve(size_n);
+		iter_neig([&](int global_col, auto&&) {
+			// Search for indice in row of A. If indice not found, set t0 0.
+			auto maybe_val = row_search(cpoint, global_col);
+			b0.push_back(-1. * maybe_val.value_or(0.));
+		});
 
+        // Solve linear system (least squares solves exactly when full rank)
+        // s.t. (RA)_ij = 0 for (i,j) within the sparsity pattern of R. Store
+        // solution in data vector for R.
+		std::vector<double> sol(size_n);
+		if (size_n > 0) {
+			constexpr int is_col_major = true;
+			pyamg::least_squares(A0.data(), b0.data(), sol.data(), size_n, size_n, is_col_major);
+
+			// fill on_proc and off_proc vals in R
+			auto solit = sol.begin();
+			neig_loop(
+				[&](int off) {
+					R.on_proc->vals[off] = *(solit++);
+				},
+				[&](int off) {
+					R.off_proc->vals[off] = *(solit++);
+				});
+
+			assert(solit == sol.end());
 		}
-#endif
+
+		// Add identity for C-point in this row
+		R.on_proc->idx2[ind] = cpoint;
+		R.on_proc->vals[ind] = 1.0;
 	}
+
+	// offd colinds are currently global, convert to local
+	for (auto & col : R.off_proc->idx2)
+		col = offd_g2l[col];
 }
 
+/*
+  Communicate neighborhood information for distance two f-points.
 
-CSRMatrix * communicate(const ParCSRMatrix & A, const ParCSRMatrix & S,
-                        const splitting_t & split, CommPkg & comm) {
+  For each local row send strongly connected f-point neighbor column indices if
+  said row is an f-point. todo: no need to send values.
+ */
+template<class C>
+CSRMatrix * communicate_neighborhood(const ParCSRMatrix & A, const ParCSRMatrix & S,
+                                     const splitting_t & split, C && comm) {
 	std::vector<int>    rowptr(A.local_num_rows + 1);
 	std::vector<int>    colind;
 	std::vector<double> values;
@@ -2322,7 +2676,7 @@ CSRMatrix * communicate(const ParCSRMatrix & A, const ParCSRMatrix & S,
 	rowptr[0] = 0;
 	for (int i = 0; i < A.local_num_rows; ++i) {
 		auto get_bounds = [=](const Matrix & mat) {
-			return std::make_pair(mat.idx1[i] + 1, // skip diagonal
+			return std::make_pair(mat.idx1[i],
 			                      mat.idx1[i+1]);
 		};
 		auto add_neighborhood = [&](const Matrix & a,
@@ -2359,7 +2713,7 @@ CSRMatrix * communicate(const ParCSRMatrix & A, const ParCSRMatrix & S,
 		rowptr[i+1] = colind.size();
 	}
 
-	return comm.communicate(rowptr, colind, values);
+	return std::forward<C>(comm).communicate(rowptr, colind, values);
 }
 
 
@@ -2403,16 +2757,11 @@ comm_rows::comm_rows(const ParCSRMatrix &A, CSRMatrix *mat)
 	[](auto & ... v) { ((v.shrink_to_fit()), ...); }(diag.idx, offd.idx);
 }
 
-} // namespace
-} // namespace local_air
-
-ParCSRMatrix * local_air_interpolation(ParCSRMatrix & A,
-                                       ParCSRMatrix & S,
-                                       const splitting_t & splitting,
-                                       fpoint_distance distance)
-{
-	using namespace local_air;
-
+template <class T>
+T * compute_R(T & A,
+              ParCSRMatrix & S,
+              const splitting_t & splitting,
+              fpoint_distance distance) {
 	auto pre_init = [](auto & mat) {
 		mat.sort();
 		mat.on_proc->move_diag();
@@ -2420,44 +2769,43 @@ ParCSRMatrix * local_air_interpolation(ParCSRMatrix & A,
 	pre_init(A);
 	pre_init(S);
 
-    comm_rows recv_rows(A,
-                        (distance == fpoint_distance::two) ?
-                        communicate(A, S, splitting, *A.comm) : nullptr);
+    comm_rows recv_neighbors(A,
+                             (distance == fpoint_distance::two) ?
+                             communicate_neighborhood(A, S, splitting, *A.comm) : nullptr);
 
     auto cpts = get_cpoints(splitting.on_proc);
     ParCSRMatrix * R = create_R(A, S, splitting,
                                 map_offd_fill_rowptr(
-	                                S, splitting, cpts, distance, recv_rows));
-	fill_colind_and_data(A, S, recv_rows, splitting, cpts, distance, *R);
+	                                S, splitting, cpts, distance, recv_neighbors));
 
-	int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    comm_rows recv_rows(A, communicate_neighborhood(A, S, splitting, create_neighborhood_comm(*R, A)));
 
-	// if (rank == 2 && recv_mat) {
-	// 	for (int i = 0; i < recv_mat->n_rows; ++i) {
-	// 		auto beg = recv_mat->idx1[i];
-	// 		auto end = recv_mat->idx1[i+1];
-	// 		for (int j = beg; j < end; ++j) {
-	// 			auto col = recv_mat->idx2[j];
-	// 			auto val = recv_mat->vals[j];
-	// 			std::cout << i << " " << col << " " << val << std::endl;
-	// 		}
-	// 	}
-	// }
+    fill_colind_and_data(A, S, recv_neighbors, recv_rows, splitting, cpts, distance, *R);
+    constexpr int tag = 9244;
+    R->comm = new ParComm(R->partition,
+                          R->off_proc_column_map, R->on_proc_column_map,
+                          tag, RAPtor_MPI_COMM_WORLD);
 
 	return R;
 }
+} // namespace
+} // namespace lair
 
-ParBSRMatrix * local_air_interpolation(ParBSRMatrix & A,
-                                       ParCSRMatrix & S,
-                                       const splitting_t & splitting,
-                                       fpoint_distance distance) {
-	auto R = dynamic_cast<ParBSRMatrix*>(
-		local_air_interpolation(
-			dynamic_cast<ParCSRMatrix&>(A), S, splitting, distance));
-	assert(R);
+ParCSRMatrix * local_air(ParCSRMatrix & A,
+                         ParCSRMatrix & S,
+                         const splitting_t & splitting,
+                         fpoint_distance distance)
+{
+	return lair::compute_R(A, S, splitting, distance);
+}
 
-	return R;
+
+ParBSRMatrix * local_air(ParBSRMatrix & A,
+                         ParCSRMatrix & S,
+                         const splitting_t & splitting,
+                         fpoint_distance distance) {
+	// return lair::compute_R(A, S, splitting, distance);
+	return nullptr;
 }
 
 } // namespace raptor
-
