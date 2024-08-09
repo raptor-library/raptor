@@ -31,19 +31,28 @@ struct ParAIRSolver : ParMultilevel {
 
 	void extend_hierarchy() override {
 		int level_ctr = levels.size() - 1;
-		bool tap_level = tap_amg >= 0 && tap_amg <= level_ctr;
-
 		ParCSRMatrix *A = levels[level_ctr]->A;
-
-		splitting_t split;
-		auto S = A->strength(strength_type, strong_threshold, tap_level,
-		                num_variables, variables);
-
-		split_rs(S, split.on_proc, split.off_proc, tap_level);
-		auto P = one_point_interpolation(A, S, split);
+		ParBSRMatrix *A_bsr = dynamic_cast<ParBSRMatrix*>(A);
+		if (A_bsr) extend_hier(*A_bsr);
+		// else extend_hier(*A);
 	}
 
 private:
+	template<class T>
+	void extend_hier(T & A) {
+		int level_ctr = levels.size() - 1;
+		bool tap_level = tap_amg >= 0 && tap_amg <= level_ctr;
+		splitting_t split;
+		auto S = A.strength(strength_type, strong_threshold, tap_level,
+		                    num_variables, variables);
+
+		split_rs(S, split.on_proc, split.off_proc, tap_level);
+		auto P = one_point_interpolation(A, *S, split);
+		auto R = local_air(A, *S, split, fpoint_distance::two);
+
+		levels.emplace_back(new ParLevel());
+	}
+
 	coarsen_t coarsen_type;
 	interp_t interp_type;
 	restrict_t restrict_type;

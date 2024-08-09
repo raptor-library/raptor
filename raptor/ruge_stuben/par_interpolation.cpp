@@ -9,6 +9,7 @@
 #include <chrono>
 #include <thread>
 #include <optional>
+#include <variant>
 
 namespace raptor {
 
@@ -1985,6 +1986,7 @@ namespace {
   Helper type providing access to received rows based
   on whether they are on_proc or off_proc
 */
+template<bool is_bsr>
 struct comm_rows {
 	comm_rows(const ParCSRMatrix & A,
 	          CSRMatrix * mat);
@@ -2008,22 +2010,32 @@ struct comm_rows {
 
 	template<class T>
 	struct row_view {
+		using value_type = std::conditional_t<is_bsr, double *, double>;
+
 		auto & idx2() {	return mat->idx2[off]; }
-		auto & val() { return mat->vals[off]; };
+		value_type val() {
+			if constexpr (is_bsr)
+				return mat->block_vals[off];
+			else
+				return mat->vals[off];
+		};
 
 		int off;
 		T * mat;
 	};
 
 private:
+	comm_rows(CSRMatrix * mat);
+
+	using mat_t = std::conditional_t<is_bsr, BSRMatrix, CSRMatrix>;
 	template<class F>
 	void iter(int row, F && f, const ptrs & pts) const {
 		for (int i = pts.ptr[row]; i < pts.ptr[row + 1]; ++i) {
-			std::forward<F>(f)(row_view<const CSRMatrix>{i, rmat});
+			std::forward<F>(f)(row_view<const mat_t>{i, rmat});
 		}
 	}
 
-	CSRMatrix *rmat;
+	mat_t *rmat;
 };
 
 struct offd_map_rowptr {
@@ -2038,11 +2050,12 @@ struct offd_map_rowptr {
   This computes the rowptr for R and discovers set of off proc columns.
   Forward and backward column maps for off proc columns are also computed.
  */
+template<bool is_bsr>
 offd_map_rowptr map_offd_fill_rowptr(const ParCSRMatrix & S,
                                      const splitting_t & splitting,
                                      const std::vector<int> & cpts,
                                      fpoint_distance distance,
-                                     const comm_rows & recv_rows) {
+                                     const comm_rows<is_bsr> & recv_rows) {
 	offd_map_rowptr ret;
 
 	struct nnz_t {
@@ -2116,6 +2129,8 @@ offd_map_rowptr map_offd_fill_rowptr(const ParCSRMatrix & S,
 
 	return ret;
 }
+
+
 ParCSRMatrix * create_R(const ParCSRMatrix & A,
                         const ParCSRMatrix & S,
                         const splitting_t & splitting,
@@ -2139,9 +2154,13 @@ ParCSRMatrix * create_R(const ParCSRMatrix & A,
 		mat.off_proc->idx1 = std::move(rac.offd_rowptr);
 		mat.off_proc_column_map = std::move(rac.offd_colmap);
 		mat.on_proc_column_map = A.on_proc_column_map;
-		[](auto & ... mats) {
+		[isbsr](auto & ... mats) {
 			(mats.idx2.resize(mats.idx1.back()), ...);
-			(mats.vals.resize(mats.idx1.back()), ...);
+			if (isbsr) {
+				(dynamic_cast<BSRMatrix&>(mats).block_vals.resize(
+					mats.idx1.back()), ...);
+			} else
+				(mats.vals.resize(mats.idx1.back()), ...);
 		}(*mat.on_proc, *mat.off_proc);
 	};
 	if (isbsr) {
@@ -2157,6 +2176,16 @@ ParCSRMatrix * create_R(const ParCSRMatrix & A,
 		move_data(std::move(rowptr_and_colmap), *R);
 		return R;
 	}
+}
+
+
+ParBSRMatrix * create_R(const ParBSRMatrix & A,
+                        const ParCSRMatrix & S,
+                        const splitting_t & splitting,
+                        offd_map_rowptr && rowptr_and_colmap) {
+	return dynamic_cast<ParBSRMatrix*>(
+		create_R(dynamic_cast<const ParCSRMatrix&>(A),
+		         S, splitting, std::move(rowptr_and_colmap)));
 }
 
 
@@ -2178,296 +2207,398 @@ auto get_cpoints(const std::vector<int> & split) {
 	return cpts;
 }
 
-namespace pyamg {
-/* Sign-of Function overloaded for int, float and double
- * signof(x) =  1 if x > 0
- * signof(x) = -1 if x < 0
- * signof(0) =  1 if x = 0
- */
-inline int signof(int a) { return (a<0 ? -1 : 1); }
-inline float signof(float a) { return (a<0.0 ? -1.0 : 1.0); }
-inline double signof(double a) { return (a<0.0 ? -1.0 : 1.0); }
+#include "pyamg_utils.hpp"
 
-/*
- * Return row-major index from 2d array index, A[row,col].
- */
-template<class I>
-inline I row_major(const I row, const I col, const I num_cols)
-{
-    return row*num_cols + col;
+template<bool is_bsr>
+auto fill_colind(std::size_t row,
+                 const ParCSRMatrix & S,
+                 const comm_rows<is_bsr> & recv_neighbors,
+                 const splitting_t & splitting,
+                 const std::vector<int> & cpts,
+                 fpoint_distance distance,
+                 ParCSRMatrix & R) {
+	// Note: uses global indices for off_proc columns
+	auto expand = [](const int row,
+	                 const Matrix & soc,
+	                 const auto & split,
+	                 Matrix & rmat,
+	                 int & ind, auto && colmap) {
+		for (int off = soc.idx1[row]; off < soc.idx1[row+1]; ++off) {
+			auto d2point = soc.idx2[off];
+			if (split[d2point] == Unselected && d2point != row) {
+				rmat.idx2[ind++] = std::forward<decltype(colmap)>(colmap)(d2point);
+			}
+		}
+	};
+
+	auto cpoint = cpts[row];
+	auto ind = R.on_proc->idx1[row];
+	auto ind_off = R.off_proc->idx1[row];
+	auto bounds = [=](const Matrix & mat) {
+		return std::make_pair(mat.idx1[cpoint], mat.idx1[cpoint + 1]);
+	};
+	auto & offd_colmap = S.off_proc_column_map;
+	// set column indices for R as strongly connected F-points
+	auto [beg_on, end_on] = bounds(*S.on_proc);
+	for (int off = beg_on; off < end_on; ++off) {
+		auto this_point = S.on_proc->idx2[off];
+		if (splitting.on_proc[this_point] == Unselected) {
+			R.on_proc->idx2[ind++] = this_point;
+			// strong distance two F-to-F connections
+			if (distance == fpoint_distance::two) {
+				expand(this_point, *S.on_proc, splitting.on_proc, *R.on_proc, ind,
+				       [](int c) { return c; });
+				expand(this_point, *S.off_proc, splitting.off_proc, *R.off_proc, ind_off,
+				       [&](int c) { return offd_colmap[c]; });
+			}
+		}
+	}
+
+	auto [beg_off, end_off] = bounds(*S.off_proc);
+	for (int off = beg_off; off < end_off; ++off) {
+		auto this_point = S.off_proc->idx2[off];
+		if (splitting.off_proc[this_point] == Unselected) {
+			R.off_proc->idx2[ind_off++] = offd_colmap[this_point];
+			if (distance == fpoint_distance::two) {
+				recv_neighbors.iter_diag(this_point, [&](auto rview) {
+					R.on_proc->idx2[ind++] = rview.idx2();
+				});
+				recv_neighbors.iter_offd(this_point, [&](auto rview) {
+					if (offd_colmap[this_point] != rview.idx2())
+						R.off_proc->idx2[ind_off++] = rview.idx2();
+				});
+			}
+		}
+	}
+
+	if ((ind != R.on_proc->idx1[row+1] - 1) ||
+	    (ind_off != R.off_proc->idx1[row+1])) {
+		// int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+		std::cout << "ind: " << ind << std::endl;
+		std::cout << "rowptr: " << R.on_proc->idx1[row+1] - 1 << std::endl;
+		std::cout << "ind_off: " << ind_off << std::endl;
+		std::cout << "rowptr_off: " << R.off_proc->idx1[row+1] -1 << std::endl;
+		// todo: error checking in raptor
+		std::cerr << "Error air_restriction: row pointer does not agree with neighborhood size\n" << std::endl;
+	}
+
+	return std::make_pair(ind, ind_off);
 }
 
-/*
- * Return column-major index from 2d array index, A[row,col].
- */
-template<class I>
-inline I col_major(const I row, const I col, const I num_rows)
+template <bool is_bsr>
+struct row_searcher
 {
-    return col*num_rows + row;
+	using matref = std::conditional_t<is_bsr, const BSRMatrix&, const CSRMatrix&>;
+	using value_type = std::conditional_t<is_bsr, double*, double>;
+
+	row_searcher(const ParCSRMatrix & A) :
+		diag(dynamic_cast<matref>(*A.on_proc)),
+		offd(dynamic_cast<matref>(*A.off_proc)),
+		diag_colmap(A.on_proc_column_map),
+		offd_colmap(A.off_proc_column_map) {}
+
+	auto operator()(int local_row, int global_col) const {
+		std::optional<value_type> ret;
+
+		auto search = [&](matref mat, const std::vector<int> & colmap) {
+			for (int off = mat.idx1[local_row]; off < mat.idx1[local_row + 1]; ++off) {
+				if (colmap[mat.idx2[off]] == global_col) {
+					if constexpr (is_bsr)
+						ret.emplace(mat.block_vals[off]);
+					else
+						ret.emplace(mat.vals[off]);
+				}
+			}
+		};
+
+		search(diag, diag_colmap);
+		search(offd, offd_colmap);
+
+		return ret;
+	}
+
+	matref diag, offd;
+	const std::vector<int> & diag_colmap, offd_colmap;
+};
+
+struct neighborhood_loop {
+	template<class DF, class OF>
+	void operator()(DF && diagf, OF && offdf) const {
+		for (int off = R.on_proc->idx1[row]; off < ind; ++off)
+			diagf(off);
+		for (int off = R.off_proc->idx1[row]; off < ind_off; ++off)
+			offdf(off);
+	}
+
+	std::size_t row;
+	int ind, ind_off;
+	const ParCSRMatrix & R;
+};
+
+template<bool is_bsr>
+struct neighborhood_scan {
+
+	template<class F>
+	void operator()(F && f) const {
+		auto diag_finder = [&](int i) {
+			return [&, i, this](int col) {
+				return row_search(i, col);
+			};
+		};
+		auto offd_finder = [&](int i) {
+			return [&, i, this](int col) {
+				std::optional<typename row_searcher<is_bsr>::value_type> ret;
+
+				auto search = [&](auto rview) {
+					if (rview.idx2() == col)
+						ret.emplace(rview.val());
+				};
+				recv_rows.iter_diag(i, search);
+				recv_rows.iter_offd(i, search);
+
+				return ret;
+			};
+		};
+
+		loop(
+			[&, this](int off) {
+				auto col = loop.R.on_proc->idx2[off];
+				auto global_col = row_search.diag_colmap[col];
+				f(global_col, diag_finder(col));
+			},
+			[&, this](int off) {
+				auto global_col = loop.R.off_proc->idx2[off];
+				auto col = offd_g2l.at(global_col);
+				f(global_col, offd_finder(col));
+			});
+	}
+
+	const neighborhood_loop & loop;
+	const comm_rows<is_bsr> & recv_rows;
+	const row_searcher<is_bsr> & row_search;
+	const std::map<int, int> & offd_g2l;
+};
+template <bool is_bsr>
+neighborhood_scan(const neighborhood_loop&, const comm_rows<is_bsr> &,
+                  const row_searcher<is_bsr>&, const std::map<int, int>&)->neighborhood_scan<is_bsr>;
+
+template <bool is_bsr>
+void fill_data(std::size_t row, int cpoint, int ind, int ind_off,
+               const ParCSRMatrix &A, const comm_rows<is_bsr> &recv_rows,
+               ParCSRMatrix &R, const std::map<int, int> &offd_g2l);
+
+template <>
+void fill_data<true>(std::size_t row, int cpoint, int ind, int ind_off,
+                     const ParCSRMatrix &Acsr,
+                     const comm_rows<true> &recv_rows,
+                     ParCSRMatrix &R,
+                     const std::map<int, int> &offd_g2l)
+{
+	const auto & A = dynamic_cast<const ParBSRMatrix &>(Acsr);
+	// assuming b_rows == b_cols
+	auto blocksize = A.on_proc->b_rows;
+	// Build local linear system as the submatrix A^T restricted to the neighborhood,
+	// Nf, of strongly connected F-points to the current C-point, that is A0 =
+	// A[Nf, Nf]^T, stored in column major form. Since A in row-major = A^T in
+	// column-major, A (CSR) is iterated through and A[Nf,Nf] stored in row-major.
+	//      - Initialize A0 to zero
+	auto size_n = (ind - R.on_proc->idx1[row]) + (ind_off - R.off_proc->idx1[row]);
+	auto num_dofs = size_n * blocksize;
+	std::vector<double> A0(num_dofs*num_dofs, 0.0);
+
+	row_searcher<true> row_search(A);
+	neighborhood_loop neig_loop{row, ind, ind_off, R};
+	neighborhood_scan iter_neig{neig_loop, recv_rows, row_search, offd_g2l};
+
+	int this_block_row = 0;
+	iter_neig([&](int i, auto && find_in_row){
+		int this_block_col = 0;
+		iter_neig([&](int j, auto&&) {
+			auto this_row = this_block_row * blocksize;
+			auto this_col = this_block_col * blocksize;
+			// search for indice in row of A
+			auto maybe_val = find_in_row(j);
+
+			if (maybe_val.has_value()) {
+				// Add block of A to dense array. If indice not found, elements
+				// in A0 have already been initialized to zero.
+				double * vals = maybe_val.value();
+				for (int block_row = 0; block_row < blocksize; ++block_row) {
+					auto row_maj_ind = (this_row + block_row) * num_dofs + this_col;
+					for(int block_col = 0; block_col < blocksize; ++block_col) {
+						if ((row_maj_ind + block_col) > A0.size()) {
+							std::cerr << "Warning block local_air fill_data: Accessing out of bounds index building A0.\n";
+						}
+						A0[row_maj_ind + block_col] = vals[block_row * blocksize + block_col];
+					}
+				}
+			}
+
+			++this_block_col;
+		});
+		++this_block_row;
+	});
+
+	// Build local right hand side given by blocks b_j = -A_{cpt,N_j}, where N_j
+	// is the jth indice in the neighborhood of strongly connected F-points
+	// to the current C-point, and c-point the global C-point index corresponding
+	// to the current row of R. RHS for each row in block, stored in b0 at indices
+	//      b0[0], b0[1*num_DOFs], ..., b0[ (blocksize-1)*num_DOFs ]
+	// Mapping between this ordering, say row_ind, and bsr ordering given by
+	//      for each block_ind:
+	//          for each row in block:
+	//              for each col in block:
+	//                  row_ind = num_DOFs*row + block_ind*blocksize + col
+	//                  bsr_ind = row*blocksize + col
+
+	std::vector<double> b0(num_dofs * blocksize, 0);
+	int block_ind = 0;
+	iter_neig([&](int global_col, auto&&) {
+		// Search for indice in row of A, store data in b0. If not found,
+		// b0 has been initialized to zero.
+		auto maybe_val = row_search(cpoint, global_col);
+		if (maybe_val.has_value()) {
+			double * vals = maybe_val.value();
+			for (int this_row = 0; this_row < blocksize; ++this_row) {
+				for (int this_col = 0; this_col < blocksize; ++this_col) {
+					int row_ind = num_dofs * this_row + block_ind * blocksize + this_col;
+					int bsr_ind = this_row * blocksize + this_col;
+					b0[row_ind] = -vals[bsr_ind];
+				}
+			}
+		}
+		++block_ind;
+	});
+
+	// Take QR of local matrix for linear solves, R stored in A0
+	constexpr int is_col_major = true;
+	std::vector<double> Q = pyamg::QR(A0.data(), num_dofs, num_dofs, is_col_major);
+
+	// Solve each block based on QR decomposition
+	std::vector<double> rhs(num_dofs);
+	for (int this_row = 0; this_row < blocksize; ++this_row) {
+		int b_ind0 = num_dofs * this_row;
+
+		// Multiply right hand side, rhs := Q^T*b (assumes Q stored in row-major)
+		for (int i = 0; i < num_dofs; ++i) {
+			rhs[i] = 0.0;
+			for (int k = 0; k < num_dofs; ++k) {
+				rhs[i] += b0[b_ind0 + k] * Q[pyamg::col_major(k,i,num_dofs)];
+			}
+		}
+
+		// Solve upper triangular system from QR, store solution in b0
+		pyamg::upper_tri_solve(A0.data(), rhs.data(), &b0[b_ind0], num_dofs, num_dofs, is_col_major);
+	}
+
+	// Add solution for each block row to data array. See section on RHS for
+	// mapping between bsr data array and row-major array solution stored in
+	auto get_vals = [&](int block_ind) {
+		double * vals = new double[blocksize*blocksize];
+		for (int this_row = 0; this_row < blocksize; ++this_row) {
+			for (int this_col = 0; this_col < blocksize; ++this_col) {
+				int row_ind = num_dofs * this_row + block_ind * blocksize + this_col;
+				int bsr_ind = this_row * blocksize + this_col;
+				if (std::abs(b0[row_ind]) > 1e-15)
+					vals[bsr_ind] = b0[row_ind];
+				else
+					vals[bsr_ind] = 0.;
+			}
+		}
+		return vals;
+	};
+	block_ind = 0;
+	neig_loop(
+		[&](int off) {
+			dynamic_cast<BSRMatrix&>(*R.on_proc).block_vals[off] = get_vals(block_ind++);
+		},
+		[&](int off) {
+			dynamic_cast<BSRMatrix&>(*R.off_proc).block_vals[off] = get_vals(block_ind++);
+		});
+
+	// Add identity for C-point in this block row (assume data[] initialized to 0)
+	R.on_proc->idx2[ind] = cpoint;
+	dynamic_cast<BSRMatrix&>(*R.on_proc).block_vals[ind] =
+		[blocksize](){
+			double * ident_vals = new double[blocksize*blocksize]();
+			for (int this_row = 0; this_row < blocksize; ++this_row) {
+				ident_vals[(blocksize + 1) * this_row] = 1.0;
+			}
+			return ident_vals;
+		}();
 }
 
-/* QR-decomposition using Householer transformations on dense
- * 2d array stored in either column- or row-major form.
- *
- * Parameters
- * ----------
- * A : double array
- *     2d matrix A stored in 1d column- or row-major.
- * m : &int
- *     Number of rows in A
- * n : &int
- *     Number of columns in A
- * is_col_major : bool
- *     True if A is stored in column-major, false
- *     if A is stored in row-major.
- *
- * Returns
- * -------
- * Q : vector<double>
- *     Matrix Q stored in same format as A.
- * R : in-place
- *     R is stored over A in place, in same format.
- *
- * Notes
- * ------
- * Currently only set up for real-valued matrices. May easily
- * generalize to complex, but haven't checked.
- *
- */
-template<class I, class T>
-std::vector<T> QR(T A[],
-                  const I &m,
-                  const I &n,
-                  const I is_col_major)
+
+template <>
+void fill_data<false>(std::size_t row, int cpoint, int ind, int ind_off,
+                      const ParCSRMatrix &A,
+                      const comm_rows<false> &recv_rows,
+                      ParCSRMatrix &R,
+                      const std::map<int, int> &offd_g2l)
 {
-    // Function pointer for row or column major matrices
-    I (*get_ind)(const I, const I, const I);
-    const I *C;
-    if (is_col_major) {
-        get_ind = &col_major;
-        C = &m;
-    }
-    else {
-        get_ind = &row_major;
-        C = &n;
-    }
+	// Build local linear system as the submatrix A restricted to the neighborhood,
+	// Nf, of strongly connected F-points to the current C-point, that is A0 =
+	// A[Nf, Nf]^T, stored in column major form. Since A in row-major = A^T in
+	// column-major, A (CSR) is iterated through and A[Nf,Nf] stored in row-major.
+	auto size_n = (ind - R.on_proc->idx1[row]) + (ind_off - R.off_proc->idx1[row]);
+	std::vector<double> A0;
+	A0.reserve(size_n * size_n);
 
-    // Initialize Q to identity
-    std::vector<T> Q(m*m,0);
-    for (I i=0; i<m; i++) {
-        Q[get_ind(i,i,m)] = 1;
-    }
+	row_searcher<false> row_search(A);
+	neighborhood_loop neig_loop{row, ind, ind_off, R};
+	neighborhood_scan iter_neig{neig_loop, recv_rows, row_search, offd_g2l};
 
-    // Loop over columns of A using Householder reflections
-    for (I j=0; j<n; j++) {
+	iter_neig([&](int i, auto && find_in_row){
+		iter_neig([&](int j, auto&&) {
+			auto maybe_val = find_in_row(j);
+			// If index not found, set element to 0
+			A0.push_back(maybe_val.value_or(0.));
+		});
+	});
 
-        // Break loop for short fat matrices
-        if (m <= j) {
-            break;
-        }
+	/* Build local right hand side given by b_j = -A_{cpt,N_j}, where N_j
+	   is the jth indice in the neighborhood of strongly connected F-points
+	   to the current C-point. */
+	std::vector<double> b0;
+	b0.reserve(size_n);
+	iter_neig([&](int global_col, auto&&) {
+		// Search for indice in row of A. If indice not found, set to 0.
+		auto maybe_val = row_search(cpoint, global_col);
+		b0.push_back(-1. * maybe_val.value_or(0.));
+	});
 
-        // Get norm of next column of A to be reflected. Choose sign
-        // opposite that of A_jj to avoid catastrophic cancellation.
-        // Skip loop if norm is zero, as that means column of A is all
-        // zero.
-        T normx = 0;
-        for (I i=j; i<m; i++) {
-            T temp = A[get_ind(i,j,*C)];
-            normx += temp*temp;
-        }
-        normx = std::sqrt(normx);
-        if (normx < 1e-12) {
-            continue;
-        }
-        normx *= -1*signof(A[get_ind(j,j,*C)]);
+	// Solve linear system (least squares solves exactly when full rank)
+	// s.t. (RA)_ij = 0 for (i,j) within the sparsity pattern of R. Store
+	// solution in data vector for R.
+	std::vector<double> sol(size_n);
+	if (size_n > 0) {
+		constexpr int is_col_major = true;
+		pyamg::least_squares(A0.data(), b0.data(), sol.data(), size_n, size_n, is_col_major);
 
-        // Form vector v for Householder matrix H = I - tau*vv^T
-        // where v = R(j:end,j) / scale, v[0] = 1.
-        T scale = A[get_ind(j,j,*C)] - normx;
-        T tau = -scale / normx;
-        std::vector<T> v(m-j,0);
-        v[0] = 1;
-        for (I i=1; i<(m-j); i++) {
-            v[i] = A[get_ind(j+i,j,*C)] / scale;
-        }
+		// fill on_proc and off_proc vals in R
+		auto solit = sol.begin();
+		neig_loop(
+			[&](int off) {
+				R.on_proc->vals[off] = *(solit++);
+			},
+			[&](int off) {
+				R.off_proc->vals[off] = *(solit++);
+			});
 
-        // Modify R in place, R := H*R, looping over columns then rows
-        for (I k=j; k<n; k++) {
+		assert(solit == sol.end());
+	}
 
-            // Compute the kth element of v^T * R
-            T vtR_k = 0;
-            for (I i=0; i<(m-j); i++) {
-                vtR_k += v[i] * A[get_ind(j+i,k,*C)];
-            }
-
-            // Correction for each row of kth column, given by
-            // R_ik -= tau * v_i * (vtR_k)_k
-            for (I i=0; i<(m-j); i++) {
-                A[get_ind(j+i,k,*C)] -= tau * v[i] * vtR_k;
-            }
-        }
-
-        // Modify Q in place, Q = Q*H
-        for (I i=0; i<m; i++) {
-
-            // Compute the ith element of Q * v
-            T Qv_i = 0;
-            for (I k=0; k<(m-j); k++) {
-                Qv_i += v[k] * Q[get_ind(i,k+j,m)];
-            }
-
-            // Correction for each column of ith row, given by
-            // Q_ik -= tau * Qv_i * v_k
-            for (I k=0; k<(m-j); k++) {
-                Q[get_ind(i,k+j,m)] -= tau * v[k] * Qv_i;
-            }
-        }
-    }
-
-    return Q;
+	// Add identity for C-point in this row
+	R.on_proc->idx2[ind] = cpoint;
+	R.on_proc->vals[ind] = 1.0;
 }
 
-/* Backward substitution solve on upper-triangular linear system,
- * Rx = rhs, where R is stored in column- or row-major form.
- *
- * Parameters
- * ----------
- * R : double array, length m*n
- *     Upper-triangular array stored in column- or row-major.
- * rhs : double array, length m
- *     Right hand side of linear system
- * x : double array, length n
- *     Preallocated array for solution
- * m : &int
- *     Number of rows in R
- * n : &int
- *     Number of columns in R
- * is_col_major : bool
- *     True if R is stored in column-major, false
- *     if R is stored in row-major.
- *
- * Returns
- * -------
- * Nothing, solution is stored in x[].
- *
- * Notes
- * -----
- * R need not be square, the system will be solved over the
- * upper-triangular block of size min(m,n). If remaining entries
- * insolution are unused, they will be set to zero. If a zero
- * is encountered on the ith diagonal, x[i] is set to zero.
- *
- */
-template<class I, class T>
-void upper_tri_solve(const T R[],
-                     const T rhs[],
-                     T x[],
-                     const I m,
-                     const I n,
-                     const I is_col_major)
-{
-    // Function pointer for row or column major matrices
-    I (*get_ind)(const I, const I, const I);
-    const I *C;
-    if (is_col_major) {
-        get_ind = &col_major;
-        C = &m;
-    }
-    else {
-        get_ind = &row_major;
-        C = &n;
-    }
 
-    // Backward substitution
-    I rank = std::min(m,n);
-    for (I i=(rank-1); i>=0; i--) {
-        T temp = rhs[i];
-        for (I j=(i+1); j<rank; j++) {
-            temp -= R[get_ind(i,j,*C)]*x[j];
-        }
-        if (std::abs(R[get_ind(i,i,*C)]) < 1e-12) {
-            x[i] = 0.0;
-        }
-        else {
-            x[i] = temp / R[get_ind(i,i,*C)];
-        }
-    }
-
-    // If rank < size of rhs, set free elements in x to zero
-    for (I i=m; i<n; i++) {
-        x[i] = 0;
-    }
-}
-
-/* Method to solve the linear least squares problem.
- *
- * Parameters
- * ----------
- * A : double array, length m*n
- *     2d array stored in column- or row-major.
- * b : double array, length m
- *     Right hand side of unconstrained problem.
- * x : double array, length n
- *     Container for solution
- * m : &int
- *     Number of rows in A
- * n : &int
- *     Number of columns in A
- * is_col_major : bool
- *     True if A is stored in column-major, false
- *     if A is stored in row-major.
- *
- * Returns
- * -------
- * x : vector<double>
- *    Solution to constrained least squares problem.
- *
- * Notes
- * -----
- * If system is under determined, free entries are set to zero.
- * Currently only set up for real-valued matrices. May easily
- * generalize to complex, but haven't checked.
- *
- */
-template<class I, class T>
-void least_squares(T A[],
-                   T b[],
-                   T x[],
-                   const I &m,
-                   const I &n,
-                   const I is_col_major=0)
-{
-    // Function pointer for row or column major matrices
-    I (*get_ind)(const I, const I, const I);
-    if (is_col_major) {
-        get_ind = &col_major;
-    }
-    else {
-        get_ind = &row_major;
-    }
-
-    // Take QR of A
-    std::vector<T> Q = QR(A,m,n,is_col_major);
-
-    // Multiply right hand side, b:= Q^T*b. Have to make new vector, rhs.
-    std::vector<T> rhs(m,0);
-    for (I i=0; i<m; i++) {
-        for (I k=0; k<m; k++) {
-            rhs[i] += b[k] * Q[get_ind(k,i,m)];
-        }
-    }
-
-    // Solve upper triangular system, store solution in x.
-    upper_tri_solve(A,&rhs[0],x,m,n,is_col_major);
-}
-
-} // namespace pyamg
-
-
+template<bool is_bsr>
 void fill_colind_and_data(const ParCSRMatrix & A,
                           const ParCSRMatrix &S,
-                          const comm_rows & recv_neighbors,
-                          const comm_rows &recv_rows,
+                          const comm_rows<is_bsr> & recv_neighbors,
+                          const comm_rows<is_bsr> &recv_rows,
                           const splitting_t &splitting,
                           const std::vector<int> &cpts,
                           fpoint_distance distance,
@@ -2479,175 +2610,13 @@ void fill_colind_and_data(const ParCSRMatrix & A,
 			offd_g2l[col] = i++;
 	}
 
-	auto expand = [&](const int row,
-	                  const Matrix & soc,
-	                  const auto & split,
-	                  Matrix & rmat,
-	                  int & ind, auto && colmap) {
-		for (int off = soc.idx1[row]; off < soc.idx1[row+1]; ++off) {
-			auto d2point = soc.idx2[off];
-			if (split[d2point] == Unselected && d2point != row) {
-				rmat.idx2[ind++] = std::forward<decltype(colmap)>(colmap)(d2point);
-			}
-		}
-	};
 	// build column indices and data for each row of R
 	// Note: uses global indices for off_proc columns
 	for (std::size_t row = 0; row < cpts.size(); ++row) {
 		auto cpoint = cpts[row];
-		auto ind = R.on_proc->idx1[row];
-		auto ind_off = R.off_proc->idx1[row];
-		auto bounds = [=](const Matrix & mat) {
-			return std::make_pair(mat.idx1[cpoint], mat.idx1[cpoint + 1]);
-		};
-		auto & offd_colmap = S.off_proc_column_map;
-		// set column indices for R as strongly connected F-points
-		auto [beg_on, end_on] = bounds(*S.on_proc);
-		for (int off = beg_on; off < end_on; ++off) {
-			auto this_point = S.on_proc->idx2[off];
-			if (splitting.on_proc[this_point] == Unselected) {
-				R.on_proc->idx2[ind++] = this_point;
-				// strong distance two F-to-F connections
-				if (distance == fpoint_distance::two) {
-					expand(this_point, *S.on_proc, splitting.on_proc, *R.on_proc, ind,
-					       [](int c) { return c; });
-					expand(this_point, *S.off_proc, splitting.off_proc, *R.off_proc, ind_off,
-					       [&](int c) { return offd_colmap[c]; });
-				}
-			}
-		}
+		auto [ind, ind_off] = fill_colind(row, S, recv_neighbors, splitting, cpts, distance, R);
 
-		auto [beg_off, end_off] = bounds(*S.off_proc);
-		for (int off = beg_off; off < end_off; ++off) {
-			auto this_point = S.off_proc->idx2[off];
-			if (splitting.off_proc[this_point] == Unselected) {
-				R.off_proc->idx2[ind_off++] = offd_colmap[this_point];
-				if (distance == fpoint_distance::two) {
-					recv_neighbors.iter_diag(this_point, [&](auto rview) {
-						R.on_proc->idx2[ind++] = rview.idx2();
-					});
-					recv_neighbors.iter_offd(this_point, [&](auto rview) {
-						if (offd_colmap[this_point] != rview.idx2())
-							R.off_proc->idx2[ind_off++] = rview.idx2();
-					});
-				}
-			}
-		}
-
-		if ((ind != R.on_proc->idx1[row+1] - 1) ||
-		    (ind_off != R.off_proc->idx1[row+1])) {
-			// int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-			std::cout << "ind: " << ind << std::endl;
-			std::cout << "rowptr: " << R.on_proc->idx1[row+1] - 1 << std::endl;
-			std::cout << "ind_off: " << ind_off << std::endl;
-			std::cout << "rowptr_off: " << R.off_proc->idx1[row+1] -1 << std::endl;
-			// todo: error checking in raptor
-			std::cerr << "Error air_restriction: row pointer does not agree with neighborhood size\n" << std::endl;
-		}
-
-        // Build local linear system as the submatrix A restricted to the neighborhood,
-        // Nf, of strongly connected F-points to the current C-point, that is A0 =
-        // A[Nf, Nf]^T, stored in column major form. Since A in row-major = A^T in
-        // column-major, A (CSR) is iterated through and A[Nf,Nf] stored in row-major.
-		auto size_n = (ind - R.on_proc->idx1[row]) + (ind_off - R.off_proc->idx1[row]);
-		std::vector<double> A0;
-		A0.reserve(size_n * size_n);
-		auto row_search = [&](int local_row, int global_col) {
-			std::optional<double> ret;
-			auto search = [&](const Matrix & mat, const std::vector<int> & colmap) {
-				for (int off = mat.idx1[local_row]; off < mat.idx1[local_row + 1]; ++off) {
-					if (colmap[mat.idx2[off]] == global_col)
-						ret.emplace(mat.vals[off]);
-				}
-			};
-
-			search(*A.on_proc, A.on_proc_column_map);
-			search(*A.off_proc, A.off_proc_column_map);
-
-			return ret;
-		};
-		auto neig_loop = [&](auto && diag, auto && offd) {
-			for (int off = R.on_proc->idx1[row]; off < ind; ++off)
-				diag(off);
-			for (int off = R.off_proc->idx1[row]; off < ind_off; ++off)
-				offd(off);
-		};
-		auto iter_neig = [&](auto && f) {
-			auto diag_finder = [&](int i) {
-				return [&, i](int col) {
-					return row_search(i, col);
-				};
-			};
-			auto offd_finder = [&](int i) {
-				return [&, i](int col) {
-					std::optional<double> ret;
-
-					auto search = [&](auto rview) {
-						if (rview.idx2() == col)
-							ret.emplace(rview.val());
-					};
-					recv_rows.iter_diag(i, search);
-					recv_rows.iter_offd(i, search);
-
-					return ret;
-				};
-			};
-
-			neig_loop(
-				[&](int off) {
-					auto col = R.on_proc->idx2[off];
-					auto global_col = A.on_proc_column_map[col];
-					f(global_col, diag_finder(col));
-				},
-				[&](int off) {
-					auto global_col = R.off_proc->idx2[off];
-					auto col = offd_g2l[global_col];
-					f(global_col, offd_finder(col));
-				});
-		};
-		iter_neig([&](int i, auto && find_in_row){
-			iter_neig([&](int j, auto&&) {
-				auto maybe_val = find_in_row(j);
-				// If index not found, set element to 0
-				A0.push_back(maybe_val.value_or(0.));
-			});
-		});
-
-		/* Build local right hand side given by b_j = -A_{cpt,N_j}, where N_j
-		   is the jth indice in the neighborhood of strongly connected F-points
-		   to the current C-point. */
-		std::vector<double> b0;
-		b0.reserve(size_n);
-		iter_neig([&](int global_col, auto&&) {
-			// Search for indice in row of A. If indice not found, set t0 0.
-			auto maybe_val = row_search(cpoint, global_col);
-			b0.push_back(-1. * maybe_val.value_or(0.));
-		});
-
-        // Solve linear system (least squares solves exactly when full rank)
-        // s.t. (RA)_ij = 0 for (i,j) within the sparsity pattern of R. Store
-        // solution in data vector for R.
-		std::vector<double> sol(size_n);
-		if (size_n > 0) {
-			constexpr int is_col_major = true;
-			pyamg::least_squares(A0.data(), b0.data(), sol.data(), size_n, size_n, is_col_major);
-
-			// fill on_proc and off_proc vals in R
-			auto solit = sol.begin();
-			neig_loop(
-				[&](int off) {
-					R.on_proc->vals[off] = *(solit++);
-				},
-				[&](int off) {
-					R.off_proc->vals[off] = *(solit++);
-				});
-
-			assert(solit == sol.end());
-		}
-
-		// Add identity for C-point in this row
-		R.on_proc->idx2[ind] = cpoint;
-		R.on_proc->vals[ind] = 1.0;
+		fill_data<is_bsr>(row, cpoint, ind, ind_off, A, recv_rows, R, offd_g2l);
 	}
 
 	// offd colinds are currently global, convert to local
@@ -2655,22 +2624,50 @@ void fill_colind_and_data(const ParCSRMatrix & A,
 		col = offd_g2l[col];
 }
 
+namespace detail {
+template <bool is_bsr> struct mat_value {};
+template <>
+struct mat_value<true>
+{
+	mat_value(const Matrix & m) : mat(dynamic_cast<const BSRMatrix&>(m)) {}
+	double * operator()(int j) {
+		auto vals = new double[mat.b_size];
+		std::copy(mat.block_vals[j], mat.block_vals[j] + mat.b_size, vals);
+		return vals;
+	}
+	const BSRMatrix & mat;
+};
+
+template <>
+struct mat_value<false>
+{
+	mat_value(const Matrix & m) : mat(m) {}
+	double operator()(int j) {
+		return mat.vals[j];
+	}
+
+	const Matrix & mat;
+};
+}
 /*
   Communicate neighborhood information for distance two f-points.
 
   For each local row send strongly connected f-point neighbor column indices if
-  said row is an f-point. todo: no need to send values.
+  said row is an f-point.
  */
-template<class C>
+template<bool is_bsr, class C>
 CSRMatrix * communicate_neighborhood(const ParCSRMatrix & A, const ParCSRMatrix & S,
                                      const splitting_t & split, C && comm) {
+	using bsr_t = std::vector<double*>;
+	using csr_t = std::vector<double>;
+	using val_t = std::conditional_t<is_bsr, bsr_t, csr_t>;
 	std::vector<int>    rowptr(A.local_num_rows + 1);
 	std::vector<int>    colind;
-	std::vector<double> values;
+	val_t               values;
+
 
 	if (A.local_nnz) {
-		colind.reserve(A.local_nnz);
-		values.reserve(A.local_nnz);
+		[&](auto & ... v) { (v.reserve(A.local_nnz),...); }(colind, values);
 	}
 
 	rowptr[0] = 0;
@@ -2683,12 +2680,13 @@ CSRMatrix * communicate_neighborhood(const ParCSRMatrix & A, const ParCSRMatrix 
 		                            const std::vector<int> & colmap,
 		                            const Matrix & s,
 		                            const std::vector<int> & splitting) {
+			detail::mat_value<is_bsr> mat_value(a);
+
 			auto [beg, end] = get_bounds(a);
 			auto [ctr_s, end_s] = get_bounds(s);
 
 			for (int j = beg; j < end; ++j) {
 				int col = a.idx2[j];
-				int val = a.vals[j];
 
 				if (splitting[col] == NoNeighbors) continue;
 
@@ -2699,7 +2697,7 @@ CSRMatrix * communicate_neighborhood(const ParCSRMatrix & A, const ParCSRMatrix 
 					// add if strong connection
 					if (ctr_s < end_s && s.idx2[ctr_s] == col) {
 						colind.push_back(global_col);
-						values.push_back(val);
+						values.push_back(mat_value(j));
 						++ctr_s;
 					}
 				} else if (ctr_s < end_s && s.idx2[ctr_s] == col)
@@ -2707,19 +2705,27 @@ CSRMatrix * communicate_neighborhood(const ParCSRMatrix & A, const ParCSRMatrix 
 			}
 		};
 
-		add_neighborhood(*A.on_proc, A.on_proc_column_map, *S.on_proc, split.on_proc);
+		add_neighborhood(*A.on_proc,  A.on_proc_column_map,  *S.on_proc,  split.on_proc);
 		add_neighborhood(*A.off_proc, A.off_proc_column_map, *S.off_proc, split.off_proc);
 
 		rowptr[i+1] = colind.size();
 	}
 
-	return std::forward<C>(comm).communicate(rowptr, colind, values);
+	return std::forward<C>(comm).communicate(rowptr, colind, values,
+	                                         A.on_proc->b_rows, A.on_proc->b_cols);
 }
 
 
+template <>
+comm_rows<true>::comm_rows(CSRMatrix *mat)
+    : rmat(dynamic_cast<BSRMatrix *>(mat)) {}
+template <>
+comm_rows<false>::comm_rows(CSRMatrix *mat)
+	: rmat(mat) {}
 
-comm_rows::comm_rows(const ParCSRMatrix &A, CSRMatrix *mat)
-	: rmat(mat)
+template<bool is_bsr>
+comm_rows<is_bsr>::comm_rows(const ParCSRMatrix &A, CSRMatrix *mat)
+	: comm_rows(mat)
 {
 	if (!rmat) return;
 
@@ -2757,11 +2763,15 @@ comm_rows::comm_rows(const ParCSRMatrix &A, CSRMatrix *mat)
 	[](auto & ... v) { ((v.shrink_to_fit()), ...); }(diag.idx, offd.idx);
 }
 
-template <class T>
-T * compute_R(T & A,
-              ParCSRMatrix & S,
-              const splitting_t & splitting,
-              fpoint_distance distance) {
+template <bool is_bsr>
+using par_mat = std::conditional_t<is_bsr, ParBSRMatrix, ParCSRMatrix>;
+
+template <bool is_bsr>
+par_mat<is_bsr> * compute_R(par_mat<is_bsr> & A,
+                            ParCSRMatrix & S,
+                            const splitting_t & splitting,
+                            fpoint_distance distance) {
+	using msg_t = comm_rows<is_bsr>;
 	auto pre_init = [](auto & mat) {
 		mat.sort();
 		mat.on_proc->move_diag();
@@ -2769,22 +2779,23 @@ T * compute_R(T & A,
 	pre_init(A);
 	pre_init(S);
 
-    comm_rows recv_neighbors(A,
-                             (distance == fpoint_distance::two) ?
-                             communicate_neighborhood(A, S, splitting, *A.comm) : nullptr);
+	msg_t recv_neighbors(A,
+	                     (distance == fpoint_distance::two) ?
+	                     communicate_neighborhood<is_bsr>(A, S, splitting, *A.comm) : nullptr);
 
-    auto cpts = get_cpoints(splitting.on_proc);
-    ParCSRMatrix * R = create_R(A, S, splitting,
-                                map_offd_fill_rowptr(
-	                                S, splitting, cpts, distance, recv_neighbors));
+	auto cpts = get_cpoints(splitting.on_proc);
+	auto R = create_R(A, S, splitting,
+	                  map_offd_fill_rowptr(
+		                  S, splitting, cpts, distance, recv_neighbors));
 
-    comm_rows recv_rows(A, communicate_neighborhood(A, S, splitting, create_neighborhood_comm(*R, A)));
+	msg_t recv_rows(A, communicate_neighborhood<is_bsr>(A, S, splitting,
+	                                                    create_neighborhood_comm(*R, A)));
 
-    fill_colind_and_data(A, S, recv_neighbors, recv_rows, splitting, cpts, distance, *R);
-    constexpr int tag = 9244;
-    R->comm = new ParComm(R->partition,
-                          R->off_proc_column_map, R->on_proc_column_map,
-                          tag, RAPtor_MPI_COMM_WORLD);
+	fill_colind_and_data<is_bsr>(A, S, recv_neighbors, recv_rows, splitting, cpts, distance, *R);
+	constexpr int tag = 9244;
+	R->comm = new ParComm(R->partition,
+	                      R->off_proc_column_map, R->on_proc_column_map,
+	                      tag, RAPtor_MPI_COMM_WORLD);
 
 	return R;
 }
@@ -2796,7 +2807,7 @@ ParCSRMatrix * local_air(ParCSRMatrix & A,
                          const splitting_t & splitting,
                          fpoint_distance distance)
 {
-	return lair::compute_R(A, S, splitting, distance);
+	return lair::compute_R<false>(A, S, splitting, distance);
 }
 
 
@@ -2804,8 +2815,7 @@ ParBSRMatrix * local_air(ParBSRMatrix & A,
                          ParCSRMatrix & S,
                          const splitting_t & splitting,
                          fpoint_distance distance) {
-	// return lair::compute_R(A, S, splitting, distance);
-	return nullptr;
+	return lair::compute_R<true>(A, S, splitting, distance);
 }
 
 } // namespace raptor

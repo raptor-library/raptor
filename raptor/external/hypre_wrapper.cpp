@@ -311,9 +311,9 @@ raptor::ParBSRMatrix* convert(hypre_ParCSRMatrix* A_hypre,
 				    }
 			    }
 			    // add blocks to A
-			    for (auto & blk : bmap) {
-				    bcolind.emplace_back(blk.first);
-				    bvalues.emplace_back(blk.second);
+			    for (auto [colind, val] : bmap) {
+				    bcolind.emplace_back(colind);
+				    bvalues.emplace_back(val);
 			    }
 			    browptr[block_index + 1] = browptr[block_index] + bmap.size();
 		    }

@@ -216,16 +216,11 @@ void norm_strength(ParCSRMatrix & A, ParCSRMatrix & S,
 	    auto row_end_off = A.off_proc->idx1[i+1];
         if (row_end_on - row_start_on || row_end_off - row_start_off)
         {
-	        double diag;
-            if (A.on_proc->idx2[row_start_on] == i)
-            {
-	            diag = A.on_proc->vals[row_start_on];
+	        bool has_zero_diag = true;
+	        if (A.on_proc->idx2[row_start_on] == i) {
                 row_start_on++;
-            }
-            else
-            {
-                diag = 0.0;
-            }
+                has_zero_diag = false;
+	        }
 
             auto row_var = (num_variables > 1) ? variables[i] : -1;
             // Find value with max magnitude in row
@@ -245,7 +240,11 @@ void norm_strength(ParCSRMatrix & A, ParCSRMatrix & S,
 
             // Always add diagonal
             S.on_proc->idx2[S.on_proc->nnz] = i;
-            S.on_proc->vals[S.on_proc->nnz] = diag;
+            if constexpr (is_bsr)
+	            S.on_proc->vals[S.on_proc->nnz] = has_zero_diag ? 0 :
+		            value<P>(dynamic_cast<BSRMatrix&>(*A.on_proc), row_start_on - 1);
+            else
+	            S.on_proc->vals[S.on_proc->nnz] = has_zero_diag ? 0 : A.on_proc->vals[row_start_on - 1];
             S.on_proc->nnz++;
 
             // Add all off-diagonal entries to strength
