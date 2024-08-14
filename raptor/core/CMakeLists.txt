@@ -11,6 +11,7 @@ if (WITH_MPI)
         core/comm_pkg.hpp
         core/par_vector.hpp
         core/par_matrix.hpp
+		core/matrix_traits.hpp
         )
     set(par_core_SOURCES
         core/mpi_types.cpp
