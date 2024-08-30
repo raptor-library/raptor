@@ -2143,6 +2143,20 @@ T * create_R(const T & A,
 		return global;
 	}(local_rows);
 
+
+	auto local_rowmap = [&]() {
+		std::vector<int> rowmap;
+		rowmap.reserve(local_rows);
+
+		for (int i = 0; i < splitting.on_proc.size(); ++i) {
+			if (splitting.on_proc[i] == Selected) {
+				rowmap.push_back(A.local_row_map[i]);
+			}
+		}
+
+		return rowmap;
+	};
+
 	auto off_proc_num_cols = rowptr_and_colmap.offd_colmap.size();
 	auto move_data = [&](offd_map_rowptr && rac, ParMatrix & mat) {
 		mat.on_proc->idx1 = std::move(rac.diag_rowptr);
@@ -2163,11 +2177,13 @@ T * create_R(const T & A,
 		                            local_rows, S.on_proc_num_cols, off_proc_num_cols,
 		                            A.on_proc->b_rows, A.on_proc->b_cols);
 		move_data(std::move(rowptr_and_colmap), *R);
+		R->local_row_map = local_rowmap();
 		return R;
 	} else {
 		auto * R = new ParCSRMatrix(S.partition, global_rows, S.global_num_cols,
 		                            local_rows, S.on_proc_num_cols, off_proc_num_cols);
 		move_data(std::move(rowptr_and_colmap), *R);
+		R->local_row_map = local_rowmap();
 		return R;
 	}
 }
@@ -2686,9 +2702,10 @@ CSRMatrix * communicate_neighborhood(const T & A, const ParCSRMatrix & S,
 			}
 		};
 
-		add_neighborhood(*A.on_proc,  A.on_proc_column_map,  *S.on_proc,  split.on_proc);
-		add_neighborhood(*A.off_proc, A.off_proc_column_map, *S.off_proc, split.off_proc);
-
+		if (split.on_proc[i] == Unselected) { // Only communicate f-point rows
+			add_neighborhood(*A.on_proc,  A.on_proc_column_map,  *S.on_proc,  split.on_proc);
+			add_neighborhood(*A.off_proc, A.off_proc_column_map, *S.off_proc, split.off_proc);
+		}
 		rowptr[i+1] = colind.size();
 	}
 
