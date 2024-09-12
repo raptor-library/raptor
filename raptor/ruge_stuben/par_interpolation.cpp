@@ -1782,31 +1782,22 @@ ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
 
 namespace one_point {
 namespace {
-ParCSRMatrix * create_P(const ParCSRMatrix & A,
-                        const ParCSRMatrix & S,
-                        const splitting_t splitting) {
-	bool isbsr = dynamic_cast<const ParBSRMatrix*>(&A);
-
-	auto count_cols = [](int n, const std::vector<int> & split) {
-		int cols{0};
-		for (int i = 0; i < n; ++i) {
-			if (split[i]) ++cols;
-		}
-		return cols;
-	};
-	auto on_proc_cols = count_cols(S.on_proc_num_cols, splitting.on_proc);
-	auto off_proc_cols = count_cols(S.off_proc_num_cols, splitting.off_proc);
+template<class T>
+T * create_P(const T & A,
+             const ParCSRMatrix & S,
+             const splitting_t splitting) {
+	auto on_proc_cols = std::count(splitting.on_proc.begin(), splitting.on_proc.end(), Selected);
+	auto off_proc_cols = std::count(splitting.off_proc.begin(), splitting.off_proc.end(), Selected);
 	auto global_cols = [](int local) {
 		int global;
 		RAPtor_MPI_Allreduce(&local, &global, 1, RAPtor_MPI_INT, RAPtor_MPI_SUM, RAPtor_MPI_COMM_WORLD);
 		return global;
 	}(on_proc_cols);
 
-	if (isbsr) {
-		auto & bsr = dynamic_cast<const ParBSRMatrix&>(A);
+	if constexpr (is_bsr_v<T>) {
 		return new ParBSRMatrix(S.partition, S.global_num_rows, global_cols,
 		                        S.local_num_rows, on_proc_cols, off_proc_cols,
-		                        bsr.on_proc->b_rows, bsr.on_proc->b_cols);
+		                        A.on_proc->b_rows, A.on_proc->b_cols);
 	} else {
 		return new ParCSRMatrix(S.partition, S.global_num_rows, global_cols,
 		                        S.local_num_rows, on_proc_cols, off_proc_cols);
@@ -1905,13 +1896,11 @@ void finalize_sizes(ParCSRMatrix & P) {
 	P.on_proc->n_cols = P.on_proc_num_cols;
 }
 
-} // namespace
-} // namespace one_point
 
-ParCSRMatrix *one_point_interpolation(const ParCSRMatrix & A,
-                                      const ParCSRMatrix & S,
-                                      const splitting_t & splitting) {
-	using namespace one_point;
+template <class T>
+T * compute_P(const T & A,
+              const ParCSRMatrix & S,
+              const splitting_t & splitting) {
 	auto *P = create_P(A, S, splitting);
 	// map cpoints in S and splitting to P indexing
 	auto on_proc_cpoint_map = map_on_proc_cpoints(*P, S.on_proc_column_map, splitting.on_proc);
@@ -1966,17 +1955,20 @@ ParCSRMatrix *one_point_interpolation(const ParCSRMatrix & A,
 
 	return P;
 }
+} // namespace
+} // namespace one_point
+
+ParCSRMatrix *one_point_interpolation(const ParCSRMatrix & A,
+                                      const ParCSRMatrix & S,
+                                      const splitting_t & splitting) {
+	return one_point::compute_P(A, S, splitting);
+}
 
 ParBSRMatrix * one_point_interpolation(const ParBSRMatrix & A,
                                        const ParCSRMatrix & S,
                                        const splitting_t & splitting)
 {
-	auto ret = dynamic_cast<ParBSRMatrix*>(
-		one_point_interpolation(
-			dynamic_cast<const ParCSRMatrix&>(A), S, splitting));
-
-	assert(ret);
-	return ret;
+	return one_point::compute_P(A, S, splitting);
 }
 
 namespace lair {
