@@ -20,17 +20,6 @@ CSRMatrix* communicate(ParCSRMatrix* A, ParCSRMatrix* S, const std::vector<int>&
 CSRMatrix*  communicate(ParCSRMatrix* A, const std::vector<int>& states,
         const std::vector<int>& off_proc_states, CommPkg* comm);
 void filter_interp(ParCSRMatrix* P, const double filter_threshold);
-ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
-        ParCSRMatrix* S, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states, const double filter_threshold,
-        bool tap_interp, int num_variables, int* variables);
-ParCSRMatrix* mod_classical_interpolation(ParCSRMatrix* A,
-        ParCSRMatrix* S, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states,
-        bool tap_interp, int num_variables, int* variables);
-ParCSRMatrix* direct_interpolation(ParCSRMatrix* A,
-        ParCSRMatrix* S, const std::vector<int>& states,
-        const std::vector<int>& off_proc_states, bool tap_interp);
 
 
 
@@ -2140,7 +2129,7 @@ T * create_R(const T & A,
 		std::vector<int> rowmap;
 		rowmap.reserve(local_rows);
 
-		for (int i = 0; i < splitting.on_proc.size(); ++i) {
+		for (std::size_t i = 0; i < splitting.on_proc.size(); ++i) {
 			if (splitting.on_proc[i] == Selected) {
 				rowmap.push_back(A.local_row_map[i]);
 			}
@@ -2209,14 +2198,14 @@ auto fill_colind(std::size_t row,
                  fpoint_distance distance,
                  ParCSRMatrix & R) {
 	// Note: uses global indices for off_proc columns
-	auto expand = [](const int row,
+	auto expand = [](const int i,
 	                 const Matrix & soc,
 	                 const auto & split,
 	                 Matrix & rmat,
 	                 int & ind, auto && colmap) {
-		for (int off = soc.idx1[row]; off < soc.idx1[row+1]; ++off) {
+		for (int off = soc.idx1[i]; off < soc.idx1[i + 1]; ++off) {
 			auto d2point = soc.idx2[off];
-			if (split[d2point] == Unselected && d2point != row) {
+			if (split[d2point] == Unselected && d2point != i) {
 				rmat.idx2[ind++] = std::forward<decltype(colmap)>(colmap)(d2point);
 			}
 		}
@@ -2418,7 +2407,7 @@ void fill_data<ParBSRMatrix>(std::size_t row, int cpoint, int ind, int ind_off,
 				for (int block_row = 0; block_row < blocksize; ++block_row) {
 					auto row_maj_ind = (this_row + block_row) * num_dofs + this_col;
 					for(int block_col = 0; block_col < blocksize; ++block_col) {
-						if ((row_maj_ind + block_col) > A0.size()) {
+						if (static_cast<std::size_t>(row_maj_ind + block_col) > A0.size()) {
 							std::cerr << "Warning block local_air fill_data: Accessing out of bounds index building A0.\n";
 						}
 						A0[row_maj_ind + block_col] = vals[block_row * blocksize + block_col];
@@ -2485,11 +2474,11 @@ void fill_data<ParBSRMatrix>(std::size_t row, int cpoint, int ind, int ind_off,
 
 	// Add solution for each block row to data array. See section on RHS for
 	// mapping between bsr data array and row-major array solution stored in
-	auto get_vals = [&](int block_ind) {
+	auto get_vals = [&](int block) {
 		double * vals = new double[blocksize*blocksize];
 		for (int this_row = 0; this_row < blocksize; ++this_row) {
 			for (int this_col = 0; this_col < blocksize; ++this_col) {
-				int row_ind = num_dofs * this_row + block_ind * blocksize + this_col;
+				int row_ind = num_dofs * this_row + block * blocksize + this_col;
 				int bsr_ind = this_row * blocksize + this_col;
 				if (std::abs(b0[row_ind]) > 1e-15)
 					vals[bsr_ind] = b0[row_ind];

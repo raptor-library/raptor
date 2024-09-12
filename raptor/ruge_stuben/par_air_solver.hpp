@@ -10,16 +10,16 @@ namespace raptor {
 
 struct ParAIRSolver : ParMultilevel {
 
-	ParAIRSolver(double strong_threshold = 0.0,
-	             coarsen_t coarsen_type = RS,
-	             interp_t interp_type = OnePoint,
-	             strength_t strength_type = Classical,
-	             restrict_t restrict_type = AIR,
-	             relax_t relax_type = FCJacobi) :
-		ParMultilevel(strong_threshold, strength_type, relax_type),
-		coarsen_type(coarsen_type),
-		interp_type(interp_type),
-		restrict_type(restrict_type),
+	ParAIRSolver(double strong_threshold_ = 0.0,
+	             coarsen_t coarsen_type_ = RS,
+	             interp_t interp_type_ = OnePoint,
+	             strength_t strength_type_ = Classical,
+	             restrict_t restrict_type_ = AIR,
+	             relax_t relax_type_ = FCJacobi) :
+		ParMultilevel(strong_threshold_, strength_type_, relax_type_),
+		coarsen_type(coarsen_type_),
+		interp_type(interp_type_),
+		restrict_type(restrict_type_),
 		variables(nullptr)
 	{
 		num_variables = 1;

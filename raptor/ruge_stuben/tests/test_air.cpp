@@ -15,7 +15,6 @@ int main(int argc, char** argv)
     return ret;
 }
 
-#if 0
 TEST(TestOnePointInterp, TestsInRuge_Stuben) {
 	int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	constexpr std::size_t n{16};
@@ -133,7 +132,7 @@ TEST(TestLocalAIR, TestsInRuge_Stuben) {
 		auto expected = get_expected(row);
 		expect_t cols;
 		auto add_cols = [&](const Matrix & mat, const auto & colmap) {
-			for (std::size_t off = mat.idx1[i]; off < mat.idx1[i + 1]; ++off) {
+			for (int off = mat.idx1[i]; off < mat.idx1[i + 1]; ++off) {
 				cols[colmap[mat.idx2[off]]] = mat.vals[off];
 			}
 		};
@@ -143,66 +142,10 @@ TEST(TestLocalAIR, TestsInRuge_Stuben) {
 	}
 }
 
-TEST(TestLocalAIRBSR, TestsInRuge_Stuben) {
+
+void dump(std::string prefix, const ParCSRMatrix & A) {
 	int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	constexpr std::size_t n{16};
-	// constexpr std::size_t n{5};
-	std::vector<int> grid;
-
-	grid.resize(1, n);
-
-	std::vector<double> stencil{{-1., 2, -1}};
-
-	auto A = par_stencil_grid(stencil.data(), grid.data(), 1);
-	auto Absr = new raptor::ParBSRMatrix(A->partition, 3, 3);
-	[](auto & ... mats) {
-		((mats.idx1[0] = 0),...);
-	}(*Absr->on_proc, *Absr->off_proc);
-	for (int i = 0; i < A->local_num_rows; ++i) {
-		auto copy = [=](const Matrix & src, Matrix & dst, auto && colmap) {
-			auto & bsr = dynamic_cast<BSRMatrix &>(dst);
-			for (int j = src.idx1[i]; j < src.idx1[i+1]; ++j) {
-				dst.idx2.push_back(colmap(src.idx2[j]));
-				bsr.block_vals.push_back(new double[bsr.b_size]());
-				for (int k = 0; k < bsr.b_size; ++k)
-					bsr.block_vals.back()[k] = src.vals[j];
-			}
-			dst.idx1[i+1] = dst.idx2.size();
-		};
-		copy(*A->on_proc, *Absr->on_proc, [](auto c) { return c; });
-		copy(*A->off_proc, *Absr->off_proc, [&](auto c) { return A->off_proc_column_map[c]; });
-	}
-	[](auto & ... mats) {
-		((mats.nnz = mats.idx2.size()),...);
-	}(*Absr->on_proc, *Absr->off_proc);
-	Absr->finalize();
-
-	auto get_split = [](const Matrix &, const std::vector<int> & colmap) {
-		std::vector<int> split(colmap.size(), 0);
-
-		std::size_t i{0};
-		for (auto col : colmap) split[i++] = (col % 2 == 0) ? Selected : Unselected;
-
-		return split;
-	};
-	splitting_t split{get_split(*A->on_proc, A->on_proc_column_map),
-	                  get_split(*A->off_proc, A->off_proc_column_map)};
-
-	{
-		int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-		if (rank == 1)
-			split.on_proc[2] = Unselected;
-	}
-
-	auto S = A->copy();
-
-	auto R = local_air(*Absr, *S, split);
-}
-#endif
-
-void dump(const ParCSRMatrix & A) {
-	int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	std::ofstream ofile("coarse-" + std::to_string(rank));
+	std::ofstream ofile(prefix + "-" + std::to_string(rank));
 	auto write_row = [&](int i, const Matrix & mat, const std::vector<int> & colmap) {
 		const auto & rowmap = A.local_row_map;
 		for (int j = mat.idx1[i]; j < mat.idx1[i+1]; ++j) {
@@ -258,17 +201,10 @@ ParCSRMatrix * gen(std::size_t n) {
 	return A;
 }
 TEST(UpwindAdvection, TestsInRuge_Stuben) {
-	// constexpr std::size_t n{100};
-	// std::vector<int> grid;
-	// grid.resize(1, n);
-	// std::vector<double> stencil{{-1, 1, 0}};
-	// auto A = par_stencil_grid(stencil.data(), grid.data(), 1);
 	auto A = gen(100);
 
-	// dump(*A);
 	ParAIRSolver ml;
-	// ParRugeStubenSolver ml;
 	ml.max_levels = 2;
 	ml.setup(A);
-	dump(*ml.levels[1]->A);
+	// dump("pre", *ml.levels[1]->A);
 }
