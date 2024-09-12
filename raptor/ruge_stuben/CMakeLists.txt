@@ -12,6 +12,7 @@ if (WITH_MPI)
     set(par_ruge_stuben_SOURCES
         ruge_stuben/par_cf_splitting.cpp
         ruge_stuben/par_interpolation.cpp
+		ruge_stuben/par_air_solver.cpp
         )
 else()
     set(par_ruge_stuben_SOURCES
