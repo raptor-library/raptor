@@ -18,7 +18,7 @@ void ParAIRSolver::extend_hier(T & A) {
 	levels.back()->R = R;
 	levels.emplace_back(new ParLevel());
 	auto & level = *levels.back();
-	auto AP = A.mult(P, tap_level);
+	auto AP = A.mult(P);
 	auto coarse_A = R->mult(AP);
 
 	level.A = coarse_A;

@@ -1039,7 +1039,9 @@ class BSRMatrix : public CSRMatrix
     void spmv_append_T(const double* x, double* b) const;
     void spmv_append_neg(const double* x, double* b) const;
     void spmv_append_neg_T(const double* x, double* b) const;
-    void spmv_residual(const double* x, const double* b, double* r) const; 
+    void spmv_residual(const double* x, const double* b, double* r) const;
+
+    void add_append(BSRMatrix * A, BSRMatrix * C, bool remove_dup = true);
 
     format_t format()
     {
