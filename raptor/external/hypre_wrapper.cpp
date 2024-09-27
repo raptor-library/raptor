@@ -274,7 +274,7 @@ raptor::ParBSRMatrix* convert(hypre_ParCSRMatrix* A_hypre,
 					    bmap[pos] = blk;
 				    } else
 					    blk = blkit->second;
-				    blk[(diag_j[off] % b_cols) * b_rows + i] = diag_data[off];
+				    blk[i * b_cols + (diag_j[off] % b_cols)] = diag_data[off];
 			    }
 		    }
 		    // add blocks to A
@@ -307,7 +307,7 @@ raptor::ParBSRMatrix* convert(hypre_ParCSRMatrix* A_hypre,
 						    bmap[pos] = blk;
 					    } else
 						    blk = blkit->second;
-					    blk[(global_col % b_cols) * b_rows + i] = offd_data[off];
+					    blk[i * b_cols + (global_col % b_cols)] = offd_data[off];
 				    }
 			    }
 			    // add blocks to A
