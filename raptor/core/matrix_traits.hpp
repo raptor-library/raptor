@@ -11,6 +11,7 @@ using is_bsr_or_csr = std::enable_if_t<std::is_same_v<T, ParCSRMatrix> ||
 
 template <class T> struct is_bsr : std::false_type {};
 template <> struct is_bsr<ParBSRMatrix> : std::true_type {};
+template <> struct is_bsr<BSRMatrix> : std::true_type {};
 template <class T> inline constexpr bool is_bsr_v = is_bsr<T>::value;
 
 inline BSRMatrix & bsr_cast(Matrix &mat) { return dynamic_cast<BSRMatrix &>(mat); }
