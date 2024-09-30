@@ -78,7 +78,7 @@ namespace raptor
   class ParMatrix
   {
   public:
-    ParMatrix(Partition* part)
+	explicit ParMatrix(Partition* part)
     {
         partition = part;
         partition->num_shared++;
@@ -347,7 +347,7 @@ namespace raptor
   class ParCOOMatrix : public ParMatrix
   {
   public:
-    ParCOOMatrix(bool form_mat = true) : ParMatrix()
+    explicit ParCOOMatrix(bool form_mat = true) : ParMatrix()
     {
         if (form_mat)
         {
@@ -483,7 +483,7 @@ namespace raptor
   class ParCSRMatrix : public ParMatrix
   {
   public:
-    ParCSRMatrix(bool form_mat = true) : ParMatrix()
+    explicit ParCSRMatrix(bool form_mat = true) : ParMatrix()
     {
         if (form_mat)
         {
@@ -703,7 +703,7 @@ namespace raptor
   class ParCSCMatrix : public ParMatrix
   {
   public:
-    ParCSCMatrix(bool form_mat = true) : ParMatrix()
+    explicit ParCSCMatrix(bool form_mat = true) : ParMatrix()
     {
         if (form_mat)
         {
