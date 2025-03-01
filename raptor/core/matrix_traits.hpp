@@ -8,6 +8,9 @@ namespace raptor {
 template <class T>
 using is_bsr_or_csr = std::enable_if_t<std::is_same_v<T, ParCSRMatrix> ||
                                        std::is_same_v<T, ParBSRMatrix>, bool>;
+template <class T>
+using is_seq_bsr_or_csr = std::enable_if_t<
+	std::is_same_v<T, CSRMatrix> || std::is_same_v<T, BSRMatrix>, bool>;
 
 template <class T> struct is_bsr : std::false_type {};
 template <> struct is_bsr<ParBSRMatrix> : std::true_type {};
