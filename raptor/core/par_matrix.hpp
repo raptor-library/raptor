@@ -696,6 +696,11 @@ namespace raptor
         return A;
     }
 
+	  ParBSRMatrix * mult(ParBSRMatrix * B);
+	  void mult(ParVector& x, ParVector& b, bool tap = false)
+	  {
+		  ParCSRMatrix::mult(x, b, tap);
+	  }
   };
 
 
