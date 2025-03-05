@@ -220,7 +220,7 @@ namespace raptor
     {
         for (int i = 0; i < b_size; i++)
         {
-            *val[i] += *addl_val[i];
+            (*val)[i] += (*addl_val)[i];
         }
         delete[] *addl_val;
     }
