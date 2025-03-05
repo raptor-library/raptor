@@ -212,17 +212,17 @@ namespace raptor
 
     // Methods for appending two values
     // (either single or block values)
-    void append_vals(double* val, double* addl_val) const
+    void append_vals(double &val, double &addl_val) const
     {
-        *val += *addl_val;
+        val += addl_val;
     }
-    void append_vals(double** val, double** addl_val) const
+    void append_vals(double *&val, double *&addl_val) const
     {
         for (int i = 0; i < b_size; i++)
         {
-            (*val)[i] += (*addl_val)[i];
+            val[i] += addl_val[i];
         }
-        delete[] *addl_val;
+        delete[] addl_val;
     }
     void mult_vals(double val, double addl_val, double* sum, 
             int nr, int nc0, int n_inner) const
