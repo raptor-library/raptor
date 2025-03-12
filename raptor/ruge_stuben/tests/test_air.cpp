@@ -205,6 +205,6 @@ TEST(UpwindAdvection, TestsInRuge_Stuben) {
 
 	ParAIRSolver ml;
 	ml.max_levels = 2;
-	ml.setup(A);
+	// ml.setup(A);
 	// dump("pre", *ml.levels[1]->A);
 }

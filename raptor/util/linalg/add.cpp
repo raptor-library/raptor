@@ -61,7 +61,7 @@ void add_append(const T & A, const T & B, T & C, bool remove_dup)
 	    if constexpr (is_bsr_v<T>) {
 		    for (; beg != end; ++beg, ++out) {
 			    auto val = new double[b_size];
-			    std::copy(val, val + b_size, *beg);
+				std::copy(*beg, *beg + b_size, val);
 			    *out = val;
 		    }
 	    } else std::copy(beg, end, out);
