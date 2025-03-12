@@ -78,7 +78,7 @@ ParCSRMatrix* init_matrix(T* A, U* B)
 }
 
 template <class T, is_bsr_or_csr<T> = true>
-T * matmult(T & A, T & B)
+T * spgemm(T & A, T & B)
 {
 	// Check that communication package has been initialized
     if (A.comm == NULL)
@@ -120,15 +120,17 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap)
         return this->tap_mult(B);
     }
 
-    auto A_bsr = dynamic_cast<ParBSRMatrix*>(this);
-    auto B_bsr = dynamic_cast<ParBSRMatrix*>(B);
-    if (A_bsr && B_bsr) {
-	    assert((A_bsr->on_proc->b_rows == B_bsr->on_proc->b_rows) &&
-	           (A_bsr->on_proc->b_cols == B_bsr->on_proc->b_cols));
-	    return matmult(*A_bsr, *B_bsr);
-    } else
-	    return matmult(*this, *B);
+    return spgemm(*this, *B);
 }
+
+
+ParBSRMatrix * ParBSRMatrix::mult(ParBSRMatrix * B)
+{
+	assert((this->on_proc->b_rows == B->on_proc->b_rows) &&
+	       (this->on_proc->b_cols == B->on_proc->b_cols));
+	return spgemm(*this, *B);
+}
+
 
 ParCSRMatrix* ParCSRMatrix::tap_mult(ParCSRMatrix* B)
 {

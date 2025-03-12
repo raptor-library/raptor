@@ -39,7 +39,11 @@ if (WITH_MPI)
     add_test(ParRandomSpMVTest ${MPIRUN} -n 4 ${HOST} ./test_par_spmv_random)
     add_test(ParRandomSpMVTest ${MPIRUN} -n 8 ${HOST} ./test_par_spmv_random)
     add_test(ParRandomSpMVTest ${MPIRUN} -n 16 ${HOST} ./test_par_spmv_random)
-    
+
+    add_executable(test_par_matmult test_par_matmult.cpp)
+	target_link_libraries(test_par_matmult ${MPI_LIBRARIES} raptor googletest pthread)
+	add_test(ParMatMultTest ${MPIRUN} -n 4 ${HOST} ./test_par_matmult)
+
     add_executable(test_tap_spmv_laplacian test_tap_spmv_laplacian.cpp)
     target_link_libraries(test_tap_spmv_laplacian raptor ${MPI_LIBRARIES} googletest pthread )
     add_test(TAPLaplacianSpMVTest ${MPIRUN} -n 2 ${HOST} ./test_tap_spmv_laplacian)
