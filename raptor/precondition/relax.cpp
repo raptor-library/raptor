@@ -1,6 +1,5 @@
 // Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
-
 #include "relax.hpp"
 
 extern "C" {
@@ -17,117 +16,6 @@ extern "C" {
 
 
 namespace raptor {
-
-void jacobi(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps, 
-        double omega)
-{
-    int row_start, row_end;
-    double diag, row_sum;
-
-    for (int iter = 0; iter < num_sweeps; iter++)
-    {
-        for (int i = 0; i < A->n_rows; i++)
-        {
-            tmp[i] = x[i];
-        }
-
-        for (int i = 0; i < A->n_rows; i++)
-        {
-            row_start = A->idx1[i];
-            row_end = A->idx1[i+1];
-            if (row_start == row_end) continue;
-            row_sum = 0;
-            diag = 0;
-
-            for (int j = row_start; j < row_end; j++)
-            {
-                int col = A->idx2[j];
-                if (i == col)
-                    diag = A->vals[j];
-                else
-                    row_sum += A->vals[j] * tmp[col];
-            }
-            if (fabs(diag) > zero_tol)
-                x[i] = ((1.0 - omega)*tmp[i]) + (omega*((b[i] - row_sum) / diag));
-        }
-    }
-}
-
-void sor(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps,
-        double omega)
-{
-    int row_start, row_end;
-    double diag;
-    double rsum;
-
-    for (int iter = 0; iter < num_sweeps; iter++)
-    {
-        for (int i = 0; i < A->n_rows; i++)
-        {
-            rsum = 0;
-            diag = 0;
-            row_start = A->idx1[i];
-            row_end = A->idx1[i+1];
-
-            for (int j = row_start; j < row_end; j++)
-            {
-                int col = A->idx2[j];
-                if (i == col)
-                    diag = A->vals[j];
-                else
-                    rsum += A->vals[j] * x[col];
-            }
-            
-            if (fabs(diag) > zero_tol)
-                x[i] = omega*(b[i] - rsum)/diag + (1 - omega) * x[i];
-        //        x[i] = (b[i] - rsum) / diag;
-        }
-    }
-}
-
-void ssor(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps,
-        double omega)
-{
-    int row_start, row_end;
-    double diag_inv;
-    double orig_x = 0;
-
-    for (int iter = 0; iter < num_sweeps; iter++)
-    {
-        for (int i = 0; i < A->n_rows; i++)
-        {
-            orig_x = x[i];
-            x[i] = b[i];
-            row_start = A->idx1[i];
-            row_end = A->idx1[i+1];
-            if (row_start == row_end) continue;
-
-            diag_inv = omega / A->vals[row_start];
-            for (int j = row_start + 1; j < row_end; j++)
-            {
-                x[i] -= A->vals[j] * x[A->idx2[j]];
-            }
-            x[i] = diag_inv*x[i] + (1 - omega) * orig_x;
-        }
-
-        for (int i = A->n_rows - 1; i >= 0; i--)
-        {
-            orig_x = x[i];            
-            x[i] = b[i];
-            row_start = A->idx1[i];
-            row_end = A->idx1[i+1];
-            if (row_start == row_end) continue;
-
-            diag_inv = omega / A->vals[row_start];
-            for (int j = row_start + 1; j < row_end; j++)
-            {
-                x[i] -= A->vals[j] * x[A->idx2[j]];
-            }
-            x[i] = diag_inv*x[i] + (1 - omega) * orig_x;
-        }
-    }
-}
-
 
 /**
  * Block Matrix (BSR) Relaxation Methods
@@ -179,120 +67,208 @@ void block_relax_init(BSRMatrix* A, double** D_inv_ptr)
 }
 
 
-// From Pyamg block_jacobi https://github.com/pyamg/pyamg/blob/e1fe54c93be1029c02ddcf84c2338a607b088703/pyamg/amg_core/relaxation.h#L914
-void jacobi(BSRMatrix* A, double* D_inv, Vector& b, Vector& x, Vector& tmp, int num_sweeps, 
-       double omega)
-{
-    double* rsum = new double[A->b_rows];
-    double* tmp_rsum = new double[A->b_rows];
-
-    double** bdata = (double**)(A->get_data());
-    int row_start, row_end;
-    char trans = 'T';
-    int n = A->b_rows;
-    int incr = 1;
-    double one = 1.0;
-    double zero = 0.0;
-
-    // Go through all sweeps
-    for (int iter = 0; iter < num_sweeps; iter++)
-    {
-        // Copy x to tmp vector
-        memcpy(tmp.data(), x.data(), tmp.size()*sizeof(double));
-
-        // Begin block Jacobi sweep
-        for (int row = 0; row < A->n_rows; row++)
-        {
-            row_start = A->idx1[row];
-            row_end = A->idx1[row+1];
-            if (row_start == row_end) continue;
-
-            memset(rsum, 0, n*sizeof(double));
-
-            // Block dot product between block row and vector x
-            for (int j = row_start; j < row_end; j++)
-            {
-                int col = A->idx2[j];
-                if (row != col) //ignore diagonal
-                {
-                    dgemv_(&trans, &n, &n, &one, bdata[j], &n, &((tmp[col * n])), &incr, &one, rsum, &incr);
-                }
-            }
-
-            // r = b - r / diag
-            // in block form, calculate as: block_r = (b - block_r)*D_inv
-            for (int k = 0; k < n; k++)
-                rsum[k] = b[row*n + k] - rsum[k];
-            dgemv_(&trans, &n, &n, &one, &(D_inv[row*A->b_size]), &n, rsum, &incr, &zero, tmp_rsum, &incr);
-            
-            // Weighted Jacobi calculation for row
-            for (int k = 0; k < A->b_rows; k++)
-                x[row*n + k] = omega*tmp_rsum[k] + (1.0-omega)*tmp[row*n + k];
-
-        }
-    } 
-
-    delete[] rsum;
-    delete[] tmp_rsum;
-}
-
-void sor(BSRMatrix* A, double* D_inv, Vector& b, Vector& x, Vector& tmp, int num_sweeps, 
-       double omega)
-{
-    double* rsum = new double[A->b_rows];
-    double* tmp_rsum = new double[A->b_rows];
-
-    double** bdata = (double**)(A->get_data());
-    int row_start, row_end;
-    char trans = 'T';
-    int n = A->b_rows;
-    int incr = 1;
-    double one = 1.0;
-    double zero = 0.0;
-
-    // Go through all sweeps
-    for (int iter = 0; iter < num_sweeps; iter++)
-    {
-        // Begin block Jacobi sweep
-        for (int row = 0; row < A->n_rows; row++)
-        {
-            row_start = A->idx1[row];
-            row_end = A->idx1[row+1];
-            if (row_start == row_end) continue;
-
-            memset(rsum, 0, n*sizeof(double));
-
-            // Block dot product between block row and vector x
-            for (int j = row_start; j < row_end; j++)
-            {
-                int col = A->idx2[j];
-                if (row != col) //ignore diagonal
-                {
-                    dgemv_(&trans, &n, &n, &one, bdata[j], &n, &((x[col * n])), &incr, &one, rsum, &incr);
-                }
-            }
-
-            // r = b - r / diag
-            // in block form, calculate as: block_r = (b - block_r)*D_inv
-            for (int k = 0; k < n; k++)
-                rsum[k] = b[row*n + k] - rsum[k];
-            dgemv_(&trans, &n, &n, &one, &(D_inv[row*A->b_size]), &n, rsum, &incr, &zero, tmp_rsum, &incr);
-            
-            // Weighted Jacobi calculation for row
-            for (int k = 0; k < A->b_rows; k++)
-                x[row*n + k] = omega*tmp_rsum[k] + (1.0-omega)*x[row*n + k];
-
-        }
-    } 
-
-    delete[] rsum;
-    delete[] tmp_rsum;
-}
-
 void block_relax_free(double* A_inv)
 {
     delete[] A_inv;
 }
 
 
+
+void jacobi_copy(Vector& tmp, Vector& x)
+{
+    memcpy(tmp.data(), x.data(), tmp.size()*sizeof(double));
 }
+void sor_copy(Vector& tmp, Vector& x)
+{
+}
+
+
+template <typename MatrixType>
+void calc_row_sum(MatrixType* A, double* x, int row_start, int row_end, double* row_sum, int row);
+
+template <typename MatrixType>
+void update_row(MatrixType* A, double* x, double* b, double* tmp, double* diag, double* row_sum, double omega, double* tmp_rsum);
+
+template <typename MatrixType>
+void relax_row(MatrixType* A, Vector& b, Vector& x, Vector& tmp, double omega, int row,
+    double* rsum, double* tmp_rsum, double* D_inv);
+
+
+template<>
+void calc_row_sum<CSRMatrix>(CSRMatrix* A, double* x, int row_start, int row_end, double* row_sum, int row)
+{
+    for (int j = row_start; j < row_end; j++)
+    {
+        int col = A->idx2[j];
+        if (col != row)
+            *row_sum += A->vals[j] * x[col];
+    }
+}
+
+template<>
+void calc_row_sum<BSRMatrix>(BSRMatrix* A, double* x, int row_start, int row_end, double* row_sum, int row)
+{
+    char trans = 'T';
+    int n = A->b_rows;
+    int incr = 1;
+    double one = 1.0;
+    double** bdata = (double**)(A->get_data());
+
+    // Block dot product between block row and vector x
+    for (int j = row_start; j < row_end; j++)
+    {
+        int col = A->idx2[j];
+        if (col != row)
+            dgemv_(&trans, &n, &n, &one, bdata[j], &n, &((x[col * n])), &incr, &one, row_sum, &incr);
+    }
+}
+
+template<>
+void update_row<CSRMatrix>(CSRMatrix* A, double* x, double* b, double* tmp, double* diag, double* row_sum, double omega, double* tmp_rsum)
+{
+    if (fabs(*diag) > zero_tol)
+        *x = ((1.0 - omega) * *tmp) + (omega*((*b - *row_sum) / *diag));
+}
+
+template<>
+void update_row<BSRMatrix>(BSRMatrix* A, double* x_row, double* b_row, double* tmp_row, double* D_inv_row, double* row_sum, double omega, double* tmp_rsum)
+{
+    char trans = 'T';
+    int n = A->b_rows;
+    int incr = 1;
+    double one = 1.0;
+    double zero = 0.0;
+
+    // r = b - r / diag
+    // in block form, calculate as: block_r = (b - block_r)*D_inv
+    for (int k = 0; k < n; k++)
+        row_sum[k] = b_row[k] - row_sum[k];
+    dgemv_(&trans, &n, &n, &one, D_inv_row, &n, row_sum, &incr, &zero, tmp_rsum, &incr);
+    
+    // Weighted update of block of rows        
+    for (int k = 0; k < A->b_rows; k++)
+        x_row[k] = omega*tmp_rsum[k] + (1.0-omega)*tmp_row[k];
+}
+
+template <>
+void relax_row<CSRMatrix>(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, double omega, int row,
+    double* rsum, double* tmp_rsum, double* D_inv)
+{
+    double diag = 0;
+    double row_sum = 0;
+    int row_start = A->idx1[row];
+    int row_end = A->idx1[row+1];
+
+    if (row_start < row_end && A->idx2[row_start] == row)
+        diag = A->vals[row_start++];
+    else return;
+
+    calc_row_sum(A, tmp.data(), row_start, row_end, &row_sum, row);
+    update_row(A, &(x[row]), &(b[row]), &(tmp[row]), &diag, &row_sum, omega, NULL);
+}
+
+template<>
+void relax_row<BSRMatrix>(BSRMatrix* A, Vector& b, Vector& x, Vector& tmp, double omega, int row, 
+        double* rsum, double* tmp_rsum, double* D_inv)
+{
+    int n = A->b_rows;
+
+    int row_start = A->idx1[row];
+    int row_end = A->idx1[row+1];
+    if (row_start == row_end) 
+        return;
+
+    memset(rsum, 0, n*sizeof(double));
+
+    // Block dot product between block row and vector x
+    calc_row_sum(A, tmp.data(), row_start, row_end, rsum, row);
+
+    update_row(A, &(x[row*n]), &(b[row*n]), &(tmp[row*n]), &(D_inv[row*(A->b_size)]),  
+            rsum, omega, tmp_rsum);
+}
+
+template <typename MatrixType>
+void relax_incr(MatrixType* A, Vector& b, Vector& x, Vector& tmp,
+        double omega, double* D_inv = NULL, double* rsum = NULL, double* tmp_rsum = NULL,
+        int* points = NULL, int points_len = 0)
+{
+    for (int row = 0; row < A->n_rows; row++)
+    {
+        relax_row(A, b, x, tmp, omega, row, rsum, tmp_rsum, D_inv);
+    }
+}
+
+template <typename MatrixType>
+void relax_decr(MatrixType* A, Vector& b, Vector& x, Vector& tmp,
+        double omega, double* D_inv = NULL, double* rsum = NULL, double* tmp_rsum = NULL,
+        int* points = NULL, int points_len = 0)
+{
+    for (int row = A->n_rows-1; row >= 0; row--)
+    {
+        relax_row(A, b, x, tmp, omega, row, rsum, tmp_rsum, D_inv);
+    }
+}
+
+template <typename MatrixType>
+void relax_points(MatrixType* A, Vector& b, Vector& x, Vector& tmp,
+        double omega, double* D_inv = NULL, double* rsum = NULL, double* tmp_rsum = NULL,
+        int* points = NULL, int points_len = 0)
+{
+    int idx = 0;
+    while (idx < points_len)
+    {
+        int row = points[idx++];
+        relax_row(A, b, x, tmp, omega, row, rsum, tmp_rsum, D_inv);
+    }
+}
+
+
+template <typename C, typename R, typename M>
+void relax(R relax_sweep, C copy, M* A, Vector& b, Vector& x, Vector& tmp,
+        int num_sweeps, double omega, double* D_inv = NULL, int* points = NULL, int points_len = 0)
+{
+    A->sort();
+    A->move_diag();
+
+    double* rsum = new double[A->b_rows];
+    double* tmp_rsum = new double[A->b_rows];
+
+    for (int iter = 0; iter < num_sweeps; iter++)
+    {
+        copy(tmp, x);
+        relax_sweep(A, b, x, tmp, omega, D_inv, rsum, tmp_rsum, points, points_len);
+    }
+
+    delete[] rsum;
+    delete[] tmp_rsum;
+}
+
+template <typename MatrixType>
+void jacobi(MatrixType* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps, 
+        double omega, double* D_inv, int* points, int points_len)
+{
+    auto F = relax_incr<MatrixType>;
+    if (points_len > 0 && points != NULL)
+        F = relax_points<MatrixType>;
+
+    relax(F, jacobi_copy, A, b, x, tmp, num_sweeps, omega, D_inv, points, points_len);        
+}
+
+template <typename MatrixType>
+void sor(MatrixType* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps,
+        double omega, double* D_inv, int* points, int points_len)
+{
+    auto F = relax_incr<MatrixType>;
+    if (points_len > 0 && points != NULL)
+        F = relax_points<MatrixType>;
+
+    relax(F, sor_copy, A, b, x, x, num_sweeps, omega, D_inv, points, points_len);
+}
+
+template void jacobi<CSRMatrix>(CSRMatrix*, Vector&, Vector&, Vector&, int, double, double*, int*, int);
+template void jacobi<BSRMatrix>(BSRMatrix*, Vector&, Vector&, Vector&, int, double, double*, int*, int);
+
+template void sor<CSRMatrix>(CSRMatrix*, Vector&, Vector&, Vector&, int, double, double*, int*, int);
+template void sor<BSRMatrix>(BSRMatrix*, Vector&, Vector&, Vector&, int, double, double*, int*, int);
+}
+

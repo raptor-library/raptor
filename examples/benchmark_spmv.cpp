@@ -7,13 +7,7 @@
 #include "clear_cache.hpp"
 #include <ctime>
 
-#include "raptor/core/matrix.hpp"
-#include "raptor/core/vector.hpp"
-#include "raptor/core/types.hpp"
-#include "raptor/gallery/stencil.hpp"
-#include "raptor/gallery/laplacian27pt.hpp"
-#include "raptor/gallery/diffusion.hpp"
-#include "raptor/gallery/matrix_IO.hpp"
+#include "raptor-sparse.hpp"
 
 using namespace raptor;
 

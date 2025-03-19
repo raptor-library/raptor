@@ -7,14 +7,7 @@
 #include <assert.h>
 
 #include "clear_cache.hpp"
-
-#include "raptor/core/par_matrix.hpp"
-#include "raptor/core/par_vector.hpp"
-#include "raptor/core/types.hpp"
-#include "raptor/gallery/par_stencil.hpp"
-#include "raptor/gallery/laplacian27pt.hpp"
-#include "raptor/gallery/diffusion.hpp"
-#include "raptor/gallery/par_matrix_IO.hpp"
+#include "raptor-sparse.hpp"
 #include "raptor/ruge_stuben/par_ruge_stuben_solver.hpp"
 
 #define eager_cutoff 8000

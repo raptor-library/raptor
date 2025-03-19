@@ -46,7 +46,7 @@ TEST(AnisoJacobiTest, TestsInUtil)
     // Iteration 1
     b.set_const_value(1.0);
     x.set_const_value(0.0);
-    sor(A, D_inv, b, x, tmp, 1);
+    sor(A, b, x, tmp, 1, 1.0, D_inv);
     f = fopen(x_ones_1, "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
@@ -57,7 +57,7 @@ TEST(AnisoJacobiTest, TestsInUtil)
     fclose(f);
 
     // Iteration 2
-    sor(A, D_inv, b, x, tmp, 1);
+    sor(A, b, x, tmp, 1, 1.0, D_inv);
     f = fopen(x_ones_2, "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
@@ -77,7 +77,7 @@ TEST(AnisoJacobiTest, TestsInUtil)
         b[i] = i;
     }
     x.set_const_value(0.0);
-    sor(A, D_inv, b, x, tmp, 1);
+    sor(A, b, x, tmp, 1, 1.0, D_inv);
     f = fopen(x_inc_1, "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
@@ -88,7 +88,7 @@ TEST(AnisoJacobiTest, TestsInUtil)
     fclose(f);
 
     // Iteration 2
-    sor(A, D_inv, b, x, tmp, 1);
+    sor(A, b, x, tmp, 1, 1.0, D_inv);
     f = fopen(x_inc_2, "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {

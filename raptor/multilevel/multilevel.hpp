@@ -150,9 +150,6 @@ namespace raptor
                         case SOR:
                             sor(A, x, b, tmp, num_smooth_sweeps, relax_weight);
                             break;
-                        case SSOR:
-                            ssor(A, x, b, tmp, num_smooth_sweeps, relax_weight);
-                            break;
                         default : 
                             sor(A, x, b, tmp, num_smooth_sweeps, relax_weight);
                             break;
@@ -178,9 +175,6 @@ namespace raptor
                             break;
                         case SOR:
                             sor(A, x, b, tmp, num_smooth_sweeps, relax_weight);
-                            break;
-                        case SSOR:
-                            ssor(A, x, b, tmp, num_smooth_sweeps, relax_weight);
                             break;
                         default : 
                             sor(A, x, b, tmp, num_smooth_sweeps, relax_weight);

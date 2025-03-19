@@ -10,22 +10,16 @@
 
 namespace raptor {
 
-// Standard Methods (CSR Matrix)
-void jacobi(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, 
-        int num_sweeps = 1, double omega = 1.0);
-void sor(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, 
-        int num_sweeps = 1, double omega = 1.0);
-void ssor(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, 
-        int num_sweeps = 1, double omega = 1.0);
+template <typename MatrixType>
+void jacobi(MatrixType* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps = 1, 
+        double omega = 1.0, double* D_inv = NULL, int* points = NULL, 
+        int points_len= 0);
+template <typename MatrixType>
+void sor(MatrixType* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps = 1, 
+        double omega = 1.0, double* D_inv = NULL, int* points = NULL, 
+        int points_len= 0);
 
-// Block Methods (BSR Matrix)
 void block_relax_init(BSRMatrix* A, double** D_inv_ptr);
-void jacobi(BSRMatrix* A, double* D_inv, Vector& b, Vector& x, Vector& tmp, 
-        int num_sweeps = 1, double omega = 1.0);
-void sor(BSRMatrix* A, double* D_inv, Vector& b, Vector& x, Vector& tmp, 
-        int num_sweeps = 1, double omega = 1.0);
-void ssor(BSRMatrix* A, double* D_inv, Vector& b, Vector& x, Vector& tmp, 
-        int num_sweeps = 1, double omega = 1.0);
 void block_relax_free(double* D_inv);
 
 

@@ -44,12 +44,11 @@
  *****    Options are:
  *****      - Jacobi: weighted jacobi for both on and off proc
  *****      - SOR: weighted jacobi off_proc, SOR on_proc
- *****      - SSOR : weighted jacobi off_proc, SSOR on_proc
  ***** num_smooth_sweeps : int (default 1)
  *****    Number of relaxation sweeps (both pre and post smoothing)
  *****    to be performed during each cycle of the AMG solve.
  ***** relax_weight : double
- *****    Weight used in Jacobi, SOR, or SSOR
+ *****    Weight used in Jacobi, SOR
  ***** max_coarse : int (default 50)
  *****    Maximum global num rows allowed in coarsest matrix
  ***** max_levels : int (default -1)
@@ -391,10 +390,6 @@ namespace raptor
                             sor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
                                     tap_level);
                             break;
-                        case SSOR:
-                            ssor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
-                                    tap_level);
-                            break;
                         default:
                             sor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
                                     tap_level);
@@ -433,10 +428,6 @@ namespace raptor
                             break;
                         case SOR:
                             sor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
-                                    tap_level);
-                            break;
-                        case SSOR:
-                            ssor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
                                     tap_level);
                             break;
                         default:

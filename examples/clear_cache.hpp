@@ -7,7 +7,7 @@
 #include <time.h>
 #include <math.h>
 #include <vector>
-#include "raptor/core/types.hpp"
+#include "raptor-sparse.hpp"
 
 using namespace raptor;
 
