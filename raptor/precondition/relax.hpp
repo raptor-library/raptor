@@ -23,5 +23,21 @@ void block_relax_init(BSRMatrix* A, double** D_inv_ptr);
 void block_relax_free(double* D_inv);
 
 
+
+void jacobi_copy(Vector& tmp, Vector& x);
+void sor_copy(Vector& tmp, Vector& x);
+
+
+template <typename MatrixType>
+void calc_row_sum(MatrixType* A, double* x, int row_start, int row_end, 
+        double* row_sum, int row);
+
+template <typename MatrixType>
+void update_row(MatrixType* A, double* x, double* b, double* tmp, double* diag, 
+        double* row_sum, double omega, double* tmp_rsum);
+
+
+
+
 }
 #endif

@@ -72,8 +72,6 @@ void block_relax_free(double* A_inv)
     delete[] A_inv;
 }
 
-
-
 void jacobi_copy(Vector& tmp, Vector& x)
 {
     memcpy(tmp.data(), x.data(), tmp.size()*sizeof(double));
@@ -81,17 +79,6 @@ void jacobi_copy(Vector& tmp, Vector& x)
 void sor_copy(Vector& tmp, Vector& x)
 {
 }
-
-
-template <typename MatrixType>
-void calc_row_sum(MatrixType* A, double* x, int row_start, int row_end, double* row_sum, int row);
-
-template <typename MatrixType>
-void update_row(MatrixType* A, double* x, double* b, double* tmp, double* diag, double* row_sum, double omega, double* tmp_rsum);
-
-template <typename MatrixType>
-void relax_row(MatrixType* A, Vector& b, Vector& x, Vector& tmp, double omega, int row,
-    double* rsum, double* tmp_rsum, double* D_inv);
 
 
 template<>
@@ -123,6 +110,9 @@ void calc_row_sum<BSRMatrix>(BSRMatrix* A, double* x, int row_start, int row_end
     }
 }
 
+template<typename MatrixType>
+void update_row(MatrixType* A, double* x, double* b, double* tmp, double* diag, double* row_sum, double omega, double* tmp_rsum);
+
 template<>
 void update_row<CSRMatrix>(CSRMatrix* A, double* x, double* b, double* tmp, double* diag, double* row_sum, double omega, double* tmp_rsum)
 {
@@ -149,6 +139,10 @@ void update_row<BSRMatrix>(BSRMatrix* A, double* x_row, double* b_row, double* t
     for (int k = 0; k < A->b_rows; k++)
         x_row[k] = omega*tmp_rsum[k] + (1.0-omega)*tmp_row[k];
 }
+
+template <typename MatrixType>
+void relax_row(MatrixType* A, Vector& b, Vector& x, Vector& tmp, double omega, 
+        int row, double* rsum, double* tmp_rsum, double* D_inv);
 
 template <>
 void relax_row<CSRMatrix>(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, double omega, int row,
@@ -270,5 +264,7 @@ template void jacobi<BSRMatrix>(BSRMatrix*, Vector&, Vector&, Vector&, int, doub
 
 template void sor<CSRMatrix>(CSRMatrix*, Vector&, Vector&, Vector&, int, double, double*, int*, int);
 template void sor<BSRMatrix>(BSRMatrix*, Vector&, Vector&, Vector&, int, double, double*, int*, int);
-}
 
+
+
+}

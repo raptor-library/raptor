@@ -8,15 +8,19 @@
 
 #include "raptor-sparse.hpp"
 #include "raptor/multilevel/par_level.hpp"
+#include "relax.hpp"
 
 namespace raptor {
 
-void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps = 1, double omega = 1.0, bool tap = false);
-void sor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps = 1, double omega = 1.0, bool tap = false);
-void ssor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps = 1, double omega = 1.0, bool tap = false);
+template <typename ParMatrixType>
+void jacobi(ParMatrixType* A, ParVector& x, ParVector& b, ParVector& tmp, 
+        int num_sweeps = 1, double omega = 1.0, bool tap = false, 
+        double* D_inv = NULL, int* points = NULL, int points_len = 0);
+template <typename ParMatrixType>
+void sor(ParMatrixType* A, ParVector& x, ParVector& b, ParVector& tmp, 
+        int num_sweeps = 1, double omega = 1.0, bool tap = false, 
+        double* D_inv = NULL, int* points = NULL, int points_len = 0);
+
 
 }
 

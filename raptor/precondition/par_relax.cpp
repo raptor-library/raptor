@@ -4,18 +4,6 @@
 #include "par_relax.hpp"
 
 namespace raptor {
-// Declare Private Methods
-void SOR_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
-        const std::vector<double>& dist_x, double omega);
-void SOR_backward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
-        const std::vector<double>& dist_x, double omega);
-void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, CommPkg* comm);
-void sor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, CommPkg* comm);
-void ssor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, CommPkg* comm);
-
 
 
 /**************************************************************
@@ -39,165 +27,118 @@ void ssor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
  ***** dist_x : data_t*
  *****    Vector of distant x-values recvd from other processes
  **************************************************************/
-void SOR_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
-        const std::vector<double>& dist_x, double omega)
+
+template<typename ParMatrixType>
+void relax_row(ParMatrixType* A, ParVector& b, ParVector& x,
+        ParVector& tmp, std::vector<double>& dist_x, double omega, int row, 
+        double* rsum, double* tmp_rsum, double* D_inv);
+
+template<>
+void relax_row<ParCSRMatrix>(ParCSRMatrix* A, ParVector& b, ParVector& x,
+        ParVector& tmp, std::vector<double>& dist_x, double omega, int row, 
+        double* rsum, double* tmp_rsum, double* D_inv)
 {
-    int start_on, end_on;
-    int start_off, end_off;
-    int col;
-    double diag;
-    double row_sum;
+    double diag = 0;
+    double row_sum = 0;
 
-    start_on = 0;
-    start_off = 0;
-    for (int i = 0; i < A->local_num_rows; i++)
+    int row_start = A->on_proc->idx1[row];
+    int row_end = A->on_proc->idx1[row+1];
+    if (row_start < row_end && A->on_proc->idx2[row_start] == row)
+        diag = A->on_proc->vals[row_start++];
+    else                
+        return;
+
+    calc_row_sum((CSRMatrix*)A->on_proc, tmp.local.data(), row_start, row_end, &row_sum, row);
+    
+    row_start = A->off_proc->idx1[row];
+    row_end = A->off_proc->idx1[row+1];
+    calc_row_sum((CSRMatrix*)A->off_proc, dist_x.data(), row_start, row_end,
+            &row_sum, row);
+
+    update_row((CSRMatrix*)A->on_proc, &(x[row]), &(b[row]), &(tmp[row]), &diag, &row_sum,
+            omega, NULL);
+}
+
+template<>
+void relax_row<ParBSRMatrix>(ParBSRMatrix* A, ParVector& b, ParVector& x,
+        ParVector& tmp, std::vector<double>& dist_x, double omega, int row, 
+        double* rsum, double* tmp_rsum, double* D_inv)
+{
+    int n = A->on_proc->b_rows;
+
+    int row_start = A->on_proc->idx1[row];
+    int row_end = A->on_proc->idx1[row+1];
+    if (row_start == row_end) return;
+
+    memset(rsum, 0, n*sizeof(double));
+
+    calc_row_sum((BSRMatrix*)A->on_proc, tmp.local.data(), row_start, row_end, 
+            rsum, row);
+
+    row_start = A->off_proc->idx1[row];
+    row_end = A->off_proc->idx1[row+1];
+    calc_row_sum((BSRMatrix*)A->off_proc, dist_x.data(), row_start, row_end, 
+            rsum, row);
+
+    update_row((BSRMatrix*)A->on_proc, &(x[row*n]), &(b[row*n]), &(tmp[row*n]),
+            &(D_inv[row*A->on_proc->b_size]), rsum, omega, tmp_rsum);
+}
+
+template <typename ParMatrixType>
+void relax_incr(ParMatrixType* A, ParVector& b, ParVector& x, ParVector& tmp,
+        std::vector<double>& dist_x, double omega, double* D_inv = NULL, 
+        double* rsum = NULL, double* tmp_rsum = NULL, int* points = NULL, 
+        int points_len = 0)
+{
+    for (int row = 0; row < A->local_num_rows; row++)
+    {    
+        relax_row(A, b, x, tmp, dist_x, omega, row, rsum, tmp_rsum, D_inv);
+    }
+
+}
+
+template <typename ParMatrixType>
+void relax_points(ParMatrixType* A, ParVector& b, ParVector& x, ParVector& tmp,
+        std::vector<double>& dist_x, double omega, double* D_inv = NULL, 
+        double* rsum = NULL, double* tmp_rsum = NULL, int* points = NULL, 
+        int points_len = 0)
+{
+    int idx = 0;
+    while (idx < points_len)
     {
-        row_sum = 0;
-        end_on = A->on_proc->idx1[i+1];
-        if (A->on_proc->idx2[start_on] == i)
-        {
-            diag = A->on_proc->vals[start_on];
-            start_on++;
-        }        
-        else continue;
-        for (int j = start_on; j < end_on; j++)
-        {
-            col = A->on_proc->idx2[j];
-            row_sum += A->on_proc->vals[j] * x[col];
-        }
-        start_on = end_on;
-
-        end_off = A->off_proc->idx1[i+1];
-        for (int j = start_off; j < end_off; j++)
-        {
-            col = A->off_proc->idx2[j];
-            row_sum += A->off_proc->vals[j] * dist_x[col];
-        }
-        start_off = end_off;
-
-//        x[i] = ((1.0 - omega)*x[i]) + (omega*((y[i] - row_sum) / diag));
-        x[i] = (x[i] + omega * (y[i] - x[i] - row_sum)) / diag;
+        int row = points[idx++];
+        relax_row(A, b, x, tmp, dist_x, omega, row, rsum, tmp_rsum, D_inv);
     }
 }
 
-void SOR_backward(ParCSRMatrix* A, ParVector& x, const ParVector& y,
-        const std::vector<double>& dist_x, double omega)
-{
-    int start, end, col;
-    double diag;
-    double row_sum;
-
-    for (int i = A->local_num_rows - 1; i >= 0; i--)
-    {
-        row_sum = 0;
-        start = A->on_proc->idx1[i];
-        end = A->on_proc->idx1[i+1];
-        if (A->on_proc->idx2[start] == i)
-        {
-            diag = A->on_proc->vals[start];
-            start++;
-        }        
-        else continue;
-        for (int j = start; j < end; j++)
-        {
-            col = A->on_proc->idx2[j];
-            row_sum += A->on_proc->vals[j] * x[col];
-        }
-
-        start = A->off_proc->idx1[i];
-        end = A->off_proc->idx1[i+1];
-        for (int j = start; j < end; j++)
-        {
-            col = A->off_proc->idx2[j];
-            row_sum += A->off_proc->vals[j] * dist_x[col];
-        }
-
-        x[i] = ((1.0 - omega)*x[i]) + (omega*((y[i] - row_sum) / diag));
-    }
-}
-
-void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, CommPkg* comm)
+template <typename ParMatrixType, typename SweepType, typename CopyType>
+void relax(SweepType relax_sweep, CopyType copy, ParMatrixType* A, 
+        ParVector& b, ParVector& x, ParVector& tmp, CommPkg* comm,
+        int num_sweeps, double omega, double* D_inv = NULL, 
+        int* points = NULL, int points_len = 0)
 {
     A->on_proc->sort();
     A->off_proc->sort();
     A->on_proc->move_diag();
-  
-    int start, end, col;
-    double diag, row_sum;
+
+    double* rsum = new double[A->on_proc->b_rows];
+    double* tmp_rsum = new double[A->on_proc->b_rows];
 
     for (int iter = 0; iter < num_sweeps; iter++)
     {
         comm->communicate(x);
         std::vector<double>& dist_x = comm->get_buffer<double>();
-        for (int i = 0; i < A->local_num_rows; i++)
-        {
-            tmp[i] = x[i];
-        }
 
-        for (int i = 0; i < A->local_num_rows; i++)
-        {    
-            row_sum = 0;
+        copy(tmp.local, x.local);
 
-      
-            start = A->on_proc->idx1[i];
-            end = A->on_proc->idx1[i+1];
-            if (start == end)
-                continue;
-
-            diag = A->on_proc->vals[start++];
-
-            for (int j = start; j < end; j++)
-            {
-                col = A->on_proc->idx2[j];
-                row_sum += A->on_proc->vals[j] * tmp[col];
-            }
-
-            start = A->off_proc->idx1[i];
-            end = A->off_proc->idx1[i+1];
-            for (int j = start; j < end; j++)
-            {
-                col = A->off_proc->idx2[j];
-                row_sum += A->off_proc->vals[j] * dist_x[col];
-            }
-
-            if (fabs(diag) > zero_tol)
-            {
-                x[i] = ((1.0 - omega)*tmp[i]) + (omega*((b[i] - row_sum) / diag));
-            }
-        }
+        relax_sweep(A, b, x, tmp, dist_x, omega, D_inv, rsum, tmp_rsum, 
+                points, points_len);
     }
+
+    delete[] rsum;
+    delete[] tmp_rsum;
 }
-
-void sor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, CommPkg* comm)
-{
-    A->on_proc->sort();
-    A->off_proc->sort();
-    A->on_proc->move_diag();
-
-    for (int iter = 0; iter < num_sweeps; iter++)
-    {
-        comm->communicate(x);
-        SOR_forward(A, x, b, comm->get_buffer<double>(), omega);
-    }
-}
-
-
-void ssor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, CommPkg* comm)
-{
-    A->on_proc->sort();
-    A->off_proc->sort();
-    A->on_proc->move_diag();
-
-    for (int iter = 0; iter < num_sweeps; iter++)
-    {
-        comm->communicate(x);
-        SOR_forward(A, x, b, comm->get_buffer<double>(), omega);
-        SOR_backward(A, x, b, comm->get_buffer<double>(), omega);
-    }
-}
+    
 
 /**************************************************************
  *****  Relaxation Method 
@@ -211,10 +152,8 @@ void ssor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
  ***** num_sweeps : int
  *****    Number of relaxation sweeps to perform
  **************************************************************/
-void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, bool tap)
+void set_comm(ParCSRMatrix* A, CommPkg** comm, bool tap)
 {
-    CommPkg* comm;
     if (tap)
     {
         if (!A->tap_comm) 
@@ -222,7 +161,7 @@ void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
             A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
                     A->on_proc_column_map);
         }
-        comm = A->tap_comm;
+        *comm = A->tap_comm;
     }
     else
     {
@@ -231,61 +170,50 @@ void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
             A->comm = new ParComm(A->partition, A->off_proc_column_map,
                     A->on_proc_column_map);
         }
-        comm = A->comm;
+        *comm = A->comm;
     }
-
-    jacobi_helper(A, x, b, tmp, num_sweeps, omega, comm);
 }
-void sor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, bool tap)
+
+template <typename ParMatrixType>
+void jacobi(ParMatrixType* A, ParVector& x, ParVector& b, ParVector& tmp, 
+        int num_sweeps, double omega, bool tap, double* D_inv,int* points,
+        int points_len)
 {
     CommPkg* comm;
-    if (tap)
-    {
-        if (!A->tap_comm) 
-        {
-            A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
-                    A->on_proc_column_map);
-        }
-        comm = A->tap_comm;
-    }
-    else
-    {
-        if (!A->comm) 
-        {
-            A->comm = new ParComm(A->partition, A->off_proc_column_map,
-                    A->on_proc_column_map);
-        }
-        comm = A->comm;
-    }
-
-    sor_helper(A, x, b, tmp, num_sweeps, omega, comm);
+    set_comm(A, &comm, tap);
+    auto F = relax_incr<ParMatrixType>;
+    if (points_len > 0 && points != NULL)
+        F = relax_points<ParMatrixType>;
+    relax(F, jacobi_copy, A, b, x, tmp, comm, num_sweeps, omega, D_inv, 
+            points, points_len);
 }
-void ssor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
-        int num_sweeps, double omega, bool tap)
+
+template <typename ParMatrixType>
+void sor(ParMatrixType* A, ParVector& x, ParVector& b, ParVector& tmp, 
+        int num_sweeps, double omega, bool tap, double* D_inv, int* points,
+        int points_len)
 {
     CommPkg* comm;
-    if (tap)
-    {
-        if (!A->tap_comm) 
-        {
-            A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,
-                    A->on_proc_column_map);
-        }
-        comm = A->tap_comm;
-    }
-    else
-    {
-        if (!A->comm) 
-        {
-            A->comm = new ParComm(A->partition, A->off_proc_column_map,
-                    A->on_proc_column_map);
-        }
-        comm = A->comm;
-    }
-
-    ssor_helper(A, x, b, tmp, num_sweeps, omega, comm);
+    set_comm(A, &comm, tap);
+    auto F = relax_incr<ParMatrixType>;
+    if (points_len > 0 && points != NULL)
+        F = relax_points<ParMatrixType>;
+    relax(F, sor_copy, A, b, x, x, comm, num_sweeps, omega, D_inv, 
+            points, points_len);
 }
+
+
+template void jacobi(ParCSRMatrix*, ParVector&, ParVector&, ParVector&, 
+        int, double, bool, double*, int*, int);
+template void jacobi(ParBSRMatrix*, ParVector&, ParVector&, ParVector&, 
+        int, double, bool, double*, int*, int);
+
+
+template void sor(ParCSRMatrix*, ParVector&, ParVector&, ParVector&, 
+        int, double, bool, double*, int*, int);
+template void sor(ParBSRMatrix*, ParVector&, ParVector&, ParVector&, 
+        int, double, bool, double*, int*, int);
+
 
 
 }
