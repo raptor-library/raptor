@@ -15,11 +15,13 @@ namespace raptor {
 template <typename ParMatrixType>
 void jacobi(ParMatrixType* A, ParVector& x, ParVector& b, ParVector& tmp, 
         int num_sweeps = 1, double omega = 1.0, bool tap = false, 
-        double* D_inv = NULL, int* points = NULL, int points_len = 0);
+        double* D_inv = NULL, int* points = NULL, int points_len = 0,
+        float S = 1.0);
 template <typename ParMatrixType>
 void sor(ParMatrixType* A, ParVector& x, ParVector& b, ParVector& tmp, 
         int num_sweeps = 1, double omega = 1.0, bool tap = false, 
-        double* D_inv = NULL, int* points = NULL, int points_len = 0);
+        double* D_inv = NULL, int* points = NULL, int points_len = 0,
+        float S = 1.0);
 
 
 }

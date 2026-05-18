@@ -1,6 +1,7 @@
 // Copyright (c) 2015-2017, RAPtor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "relax.hpp"
+#include <cstdlib>
 
 extern "C" {
     // LU decomoposition of a general matrix
@@ -82,18 +83,35 @@ void sor_copy(Vector& tmp, Vector& x)
 
 
 template<>
-void calc_row_sum<CSRMatrix>(CSRMatrix* A, double* x, int row_start, int row_end, double* row_sum, int row)
+void calc_row_sum<CSRMatrix>(CSRMatrix* A, double* x, int row_start, int row_end, double* row_sum, int row, float S)
 {
-    for (int j = row_start; j < row_end; j++)
+    if (S == 1)
     {
-        int col = A->idx2[j];
-        if (col != row)
-            *row_sum += A->vals[j] * x[col];
+        for (int j = row_start; j < row_end; j++)
+        {
+            int col = A->idx2[j];
+            if (col != row)
+                *row_sum += A->vals[j] * x[col];
+        }
+    }
+    else
+    {
+        float p = 1.0 / S;
+        for (int j = row_start; j < row_end; j++)
+        {
+            int col = A->idx2[j];
+            if (col != row)
+            {
+                double r = (double)rand() / RAND_MAX;
+                if (r < p)
+                    *row_sum += (A->vals[j]*S) * x[col];
+            }
+        }
     }
 }
 
 template<>
-void calc_row_sum<BSRMatrix>(BSRMatrix* A, double* x, int row_start, int row_end, double* row_sum, int row)
+void calc_row_sum<BSRMatrix>(BSRMatrix* A, double* x, int row_start, int row_end, double* row_sum, int row, float S)
 {
     char trans = 'T';
     int n = A->b_rows;
@@ -111,17 +129,17 @@ void calc_row_sum<BSRMatrix>(BSRMatrix* A, double* x, int row_start, int row_end
 }
 
 template<typename MatrixType>
-void update_row(MatrixType* A, double* x, double* b, double* tmp, double* diag, double* row_sum, double omega, double* tmp_rsum);
+void update_row(MatrixType* A, double* x, double* b, double* tmp, double* diag, double* row_sum, double omega, double* tmp_rsum, float S);
 
 template<>
-void update_row<CSRMatrix>(CSRMatrix* A, double* x, double* b, double* tmp, double* diag, double* row_sum, double omega, double* tmp_rsum)
+void update_row<CSRMatrix>(CSRMatrix* A, double* x, double* b, double* tmp, double* diag, double* row_sum, double omega, double* tmp_rsum, float S)
 {
     if (fabs(*diag) > zero_tol)
-        *x = ((1.0 - omega) * *tmp) + (omega*((*b - *row_sum) / *diag));
+        *x = ((1.0 - omega) * *tmp) + (omega*((*b - *row_sum) / (*diag * S)));
 }
 
 template<>
-void update_row<BSRMatrix>(BSRMatrix* A, double* x_row, double* b_row, double* tmp_row, double* D_inv_row, double* row_sum, double omega, double* tmp_rsum)
+void update_row<BSRMatrix>(BSRMatrix* A, double* x_row, double* b_row, double* tmp_row, double* D_inv_row, double* row_sum, double omega, double* tmp_rsum, float S)
 {
     char trans = 'T';
     int n = A->b_rows;
@@ -142,11 +160,11 @@ void update_row<BSRMatrix>(BSRMatrix* A, double* x_row, double* b_row, double* t
 
 template <typename MatrixType>
 void relax_row(MatrixType* A, Vector& b, Vector& x, Vector& tmp, double omega, 
-        int row, double* rsum, double* tmp_rsum, double* D_inv);
+        int row, double* rsum, double* tmp_rsum, double* D_inv, float S);
 
 template <>
 void relax_row<CSRMatrix>(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, double omega, int row,
-    double* rsum, double* tmp_rsum, double* D_inv)
+    double* rsum, double* tmp_rsum, double* D_inv, float S)
 {
     double diag = 0;
     double row_sum = 0;
@@ -157,13 +175,13 @@ void relax_row<CSRMatrix>(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, doubl
         diag = A->vals[row_start++];
     else return;
 
-    calc_row_sum(A, tmp.data(), row_start, row_end, &row_sum, row);
-    update_row(A, &(x[row]), &(b[row]), &(tmp[row]), &diag, &row_sum, omega, NULL);
+    calc_row_sum(A, tmp.data(), row_start, row_end, &row_sum, row, S);
+    update_row(A, &(x[row]), &(b[row]), &(tmp[row]), &diag, &row_sum, omega, NULL, S);
 }
 
 template<>
 void relax_row<BSRMatrix>(BSRMatrix* A, Vector& b, Vector& x, Vector& tmp, double omega, int row, 
-        double* rsum, double* tmp_rsum, double* D_inv)
+        double* rsum, double* tmp_rsum, double* D_inv, float S)
 {
     int n = A->b_rows;
 
@@ -184,42 +202,43 @@ void relax_row<BSRMatrix>(BSRMatrix* A, Vector& b, Vector& x, Vector& tmp, doubl
 template <typename MatrixType>
 void relax_incr(MatrixType* A, Vector& b, Vector& x, Vector& tmp,
         double omega, double* D_inv = NULL, double* rsum = NULL, double* tmp_rsum = NULL,
-        int* points = NULL, int points_len = 0)
+        int* points = NULL, int points_len = 0, float S = 1.0)
 {
     for (int row = 0; row < A->n_rows; row++)
     {
-        relax_row(A, b, x, tmp, omega, row, rsum, tmp_rsum, D_inv);
+        relax_row(A, b, x, tmp, omega, row, rsum, tmp_rsum, D_inv, S);
     }
 }
 
 template <typename MatrixType>
 void relax_decr(MatrixType* A, Vector& b, Vector& x, Vector& tmp,
         double omega, double* D_inv = NULL, double* rsum = NULL, double* tmp_rsum = NULL,
-        int* points = NULL, int points_len = 0)
+        int* points = NULL, int points_len = 0, float S = 1.0)
 {
     for (int row = A->n_rows-1; row >= 0; row--)
     {
-        relax_row(A, b, x, tmp, omega, row, rsum, tmp_rsum, D_inv);
+        relax_row(A, b, x, tmp, omega, row, rsum, tmp_rsum, D_inv, S);
     }
 }
 
 template <typename MatrixType>
 void relax_points(MatrixType* A, Vector& b, Vector& x, Vector& tmp,
         double omega, double* D_inv = NULL, double* rsum = NULL, double* tmp_rsum = NULL,
-        int* points = NULL, int points_len = 0)
+        int* points = NULL, int points_len = 0, float S = 1.0)
 {
     int idx = 0;
     while (idx < points_len)
     {
         int row = points[idx++];
-        relax_row(A, b, x, tmp, omega, row, rsum, tmp_rsum, D_inv);
+        relax_row(A, b, x, tmp, omega, row, rsum, tmp_rsum, D_inv, S);
     }
 }
 
 
 template <typename C, typename R, typename M>
 void relax(R relax_sweep, C copy, M* A, Vector& b, Vector& x, Vector& tmp,
-        int num_sweeps, double omega, double* D_inv = NULL, int* points = NULL, int points_len = 0)
+        int num_sweeps, double omega, double* D_inv = NULL, int* points = NULL, 
+        int points_len = 0, float S = 1.0)
 {
     A->sort();
     A->move_diag();
@@ -227,10 +246,13 @@ void relax(R relax_sweep, C copy, M* A, Vector& b, Vector& x, Vector& tmp,
     double* rsum = new double[A->b_rows];
     double* tmp_rsum = new double[A->b_rows];
 
+    float seed = time(NULL);
+
     for (int iter = 0; iter < num_sweeps; iter++)
     {
+        srand(seed);
         copy(tmp, x);
-        relax_sweep(A, b, x, tmp, omega, D_inv, rsum, tmp_rsum, points, points_len);
+        relax_sweep(A, b, x, tmp, omega, D_inv, rsum, tmp_rsum, points, points_len, S);
     }
 
     delete[] rsum;
@@ -239,31 +261,31 @@ void relax(R relax_sweep, C copy, M* A, Vector& b, Vector& x, Vector& tmp,
 
 template <typename MatrixType>
 void jacobi(MatrixType* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps, 
-        double omega, double* D_inv, int* points, int points_len)
+        double omega, double* D_inv, int* points, int points_len, float S)
 {
     auto F = relax_incr<MatrixType>;
     if (points_len > 0 && points != NULL)
         F = relax_points<MatrixType>;
 
-    relax(F, jacobi_copy, A, b, x, tmp, num_sweeps, omega, D_inv, points, points_len);        
+    relax(F, jacobi_copy, A, b, x, tmp, num_sweeps, omega, D_inv, points, points_len, S);        
 }
 
 template <typename MatrixType>
 void sor(MatrixType* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps,
-        double omega, double* D_inv, int* points, int points_len)
+        double omega, double* D_inv, int* points, int points_len, float S)
 {
     auto F = relax_incr<MatrixType>;
     if (points_len > 0 && points != NULL)
         F = relax_points<MatrixType>;
 
-    relax(F, sor_copy, A, b, x, x, num_sweeps, omega, D_inv, points, points_len);
+    relax(F, sor_copy, A, b, x, x, num_sweeps, omega, D_inv, points, points_len, S);
 }
 
-template void jacobi<CSRMatrix>(CSRMatrix*, Vector&, Vector&, Vector&, int, double, double*, int*, int);
-template void jacobi<BSRMatrix>(BSRMatrix*, Vector&, Vector&, Vector&, int, double, double*, int*, int);
+template void jacobi<CSRMatrix>(CSRMatrix*, Vector&, Vector&, Vector&, int, double, double*, int*, int, float);
+template void jacobi<BSRMatrix>(BSRMatrix*, Vector&, Vector&, Vector&, int, double, double*, int*, int, float);
 
-template void sor<CSRMatrix>(CSRMatrix*, Vector&, Vector&, Vector&, int, double, double*, int*, int);
-template void sor<BSRMatrix>(BSRMatrix*, Vector&, Vector&, Vector&, int, double, double*, int*, int);
+template void sor<CSRMatrix>(CSRMatrix*, Vector&, Vector&, Vector&, int, double, double*, int*, int, float);
+template void sor<BSRMatrix>(BSRMatrix*, Vector&, Vector&, Vector&, int, double, double*, int*, int, float);
 
 
 

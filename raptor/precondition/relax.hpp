@@ -13,11 +13,11 @@ namespace raptor {
 template <typename MatrixType>
 void jacobi(MatrixType* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps = 1, 
         double omega = 1.0, double* D_inv = NULL, int* points = NULL, 
-        int points_len= 0);
+        int points_len= 0, float S = 1.0);
 template <typename MatrixType>
 void sor(MatrixType* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps = 1, 
         double omega = 1.0, double* D_inv = NULL, int* points = NULL, 
-        int points_len= 0);
+        int points_len= 0, float S = 1.0);
 
 void block_relax_init(BSRMatrix* A, double** D_inv_ptr);
 void block_relax_free(double* D_inv);
@@ -30,11 +30,11 @@ void sor_copy(Vector& tmp, Vector& x);
 
 template <typename MatrixType>
 void calc_row_sum(MatrixType* A, double* x, int row_start, int row_end, 
-        double* row_sum, int row);
+        double* row_sum, int row, float S = 1.0);
 
 template <typename MatrixType>
 void update_row(MatrixType* A, double* x, double* b, double* tmp, double* diag, 
-        double* row_sum, double omega, double* tmp_rsum);
+        double* row_sum, double omega, double* tmp_rsum, float S = 1.0);
 
 
 

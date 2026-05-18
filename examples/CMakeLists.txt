@@ -3,6 +3,9 @@ include_directories(${raptor_INCDIR})
 add_executable(benchmark_spmv benchmark_spmv.cpp)
 target_link_libraries(benchmark_spmv raptor)
 
+add_executable(benchmark_jacobi benchmark_jacobi.cpp)
+target_link_libraries(benchmark_jacobi raptor)
+
 if (WITH_HYPRE)
     add_executable(benchmark_rss benchmark_rss.cpp)
     target_link_libraries(benchmark_rss raptor ${MPI_LIBRARIES})
