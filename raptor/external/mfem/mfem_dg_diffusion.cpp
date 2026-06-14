@@ -68,7 +68,7 @@ raptor::ParCSRMatrix* mfem_dg_diffusion(raptor::ParVector& x_raptor,
 
     A->SetOwnerFlags(-1, -1, -1);
     hypre_ParCSRMatrix* A_hypre = A->StealData();
-    raptor::ParCSRMatrix* A_raptor = convert(A_hypre, comm);
+    raptor::ParCSRMatrix* A_raptor = raptor::convert(A_hypre, comm);
     x_raptor.resize(A_raptor->global_num_rows, A_raptor->local_num_rows);
     b_raptor.resize(A_raptor->global_num_rows, A_raptor->local_num_rows);
     hypre_ParVector* x_hypre = X->StealParVector();
