@@ -24,6 +24,11 @@ raptor::ParCSRMatrix* mfem_linear_elasticity(raptor::ParVector& x_raptor,
     mesh = new Mesh(mesh_file, 1, 1);
     mesh_dim = mesh->Dimension();
 
+    MFEM_VERIFY(mesh->attributes.Max() >= 2 &&
+            mesh->bdr_attributes.Max() >= 2,
+            "Linear elasticity requires a mesh with at least two material "
+            "attributes and two boundary attributes.");
+
     // Uniform refinement on serial mesh
     for (int i = 0; i < seq_n_refines; i++)
     {
@@ -111,4 +116,3 @@ raptor::ParCSRMatrix* mfem_linear_elasticity(raptor::ParVector& x_raptor,
 
     return A_raptor;
 }
-
