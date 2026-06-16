@@ -20,6 +20,10 @@ int main(int argc, char** argv)
 
 TEST(TestOnePointInterp, TestsInRuge_Stuben) {
 	int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	int size; MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+	if (size != 4) GTEST_SKIP() << "requires exactly 4 MPI processes";
+
 	constexpr std::size_t n{16};
 	std::vector<int> grid;
 

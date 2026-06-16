@@ -877,6 +877,8 @@ void BSCMatrix::move_diag()
 template <typename T>
 void remove_duplicates_helper(COOMatrix* A, std::vector<T>& vals)
 {
+    if (A->nnz == 0) return;
+
     if (!A->sorted)
     {
         A->sort();
