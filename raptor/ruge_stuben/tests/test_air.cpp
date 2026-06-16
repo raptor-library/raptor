@@ -4,7 +4,10 @@
 #include "raptor/ruge_stuben/par_air_solver.hpp"
 #include "raptor/tests/compare.hpp"
 
+#include <memory>
+
 using namespace raptor;
+using parcsr_ptr = std::unique_ptr<ParCSRMatrix>;
 
 int main(int argc, char** argv)
 {
@@ -24,7 +27,7 @@ TEST(TestOnePointInterp, TestsInRuge_Stuben) {
 
 	std::vector<double> stencil{{-1., 2, -1}};
 
-	auto A = par_stencil_grid(stencil.data(), grid.data(), 1);
+	parcsr_ptr A{par_stencil_grid(stencil.data(), grid.data(), 1)};
 	auto get_split = [](const Matrix &, const std::vector<int> & colmap) {
 		std::vector<int> split(colmap.size(), 0);
 
@@ -36,7 +39,7 @@ TEST(TestOnePointInterp, TestsInRuge_Stuben) {
 	splitting_t split{get_split(*A->on_proc, A->on_proc_column_map),
 	                  get_split(*A->off_proc, A->off_proc_column_map)};
 
-	auto S = A->copy();
+	parcsr_ptr S{A->copy()};
 
 	{ // delete a connection to force interpolating from off_proc
 		if (rank == 1) {
@@ -51,7 +54,7 @@ TEST(TestOnePointInterp, TestsInRuge_Stuben) {
 			}
 		}
 	}
-	auto P = one_point_interpolation(*A, *S, split);
+	parcsr_ptr P{one_point_interpolation(*A, *S, split)};
 
 	auto & diag = *P->on_proc;
 	auto & offd = *P->off_proc;
@@ -96,7 +99,7 @@ TEST(TestLocalAIR, TestsInRuge_Stuben) {
 
 	std::vector<double> stencil{{-1., 2, -1}};
 
-	auto A = par_stencil_grid(stencil.data(), grid.data(), 1);
+	parcsr_ptr A{par_stencil_grid(stencil.data(), grid.data(), 1)};
 	auto get_split = [](const Matrix &, const std::vector<int> & colmap) {
 		std::vector<int> split(colmap.size(), 0);
 
@@ -107,9 +110,8 @@ TEST(TestLocalAIR, TestsInRuge_Stuben) {
 	};
 	splitting_t split{get_split(*A->on_proc, A->on_proc_column_map),
 	                  get_split(*A->off_proc, A->off_proc_column_map)};
-	auto S = A->copy();
-
-	auto R = local_air(*A, *S, split);
+	parcsr_ptr S{A->copy()};
+	parcsr_ptr R{local_air(*A, *S, split)};
 
 	using expect_t = std::map<int, double>;
 	auto get_expected = [](int row) -> expect_t {
@@ -200,8 +202,10 @@ ParCSRMatrix * gen(std::size_t n) {
 
 	return A;
 }
+
+
 TEST(UpwindAdvection, TestsInRuge_Stuben) {
-	auto A = gen(100);
+	parcsr_ptr A{gen(100)};
 
 	ParAIRSolver ml;
 	ml.max_levels = 2;

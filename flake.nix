@@ -9,7 +9,10 @@
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        pkgs = nixpkgs.legacyPackages.${system};
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [ (_: prev: { mpi = prev.mpich; }) ];
+        };
       in {
         packages.default = pkgs.stdenv.mkDerivation {
           pname = "raptor";

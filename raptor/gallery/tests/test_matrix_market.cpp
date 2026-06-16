@@ -33,6 +33,7 @@ TEST(AnisoTest, TestsInGallery)
 
     remove(f_out);
      
+    delete Amm_out;
     delete Amm;
 } // end of TEST(AnisoTest, TestsInGallery) //
 

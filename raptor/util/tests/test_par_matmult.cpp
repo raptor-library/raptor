@@ -37,4 +37,13 @@ TEST(ParBSRMatrixMult, TestsInUtil)
 	auto Cb = Ab->mult(Bb);
 	auto C_bsr = Cb->to_ParCSR();
 	compare(C, C_bsr);
+
+	delete C_bsr;
+	delete Cb;
+	delete Bb;
+	delete Ab;
+	delete C;
+	delete B;
+	delete A;
+	delete[] stencil;
 }

@@ -72,5 +72,8 @@ TEST(LaplacianSpMVTest, TestsInUtil)
     } 
     fclose(f);
 
+    delete A_sten;
+    delete[] stencil;
+
 } // end of TEST(LaplacianSpMVTest, TestsInUtil) //
 

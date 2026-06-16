@@ -81,5 +81,8 @@ TEST(AnisoSpMVTest, TestsInUtil)
     } 
     fclose(f);
 
+    delete A_sten;
+    delete[] stencil;
+
 } // end of TEST(AnisoSpMVTest, TestsInUtil) //
 

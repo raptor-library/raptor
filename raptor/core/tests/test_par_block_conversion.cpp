@@ -31,6 +31,7 @@ TEST(ParBlockConversionTest, TestsInCore)
     std::vector<int> grid(2, num_procs*block_n);
     double* stencil = diffusion_stencil_2d(eps, theta);
     ParCSRMatrix* A = par_stencil_grid(stencil, grid.data(), 2);
+    delete[] stencil;
 
     ParBSRMatrix* A_bsr = A->to_ParBSR(block_n, block_n);
     ParCSRMatrix* A_csr_from_bsr = A_bsr->to_ParCSR();

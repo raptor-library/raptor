@@ -79,6 +79,7 @@ TEST(ParAnisoSpMVTest, TestsInUtil)
     r_norm_scaled = r.norm(2);
     ASSERT_NEAR(r_norm, r_norm_scaled, 1e-07);
 
+    delete A_scale;
     delete A;
     delete[] stencil;
 

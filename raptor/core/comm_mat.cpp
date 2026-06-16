@@ -138,8 +138,10 @@ void CommPkg::init_par_mat_comm(ParBSRMatrix* A, std::vector<char>& send_buffer,
         }
         rowptr[i+1] = ctr;
     }
-    return init_mat_comm(send_buffer, rowptr, col_indices, values, 
+    init_mat_comm(send_buffer, rowptr, col_indices, values,
             A->on_proc->b_rows, A->on_proc->b_cols, has_vals);
+    if (has_vals)
+        for (double* v : values) delete[] v;
 }
 
 CSRMatrix* ParComm::communicate(const std::vector<int>& rowptr, 

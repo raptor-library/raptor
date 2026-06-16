@@ -111,14 +111,16 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
         compare(ml->levels[level+1]->A, A_array[level+1]);
     }
 
-    hypre_BoomerAMGDestroy(solver_data);    
+    hypre_BoomerAMGDestroy(solver_data);
+    HYPRE_IJVectorDestroy(x_h_ij);
+    HYPRE_IJVectorDestroy(b_h_ij);
     HYPRE_IJMatrixDestroy(Aij);
     delete ml;
     delete A;
 
 
     /************************************
-     **** Test Anisotropic Diffusion 
+     **** Test Anisotropic Diffusion
      ***********************************/
     n = 100;
     grid.resize(2);
@@ -157,7 +159,9 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
         compare(ml->levels[level+1]->A, A_array[level+1]);
     }
 
-    hypre_BoomerAMGDestroy(solver_data);    
+    hypre_BoomerAMGDestroy(solver_data);
+    HYPRE_IJVectorDestroy(x_h_ij);
+    HYPRE_IJVectorDestroy(b_h_ij);
     HYPRE_IJMatrixDestroy(Aij);
     delete ml;
     delete A;
@@ -201,7 +205,9 @@ TEST(TestHypreAgg, TestsInRuge_Stuben)
         compare(ml->levels[level+1]->A, A_array[level+1]);
     }
 
-    hypre_BoomerAMGDestroy(solver_data);    
+    hypre_BoomerAMGDestroy(solver_data);
+    HYPRE_IJVectorDestroy(x_h_ij);
+    HYPRE_IJVectorDestroy(b_h_ij);
     HYPRE_IJMatrixDestroy(Aij);
     delete ml;
     delete A;

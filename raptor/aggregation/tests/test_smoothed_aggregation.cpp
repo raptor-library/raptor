@@ -122,9 +122,11 @@ TEST(TestCandidates, TestsInAggregation)
     Ac_py = readMatrix(A1_fn);
     CSRMatrix* AP = A->mult(P);
     CSCMatrix* P_csc = P->to_CSC();
-    Ac = AP->mult_T(P_csc);    
+    Ac = AP->mult_T(P_csc);
     compare(Ac, Ac_py);
     delete Ac_py;
+    delete P_csc;
+    delete AP;
     delete P;
     delete T;
     delete S;
@@ -187,6 +189,10 @@ TEST(TestCandidates, TestsInAggregation)
     compare(P, P_py);
     delete P_py;
 
+    delete P;
+    delete T;
+    delete S;
+    delete A;
 
 } // end of TEST(TestSplitting, TestsInRuge_Stuben) //
 
