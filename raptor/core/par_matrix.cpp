@@ -228,32 +228,22 @@ void bsr_to_csr_copy_helper(ParBSRMatrix* A, ParCSRMatrix* B)
         }
     }
 
-    // Updated how communicators are created
+    // finalize() creates a placeholder comm; replace it with proper ones below.
+    if (B->comm) { B->comm->delete_comm(); B->comm = NULL; }
+
     if (A->comm)
     {
         B->comm = new ParComm(B->partition, B->off_proc_column_map, B->on_proc_column_map);
-    }
-    else
-    {
-        B->comm = NULL;
     }
 
     if (A->tap_comm)
     {
         B->tap_comm = new TAPComm(B->partition, B->off_proc_column_map, B->on_proc_column_map);
     }
-    else
-    {
-        B->tap_comm = NULL;
-    }
 
     if (A->tap_mat_comm)
     {
         B->tap_mat_comm = new TAPComm(B->partition, B->off_proc_column_map, B->on_proc_column_map);
-    }
-    else
-    {
-        B->tap_mat_comm = NULL;
     }
 
     delete[] off_proc_nz_cols;
@@ -836,6 +826,7 @@ ParCSRMatrix* ParCSRMatrix::transpose()
     }
 
     T = new ParCSRMatrix(part_T, on_proc_T, off_proc_T);
+    part_T->num_shared = 0;
 
     delete send_mat;
     delete recv_mat;

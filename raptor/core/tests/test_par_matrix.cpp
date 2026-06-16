@@ -86,5 +86,8 @@ TEST(ParMatrixTest, TestsInCore)
     }
 
     delete[] stencil;
+    delete A_par_csc;
+    delete A_par;
+    delete A;
 
 } // end of TEST(ParMatrixTest, TestsInCore) //

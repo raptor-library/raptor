@@ -146,6 +146,8 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     {
 	    ASSERT_EQ(coarse_variables[i], hypre_IntArrayData(coarse_dof_func)[i]);
     }
+    hypre_IntArrayDestroy(coarse_dof_func);
+    coarse_dof_func = NULL;
 
     P = mod_classical_interpolation(A, S, states, off_proc_states, false, num_variables, var);
     hypre_BoomerAMGBuildInterp(A_hyp, hypre_IntArrayData(states_hypre), S_hyp, coarse_pnts_gbl.data(), num_variables, var, 0, 0.0, 0.0, &P_hyp);
@@ -159,7 +161,8 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     hypre_ParCSRMatrix* A_H;
     hypre_BoomerAMGBuildCoarseOperator(P_hyp, A_hyp, P_hyp,  &A_H);
     compare(Ac, A_H);
-
+    hypre_ParCSRMatrixDestroy(A_H);
+    delete Ac;
 
     hypre_ParCSRMatrixDestroy(P_hyp);
     delete P;
@@ -215,6 +218,7 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     delete P;
 
     hypre_IntArrayDestroy(states_hypre);
+    hypre_IntArrayDestroy(coarse_dof_func);
     hypre_ParCSRMatrixDestroy(S_hyp);
     delete S;
     delete[] var;

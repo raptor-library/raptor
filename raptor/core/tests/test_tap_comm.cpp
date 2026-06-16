@@ -75,6 +75,7 @@ TEST(TAPCommTest, TestsInCore)
     delete tap_recv_simp_mat;
 
     delete[] stencil;
+    delete B;
     delete A;
 
 
