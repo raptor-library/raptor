@@ -31,6 +31,53 @@ template<> struct sequential_matrix<ParBSRMatrix> { using type = BSRMatrix; };
 template<> struct sequential_matrix<ParCSRMatrix> { using type = CSRMatrix; };
 template <class T>
 using sequential_matrix_t = typename sequential_matrix<T>::type;
+
+template <class T, is_bsr_or_csr<T> = true>
+inline int total_local_num_rows(const T& A){
+    if constexpr (is_bsr_v<T>){
+        return A.local_num_rows * A.on_proc->b_rows;
+    }
+    else{
+        return A.local_num_rows;
+    }
+    
+}
+
+template <class T, is_bsr_or_csr<T> = true>
+inline int total_global_num_rows(const T& A)
+{
+    if constexpr (is_bsr_v<T>)
+    {
+        return A.global_num_rows * A.on_proc->b_rows;
+    }
+    else
+    {
+        return A.global_num_rows;
+    }
+}
+
+// map block row indices to global scalar indices
+template <class T, is_bsr_or_csr<T> = true>
+std::vector<int> total_local_row_map(const T& A)
+{
+    if constexpr (is_bsr_v<T>)
+    {
+        std::vector<int> total_rows;
+        total_rows.reserve(A.local_row_map.size()*A.on_proc -> b_rows);
+        for (int i: A.local_row_map){
+            for (int j = 0;j <A.on_proc -> b_rows;j++)
+            {
+                total_rows.emplace_back(i*A.on_proc->b_rows+j);
+            }
+
+        }
+        return total_rows;
+    }
+    else
+    {
+        return A.local_row_map;
+    }
+}
 }
 
 #endif
