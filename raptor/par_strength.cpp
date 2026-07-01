@@ -64,6 +64,12 @@ template<> struct norm_coupling<strength_norm::abs>
 	static constexpr bool comp(double a, double b) { return std::abs(a) > b; }
 	static constexpr double strongest(double a, double b) { return std::max(std::abs(a), b); }
 };
+template<> struct norm_coupling<strength_norm::fro>
+{
+	static constexpr inline double init = 0.0;
+	static constexpr bool comp(double a, double b) { return a > b; }
+	static constexpr double strongest(double a, double b) { return std::max(a, b); }
+};
 
 template<class T>
 struct mat_args {
@@ -81,10 +87,24 @@ constexpr double value(CSRMatrix & mat, int i) {
 template <class P>
 constexpr double value(BSRMatrix & mat, int i) {
 	auto bvals = span<double>(mat.block_vals[i], mat.b_size);
-	auto curr = P::init;
-	for (auto val : bvals)
-		if (P::comp(val, curr)) curr = val;
-	return curr;
+    if constexpr (std::is_same_v<P, norm_coupling<strength_norm::fro>>) // return fro norm sq
+    {
+        double sum = P::init;
+        for (auto val : bvals)
+        {
+            sum += val*val;
+        }
+        return sum;
+    }
+    else
+    {
+        auto curr = P::init;
+        for (auto val : bvals)
+        {
+            if (P::comp(val, curr)) curr = val;
+        }
+        return curr;
+    }
 }
 template <class P, bool filter, class T>
 constexpr double strongest_element(int i, int row_var, const mat_args<T> & a) {
@@ -225,7 +245,7 @@ void norm_strength(T & A, ParCSRMatrix & S,
         if (row_end_on - row_start_on || row_end_off - row_start_off)
         {
 	        bool has_zero_diag = true;
-	        if (A.on_proc->idx2[row_start_on] == i) {
+	        if (row_start_on < row_end_on && A.on_proc->idx2[row_start_on] == i) {
                 row_start_on++;
                 has_zero_diag = false;
 	        }
@@ -291,7 +311,8 @@ ParCSRMatrix* classical_strength(ParCSRMatrix* A, double theta, bool tap_amg, in
     if (!bsr) {
 	    classical::hybrid_strength(*A, *S, theta, num_variables, variables, off_variables);
     } else {
-	    classical::norm_strength<strength_norm::abs>(*bsr, *S, theta, num_variables,
+    // TODO: add option for abs strength in API?
+	    classical::norm_strength<strength_norm::fro>(*bsr, *S, theta, num_variables,
 	                                                 variables, off_variables);
     }
 
