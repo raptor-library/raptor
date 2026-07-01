@@ -920,10 +920,14 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
     A->local_num_rows = A->local_row_map.size();
     A->on_proc_num_cols = A->local_num_rows;
     A->off_proc_num_cols = A->off_proc_column_map.size();
-    A->off_proc->n_cols = A->off_proc_num_cols;
 
     BSRMatrix* A_on_proc = (BSRMatrix*) A->on_proc;
     BSRMatrix* A_off_proc = (BSRMatrix*) A->off_proc;
+    
+    A_on_proc->n_rows = A->local_num_rows;
+    A_on_proc->n_cols = A->on_proc_num_cols;
+    A_off_proc->n_rows = A->local_num_rows;
+    A_off_proc->n_cols = A->off_proc_num_cols;
 
     A_on_proc->idx1[0] = 0;
     A_off_proc->idx1[0] = 0;
