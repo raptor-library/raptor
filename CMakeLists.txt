@@ -92,7 +92,7 @@ endif()
 
 if (WITH_HOSTFILE)
     find_file (FILE_OF_HOST, ${HOSTFILE})
-    set(HOST "--hostfile" "${HOSTFILE}")
+    set(HOST "--hostfile" "${HOSTFILE}" "--bind-to" "none")
 endif()
 
 if (WITH_PTSCOTCH)
