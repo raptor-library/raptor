@@ -311,8 +311,13 @@ namespace raptor
                         it != off_proc_column_map.end(); ++it)
         {
             global_col = *it;
+            if (global_col < 0 || global_col >= (int)global_num_cols)
+            {
+                fprintf(stderr, "rank %d form_col_to_proc: global_col=%d out of range  (global_num_cols=%d, off_proc idx ctr=%d)\n",
+                        rank, global_col, (int)global_num_cols, ctr);
+            }
             assumed_proc = global_col / assumed_num_cols;
-            while (global_col < first_cols[assumed_proc])
+            while (assumed_proc > 0 && global_col < first_cols[assumed_proc])
             {
                 assumed_proc--;
             }
