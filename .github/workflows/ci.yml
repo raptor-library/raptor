@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure code
         if: matrix.os == 'ubuntu-latest'
-        run: cmake -Bbuild -DENABLE_COVERAGE=1
+        run: cmake -Bbuild -DENABLE_COVERAGE=1 -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined"
       - name: Configure code
         if: matrix.os == 'macos-latest'
         run: cmake -Bbuild
