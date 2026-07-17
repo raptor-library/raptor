@@ -22,6 +22,8 @@ jobs:
         run: |
           sudo apt-get update
           # Use OpenMPI (MPICH 4.2 has a memory bug)
+          # https://github.com/actions/runner-images/issues/13204
+          # https://github.com/open-mpi/ompi/issues/8442
           sudo apt-get install cmake libopenmpi-dev openmpi-bin liblapack-dev
       - name: Install MacOS dependencies
         if: matrix.os == 'macos-latest'
