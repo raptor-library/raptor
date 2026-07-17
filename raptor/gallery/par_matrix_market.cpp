@@ -16,7 +16,7 @@
 namespace raptor {
 
 // Declare Private Methods
-void write_par_data(FILE* f, int n, int* rowptr, int* col_idx,
+long write_par_data(FILE* f, int n, int* rowptr, int* col_idx,
         double* vals, int first_row, int* col_map);
 
 ParCSRMatrix* read_par_mm(const char *fname)
@@ -145,10 +145,11 @@ ParCSRMatrix* read_par_mm(const char *fname)
     return A_csr;
 }
 
-void write_par_data(FILE* f, int n, int* rowptr, int* col_idx,
+long write_par_data(FILE* f, int n, int* rowptr, int* col_idx,
         double* vals, int first_row, int* col_map)
 {
     int start, end, global_row;
+    long lines = 0;
 
     for (int i = 0; i < n; i++)
     {
@@ -159,8 +160,10 @@ void write_par_data(FILE* f, int n, int* rowptr, int* col_idx,
         {
             fprintf(f, "%d %d %2.15e\n", global_row + 1,
                     col_map[col_idx[j]] + 1, vals[j]);
+            lines++;
         }
     }
+    return lines;
 }
 
 
@@ -214,12 +217,15 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
 
         // Write local data
         int first_row = 0;
-        write_par_data(f, A->local_num_rows, A->on_proc->idx1.data(),
+        long w_on = write_par_data(f, A->local_num_rows, A->on_proc->idx1.data(),
                 A->on_proc->idx2.data(), A->on_proc->vals.data(),
                 first_row, A->on_proc_column_map.data());
-        write_par_data(f, A->local_num_rows, A->off_proc->idx1.data(),
+        long w_off = write_par_data(f, A->local_num_rows, A->off_proc->idx1.data(),
                 A->off_proc->idx2.data(), A->off_proc->vals.data(),
                 first_row, A->off_proc_column_map.data());
+        fprintf(stderr, "  write rank 0 own: on=%ld (nnz=%d) off=%ld (nnz=%d)\n",
+                w_on, A->on_proc->nnz, w_off, A->off_proc->nnz);
+        long total_written = w_on + w_off;
         first_row += A->local_num_rows;
 
         // Write data from other processes
@@ -267,7 +273,7 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
                     RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD);
             RAPtor_MPI_Unpack(buffer.data(), comm_size, &pos, vals.data(), i_dims[3],
                     RAPtor_MPI_DOUBLE, RAPtor_MPI_COMM_WORLD);
-            write_par_data(f, i_dims[0] - 1, idx1.data(), idx2.data(),
+            long r_on = write_par_data(f, i_dims[0] - 1, idx1.data(), idx2.data(),
                     vals.data(), first_row, col_map.data());
 
             RAPtor_MPI_Unpack(buffer.data(), comm_size, &pos, col_map.data(), i_dims[2],
@@ -278,12 +284,17 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
                     RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD);
             RAPtor_MPI_Unpack(buffer.data(), comm_size, &pos, vals.data(), i_dims[4],
                     RAPtor_MPI_DOUBLE, RAPtor_MPI_COMM_WORLD);
-            write_par_data(f, i_dims[0] - 1, idx1.data(), idx2.data(),
+            long r_off = write_par_data(f, i_dims[0] - 1, idx1.data(), idx2.data(),
                     vals.data(), first_row, col_map.data());
 
+            fprintf(stderr, "  write remote rank %d: on=%ld (nnz=%d) off=%ld (nnz=%d)\n",
+                    i, r_on, i_dims[3], r_off, i_dims[4]);
+            total_written += r_on + r_off;
             first_row += i_dims[0] - 1;
         }
 
+        fprintf(stderr, "write_par_mm(%s): TOTAL lines written=%ld (header=%d)\n",
+                fname, total_written, global_nnz);
         fclose(f);
     }
     else // All processes that are not 0, send to 0
