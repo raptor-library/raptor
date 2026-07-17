@@ -39,7 +39,7 @@ TEST(ParAnisoTest, TestsInGallery)
     // Diff the two mtx files
     if (rank == 0)
     {
-        // remove(f_out);  // DEBUG: keep f_out for CI inspection
+        remove(f_out);
     }
 
     delete Amm_out;
