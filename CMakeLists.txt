@@ -40,9 +40,17 @@ SET(MPIRUN "")
 
 if (WITH_MPI)
     add_definitions ( -DUSING_MPI )
+    # skip deprecated MPI C++ bindings
+    add_definitions ( -DOMPI_SKIP_MPICXX -DMPICH_SKIP_MPICXX )
     find_package(MPI REQUIRED)
     include_directories(${MPI_INCLUDE_PATH})
-    SET(MPIRUN mpirun)
+    # use the same MPI for both build and launch
+    # note: this is only an issue with multiple mpi installs
+    if (MPIEXEC_EXECUTABLE)
+        SET(MPIRUN ${MPIEXEC_EXECUTABLE})
+    else()
+        SET(MPIRUN mpirun)
+    endif()
 endif (WITH_MPI)
 
 #include_directories("external")

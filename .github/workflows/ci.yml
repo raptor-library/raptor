@@ -3,6 +3,8 @@ name: ci
 env:
     CTEST_NO_TEST_ACTION: error
     HOMEBREW_NO_INSTALL_CLEANUP: 1
+    # let openmpi oversubscribe ranks
+    OMPI_MCA_rmaps_base_oversubscribe: "1"
 
 on:
   push:
@@ -19,10 +21,8 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install cmake mpich libmpich-dev liblapack-dev
-          # Force the mpich launcher and compiler to avoid PMI issues
-          sudo update-alternatives --set mpi /usr/bin/mpicc.mpich
-          sudo update-alternatives --set mpirun /usr/bin/mpirun.mpich
+          # Use OpenMPI (MPICH 4.2 has a memory bug)
+          sudo apt-get install cmake libopenmpi-dev openmpi-bin liblapack-dev
       - name: Install MacOS dependencies
         if: matrix.os == 'macos-latest'
         run: |
@@ -32,7 +32,12 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure code
         if: matrix.os == 'ubuntu-latest'
-        run: cmake -Bbuild -DENABLE_COVERAGE=1
+        # set build and launch to openmpi
+        run: >
+          cmake -Bbuild -DENABLE_COVERAGE=1
+          -DMPI_C_COMPILER=/usr/bin/mpicc.openmpi
+          -DMPI_CXX_COMPILER=/usr/bin/mpicxx.openmpi
+          -DMPIEXEC_EXECUTABLE=/usr/bin/mpiexec.openmpi
       - name: Configure code
         if: matrix.os == 'macos-latest'
         run: cmake -Bbuild
@@ -40,19 +45,5 @@ jobs:
         run: cmake --build build --parallel
       - name: Test code
         run: ctest --test-dir build -V --build-config Debug
-      - name: Inspect written mtx (debug)
-        if: always() && matrix.os == 'ubuntu-latest'
-        run: |
-          F="$GITHUB_WORKSPACE/test_data/sas_P0_out.mtx"
-          echo "f_out path: $F"
-          if [ -f "$F" ]; then
-            echo "line count: $(wc -l < "$F")"
-            echo "distinct value exponents in file:"
-            grep -oE 'e[-+][0-9]+' "$F" | sort | uniq -c
-            echo "out-of-range magnitude lines (positive exponent => |v|>=1):"
-            grep -nE 'e\+0*[1-9]' "$F" | head -20 || echo "  none found"
-          else
-            echo "f_out not present"
-          fi
       - name: collect code coverage
         run: bash <(curl -s https://codecov.io/bash) || echo "codecov failure"

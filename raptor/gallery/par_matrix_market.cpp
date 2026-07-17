@@ -74,9 +74,6 @@ ParCSRMatrix* read_par_mm(const char *fname)
     {
         n_items_read = fscanf(f, "%d %d %lg\n", &row, &col, &val);
         if (n_items_read != 3) break;   // stop on EOF or a bad line
-        if (val >= 1.0 || val <= -1.0)  // DEBUG: no legit value has |v|>=1 here
-            fprintf(stderr, "read_par_mm(%s): OUT-OF-RANGE val at file row=%d col=%d val=%.17g\n",
-                    fname, row, col, val);
         row--;
         col--;
         if (row >= A->partition->first_local_row && row <= A->partition->last_local_row)
