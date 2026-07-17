@@ -40,5 +40,19 @@ jobs:
         run: cmake --build build --parallel
       - name: Test code
         run: ctest --test-dir build -V --build-config Debug
+      - name: Inspect written mtx (debug)
+        if: always() && matrix.os == 'ubuntu-latest'
+        run: |
+          F="$GITHUB_WORKSPACE/test_data/sas_P0_out.mtx"
+          echo "f_out path: $F"
+          if [ -f "$F" ]; then
+            echo "line count: $(wc -l < "$F")"
+            echo "distinct value exponents in file:"
+            grep -oE 'e[-+][0-9]+' "$F" | sort | uniq -c
+            echo "out-of-range magnitude lines (positive exponent => |v|>=1):"
+            grep -nE 'e\+0*[1-9]' "$F" | head -20 || echo "  none found"
+          else
+            echo "f_out not present"
+          fi
       - name: collect code coverage
         run: bash <(curl -s https://codecov.io/bash) || echo "codecov failure"
