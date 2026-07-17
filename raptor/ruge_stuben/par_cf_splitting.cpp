@@ -1464,7 +1464,7 @@ void cljp_main_loop(ParCSRMatrix* S,
     std::vector<int> off_edgemark;
     std::vector<double> weights;
 
-    int* part_to_col = S->map_partition_to_local();
+    auto part_to_col = S->map_partition_to_local();
 
     if (S->local_num_rows)
     {
@@ -1595,7 +1595,7 @@ void cljp_main_loop(ParCSRMatrix* S,
         // Find new coarse influenced by each off_proc col
         // TODO -- Add first pass option
         find_off_proc_new_coarse(S, mat_comm, global_to_local, states, off_proc_states, 
-                part_to_col, off_proc_col_ptr, off_proc_col_coarse, first_pass);
+								 part_to_col.data(), off_proc_col_ptr, off_proc_col_coarse, first_pass);
 
         // Update Weights
         for (int i = 0; i < S->off_proc_num_cols; i++)
@@ -1634,8 +1634,6 @@ void cljp_main_loop(ParCSRMatrix* S,
         first_pass = false;
         comm = S->comm;
     }
-
-    delete[] part_to_col;
 }
 
 }

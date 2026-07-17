@@ -81,6 +81,8 @@ TEST(RandomSpMVTest, TestsInUtil)
         ASSERT_NEAR(x[i], b_val, 1e-06);
     } 
     fclose(f);
-    
+
+    delete A;
+
 } // end of TEST(RandomSpMVTest, TestsInUtil) //
 

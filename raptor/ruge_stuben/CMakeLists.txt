@@ -6,10 +6,13 @@ if (WITH_MPI)
         ruge_stuben/par_cf_splitting.hpp
         ruge_stuben/par_interpolation.hpp
         ruge_stuben/par_ruge_stuben_solver.hpp
+		ruge_stuben/par_air_solver.hpp
+		ruge_stuben/pyamg_utils.hpp
         )
     set(par_ruge_stuben_SOURCES
         ruge_stuben/par_cf_splitting.cpp
         ruge_stuben/par_interpolation.cpp
+		ruge_stuben/par_air_solver.cpp
         )
 else()
     set(par_ruge_stuben_SOURCES

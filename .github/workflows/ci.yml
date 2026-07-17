@@ -3,6 +3,8 @@ name: ci
 env:
     CTEST_NO_TEST_ACTION: error
     HOMEBREW_NO_INSTALL_CLEANUP: 1
+    # let openmpi oversubscribe ranks
+    OMPI_MCA_rmaps_base_oversubscribe: "1"
 
 on:
   push:
@@ -19,17 +21,25 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install cmake mpich libmpich-dev liblapack-dev
+          # Use OpenMPI (MPICH 4.2 has a memory bug)
+          # https://github.com/actions/runner-images/issues/13204
+          # https://github.com/open-mpi/ompi/issues/8442
+          sudo apt-get install cmake libopenmpi-dev openmpi-bin liblapack-dev
       - name: Install MacOS dependencies
         if: matrix.os == 'macos-latest'
         run: |
           # brew update # fails
-          brew install mpich2 lapack cmake
+          brew install mpich lapack cmake
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Configure code
         if: matrix.os == 'ubuntu-latest'
-        run: cmake -Bbuild -DENABLE_COVERAGE=1
+        # set build and launch to openmpi
+        run: >
+          cmake -Bbuild -DENABLE_COVERAGE=1
+          -DMPI_C_COMPILER=/usr/bin/mpicc.openmpi
+          -DMPI_CXX_COMPILER=/usr/bin/mpicxx.openmpi
+          -DMPIEXEC_EXECUTABLE=/usr/bin/mpiexec.openmpi
       - name: Configure code
         if: matrix.os == 'macos-latest'
         run: cmake -Bbuild

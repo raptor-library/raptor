@@ -73,7 +73,7 @@ ParCSRMatrix* read_par_mm(const char *fname)
     for (i=0; i<nz; i++)
     {
         n_items_read = fscanf(f, "%d %d %lg\n", &row, &col, &val);
-        if (n_items_read == EOF) printf("EOF reading code\n");
+        if (n_items_read != 3) break;   // stop on EOF or a bad line
         row--;
         col--;
         if (row >= A->partition->first_local_row && row <= A->partition->last_local_row)
@@ -217,7 +217,7 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
         {
             // Calculate comm_size and allocate recv_buf
             int* i_dims = &proc_dims[i*5];
-            num_ints = i_dims[0] * 2 + i_dims[1] + i_dims[3] + i_dims[3] + i_dims[4];
+            num_ints = i_dims[0] * 2 + i_dims[1] + i_dims[2] + i_dims[3] + i_dims[4];
             num_doubles = i_dims[3] + i_dims[4];
             RAPtor_MPI_Pack_size(num_ints, RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD, &int_bytes);
             RAPtor_MPI_Pack_size(num_doubles, RAPtor_MPI_DOUBLE, RAPtor_MPI_COMM_WORLD, &double_bytes);
@@ -274,7 +274,7 @@ void write_par_mm(ParCSRMatrix* A, const char *fname)
     else // All processes that are not 0, send to 0
     {
         // Determine send size (in bytes)
-        num_ints = dims[0] * 2 + dims[1] + dims[3] + dims[3] + dims[4];
+        num_ints = dims[0] * 2 + dims[1] + dims[2] + dims[3] + dims[4];
         num_doubles = dims[3] + dims[4];
         RAPtor_MPI_Pack_size(num_ints, RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD, &int_bytes);
         RAPtor_MPI_Pack_size(num_doubles, RAPtor_MPI_DOUBLE, RAPtor_MPI_COMM_WORLD, &double_bytes);

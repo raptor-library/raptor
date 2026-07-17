@@ -12,6 +12,7 @@ extern "C" void dgetrf_(int* dim1, int* dim2, double* a, int* lda,
         int* ipiv, int* info);
 extern "C" void dgetrs_(char *TRANS, int *N, int *NRHS, double *A,
         int *LDA, int *IPIV, double *B, int *LDB, int *INFO );
+extern "C" void dgetri_(int *N, double *A, int *LDA, int *IPIV, double *WORK, int *LWORK, int *info);
 
 namespace raptor {
 template <typename T, typename U>

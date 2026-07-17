@@ -19,7 +19,7 @@ endif()
 
 add_library(raptor ${core_SOURCES} ${core_HEADERS} 
 	${gallery_SOURCES} ${gallery_HEADERS} ${ext_gallery_HEADERS} 
-	${util_SOURCES} ${util_HEADERS}
+	${util_SOURCES} ${util_HEADERS} ${root_util_HEADERS}
 	${par_SOURCES} strength.cpp 
 	${ruge_stuben_SOURCES} ${ruge_stuben_HEADERS}
         ${aggregation_SOURCES} ${aggregation_HEADERS}
@@ -46,6 +46,7 @@ install(FILES ${core_HEADERS} DESTINATION "include/raptor/core")
 install(FILES ${gallery_HEADERS}  DESTINATION "include/raptor/gallery")
 install(FILES ${ext_gallery_HEADERS} DESTINATION "include/raptor/gallery/external")
 install(FILES ${util_HEADERS} DESTINATION "include/raptor/util/linalg")
+install(FILES ${root_util_HEADERS} DESTINATION "include/raptor/util")
 install(FILES ${ext_util_HEADERS} DESTINATION "include/raptor/util/linalg/external")
 install(FILES ${ruge_stuben_HEADERS} DESTINATION "include/raptor/ruge_stuben")
 install(FILES ${aggregation_HEADERS} DESTINATION "include/raptor/aggregation")

@@ -102,6 +102,8 @@ TEST(TestHypre, TestsInRuge_Stuben)
     }
 
     hypre_BoomerAMGDestroy(solver_data);
+    HYPRE_IJVectorDestroy(x_h_ij);
+    HYPRE_IJVectorDestroy(b_h_ij);
     HYPRE_IJMatrixDestroy(Aij);
     delete ml;
     delete A;
@@ -148,6 +150,8 @@ TEST(TestHypre, TestsInRuge_Stuben)
     }
 
     hypre_BoomerAMGDestroy(solver_data);
+    HYPRE_IJVectorDestroy(x_h_ij);
+    HYPRE_IJVectorDestroy(b_h_ij);
     HYPRE_IJMatrixDestroy(Aij);
     delete ml;
     delete A;

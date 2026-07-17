@@ -24,5 +24,24 @@ ParCSRMatrix* extended_interpolation(ParCSRMatrix* A,
         const double filter_threshold = 0.3,
         bool tap_amg = false, int num_variables = 1, int* variables = NULL);
 
-}
+ParCSRMatrix * one_point_interpolation(const ParCSRMatrix & A,
+                                       const ParCSRMatrix & S,
+                                       const splitting_t & splitting);
+ParBSRMatrix * one_point_interpolation(const ParBSRMatrix & A,
+                                       const ParCSRMatrix & S,
+                                       const splitting_t & splitting);
+
+enum class fpoint_distance { one, two };
+ParCSRMatrix * local_air(ParCSRMatrix & A,
+                         ParCSRMatrix & S,
+                         const splitting_t & splitting,
+                         fpoint_distance distance = fpoint_distance::two);
+ParBSRMatrix * local_air(ParBSRMatrix & A,
+                         ParCSRMatrix & S,
+                         const splitting_t & splitting,
+                         fpoint_distance distance = fpoint_distance::two);
+
+
+} // namespace raptor
+
 #endif

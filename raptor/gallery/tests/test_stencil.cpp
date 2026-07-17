@@ -90,5 +90,7 @@ TEST(StencilTest, TestsInGallery)
         }
     }
 
+    delete A;
+
 } // end of TEST(StencilTest, TestsInGallery)//
 

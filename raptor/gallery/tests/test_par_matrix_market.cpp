@@ -36,7 +36,7 @@ TEST(ParAnisoTest, TestsInGallery)
     MPI_Barrier(MPI_COMM_WORLD);
     compare(Amm, Amm_out);
 
-    // Diff the two mtx files 
+    // Diff the two mtx files
     if (rank == 0)
     {
         remove(f_out);

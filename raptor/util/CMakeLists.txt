@@ -5,12 +5,16 @@ add_subdirectory(linalg)
 
 add_subdirectory(linalg/external)
 
+set(root_util_HEADERS
+  util/writer.hpp
+  PARENT_SCOPE)
 set(util_HEADERS
     ${linalg_HEADERS}
     PARENT_SCOPE)
 set(util_SOURCES
-    ${linalg_SOURCES}
-    PARENT_SCOPE)
+  util/writer.cpp
+  ${linalg_SOURCES}
+  PARENT_SCOPE)
 
 set(ext_util_HEADERS
     ${ext_linalg_HEADERS}

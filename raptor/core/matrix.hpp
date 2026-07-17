@@ -212,17 +212,17 @@ namespace raptor
 
     // Methods for appending two values
     // (either single or block values)
-    void append_vals(double* val, double* addl_val) const
+    void append_vals(double &val, double &addl_val) const
     {
-        *val += *addl_val;
+        val += addl_val;
     }
-    void append_vals(double** val, double** addl_val) const
+    void append_vals(double *&val, double *&addl_val) const
     {
         for (int i = 0; i < b_size; i++)
         {
-            *val[i] += *addl_val[i];
+            val[i] += addl_val[i];
         }
-        delete[] *addl_val;
+        delete[] addl_val;
     }
     void mult_vals(double val, double addl_val, double* sum, 
             int nr, int nc0, int n_inner) const
@@ -392,6 +392,10 @@ namespace raptor
     std::vector<int> idx1;
     std::vector<int> idx2;
     std::vector<double> vals;
+
+	std::tuple<decltype(idx1)&, decltype(idx2)&, decltype(vals)&> vecs() {
+		return {idx1, idx2, vals};
+	}
 
     int b_rows;
     int b_cols;
@@ -1035,7 +1039,9 @@ class BSRMatrix : public CSRMatrix
     void spmv_append_T(const double* x, double* b) const;
     void spmv_append_neg(const double* x, double* b) const;
     void spmv_append_neg_T(const double* x, double* b) const;
-    void spmv_residual(const double* x, const double* b, double* r) const; 
+    void spmv_residual(const double* x, const double* b, double* r) const;
+
+    void add_append(BSRMatrix * A, BSRMatrix * C, bool remove_dup = true);
 
     format_t format()
     {

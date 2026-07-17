@@ -312,7 +312,7 @@ namespace raptor
         {
             global_col = *it;
             assumed_proc = global_col / assumed_num_cols;
-            while (global_col < first_cols[assumed_proc])
+            while (assumed_proc > 0 && global_col < first_cols[assumed_proc])
             {
                 assumed_proc--;
             }

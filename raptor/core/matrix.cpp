@@ -877,6 +877,8 @@ void BSCMatrix::move_diag()
 template <typename T>
 void remove_duplicates_helper(COOMatrix* A, std::vector<T>& vals)
 {
+    if (A->nnz == 0) return;
+
     if (!A->sorted)
     {
         A->sort();
@@ -896,7 +898,7 @@ void remove_duplicates_helper(COOMatrix* A, std::vector<T>& vals)
         col = A->idx2[i];
         if (row == prev_row && col == prev_col)
         {
-            A->append_vals(&vals[ctr - 1], &vals[i]);
+            A->append_vals(vals[ctr - 1], vals[i]);
         }
         else
         { 
@@ -954,7 +956,7 @@ void remove_duplicates_helper(CSRMatrix* A, std::vector<T>& vals)
             col = A->idx2[j];
             if (col == prev_col)
             {
-                A->append_vals(&vals[ctr - 1 + new_start], &vals[j]);
+                A->append_vals(vals[ctr - 1 + new_start], vals[j]);
             }
             else
             {
@@ -1020,7 +1022,7 @@ void remove_duplicates_helper(CSCMatrix* A, std::vector<T>& vals)
             row = A->idx2[j];
             if (row == prev_row)
             {
-                A->append_vals(&vals[ctr - 1 + new_start], &vals[j]);
+                A->append_vals(vals[ctr - 1 + new_start], vals[j]);
             }
             else
             {

@@ -47,13 +47,19 @@ namespace raptor
     using data_t = double;
     using index_t = int;
     enum strength_t {Classical, Symmetric};
+    enum class strength_norm { abs };
     enum format_t {COO, CSR, CSC, BCOO, BSR, BSC};
     enum coarsen_t {RS, CLJP, Falgout, PMIS, HMIS};
-    enum interp_t {Direct, ModClassical, Extended};
+    enum interp_t { Direct, ModClassical, Extended, OnePoint };
+    enum restrict_t { AIR };
     enum agg_t {MIS};
     enum prolong_t {JacobiProlongation};
-    enum relax_t {Jacobi, SOR, SSOR};
+    enum relax_t {Jacobi, SOR, SSOR, FCJacobi};
 
+    struct splitting_t {
+	    std::vector<int> on_proc;
+	    std::vector<int> off_proc;
+    };
     template<typename T, typename U>
     U sum_func(const U& a, const T&b)
     {

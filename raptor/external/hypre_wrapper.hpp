@@ -12,12 +12,17 @@
 #include "_hypre_parcsr_mv.h"
 #include "_hypre_parcsr_ls.h"
 
+namespace raptor {
+
 HYPRE_IJVector convert(raptor::ParVector& x_rap,
                        RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
 HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap,
                        RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
-raptor::ParCSRMatrix* convert(hypre_ParCSRMatrix* A_hypre,
-                           RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
+raptor::ParCSRMatrix *convert(hypre_ParCSRMatrix *A_hypre,
+                              RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
+raptor::ParBSRMatrix * convert(hypre_ParCSRMatrix *A_hypre,
+                               int b_rows, int b_cols,
+                               RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
 //raptor::Hierarchy* convert(hypre_ParAMGData* amg_data, 
 //                           RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
 //void remove_shared_ptrs(hypre_ParCSRMatrix* A_hypre);
@@ -60,4 +65,5 @@ HYPRE_Solver hypre_create_BiCGSTAB(hypre_ParCSRMatrix* A,
 //                                double strong_threshold = 0.25,
 //                                RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
 
+}
 #endif

@@ -34,6 +34,7 @@ namespace raptor
 
             ParCSRMatrix* A;
             ParCSRMatrix* P;
+		    ParCSRMatrix* R;
             ParVector x;
             ParVector b;
             ParVector tmp;

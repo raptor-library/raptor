@@ -78,7 +78,7 @@ namespace raptor
   class ParMatrix
   {
   public:
-    ParMatrix(Partition* part)
+	explicit ParMatrix(Partition* part)
     {
         partition = part;
         partition->num_shared++;
@@ -237,7 +237,7 @@ namespace raptor
     **************************************************************/
     void finalize(bool create_comm = true); //b_cols added for BSR
 
-    int* map_partition_to_local();
+	std::vector<int> map_partition_to_local() const;
     void condense_off_proc();
 
     void residual(ParVector& x, ParVector& b, ParVector& r, bool tap = false);
@@ -298,6 +298,8 @@ namespace raptor
         return local_row_map;
     }
 
+	const std::vector<int> & get_local_row_map() const { return local_row_map; }
+
     virtual ParCOOMatrix* to_ParCOO() = 0;
     virtual ParCSRMatrix* to_ParCSR() = 0;
     virtual ParCSCMatrix* to_ParCSC() = 0;
@@ -345,7 +347,7 @@ namespace raptor
   class ParCOOMatrix : public ParMatrix
   {
   public:
-    ParCOOMatrix(bool form_mat = true) : ParMatrix()
+    explicit ParCOOMatrix(bool form_mat = true) : ParMatrix()
     {
         if (form_mat)
         {
@@ -481,7 +483,7 @@ namespace raptor
   class ParCSRMatrix : public ParMatrix
   {
   public:
-    ParCSRMatrix(bool form_mat = true) : ParMatrix()
+    explicit ParCSRMatrix(bool form_mat = true) : ParMatrix()
     {
         if (form_mat)
         {
@@ -694,6 +696,11 @@ namespace raptor
         return A;
     }
 
+	  ParBSRMatrix * mult(ParBSRMatrix * B);
+	  void mult(ParVector& x, ParVector& b, bool tap = false)
+	  {
+		  ParCSRMatrix::mult(x, b, tap);
+	  }
   };
 
 
@@ -701,7 +708,7 @@ namespace raptor
   class ParCSCMatrix : public ParMatrix
   {
   public:
-    ParCSCMatrix(bool form_mat = true) : ParMatrix()
+    explicit ParCSCMatrix(bool form_mat = true) : ParMatrix()
     {
         if (form_mat)
         {

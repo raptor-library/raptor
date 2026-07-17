@@ -161,10 +161,9 @@ void ParMatrix::finalize(bool create_comm)
         comm = new ParComm(partition);
 }
 
-int* ParMatrix::map_partition_to_local()
+std::vector<int> ParMatrix::map_partition_to_local() const
 {
-    int* on_proc_partition_to_col = new int[partition->local_num_cols+1];
-    for (int i = 0; i < partition->local_num_cols+1; i++) on_proc_partition_to_col[i] = -1;
+	std::vector<int> on_proc_partition_to_col(partition->local_num_cols+1, -1);
     for (int i = 0; i < on_proc_num_cols; i++)
     {
         on_proc_partition_to_col[on_proc_column_map[i] - partition->first_local_col] = i;
@@ -229,32 +228,22 @@ void bsr_to_csr_copy_helper(ParBSRMatrix* A, ParCSRMatrix* B)
         }
     }
 
-    // Updated how communicators are created
+    // finalize() creates a placeholder comm; replace it with proper ones below.
+    if (B->comm) { B->comm->delete_comm(); B->comm = NULL; }
+
     if (A->comm)
     {
         B->comm = new ParComm(B->partition, B->off_proc_column_map, B->on_proc_column_map);
-    }
-    else
-    {
-        B->comm = NULL;
     }
 
     if (A->tap_comm)
     {
         B->tap_comm = new TAPComm(B->partition, B->off_proc_column_map, B->on_proc_column_map);
     }
-    else
-    {
-        B->tap_comm = NULL;
-    }
 
     if (A->tap_mat_comm)
     {
         B->tap_mat_comm = new TAPComm(B->partition, B->off_proc_column_map, B->on_proc_column_map);
-    }
-    else
-    {
-        B->tap_mat_comm = NULL;
     }
 
     delete[] off_proc_nz_cols;
@@ -837,6 +826,7 @@ ParCSRMatrix* ParCSRMatrix::transpose()
     }
 
     T = new ParCSRMatrix(part_T, on_proc_T, off_proc_T);
+    part_T->num_shared = 0;
 
     delete send_mat;
     delete recv_mat;
