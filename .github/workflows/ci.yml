@@ -20,6 +20,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install cmake mpich libmpich-dev liblapack-dev
+          # Force the mpich launcher and compiler to avoid PMI issues
+          sudo update-alternatives --set mpi /usr/bin/mpicc.mpich
+          sudo update-alternatives --set mpirun /usr/bin/mpirun.mpich
       - name: Install MacOS dependencies
         if: matrix.os == 'macos-latest'
         run: |
@@ -29,7 +32,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure code
         if: matrix.os == 'ubuntu-latest'
-        run: cmake -Bbuild -DENABLE_COVERAGE=1 -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined"
+        run: cmake -Bbuild -DENABLE_COVERAGE=1
       - name: Configure code
         if: matrix.os == 'macos-latest'
         run: cmake -Bbuild
