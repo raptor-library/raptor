@@ -27,12 +27,14 @@ else ()
 endif()
 
 set(linalg_HEADERS
+    util/linalg/lapack_wrapper.hpp
     util/linalg/relax.hpp
     ${par_linalg_HEADERS}
     ${external_linalg_HEADERS}
     PARENT_SCOPE
     )
 set(linalg_SOURCES 
+    util/linalg/lapack_wrapper.cpp
     util/linalg/matmult.cpp
     util/linalg/relax.cpp
     util/linalg/add.cpp

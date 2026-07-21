@@ -39,7 +39,7 @@ template <typename T>
 ParBSRMatrix* init_mat(ParBSRMatrix* A, T* B)
 {
     Partition* part = new Partition(A->partition, B->partition);
-    ParBSRMatrix* C = new ParBSRMatrix(part, A->on_proc->b_rows, A->on_proc->b_cols);
+    ParBSRMatrix* C = new ParBSRMatrix(part, A->on_proc->b_rows, B->on_proc->b_cols);
     part->num_shared = 0;
     return C;
 }
@@ -98,7 +98,7 @@ T * spgemm(T & A, T & B)
     auto C_on_on = A.on_proc->mult(dynamic_cast<seq_t*>(B.on_proc));
     auto C_on_off = A.on_proc->mult(dynamic_cast<seq_t*>(B.off_proc));
 
-    auto recv_mat = A.comm->complete_mat_comm(A.on_proc->b_rows, A.on_proc->b_cols);
+    auto recv_mat = A.comm->complete_mat_comm(B.on_proc->b_rows, B.on_proc->b_cols);
 
     A.mult_helper(&B, C, recv_mat, C_on_on, C_on_off);
 
@@ -126,8 +126,8 @@ ParCSRMatrix* ParCSRMatrix::mult(ParCSRMatrix* B, bool tap)
 
 ParBSRMatrix * ParBSRMatrix::mult(ParBSRMatrix * B)
 {
-	assert((this->on_proc->b_rows == B->on_proc->b_rows) &&
-	       (this->on_proc->b_cols == B->on_proc->b_cols));
+    // TODO unit test of different size block
+	assert(on_proc->b_cols == B->on_proc->b_rows);
 	return spgemm(*this, *B);
 }
 
