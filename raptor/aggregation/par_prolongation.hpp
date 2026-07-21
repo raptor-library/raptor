@@ -5,11 +5,22 @@
 
 #include "raptor/core/types.hpp"
 #include "raptor/core/par_matrix.hpp"
+#include "raptor/core/matrix_traits.hpp"
 #include "raptor/core/par_vector.hpp"
 
 namespace raptor {
-ParCSRMatrix* jacobi_prolongation(ParCSRMatrix* A, ParCSRMatrix* T, bool tap_comm = false,
-        double omega = 4.0/3, int num_smooth_steps = 1);
+
+enum class prolongation_weighting
+{
+    local,
+    block
+    // TODO
+//     block_spectral
+};
+
+template <class T, is_bsr_or_csr<T> = true>
+T* jacobi_prolongation(T* A, T* tentative, bool tap_comm = false,
+        double omega = 4.0/3, int num_smooth_steps = 1, prolongation_weighting weighting =
+        prolongation_weighting::local);
 }
 #endif
-
