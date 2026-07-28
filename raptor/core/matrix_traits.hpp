@@ -32,6 +32,12 @@ template<> struct sequential_matrix<ParCSRMatrix> { using type = CSRMatrix; };
 template <class T>
 using sequential_matrix_t = typename sequential_matrix<T>::type;
 
+template <class T> struct parallel_csc_matrix;
+template<> struct parallel_csc_matrix<ParBSRMatrix> { using type = ParBSCMatrix; };
+template<> struct parallel_csc_matrix<ParCSRMatrix> { using type = ParCSCMatrix; };
+template <class T>
+using parallel_csc_matrix_t = typename parallel_csc_matrix<T>::type;
+
 template <class T, is_bsr_or_csr<T> = true>
 inline int total_local_num_rows(const T& A){
     if constexpr (is_bsr_v<T>){

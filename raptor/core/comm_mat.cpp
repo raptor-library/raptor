@@ -658,8 +658,8 @@ CSRMatrix* transpose_recv(CSRMatrix* recv_mat_T, std::vector<T>& T_vals,
         {
             ptr = recv_mat->idx1[idx] + row_sizes[idx]++;
             recv_mat->idx2[ptr] = recv_mat_T->idx2[j];
-            if (recv_mat_T->vals.size())
-                vals[ptr] = T_vals[j];
+            if (!T_vals.empty())
+                vals[ptr] = recv_mat_T->copy_val(T_vals[j]);
         }
     }
     return recv_mat;

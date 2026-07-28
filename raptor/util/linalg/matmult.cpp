@@ -165,7 +165,7 @@ CSRMatrix* spgemm_T_helper(const CSCMatrix* A, const CSRMatrix* B,
 
     std::vector<int> next(B->n_cols, -1); 
     std::vector<T> sums;
-    init_sums(sums, B->n_cols, A->b_size);
+    init_sums(sums, B->n_cols, A->b_cols * B->b_cols);
 
     C->idx1[0] = 0;
     for (int i = 0; i < A->n_cols; i++)
@@ -210,7 +210,7 @@ CSRMatrix* spgemm_T_helper(const CSCMatrix* A, const CSRMatrix* B,
             int tmp = head;
             head = next[head];
             next[tmp] = -1;
-            zero_sum(&sums[tmp], A->b_size);
+            zero_sum(&sums[tmp], A->b_cols * B->b_cols);
         }
         C->idx1[i+1] = C->idx2.size();
     }
@@ -349,4 +349,9 @@ BSRMatrix* BSCMatrix::spgemm_T(CSCMatrix* A, int* C_map)
             A_bsc->block_vals, B_bsr->block_vals, C_map);
     delete B_bsr;
     return C;
+}
+BSRMatrix* BSRMatrix::spgemm_T(BSCMatrix* A, int* C_map)
+{
+    return static_cast<BSRMatrix*>(spgemm_T_helper(A, this,
+            A->block_vals, block_vals, C_map));
 }

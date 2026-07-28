@@ -239,7 +239,7 @@ namespace raptor
                 double s = 0;
                 for (int k = 0; k < n_inner; k++) // Go through b_cols of A (== b_rows of B)
                 {
-                    s += val[i*n_inner + k] * addl_val[k*n_inner + j];
+                    s += val[i*n_inner + k] * addl_val[k*nc + j];
                 }
                 (*sum)[i*nc + j] += s;
             }
@@ -260,7 +260,7 @@ namespace raptor
                 double s = 0;
                 for (int k = 0; k < n_inner; k++) // Go through b_cols of A (== b_rows of B)
                 {
-                    s += val[k*n_inner + i] * addl_val[k*n_inner + j];
+                    s += val[k*nr + i] * addl_val[k*nc + j];
                 }
                 (*sum)[i*nc + j] += s;
             }
@@ -1031,8 +1031,10 @@ class BSRMatrix : public CSRMatrix
     void print();
     BSRMatrix* copy();
 
+    BSRMatrix* add(BSRMatrix* B, bool remove_dup = true);
     BSRMatrix* spgemm(CSRMatrix* B, int* B_to_C = NULL);
     BSRMatrix* spgemm_T(CSCMatrix* A, int* C_map = NULL);
+    BSRMatrix* spgemm_T(BSCMatrix* A, int* C_map = NULL);
 
     void spmv(const double* x, double* b) const;
     void spmv_append(const double* x, double* b) const;
