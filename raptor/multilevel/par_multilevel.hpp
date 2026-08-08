@@ -11,6 +11,8 @@
 #include "raptor/util/linalg/par_relax.hpp"
 #include "raptor/ruge_stuben/par_interpolation.hpp"
 #include "raptor/ruge_stuben/par_cf_splitting.hpp"
+#include "raptor/util/linalg/lapack_wrapper.hpp"
+#include <vector>
 
 #ifdef USING_HYPRE
 #include "_hypre_utilities.h"
@@ -67,14 +69,16 @@
 
 namespace raptor
 {
-    class ParMultilevel
+    template <class T, is_bsr_or_csr<T> = true>
+    class ParMultilevel_T
     {
         public:
 
-            ParMultilevel(double _strong_threshold, 
+            ParMultilevel_T(double _strong_threshold, 
                     strength_t _strength_type,
                     relax_t _relax_type) // which level to start tap_amg (-1 == no TAP)
             {
+                wrong_type_throw(_relax_type);
                 num_levels = 0;
                 strong_threshold = _strong_threshold;
                 strength_type = _strength_type;
@@ -84,17 +88,17 @@ namespace raptor
                 max_coarse = 50;
                 max_levels = 25;
                 tap_amg = -1;
-                weights = NULL;
+                weights = nullptr;
                 store_residuals = true;
                 track_times = false;
-                setup_times = NULL;
-                solve_times = NULL;
+                setup_times = nullptr;
+                solve_times = nullptr;
                 sparsify_tol = 0.0;
                 solve_tol = 1e-07;
                 max_iterations = 100;
             }
 
-            virtual ~ParMultilevel()
+            virtual ~ParMultilevel_T()
             {
                 if (num_levels > 0)
                 {
@@ -104,10 +108,9 @@ namespace raptor
                     }
                 }
 
-                for (std::vector<ParLevel*>::iterator it = levels.begin();
-                        it != levels.end(); ++it)
+                for (ParLevel_T<T>* level: levels)
                 {
-                    delete *it;
+                    delete level;
                 }
 
                 delete[] weights;
@@ -116,22 +119,9 @@ namespace raptor
                 delete[] solve_times;
             }
             
-            virtual void setup(ParCSRMatrix* Af) = 0;
+            virtual void setup(T* Af) = 0;
 
-            void setup_helper(ParCSRMatrix* Af)
-            {
-                if (ParBSRMatrix*Af_bsr = dynamic_cast<ParBSRMatrix*>(Af))
-                {
-                    setup_helper_impl(Af_bsr);
-                }
-                else
-                {
-                    setup_helper_impl(Af);
-                }
-            }
-
-            template <class T, is_bsr_or_csr<T> = true>
-            void setup_helper_impl(T*Af)
+            void setup_helper(T*Af)
             {
                 int rank, num_procs;
                 RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
@@ -145,7 +135,7 @@ namespace raptor
                 }
 
                 // Add original, fine level to hierarchy
-                levels.emplace_back(new ParLevel());
+                levels.emplace_back(new ParLevel_T<T>());
                 levels[0]->A = Af->copy();
                 levels[0]->A->sort();
                 levels[0]->A->on_proc->move_diag();
@@ -170,7 +160,7 @@ namespace raptor
                     }
                 }
 
-                if (weights == NULL)
+                if (weights == nullptr)
                 {
                     form_rand_weights(Af->local_num_rows, Af->partition->first_local_row);
                 }
@@ -196,15 +186,27 @@ namespace raptor
                 }
 
                 num_levels = levels.size();
+
+                // cache block inverse for block jacobi
+                if constexpr(is_bsr_v<T>)
+                {
+                    if (relax_type == BlockJacobi)
+                    {
+                        for (int l = 0; l < num_levels-1; l++)
+                        {
+                            levels[l]->block_diag_inv = compute_block_diag_inv(levels[l]->A);
+                        }
+                    }
+                }
                 if (Af->local_num_rows) 
                 {
                     delete[] weights;
-                    weights = NULL;
+                    weights = nullptr;
                 }
 
                 // Duplicate coarsest level across all processes that hold any
                 // rows of A_c
-                duplicate_coarse();
+                duplicate_coarse(levels.back()->A);
 
                 if (track_times)
                 {
@@ -234,20 +236,6 @@ namespace raptor
                 
             virtual void extend_hierarchy() = 0;
 
-            void duplicate_coarse()
-            {
-                int last_level = num_levels- 1;
-                if (ParBSRMatrix*Ac_bsr = dynamic_cast<ParBSRMatrix*>(levels[last_level]->A))
-                {
-                    duplicate_coarse_impl(Ac_bsr);
-                }
-                else
-                {
-                    duplicate_coarse_impl(levels[last_level]->A);
-                }
-            }
-
-            template <class T, is_bsr_or_csr<T> = true>
             void add_coarse_entries(T* Ac, std::vector<double>& A_coarse_lcl,
                     std::map<int, int>& global_to_local)
             {
@@ -323,8 +311,7 @@ namespace raptor
                 }
             }
 
-            template <class T, is_bsr_or_csr<T> = true>
-            void duplicate_coarse_impl(T* Ac)
+            void duplicate_coarse(T* Ac)
             {
                 int rank, num_procs;
                 RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
@@ -402,10 +389,13 @@ namespace raptor
                             A_coarse.data(), coarse_sizes.data(), coarse_displs.data(), 
                             RAPtor_MPI_DOUBLE, coarse_comm);
 
-                    LU_permute.resize(coarse_n);
-                    int info;
-                    dgetrf_(&coarse_n, &coarse_n, A_coarse.data(), &coarse_n, 
-                            LU_permute.data(), &info);
+                    // LU_permute.resize(coarse_n);
+                    // int info;
+                    // dgetrf_(&coarse_n, &coarse_n, A_coarse.data(), &coarse_n, 
+                    //         LU_permute.data(), &info);
+
+                    // coarsest level pseudoinverse solve
+                    A_coarse_pinv = pinv(A_coarse.data(), coarse_n, coarse_n, 1e-10); 
 
                     for (int i = 0; i < num_active; i++)
                     {
@@ -422,8 +412,8 @@ namespace raptor
                     init_profile();
                 }
 
-                ParCSRMatrix* A = levels[level]->A;
-                ParCSRMatrix* P = levels[level]->P;
+                T* A = levels[level]->A;
+                T* P = levels[level]->P;
                 ParVector& tmp = levels[level]->tmp;
                 bool tap_level = tap_amg >= 0 && tap_amg <= level;
 
@@ -434,21 +424,38 @@ namespace raptor
                         int active_rank;
                         RAPtor_MPI_Comm_rank(coarse_comm, &active_rank);
 
-                        char trans = 'N'; //No transpose
-                        int nhrs = 1; // Number of right hand sides
-                        int info; // result
+                        // char trans = 'N'; //No transpose
+                        // int nhrs = 1; // Number of right hand sides
+                        // int info; // result
 
                         std::vector<double> b_data(coarse_n);
                         RAPtor_MPI_Allgatherv(b.local.data(), b.local_n, RAPtor_MPI_DOUBLE, b_data.data(), 
                                 coarse_sizes.data(), coarse_displs.data(), 
                                 RAPtor_MPI_DOUBLE, coarse_comm);
 
-                        dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
-                                LU_permute.data(), b_data.data(), &coarse_n, &info);
-                        for (int i = 0; i < b.local_n; i++)
+                        // dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
+                        //         LU_permute.data(), b_data.data(), &coarse_n, &info);
+                        // for (int i = 0; i < b.local_n; i++)
+                        // {
+                        //     x.local[i] = b_data[i + coarse_displs[active_rank]];
+                        // }
+
+                        // x = A_coarse_pinv * b_data
+                        const int first_local = coarse_displs[active_rank];
+
+                        for (int i = 0; i < x.local_n; i++)
                         {
-                            x.local[i] = b_data[i + coarse_displs[active_rank]];
+                            const int global_i = first_local + i;
+                            double value = 0.0;
+
+                            for (int j = 0; j < coarse_n; j++)
+                            {
+                                value += A_coarse_pinv[global_i*coarse_n + j] * b_data[j];
+                            }
+
+                            x.local[i] = value;
                         }
+
                     }
 
                     if (solve_times)
@@ -479,6 +486,12 @@ namespace raptor
                         case SSOR:
                             ssor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
                                     tap_level);
+                            break;
+                        case BlockJacobi:
+                            if constexpr (is_bsr_v<T>)
+                            {
+                                block_jacobi(A, levels[level]->block_diag_inv, x, b, tmp, num_smooth_sweeps, relax_weight);
+                            }
                             break;
                         default:
                             sor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
@@ -523,6 +536,12 @@ namespace raptor
                         case SSOR:
                             ssor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
                                     tap_level);
+                            break;
+                        case BlockJacobi:
+                            if constexpr (is_bsr_v<T>)
+                            {
+                                block_jacobi(A, levels[level]->block_diag_inv, x, b, tmp, num_smooth_sweeps, relax_weight);
+                            }
                             break;
                         default:
                             sor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
@@ -662,7 +681,7 @@ namespace raptor
 
             void print_times(double* times, const char* phase)
             {
-                if (times == NULL) return;
+                if (times == nullptr) return;
 
                 int rank;
                 RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
@@ -727,8 +746,9 @@ namespace raptor
             double* weights;
             std::vector<double> residuals;
 
-            std::vector<ParLevel*> levels;
-            std::vector<int> LU_permute;
+            std::vector<ParLevel_T<T>*> levels;
+            std::vector<double> A_coarse_pinv;
+            // std::vector<int> LU_permute;
             int num_levels;
             int num_variables;
             
@@ -741,6 +761,30 @@ namespace raptor
             std::vector<int> coarse_sizes;
             std::vector<int> coarse_displs;
             RAPtor_MPI_Comm coarse_comm;
+
+            private:
+            static void wrong_type_throw(relax_t relax_type)
+            {
+                if constexpr(is_bsr_v<T>)
+                {
+
+                    if (relax_type != BlockJacobi)
+                    {
+                        throw std::invalid_argument("ParBSRMatrix only supports BlockJacobi relaxation for now");
+                    }
+                }
+                else
+                {
+                    if (relax_type == BlockJacobi)
+                    {
+                        throw std::invalid_argument("ParCSRMatrix doesn't support BlockJacobi relaxation");
+                    }
+
+                }
+            }
+                
     };
+
+    using ParMultilevel = ParMultilevel_T<ParCSRMatrix>;
 }
 #endif

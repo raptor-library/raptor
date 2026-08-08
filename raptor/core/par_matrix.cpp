@@ -868,10 +868,24 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
     int global_col, pos;
     double val;
 
+    assert(block_row_size > 0 && block_col_size > 0 &&
+            (global_num_rows % block_row_size == 0) &&
+            (global_num_cols % block_col_size == 0) &&
+            (local_num_rows % block_row_size == 0) &&
+            (on_proc_num_cols % block_col_size == 0) &&
+            (partition->first_local_row % block_row_size == 0) &&
+            (partition->first_local_col % block_col_size == 0));
+
     int global_block_rows = global_num_rows / block_row_size;
     int global_block_cols = global_num_cols / block_col_size;
+    int local_block_rows = local_num_rows / block_row_size;
+    int local_block_cols = on_proc_num_cols / block_col_size;
+    int first_block_row = partition->first_local_row / block_row_size;
+    int first_block_col = partition->first_local_col / block_col_size;
     ParBSRMatrix* A = new ParBSRMatrix(global_block_rows, global_block_cols,
-            block_row_size, block_col_size);
+            local_block_rows, local_block_cols, first_block_row,
+            first_block_col, block_row_size, block_col_size,
+            partition->topology);
 
     // Get local to global mappings for block matrix
     prev_row = -1;
@@ -898,8 +912,8 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
             block_col = *it / block_col_size;
             if (block_col != prev_col)
             {
-                A->on_proc_column_map.emplace_back(block_row);
-                prev_col = block_row;
+                A->on_proc_column_map.emplace_back(block_col);
+                prev_col = block_col;
             }
         }
     }
@@ -983,6 +997,7 @@ ParBSRMatrix* ParCSRMatrix::to_ParBSR(const int block_row_size, const int block_
     }
     A_on_proc->nnz = A_on_proc->idx2.size();
     A_off_proc->nnz = A_off_proc->idx2.size();
+    A->local_nnz = A_on_proc->nnz + A_off_proc->nnz;
 
     A->comm = new ParComm(A->partition, A->off_proc_column_map);
 

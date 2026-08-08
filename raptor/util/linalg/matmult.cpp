@@ -93,7 +93,7 @@ CSRMatrix* spgemm_helper(const CSRMatrix* A, const CSRMatrix* B,
 {
     std::vector<int> next(B->n_cols, -1);
     std::vector<T> sums;
-    init_sums(sums, B->n_cols, B->b_size);
+    init_sums(sums, B->n_cols, A->b_rows * B->b_cols);
 
     CSRMatrix* C = NULL;
     std::vector<T>& C_vals = form_new(A, B, &C, A_vals);
@@ -127,7 +127,7 @@ CSRMatrix* spgemm_helper(const CSRMatrix* A, const CSRMatrix* B,
         }
         for (int j = 0; j < length; j++)
         {
-            double val = A->abs_val(sums[head]);
+            double val = C->abs_val(sums[head]);
             if (val > zero_tol)
             {
                 if (B_to_C) 
@@ -143,7 +143,7 @@ CSRMatrix* spgemm_helper(const CSRMatrix* A, const CSRMatrix* B,
             int tmp = head;
             head = next[head];
             next[tmp] = -1;
-            zero_sum(&sums[tmp], A->b_size);
+            zero_sum(&sums[tmp], C->b_size);
         }
         C->idx1[i+1] = C->idx2.size();
     }
@@ -165,7 +165,7 @@ CSRMatrix* spgemm_T_helper(const CSCMatrix* A, const CSRMatrix* B,
 
     std::vector<int> next(B->n_cols, -1); 
     std::vector<T> sums;
-    init_sums(sums, B->n_cols, A->b_cols * B->b_cols);
+    init_sums(sums, B->n_cols, C->b_size);
 
     C->idx1[0] = 0;
     for (int i = 0; i < A->n_cols; i++)
@@ -195,7 +195,7 @@ CSRMatrix* spgemm_T_helper(const CSCMatrix* A, const CSRMatrix* B,
         }
         for (int j = 0; j < length; j++)
         {
-            if (A->abs_val(sums[head]) > zero_tol)
+            if (C->abs_val(sums[head]) > zero_tol)
             {
                 if (C_map)
                 {

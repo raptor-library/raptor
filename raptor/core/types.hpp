@@ -53,8 +53,8 @@ namespace raptor
     enum interp_t { Direct, ModClassical, Extended, OnePoint };
     enum restrict_t { AIR };
     enum agg_t {MIS};
-    enum prolong_t {JacobiProlongation};
-    enum relax_t {Jacobi, SOR, SSOR, FCJacobi};
+    enum prolong_t {JacobiProlongation, BlockJacobiProlongation};
+    enum relax_t {Jacobi, SOR, SSOR, FCJacobi,BlockJacobi};
 
     struct splitting_t {
 	    std::vector<int> on_proc;

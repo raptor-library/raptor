@@ -44,18 +44,37 @@ ParBSRMatrix* init_mat(ParBSRMatrix* A, T* B)
     part->num_shared = 0;
     return C;
 }
-// initialize C = B^T A
-template <typename T>
-ParBSRMatrix* init_mat_T(ParBSRMatrix* A, T* B)
+
+ParBSRMatrix* init_matrix(ParBSRMatrix* A, ParBSRMatrix* B)
 {
-    Partition* Bt_part = B->partition->transpose();
-    Partition* part = new Partition(Bt_part, A->partition);
-    delete Bt_part;
-    ParBSRMatrix* C = new ParBSRMatrix(part,
-            B->on_proc->b_cols, A->on_proc->b_cols);
-    part->num_shared = 0;
-    return C;
+    Partition* part;
+
+    if (A->partition == B->partition)
+    {
+        part = A->partition;
+    }
+    else if (A->partition->global_num_rows == B->partition->global_num_rows &&
+            A->partition->local_num_rows == B->partition->local_num_rows &&
+            A->partition->first_local_row == B->partition->first_local_row &&
+            A->partition->last_local_row == B->partition->last_local_row)
+    {
+        part = B->partition;
+    }
+    else if (A->partition->global_num_cols == B->partition->global_num_cols &&
+            A->partition->local_num_cols == B->partition->local_num_cols &&
+            A->partition->first_local_col == B->partition->first_local_col &&
+            A->partition->last_local_col == B->partition->last_local_col)
+    {
+        part = A->partition;
+    }
+    else
+    {
+        return init_mat(A, B);
+    }
+
+    return new ParBSRMatrix(part, A->on_proc->b_rows, B->on_proc->b_cols);
 }
+
 template <typename T, typename U>
 ParCSRMatrix* init_matrix(T* A, U* B)
 {
@@ -90,6 +109,36 @@ ParCSRMatrix* init_matrix(T* A, U* B)
     return C;
 }
 
+// initialize C = B^T A
+template <typename T>
+ParBSRMatrix* init_mat_T(ParBSRMatrix* A, T* B)
+{
+    Partition* Bt_part = B->partition->transpose();
+    Partition* part = new Partition(Bt_part, A->partition);
+    delete Bt_part;
+    ParBSRMatrix* C = new ParBSRMatrix(part,
+            B->on_proc->b_cols, A->on_proc->b_cols);
+    part->num_shared = 0;
+    return C;
+}
+
+template <typename T>
+ParCSRMatrix* init_mat_T(ParCSRMatrix* A, T* B)
+{
+    Partition* Bt_part = B->partition->transpose();
+    Partition* part = new Partition(Bt_part, A->partition);
+    delete Bt_part;
+    ParCSRMatrix* C = new ParCSRMatrix(part);
+    part->num_shared = 0;
+    return C;
+}
+
+template <typename T, typename U, is_bsr_or_csr<T> = true>
+T* init_matrix_T(T* A, U* B)
+{
+    return init_mat_T(A, B);
+}
+
 template <class T, is_bsr_or_csr<T> = true>
 T * spgemm(T & A, T & B)
 {
@@ -111,7 +160,9 @@ T * spgemm(T & A, T & B)
     auto C_on_on = A.on_proc->mult(dynamic_cast<seq_t*>(B.on_proc));
     auto C_on_off = A.on_proc->mult(dynamic_cast<seq_t*>(B.off_proc));
 
-    auto recv_mat = A.comm->complete_mat_comm(B.on_proc->b_rows, B.on_proc->b_cols);
+    constexpr format_t format = is_bsr_v<T> ? BSR : CSR;
+    auto recv_mat = A.comm->complete_mat_comm(B.on_proc->b_rows,
+            B.on_proc->b_cols, true, format);
 
     A.mult_helper(&B, C, recv_mat, C_on_on, C_on_off);
 
@@ -207,7 +258,7 @@ ParCSRMatrix* ParCSRMatrix::mult_T(ParCSCMatrix* A, bool tap)
     }
 
     // Initialize C (matrix to be returned)
-    ParCSRMatrix* C = init_matrix(this, A);;
+    ParCSRMatrix* C = init_matrix_T(this, A);
 
     CSRMatrix* Ctmp = mult_T_partial(A);
     std::vector<char> send_buffer;
@@ -288,7 +339,7 @@ ParBSRMatrix* ParBSRMatrix::mult_T(ParBSCMatrix* A)
     }
 
     // Initialize C (matrix to be returned)
-    ParBSRMatrix* C = init_mat_T(this, A);;
+    ParBSRMatrix* C = init_matrix_T(this, A);
 
     BSRMatrix* Ctmp = mult_T_partial(A);
     std::vector<char> send_buffer;
@@ -300,7 +351,8 @@ ParBSRMatrix* ParBSRMatrix::mult_T(ParBSCMatrix* A)
     BSRMatrix* C_on_on = static_cast<BSRMatrix*>(on_proc)->spgemm_T(on_bsc);
     BSRMatrix* C_off_on = static_cast<BSRMatrix*>(off_proc)->spgemm_T(on_bsc);
 
-    BSRMatrix* recv_mat = static_cast<BSRMatrix*>(A->comm->complete_mat_comm_T(A->on_proc_num_cols, Ctmp->b_rows, Ctmp->b_cols));
+    BSRMatrix* recv_mat = static_cast<BSRMatrix*>(A->comm->complete_mat_comm_T(
+            A->on_proc_num_cols, Ctmp->b_rows, Ctmp->b_cols, true, BSR));
 
     mult_T_combine(A, C, recv_mat, C_on_on, C_off_on);
 
