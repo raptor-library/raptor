@@ -11,12 +11,17 @@
 #include "mfem.hpp"
 #include <fstream>
 #include <iostream>
+#include <vector>
 
 raptor::ParCSRMatrix* mfem_linear_elasticity(raptor::ParVector& x_raptor,
         raptor::ParVector& b_raptor, int* num_variables,
         const char* mesh_file,
         int order = 3, int seq_n_refines = 2, int par_n_refines = 2,
-        RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD);
+        RAPtor_MPI_Comm comm_mat = RAPtor_MPI_COMM_WORLD,
+        std::vector<double>* rigid_body_candidates = nullptr,
+        int* num_rigid_body_candidates = nullptr,
+        bool static_cond = true, 
+        double material_contrast = 1.0);
 
 raptor::ParCSRMatrix* mfem_dg_elasticity(raptor::ParVector& x_raptor,
         raptor::ParVector& b_raptor, int* num_variables,
