@@ -3,8 +3,11 @@
 
 #include "par_prolongation.hpp"
 #include "raptor/util/linalg/lapack_wrapper.hpp"
+#include "raptor/util/linalg/par_spectral_radius.hpp"
 
 #include <iostream>
+#include <cmath>
+#include <stdexcept>
 
 namespace raptor {
 
@@ -246,7 +249,7 @@ static ParBSRMatrix* jacobi_prolongation_bsr_local(ParBSRMatrix* A, ParBSRMatrix
 } // end of jacobi_prolongation_bsr_local()
 
 static ParBSRMatrix* jacobi_prolongation_bsr_block(ParBSRMatrix* A, ParBSRMatrix* T, bool tap_comm,
-        double omega, int num_smooth_steps)
+        double omega, int num_smooth_steps, bool spectral_scaling)
 {
     int rank;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
@@ -287,6 +290,17 @@ static ParBSRMatrix* jacobi_prolongation_bsr_block(ParBSRMatrix* A, ParBSRMatrix
         double* block = diag_inv.data() + row*scaled_A_on->b_size;
         auto pinv_block = pinv(block, scaled_A_on->b_rows, scaled_A_on->b_cols, -1.0);
         std::copy(pinv_block.begin(), pinv_block.end(), block);
+    }
+
+    // optionally apply spectral radius
+    if (spectral_scaling)
+    {
+        double lambda = power_iteration(A, diag_inv);
+        if (lambda <= 0 || !std::isfinite(lambda))
+        {
+            throw std::runtime_error("Power iteration produced an invalid spectral radius");
+        }
+        omega *= 1.0 / lambda;
     }
 
     // w * D^{-1} * A
@@ -378,13 +392,14 @@ T* jacobi_prolongation(T* A, T* tentative, bool tap_comm,
                 return jacobi_prolongation_bsr_local(A, tentative, tap_comm, omega, num_smooth_steps);
 
             case prolongation_weighting::block:
-                return jacobi_prolongation_bsr_block(A, tentative, tap_comm, omega, num_smooth_steps);
+                return jacobi_prolongation_bsr_block(A, tentative, tap_comm, omega, num_smooth_steps, false);
 
-            // TODO: implement block spectral smoothing.
-            // case prolongation_weighting::block_spectral:
-            //     return jacobi_prolongation_bsr_block(
-            //             A, tentative, tap_comm,
-            //             omega, num_smooth_steps);
+            case prolongation_weighting::block_spectral:
+                return jacobi_prolongation_bsr_block(
+                        A, tentative, tap_comm,
+                        omega, num_smooth_steps, true);
+            default:
+                throw std::invalid_argument("unsupported BSR prolongation weighting");
         }
     }
     else

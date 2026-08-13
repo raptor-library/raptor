@@ -105,6 +105,10 @@ namespace raptor
                     P = jacobi_prolongation(A, tentative, tap_level, 
                             prolong_weight, prolong_smooth_steps, prolongation_weighting::block);
                     break;
+                case BlockJacobiSpectralProlongation:
+                    P = jacobi_prolongation(A, tentative, tap_level, 
+                            prolong_weight, prolong_smooth_steps, prolongation_weighting::block_spectral);
+                    break;
                 default:
                     P = jacobi_prolongation(A, tentative, tap_level, 
                             prolong_weight, prolong_smooth_steps);

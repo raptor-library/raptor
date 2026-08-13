@@ -13,9 +13,8 @@ namespace raptor {
 enum class prolongation_weighting
 {
     local,
-    block
-    // TODO
-//     block_spectral
+    block,  
+    block_spectral
 };
 
 template <class T, is_bsr_or_csr<T> = true>

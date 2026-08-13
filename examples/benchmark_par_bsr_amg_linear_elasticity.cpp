@@ -39,6 +39,7 @@ int main(int argc, char* argv[])
     double theta = 0.5;
     double tol = 1e-6;
     double material_contrast = 1.0;
+    bool scale_spectral = true;
     bool static_cond = true;
 
     mfem::OptionsParser args(argc, argv);
@@ -54,6 +55,8 @@ int main(int argc, char* argv[])
                     "Relative standalone and PCG tolerance.");
     args.AddOption(&material_contrast, "-c", "--material-contrast",
                     "Ratio of material attribute 1 to the other attributes.");
+    args.AddOption(&scale_spectral, "-sp", "--spectral-radius", "-no-sp",
+                    "--no-spectral-radius", "Scale interpolation smoothing by spectral radius.");
     args.AddOption(&static_cond, "-sc", "--static-condensation", "-no-sc",
                     "--no-static-condensation", "Enable static condensation.");
 
@@ -95,7 +98,7 @@ int main(int argc, char* argv[])
     MPI_Barrier(MPI_COMM_WORLD);
 
     ml = new ParSmoothedAggregationSolver_T<ParBSRMatrix>(
-            theta, MIS, BlockJacobiProlongation,
+            theta, MIS, scale_spectral? BlockJacobiSpectralProlongation:BlockJacobiProlongation,
             Classical, BlockJacobi);
     ml->max_iterations = max_iter;
     ml->relax_weight = relax_damping;

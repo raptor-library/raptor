@@ -68,6 +68,30 @@ inline int total_global_num_rows(const T& A)
     }
 }
 
+template <class T, is_bsr_or_csr<T> = true>
+inline int total_local_num_cols(const T& A){
+    if constexpr (is_bsr_v<T>){
+        return A.on_proc_num_cols * A.on_proc->b_cols;
+    }
+    else{
+        return A.on_proc_num_cols;
+    }
+    
+}
+
+template <class T, is_bsr_or_csr<T> = true>
+inline int total_global_num_cols(const T& A)
+{
+    if constexpr (is_bsr_v<T>)
+    {
+        return A.global_num_cols * A.on_proc->b_cols;
+    }
+    else
+    {
+        return A.global_num_cols;
+    }
+}
+
 // map block row indices to global scalar indices
 template <class T, is_bsr_or_csr<T> = true>
 std::vector<int> total_local_row_map(const T& A)
