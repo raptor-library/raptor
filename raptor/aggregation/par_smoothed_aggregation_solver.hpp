@@ -9,6 +9,8 @@
 #include "par_candidates.hpp"
 #include "par_prolongation.hpp"
 
+#include <stdexcept>
+
 namespace raptor
 {
     template <class T, is_bsr_or_csr<T> = true>
@@ -39,6 +41,14 @@ namespace raptor
 
         void setup(T* Af) override
         {
+            // reject parbsrmatrix passed through parcsrmatrix 
+            if constexpr (!is_bsr_v<T>)
+            {
+                if (Af->on_proc->format()==BSR)
+                {
+                    throw std::invalid_argument("Matrix is ParBSRMatrix; use ParSmoothedAggregationSolver_T<ParBSRMatrix>");
+                }
+            }
             // default B = constant vector 
             num_candidates = 1;
             B.assign(total_local_num_rows(*Af), 1.0);
@@ -48,6 +58,14 @@ namespace raptor
 
         void setup(T* Af, const std::vector<double>& candidates, int num_cand)
         {
+            // reject parbsrmatrix passed through parcsrmatrix 
+            if constexpr (!is_bsr_v<T>)
+            {
+                if (Af->on_proc->format()==BSR)
+                {
+                    throw std::invalid_argument("Matrix is ParBSRMatrix; use ParSmoothedAggregationSolver_T<ParBSRMatrix>");
+                }
+            }
             assert(num_cand > 0);
             num_candidates = num_cand;
             B = candidates;
