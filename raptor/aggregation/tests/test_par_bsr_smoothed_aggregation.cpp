@@ -162,13 +162,19 @@ TEST(TestParBSRSmoothedAggregation, MultilevelElasticity)
 
     if (rank == 0)
     {
-        std::printf("BSR SA correctness: ranks=%d fine_size=%d "
-                "coarse_size=%d iterations=%d bsr_relative_residual=%.15e "
-                "relative_solution_error=%.15e setup_time=%.6e "
-                "solve_time=%.6e\n",
-                num_procs, global_n, coarse_n,
-                iterations, bsr_relative_residual, relative_solution_error,
-                setup_time, solve_time);
+        std::printf(
+        "BSR SA result:\n"
+        "  num_procs=%d\n"
+        "  fine_size=%d\n"
+        "  coarse_size=%d\n"
+        "  iterations=%d\n"
+        "  bsr_relative_residual=%.15e\n"
+        "  relative_solution_error=%.15e\n"
+        "  setup_time=%.6e\n"
+        "  solve_time=%.6e\n",
+        num_procs, global_n, coarse_n, iterations,
+        bsr_relative_residual, relative_solution_error,
+        setup_time, solve_time);
     }
 
     EXPECT_LT(coarse_n, global_n);

@@ -5,6 +5,7 @@
 
 #include "core/par_matrix.hpp"
 #include "core/matrix_traits.hpp"
+#include <cmath>
 
 using namespace raptor;
 
@@ -82,6 +83,10 @@ mat_args(T&, const int*, int)->mat_args<T>;
 
 template <class P>
 constexpr double value(CSRMatrix & mat, int i) {
+    if constexpr (std::is_same_v<P,norm_coupling<strength_norm::abs>>)
+    {
+        return std::abs(mat.vals[i]);
+    }
 	return mat.vals[i];
 }
 template <class P>
@@ -94,7 +99,7 @@ constexpr double value(BSRMatrix & mat, int i) {
         {
             sum += val*val;
         }
-        return sum;
+        return std::sqrt(sum); // consistent with csr strength
     }
     else
     {
