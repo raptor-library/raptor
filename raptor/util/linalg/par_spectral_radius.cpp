@@ -36,9 +36,9 @@ double power_iteration(ParBSRMatrix* A,
     ParVector q(scalar_global_col, scalar_local_col); 
     q.set_rand_values();
     auto qnorm = q.norm(2);
-    if (qnorm <= 0 && !std::isfinite(qnorm))
+    if (qnorm <= 0 || !std::isfinite(qnorm))
     {   
-        std::runtime_error("invalid random vector initialization in power iteration");
+        throw std::runtime_error("invalid random vector initialization in power iteration");
     }
     q.scale(1.0/qnorm);
     double lambda = 0.0;
@@ -70,9 +70,9 @@ double power_iteration(ParBSRMatrix* A,
         ParVector x(z);
 
         auto xnorm = x.norm(2);
-        if (xnorm <= 0 && !std::isfinite(xnorm))
+        if (xnorm <= 0 || !std::isfinite(xnorm))
         {   
-            std::runtime_error("invalid vector normalization in power iteration");
+            throw std::runtime_error("invalid vector normalization in power iteration");
         }
         x.scale(1.0/xnorm);
 
