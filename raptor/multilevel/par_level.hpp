@@ -6,41 +6,44 @@
 #include "raptor/core/types.hpp"
 #include "raptor/core/par_matrix.hpp"
 #include "raptor/core/par_vector.hpp"
+#include "raptor/core/matrix_traits.hpp"
 
-// Coarse Matrices (A) are CSR
-// Prolongation Matrices (P) are CSR
-// P^T*A*P is then CSR*(CSR*CSR) -- returns CSR Ac
 namespace raptor
 {
-    class ParLevel
+    template <class T, is_bsr_or_csr<T> = true>
+    class ParLevel_T
     {
         public:
-            ParLevel()
+            ParLevel_T()
             {
-                A = NULL;
-                P = NULL;
-                AP = NULL;
-                I = NULL;
+                A = nullptr;
+                P = nullptr;
+                AP = nullptr;
+                I = nullptr;
+                R = nullptr;
             }
 
-            ~ParLevel()
+            ~ParLevel_T()
             {
                 delete A;
                 delete P;
-
+                delete R;
                 delete AP;
                 delete I;
             }
 
-            ParCSRMatrix* A;
-            ParCSRMatrix* P;
-		    ParCSRMatrix* R;
+            T* A;
+            T* P;
+		    T* R;
             ParVector x;
             ParVector b;
             ParVector tmp;
+            std::vector<double> block_diag_inv;
 
-            ParCSRMatrix* AP;
-            ParCSRMatrix* I;
+            T* AP;
+            T* I;
     };
+
+    using ParLevel = ParLevel_T<ParCSRMatrix>;
 }
 #endif

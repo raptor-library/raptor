@@ -68,6 +68,9 @@ if (WITH_MPI)
 
     add_executable(model_tap_steps model_tap_steps.cpp)
     target_link_libraries(model_tap_steps raptor ${MPI_LIBRARIES})
+
+    if (WITH_MFEM)
+        add_executable(benchmark_par_bsr_amg_linear_elasticity benchmark_par_bsr_amg_linear_elasticity.cpp)
+        target_link_libraries(benchmark_par_bsr_amg_linear_elasticity raptor ${MPI_LIBRARIES})
+    endif()
 endif()
-
-

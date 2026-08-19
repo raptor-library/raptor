@@ -8,6 +8,7 @@
 #include "matrix.hpp"
 #include "partition.hpp"
 #include "par_vector.hpp"
+#include "types.hpp"
 
 #define STANDARD_PPN 4
 #define STANDARD_PROC_LAYOUT 1
@@ -87,7 +88,7 @@ namespace raptor
                 const std::vector<int>& col_indices, const std::vector<double*>& values,
                 const int b_rows = 1, const int b_cols = 1, const bool has_vals = true) = 0;
         virtual CSRMatrix* complete_mat_comm(const int b_rows = 1, const int b_cols = 1,
-                const bool has_vals = true) = 0;
+                const bool has_vals = true, format_t format = CSR) = 0;
 
         virtual CSRMatrix* communicate_T(const std::vector<int>& rowptr,
                 const std::vector<int>& col_indices, const std::vector<double>& values,
@@ -107,7 +108,7 @@ namespace raptor
                 const int b_cols = 1, const bool has_vals = true) = 0;
         virtual CSRMatrix* complete_mat_comm_T(const int n_result_rows,
                 const int b_rows = 1, const int b_cols = 1,
-                const bool has_vals = true) = 0;
+                const bool has_vals = true, format_t format = CSR) = 0;
 
         std::vector<double>& get_vals(CSRMatrix* A)
         {
@@ -918,7 +919,7 @@ namespace raptor
                 const std::vector<int>& col_indices, const std::vector<double*>& values,
                 const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
         CSRMatrix* complete_mat_comm(const int b_rows = 1, const int b_cols = 1,
-                const bool has_vals = true);
+                const bool has_vals = true, format_t format = CSR);
 
         CSRMatrix* communicate_T(const std::vector<int>& rowptr,
                 const std::vector<int>& col_indices, const std::vector<double>& values,
@@ -938,7 +939,7 @@ namespace raptor
                 const int b_cols = 1, const bool has_vals = true) ;
         CSRMatrix* complete_mat_comm_T(const int n_result_rows,
                 const int b_rows = 1, const int b_cols = 1,
-                const bool has_vals = true) ;
+                const bool has_vals = true, format_t format = CSR) ;
 
 
         CSRMatrix* communicate(ParCSRMatrix* A, const bool has_vals = true)
@@ -1769,7 +1770,7 @@ namespace raptor
                 const std::vector<int>& col_indices, const std::vector<double*>& values,
                 const int b_rows = 1, const int b_cols = 1, const bool has_vals = true);
         CSRMatrix* complete_mat_comm(const int b_rows = 1, const int b_cols = 1,
-                const bool has_vals = true);
+                const bool has_vals = true, format_t format = CSR);
 
         CSRMatrix* communicate_T(const std::vector<int>& rowptr,
                 const std::vector<int>& col_indices, const std::vector<double>& values,
@@ -1789,7 +1790,7 @@ namespace raptor
                 const int b_cols = 1, const bool has_vals = true) ;
         CSRMatrix* complete_mat_comm_T(const int n_result_rows,
                 const int b_rows = 1, const int b_cols = 1,
-                const bool has_vals = true);
+                const bool has_vals = true, format_t format = CSR);
 
         CSRMatrix* communicate(ParCSRMatrix* A, const bool has_vals = true)
         {

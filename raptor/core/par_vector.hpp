@@ -7,6 +7,7 @@
 
 #include <mpi.h>
 #include <math.h>
+#include <stdexcept>
 
 #include "mpi_types.hpp"
 #include "vector.hpp"
@@ -170,6 +171,33 @@ namespace raptor
             return local.values[index];
         }
 
+        ParVector operator-(const ParVector& x) const 
+        {
+            if (global_n != x.global_n || local_n != x.local_n)
+            {
+                throw std::invalid_argument("Cannot subtract ParVectors with different dimensions");
+            }
+            ParVector z(global_n, local_n);
+            for (int i = 0; i < local_n; i++)
+            {
+                z[i] = (*this)[i] - x[i];
+            }
+            return z;
+        }
+
+        ParVector operator+(const ParVector& x) const 
+        {
+            if (global_n != x.global_n || local_n != x.local_n)
+            {
+                throw std::invalid_argument("Cannot add ParVectors with different dimensions");
+            }
+            ParVector z(global_n, local_n);
+            for (int i = 0; i < local_n; i++)
+            {
+                z[i] = (*this)[i] + x[i];
+            }
+            return z;
+        }
         Vector local;
         int global_n;
         int local_n;

@@ -8,6 +8,7 @@ if (WITH_MPI)
         util/linalg/repartition.hpp
         util/linalg/par_relax.hpp
         util/linalg/par_diag_scale.hpp
+        util/linalg/par_spectral_radius.hpp
         )
     set(par_linalg_SOURCES
         util/linalg/par_spmv.cpp
@@ -16,6 +17,7 @@ if (WITH_MPI)
         util/linalg/par_relax.cpp
         util/linalg/repartition.cpp
         util/linalg/par_diag_scale.cpp
+        util/linalg/par_spectral_radius.cpp
         )
 else ()
     set(par_linalg_HEADERS
@@ -27,12 +29,14 @@ else ()
 endif()
 
 set(linalg_HEADERS
+    util/linalg/lapack_wrapper.hpp
     util/linalg/relax.hpp
     ${par_linalg_HEADERS}
     ${external_linalg_HEADERS}
     PARENT_SCOPE
     )
 set(linalg_SOURCES 
+    util/linalg/lapack_wrapper.cpp
     util/linalg/matmult.cpp
     util/linalg/relax.cpp
     util/linalg/add.cpp
@@ -40,7 +44,6 @@ set(linalg_SOURCES
     ${par_linalg_SOURCES}
     PARENT_SCOPE
     )
-
 
 
 

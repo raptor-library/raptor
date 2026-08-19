@@ -4,6 +4,7 @@
 #include "raptor/core/types.hpp"
 #include "par_relax.hpp"
 #include "raptor/core/par_matrix.hpp"
+#include "raptor/util/linalg/lapack_wrapper.hpp"
 
 namespace raptor {
 // Declare Private Methods
@@ -144,7 +145,7 @@ void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
       
             start = A->on_proc->idx1[i];
             end = A->on_proc->idx1[i+1];
-            if (start == end)
+            if (start == end || A->on_proc->idx2[start] != i)
                 continue;
 
             diag = A->on_proc->vals[start++];
@@ -201,6 +202,75 @@ void ssor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     }
 }
 
+static void block_jacobi_helper(ParBSRMatrix* A, const std::vector<double>& block_diag_inv, ParVector& x, ParVector& b, ParVector& tmp, 
+        int num_sweeps, double omega)
+{
+    auto bsize = A->on_proc->b_size;
+    auto brow = A->on_proc->b_rows;
+    auto bcol = A->on_proc->b_cols;
+  
+    assert(brow == bcol);
+
+    for (int iter = 0; iter < num_sweeps; iter++)
+    {
+        A->residual(x,b,tmp,false);
+
+        for (int i = 0; i < A->local_num_rows; i++)
+        {    
+            int offset = i * brow;
+            const double* D_inv = block_diag_inv.data() + i*bsize;
+
+            for (int br = 0; br < brow; br++)
+            {
+                double correction = 0.0;
+
+                for (int bc = 0; bc < bcol; bc++)
+                {
+                    correction += D_inv[br * bcol + bc]* tmp[offset + bc];
+                }
+
+                x[offset + br] += omega * correction;
+            }
+        }
+    }
+}
+
+std::vector<double> compute_block_diag_inv(const ParBSRMatrix* A)
+{
+    // A is assumed sorted and move_diag() already in each level
+    BSRMatrix* A_on = static_cast<BSRMatrix*>(A->on_proc);
+
+    assert(A_on->b_rows == A_on->b_cols);
+
+    int row_start, row_end;
+
+    std::vector<double> diag_inv(A->local_num_rows * A_on -> b_size, 0.0);
+    for (int row = 0; row < A-> local_num_rows; row ++)
+    {
+        row_start = A_on->idx1[row];
+        row_end = A_on->idx1[row+1];
+
+        // empty row or no diagonal block that row
+        if (row_start == row_end || A_on -> idx2[row_start] != row)
+        {
+            // filled with 0s
+            continue;
+        }
+        
+        double* diag_block = diag_inv.data() + row * A_on->b_size;
+
+        std::copy(A_on->block_vals[row_start],A_on->block_vals[row_start] + A_on->b_size, diag_block);
+    }
+
+    for (int row = 0; row < A-> local_num_rows; row ++)
+    {
+        double* block = diag_inv.data() + row*A_on->b_size;
+        auto pinv_block = pinv(block, A_on->b_rows, A_on->b_cols, -1.0);
+        std::copy(pinv_block.begin(), pinv_block.end(), block);
+    }
+
+    return diag_inv;
+}
 /**************************************************************
  *****  Relaxation Method 
  **************************************************************
@@ -288,6 +358,10 @@ void ssor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 
     ssor_helper(A, x, b, tmp, num_sweeps, omega, comm);
 }
-
+void block_jacobi(ParBSRMatrix* A, const std::vector<double>& block_diag_inv, ParVector& x, ParVector& b, ParVector& tmp, 
+        int num_sweeps, double omega)
+{
+    block_jacobi_helper(A, block_diag_inv, x, b, tmp, num_sweeps, omega);
+}
 
 }
