@@ -70,6 +70,12 @@ if (WITH_MPI)
     add_test(TestParBSRSmoothedAggregation ${MPIRUN} -n 1 ${HOST} ./test_par_bsr_smoothed_aggregation)
     add_test(TestParBSRSmoothedAggregation ${MPIRUN} -n 4 ${HOST} ./test_par_bsr_smoothed_aggregation)
     add_test(TestParBSRSmoothedAggregation ${MPIRUN} -n 10 ${HOST} ./test_par_bsr_smoothed_aggregation)
+
+    add_executable(test_par_csr_smoothed_aggregation test_par_csr_smoothed_aggregation.cpp)
+    target_link_libraries(test_par_csr_smoothed_aggregation raptor ${MPI_LIBRARIES} googletest pthread)
+    add_test(TestParCSRSmoothedAggregation ${MPIRUN} -n 1 ${HOST} ./test_par_csr_smoothed_aggregation)
+    add_test(TestParCSRSmoothedAggregation ${MPIRUN} -n 4 ${HOST} ./test_par_csr_smoothed_aggregation)
+    add_test(TestParCSRSmoothedAggregation ${MPIRUN} -n 10 ${HOST} ./test_par_csr_smoothed_aggregation)
 endif()
 
 

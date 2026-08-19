@@ -37,6 +37,10 @@ namespace raptor
 
         ~ParSmoothedAggregationSolver_T()
         {
+            for (ParLevel_T<ParBSRMatrix>* level: coarse_levels)
+            {
+                delete level;
+            }
         }
 
         void setup(T* Af) override
@@ -70,6 +74,14 @@ namespace raptor
             num_candidates = num_cand;
             B = candidates;
 
+            if constexpr (!is_bsr_v<T>)
+            {
+                if (num_cand > 1) 
+                {
+                    setup_hybrid_helper(Af);
+                    return;
+                }
+            }
             this->setup_helper(Af);
         }
 
@@ -139,11 +151,11 @@ namespace raptor
 
             if constexpr (is_bsr_v<T>)
             {
-                AP = A->mult(this->levels[level_ctr]->P);
+                AP = A->mult(P);
             }
             else
             {
-                AP = A->mult(this->levels[level_ctr]->P, tap_level);
+                AP = A->mult(P, tap_level);
             }
 
             if constexpr (is_bsr_v<T>)
@@ -183,10 +195,27 @@ namespace raptor
             delete S;
         }    
 
+        // For ParCSRMatrix with num_candidates > 1, level 0 is csr 
+        // coarse level has ParBSRMatrix type
+        void cycle(ParVector& x, ParVector& b, int level = 0) override
+        {
+            if (coarse_levels.empty())
+            {
+                ParMultilevel_T<T>::cycle(x,b,level);
+                return;
+            }
+            
+            hybrid_cycle(x,b);
+            
+        }
+
 
         agg_t agg_type;
         prolong_t prolong_type;
         std::vector<double> B;
+
+        // for hybrid T only
+        std::vector<ParLevel_T<ParBSRMatrix>*> coarse_levels;
 
         double interp_tol;
         double prolong_weight;
@@ -194,58 +223,76 @@ namespace raptor
         int num_candidates;
 
         private:
-        static constexpr prolong_t default_prolong_type()
-        {
-            if constexpr(is_bsr_v<T>) return BlockJacobiProlongation;
-            else return JacobiProlongation;
-        }
-
-        static constexpr relax_t default_relax_type()
-        {
-            if constexpr(is_bsr_v<T>) return BlockJacobi;
-            else return SOR;
-        }
-
-        static void wrong_type_throw_parSA(prolong_t prolong_type, strength_t strength_type)
-        {
-            if constexpr(is_bsr_v<T>)
+            static constexpr prolong_t default_prolong_type()
             {
-                if (strength_type == Symmetric)
-                {
-                    throw std::invalid_argument("ParBSRMatrix doesn't support Symmetric strength yet");
-                }
-
+                if constexpr(is_bsr_v<T>) return BlockJacobiProlongation;
+                else return JacobiProlongation;
             }
-            else
-            {
-                if (prolong_type == BlockJacobiProlongation)
-                {
-                    throw std::invalid_argument("ParCSRMatrix doesn't support BlockJacobiProlongation");
-                }
-                
-            }
-        }
 
-        // update coarse grid Bc from R
-        // R is row major, B is column major
-        void update_B(std::vector<double>& candidates, const std::vector<double>& R, const int num_cand, const int total_local_num_rows)
-        {
-            assert(R.size() == total_local_num_rows*num_cand);
-            std::vector<double> Bc(R.size(),0.0);
-            for (int r = 0; r < total_local_num_rows; r++)
+            static constexpr relax_t default_relax_type()
             {
-                for (int c = 0; c < num_cand; c++)
+                if constexpr(is_bsr_v<T>) return BlockJacobi;
+                else return SOR;
+            }
+
+            static void wrong_type_throw_parSA(prolong_t prolong_type, strength_t strength_type)
+            {
+                if constexpr(is_bsr_v<T>)
                 {
-                    Bc[c*total_local_num_rows+r] = R[r*num_cand+c];
+                    if (strength_type == Symmetric)
+                    {
+                        throw std::invalid_argument("ParBSRMatrix doesn't support Symmetric strength yet");
+                    }
+
+                }
+                else
+                {
+                    if (prolong_type == BlockJacobiProlongation)
+                    {
+                        throw std::invalid_argument("ParCSRMatrix doesn't support BlockJacobiProlongation");
+                    }
+                    
                 }
             }
-            candidates = std::move(Bc);
-        }
+
+            // update coarse grid Bc from R
+            // R is row major, B is column major
+            void update_B(std::vector<double>& candidates, const std::vector<double>& R, const int num_cand, const int total_local_num_rows)
+            {
+                assert(R.size() == total_local_num_rows*num_cand);
+                std::vector<double> Bc(R.size(),0.0);
+                for (int r = 0; r < total_local_num_rows; r++)
+                {
+                    for (int c = 0; c < num_cand; c++)
+                    {
+                        Bc[c*total_local_num_rows+r] = R[r*num_cand+c];
+                    }
+                }
+                candidates = std::move(Bc);
+            }
+
+            void relax_bsr(ParLevel_T<ParBSRMatrix>& coarse_level, ParVector& x, ParVector& b)
+            {
+                block_jacobi(
+                coarse_level.A,
+                coarse_level.block_diag_inv,
+                x,
+                b,
+                coarse_level.tmp,
+                this->num_smooth_sweeps,
+                this->relax_weight);
+            }
+            void extend_bsr_hierarchy();
+            void setup_hybrid_helper(ParCSRMatrix*Af);
+            void bsr_cycle(ParVector& x, ParVector& b, int level = 0);
+            void hybrid_cycle(ParVector& x, ParVector& b);
 
     };
 
     using ParSmoothedAggregationSolver = ParSmoothedAggregationSolver_T<ParCSRMatrix>;
 }
+
+#include "par_smoothed_aggregation_solver_hybrid_T.tpp"
    
 
 #endif

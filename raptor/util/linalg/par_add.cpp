@@ -4,7 +4,7 @@
 #include "raptor/core/par_matrix.hpp"
 
 using namespace raptor;
-
+// TODO: refactor these functions into helpers and merge them for better code management
 // TODO -- currently assumes partitions are the same 
 ParMatrix* ParMatrix::add(ParCSRMatrix* B)
 {
@@ -14,6 +14,62 @@ ParMatrix* ParMatrix::subtract(ParCSRMatrix* B)
 {
     return NULL;
 }
+
+static void finalize_helper(const ParMatrix* A, ParMatrix* C)
+{
+    Matrix* C_on = C->on_proc;
+    Matrix* C_off = C->off_proc;
+    C_on->nnz = C_on->idx2.size();
+    C_off->nnz = C_off->idx2.size();
+
+    C->on_proc_column_map = A->on_proc_column_map;
+    C->local_row_map = A->local_row_map;
+
+    C_on->sort();
+    C_on->remove_duplicates();
+    C_on->move_diag();
+
+    C_off->sort();
+    C_off->remove_duplicates();
+
+    if (C->off_proc_num_cols)
+    {
+        std::vector<int> new_col(C->off_proc_num_cols, 0);
+        for (std::vector<int>::iterator it = C_off->idx2.begin();
+                it != C_off->idx2.end(); ++it)
+        {
+            new_col[*it] = 1;
+        }
+        int ctr = 0;
+        for (int i = 0; i < C->off_proc_num_cols; i++)
+        {
+            if (new_col[i])
+                new_col[i] = ctr++;
+            else 
+                new_col[i] = -1;
+        }
+        C->off_proc_num_cols = ctr;
+        C_off->n_cols = ctr;
+        std::vector<int> old_off_proc_column_map = C->off_proc_column_map;
+        C->off_proc_column_map.resize(ctr);
+        for (size_t i = 0; i < new_col.size(); i++)
+        {
+            if (new_col[i] >= 0)
+            {
+                C->off_proc_column_map[new_col[i]] = old_off_proc_column_map[i];
+            }
+        }
+
+        for (std::vector<int>::iterator it = C_off->idx2.begin();
+                it != C_off->idx2.end(); ++it)
+        {
+            *it = new_col[*it];
+        }
+    }
+
+    C->local_nnz = C_on->nnz + C_off->nnz;
+}
+
 
 ParCSRMatrix* ParCSRMatrix::add(ParCSRMatrix* B)
 {
@@ -131,51 +187,7 @@ ParCSRMatrix* ParCSRMatrix::add(ParCSRMatrix* B)
         // Update rowptr
         C->off_proc->idx1[i+1] = off_nnz; 
     }
-    C->on_proc->nnz = C->on_proc->idx2.size();
-    C->off_proc->nnz = C->off_proc->idx2.size();
-
-    C->on_proc_column_map.resize(on_proc_column_map.size());
-    std::copy(on_proc_column_map.begin(), on_proc_column_map.end(),
-            C->on_proc_column_map.begin());
-    C->local_row_map.resize(local_row_map.size());
-    std::copy(local_row_map.begin(), local_row_map.end(),
-            C->local_row_map.begin());
-
-    C->on_proc->sort();
-    C->on_proc->remove_duplicates();
-    C->on_proc->move_diag();
-
-    C->off_proc->sort();
-    C->off_proc->remove_duplicates();
-
-    if (C->off_proc_num_cols)
-    {
-        std::vector<int> new_col(C->off_proc_num_cols, 0);
-        for (std::vector<int>::iterator it = C->off_proc->idx2.begin();
-                it != C->off_proc->idx2.end(); ++it)
-        {
-            new_col[*it] = 1;
-        }
-        ctr = 0;
-        for (int i = 0; i < C->off_proc_num_cols; i++)
-        {
-            if (new_col[i])
-                new_col[i] = ctr++;
-            else 
-                new_col[i] = -1;
-        }
-        C->off_proc_num_cols = ctr;
-        C->off_proc->n_cols = ctr;
-        C->off_proc_column_map.resize(ctr);
-
-        for (std::vector<int>::iterator it = C->off_proc->idx2.begin();
-                it != C->off_proc->idx2.end(); ++it)
-        {
-            *it = new_col[*it];
-        }
-    }
-
-    C->local_nnz = C->on_proc->nnz + C->off_proc->nnz;
+    finalize_helper(this,C);
 
     return C;
 }
@@ -261,49 +273,8 @@ ParCSRMatrix* ParCSRMatrix::subtract(ParCSRMatrix* B)
         }
         C->off_proc->idx1[i+1] = C->off_proc->idx2.size();
     }
-    C->on_proc->nnz = C->on_proc->idx2.size();
-    C->off_proc->nnz = C->off_proc->idx2.size();
+    finalize_helper(this,C);
 
-    C->on_proc_column_map.resize(on_proc_column_map.size());
-    std::copy(on_proc_column_map.begin(), on_proc_column_map.end(), C->on_proc_column_map.begin());
-    C->local_row_map.resize(local_row_map.size());
-    std::copy(local_row_map.begin(), local_row_map.end(), C->local_row_map.begin());
-
-    C->on_proc->sort();
-    C->on_proc->remove_duplicates();
-    C->on_proc->move_diag();
-
-    C->off_proc->sort();
-    C->off_proc->remove_duplicates();
-
-    if (C->off_proc_num_cols)
-    {
-        std::vector<int> new_col(C->off_proc_num_cols, 0);
-        for (std::vector<int>::iterator it = C->off_proc->idx2.begin();
-                it != C->off_proc->idx2.end(); ++it)
-        {
-            new_col[*it] = 1;
-        }
-        ctr = 0;
-        for (int i = 0; i < C->off_proc_num_cols; i++)
-        {
-            if (new_col[i])
-                new_col[i] = ctr++;
-            else 
-                new_col[i] = -1;
-        }
-        C->off_proc_num_cols = ctr;
-        C->off_proc->n_cols = ctr;
-        C->off_proc_column_map.resize(ctr);
-
-        for (std::vector<int>::iterator it = C->off_proc->idx2.begin();
-                it != C->off_proc->idx2.end(); ++it)
-        {
-            *it = new_col[*it];
-        }
-    }
-
-    C->local_nnz = C->on_proc->nnz + C->off_proc->nnz;
 
     return C;
 } // end of ParCSRMatrix::subtract()
@@ -423,49 +394,8 @@ ParBSRMatrix* ParBSRMatrix::subtract(ParBSRMatrix* B)
         }
         C_off->idx1[i+1] = C_off->idx2.size();
     }
-    C_on->nnz = C_on->idx2.size();
-    C_off->nnz = C_off->idx2.size();
+    finalize_helper(this,C);
 
-    C->on_proc_column_map.resize(on_proc_column_map.size());
-    std::copy(on_proc_column_map.begin(), on_proc_column_map.end(), C->on_proc_column_map.begin());
-    C->local_row_map.resize(local_row_map.size());
-    std::copy(local_row_map.begin(), local_row_map.end(), C->local_row_map.begin());
-
-    C_on->sort();
-    C_on->remove_duplicates();
-    C_on->move_diag();
-
-    C_off->sort();
-    C_off->remove_duplicates();
-
-    if (C->off_proc_num_cols)
-    {
-        std::vector<int> new_col(C->off_proc_num_cols, 0);
-        for (std::vector<int>::iterator it = C_off->idx2.begin();
-                it != C_off->idx2.end(); ++it)
-        {
-            new_col[*it] = 1;
-        }
-        ctr = 0;
-        for (int i = 0; i < C->off_proc_num_cols; i++)
-        {
-            if (new_col[i])
-                new_col[i] = ctr++;
-            else 
-                new_col[i] = -1;
-        }
-        C->off_proc_num_cols = ctr;
-        C_off->n_cols = ctr;
-        C->off_proc_column_map.resize(ctr);
-
-        for (std::vector<int>::iterator it = C_off->idx2.begin();
-                it != C_off->idx2.end(); ++it)
-        {
-            *it = new_col[*it];
-        }
-    }
-
-    C->local_nnz = C_on->nnz + C_off->nnz;
 
     return C;
 } // end of ParBSRMatrix::subtract()
