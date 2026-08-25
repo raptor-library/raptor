@@ -7,6 +7,7 @@
 #include "gtest/gtest.h"
 #include "mpi.h"
 
+#include "raptor_mfem_config.hpp"
 #include "raptor/raptor.hpp"
 #include "raptor/tests/hypre_compare.hpp"
 

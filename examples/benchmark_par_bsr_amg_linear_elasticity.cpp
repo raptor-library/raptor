@@ -7,6 +7,7 @@
 #include <iostream>
 #include "mfem.hpp"
 
+#include "raptor_mfem_config.hpp"
 #include "raptor/raptor.hpp"
 
 using namespace raptor;

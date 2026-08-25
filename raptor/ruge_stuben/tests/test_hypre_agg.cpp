@@ -6,6 +6,9 @@
 
 #include "gtest/gtest.h"
 
+#ifdef USING_MFEM
+#include "raptor_mfem_config.hpp"
+#endif
 #include "raptor/raptor.hpp"
 #include "raptor/tests/hypre_compare.hpp"
 

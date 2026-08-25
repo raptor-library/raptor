@@ -175,7 +175,10 @@ if(WITH_MFEM)
 	else()
 		message(FATAL_ERROR "Cannot find mfem. Try setting MFEM_DIR.")
 	endif(MFEM_FOUND)
-    add_definitions( -DMFEM_MESH_DIR=\"${MFEM_MESH_PATH}\" )
+    file(GENERATE
+        OUTPUT "${PROJECT_BINARY_DIR}/raptor_mfem_config.hpp"
+        CONTENT "#pragma once\n\n#define MFEM_MESH_DIR \"${MFEM_MESH_PATH}\"\n")
+    include_directories(${PROJECT_BINARY_DIR})
 endif(WITH_MFEM)
 
 if(WITH_PETSC)
