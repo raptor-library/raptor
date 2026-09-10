@@ -2,6 +2,10 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include "vector.hpp"
 
+#ifdef USING_OPENMP
+#include <omp.h>
+#endif
+
 using namespace raptor;
 
 /**************************************************************
@@ -156,6 +160,9 @@ data_t Vector::inner_product(Vector& x)
 {
     data_t result = 0.0;
 
+#ifdef USING_OPENMP
+#pragma omp parallel for reduction(+:result) schedule(static)
+#endif
     for (int i = 0; i < size(); i++)
     {
         result += values[i] * x[i];

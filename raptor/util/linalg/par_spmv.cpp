@@ -243,7 +243,7 @@ void ParMatrix::residual(ParVector& x, ParVector& b, ParVector& r, bool tap)
     // solution in b (b += A_offd * x_distant)
     if (off_proc_num_cols)
     {
-        off_proc->mult_append_neg(x_tmp, r.local);
+        off_proc->residual(x_tmp, r.local, r.local);
     }
 }
 

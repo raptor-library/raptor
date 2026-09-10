@@ -31,6 +31,11 @@ add_library(raptor ${core_SOURCES} ${core_HEADERS}
 target_link_libraries(raptor PUBLIC ${MPI_C_LIBRARIES} ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
     ${MUELU_LIBRARIES} ${PETSC_LIBRARIES} ${PTSCOTCH_LIBRARIES} ${PARMETIS_LIBRARIES} ${EXTERNAL_LIBS})
 
+if (WITH_OPENMP)
+    target_link_libraries(raptor PUBLIC OpenMP::OpenMP_CXX)
+    target_compile_definitions(raptor PUBLIC USING_OPENMP)
+endif (WITH_OPENMP)
+
 target_include_directories(raptor
   PUBLIC
   $<INSTALL_INTERFACE:include>

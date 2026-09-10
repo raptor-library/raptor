@@ -6,6 +6,10 @@
 #include "raptor/core/par_matrix.hpp"
 #include "raptor/util/linalg/lapack_wrapper.hpp"
 
+#ifdef USING_OPENMP
+#include <omp.h>
+#endif
+
 namespace raptor {
 // Declare Private Methods
 void SOR_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
@@ -126,9 +130,6 @@ void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
     A->off_proc->sort();
     A->on_proc->move_diag();
   
-    int start, end, col;
-    double diag, row_sum;
-
     for (int iter = 0; iter < num_sweeps; iter++)
     {
         comm->communicate(x);
@@ -138,29 +139,32 @@ void jacobi_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
             tmp[i] = x[i];
         }
 
+        #ifdef USING_OPENMP
+        #pragma omp parallel for schedule(static)
+        #endif
         for (int i = 0; i < A->local_num_rows; i++)
         {    
-            row_sum = 0;
+            double row_sum = 0;
 
       
-            start = A->on_proc->idx1[i];
-            end = A->on_proc->idx1[i+1];
+            int start = A->on_proc->idx1[i];
+            const int end = A->on_proc->idx1[i+1];
             if (start == end || A->on_proc->idx2[start] != i)
                 continue;
 
-            diag = A->on_proc->vals[start++];
+            const double diag = A->on_proc->vals[start++];
 
             for (int j = start; j < end; j++)
             {
-                col = A->on_proc->idx2[j];
+                const int col = A->on_proc->idx2[j];
                 row_sum += A->on_proc->vals[j] * tmp[col];
             }
 
-            start = A->off_proc->idx1[i];
-            end = A->off_proc->idx1[i+1];
-            for (int j = start; j < end; j++)
+            const int start_off = A->off_proc->idx1[i];
+            const int end_off = A->off_proc->idx1[i+1];
+            for (int j = start_off; j < end_off; j++)
             {
-                col = A->off_proc->idx2[j];
+                const int col = A->off_proc->idx2[j];
                 row_sum += A->off_proc->vals[j] * dist_x[col];
             }
 
@@ -205,9 +209,9 @@ void ssor_helper(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
 static void block_jacobi_helper(ParBSRMatrix* A, const std::vector<double>& block_diag_inv, ParVector& x, ParVector& b, ParVector& tmp, 
         int num_sweeps, double omega)
 {
-    auto bsize = A->on_proc->b_size;
-    auto brow = A->on_proc->b_rows;
-    auto bcol = A->on_proc->b_cols;
+    const auto bsize = A->on_proc->b_size;
+    const auto brow = A->on_proc->b_rows;
+    const auto bcol = A->on_proc->b_cols;
   
     assert(brow == bcol);
 
@@ -215,6 +219,9 @@ static void block_jacobi_helper(ParBSRMatrix* A, const std::vector<double>& bloc
     {
         A->residual(x,b,tmp,false);
 
+        #ifdef USING_OPENMP
+        #pragma omp parallel for schedule(static)
+        #endif
         for (int i = 0; i < A->local_num_rows; i++)
         {    
             int offset = i * brow;

@@ -9,6 +9,10 @@
 #include <cmath>
 #include <stdexcept>
 
+#ifdef USING_OPENMP
+#include <omp.h>
+#endif
+
 namespace raptor {
 
 // Assuming weighting = local (not getting approx spectral radius)
@@ -306,32 +310,39 @@ static ParBSRMatrix* jacobi_prolongation_bsr_block(ParBSRMatrix* A, ParBSRMatrix
     // w * D^{-1} * A
     auto multiply_block_diagonal = [&](BSRMatrix* matrix)
     {
-        std::vector<double> product(matrix->b_size);
-
-        for (int row = 0; row < matrix->n_rows; row++)
+    #ifdef USING_OPENMP
+    #pragma omp parallel
+    #endif
         {
-            const double* pinv_block = diag_inv.data() + row * matrix->b_size;
-
-            for (int j = matrix->idx1[row]; j < matrix->idx1[row + 1]; j++)
+            std::vector<double> product(matrix->b_size);
+    #ifdef USING_OPENMP
+    #pragma omp for schedule(static)
+    #endif
+            for (int row = 0; row < matrix->n_rows; row++)
             {
-                double* block = matrix->block_vals[j];
+                const double* pinv_block = diag_inv.data() + row * matrix->b_size;
 
-                for (int br = 0; br < matrix->b_rows; br++)
+                for (int j = matrix->idx1[row]; j < matrix->idx1[row + 1]; j++)
                 {
-                    for (int bc = 0; bc < matrix->b_cols; bc++)
+                    double* block = matrix->block_vals[j];
+
+                    for (int br = 0; br < matrix->b_rows; br++)
                     {
-                        double value = 0.0;
-
-                        for (int k = 0; k < matrix->b_cols; k++)
+                        for (int bc = 0; bc < matrix->b_cols; bc++)
                         {
-                            value += pinv_block[br * matrix->b_cols + k]* block[k * matrix->b_cols + bc];
+                            double value = 0.0;
+
+                            for (int k = 0; k < matrix->b_cols; k++)
+                            {
+                                value += pinv_block[br * matrix->b_cols + k]* block[k * matrix->b_cols + bc];
+                            }
+
+                            product[br * matrix->b_cols + bc] = omega * value;
                         }
-
-                        product[br * matrix->b_cols + bc] = omega * value;
                     }
-                }
 
-                std::copy(product.begin(), product.end(), block);
+                    std::copy(product.begin(), product.end(), block);
+                }
             }
         }
     };

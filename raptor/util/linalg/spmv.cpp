@@ -3,6 +3,10 @@
 
 #include "raptor/core/matrix.hpp"
 
+#ifdef USING_OPENMP
+#include <omp.h>
+#endif
+
 using namespace raptor;
 
 // Declare Private Methods
@@ -58,13 +62,14 @@ void COO_append_neg_T(const COOMatrix* A, const std::vector<T>& vals,
 // Optimized CSR and BSR standard SpMVs
 void CSR_spmv(const CSRMatrix* A, const double* x, double* b)
 {
-    int start, end;
-    double val;
+    #ifdef USING_OPENMP
+    #pragma omp parallel for schedule(static)
+    #endif
     for (int i = 0; i < A->n_rows; i++)
     {
-        start = A->idx1[i];
-        end = A->idx1[i+1];
-        val = 0;
+        const int start = A->idx1[i];
+        const int end = A->idx1[i+1];
+        double val = 0;
         for (int j = start; j < end; j++)
         {
             val += A->vals[j] * x[A->idx2[j]];
@@ -76,13 +81,14 @@ void CSR_spmv(const CSRMatrix* A, const double* x, double* b)
 void CSR_residual(const CSRMatrix* A, const double* x, 
         const double* b, double* r)
 {
-    int start, end;
-    double val;
+    #ifdef USING_OPENMP
+    #pragma omp parallel for schedule(static)
+    #endif
     for (int i = 0; i < A->n_rows; i++)
     {
-        start = A->idx1[i];
-        end = A->idx1[i+1];
-        val = b[i];
+        const int start = A->idx1[i];
+        const int end = A->idx1[i+1];
+        double val = b[i];
         for (int j = start; j < end; j++)
         {
             val -= A->vals[j] * x[A->idx2[j]];
@@ -94,13 +100,14 @@ void CSR_residual(const CSRMatrix* A, const double* x,
 
 void CSR_append(const CSRMatrix* A, const double* x, double* b)
 {
-    int start, end;
-    double val;
+    #ifdef USING_OPENMP
+    #pragma omp parallel for schedule(static)
+    #endif
     for (int i = 0; i < A->n_rows; i++)
     {
-        start = A->idx1[i];
-        end = A->idx1[i+1];
-        val = 0;
+        const int start = A->idx1[i];
+        const int end = A->idx1[i+1];
+        double val = 0;
         for (int j = start; j < end; j++)
         {
             val += A->vals[j] * x[A->idx2[j]];
@@ -113,11 +120,13 @@ template <typename T>
 void BSR_append(const CSRMatrix* A, const std::vector<T>& vals,
         const double* x, double* b)
 {
-    int start, end;
+    #ifdef USING_OPENMP
+    #pragma omp parallel for schedule(static)
+    #endif
     for (int i = 0; i < A->n_rows; i++)
     {
-        start = A->idx1[i];
-        end = A->idx1[i+1];
+        const int start = A->idx1[i];
+        const int end = A->idx1[i+1];
         for (int j = start; j < end; j++)
         {
             A->append(i, A->idx2[j], b, x, vals[j]);
@@ -127,23 +136,22 @@ void BSR_append(const CSRMatrix* A, const std::vector<T>& vals,
 
 void BSR_spmv(const BSRMatrix* A, const double* x, double* b)
 {
-    int start, end, idx;
-    int first_row, first_col;
-    double val;
-    double* block_val;
+    #ifdef USING_OPENMP
+    #pragma omp parallel for schedule(static)
+    #endif
     for (int i = 0; i < A->n_rows; i++)
     {
-        start = A->idx1[i];
-        end = A->idx1[i+1];
-        first_row = i*A->b_rows;
+        const int start = A->idx1[i];
+        const int end = A->idx1[i+1];
+        const int first_row = i*A->b_rows;
         for (int row = 0; row < A->b_rows; row++)
         {
-            val = 0;
-            idx = row * A->b_cols;
+            double val = 0;
+            const int idx = row * A->b_cols;
             for (int j = start; j < end; j++)
             {
-                first_col = A->idx2[j]*A->b_cols;
-                block_val = A->block_vals[j];
+                const int first_col = A->idx2[j]*A->b_cols;
+                const double* block_val = A->block_vals[j];
                 for (int col = 0; col < A->b_cols; col++)
                 {
                     val += (block_val[idx + col] * x[first_col + col]);
@@ -157,11 +165,10 @@ template <typename T>
 void CSR_append_T(const CSRMatrix* A, const std::vector<T>& vals,
         const double* x, double* b)
 {
-    int start, end;
     for (int i = 0; i < A->n_rows; i++)
     {
-        start = A->idx1[i];
-        end = A->idx1[i+1];
+        const int start = A->idx1[i];
+        const int end = A->idx1[i+1];
         for (int j = start; j < end; j++)
         {
             A->append_T(i, A->idx2[j], b, x, vals[j]);
@@ -369,9 +376,34 @@ void BSRMatrix::spmv_append_neg_T(const double* x,double* b) const
 }
 void BSRMatrix::spmv_residual(const double* x, const double* b, double* r) const
 {
-    for (int i = 0; i < n_rows * b_rows; i++)
-        r[i] = b[i];
-    CSR_append_neg(this, block_vals, x, r);
+#ifdef USING_OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+    for (int i = 0; i < n_rows; i++)
+    {
+        const int start = idx1[i];
+        const int end = idx1[i + 1];
+        const int first_row = i * b_rows;
+
+        for (int row = 0; row < b_rows; row++)
+        {
+            double val = b[first_row + row];
+            const int idx = row * b_cols;
+
+            for (int j = start; j < end; j++)
+            {
+                const int first_col = idx2[j] * b_cols;
+                const double* block_val = block_vals[j];
+
+                for (int col = 0; col < b_cols; col++)
+                {
+                    val -= block_val[idx + col] * x[first_col + col];
+                }
+            }
+
+            r[first_row + row] = val;
+        }
+    }
 }
 
 
@@ -432,6 +464,3 @@ void BSCMatrix::spmv_residual(const double* x, const double* b, double* r) const
         r[i] = b[i];
     CSC_append_neg(this, block_vals, x, r);
 }
-
-
-
