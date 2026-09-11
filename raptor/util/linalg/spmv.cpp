@@ -369,9 +369,31 @@ void BSRMatrix::spmv_append_neg_T(const double* x,double* b) const
 }
 void BSRMatrix::spmv_residual(const double* x, const double* b, double* r) const
 {
-    for (int i = 0; i < n_rows * b_rows; i++)
-        r[i] = b[i];
-    CSR_append_neg(this, block_vals, x, r);
+    for (int i = 0; i < n_rows; i++)
+    {
+        const int start = idx1[i];
+        const int end = idx1[i + 1];
+        const int first_row = i * b_rows;
+
+        for (int row = 0; row < b_rows; row++)
+        {
+            double val = b[first_row + row];
+            const int idx = row * b_cols;
+
+            for (int j = start; j < end; j++)
+            {
+                const int first_col = idx2[j] * b_cols;
+                const double* block_val = block_vals[j];
+
+                for (int col = 0; col < b_cols; col++)
+                {
+                    val -= block_val[idx + col] * x[first_col + col];
+                }
+            }
+
+            r[first_row + row] = val;
+        }
+    }
 }
 
 
