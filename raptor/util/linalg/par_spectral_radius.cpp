@@ -4,6 +4,7 @@
 #include "raptor/core/matrix_traits.hpp"
 #include <stdexcept>
 #include <cmath>
+#include <random>
 
 namespace raptor{
 
@@ -33,8 +34,14 @@ double power_iteration(ParBSRMatrix* A,
         throw std::invalid_argument("Power iteration requires a square ParBSRMatrix");
     }
 
-    ParVector q(scalar_global_col, scalar_local_col); 
-    q.set_rand_values();
+    ParVector q(scalar_global_col, scalar_local_col);
+    // fixed random seed and RNG state
+    std::mt19937 generator(2448422u + static_cast<unsigned int>(A->partition->first_local_col));
+    std::uniform_real_distribution<double> distribution(0.0, 1.0);
+    for (int i = 0; i < scalar_local_col; i++)
+    {
+        q[i] = distribution(generator);
+    }
     auto qnorm = q.norm(2);
     if (qnorm <= 0 || !std::isfinite(qnorm))
     {   
