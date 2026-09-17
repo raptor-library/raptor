@@ -105,6 +105,16 @@ void BSRMatrix::add_append(BSRMatrix * B, BSRMatrix * C, bool remove_dup)
 	impl::add_append(*this, *B, *C, remove_dup);
 }
 
+BSRMatrix* BSRMatrix::add(BSRMatrix* B, bool remove_dup)
+{
+    assert(n_rows == B->n_rows && n_cols == B->n_cols && b_rows == B->b_rows && b_cols == B->b_cols);
+
+    BSRMatrix* C = new BSRMatrix(n_rows, n_cols, b_rows, b_cols);
+
+    add_append(B, C, remove_dup);
+    return C;
+}
+
 CSRMatrix* CSRMatrix::subtract(CSRMatrix* B)
 {
     int start, end;

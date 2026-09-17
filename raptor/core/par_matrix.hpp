@@ -696,11 +696,26 @@ namespace raptor
         return A;
     }
 
-	  ParBSRMatrix * mult(ParBSRMatrix * B);
-	  void mult(ParVector& x, ParVector& b, bool tap = false)
-	  {
-		  ParCSRMatrix::mult(x, b, tap);
-	  }
+    ParBSRMatrix* subtract(ParBSRMatrix* B);
+
+    ParBSRMatrix * mult(ParBSRMatrix * B);
+    ParBSRMatrix* mult_T(ParBSRMatrix* B);
+    ParBSRMatrix* mult_T(ParBSCMatrix* B);
+    BSRMatrix* mult_T_partial(ParBSCMatrix* B);
+    BSRMatrix* mult_T_partial(BSCMatrix* B);
+    void mult(ParVector& x, ParVector& b, bool tap = false)
+    {
+        ParCSRMatrix::mult(x, b, tap);
+    }
+
+    void mult_T(ParVector& x, ParVector& b, bool tap = false)
+    {
+        ParCSRMatrix::mult_T(x, b, tap);
+    }
+
+
+    void mult_T_combine(ParBSCMatrix* P, ParBSRMatrix* C, BSRMatrix* recv_mat,
+        BSRMatrix* C_on_on, BSRMatrix* C_off_on);
   };
 
 

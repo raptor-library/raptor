@@ -136,15 +136,12 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, std::vector<int>& states,
         {
             start = S->on_proc->idx1[i];
             end = S->on_proc->idx1[i+1];
-            ctr = A->on_proc->idx1[i];
             max_val = 0.0;
             max_agg = -A->partition->global_num_rows; 
             for (j = start; j < end; j++)
             {
                 col = S->on_proc->idx2[j];
-                while (A->on_proc->idx2[ctr] != col)
-                    ctr++;
-                val = fabs(A->on_proc->vals[ctr]) + r[col];
+                val = fabs(S->on_proc->vals[j]) + r[col];
                 if (val > max_val && aggregates[col] >= 0)
                 {
                     max_val = val;
@@ -154,14 +151,10 @@ int aggregate(ParCSRMatrix* A, ParCSRMatrix* S, std::vector<int>& states,
 
             start = S->off_proc->idx1[i];
             end = S->off_proc->idx1[i+1];
-            ctr = A->off_proc->idx1[i];
             for (j = start; j < end; j++)
             {
                 col = S->off_proc->idx2[j];
-                global_col = S->off_proc_column_map[col];
-                while (A->off_proc_column_map[A->off_proc->idx2[ctr]] != global_col)
-                    ctr++;
-                val = fabs(A->off_proc->vals[ctr]) + off_proc_r[col];
+                val = fabs(S->off_proc->vals[j]) + off_proc_r[col];
                 if (val > max_val && off_proc_aggregates[col] >= 0)
                 {
                     max_val = val;

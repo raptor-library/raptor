@@ -18,7 +18,9 @@ void sor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp,
         int num_sweeps = 1, double omega = 1.0, bool tap = false);
 void ssor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
         int num_sweeps = 1, double omega = 1.0, bool tap = false);
-
+void block_jacobi(ParBSRMatrix* A, const std::vector<double>& block_diag_inv, ParVector& x, ParVector& b, ParVector& tmp, int num_sweeps = 1, double omega = 1);
+std::vector<double> compute_block_diag_inv(const ParBSRMatrix* A);
 }
+
 
 #endif

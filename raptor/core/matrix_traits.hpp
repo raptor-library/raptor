@@ -31,6 +31,89 @@ template<> struct sequential_matrix<ParBSRMatrix> { using type = BSRMatrix; };
 template<> struct sequential_matrix<ParCSRMatrix> { using type = CSRMatrix; };
 template <class T>
 using sequential_matrix_t = typename sequential_matrix<T>::type;
+
+template <class T> struct sequential_csc_matrix;
+template<> struct sequential_csc_matrix<ParBSRMatrix> { using type = BSCMatrix; };
+template<> struct sequential_csc_matrix<ParCSRMatrix> { using type = CSCMatrix; };
+template <class T>
+using sequential_csc_matrix_t = typename sequential_csc_matrix<T>::type;
+
+template <class T> struct parallel_csc_matrix;
+template<> struct parallel_csc_matrix<ParBSRMatrix> { using type = ParBSCMatrix; };
+template<> struct parallel_csc_matrix<ParCSRMatrix> { using type = ParCSCMatrix; };
+template <class T>
+using parallel_csc_matrix_t = typename parallel_csc_matrix<T>::type;
+
+template <class T, is_bsr_or_csr<T> = true>
+inline int total_local_num_rows(const T& A){
+    if constexpr (is_bsr_v<T>){
+        return A.local_num_rows * A.on_proc->b_rows;
+    }
+    else{
+        return A.local_num_rows;
+    }
+    
+}
+
+template <class T, is_bsr_or_csr<T> = true>
+inline int total_global_num_rows(const T& A)
+{
+    if constexpr (is_bsr_v<T>)
+    {
+        return A.global_num_rows * A.on_proc->b_rows;
+    }
+    else
+    {
+        return A.global_num_rows;
+    }
+}
+
+template <class T, is_bsr_or_csr<T> = true>
+inline int total_local_num_cols(const T& A){
+    if constexpr (is_bsr_v<T>){
+        return A.on_proc_num_cols * A.on_proc->b_cols;
+    }
+    else{
+        return A.on_proc_num_cols;
+    }
+    
+}
+
+template <class T, is_bsr_or_csr<T> = true>
+inline int total_global_num_cols(const T& A)
+{
+    if constexpr (is_bsr_v<T>)
+    {
+        return A.global_num_cols * A.on_proc->b_cols;
+    }
+    else
+    {
+        return A.global_num_cols;
+    }
+}
+
+// map block row indices to global scalar indices
+template <class T, is_bsr_or_csr<T> = true>
+std::vector<int> total_local_row_map(const T& A)
+{
+    if constexpr (is_bsr_v<T>)
+    {
+        std::vector<int> total_rows;
+        total_rows.reserve(A.local_row_map.size()*A.on_proc -> b_rows);
+        for (int i: A.local_row_map){
+            for (int j = 0;j <A.on_proc -> b_rows;j++)
+            {
+                total_rows.emplace_back(i*A.on_proc->b_rows+j);
+            }
+
+        }
+        return total_rows;
+    }
+    else
+    {
+        return A.local_row_map;
+    }
+}
 }
 
 #endif

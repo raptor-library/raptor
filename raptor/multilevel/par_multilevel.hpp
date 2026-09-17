@@ -5,11 +5,14 @@
 
 #include "raptor/core/types.hpp"
 #include "raptor/core/par_matrix.hpp"
+#include "raptor/core/matrix_traits.hpp"
 #include "raptor/core/par_vector.hpp"
 #include "raptor/multilevel/par_level.hpp"
 #include "raptor/util/linalg/par_relax.hpp"
 #include "raptor/ruge_stuben/par_interpolation.hpp"
 #include "raptor/ruge_stuben/par_cf_splitting.hpp"
+#include "raptor/util/linalg/lapack_wrapper.hpp"
+#include <vector>
 
 #ifdef USING_HYPRE
 #include "_hypre_utilities.h"
@@ -66,14 +69,16 @@
 
 namespace raptor
 {
-    class ParMultilevel
+    template <class T, is_bsr_or_csr<T> = true>
+    class ParMultilevel_T
     {
         public:
 
-            ParMultilevel(double _strong_threshold, 
+            ParMultilevel_T(double _strong_threshold, 
                     strength_t _strength_type,
                     relax_t _relax_type) // which level to start tap_amg (-1 == no TAP)
             {
+                wrong_type_throw(_relax_type);
                 num_levels = 0;
                 strong_threshold = _strong_threshold;
                 strength_type = _strength_type;
@@ -83,30 +88,27 @@ namespace raptor
                 max_coarse = 50;
                 max_levels = 25;
                 tap_amg = -1;
-                weights = NULL;
+                weights = nullptr;
                 store_residuals = true;
                 track_times = false;
-                setup_times = NULL;
-                solve_times = NULL;
+                setup_times = nullptr;
+                solve_times = nullptr;
+                coarse_comm = RAPtor_MPI_COMM_NULL;
                 sparsify_tol = 0.0;
                 solve_tol = 1e-07;
                 max_iterations = 100;
             }
 
-            virtual ~ParMultilevel()
+            virtual ~ParMultilevel_T()
             {
-                if (num_levels > 0)
+                if (coarse_comm != RAPtor_MPI_COMM_NULL)
                 {
-                    if (levels[num_levels-1]->A->local_num_rows)
-                    {
-                        RAPtor_MPI_Comm_free(&coarse_comm);
-                    }
+                    RAPtor_MPI_Comm_free(&coarse_comm);
                 }
 
-                for (std::vector<ParLevel*>::iterator it = levels.begin();
-                        it != levels.end(); ++it)
+                for (ParLevel_T<T>* level: levels)
                 {
-                    delete *it;
+                    delete level;
                 }
 
                 delete[] weights;
@@ -115,9 +117,9 @@ namespace raptor
                 delete[] solve_times;
             }
             
-            virtual void setup(ParCSRMatrix* Af) = 0;
+            virtual void setup(T* Af) = 0;
 
-            void setup_helper(ParCSRMatrix* Af)
+            void setup_helper(T*Af)
             {
                 int rank, num_procs;
                 RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
@@ -131,13 +133,13 @@ namespace raptor
                 }
 
                 // Add original, fine level to hierarchy
-                levels.emplace_back(new ParLevel());
+                levels.emplace_back(new ParLevel_T<T>());
                 levels[0]->A = Af->copy();
                 levels[0]->A->sort();
                 levels[0]->A->on_proc->move_diag();
-                levels[0]->x.resize(Af->global_num_rows, Af->local_num_rows);
-                levels[0]->b.resize(Af->global_num_rows, Af->local_num_rows);
-                levels[0]->tmp.resize(Af->global_num_rows, Af->local_num_rows);
+                levels[0]->x.resize(total_global_num_rows(*Af), total_local_num_rows(*Af));
+                levels[0]->b.resize(total_global_num_rows(*Af), total_local_num_rows(*Af));
+                levels[0]->tmp.resize(total_global_num_rows(*Af), total_local_num_rows(*Af));
                 if (tap_amg == 0)
                 {
                     if (!Af->tap_comm && !Af->tap_mat_comm)
@@ -156,7 +158,7 @@ namespace raptor
                     }
                 }
 
-                if (weights == NULL)
+                if (weights == nullptr)
                 {
                     form_rand_weights(Af->local_num_rows, Af->partition->first_local_row);
                 }
@@ -182,15 +184,27 @@ namespace raptor
                 }
 
                 num_levels = levels.size();
+
+                // cache block inverse for block jacobi
+                if constexpr(is_bsr_v<T>)
+                {
+                    if (relax_type == BlockJacobi)
+                    {
+                        for (int l = 0; l < num_levels-1; l++)
+                        {
+                            levels[l]->block_diag_inv = compute_block_diag_inv(levels[l]->A);
+                        }
+                    }
+                }
                 if (Af->local_num_rows) 
                 {
                     delete[] weights;
-                    weights = NULL;
+                    weights = nullptr;
                 }
 
                 // Duplicate coarsest level across all processes that hold any
                 // rows of A_c
-                duplicate_coarse();
+                duplicate_coarse(levels.back()->A);
 
                 if (track_times)
                 {
@@ -220,73 +234,59 @@ namespace raptor
                 
             virtual void extend_hierarchy() = 0;
 
-            void duplicate_coarse()
+            template <class U, is_bsr_or_csr<U> = true>
+            void add_coarse_entries(U* Ac, std::vector<double>& A_coarse_lcl,
+                    std::map<int, int>& global_to_local)
             {
-                int rank, num_procs;
-                RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
-                RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
-
-                int last_level = num_levels - 1;
-                ParCSRMatrix* Ac = levels[last_level]->A;
-                std::vector<int> proc_sizes(num_procs);
-                std::vector<int> active_procs;
-                RAPtor_MPI_Allgather(&(Ac->local_num_rows), 1, RAPtor_MPI_INT, proc_sizes.data(),
-                        1, RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD);
-                for (int i = 0; i < num_procs; i++)
+                if constexpr (is_bsr_v<U>)
                 {
-                    if (proc_sizes[i])
-                    {
-                        active_procs.emplace_back(i);
-                    }
-                }
-                RAPtor_MPI_Group world_group;
-                RAPtor_MPI_Comm_group(RAPtor_MPI_COMM_WORLD, &world_group);                
-                RAPtor_MPI_Group active_group;
-                RAPtor_MPI_Group_incl(world_group, active_procs.size(), active_procs.data(),
-                        &active_group);
-                RAPtor_MPI_Comm_create_group(RAPtor_MPI_COMM_WORLD, active_group, 0, &coarse_comm);
-                RAPtor_MPI_Group_free(&world_group);
-                RAPtor_MPI_Group_free(&active_group);
-
-                if (Ac->local_num_rows)
-                {
-                    int num_active, active_rank;
-                    RAPtor_MPI_Comm_rank(coarse_comm, &active_rank);
-                    RAPtor_MPI_Comm_size(coarse_comm, &num_active);
-
-                    int proc;
-                    int global_col, local_col;
+                    BSRMatrix& on_proc = bsr_cast(*Ac->on_proc);
+                    BSRMatrix& off_proc = bsr_cast(*Ac->off_proc);
+                    const int b_rows = on_proc.b_rows;
+                    const int b_cols = on_proc.b_cols;
                     int start, end;
 
-                    std::vector<double> A_coarse_lcl;
-
-                    // Gather global col indices
-                    coarse_sizes.resize(num_active);
-                    coarse_displs.resize(num_active+1);
-                    coarse_displs[0] = 0;
-                    for (int i = 0; i < num_active; i++)
+                    for (int i = 0; i < Ac->local_num_rows; i++)
                     {
-                        proc = active_procs[i];
-                        coarse_sizes[i] = proc_sizes[proc];
-                        coarse_displs[i+1] = coarse_displs[i] + coarse_sizes[i]; 
+                        start = on_proc.idx1[i];
+                        end =  on_proc.idx1[i+1];
+                        for (int j = start; j < end; j++)
+                        {
+                            int global_block_col = Ac->on_proc_column_map[on_proc.idx2[j]];
+                            for (int row = 0; row < b_rows;row++)
+                            {
+                                for (int col = 0; col < b_cols; col++)
+                                {
+                                    int local_row = i *b_rows + row;
+                                    int global_col = global_block_col * b_cols +col;
+                                    int local_col = global_to_local[global_col];
+                                    A_coarse_lcl[local_row*coarse_n + local_col] =on_proc.block_vals[j][row*b_cols + col];
+                                }
+                            }
+                        }
+
+                        start =off_proc.idx1[i];
+                        end = off_proc.idx1[i+1];
+                        for (int j = start; j < end; j++)
+                        {
+                            int global_block_col = Ac->off_proc_column_map[off_proc.idx2[j]];
+                            for (int row = 0; row <b_rows; row++)
+                            {
+                                for (int col = 0; col < b_cols; col++)
+                                {
+                                    int local_row = i *b_rows + row;
+                                    int global_col = global_block_col * b_cols +col;
+                                    int local_col = global_to_local[global_col];
+                                    A_coarse_lcl[local_row*coarse_n + local_col] =off_proc.block_vals[j][row*b_cols + col];
+                                }
+                            }
+                        }
                     }
-
-                    std::vector<int> global_row_indices(coarse_displs[num_active]);
-
-                    RAPtor_MPI_Allgatherv(Ac->local_row_map.data(), Ac->local_num_rows, RAPtor_MPI_INT,
-                            global_row_indices.data(), coarse_sizes.data(), 
-                            coarse_displs.data(), RAPtor_MPI_INT, coarse_comm);
-    
-                    std::map<int, int> global_to_local;
-                    int ctr = 0;
-                    for (std::vector<int>::iterator it = global_row_indices.begin();
-                            it != global_row_indices.end(); ++it)
-                    {
-                        global_to_local[*it] = ctr++;
-                    }
-
-                    coarse_n = Ac->global_num_rows;
-                    A_coarse_lcl.resize(coarse_n*Ac->local_num_rows, 0);
+                }
+                else
+                {
+                    int global_col, local_col;
+                    int start, end;
                     for (int i = 0; i < Ac->local_num_rows; i++)
                     {
                         start = Ac->on_proc->idx1[i];
@@ -307,6 +307,76 @@ namespace raptor
                             A_coarse_lcl[i*coarse_n + local_col] = Ac->off_proc->vals[j];
                         }
                     }
+                }
+            }
+
+            template <class U, is_bsr_or_csr<U> = true>
+            void duplicate_coarse_helper(U* Ac)
+            {
+                int rank, num_procs;
+                RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+                RAPtor_MPI_Comm_size(RAPtor_MPI_COMM_WORLD, &num_procs);
+
+                std::vector<int> local_row_indices = total_local_row_map(*Ac);
+                int local_num_rows = local_row_indices.size();
+                std::vector<int> proc_sizes(num_procs);
+                std::vector<int> active_procs;
+                RAPtor_MPI_Allgather(&local_num_rows, 1, RAPtor_MPI_INT, proc_sizes.data(),
+                        1, RAPtor_MPI_INT, RAPtor_MPI_COMM_WORLD);
+                for (int i = 0; i < num_procs; i++)
+                {
+                    if (proc_sizes[i])
+                    {
+                        active_procs.emplace_back(i);
+                    }
+                }
+                RAPtor_MPI_Group world_group;
+                RAPtor_MPI_Comm_group(RAPtor_MPI_COMM_WORLD, &world_group);                
+                RAPtor_MPI_Group active_group;
+                RAPtor_MPI_Group_incl(world_group, active_procs.size(), active_procs.data(),
+                        &active_group);
+                RAPtor_MPI_Comm_create_group(RAPtor_MPI_COMM_WORLD, active_group, 0, &coarse_comm);
+                RAPtor_MPI_Group_free(&world_group);
+                RAPtor_MPI_Group_free(&active_group);
+
+                if (local_num_rows)
+                {
+                    int num_active, active_rank;
+                    RAPtor_MPI_Comm_rank(coarse_comm, &active_rank);
+                    RAPtor_MPI_Comm_size(coarse_comm, &num_active);
+
+                    int proc;
+
+                    std::vector<double> A_coarse_lcl;
+
+                    // Gather global col indices
+                    coarse_sizes.resize(num_active);
+                    coarse_displs.resize(num_active+1);
+                    coarse_displs[0] = 0;
+                    for (int i = 0; i < num_active; i++)
+                    {
+                        proc = active_procs[i];
+                        coarse_sizes[i] = proc_sizes[proc];
+                        coarse_displs[i+1] = coarse_displs[i] + coarse_sizes[i]; 
+                    }
+
+                    std::vector<int> global_row_indices(coarse_displs[num_active]);
+
+                    RAPtor_MPI_Allgatherv(local_row_indices.data(), local_num_rows, RAPtor_MPI_INT,
+                            global_row_indices.data(), coarse_sizes.data(), 
+                            coarse_displs.data(), RAPtor_MPI_INT, coarse_comm);
+    
+                    std::map<int, int> global_to_local;
+                    int ctr = 0;
+                    for (std::vector<int>::iterator it = global_row_indices.begin();
+                            it != global_row_indices.end(); ++it)
+                    {
+                        global_to_local[*it] = ctr++;
+                    }
+
+                    coarse_n = total_global_num_rows(*Ac);
+                    A_coarse_lcl.resize(coarse_n*local_num_rows, 0);
+                    add_coarse_entries(Ac, A_coarse_lcl, global_to_local);
 
                     A_coarse.resize(coarse_n*coarse_n);
                     for (int i = 0; i < num_active; i++)
@@ -319,10 +389,7 @@ namespace raptor
                             A_coarse.data(), coarse_sizes.data(), coarse_displs.data(), 
                             RAPtor_MPI_DOUBLE, coarse_comm);
 
-                    LU_permute.resize(coarse_n);
-                    int info;
-                    dgetrf_(&coarse_n, &coarse_n, A_coarse.data(), &coarse_n, 
-                            LU_permute.data(), &info);
+                    A_coarse_pinv = pinv(A_coarse.data(), coarse_n, coarse_n, 1e-10); 
 
                     for (int i = 0; i < num_active; i++)
                     {
@@ -332,15 +399,58 @@ namespace raptor
                 }
             }
 
-            void cycle(ParVector& x, ParVector& b, int level = 0)
+            // runtime dispatch for hybrid T
+            void duplicate_coarse(ParCSRMatrix* A)
+            {
+                if (A->on_proc->format() == BSR)
+                {
+                    duplicate_coarse_helper(static_cast<ParBSRMatrix*>(A));
+                }
+                else
+                {
+                    duplicate_coarse_helper(A);
+                }
+            }
+
+            void relax(int level, T* A, ParVector& x, ParVector& b, ParVector& tmp, bool tap_level)
+            {
+                switch (relax_type)
+                    {
+                        case Jacobi:
+                            jacobi(A, x, b, tmp, num_smooth_sweeps, relax_weight,
+                                    tap_level);
+                            break;
+                        case SOR:
+                            sor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
+                                    tap_level);
+                            break;
+                        case SSOR:
+                            ssor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
+                                    tap_level);
+                            break;
+                        case BlockJacobi:
+                            if constexpr (is_bsr_v<T>)
+                            {
+                                block_jacobi(A, levels[level]->block_diag_inv, x, b, tmp, num_smooth_sweeps, relax_weight);
+                            }
+                            break;
+                        default:
+                            sor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
+                                    tap_level);
+                            break;
+                    }
+
+            }
+
+            virtual void cycle(ParVector& x, ParVector& b, int level = 0)
             {
                 if (solve_times)
                 {
                     init_profile();
                 }
 
-                ParCSRMatrix* A = levels[level]->A;
-                ParCSRMatrix* P = levels[level]->P;
+                T* A = levels[level]->A;
+                T* P = levels[level]->P;
                 ParVector& tmp = levels[level]->tmp;
                 bool tap_level = tap_amg >= 0 && tap_amg <= level;
 
@@ -351,21 +461,27 @@ namespace raptor
                         int active_rank;
                         RAPtor_MPI_Comm_rank(coarse_comm, &active_rank);
 
-                        char trans = 'N'; //No transpose
-                        int nhrs = 1; // Number of right hand sides
-                        int info; // result
-
                         std::vector<double> b_data(coarse_n);
                         RAPtor_MPI_Allgatherv(b.local.data(), b.local_n, RAPtor_MPI_DOUBLE, b_data.data(), 
                                 coarse_sizes.data(), coarse_displs.data(), 
                                 RAPtor_MPI_DOUBLE, coarse_comm);
 
-                        dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
-                                LU_permute.data(), b_data.data(), &coarse_n, &info);
-                        for (int i = 0; i < b.local_n; i++)
+                        // x = A_coarse_pinv * b_data
+                        const int first_local = coarse_displs[active_rank];
+
+                        for (int i = 0; i < x.local_n; i++)
                         {
-                            x.local[i] = b_data[i + coarse_displs[active_rank]];
+                            const int global_i = first_local + i;
+                            double value = 0.0;
+
+                            for (int j = 0; j < coarse_n; j++)
+                            {
+                                value += A_coarse_pinv[global_i*coarse_n + j] * b_data[j];
+                            }
+
+                            x.local[i] = value;
                         }
+
                     }
 
                     if (solve_times)
@@ -383,26 +499,7 @@ namespace raptor
                     levels[level+1]->x.set_const_value(0.0);
                     
                     // Relax
-                    switch (relax_type)
-                    {
-                        case Jacobi:
-                            jacobi(A, x, b, tmp, num_smooth_sweeps, relax_weight,
-                                    tap_level);
-                            break;
-                        case SOR:
-                            sor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
-                                    tap_level);
-                            break;
-                        case SSOR:
-                            ssor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
-                                    tap_level);
-                            break;
-                        default:
-                            sor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
-                                    tap_level);
-                            break;
-                    }
-
+                    relax(level, A, x, b, tmp, tap_level);
 
                     A->residual(x, b, tmp, tap_level);
 
@@ -427,25 +524,8 @@ namespace raptor
 
                     P->mult_append(levels[level+1]->x, x, tap_level);
 
-                    switch (relax_type)
-                    {
-                        case Jacobi:
-                            jacobi(A, x, b, tmp, num_smooth_sweeps, relax_weight,
-                                    tap_level);
-                            break;
-                        case SOR:
-                            sor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
-                                    tap_level);
-                            break;
-                        case SSOR:
-                            ssor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
-                                    tap_level);
-                            break;
-                        default:
-                            sor(A, x, b, tmp, num_smooth_sweeps, relax_weight,
-                                    tap_level);
-                            break;
-                     }
+                    relax(level, A, x, b, tmp, tap_level);
+
                     if (solve_times)
                     {
                         finalize_profile();
@@ -579,7 +659,7 @@ namespace raptor
 
             void print_times(double* times, const char* phase)
             {
-                if (times == NULL) return;
+                if (times == nullptr) return;
 
                 int rank;
                 RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
@@ -644,8 +724,8 @@ namespace raptor
             double* weights;
             std::vector<double> residuals;
 
-            std::vector<ParLevel*> levels;
-            std::vector<int> LU_permute;
+            std::vector<ParLevel_T<T>*> levels;
+            std::vector<double> A_coarse_pinv;
             int num_levels;
             int num_variables;
             
@@ -658,6 +738,30 @@ namespace raptor
             std::vector<int> coarse_sizes;
             std::vector<int> coarse_displs;
             RAPtor_MPI_Comm coarse_comm;
+
+        private:
+            static void wrong_type_throw(relax_t relax_type)
+            {
+                if constexpr(is_bsr_v<T>)
+                {
+
+                    if (relax_type != BlockJacobi)
+                    {
+                        throw std::invalid_argument("ParBSRMatrix only supports BlockJacobi relaxation for now");
+                    }
+                }
+                else
+                {
+                    if (relax_type == BlockJacobi)
+                    {
+                        throw std::invalid_argument("ParCSRMatrix doesn't support BlockJacobi relaxation");
+                    }
+
+                }
+            }
+                
     };
+
+    using ParMultilevel = ParMultilevel_T<ParCSRMatrix>;
 }
 #endif

@@ -3,6 +3,7 @@
 
 #include "comm_pkg.hpp"
 #include "par_matrix.hpp"
+#include "types.hpp"
 
 using namespace raptor;
 
@@ -14,14 +15,14 @@ template <typename T> std::vector<T>& create_mat(int n, int m, int b_n, int b_m,
 template <typename T> CSRMatrix* communication_helper(const int* rowptr,
         const int* col_indices, const T& values,
         CommData* send_comm, CommData* recv_comm, int key, RAPtor_MPI_Comm mpi_comm, 
-        const int b_rows, const int b_cols, const bool has_vals = true);
+        const int b_rows, const int b_cols, const bool has_vals, format_t format);
 template <typename T> void init_comm_helper(char* send_buffer,
         const int* rowptr, const int* col_indices, const T& values,
         CommData* send_comm, int key, RAPtor_MPI_Comm mpi_comm, const int b_rows, 
         const int b_cols);
 CSRMatrix* complete_comm_helper(CommData* send_comm, 
         CommData* recv_comm, int key, RAPtor_MPI_Comm mpi_comm, const int b_rows, 
-        const int b_cols, const bool has_vals = true);
+        const int b_cols, const bool has_vals, format_t format);
 
 template <typename T> CSRMatrix* transpose_recv(CSRMatrix* recv_mat_T, 
         std::vector<T>& T_vals, NonContigData* send_data, int n);
@@ -41,14 +42,14 @@ CSRMatrix* CommPkg::communicate(ParCSRMatrix* A, const bool has_vals)
     std::vector<char> send_buffer;
     init_par_mat_comm(A, send_buffer, has_vals);
     return complete_mat_comm(A->on_proc->b_rows, A->on_proc->b_cols,
-            has_vals);
+            has_vals, A->on_proc->format());
 }
 CSRMatrix* CommPkg::communicate(ParBSRMatrix* A, const bool has_vals)
 {
     std::vector<char> send_buffer;
     init_par_mat_comm(A, send_buffer, has_vals);
     return complete_mat_comm(A->on_proc->b_rows, A->on_proc->b_cols,
-            has_vals);
+            has_vals, A->on_proc->format());
 }
 void CommPkg::init_par_mat_comm(ParCSRMatrix* A, std::vector<char>& send_buffer,
         const bool has_vals)
@@ -150,7 +151,7 @@ CSRMatrix* ParComm::communicate(const std::vector<int>& rowptr,
 {
     std::vector<char> send_buffer;
     init_mat_comm(send_buffer, rowptr, col_indices, values, b_rows, b_cols, has_vals);
-    return complete_mat_comm(b_rows, b_cols, has_vals);
+    return complete_mat_comm(b_rows, b_cols, has_vals, CSR);
 }
 CSRMatrix* ParComm::communicate(const std::vector<int>& rowptr, 
         const std::vector<int>& col_indices, const std::vector<double*>& values, 
@@ -158,7 +159,7 @@ CSRMatrix* ParComm::communicate(const std::vector<int>& rowptr,
 {
     std::vector<char> send_buffer;
     init_mat_comm(send_buffer, rowptr, col_indices, values, b_rows, b_cols, has_vals);
-    return complete_mat_comm(b_rows, b_cols, has_vals);
+    return complete_mat_comm(b_rows, b_cols, has_vals, BSR);
 }
 
 void ParComm::init_mat_comm(std::vector<char>& send_buffer,
@@ -183,10 +184,10 @@ void ParComm::init_mat_comm(std::vector<char>& send_buffer,
 }
 
 CSRMatrix* ParComm::complete_mat_comm(const int b_rows, const int b_cols, 
-        const bool has_vals)
+        const bool has_vals, format_t format)
 {
     CSRMatrix* recv_mat = complete_comm_helper(send_data, recv_data, key, mpi_comm,
-            b_rows, b_cols, has_vals);
+            b_rows, b_cols, has_vals, format);
     key++;
     return recv_mat;
 }
@@ -198,7 +199,7 @@ CSRMatrix* ParComm::communicate_T(const std::vector<int>& rowptr,
 {
     std::vector<char> send_buffer;
     init_mat_comm_T(send_buffer, rowptr, col_indices, values, b_rows, b_cols, has_vals);
-    return complete_mat_comm_T(n_result_rows, b_rows, b_cols, has_vals);
+    return complete_mat_comm_T(n_result_rows, b_rows, b_cols, has_vals, CSR);
 }
 CSRMatrix* ParComm::communicate_T(const std::vector<int>& rowptr, 
         const std::vector<int>& col_indices, const std::vector<double*>& values,
@@ -206,7 +207,7 @@ CSRMatrix* ParComm::communicate_T(const std::vector<int>& rowptr,
 {
     std::vector<char> send_buffer;
     init_mat_comm_T(send_buffer, rowptr, col_indices, values, b_rows, b_cols, has_vals);
-    return complete_mat_comm_T(n_result_rows, b_rows, b_cols, has_vals);
+    return complete_mat_comm_T(n_result_rows, b_rows, b_cols, has_vals, BSR);
 }
 void ParComm::init_mat_comm_T(std::vector<char>& send_buffer, const std::vector<int>& rowptr, 
         const std::vector<int>& col_indices, const std::vector<double>& values,
@@ -226,13 +227,13 @@ void ParComm::init_mat_comm_T(std::vector<char>& send_buffer, const std::vector<
     init_comm_helper(send_buffer.data(), rowptr.data(), col_indices.data(), values.data(),
             recv_data, key, mpi_comm, b_rows, b_cols);
 }
-CSRMatrix* ParComm::complete_mat_comm_T(const int n_result_rows, const int b_rows, const int b_cols, const bool has_vals)
+CSRMatrix* ParComm::complete_mat_comm_T(const int n_result_rows, const int b_rows, const int b_cols, const bool has_vals, format_t format)
 {
     CSRMatrix* recv_mat_T = complete_comm_helper(recv_data, send_data, key, mpi_comm,
-            b_rows, b_cols, has_vals);
+            b_rows, b_cols, has_vals, format);
 
     CSRMatrix* recv_mat;
-    if (b_rows > 1 || b_cols > 1)
+    if (format == BSR)
     {
         BSRMatrix* recv_mat_T_bsr = (BSRMatrix*) recv_mat_T;
         recv_mat = transpose_recv(recv_mat_T_bsr, recv_mat_T_bsr->block_vals,
@@ -259,7 +260,7 @@ CSRMatrix* TAPComm::communicate(const std::vector<int>& rowptr,
 {
     std::vector<char> send_buffer;  
     init_mat_comm(send_buffer, rowptr, col_indices, values, b_rows, b_cols, has_vals);
-    return complete_mat_comm(b_rows, b_cols, has_vals);
+    return complete_mat_comm(b_rows, b_cols, has_vals, CSR);
 }
 
 CSRMatrix* TAPComm::communicate(const std::vector<int>& rowptr, 
@@ -268,7 +269,7 @@ CSRMatrix* TAPComm::communicate(const std::vector<int>& rowptr,
 {   
     std::vector<char> send_buffer;  
     init_mat_comm(send_buffer, rowptr, col_indices, values, b_rows, b_cols, has_vals);
-    return complete_mat_comm(b_rows, b_cols, has_vals);
+    return complete_mat_comm(b_rows, b_cols, has_vals, BSR);
 }
 void TAPComm::init_mat_comm(std::vector<char>& send_buffer, const std::vector<int>& rowptr, 
         const std::vector<int>& col_indices, const std::vector<double>& values,
@@ -288,7 +289,7 @@ void TAPComm::init_mat_comm(std::vector<char>& send_buffer, const std::vector<in
         send_buffer.resize(l_bytes + g_bytes);
 
         init_comm_helper(&(send_buffer[0]), S_mat->idx1.data(),
-                S_mat->idx2.data(), S_mat->vals.data(), global_par_comm->send_data, 
+                S_mat->idx2.data(), S_mat->vals.data(), global_par_comm->send_data,
                 global_par_comm->key, global_par_comm->mpi_comm, b_rows, b_cols);
         delete S_mat;
     }
@@ -326,7 +327,8 @@ void TAPComm::init_mat_comm(std::vector<char>& send_buffer, const std::vector<in
         send_buffer.resize(l_bytes + g_bytes);
 
         init_comm_helper(&(send_buffer[0]), S_mat->idx1.data(),
-                S_mat->idx2.data(), S_mat->vals.data(), global_par_comm->send_data, 
+                S_mat->idx2.data(), S_mat->block_vals.data(),
+                global_par_comm->send_data,
                 global_par_comm->key, global_par_comm->mpi_comm, b_rows, b_cols);
         delete S_mat;
     }
@@ -345,14 +347,14 @@ void TAPComm::init_mat_comm(std::vector<char>& send_buffer, const std::vector<in
             local_L_par_comm->mpi_comm, b_rows, b_cols);
 }
 
-CSRMatrix* TAPComm::complete_mat_comm(const int b_rows, const int b_cols, const bool has_vals)
+CSRMatrix* TAPComm::complete_mat_comm(const int b_rows, const int b_cols, const bool has_vals, format_t format)
 {  
-    CSRMatrix* G_mat = global_par_comm->complete_mat_comm(b_rows, b_cols, has_vals);
-    CSRMatrix* L_mat = local_L_par_comm->complete_mat_comm(b_rows, b_cols, has_vals);
+    CSRMatrix* G_mat = global_par_comm->complete_mat_comm(b_rows, b_cols, has_vals, format);
+    CSRMatrix* L_mat = local_L_par_comm->complete_mat_comm(b_rows, b_cols, has_vals, format);
 
     CSRMatrix* R_mat;
     CSRMatrix* recv_mat;
-    if (b_rows > 1 || b_cols > 1)
+    if (format == BSR)
     {
         BSRMatrix* G_mat_bsr = (BSRMatrix*) G_mat;
         R_mat = local_R_par_comm->communicate(G_mat_bsr->idx1, G_mat_bsr->idx2, 
@@ -394,7 +396,7 @@ CSRMatrix* TAPComm::communicate_T(const std::vector<int>& rowptr,
 {   
     std::vector<char> send_buffer;
     init_mat_comm_T(send_buffer, rowptr, col_indices, values, b_rows, b_cols, has_vals);
-    return complete_mat_comm_T(n_result_rows, b_rows, b_cols, has_vals);
+    return complete_mat_comm_T(n_result_rows, b_rows, b_cols, has_vals, CSR);
 }
 
 CSRMatrix* TAPComm::communicate_T(const std::vector<int>& rowptr, 
@@ -403,7 +405,7 @@ CSRMatrix* TAPComm::communicate_T(const std::vector<int>& rowptr,
 {  
     std::vector<char> send_buffer;
     init_mat_comm_T(send_buffer, rowptr, col_indices, values, b_rows, b_cols, has_vals);
-    return complete_mat_comm_T(n_result_rows, b_rows, b_cols, has_vals);    
+    return complete_mat_comm_T(n_result_rows, b_rows, b_cols, has_vals, BSR);
 }
 void TAPComm::init_mat_comm_T(std::vector<char>& send_buffer, const std::vector<int>& rowptr, 
         const std::vector<int>& col_indices, const std::vector<double>& values,
@@ -415,7 +417,7 @@ void TAPComm::init_mat_comm_T(std::vector<char>& send_buffer, const std::vector<
     CSRMatrix* R_mat = communication_helper(rowptr.data(), col_indices.data(), 
             values.data(), local_R_par_comm->recv_data, 
             local_R_par_comm->send_data, local_R_par_comm->key,
-            local_R_par_comm->mpi_comm, b_rows, b_cols, has_vals);
+            local_R_par_comm->mpi_comm, b_rows, b_cols, has_vals, CSR);
     local_R_par_comm->key++;
 
     // Calculate size of send_buffer for global and local_L
@@ -447,7 +449,7 @@ void TAPComm::init_mat_comm_T(std::vector<char>& send_buffer, const std::vector<
     BSRMatrix* R_mat = (BSRMatrix*) communication_helper(rowptr.data(), col_indices.data(), 
             values.data(), local_R_par_comm->recv_data, 
             local_R_par_comm->send_data, local_R_par_comm->key,
-            local_R_par_comm->mpi_comm, b_rows, b_cols, has_vals);
+            local_R_par_comm->mpi_comm, b_rows, b_cols, has_vals, BSR);
     local_R_par_comm->key++;
 
     // Calculate size of send_buffer for global and local_L
@@ -470,24 +472,24 @@ void TAPComm::init_mat_comm_T(std::vector<char>& send_buffer, const std::vector<
             b_rows, b_cols);
 
 }
-CSRMatrix* TAPComm::complete_mat_comm_T(const int n_result_rows, const int b_rows, const int b_cols, const bool has_vals)
+CSRMatrix* TAPComm::complete_mat_comm_T(const int n_result_rows, const int b_rows, const int b_cols, const bool has_vals, format_t format)
 {
     CSRMatrix* G_mat = complete_comm_helper(global_par_comm->recv_data, 
             global_par_comm->send_data, global_par_comm->key, 
-            global_par_comm->mpi_comm, b_rows, b_cols, has_vals);
+            global_par_comm->mpi_comm, b_rows, b_cols, has_vals, format);
     global_par_comm->key++;
 
 
     CSRMatrix* L_mat = complete_comm_helper(local_L_par_comm->recv_data, 
             local_L_par_comm->send_data, local_L_par_comm->key,
-            local_L_par_comm->mpi_comm, b_rows, b_cols, has_vals);
+            local_L_par_comm->mpi_comm, b_rows, b_cols, has_vals, format);
     local_L_par_comm->key++;
 
 
     CSRMatrix* final_mat;
     CSRMatrix* recv_mat;
     ParComm* final_comm;
-    if (b_rows > 1 || b_cols > 1)
+    if (format == BSR)
     {
         BSRMatrix* L_mat_bsr = (BSRMatrix*) L_mat;
         if (local_S_par_comm)
@@ -496,7 +498,7 @@ CSRMatrix* TAPComm::complete_mat_comm_T(const int n_result_rows, const int b_row
             final_mat = communication_helper(G_mat_bsr->idx1.data(), G_mat_bsr->idx2.data(),
                     G_mat_bsr->block_vals.data(), local_S_par_comm->recv_data, 
                     local_S_par_comm->send_data, local_S_par_comm->key, 
-                    local_S_par_comm->mpi_comm, b_rows, b_cols, has_vals);
+                    local_S_par_comm->mpi_comm, b_rows, b_cols, has_vals, BSR);
             local_S_par_comm->key++;
             delete G_mat;
             final_comm = local_S_par_comm;
@@ -510,7 +512,8 @@ CSRMatrix* TAPComm::complete_mat_comm_T(const int n_result_rows, const int b_row
 
         recv_mat = combine_recvs_T(L_mat_bsr, final_mat_bsr,
                 local_L_par_comm->send_data, final_comm->send_data,
-                L_mat_bsr->vals, final_mat_bsr->vals, n_result_rows, b_rows, b_cols);
+                L_mat_bsr->block_vals, final_mat_bsr->block_vals,
+                n_result_rows, b_rows, b_cols);
     }
     else
     {
@@ -518,7 +521,8 @@ CSRMatrix* TAPComm::complete_mat_comm_T(const int n_result_rows, const int b_row
         {
             final_mat = communication_helper(G_mat->idx1.data(), G_mat->idx2.data(),
                     G_mat->vals.data(), local_S_par_comm->recv_data, local_S_par_comm->send_data, 
-                    local_S_par_comm->key, local_S_par_comm->mpi_comm, b_rows, b_cols, has_vals);
+                    local_S_par_comm->key, local_S_par_comm->mpi_comm, b_rows, b_cols,
+                    has_vals, CSR);
             local_S_par_comm->key++;
             delete G_mat;
             final_comm = local_S_par_comm;
@@ -569,7 +573,7 @@ template <typename T> // double* or double**
 CSRMatrix* communication_helper(const int* rowptr,
         const int* col_indices, const T& values,
         CommData* send_comm, CommData* recv_comm, int key, RAPtor_MPI_Comm mpi_comm, 
-        const int b_rows, const int b_cols, const bool has_vals)
+        const int b_rows, const int b_cols, const bool has_vals, format_t format)
 {
     std::vector<char> send_buffer;
     int s = send_comm->get_msg_size(rowptr, values, mpi_comm, b_rows * b_cols);
@@ -577,7 +581,7 @@ CSRMatrix* communication_helper(const int* rowptr,
     init_comm_helper(send_buffer.data(), rowptr, col_indices, values, send_comm,
             key, mpi_comm, b_rows, b_cols);
     return complete_comm_helper(send_comm, recv_comm, key, mpi_comm, 
-            b_rows, b_cols, has_vals);
+            b_rows, b_cols, has_vals, format);
 }    
 template <typename T> // double* or double**
 void init_comm_helper(char* send_buffer, const int* rowptr,
@@ -592,13 +596,13 @@ void init_comm_helper(char* send_buffer, const int* rowptr,
     if (profile) mat_t += RAPtor_MPI_Wtime();
 }    
 CSRMatrix* complete_comm_helper(CommData* send_comm, CommData* recv_comm, int key, 
-        RAPtor_MPI_Comm mpi_comm, const int b_rows, const int b_cols, const bool has_vals)
+        RAPtor_MPI_Comm mpi_comm, const int b_rows, const int b_cols, const bool has_vals, format_t format)
 {
     CSRMatrix* recv_mat;
 
     // Form recv_mat
     int block_size = b_rows * b_cols;
-    if (b_rows > 1 || b_cols > 1)
+    if (format == BSR)
         recv_mat = new BSRMatrix(recv_comm->size_msgs, -1, b_rows, b_cols);
     else
         recv_mat = new CSRMatrix(recv_comm->size_msgs, -1);
@@ -658,8 +662,8 @@ CSRMatrix* transpose_recv(CSRMatrix* recv_mat_T, std::vector<T>& T_vals,
         {
             ptr = recv_mat->idx1[idx] + row_sizes[idx]++;
             recv_mat->idx2[ptr] = recv_mat_T->idx2[j];
-            if (recv_mat_T->vals.size())
-                vals[ptr] = T_vals[j];
+            if (!T_vals.empty())
+                vals[ptr] = recv_mat_T->copy_val(T_vals[j]);
         }
     }
     return recv_mat;
@@ -807,6 +811,3 @@ CSRMatrix* combine_recvs_T(CSRMatrix* L_mat, CSRMatrix* final_mat,
 
     return recv_mat;
 }
-
-
-

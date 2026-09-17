@@ -7,6 +7,8 @@
 #include "par_cf_splitting.hpp"
 #include "par_interpolation.hpp"
 
+#include <stdexcept>
+
 namespace raptor
 {
     class ParRugeStubenSolver : public ParMultilevel
@@ -29,8 +31,13 @@ namespace raptor
 
         }
 
-        void setup(ParCSRMatrix *Af)
+        void setup(ParCSRMatrix *Af) override
         {
+            // reject parbsrmatrix passed through parcsrmatrix 
+            if (Af->on_proc->format()==BSR)
+            {
+                throw std::invalid_argument("ParRugeStubenSolver currently doesn't support ParBSRMatrix");
+            }
             if (num_variables > 1 && variables == NULL) 
             {
                 form_variable_list(Af, num_variables);
@@ -53,7 +60,7 @@ namespace raptor
             }
         }
 
-        void extend_hierarchy()
+        void extend_hierarchy() override
         {
             int level_ctr = levels.size() - 1;
             bool tap_level = tap_amg >= 0 && tap_amg <= level_ctr;
