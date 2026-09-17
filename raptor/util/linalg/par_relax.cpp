@@ -9,17 +9,20 @@
 namespace raptor {
 void apply_jacobi(ParCSRMatrix* A, ParVector& e, const ParVector& b, double omega)
 {
-    A->on_proc->sort();
-    A->on_proc->move_diag();
-
     for (int i = 0; i < A->local_num_rows; i++)
     {
-        const int start = A->on_proc->idx1[i];
-        const int end = A->on_proc->idx1[i + 1];
+        double row_sum = 0.0;
+        for (int j = A->on_proc->idx1[i]; j < A->on_proc->idx1[i + 1]; j++)
+        {
+            row_sum += fabs(A->on_proc->vals[j]);
+        }
+        for (int j = A->off_proc->idx1[i]; j < A->off_proc->idx1[i + 1]; j++)
+        {
+            row_sum += fabs(A->off_proc->vals[j]);
+        }
+
         e[i] = 0.0;
-        if (start == end || A->on_proc->idx2[start] != i) continue;
-        const double diag = A->on_proc->vals[start];
-        if (fabs(diag) > zero_tol) e[i] = omega * (b[i] / diag);
+        if (row_sum) e[i] = ((1.0 / row_sum) * omega) * b[i];
     }
 }
 

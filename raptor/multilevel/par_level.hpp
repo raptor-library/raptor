@@ -21,6 +21,7 @@ namespace raptor
                 AP = nullptr;
                 I = nullptr;
                 R = nullptr;
+                P_add = nullptr;
             }
 
             ~ParLevel_T()
@@ -30,6 +31,7 @@ namespace raptor
                 delete R;
                 delete AP;
                 delete I;
+                delete P_add;
             }
 
             T* A;
@@ -42,6 +44,8 @@ namespace raptor
 
             T* AP;
             T* I;
+
+            T* P_add;
     };
 
     using ParLevel = ParLevel_T<ParCSRMatrix>;

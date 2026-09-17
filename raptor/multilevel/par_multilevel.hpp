@@ -12,6 +12,7 @@
 #include "raptor/ruge_stuben/par_interpolation.hpp"
 #include "raptor/ruge_stuben/par_cf_splitting.hpp"
 #include "raptor/util/linalg/lapack_wrapper.hpp"
+#include "raptor/aggregation/par_prolongation.hpp"
 #include <vector>
 
 
@@ -99,6 +100,7 @@ namespace raptor
                 solve_tol = 1e-07;
                 max_iterations = 100;
                 additive_start_level = -1;
+                simplified_mult_additive = false;
             }
 
             virtual ~ParMultilevel_T()
@@ -171,7 +173,10 @@ namespace raptor
                 {
 
                     extend_hierarchy();
-
+                    if (simplified_mult_additive)
+                    {
+                        levels[last_level]->P_add = form_P_add(levels[last_level]->P,levels[last_level]->A, relax_weight, tap_amg >= 0 && tap_amg <= last_level);
+                    }
 
                     if (track_times)
                     {
@@ -238,6 +243,30 @@ namespace raptor
             }
                 
             virtual void extend_hierarchy() = 0;
+
+            T* form_P_add(T* P, T* A, double omega, bool tap_comm)
+            {
+                if constexpr(is_bsr_v<T>)
+                {
+                    return jacobi_prolongation(
+                                A,
+                                P,
+                                tap_comm,
+                                omega,
+                                1,
+                                prolongation_weighting::block);
+                }
+                else
+                {
+                    return jacobi_prolongation(
+                                A,
+                                P,
+                                tap_comm,
+                                omega,
+                                1,
+                                prolongation_weighting::local);
+                }
+            }
 
             template <class U, is_bsr_or_csr<U> = true>
             void add_coarse_entries(U* Ac, std::vector<double>& A_coarse_lcl,
@@ -608,7 +637,14 @@ namespace raptor
                     if (solve_times) init_profile();
 
                     const bool tap_level = tap_amg >= 0 && tap_amg <= l;
-                    levels[l]->P->mult_T(levels[l]->b, levels[l+1]->b, tap_level);
+                    if (simplified_mult_additive)
+                    {
+                        levels[l]->P_add->mult_T(levels[l]->b, levels[l+1]->b, tap_level);
+                    }
+                    else
+                    {
+                        levels[l]->P->mult_T(levels[l]->b, levels[l+1]->b, tap_level);
+                    }
 
                     if (solve_times)
                     {
@@ -659,7 +695,15 @@ namespace raptor
                     if (solve_times) init_profile();
 
                     const bool tap_level = tap_amg >= 0 && tap_amg <= l;
-                    levels[l]->P->mult_append(levels[l+1]->x, levels[l]->x, tap_level);
+                    if (simplified_mult_additive)
+                    {
+                        levels[l]->P_add->mult_append(levels[l+1]->x, levels[l]->x, tap_level);
+                    }
+                    else
+                    {
+                        levels[l]->P->mult_append(levels[l+1]->x, levels[l]->x, tap_level);
+                    }
+
 
                     if (solve_times)
                     {
@@ -867,6 +911,9 @@ namespace raptor
             int tap_amg;
             int max_iterations;
             int additive_start_level;
+            int coarse_n;
+            int num_levels;
+            int num_variables;
 
             double strong_threshold;
             double relax_weight;
@@ -874,20 +921,18 @@ namespace raptor
             double solve_tol;
 
             bool store_residuals;
+            bool simplified_mult_additive;
 
             double* weights;
-            std::vector<double> residuals;
 
+            std::vector<double> residuals;
             std::vector<ParLevel_T<T>*> levels;
             std::vector<double> A_coarse_pinv;
-            int num_levels;
-            int num_variables;
             
             bool track_times;
             double* setup_times;
             double* solve_times;
 
-            int coarse_n;
             std::vector<double> A_coarse;
             std::vector<int> coarse_sizes;
             std::vector<int> coarse_displs;

@@ -42,6 +42,7 @@ int main(int argc, char* argv[])
     double tol = 1e-6;
     double material_contrast = 1.0;
     bool scale_spectral = true;
+    bool simplified_mult_additive = false;
     bool static_cond = true;
 
     mfem::OptionsParser args(argc, argv);
@@ -57,6 +58,8 @@ int main(int argc, char* argv[])
                     "Relative standalone and PCG tolerance.");
     args.AddOption(&additive_start_level, "-asl", "--additive_start_level",
                     "Start level of additive AMG hierarchy.");
+    args.AddOption(&simplified_mult_additive, "-sma", "--simplified-mult-additive", "-no-sma",
+                    "--no-simplified-mult-additive", "Simplified multiplicative-additive AMG hierachy.");
     args.AddOption(&material_contrast, "-c", "--material-contrast",
                     "Ratio of material attribute 1 to the other attributes.");
     args.AddOption(&scale_spectral, "-sp", "--spectral-radius", "-no-sp",
@@ -65,6 +68,12 @@ int main(int argc, char* argv[])
                     "--no-static-condensation", "Enable static condensation.");
 
     args.Parse();
+
+    if (simplified_mult_additive && additive_start_level < 0)
+    {
+        throw std::invalid_argument("-sma requires -asl >= 0");
+    }
+
     if (!args.Good())
     {
         if (rank == 0) args.PrintUsage(std::cout);
@@ -105,6 +114,7 @@ int main(int argc, char* argv[])
             theta, MIS, scale_spectral? BlockJacobiSpectralProlongation:BlockJacobiProlongation,
             Classical, BlockJacobi);
     ml->max_iterations = max_iter;
+    ml->simplified_mult_additive = simplified_mult_additive;
     ml->relax_weight = relax_damping;
     ml->additive_start_level = additive_start_level;
     ml->solve_tol = tol;

@@ -12,9 +12,10 @@
 
 namespace raptor {
 
-// Apply e = omega * D^{-1} * b locally; e and b must be distinct vectors.
+// Apply e = omega * D_abs_row_sum^{-1} * b 
 void apply_jacobi(ParCSRMatrix* A, ParVector& e, const ParVector& b,
         double omega = 1.0);
+// Apply e = omega * D_block^{-1} * b
 void apply_block_jacobi(const ParBSRMatrix* A,
         const std::vector<double>& block_diag_inv, ParVector& e,
         const ParVector& b, double omega = 1.0);
