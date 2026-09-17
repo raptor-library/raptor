@@ -26,6 +26,19 @@ void ParVector::axpy(ParVector& x, data_t alpha)
     }
 }
 
+ParVector& ParVector::operator+=(const ParVector& y)
+{
+    if (global_n != y.global_n || local_n != y.local_n)
+    {
+        throw std::invalid_argument("Cannot add ParVectors with different dimensions");
+    }
+    for (int i = 0; i < local_n; i++)
+    {
+        (*this)[i] += y[i];
+    }
+    return *this;
+}
+
 /**************************************************************
 *****   Vector Scale
 **************************************************************

@@ -14,6 +14,7 @@
 #include "raptor/util/linalg/lapack_wrapper.hpp"
 #include <vector>
 
+
 #ifdef USING_HYPRE
 #include "_hypre_utilities.h"
 #include "HYPRE.h"
@@ -97,6 +98,7 @@ namespace raptor
                 sparsify_tol = 0.0;
                 solve_tol = 1e-07;
                 max_iterations = 100;
+                additive_start_level = -1;
             }
 
             virtual ~ParMultilevel_T()
@@ -167,7 +169,9 @@ namespace raptor
                 while (levels[last_level]->A->global_num_rows > max_coarse && 
                         (max_levels == -1 || (int) levels.size() < max_levels))
                 {
+
                     extend_hierarchy();
+
 
                     if (track_times)
                     {
@@ -185,12 +189,13 @@ namespace raptor
 
                 num_levels = levels.size();
 
-                // cache block inverse for block jacobi
+                // cache block inverses for block Jacobi
                 if constexpr(is_bsr_v<T>)
                 {
-                    if (relax_type == BlockJacobi)
+                    for (int l = 0; l < num_levels-1; l++)
                     {
-                        for (int l = 0; l < num_levels-1; l++)
+                        if (relax_type == BlockJacobi ||
+                                (additive_start_level >= 0 && l >= additive_start_level))
                         {
                             levels[l]->block_diag_inv = compute_block_diag_inv(levels[l]->A);
                         }
@@ -442,8 +447,88 @@ namespace raptor
 
             }
 
+            void additive_jacobi_relax(int level, T* A, ParVector& e,
+                    const ParVector& b)
+            {
+                if constexpr (is_bsr_v<T>)
+                {
+                    apply_block_jacobi(A, levels[level]->block_diag_inv,
+                            e, b, relax_weight);
+                }
+                else
+                {
+                    apply_jacobi(A, e, b, relax_weight);
+                }
+            }
+
+            void coarse_solve(T* A, ParVector& x, ParVector& b)
+            {
+                if (A->local_num_rows)
+                {
+                    int active_rank;
+                    RAPtor_MPI_Comm_rank(coarse_comm, &active_rank);
+
+                    std::vector<double> b_data(coarse_n);
+                    RAPtor_MPI_Allgatherv(b.local.data(), b.local_n, RAPtor_MPI_DOUBLE, b_data.data(),
+                            coarse_sizes.data(), coarse_displs.data(),
+                            RAPtor_MPI_DOUBLE, coarse_comm);
+
+                    // x = A_coarse_pinv * b_data
+                    const int first_local = coarse_displs[active_rank];
+
+                    for (int i = 0; i < x.local_n; i++)
+                    {
+                        const int global_i = first_local + i;
+                        double value = 0.0;
+
+                        for (int j = 0; j < coarse_n; j++)
+                        {
+                            value += A_coarse_pinv[global_i*coarse_n + j] * b_data[j];
+                        }
+
+                        x.local[i] = value;
+                    }
+
+                }
+            }
+
             virtual void cycle(ParVector& x, ParVector& b, int level = 0)
             {
+                if (additive_start_level < num_levels && additive_start_level >= 0 &&
+                        level >= additive_start_level)
+                {
+                    if (solve_times) init_profile();
+                    ParVector updated_x(x);
+                    ParVector residual(b.global_n, b.local_n);
+                    const bool tap_level = tap_amg >= 0 && tap_amg <= level;
+                    levels[level]->A->residual(x, b, residual, tap_level);
+                    levels[level]->b.copy(residual);
+                    if (solve_times)
+                    {
+                        finalize_profile();
+                        solve_times[5*level] += total_t;
+                        solve_times[5*level + 1] += collective_t;
+                        solve_times[5*level + 2] += p2p_t;
+                        solve_times[5*level + 3] += vec_t;
+                        solve_times[5*level + 4] += mat_t;
+                    }
+                    additive_cycle(level);
+                    if (solve_times) init_profile();
+                    updated_x += levels[level]->x;
+                    x.copy(updated_x);
+                    if (solve_times)
+                    {
+                        finalize_profile();
+                        solve_times[5*level] += total_t;
+                        solve_times[5*level + 1] += collective_t;
+                        solve_times[5*level + 2] += p2p_t;
+                        solve_times[5*level + 3] += vec_t;
+                        solve_times[5*level + 4] += mat_t;
+                    }
+                    return;
+                }
+
+                // multiplicative hierarchy
                 if (solve_times)
                 {
                     init_profile();
@@ -456,33 +541,7 @@ namespace raptor
 
                 if (level == num_levels - 1)
                 {
-                    if (A->local_num_rows)
-                    {
-                        int active_rank;
-                        RAPtor_MPI_Comm_rank(coarse_comm, &active_rank);
-
-                        std::vector<double> b_data(coarse_n);
-                        RAPtor_MPI_Allgatherv(b.local.data(), b.local_n, RAPtor_MPI_DOUBLE, b_data.data(), 
-                                coarse_sizes.data(), coarse_displs.data(), 
-                                RAPtor_MPI_DOUBLE, coarse_comm);
-
-                        // x = A_coarse_pinv * b_data
-                        const int first_local = coarse_displs[active_rank];
-
-                        for (int i = 0; i < x.local_n; i++)
-                        {
-                            const int global_i = first_local + i;
-                            double value = 0.0;
-
-                            for (int j = 0; j < coarse_n; j++)
-                            {
-                                value += A_coarse_pinv[global_i*coarse_n + j] * b_data[j];
-                            }
-
-                            x.local[i] = value;
-                        }
-
-                    }
+                    coarse_solve(A, x, b);
 
                     if (solve_times)
                     {
@@ -536,10 +595,104 @@ namespace raptor
                         solve_times[5*level + 4] += mat_t;
                     }
                 }
+
+            }
+
+
+            virtual void additive_cycle(int level = 0)
+            {
+
+                // b_{l+1} = P_l^T b_l
+                for (int l = level; l < num_levels - 1; l++)
+                {
+                    if (solve_times) init_profile();
+
+                    const bool tap_level = tap_amg >= 0 && tap_amg <= l;
+                    levels[l]->P->mult_T(levels[l]->b, levels[l+1]->b, tap_level);
+
+                    if (solve_times)
+                    {
+                        finalize_profile();
+                        solve_times[5*l] += total_t;
+                        solve_times[5*l + 1] += collective_t;
+                        solve_times[5*l + 2] += p2p_t;
+                        solve_times[5*l + 3] += vec_t;
+                        solve_times[5*l + 4] += mat_t;
+                    }
+                }
+
+                // e_l = J_l b_l
+                for (int l = level; l < num_levels - 1; l++)
+                {
+                    if (solve_times) init_profile();
+
+                    levels[l]->x.set_const_value(0.0);
+                    additive_jacobi_relax(l, levels[l]->A, levels[l]->x, levels[l]->b);
+
+                    if (solve_times)
+                    {
+                        finalize_profile();
+                        solve_times[5*l] += total_t;
+                        solve_times[5*l + 1] += collective_t;
+                        solve_times[5*l + 2] += p2p_t;
+                        solve_times[5*l + 3] += vec_t;
+                        solve_times[5*l + 4] += mat_t;
+                    }
+                }
+
+                if (solve_times) init_profile();
+
+                coarse_solve(levels[num_levels-1]->A, levels[num_levels-1]->x, levels[num_levels-1]->b);
+
+                if (solve_times)
+                {
+                    finalize_profile();
+                    solve_times[5*(num_levels-1)] += total_t;
+                    solve_times[5*(num_levels-1) + 1] += collective_t;
+                    solve_times[5*(num_levels-1) + 2] += p2p_t;
+                    solve_times[5*(num_levels-1) + 3] += vec_t;
+                    solve_times[5*(num_levels-1) + 4] += mat_t;
+                }
+
+                for (int l = num_levels - 2; l >= level; l--)
+                {
+                    if (solve_times) init_profile();
+
+                    const bool tap_level = tap_amg >= 0 && tap_amg <= l;
+                    levels[l]->P->mult_append(levels[l+1]->x, levels[l]->x, tap_level);
+
+                    if (solve_times)
+                    {
+                        finalize_profile();
+                        solve_times[5*l] += total_t;
+                        solve_times[5*l + 1] += collective_t;
+                        solve_times[5*l + 2] += p2p_t;
+                        solve_times[5*l + 3] += vec_t;
+                        solve_times[5*l + 4] += mat_t;
+                    }
+                }
+
             }
 
             int solve(ParVector& sol, ParVector& rhs)
             {
+                int rank;
+                RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);
+
+                const bool no_additive_level = additive_start_level < -1 ||
+                        additive_start_level >= num_levels;
+
+                if (no_additive_level)
+                {
+                    if (rank == 0)
+                    {
+                        fprintf(stderr, "additive_start_level=%d is outside "
+                                "the additive level range [-1, %d]; all levels will use "
+                                "the multiplicative cycle.\n",
+                                additive_start_level, num_levels - 1);
+                    }
+                }
+
                 double b_norm = rhs.norm(2);
                 double r_norm;
                 int iter = 0;
@@ -713,6 +866,7 @@ namespace raptor
             int max_levels;
             int tap_amg;
             int max_iterations;
+            int additive_start_level;
 
             double strong_threshold;
             double relax_weight;

@@ -7,6 +7,47 @@
 #include "raptor/util/linalg/lapack_wrapper.hpp"
 
 namespace raptor {
+void apply_jacobi(ParCSRMatrix* A, ParVector& e, const ParVector& b, double omega)
+{
+    A->on_proc->sort();
+    A->on_proc->move_diag();
+
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        const int start = A->on_proc->idx1[i];
+        const int end = A->on_proc->idx1[i + 1];
+        e[i] = 0.0;
+        if (start == end || A->on_proc->idx2[start] != i) continue;
+        const double diag = A->on_proc->vals[start];
+        if (fabs(diag) > zero_tol) e[i] = omega * (b[i] / diag);
+    }
+}
+
+void apply_block_jacobi(const ParBSRMatrix* A,
+        const std::vector<double>& block_diag_inv, ParVector& e,
+        const ParVector& b, double omega)
+{
+    const int brow = A->on_proc->b_rows;
+    const int bcol = A->on_proc->b_cols;
+    const int bsize = A->on_proc->b_size;
+    assert(brow == bcol);
+
+    for (int i = 0; i < A->local_num_rows; i++)
+    {
+        const int offset = i * brow;
+        const double* D_inv = block_diag_inv.data() + i * bsize;
+        for (int br = 0; br < brow; br++)
+        {
+            double correction = 0.0;
+            for (int bc = 0; bc < bcol; bc++)
+            {
+                correction += D_inv[br * bcol + bc] * b[offset + bc];
+            }
+            e[offset + br] = omega * correction;
+        }
+    }
+}
+
 // Declare Private Methods
 void SOR_forward(ParCSRMatrix* A, ParVector& x, const ParVector& y, 
         const std::vector<double>& dist_x, double omega);

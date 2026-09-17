@@ -12,6 +12,13 @@
 
 namespace raptor {
 
+// Apply e = omega * D^{-1} * b locally; e and b must be distinct vectors.
+void apply_jacobi(ParCSRMatrix* A, ParVector& e, const ParVector& b,
+        double omega = 1.0);
+void apply_block_jacobi(const ParBSRMatrix* A,
+        const std::vector<double>& block_diag_inv, ParVector& e,
+        const ParVector& b, double omega = 1.0);
+
 void jacobi(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 
         int num_sweeps = 1, double omega = 1.0, bool tap = false);
 void sor(ParCSRMatrix* A, ParVector& x, ParVector& b, ParVector& tmp, 

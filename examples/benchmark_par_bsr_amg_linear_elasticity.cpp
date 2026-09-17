@@ -36,6 +36,7 @@ int main(int argc, char* argv[])
     int ser_ref_levels = 1;
     int par_ref_levels = 1;
     int max_iter = 1000;
+    int additive_start_level = -1;
     double relax_damping = 0.5;
     double theta = 0.5;
     double tol = 1e-6;
@@ -54,6 +55,8 @@ int main(int argc, char* argv[])
     args.AddOption(&theta, "-t", "--theta", "Strength-of-connection threshold.");
     args.AddOption(&tol, "-tol", "--relative-tolerance",
                     "Relative standalone and PCG tolerance.");
+    args.AddOption(&additive_start_level, "-asl", "--additive_start_level",
+                    "Start level of additive AMG hierarchy.");
     args.AddOption(&material_contrast, "-c", "--material-contrast",
                     "Ratio of material attribute 1 to the other attributes.");
     args.AddOption(&scale_spectral, "-sp", "--spectral-radius", "-no-sp",
@@ -103,6 +106,7 @@ int main(int argc, char* argv[])
             Classical, BlockJacobi);
     ml->max_iterations = max_iter;
     ml->relax_weight = relax_damping;
+    ml->additive_start_level = additive_start_level;
     ml->solve_tol = tol;
     ml->num_variables = 1;
     ml->track_times = true;
@@ -124,15 +128,19 @@ int main(int argc, char* argv[])
     ml->print_residuals(iter);
     ml->print_solve_times();
 
-    MPI_Barrier(MPI_COMM_WORLD);
-    ParVector pcg_sol = ParVector(x);
-    std::vector<double> pcg_residuals;
-    double precond_time = 0.0;
-    double inner_product_time = 0.0;
-    t0 = MPI_Wtime();
-    PCG(A, ml, pcg_sol, b, pcg_residuals, ml->solve_tol,
-            ml->max_iterations, &precond_time, &inner_product_time);
-    tfinal = MPI_Wtime() - t0;
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (ml->solve_times)
+        {
+            std::fill(ml->solve_times, ml->solve_times + 5 * ml->num_levels, 0.0);
+        }
+        ParVector pcg_sol = ParVector(x);
+        std::vector<double> pcg_residuals;
+        double precond_time = 0.0;
+        double inner_product_time = 0.0;
+        t0 = MPI_Wtime();
+        PCG(A, ml, pcg_sol, b, pcg_residuals, ml->solve_tol,
+                ml->max_iterations, &precond_time, &inner_product_time);
+        tfinal = MPI_Wtime() - t0;
 
     double pcg_solve_time;
     double pcg_precond_time;
