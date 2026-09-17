@@ -18,7 +18,7 @@ constexpr int num_candidates = 6;
 std::vector<double> read_local_candidates(const char* filename,
         const Partition* partition)
 {
-    CSRMatrix* candidate_matrix = read_mm(filename);
+    CSRMatrix* candidate_matrix = readMatrix(filename);
     if (candidate_matrix == nullptr)
     {
         return {};
@@ -67,11 +67,11 @@ TEST(TestParBSRSmoothedAggregation, MultilevelElasticity)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     const char* matrix_filename =
-            "../../../../test_data/linear_elasticity_3D_A_csr.mtx";
+            "../../../../test_data/linear_elasticity_3D_A_csr.pm";
     const char* candidate_filename =
-            "../../../../test_data/linear_elasticity_3D_candidates.mtx";
+            "../../../../test_data/linear_elasticity_3D_candidates.pm";
 
-    ParCSRMatrix* A_csr = read_par_mm(matrix_filename);
+    ParCSRMatrix* A_csr = readParMatrix(matrix_filename);
     ASSERT_NE(A_csr, nullptr);
     ASSERT_EQ(A_csr->global_num_rows, 600);
     ASSERT_EQ(A_csr->global_num_cols, 600);
