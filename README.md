@@ -10,8 +10,11 @@ RAPtor is a general, high performance algebraic multigrid solver.
 
 # Requirements
 
+- A C++17 compiler
 - `MPI`
-- `cmake`
+- `cmake` (version 3.12 or newer)
+- `BLAS` and `LAPACK`
+  - GoogleTest (via Cmake)
 
 
 # Build Instructions
@@ -41,32 +44,41 @@ ctest --test-dir build -V
 
 ## Options
 
-- `WITH_HYPRE`:
-    Includes `hypre_wrapper` in the build.  Hypre must be installed before
-    building with this option.  If not installed to `/usr/local`, set the
-    `HYPRE_DIR` option.
+Options are passed at configure time, e.g. `cmake -Bbuild -DWITH_HYPRE=ON`.
 
-- `WITH_MFEM`:
-    Includes `mfem_wrapper`, mfem files, and `hypre_wrapper` in the build.
-    Mfem, Metis, and Hypre must be installed before building with this
-    option.  For any packages not installed to `/usr/local`, set the
-    directory option (`<package>_DIR`).
+### Build
 
-- `HYPRE_DIR`:
-    Sets the directory of hypre containing the include and lib folders
+| Option | Default | Description |
+|---|---|---|
+| `BUILD_SHARED_LIBS` | `ON` | Build `raptor` as a shared library |
+| `BUILD_EXAMPLES` | `ON` | Build the examples in `examples/` |
+| `ENABLE_UNIT_TESTS` | `ON` | Build the GoogleTest unit tests and register with `ctest` |
+| `ENABLE_COVERAGE` | `OFF` | Compile the unit tests with coverage |
+| `WITH_MPI` | `ON` | Build with MPI |
+| `WITH_AMPI` | `OFF` | Build with Adaptive MPI (AMPI) |
+| `WITH_HOSTFILE` | `OFF` | Pass a hostfile to `mpirun` when running tests |
+| `HOSTFILE` | | Full path to the hostfile; used with `WITH_HOSTFILE=ON` |
 
-- `METIS_DIR`:
-    Sets the directory of metis containing the include and libmetis folders
+### External packages
 
-- `MFEM_DIR`:
-    Sets the directory of mfem containing `mfem.h` and `libmfem`
+External packages must be installed before enabling them.  If a package is not
+installed in a standard location, set its `<PACKAGE>_DIR` option.
+
+| Option | Default | Description |
+|---|---|---|
+| `WITH_HYPRE` | `OFF` | Build `hypre_wrapper` (set `HYPRE_DIR` to the directory containing `include` and `lib`) |
+| `WITH_MFEM` | `OFF` | Build `mfem_wrapper` and the MFEM matrix gallery; also enables hypre and requires Metis (set `MFEM_DIR`, `HYPRE_DIR`, `METIS_DIR`; optionally `MFEM_MESH_DIR`) |
+| `WITH_PETSC` | `OFF` | Build `petsc_wrapper` (set `PETSC_DIR`) |
+| `WITH_MUELU` | `OFF` | Build `trilinos_wrapper` for Trilinos MueLu (set `MUELU_DIR`) |
+| `WITH_PARMETIS` | `OFF` | Enable ParMETIS partitioning (set `PARMETIS_DIR`) |
+| `WITH_PTSCOTCH` | `OFF` | Enable PT-Scotch partitioning (set `PTSCOTCH_DIR`) |
 
 ## Unit Testing
 
-The build system uses GoogleTest.  The build searches
-the source tree and adds any
-test directory to `ctest`. For a simple example, see
-`raptor/core/tests/ParVector.cpp`.
+Unit tests use GoogleTest and run through `ctest`.  Each `tests/`
+directory registers its tests in its own `CMakeLists.txt` with `add_test`;
+parallel tests typically run at several MPI rank counts (e.g. 1, 4, 16).  For a simple example, see
+`raptor/core/tests/test_par_vector.cpp`.
 
 # Citing
 
@@ -83,15 +95,15 @@ test directory to `ctest`. For a simple example, see
 
 # Full Example
 
-From the `examples` directory:
+With `BUILD_EXAMPLES=ON` (the default), the example is built in `build/examples`:
 ```
+cd build/examples
 mpirun -n 4 ./example
 ```
 
-This example is maintained in `raptor/examples/example.cpp`
+This example is maintained in `examples/example.cpp`
 
 ```cpp
-
 // Copyright (c) 2015-2017, Raptor Developer Team
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 #include <mpi.h>
@@ -102,6 +114,8 @@ This example is maintained in `raptor/examples/example.cpp`
 
 // Include raptor
 #include "raptor/raptor.hpp"
+
+using namespace raptor;
 
 // This is a basic use case.
 int main(int argc, char *argv[])
@@ -124,7 +138,7 @@ int main(int argc, char *argv[])
     int dim = 2;
     int n = 100;
 
-    aligned_vector<int> grid;
+    std::vector<int> grid;
     grid.resize(dim, n);
 
     // Anisotropic diffusion
@@ -197,5 +211,5 @@ int main(int argc, char *argv[])
 
 This code is distributed under BSD: http://opensource.org/licenses/BSD-2-Clause
 
-Please see `LICENSE.txt` and `COPYRIGHT.txt` for more information.
+Please see `LICENSE.txt` for more information.
 
