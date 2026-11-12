@@ -1,5 +1,12 @@
 @PACKAGE_INIT@
 
+if(@WITH_HIP@)
+  include(CMakeFindDependencyMacro)
+  find_dependency(hip CONFIG)
+  find_dependency(rocsparse CONFIG)
+  find_dependency(rocblas CONFIG)
+endif()
+
 if(NOT TARGET raptor AND NOT raptor_BINARY_DIR)
   include("${CMAKE_CURRENT_LIST_DIR}/raptorTargets.cmake")
 endif()

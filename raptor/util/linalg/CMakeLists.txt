@@ -28,9 +28,21 @@ else ()
         )
 endif()
 
+if (WITH_HIP)
+    set(hip_linalg_HEADERS util/linalg/hip_spmv.hpp util/linalg/hip_vector.hpp)
+    set(hip_linalg_SOURCES util/linalg/hip_spmv.cpp util/linalg/hip_vector.cpp)
+    if (WITH_MPI)
+        list(APPEND hip_linalg_HEADERS util/linalg/par_hip_spmv.hpp)
+        list(APPEND hip_linalg_SOURCES util/linalg/par_hip_spmv.cpp)
+        list(APPEND hip_linalg_HEADERS util/linalg/par_hip_vector.hpp)
+        list(APPEND hip_linalg_SOURCES util/linalg/par_hip_vector.cpp)
+    endif()
+endif()
+
 set(linalg_HEADERS
     util/linalg/lapack_wrapper.hpp
     util/linalg/relax.hpp
+    ${hip_linalg_HEADERS}
     ${par_linalg_HEADERS}
     ${external_linalg_HEADERS}
     PARENT_SCOPE
@@ -41,6 +53,7 @@ set(linalg_SOURCES
     util/linalg/relax.cpp
     util/linalg/add.cpp
     util/linalg/spmv.cpp
+    ${hip_linalg_SOURCES}
     ${par_linalg_SOURCES}
     PARENT_SCOPE
     )
