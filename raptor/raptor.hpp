@@ -17,6 +17,16 @@
 // Matrix and vector classes
 #include "core/matrix.hpp"
 #include "core/vector.hpp"
+#ifdef USING_HIP
+    #include "core/hip_matrix.hpp"
+    #include "util/linalg/hip_spmv.hpp"
+    #include "util/linalg/hip_vector.hpp"
+    #ifdef USING_MPI
+        #include "core/par_hip_matrix.hpp"
+        #include "util/linalg/par_hip_spmv.hpp"
+        #include "util/linalg/par_hip_vector.hpp"
+    #endif
+#endif
 #ifndef NO_MPI
     #include "core/par_matrix.hpp"
     #include "core/par_vector.hpp"
@@ -92,6 +102,9 @@
 // Krylov methods
 #include "krylov/cg.hpp"
 #include "krylov/par_cg.hpp"
+#if defined(USING_HIP) && defined(USING_MPI)
+    #include "krylov/par_hip_cg.hpp"
+#endif
 #include "krylov/bicgstab.hpp"
 #include "krylov/par_bicgstab.hpp"
 

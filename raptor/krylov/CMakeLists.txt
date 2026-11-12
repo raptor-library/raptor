@@ -18,6 +18,11 @@ else()
     set(par_krylov_HEADERS
         )
 endif()
+
+if (WITH_HIP AND WITH_MPI)
+    list(APPEND par_krylov_SOURCES krylov/par_hip_cg.cpp)
+    list(APPEND par_krylov_HEADERS krylov/par_hip_cg.hpp)
+endif()
  
 set(krylov_HEADERS
     krylov/cg.hpp
