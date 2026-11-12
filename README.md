@@ -1,5 +1,6 @@
 [![ci](https://img.shields.io/github/actions/workflow/status/raptor-library/raptor/ci.yml?style=flat-square&label=tests)](https://github.com/raptor-library/raptor/actions?query=workflow%3Aci+branch%3Amain)
 [![Codecov](https://img.shields.io/codecov/c/github/raptor-library/raptor?style=flat-square)](https://app.codecov.io/gh/raptor-library/raptor)
+[![Release](https://img.shields.io/github/v/release/raptor-library/raptor?style=flat-square)](https://github.com/raptor-library/raptor/releases)
 
 ![](docs/logo/raptor-logo.png)
 
@@ -70,12 +71,13 @@ test directory to `ctest`. For a simple example, see
 # Citing
 
 <pre>
-@MISC{BiOl2017,
-      author = {Bienz, Amanda and Olson, Luke N.},
-      title = {{RAPtor}: parallel algebraic multigrid v0.1},
-      year = {2017},
-      url = {https://github.com/lukeolson/raptor},
-      note = {Release 0.1}
+@MISC{raptor2026,
+      author = {Bienz, Amanda and Olson, Luke N. and Lockhart, Shelby and
+                Reisner, Andrew and Southworth, Ben and Shen, Taoli},
+      title = {{RAPtor}: parallel algebraic multigrid v1.0},
+      year = {2026},
+      url = {https://github.com/raptor-library/raptor},
+      note = {Release 1.0}
       }
 </pre>
 
