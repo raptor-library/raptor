@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+message: "If you use RAPtor, please cite it as below."
+type: software
+title: "RAPtor: parallel algebraic multigrid"
+version: "1.0"
+license: BSD-2-Clause
+repository-code: "https://github.com/raptor-library/raptor"
+url: "https://raptor-library.github.io/raptor/"
+abstract: "RAPtor is a general, high performance algebraic multigrid solver."
+keywords:
+  - algebraic multigrid
+  - AMG
+  - sparse linear solvers
+  - MPI
+  - high performance computing
+authors:
+  - family-names: Bienz
+    given-names: Amanda
+    affiliation: "University of New Mexico; University of Illinois Urbana-Champaign"
+  - family-names: Olson
+    given-names: Luke N.
+    affiliation: "University of Illinois Urbana-Champaign"
+  - family-names: Lockhart
+    given-names: Shelby
+    affiliation: "University of Illinois Urbana-Champaign"
+  - family-names: Reisner
+    given-names: Andrew
+    affiliation: "Los Alamos National Laboratory"
+  - family-names: Southworth
+    given-names: Ben
+    affiliation: "Los Alamos National Laboratory"
+  - family-names: Shen
+    given-names: Taoli
+    affiliation: "Pennsylvania State University"
