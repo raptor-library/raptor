@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: RAPtor Developers
+// SPDX-License-Identifier: BSD-2-Clause
+// See LICENSE.txt in the top-level directory for the full license.
 #include "petsc_wrapper.hpp"
 
 // Convert double* from PETSc to ParVector* in RAPtor

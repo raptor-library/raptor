@@ -167,8 +167,9 @@ mpirun -n 4 ./example
 This example is maintained in `examples/example.cpp`
 
 ```cpp
-// Copyright (c) 2015-2017, Raptor Developer Team
-// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
+// SPDX-FileCopyrightText: RAPtor Developers, University of Illinois Urbana-Champaign
+// SPDX-License-Identifier: BSD-2-Clause
+// See LICENSE.txt top-level directory for the full license.
 #include <mpi.h>
 #include <math.h>
 #include <stdlib.h>

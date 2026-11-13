@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: RAPtor Developers
+// SPDX-License-Identifier: BSD-2-Clause
+// See LICENSE.txt in the top-level directory for the full license.
 bool profile = false;
 double collective_t = 0.0;
 double p2p_t = 0.0;

@@ -1,5 +1,6 @@
-// Copyright (c) 2015-2017, RAPtor Developer Team
-// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
+// SPDX-FileCopyrightText: RAPtor Developers
+// SPDX-License-Identifier: BSD-2-Clause
+// See LICENSE.txt in the top-level directory for the full license.
 #include "par_cf_splitting.hpp"
 
 namespace raptor {

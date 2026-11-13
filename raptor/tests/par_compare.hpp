@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: RAPtor Developers
+// SPDX-License-Identifier: BSD-2-Clause
+// See LICENSE.txt in the top-level directory for the full license.
 // EXPECT_EQ and ASSERT_EQ are macros
 // EXPECT_EQ test execution and continues even if there is a failure
 // ASSERT_EQ test execution and aborts if there is a failure
