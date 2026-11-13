@@ -2,7 +2,10 @@ namespace raptor {
 
 /*! \mainpage RAPtor code documentation
  *
- * <H3>Main multigrid and linear algbra classes</H3>
+ * RAPtor is a general, high performance algebraic multigrid solver.
+ * Include `raptor.hpp` to use the library.
+ *
+ * <H3>Main multigrid and linear algebra classes</H3>
  *
  * - Multilevel and ParMultilevel
  * - Level and ParLevel
@@ -15,12 +18,39 @@ namespace raptor {
  * - Communicator CommPkg
  * - Communication Topology
  * - Communication Partition
- * 
+ *
  * <H3>Multigrid solver classes</H3>
- * - ParSmoothedAggregationSolver  with components:
+ * - ParRugeStubenSolver (classical AMG) with components:
+ *   - Strength: ParCSRMatrix::strength
+ *   - Coarsening: \link par_cf_splitting.hpp CF splitting \endlink
+ *     (RS, CLJP, Falgout, PMIS, HMIS)
+ *   - Interpolation: \link par_interpolation.hpp interpolation \endlink
+ *     (direct, modified classical, extended, one-point)
+ * - ParAIRSolver (approximate ideal restriction)
+ * - ParSmoothedAggregationSolver with components:
  *   - Strength: ParCSRMatrix::strength
  *   - Aggregation: ParCSRMatrix::aggregate and \link par_mis.hpp mis2 \endlink
- *   - Tentative prolongation: ParCSRMatrix::fit_candidates 
+ *   - Tentative prolongation: ParCSRMatrix::fit_candidates
  *   - Smoothed prolongation: \link par_prolongation.hpp jacobi_prolongation \endlink
- */ 
+ * - Relaxation: \link par_relax.hpp parallel relaxation \endlink
+ *   (Jacobi, SOR, SSOR, block Jacobi)
+ *
+ * <H3>Krylov methods</H3>
+ * - \link par_cg.hpp CG and preconditioned CG \endlink
+ * - \link par_bicgstab.hpp BiCGStab and preconditioned BiCGStab \endlink
+ *
+ * <H3>Matrix gallery and I/O</H3>
+ * - \link par_stencil.hpp Stencil problems \endlink and
+ *   \link diffusion.hpp rotated anisotropic diffusion \endlink
+ * - \link par_random.hpp Random matrices \endlink
+ * - \link par_matrix_market.hpp Matrix Market \endlink and
+ *   \link par_matrix_IO.hpp binary \endlink readers
+ *
+ * <H3>External interfaces</H3>
+ * Built only when the corresponding CMake option is enabled:
+ * - \link hypre_wrapper.hpp hypre \endlink (<tt>WITH_HYPRE</tt>)
+ * - \link mfem_wrapper.hpp MFEM \endlink (<tt>WITH_MFEM</tt>)
+ * - \link petsc_wrapper.hpp PETSc \endlink (<tt>WITH_PETSC</tt>)
+ * - \link trilinos_wrapper.hpp Trilinos MueLu \endlink (<tt>WITH_MUELU</tt>)
+ */
 }

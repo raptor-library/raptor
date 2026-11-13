@@ -1,9 +1,0 @@
-module load tau (pick a version)
-edit cmake/cxx_config
-	set(CMAKE_C_COMPILER "tau_cc.sh")
-	set(CMAKE_CXX_COMPILER "tau_cxx.sh")
-
-type which tau_cxx.sh to get $TAU_PATH/bin
-use that $TAU_PATH--
-export TAU_MAKEFILE=$TAU_PATH/lib/Makefile.tar-gnu-mpi-pdt
-export TAU_OPTIONS="-optVerbose -optCompInst -optOpariNoLibs"

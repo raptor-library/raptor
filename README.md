@@ -1,6 +1,7 @@
 [![ci](https://img.shields.io/github/actions/workflow/status/raptor-library/raptor/ci.yml?style=flat-square&label=tests)](https://github.com/raptor-library/raptor/actions?query=workflow%3Aci+branch%3Amain)
 [![Codecov](https://img.shields.io/codecov/c/github/raptor-library/raptor?style=flat-square)](https://app.codecov.io/gh/raptor-library/raptor)
 [![Release](https://img.shields.io/github/v/release/raptor-library/raptor?style=flat-square)](https://github.com/raptor-library/raptor/releases)
+[![docs](https://img.shields.io/github/actions/workflow/status/raptor-library/raptor/documentation.yml?style=flat-square&label=docs)](https://raptor-library.github.io/raptor/)
 
 ![](docs/logo/raptor-logo.png)
 
@@ -90,6 +91,20 @@ installed in a standard location, set its `<PACKAGE>_DIR` option.
 | `WITH_PARMETIS` | `OFF` | Enable ParMETIS partitioning (set `PARMETIS_DIR`) |
 | `WITH_PTSCOTCH` | `OFF` | Enable PT-Scotch partitioning (set `PTSCOTCH_DIR`) |
 
+### Tips
+
+- **Link time optimization (LTO):** LTO can speed things up --- enable it with
+  ```bash
+  cmake -Bbuild -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
+  ```
+- **TAU profiling:** to build with the TAU compiler wrappers use
+  ```bash
+  export TAU_MAKEFILE=<TAU install>/lib/Makefile.tau-<config>
+  export TAU_OPTIONS="-optVerbose -optCompInst"
+  cmake -Bbuild -DCMAKE_C_COMPILER=tau_cc.sh -DCMAKE_CXX_COMPILER=tau_cxx.sh
+  ```
+  where `TAU_MAKEFILE` points to a TAU configuration built with MPI support.
+
 ## Unit Testing
 
 Unit tests use GoogleTest and run through `ctest`.  Each `tests/`
@@ -119,6 +134,8 @@ If RAPtor is not installed in a standard location, use
 Include `raptor/raptor.hpp` to use RAPtor.
 
 # Documentation
+
+Online documentation: https://raptor-library.github.io/raptor/
 
 Documentation is generated with Doxygen:
 ```bash
