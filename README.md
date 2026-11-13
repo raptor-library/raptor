@@ -8,6 +8,23 @@
 
 RAPtor is a general, high performance algebraic multigrid solver.
 
+# Features
+
+- Parallel (MPI) sparse matrices:
+  -  COO, CSR, and CSC formats, with block variants (BCOO, BSR, BSC)
+- Ruge-Stüben (classical) AMG:
+  - RS, CLJP, Falgout, PMIS, and HMIS coarsening;
+  - direct, modified classical, extended, and one-point interpolation
+- AIR (approximate ideal restriction) AMG
+- Smoothed aggregation AMG:
+  - CSR, BSR
+- Relaxation:
+  - Jacobi, SOR, SSOR, and block Jacobi relaxation
+- Krylov methods:
+  -  CG, BiCGStab
+- Node-aware (topology-aware) communication
+- Interfaces to hypre, MFEM, PETSc, and Trilinos MueLu
+
 # Requirements
 
 - A C++17 compiler
@@ -79,6 +96,35 @@ Unit tests use GoogleTest and run through `ctest`.  Each `tests/`
 directory registers its tests in its own `CMakeLists.txt` with `add_test`;
 parallel tests typically run at several MPI rank counts (e.g. 1, 4, 16).  For a simple example, see
 `raptor/core/tests/test_par_vector.cpp`.
+
+# Installing and Using RAPtor
+
+To install the library, headers, and CMake package files:
+```bash
+cmake -Bbuild -DCMAKE_INSTALL_PREFIX=<install path>
+cmake --build build --parallel
+cmake --install build
+```
+
+To link to CMake project:
+```cmake
+find_package(raptor REQUIRED)
+target_link_libraries(my_app PRIVATE raptor::raptor)
+```
+
+If RAPtor is not installed in a standard location, use
+`-Draptor_DIR=<install path>/lib/cmake/raptor` (or add the install path to
+`CMAKE_PREFIX_PATH`).
+
+Include `raptor/raptor.hpp` to use RAPtor.
+
+# Documentation
+
+Documentation is generated with Doxygen:
+```bash
+cmake -Bbuild
+cmake --build build --target docs
+```
 
 # Citing
 
@@ -212,4 +258,3 @@ int main(int argc, char *argv[])
 This code is distributed under BSD: http://opensource.org/licenses/BSD-2-Clause
 
 Please see `LICENSE.txt` for more information.
-
