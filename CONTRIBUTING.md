@@ -19,6 +19,35 @@ Do not add years to file headers; the copyright years are maintained in
 LICENSE.txt.  Code adapted from third-party sources keeps its original
 copyright and license notice.
 
+Development workflow
+---
+
+Build and run the tests using:
+
+   ```bash
+   cmake -Bbuild
+   cmake --build build --parallel
+   ctest --test-dir build --output-on-failure
+   ```
+
+Register new tests in the associated
+`CMakeLists.txt`. For example:
+
+   ```cmake
+   add_executable(test_par_example test_par_example.cpp)
+   target_link_libraries(test_par_example raptor ${MPI_LIBRARIES} googletest pthread)
+   add_test(ParExampleTest ${MPIRUN} -n 4 ${HOST} ./test_par_example)
+   ```
+
+   (note: for a non-parallel test, omit `${MPIRUN} -n <N> ${HOST}`).
+
+Check spelling with [typos](https://github.com/crate-ci/typos)
+   (project exceptions are in `_typos.toml`):
+
+   ```bash
+   typos
+   ```
+
 Contributing
 ---
 
