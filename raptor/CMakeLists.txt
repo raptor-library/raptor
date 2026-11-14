@@ -28,8 +28,12 @@ add_library(raptor ${core_SOURCES} ${core_HEADERS}
         ${profile_SOURCES} ${profile_HEADERS}
         ${external_SOURCES} ${external_HEADERS})
 
-target_link_libraries(raptor PUBLIC ${MPI_C_LIBRARIES} ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
+target_link_libraries(raptor PUBLIC ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
     ${MUELU_LIBRARIES} ${PETSC_LIBRARIES} ${PTSCOTCH_LIBRARIES} ${PARMETIS_LIBRARIES} ${EXTERNAL_LIBS})
+
+if (WITH_MPI)
+    target_link_libraries(raptor PUBLIC MPI::MPI_CXX)
+endif()
 
 target_include_directories(raptor
   PUBLIC
