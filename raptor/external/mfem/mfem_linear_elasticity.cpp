@@ -1,6 +1,10 @@
+// SPDX-FileCopyrightText: RAPtor Developers
+// SPDX-License-Identifier: BSD-2-Clause
+// See LICENSE.txt in the top-level directory for the full license.
+// Adapted from MFEM example ex2p (https://mfem.org), Copyright (c) Lawrence
+// Livermore National Security, LLC; MFEM is distributed under BSD-3-Clause.
 #include "external/mfem_wrapper.hpp"
 
-// basically MFEM ex2p
 // two material constants are set to be 1 and 1 
 using namespace mfem;
 

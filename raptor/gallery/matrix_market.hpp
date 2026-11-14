@@ -1,3 +1,8 @@
+// SPDX-FileCopyrightText: RAPtor Developers
+// SPDX-License-Identifier: BSD-2-Clause
+// See LICENSE.txt in the top-level directory for the full license.
+// Adapted from the NIST Matrix Market I/O library (mmio.c), which is in the
+// public domain: https://math.nist.gov/MatrixMarket/mmio-c.html
 /* 
 *   Matrix Market I/O library for ANSI C
 *

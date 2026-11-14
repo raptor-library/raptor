@@ -1,7 +1,52 @@
 RAPtor is distributed under LICENSE.txt:
 
-Copyright (c) 2015-2017 RAPtor Developers
+Copyright (c) 2015-2026, RAPtor Developers
 License: BSD 2-clause
+
+Source file headers
+---
+
+RAPtor source files (`.cpp`, `.hpp`, `.tpp`) begin with this header
+(also in `docs/copyright.cpp`):
+
+```cpp
+// SPDX-FileCopyrightText: RAPtor Developers
+// SPDX-License-Identifier: BSD-2-Clause
+// See LICENSE.txt in the top-level directory for the full license.
+```
+
+Do not add years to file headers; the copyright years are maintained in
+LICENSE.txt.  Code adapted from third-party sources also include an attribution
+line after the header citing the original source, copyright, and license.
+
+Development workflow
+---
+
+Build and run the tests using:
+
+   ```bash
+   cmake -Bbuild
+   cmake --build build --parallel
+   ctest --test-dir build --output-on-failure
+   ```
+
+Register new tests in the associated
+`CMakeLists.txt`. For example:
+
+   ```cmake
+   add_executable(test_par_example test_par_example.cpp)
+   target_link_libraries(test_par_example raptor ${MPI_LIBRARIES} googletest pthread)
+   add_test(ParExampleTest ${MPIRUN} -n 4 ${HOST} ./test_par_example)
+   ```
+
+   (note: for a non-parallel test, omit `${MPIRUN} -n <N> ${HOST}`).
+
+Check spelling with [typos](https://github.com/crate-ci/typos)
+   (project exceptions are in `_typos.toml`):
+
+   ```bash
+   typos
+   ```
 
 Contributing
 ---

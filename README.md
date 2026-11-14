@@ -1,5 +1,7 @@
 [![ci](https://img.shields.io/github/actions/workflow/status/raptor-library/raptor/ci.yml?style=flat-square&label=tests)](https://github.com/raptor-library/raptor/actions?query=workflow%3Aci+branch%3Amain)
 [![Codecov](https://img.shields.io/codecov/c/github/raptor-library/raptor?style=flat-square)](https://app.codecov.io/gh/raptor-library/raptor)
+[![Release](https://img.shields.io/github/v/release/raptor-library/raptor?style=flat-square)](https://github.com/raptor-library/raptor/releases)
+[![docs](https://img.shields.io/github/actions/workflow/status/raptor-library/raptor/documentation.yml?style=flat-square&label=docs)](https://raptor-library.github.io/raptor/)
 
 ![](docs/logo/raptor-logo.png)
 
@@ -7,10 +9,30 @@
 
 RAPtor is a general, high performance algebraic multigrid solver.
 
+# Features
+
+- Parallel (MPI) sparse matrices:
+  -  COO, CSR, and CSC formats, with block variants (BCOO, BSR, BSC)
+- Ruge-Stüben (classical) AMG:
+  - RS, CLJP, Falgout, PMIS, and HMIS coarsening;
+  - direct, modified classical, extended, and one-point interpolation
+- AIR (approximate ideal restriction) AMG
+- Smoothed aggregation AMG:
+  - CSR, BSR
+- Relaxation:
+  - Jacobi, SOR, SSOR, and block Jacobi relaxation
+- Krylov methods:
+  -  CG, BiCGStab
+- Node-aware (topology-aware) communication
+- Interfaces to hypre, MFEM, PETSc, and Trilinos MueLu
+
 # Requirements
 
+- A C++17 compiler
 - `MPI`
-- `cmake`
+- `cmake` (version 3.12 or newer)
+- `BLAS` and `LAPACK`
+  - GoogleTest (via Cmake)
 
 
 # Build Instructions
@@ -40,58 +62,114 @@ ctest --test-dir build -V
 
 ## Options
 
-- `WITH_HYPRE`:
-    Includes `hypre_wrapper` in the build.  Hypre must be installed before
-    building with this option.  If not installed to `/usr/local`, set the
-    `HYPRE_DIR` option.
+Options are passed at configure time, e.g. `cmake -Bbuild -DWITH_HYPRE=ON`.
 
-- `WITH_MFEM`:
-    Includes `mfem_wrapper`, mfem files, and `hypre_wrapper` in the build.
-    Mfem, Metis, and Hypre must be installed before building with this
-    option.  For any packages not installed to `/usr/local`, set the
-    directory option (`<package>_DIR`).
+### Build
 
-- `HYPRE_DIR`:
-    Sets the directory of hypre containing the include and lib folders
+| Option | Default | Description |
+|---|---|---|
+| `BUILD_SHARED_LIBS` | `ON` | Build `raptor` as a shared library |
+| `BUILD_EXAMPLES` | `ON` | Build the examples in `examples/` |
+| `ENABLE_UNIT_TESTS` | `ON` | Build the GoogleTest unit tests and register with `ctest` |
+| `ENABLE_COVERAGE` | `OFF` | Compile the unit tests with coverage |
+| `WITH_MPI` | `ON` | Build with MPI |
+| `WITH_AMPI` | `OFF` | Build with Adaptive MPI (AMPI) |
+| `WITH_HOSTFILE` | `OFF` | Pass a hostfile to `mpirun` when running tests |
+| `HOSTFILE` | | Full path to the hostfile; used with `WITH_HOSTFILE=ON` |
 
-- `METIS_DIR`:
-    Sets the directory of metis containing the include and libmetis folders
+### External packages
 
-- `MFEM_DIR`:
-    Sets the directory of mfem containing `mfem.h` and `libmfem`
+External packages must be installed before enabling them.  If a package is not
+installed in a standard location, set its `<PACKAGE>_DIR` option.
+
+| Option | Default | Description |
+|---|---|---|
+| `WITH_HYPRE` | `OFF` | Build `hypre_wrapper` (set `HYPRE_DIR` to the directory containing `include` and `lib`) |
+| `WITH_MFEM` | `OFF` | Build `mfem_wrapper` and the MFEM matrix gallery; also enables hypre and requires Metis (set `MFEM_DIR`, `HYPRE_DIR`, `METIS_DIR`; optionally `MFEM_MESH_DIR`) |
+| `WITH_PETSC` | `OFF` | Build `petsc_wrapper` (set `PETSC_DIR`) |
+| `WITH_MUELU` | `OFF` | Build `trilinos_wrapper` for Trilinos MueLu (set `MUELU_DIR`) |
+| `WITH_PARMETIS` | `OFF` | Enable ParMETIS partitioning (set `PARMETIS_DIR`) |
+| `WITH_PTSCOTCH` | `OFF` | Enable PT-Scotch partitioning (set `PTSCOTCH_DIR`) |
+
+### Tips
+
+- **Link time optimization (LTO):** LTO can speed things up --- enable it with
+  ```bash
+  cmake -Bbuild -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
+  ```
+- **TAU profiling:** to build with the TAU compiler wrappers use
+  ```bash
+  export TAU_MAKEFILE=<TAU install>/lib/Makefile.tau-<config>
+  export TAU_OPTIONS="-optVerbose -optCompInst"
+  cmake -Bbuild -DCMAKE_C_COMPILER=tau_cc.sh -DCMAKE_CXX_COMPILER=tau_cxx.sh
+  ```
+  where `TAU_MAKEFILE` points to a TAU configuration built with MPI support.
 
 ## Unit Testing
 
-The build system uses GoogleTest.  The build searches
-the source tree and adds any
-test directory to `ctest`. For a simple example, see
-`raptor/core/tests/ParVector.cpp`.
+Unit tests use GoogleTest and run through `ctest`.  Each `tests/`
+directory registers its tests in its own `CMakeLists.txt` with `add_test`;
+parallel tests typically run at several MPI rank counts (e.g. 1, 4, 16).  For a simple example, see
+`raptor/core/tests/test_par_vector.cpp`.
+
+# Installing and Using RAPtor
+
+To install the library, headers, and CMake package files:
+```bash
+cmake -Bbuild -DCMAKE_INSTALL_PREFIX=<install path>
+cmake --build build --parallel
+cmake --install build
+```
+
+To link to CMake project:
+```cmake
+find_package(raptor REQUIRED)
+target_link_libraries(my_app PRIVATE raptor::raptor)
+```
+
+If RAPtor is not installed in a standard location, use
+`-Draptor_DIR=<install path>/lib/cmake/raptor` (or add the install path to
+`CMAKE_PREFIX_PATH`).
+
+Include `raptor/raptor.hpp` to use RAPtor.
+
+# Documentation
+
+Online documentation: https://raptor-library.github.io/raptor/
+
+Documentation is generated with Doxygen:
+```bash
+cmake -Bbuild
+cmake --build build --target docs
+```
 
 # Citing
 
 <pre>
-@MISC{BiOl2017,
-      author = {Bienz, Amanda and Olson, Luke N.},
-      title = {{RAPtor}: parallel algebraic multigrid v0.1},
-      year = {2017},
-      url = {https://github.com/lukeolson/raptor},
-      note = {Release 0.1}
+@MISC{raptor2026,
+      author = {Bienz, Amanda and Olson, Luke N. and Lockhart, Shelby and
+                Reisner, Andrew and Southworth, Ben and Shen, Taoli},
+      title = {{RAPtor}: parallel algebraic multigrid v1.0},
+      year = {2026},
+      url = {https://github.com/raptor-library/raptor},
+      note = {Release 1.0}
       }
 </pre>
 
 # Full Example
 
-From the `examples` directory:
+With `BUILD_EXAMPLES=ON` (the default), the example is built in `build/examples`:
 ```
+cd build/examples
 mpirun -n 4 ./example
 ```
 
-This example is maintained in `raptor/examples/example.cpp`
+This example is maintained in `examples/example.cpp`
 
 ```cpp
-
-// Copyright (c) 2015-2017, Raptor Developer Team
-// License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
+// SPDX-FileCopyrightText: RAPtor Developers
+// SPDX-License-Identifier: BSD-2-Clause
+// See LICENSE.txt in the top-level directory for the full license.
 #include <mpi.h>
 #include <math.h>
 #include <stdlib.h>
@@ -100,6 +178,8 @@ This example is maintained in `raptor/examples/example.cpp`
 
 // Include raptor
 #include "raptor/raptor.hpp"
+
+using namespace raptor;
 
 // This is a basic use case.
 int main(int argc, char *argv[])
@@ -122,7 +202,7 @@ int main(int argc, char *argv[])
     int dim = 2;
     int n = 100;
 
-    aligned_vector<int> grid;
+    std::vector<int> grid;
     grid.resize(dim, n);
 
     // Anisotropic diffusion
@@ -191,9 +271,13 @@ int main(int argc, char *argv[])
 
 ```
 
+# Acknowledgments
+
+RAPtor was started at the University of Illinois Urbana-Champaign.
+See `DEVELOPERS.txt` for the list of developers.
+
 # License
 
 This code is distributed under BSD: http://opensource.org/licenses/BSD-2-Clause
 
-Please see `LICENSE.txt` and `COPYRIGHT.txt` for more information.
-
+Please see `LICENSE.txt` for more information.
