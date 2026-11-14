@@ -1,23 +1,23 @@
 RAPtor is distributed under LICENSE.txt:
 
-Copyright (c) 2015-2026, RAPtor Developers, University of Illinois Urbana-Champaign
+Copyright (c) 2015-2026, RAPtor Developers
 License: BSD 2-clause
 
 Source file headers
 ---
 
-RAPtor source files (`.cpp`, `.hpp`, `.tpp`) begins with this header
+RAPtor source files (`.cpp`, `.hpp`, `.tpp`) begin with this header
 (also in `docs/copyright.cpp`):
 
 ```cpp
-// SPDX-FileCopyrightText: RAPtor Developers, University of Illinois Urbana-Champaign
+// SPDX-FileCopyrightText: RAPtor Developers
 // SPDX-License-Identifier: BSD-2-Clause
 // See LICENSE.txt in the top-level directory for the full license.
 ```
 
 Do not add years to file headers; the copyright years are maintained in
-LICENSE.txt.  Code adapted from third-party sources keeps its original
-copyright and license notice.
+LICENSE.txt.  Code adapted from third-party sources also include an attribution
+line after the header citing the original source, copyright, and license.
 
 Development workflow
 ---

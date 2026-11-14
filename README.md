@@ -167,9 +167,9 @@ mpirun -n 4 ./example
 This example is maintained in `examples/example.cpp`
 
 ```cpp
-// SPDX-FileCopyrightText: RAPtor Developers, University of Illinois Urbana-Champaign
+// SPDX-FileCopyrightText: RAPtor Developers
 // SPDX-License-Identifier: BSD-2-Clause
-// See LICENSE.txt top-level directory for the full license.
+// See LICENSE.txt in the top-level directory for the full license.
 #include <mpi.h>
 #include <math.h>
 #include <stdlib.h>
@@ -270,6 +270,11 @@ int main(int argc, char *argv[])
 }
 
 ```
+
+# Acknowledgments
+
+RAPtor was started at the University of Illinois Urbana-Champaign.
+See `DEVELOPERS.txt` for the list of developers.
 
 # License
 
