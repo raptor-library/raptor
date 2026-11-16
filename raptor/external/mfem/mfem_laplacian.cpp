@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: RAPtor Developers
+// SPDX-FileCopyrightText: RAPtor Core Developers
 // SPDX-License-Identifier: BSD-2-Clause
 // See LICENSE.txt in the top-level directory for the full license.
 // Adapted from the MFEM examples (https://mfem.org), Copyright (c) Lawrence

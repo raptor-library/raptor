@@ -1,13 +1,13 @@
 RAPtor is distributed under LICENSE.txt:
 
-Copyright (c) 2015-2026, RAPtor Developers
+Copyright (c) 2015-2026, RAPtor Core Developers
 License: BSD 2-clause
 
 RAPtor source files (`.cpp`, `.hpp`, `.tpp`) begin with this header
 (also in `docs/copyright.cpp`):
 
 ```cpp
-// SPDX-FileCopyrightText: RAPtor Developers
+// SPDX-FileCopyrightText: RAPtor Core Developers
 // SPDX-License-Identifier: BSD-2-Clause
 // See LICENSE.txt in the top-level directory for the full license.
 ```
@@ -52,6 +52,6 @@ By submitting a pull request or other contribution to this project, you agree th
 
   1. You have reviewed and understand the contribution in its entirety;
 
-  2. To the best of your knowledge, you are entitled to contribute it under this project’s license (see LICENSE.md); and
+  2. To the best of your knowledge, you are entitled to contribute it under this project’s license (see LICENSE.txt); and
 
-  3. You transfer the copyright of your contribution to the core RAPtor Developers, where possible.
+  3. You transfer the copyright of your contribution to the RAPtor Core Developers, where possible.

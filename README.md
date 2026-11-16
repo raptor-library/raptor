@@ -167,7 +167,7 @@ mpirun -n 4 ./example
 This example is maintained in `examples/example.cpp`
 
 ```cpp
-// SPDX-FileCopyrightText: RAPtor Developers
+// SPDX-FileCopyrightText: RAPtor Core Developers
 // SPDX-License-Identifier: BSD-2-Clause
 // See LICENSE.txt in the top-level directory for the full license.
 #include <mpi.h>
