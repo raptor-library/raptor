@@ -71,14 +71,20 @@ install(EXPORT raptorTargets
 export(EXPORT raptorTargets
   FILE ${CMAKE_CURRENT_BINARY_DIR}/raptorTargets.cmake
   NAMESPACE "raptor::")
-export(PACKAGE raptor)
 
-configure_file(${PROJECT_SOURCE_DIR}/config/raptorConfig.cmake.in
-  ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/raptorConfig.cmake @ONLY)
+include(CMakePackageConfigHelpers)
+configure_package_config_file(${PROJECT_SOURCE_DIR}/config/raptorConfig.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/raptorConfig.cmake
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/raptor)
+write_basic_package_version_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/raptorConfigVersion.cmake
+  VERSION ${PROJECT_VERSION}
+  COMPATIBILITY SameMajorVersion)
 
 install(
-  FILES ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/raptorConfig.cmake
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/cmake/raptor)
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/raptorConfig.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/raptorConfigVersion.cmake
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/raptor)
 
 if(ENABLE_UNIT_TESTS)
     add_subdirectory(tests)

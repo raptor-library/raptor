@@ -1,6 +1,6 @@
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "RAPtor"
-PROJECT_NUMBER         = 1.0
+PROJECT_NUMBER         = @PROJECT_VERSION@
 PROJECT_BRIEF          = "General, high performance algebraic multigrid solver"
 PROJECT_LOGO           = "@CMAKE_CURRENT_SOURCE_DIR@/docs/logo/raptor-logo2-small.png"
 OUTPUT_DIRECTORY       = "@CMAKE_CURRENT_BINARY_DIR@/docs/doxygen"
