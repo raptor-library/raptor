@@ -4,6 +4,9 @@ env:
     CTEST_NO_TEST_ACTION: error
     HOMEBREW_NO_INSTALL_CLEANUP: 1
     # let openmpi oversubscribe ranks
+    # OpenMPI 5
+    PRTE_MCA_rmaps_default_mapping_policy: ":oversubscribe"
+    # OpenMPI 4
     OMPI_MCA_rmaps_base_oversubscribe: "1"
 
 on:
