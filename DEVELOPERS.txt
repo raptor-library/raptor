@@ -1,5 +1,8 @@
+Core Developers
 Amanda Bienz (University of New Mexico; University of Illinois Urbana-Champaign)
 Luke N. Olson (University of Illinois Urbana-Champaign)
+
+Regular Developers
 Shelby Lockhart (University of Illinois Urbana-Champaign)
 Andrew Reisner (Los Alamos National Laboratory)
 Ben Southworth (Los Alamos National Laboratory)
