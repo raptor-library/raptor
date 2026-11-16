@@ -43,6 +43,9 @@ RAPtor is a general, high performance algebraic multigrid solver.
 cmake -Bbuild [OPTIONS]
 ```
 
+The default build type is `Release` (optimized).  For a debug build, add
+`-DCMAKE_BUILD_TYPE=Debug`.
+
 2. Build the RAPtor library
 ```bash
 cmake --build build --parallel

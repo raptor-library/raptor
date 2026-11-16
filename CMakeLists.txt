@@ -2,6 +2,16 @@ cmake_minimum_required(VERSION 3.12...3.20)
 project(raptor)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
+# Default to an optimized build when no build type is given
+# (single-configuration generators only, e.g. Makefiles and Ninja).
+get_property(RAPTOR_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if (NOT RAPTOR_MULTI_CONFIG AND NOT CMAKE_BUILD_TYPE)
+    message(STATUS "No build type selected; defaulting to Release")
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+        Debug Release RelWithDebInfo MinSizeRel)
+endif()
+
 enable_language(CXX)
 set(CMAKE_CXX_STANDARD 17)
 
