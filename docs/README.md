@@ -1,14 +1,13 @@
 # Documentation
 
 Documentation is found at https://raptor-library.github.io/raptor/.
-To build it locally (with Doxygen and Graphviz):
+
+To build:
 
 ```bash
 cmake -Bbuild
 cmake --build build --target docs
 ```
-
-The HTML output is written to `build/docs/doxygen/html`.
 
 ## Contents of `docs/`
 
