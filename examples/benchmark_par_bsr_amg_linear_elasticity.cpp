@@ -10,6 +10,7 @@
 
 #include "raptor_mfem_config.hpp"
 #include "raptor/raptor.hpp"
+#include "raptor/external/mfem_wrapper.hpp"
 
 using namespace raptor;
 

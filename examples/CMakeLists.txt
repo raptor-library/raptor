@@ -5,16 +5,16 @@ target_link_libraries(benchmark_spmv raptor)
 
 if (WITH_HYPRE)
     add_executable(benchmark_rss benchmark_rss.cpp)
-    target_link_libraries(benchmark_rss raptor ${MPI_LIBRARIES})
+    target_link_libraries(benchmark_rss raptor::hypre_wrapper ${MPI_LIBRARIES})
 
     add_executable(benchmark_tap_amg benchmark_tap_amg.cpp)
-    target_link_libraries(benchmark_tap_amg raptor ${MPI_LIBRARIES})
+    target_link_libraries(benchmark_tap_amg raptor::hypre_wrapper ${MPI_LIBRARIES})
 
     add_executable(benchmark_matops benchmark_matops.cpp)
     target_link_libraries(benchmark_matops raptor ${MPI_LIBRARIES})
 
     add_executable(benchmark_par_spmv benchmark_par_spmv.cpp)
-    target_link_libraries(benchmark_par_spmv raptor ${MPI_LIBRARIES})
+    target_link_libraries(benchmark_par_spmv raptor::hypre_wrapper ${MPI_LIBRARIES})
 
 endif()
 if (WITH_MPI)
@@ -71,6 +71,6 @@ if (WITH_MPI)
 
     if (WITH_MFEM)
         add_executable(benchmark_par_bsr_amg_linear_elasticity benchmark_par_bsr_amg_linear_elasticity.cpp)
-        target_link_libraries(benchmark_par_bsr_amg_linear_elasticity raptor ${MPI_LIBRARIES})
+        target_link_libraries(benchmark_par_bsr_amg_linear_elasticity raptor::mfem_wrapper ${MPI_LIBRARIES})
     endif()
 endif()

@@ -21,3 +21,12 @@ find_package_handle_standard_args(Hypre  DEFAULT_MSG
                                   HYPRE_LIBRARY HYPRE_INCLUDE_DIR)
 
 mark_as_advanced(HYPRE_INCLUDE_DIR HYPRE_LIBRARY )
+
+# Imported target for RAPtor in the raptor:: namespace
+# to avoid conflicts with targets using RAPtor
+if (HYPRE_FOUND AND NOT TARGET raptor::hypre)
+    add_library(raptor::hypre INTERFACE IMPORTED)
+    set_target_properties(raptor::hypre PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${HYPRE_INCLUDE_DIRS}"
+        INTERFACE_LINK_LIBRARIES "${HYPRE_LIBRARIES}")
+endif()

@@ -47,10 +47,13 @@ namespace raptor {
  *   \link par_matrix_IO.hpp binary \endlink readers
  *
  * <H3>External interfaces</H3>
- * Built only when the corresponding CMake option is enabled:
- * - \link hypre_wrapper.hpp hypre \endlink (<tt>WITH_HYPRE</tt>)
- * - \link mfem_wrapper.hpp MFEM \endlink (<tt>WITH_MFEM</tt>)
- * - \link petsc_wrapper.hpp PETSc \endlink (<tt>WITH_PETSC</tt>)
- * - \link trilinos_wrapper.hpp Trilinos MueLu \endlink (<tt>WITH_MUELU</tt>)
+ * Built only when the corresponding CMake option is enabled.  Each is a
+ * separate CMake target; link the target and include its header:
+ * - \link hypre_wrapper.hpp hypre \endlink (<tt>WITH_HYPRE</tt>, <tt>raptor::hypre_wrapper</tt>)
+ * - \link mfem_wrapper.hpp MFEM \endlink (<tt>WITH_MFEM</tt>, <tt>raptor::mfem_wrapper</tt>)
+ * - \link petsc_wrapper.hpp PETSc \endlink (<tt>WITH_PETSC</tt>, <tt>raptor::petsc_wrapper</tt>)
+ * - \link trilinos_wrapper.hpp Trilinos MueLu \endlink (<tt>WITH_MUELU</tt>, <tt>raptor::trilinos_wrapper</tt>)
+ * - \link parmetis_wrapper.hpp ParMETIS \endlink (<tt>WITH_PARMETIS</tt>, <tt>raptor::parmetis_wrapper</tt>)
+ * - \link ptscotch_wrapper.hpp PT-Scotch \endlink (<tt>WITH_PTSCOTCH</tt>, <tt>raptor::ptscotch_wrapper</tt>)
  */
 }

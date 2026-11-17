@@ -16,8 +16,4 @@ set(util_SOURCES
   ${linalg_SOURCES}
   PARENT_SCOPE)
 
-set(ext_util_HEADERS
-    ${ext_linalg_HEADERS}
-    PARENT_SCOPE
-    )
 

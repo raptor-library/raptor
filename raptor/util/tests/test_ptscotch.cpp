@@ -3,7 +3,8 @@
 // See LICENSE.txt in the top-level directory for the full license.
 
 #include "gtest/gtest.h"
-#include "raptor/raptor.hpp" 
+#include "raptor/raptor.hpp"
+#include "raptor/util/linalg/external/ptscotch_wrapper.hpp"
 
 using namespace raptor;
 

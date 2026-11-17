@@ -47,17 +47,6 @@
     #include "gallery/par_matrix_market.hpp"
 #endif
 
-// External 
-#ifdef USING_HYPRE
-    #include "external/hypre_wrapper.hpp"
-#endif
-#ifdef USING_MFEM
-    #include "external/mfem_wrapper.hpp"
-#endif
-#ifdef USING_PETSC
-    #include "external/petsc_wrapper.hpp"
-#endif
-
 // RugeStuben classes
 #include "ruge_stuben/cf_splitting.hpp"
 #include "ruge_stuben/interpolation.hpp"
@@ -105,12 +94,6 @@
 // Repartitioning matrix methods
 #ifndef NO_MPI
 #include "util/linalg/repartition.hpp"
-#endif
-#ifdef USING_PTSCOTCH
-    #include "util/linalg/external/ptscotch_wrapper.hpp"
-#endif
-#ifdef USING_PARMETIS
-    #include "util/linalg/external/parmetis_wrapper.hpp"
 #endif
 
 // Preconditioning Methods

@@ -87,12 +87,12 @@ installed in a standard location, set its `<PACKAGE>_DIR` option.
 
 | Option | Default | Description |
 |---|---|---|
-| `WITH_HYPRE` | `OFF` | Build `hypre_wrapper` (set `HYPRE_DIR` to the directory containing `include` and `lib`) |
-| `WITH_MFEM` | `OFF` | Build `mfem_wrapper` and the MFEM matrix gallery; also enables hypre (add the MFEM install to `CMAKE_PREFIX_PATH` and set `HYPRE_DIR` if needed; optionally `MFEM_MESH_DIR`) |
-| `WITH_PETSC` | `OFF` | Build `petsc_wrapper` (set `PETSC_DIR`) |
-| `WITH_MUELU` | `OFF` | Build `trilinos_wrapper` for Trilinos MueLu (add the Trilinos install to `CMAKE_PREFIX_PATH`) |
-| `WITH_PARMETIS` | `OFF` | Enable ParMETIS partitioning (set `PARMETIS_DIR`) |
-| `WITH_PTSCOTCH` | `OFF` | Enable PT-Scotch partitioning (set `PTSCOTCH_DIR`) |
+| `WITH_HYPRE` | `OFF` | Build `raptor::hypre_wrapper` (set `HYPRE_DIR` to the directory containing `include` and `lib`) |
+| `WITH_MFEM` | `OFF` | Build `raptor::mfem_wrapper` (the MFEM matrix gallery); also enables hypre (add the MFEM install to `CMAKE_PREFIX_PATH` and set `HYPRE_DIR` if needed; optionally `MFEM_MESH_DIR`) |
+| `WITH_PETSC` | `OFF` | Build `raptor::petsc_wrapper` (set `PETSC_DIR`) |
+| `WITH_MUELU` | `OFF` | Build `raptor::trilinos_wrapper` for Trilinos MueLu (add the Trilinos install to `CMAKE_PREFIX_PATH`) |
+| `WITH_PARMETIS` | `OFF` | Build `raptor::parmetis_wrapper` for ParMETIS partitioning (set `PARMETIS_DIR`) |
+| `WITH_PTSCOTCH` | `OFF` | Build `raptor::ptscotch_wrapper` for PT-Scotch partitioning (set `PTSCOTCH_DIR`) |
 
 ### Tips
 
@@ -135,6 +135,25 @@ If RAPtor is not installed in a standard location, use
 `CMAKE_PREFIX_PATH`).
 
 Include `raptor/raptor.hpp` to use RAPtor.
+
+Interfaces to external packages are separate build targets (see above).
+To use one, link its target and include its header:
+```cmake
+target_link_libraries(my_app PRIVATE raptor::hypre_wrapper)
+```
+```cpp
+#include "raptor/raptor.hpp"
+#include "raptor/external/hypre_wrapper.hpp"
+```
+
+| Target | Header |
+|---|---|
+| `raptor::hypre_wrapper` | `raptor/external/hypre_wrapper.hpp` |
+| `raptor::mfem_wrapper` | `raptor/external/mfem_wrapper.hpp` |
+| `raptor::petsc_wrapper` | `raptor/external/petsc_wrapper.hpp` |
+| `raptor::trilinos_wrapper` | `raptor/external/trilinos_wrapper.hpp` |
+| `raptor::parmetis_wrapper` | `raptor/util/linalg/external/parmetis_wrapper.hpp` |
+| `raptor::ptscotch_wrapper` | `raptor/util/linalg/external/ptscotch_wrapper.hpp` |
 
 # Documentation
 
