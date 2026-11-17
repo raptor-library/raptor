@@ -27,6 +27,7 @@ add_library(raptor ${core_SOURCES} ${core_HEADERS}
         ${krylov_SOURCES} ${krylov_HEADERS} 
         ${profile_SOURCES} ${profile_HEADERS}
         ${external_SOURCES} ${external_HEADERS})
+add_library(raptor::raptor ALIAS raptor)
 
 target_link_libraries(raptor PUBLIC ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
     ${PETSC_LIBRARIES} ${PTSCOTCH_LIBRARIES} ${PARMETIS_LIBRARIES} ${EXTERNAL_LIBS})
@@ -47,7 +48,7 @@ endif()
 target_include_directories(raptor
   PUBLIC
   $<INSTALL_INTERFACE:include>
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 )
 
