@@ -21,7 +21,7 @@ TEST(LaplacianTest, TestsInGallery)
     double* stencil = laplace_stencil_27pt();
     CSRMatrix* A_sten = stencil_grid(stencil, grid, 3);
 
-    const char* mat_fn = "../../../../test_data/laplacian.pm";
+    const char* mat_fn = RAPTOR_TEST_DATA_DIR "laplacian.pm";
     CSRMatrix* A_io = readMatrix(mat_fn);
 
     // Compare shapes

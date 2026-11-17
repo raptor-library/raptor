@@ -37,7 +37,7 @@ TEST(TAPAnisoSpMVTest, TestsInUtil)
     int n_items_read;
     x.set_const_value(1.0);
     A->tap_mult(x, b);
-    f = fopen("../../../../test_data/aniso_ones_b.txt", "r");
+    f = fopen(RAPTOR_TEST_DATA_DIR "aniso_ones_b.txt", "r");
     for (int i = 0; i < A->partition->first_local_row; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);
@@ -53,7 +53,7 @@ TEST(TAPAnisoSpMVTest, TestsInUtil)
 
     b.set_const_value(1.0);
     A->tap_mult_T(b, x);
-    f = fopen("../../../../test_data/aniso_ones_b_T.txt", "r");
+    f = fopen(RAPTOR_TEST_DATA_DIR "aniso_ones_b_T.txt", "r");
     for (int i = 0; i < A->partition->first_local_col; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);
@@ -72,7 +72,7 @@ TEST(TAPAnisoSpMVTest, TestsInUtil)
         x[i] = A->partition->first_local_col + i;
     }
     A->tap_mult(x, b);
-    f = fopen("../../../../test_data/aniso_inc_b.txt", "r");
+    f = fopen(RAPTOR_TEST_DATA_DIR "aniso_inc_b.txt", "r");
     for (int i = 0; i < A->partition->first_local_row; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);
@@ -91,7 +91,7 @@ TEST(TAPAnisoSpMVTest, TestsInUtil)
         b[i] = A->partition->first_local_row + i;
     }
     A->tap_mult_T(b, x);
-    f = fopen("../../../../test_data/aniso_inc_b_T.txt", "r");
+    f = fopen(RAPTOR_TEST_DATA_DIR "aniso_inc_b_T.txt", "r");
     for (int i = 0; i < A->partition->first_local_col; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);
@@ -112,7 +112,7 @@ TEST(TAPAnisoSpMVTest, TestsInUtil)
 
     x.set_const_value(1.0);
     A->tap_mult(x, b);
-    f = fopen("../../../../test_data/aniso_ones_b.txt", "r");
+    f = fopen(RAPTOR_TEST_DATA_DIR "aniso_ones_b.txt", "r");
     for (int i = 0; i < A->partition->first_local_row; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);
@@ -128,7 +128,7 @@ TEST(TAPAnisoSpMVTest, TestsInUtil)
 
     b.set_const_value(1.0);
     A->tap_mult_T(b, x);
-    f = fopen("../../../../test_data/aniso_ones_b_T.txt", "r");
+    f = fopen(RAPTOR_TEST_DATA_DIR "aniso_ones_b_T.txt", "r");
     for (int i = 0; i < A->partition->first_local_col; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);
@@ -147,7 +147,7 @@ TEST(TAPAnisoSpMVTest, TestsInUtil)
         x[i] = A->partition->first_local_col + i;
     }
     A->tap_mult(x, b);
-    f = fopen("../../../../test_data/aniso_inc_b.txt", "r");
+    f = fopen(RAPTOR_TEST_DATA_DIR "aniso_inc_b.txt", "r");
     for (int i = 0; i < A->partition->first_local_row; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);
@@ -166,7 +166,7 @@ TEST(TAPAnisoSpMVTest, TestsInUtil)
         b[i] = A->partition->first_local_row + i;
     }
     A->tap_mult_T(b, x);
-    f = fopen("../../../../test_data/aniso_inc_b_T.txt", "r");
+    f = fopen(RAPTOR_TEST_DATA_DIR "aniso_inc_b_T.txt", "r");
     for (int i = 0; i < A->partition->first_local_col; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);

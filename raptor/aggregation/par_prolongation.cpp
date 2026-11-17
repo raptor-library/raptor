@@ -128,7 +128,6 @@ static ParBSRMatrix* jacobi_prolongation_bsr_local(ParBSRMatrix* A, ParBSRMatrix
 
     // Get absolute row sum for each row
     int row_start_on, row_end_on;
-    int row_start_off, row_end_off;
     std::vector<double> inv_sums(A->local_num_rows * A_on->b_rows, 0.0);
 
     for (int row = 0; row < A->local_num_rows; row++)

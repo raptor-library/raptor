@@ -16,8 +16,8 @@ int main(int argc, char** argv)
 
 TEST(AnisoTest, TestsInGallery)
 {
-    const char* f_in = "../../../../test_data/sas_P0.mtx";
-    const char* f_out = "../../../../test_data/sas_P0_out.mtx";
+    const char* f_in = RAPTOR_TEST_DATA_DIR "sas_P0.mtx";
+    const char* f_out = "matrix_market_out.mtx";
     CSRMatrix* Amm = read_mm(f_in);
     write_mm(Amm, f_out);
     CSRMatrix* Amm_out = read_mm(f_out);

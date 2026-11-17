@@ -10,6 +10,14 @@ on:
   push:
 
 jobs:
+  typos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Check spelling
+        uses: crate-ci/typos@v1.52.2
+
   core:
     strategy:
       fail-fast: false
@@ -47,5 +55,9 @@ jobs:
         run: cmake --build build --parallel
       - name: Test code
         run: ctest --test-dir build -V --build-config Debug
-      - name: collect code coverage
-        run: bash <(curl -s https://codecov.io/bash) || echo "codecov failure"
+      - name: Code coverage
+        if: matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false

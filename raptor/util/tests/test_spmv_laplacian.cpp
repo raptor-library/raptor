@@ -27,7 +27,7 @@ TEST(LaplacianSpMVTest, TestsInUtil)
     int n_items_read;
     x.set_const_value(1.0);
     A_sten->mult(x, b);
-    FILE* f = fopen("../../../../test_data/laplacian27_ones_b.txt", "r");
+    FILE* f = fopen(RAPTOR_TEST_DATA_DIR "laplacian27_ones_b.txt", "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);
@@ -38,7 +38,7 @@ TEST(LaplacianSpMVTest, TestsInUtil)
 
     // Test b <- A_T*ones
     A_sten->mult_T(x, b);
-    f = fopen("../../../../test_data/laplacian27_ones_b_T.txt", "r");
+    f = fopen(RAPTOR_TEST_DATA_DIR "laplacian27_ones_b_T.txt", "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);
@@ -53,7 +53,7 @@ TEST(LaplacianSpMVTest, TestsInUtil)
         x[i] = i;
     }
     A_sten->mult(x, b);
-    f = fopen("../../../../test_data/laplacian27_inc_b.txt", "r");
+    f = fopen(RAPTOR_TEST_DATA_DIR "laplacian27_inc_b.txt", "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);
@@ -64,7 +64,7 @@ TEST(LaplacianSpMVTest, TestsInUtil)
 
     // Tests b <- A_T*incr
     A_sten->mult_T(x, b);
-    f = fopen("../../../../test_data/laplacian27_inc_b_T.txt", "r");
+    f = fopen(RAPTOR_TEST_DATA_DIR "laplacian27_inc_b_T.txt", "r");
     for (int i = 0; i < A_sten->n_rows; i++)
     {
         n_items_read = fscanf(f, "%lg\n", &b_val);

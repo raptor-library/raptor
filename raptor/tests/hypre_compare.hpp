@@ -20,10 +20,10 @@ inline void compare_dimensions(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h,
     hypre_CSRMatrix* A_h_diag = hypre_ParCSRMatrixDiag(A_h);
     HYPRE_Int diag_rows = hypre_CSRMatrixNumRows(A_h_diag);
     HYPRE_Int diag_cols = hypre_CSRMatrixNumCols(A_h_diag);
-    HYPRE_Int first_local_row = hypre_ParCSRMatrixFirstRowIndex(A_h);
-    HYPRE_Int first_local_col = hypre_ParCSRMatrixFirstColDiag(A_h);
-    HYPRE_Int global_rows = hypre_ParCSRMatrixGlobalNumRows(A_h);
-    HYPRE_Int global_cols = hypre_ParCSRMatrixGlobalNumCols(A_h);
+    HYPRE_BigInt first_local_row = hypre_ParCSRMatrixFirstRowIndex(A_h);
+    HYPRE_BigInt first_local_col = hypre_ParCSRMatrixFirstColDiag(A_h);
+    HYPRE_BigInt global_rows = hypre_ParCSRMatrixGlobalNumRows(A_h);
+    HYPRE_BigInt global_cols = hypre_ParCSRMatrixGlobalNumCols(A_h);
 
     int first_row, first_col;
     std::vector<int> proc_sizes(num_procs+1);
@@ -100,7 +100,7 @@ inline void compare(ParCSRMatrix* A, hypre_ParCSRMatrix* A_h, double tol = 1e-05
     HYPRE_Int* diag_j = hypre_CSRMatrixJ(A_h_diag);
     HYPRE_Int* offd_i = hypre_CSRMatrixI(A_h_offd);
     HYPRE_Int* offd_j = hypre_CSRMatrixJ(A_h_offd);
-    HYPRE_Int* col_map_offd = hypre_ParCSRMatrixColMapOffd(A_h);
+    HYPRE_BigInt* col_map_offd = hypre_ParCSRMatrixColMapOffd(A_h);
     if (offd_cols)
     {
         offd_data = hypre_CSRMatrixData(A_h_offd);
@@ -210,7 +210,7 @@ inline void compareS(ParCSRMatrix* S, hypre_ParCSRMatrix* S_h)
     HYPRE_Int* diag_j = hypre_CSRMatrixJ(S_h_diag);
     HYPRE_Int* offd_i = hypre_CSRMatrixI(S_h_offd);
     HYPRE_Int* offd_j = hypre_CSRMatrixJ(S_h_offd);
-    HYPRE_Int* col_map_offd = hypre_ParCSRMatrixColMapOffd(S_h);
+    HYPRE_BigInt* col_map_offd = hypre_ParCSRMatrixColMapOffd(S_h);
     if (offd_cols)
     {
         offd_data = hypre_CSRMatrixData(S_h_offd);

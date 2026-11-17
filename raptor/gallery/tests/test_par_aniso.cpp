@@ -22,7 +22,7 @@ TEST(ParAnisoTest, TestsInGallery)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    const char* A0_fn = "../../../../test_data/aniso.pm";
+    const char* A0_fn = RAPTOR_TEST_DATA_DIR "aniso.pm";
 
 
     int start, end;

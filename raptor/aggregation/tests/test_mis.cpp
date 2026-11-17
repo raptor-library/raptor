@@ -22,9 +22,9 @@ TEST(TestMIS, TestsInAggregation)
     FILE* f;
     CSRMatrix* S;
 
-    const char* S0_fn = "../../../../test_data/sas_S0.pm";
-    const char* mis0_fn = "../../../../test_data/sas_mis0.txt";
-    const char* weights_fn = "../../../../test_data/weights.txt";
+    const char* S0_fn = RAPTOR_TEST_DATA_DIR "sas_S0.pm";
+    const char* mis0_fn = RAPTOR_TEST_DATA_DIR "sas_mis0.txt";
+    const char* weights_fn = RAPTOR_TEST_DATA_DIR "weights.txt";
 
     S = readMatrix(S0_fn);
     int n_items_read;
@@ -57,8 +57,8 @@ TEST(TestMIS, TestsInAggregation)
 
     delete S;
 
-    const char* S1_fn = "../../../../test_data/sas_S1.pm";
-    const char* mis1_fn = "../../../../test_data/sas_mis1.txt";
+    const char* S1_fn = RAPTOR_TEST_DATA_DIR "sas_S1.pm";
+    const char* mis1_fn = RAPTOR_TEST_DATA_DIR "sas_mis1.txt";
 
     S = readMatrix(S1_fn);
     python_states.resize(S->n_rows);

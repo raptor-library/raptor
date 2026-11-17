@@ -56,8 +56,8 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     hypre_ParCSRMatrix* S_hyp;
     hypre_IntArray * states_hypre = NULL;
 
-    const char* A0_fn = "../../../../test_data/rss_A0.pm";
-    const char* A1_fn = "../../../../test_data/rss_A1.pm";
+    const char* A0_fn = RAPTOR_TEST_DATA_DIR "rss_A0.pm";
+    const char* A1_fn = RAPTOR_TEST_DATA_DIR "rss_A1.pm";
 
 
     // TEST LEVEL 0

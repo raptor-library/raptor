@@ -27,10 +27,10 @@ TEST(AnisoSpMVTest, TestsInUtil)
     Vector x(A_sten->n_rows);
     Vector b(A_sten->n_rows);
 
-    const char* b_ones = "../../../../test_data/aniso_ones_b.txt";
-    const char* b_T_ones = "../../../../test_data/aniso_ones_b_T.txt";
-    const char* b_inc = "../../../../test_data/aniso_inc_b.txt";
-    const char* b_T_inc = "../../../../test_data/aniso_inc_b_T.txt";
+    const char* b_ones = RAPTOR_TEST_DATA_DIR "aniso_ones_b.txt";
+    const char* b_T_ones = RAPTOR_TEST_DATA_DIR "aniso_ones_b_T.txt";
+    const char* b_inc = RAPTOR_TEST_DATA_DIR "aniso_inc_b.txt";
+    const char* b_T_inc = RAPTOR_TEST_DATA_DIR "aniso_inc_b_T.txt";
     
     // Test b <- A*ones
     int n_items_read;

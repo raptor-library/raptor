@@ -27,14 +27,63 @@ add_library(raptor ${core_SOURCES} ${core_HEADERS}
         ${krylov_SOURCES} ${krylov_HEADERS} 
         ${profile_SOURCES} ${profile_HEADERS}
         ${external_SOURCES} ${external_HEADERS})
+add_library(raptor::raptor ALIAS raptor)
 
-target_link_libraries(raptor PUBLIC ${MPI_C_LIBRARIES} ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
-    ${MUELU_LIBRARIES} ${PETSC_LIBRARIES} ${PTSCOTCH_LIBRARIES} ${PARMETIS_LIBRARIES} ${EXTERNAL_LIBS})
+if (WITH_MFEM)
+    target_compile_definitions(raptor PUBLIC USING_MFEM)
+    target_link_libraries(raptor PUBLIC mfem)
+endif()
+
+if (WITH_HYPRE)
+    target_compile_definitions(raptor PUBLIC USING_HYPRE)
+    target_include_directories(raptor PUBLIC ${HYPRE_INCLUDE_DIRS})
+    target_link_libraries(raptor PUBLIC ${HYPRE_LIBRARIES})
+endif()
+
+if (WITH_PETSC)
+    target_compile_definitions(raptor PUBLIC USING_PETSC)
+    target_include_directories(raptor PUBLIC ${PETSC_INCLUDE_DIR} ${PETSC_INCLUDE_CONF})
+    target_link_libraries(raptor PUBLIC ${PETSC_LIBRARIES})
+endif()
+
+if (WITH_PTSCOTCH)
+    target_compile_definitions(raptor PUBLIC USING_PTSCOTCH)
+    target_include_directories(raptor PUBLIC ${PTSCOTCH_INCLUDE_DIRS})
+    target_link_libraries(raptor PUBLIC ${PTSCOTCH_LIBRARIES})
+endif()
+
+if (WITH_PARMETIS)
+    target_compile_definitions(raptor PUBLIC USING_PARMETIS)
+    target_include_directories(raptor PUBLIC ${PARMETIS_INCLUDE_DIRS})
+    target_link_libraries(raptor PUBLIC ${PARMETIS_LIBRARIES})
+endif()
+
+if (WITH_MUELU)
+    target_compile_definitions(raptor PUBLIC USING_MUELU)
+    target_link_libraries(raptor PUBLIC MueLu::all_libs)
+endif()
+
+if (WITH_AMPI)
+    target_compile_definitions(raptor PUBLIC USE_AMPI)
+endif()
+
+# BLAS and LAPACK
+target_link_libraries(raptor PUBLIC ${EXTERNAL_LIBS})
+
+if (WITH_MPI)
+    target_compile_definitions(raptor PUBLIC USING_MPI OMPI_SKIP_MPICXX MPICH_SKIP_MPICXX)
+    target_link_libraries(raptor PUBLIC MPI::MPI_CXX)
+endif()
+
+if (ENABLE_COVERAGE)
+    target_compile_options(raptor PRIVATE -O0 -g --coverage)
+    target_link_options(raptor PRIVATE --coverage)
+endif()
 
 target_include_directories(raptor
   PUBLIC
   $<INSTALL_INTERFACE:include>
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 )
 
@@ -63,14 +112,20 @@ install(EXPORT raptorTargets
 export(EXPORT raptorTargets
   FILE ${CMAKE_CURRENT_BINARY_DIR}/raptorTargets.cmake
   NAMESPACE "raptor::")
-export(PACKAGE raptor)
 
-configure_file(${PROJECT_SOURCE_DIR}/config/raptorConfig.cmake.in
-  ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/raptorConfig.cmake @ONLY)
+include(CMakePackageConfigHelpers)
+configure_package_config_file(${PROJECT_SOURCE_DIR}/config/raptorConfig.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/raptorConfig.cmake
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/raptor)
+write_basic_package_version_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/raptorConfigVersion.cmake
+  VERSION ${PROJECT_VERSION}
+  COMPATIBILITY SameMajorVersion)
 
 install(
-  FILES ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/raptorConfig.cmake
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/cmake/raptor)
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/raptorConfig.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/raptorConfigVersion.cmake
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/raptor)
 
 if(ENABLE_UNIT_TESTS)
     add_subdirectory(tests)

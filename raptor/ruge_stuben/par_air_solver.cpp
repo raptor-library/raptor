@@ -13,7 +13,23 @@ void ParAIRSolver::extend_hier(T & A) {
 	auto S = A.strength(strength_type, strong_threshold, tap_level,
 	                    num_variables, variables);
 
-	split_rs(S, split.on_proc, split.off_proc, tap_level);
+	switch (coarsen_type) {
+	case RS:
+		split_rs(S, split.on_proc, split.off_proc, tap_level);
+		break;
+	case CLJP:
+		split_cljp(S, split.on_proc, split.off_proc, tap_level, weights);
+		break;
+	case Falgout:
+		split_falgout(S, split.on_proc, split.off_proc, tap_level, weights);
+		break;
+	case PMIS:
+		split_pmis(S, split.on_proc, split.off_proc, tap_level, weights);
+		break;
+	case HMIS:
+		split_hmis(S, split.on_proc, split.off_proc, tap_level, weights);
+		break;
+	}
 	auto P = one_point_interpolation(A, *S, split);
 	auto R = local_air(A, *S, split, fpoint_distance::two);
 

@@ -24,15 +24,15 @@ TEST(TestSplitting, TestsInRuge_Stuben)
     std::vector<int> splitting;
     std::vector<int> splitting_rap;
 
-    const char* S0_fn = "../../../../test_data/rss_S0.pm";
-    const char* S1_fn = "../../../../test_data/rss_S1.pm";
-    const char* cf0_rs = "../../../../test_data/rss_cf0_rs.txt";
-    const char* cf0 = "../../../../test_data/rss_cf0.txt";
-    const char* cf0_pmis = "../../../../test_data/rss_cf0_pmis.txt";
-    const char* cf1_rs = "../../../../test_data/rss_cf1_rs.txt";
-    const char* cf1 = "../../../../test_data/rss_cf1.txt";
-    const char* cf1_pmis = "../../../../test_data/rss_cf1_pmis.txt";
-    const char* weights_fn = "../../../../test_data/weights.txt";
+    const char* S0_fn = RAPTOR_TEST_DATA_DIR "rss_S0.pm";
+    const char* S1_fn = RAPTOR_TEST_DATA_DIR "rss_S1.pm";
+    const char* cf0_rs = RAPTOR_TEST_DATA_DIR "rss_cf0_rs.txt";
+    const char* cf0 = RAPTOR_TEST_DATA_DIR "rss_cf0.txt";
+    const char* cf0_pmis = RAPTOR_TEST_DATA_DIR "rss_cf0_pmis.txt";
+    const char* cf1_rs = RAPTOR_TEST_DATA_DIR "rss_cf1_rs.txt";
+    const char* cf1 = RAPTOR_TEST_DATA_DIR "rss_cf1.txt";
+    const char* cf1_pmis = RAPTOR_TEST_DATA_DIR "rss_cf1_pmis.txt";
+    const char* weights_fn = RAPTOR_TEST_DATA_DIR "weights.txt";
     int n_items_read;
    
     // TEST LAPLACIAN SPLITTINGS ON LEVEL 0 

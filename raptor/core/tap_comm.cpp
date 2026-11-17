@@ -314,10 +314,10 @@ void TAPComm::form_local_R_par_comm(const std::vector<int>& off_node_column_map,
         RAPtor_MPI_Probe(RAPtor_MPI_ANY_SOURCE, 6543, topology->local_comm, &recv_status);
         RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_INT, &count);
         proc = recv_status.RAPtor_MPI_SOURCE;
-        int recvbuf[count];
-        RAPtor_MPI_Recv(recvbuf, count, RAPtor_MPI_INT, proc, 6543, topology->local_comm,
+        std::vector<int> recvbuf(count);
+        RAPtor_MPI_Recv(recvbuf.data(), count, RAPtor_MPI_INT, proc, 6543, topology->local_comm,
                 &recv_status);
-        local_R_par_comm->send_data->add_msg(proc, count / 2, recvbuf);
+        local_R_par_comm->send_data->add_msg(proc, count / 2, recvbuf.data());
         start_ctr = count / 2;
         // Add orig nodes for each recvd col (need to know this for
         // global communication setup)
@@ -629,8 +629,8 @@ void TAPComm::form_global_par_comm(std::vector<int>& orig_procs)
         proc = global_par_comm->send_data->procs[i];
         RAPtor_MPI_Probe(proc, 5432, RAPtor_MPI_COMM_WORLD, &recv_status);
         RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_INT, &count);
-        int commbuf[count];
-        RAPtor_MPI_Recv(commbuf, count, RAPtor_MPI_INT, proc, 5432, RAPtor_MPI_COMM_WORLD, &recv_status);
+        std::vector<int> commbuf(count);
+        RAPtor_MPI_Recv(commbuf.data(), count, RAPtor_MPI_INT, proc, 5432, RAPtor_MPI_COMM_WORLD, &recv_status);
         for (int j = 0; j < count; j += 2)
         {
            global_par_comm->send_data->indices.emplace_back(commbuf[j]);
@@ -772,8 +772,8 @@ void TAPComm::form_local_S_par_comm(std::vector<int>& orig_procs)
         RAPtor_MPI_Probe(RAPtor_MPI_ANY_SOURCE, 4321, topology->local_comm, &recv_status);
         RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_INT, &count);
         proc = recv_status.RAPtor_MPI_SOURCE;        
-        int recvbuf[count];
-        RAPtor_MPI_Recv(recvbuf, count, RAPtor_MPI_INT, proc, 4321, topology->local_comm, &recv_status);
+        std::vector<int> recvbuf(count);
+        RAPtor_MPI_Recv(recvbuf.data(), count, RAPtor_MPI_INT, proc, 4321, topology->local_comm, &recv_status);
         for (int j = 0; j < count; j++)
         {
             local_S_par_comm->send_data->indices.emplace_back(recvbuf[j]);
@@ -959,13 +959,13 @@ void TAPComm::form_local_L_par_comm(const std::vector<int>& on_node_column_map,
         RAPtor_MPI_Probe(RAPtor_MPI_ANY_SOURCE, 7890, topology->local_comm, &recv_status);
         RAPtor_MPI_Get_count(&recv_status, RAPtor_MPI_INT, &count);
         proc = recv_status.RAPtor_MPI_SOURCE;
-        int recvbuf[count];
-        RAPtor_MPI_Recv(recvbuf, count, RAPtor_MPI_INT, proc, 7890, topology->local_comm, &recv_status);
+        std::vector<int> recvbuf(count);
+        RAPtor_MPI_Recv(recvbuf.data(), count, RAPtor_MPI_INT, proc, 7890, topology->local_comm, &recv_status);
         for (int j = 0; j < count; j++)
         {
             recvbuf[j] -= first_local_col;
         }
-        local_L_par_comm->send_data->add_msg(proc, count, recvbuf);
+        local_L_par_comm->send_data->add_msg(proc, count, recvbuf.data());
     }
     local_L_par_comm->send_data->finalize();
     

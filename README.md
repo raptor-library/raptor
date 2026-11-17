@@ -30,7 +30,7 @@ RAPtor is a general, high performance algebraic multigrid solver.
 
 - A C++17 compiler
 - `MPI`
-- `cmake` (version 3.12 or newer)
+- `cmake` (version 3.18 or newer)
 - `BLAS` and `LAPACK`
   - GoogleTest (via Cmake)
 
@@ -42,6 +42,9 @@ RAPtor is a general, high performance algebraic multigrid solver.
 ```bash
 cmake -Bbuild [OPTIONS]
 ```
+
+The default build type is `Release` (optimized).  For a debug build, add
+`-DCMAKE_BUILD_TYPE=Debug`.
 
 2. Build the RAPtor library
 ```bash
@@ -85,9 +88,9 @@ installed in a standard location, set its `<PACKAGE>_DIR` option.
 | Option | Default | Description |
 |---|---|---|
 | `WITH_HYPRE` | `OFF` | Build `hypre_wrapper` (set `HYPRE_DIR` to the directory containing `include` and `lib`) |
-| `WITH_MFEM` | `OFF` | Build `mfem_wrapper` and the MFEM matrix gallery; also enables hypre and requires Metis (set `MFEM_DIR`, `HYPRE_DIR`, `METIS_DIR`; optionally `MFEM_MESH_DIR`) |
+| `WITH_MFEM` | `OFF` | Build `mfem_wrapper` and the MFEM matrix gallery; also enables hypre (add the MFEM install to `CMAKE_PREFIX_PATH` and set `HYPRE_DIR` if needed; optionally `MFEM_MESH_DIR`) |
 | `WITH_PETSC` | `OFF` | Build `petsc_wrapper` (set `PETSC_DIR`) |
-| `WITH_MUELU` | `OFF` | Build `trilinos_wrapper` for Trilinos MueLu (set `MUELU_DIR`) |
+| `WITH_MUELU` | `OFF` | Build `trilinos_wrapper` for Trilinos MueLu (add the Trilinos install to `CMAKE_PREFIX_PATH`) |
 | `WITH_PARMETIS` | `OFF` | Enable ParMETIS partitioning (set `PARMETIS_DIR`) |
 | `WITH_PTSCOTCH` | `OFF` | Enable PT-Scotch partitioning (set `PTSCOTCH_DIR`) |
 

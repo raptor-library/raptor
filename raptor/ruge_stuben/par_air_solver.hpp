@@ -19,8 +19,6 @@ struct ParAIRSolver : ParMultilevel {
 	             relax_t relax_type_ = FCJacobi) :
 		ParMultilevel(strong_threshold_, strength_type_, relax_type_),
 		coarsen_type(coarsen_type_),
-		interp_type(interp_type_),
-		restrict_type(restrict_type_),
 		variables(nullptr)
 	{
 		num_variables = 1;
@@ -40,8 +38,6 @@ private:
 	void init_coarse_vectors();
 
 	coarsen_t coarsen_type;
-	interp_t interp_type;
-	restrict_t restrict_type;
 	int *variables;
 };
 

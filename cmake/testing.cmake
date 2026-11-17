@@ -2,57 +2,26 @@ if (ENABLE_UNIT_TESTS)
   enable_testing()
 
   include(FetchContent)
+  if (POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW)
+  endif()
   FetchContent_Declare(
       googletest
-      GIT_REPOSITORY https://github.com/google/googletest.git
-      GIT_TAG        release-1.12.1
+      URL      https://github.com/google/googletest/archive/refs/tags/v1.18.0.tar.gz
+      URL_HASH SHA256=6e3191c1455468b3fc35a417fb565c1c5071aee1b7e7f85e30cf48a98d37d8b5
   )
+  # Build only GoogleTest
+  set(BUILD_GMOCK OFF CACHE INTERNAL "")
+  set(INSTALL_GTEST OFF CACHE INTERNAL "")
   FetchContent_MakeAvailable(googletest)
+  find_package(Threads REQUIRED)
   add_library(googletest INTERFACE IMPORTED)
-  target_link_libraries(googletest INTERFACE gtest_main)
+  target_link_libraries(googletest INTERFACE gtest_main Threads::Threads)
+  target_compile_definitions(googletest INTERFACE
+    RAPTOR_TEST_DATA_DIR="${PROJECT_SOURCE_DIR}/test_data/")
 
   if(ENABLE_COVERAGE)
     target_compile_options(googletest INTERFACE -O0 -g -fprofile-arcs -ftest-coverage)
     target_link_options(googletest INTERFACE -fprofile-arcs -ftest-coverage)
   endif()
 endif()
-
-
-
-#function(add_unit target sources)
-#  set(mpimain_SRC ${CMAKE_SOURCE_DIR}/raptor/tests/mpi_main.cpp)
-#  add_executable(${target} ${sources} ${mpimain_SRC})
-#  target_link_libraries(${target} ${GTEST_BOTH_LIBRARIES} ${MPI_LIBRARIES} raptor)
-#  set_target_properties(${target}
-#    PROPERTIES
-#    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/test)
-#  if(ENABLE_JENKINS_OUTPUT)
-#    add_test(${target} ${CMAKE_BINARY_DIR}/test/${target}
-#      --gtest_output=xml:${CMAKE_BINARY_DIR}/test/${target}.xml
-#      --gtest_color=yes)
-#  else()
-#	if (${ARGC} GREATER 2)
-#	  set(commsize ${ARGV2})
-#	else()
-#	  set(commsize ${TEST_COMM_SIZE})
-#	endif()
-#	set(test_parameters -np ${commsize} "${CMAKE_BINARY_DIR}/test/${target}")
-#	add_test(NAME ${target} COMMAND "mpiexec" ${test_parameters})
-#  endif()
-#endfunction(add_unit)
-
-
-#function(add_tests_promisc dir)
-#  # TODO: add check for tests already added with custom commsize
-#  file(GLOB_RECURSE ${dir}_tests_1 ${dir}/tests/*.cpp)
-#  file(GLOB_RECURSE ${dir}_tests_2 ${dir}/*/tests/*.cpp)
-#  set(${dir}_TESTS ${${dir}_tests_1} ${${dir}_tests_2} PARENT_SCOPE)
-#  foreach(tst ${${dir}_tests_1})
-#	get_filename_component(fname ${tst} NAME_WE)
-#	add_unit(${fname} ${tst})
-#  endforeach()
-#  foreach(tst ${${dir}_tests_2})
-#	get_filename_component(fname ${tst} NAME_WE)
-#	add_unit(${fname} ${tst})
-#  endforeach()
-#endfunction(add_tests_promisc)

@@ -31,9 +31,9 @@ TEST(TestParMIS, TestsInAggregation)
 
     ParCSRMatrix* S;
 
-    const char* S0_fn = "../../../../test_data/sas_S0.pm";
-    const char* mis0_fn = "../../../../test_data/sas_mis0.txt";
-    const char* weights_fn = "../../../../test_data/weights.txt";
+    const char* S0_fn = RAPTOR_TEST_DATA_DIR "sas_S0.pm";
+    const char* mis0_fn = RAPTOR_TEST_DATA_DIR "sas_mis0.txt";
+    const char* weights_fn = RAPTOR_TEST_DATA_DIR "weights.txt";
 
     S = readParMatrix(S0_fn);
 

@@ -8,12 +8,6 @@
 #include "limits.h"
 
 namespace {
-bool little_endian()
-{
-    int num = 1;
-    return (*(char *)&num == 1);
-}
-
 template <class T>
 void endian_swap(T *objp)
 {

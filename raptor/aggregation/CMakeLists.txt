@@ -8,6 +8,7 @@ if (WITH_MPI)
         aggregation/par_candidates.hpp
         aggregation/par_prolongation.hpp
         aggregation/par_smoothed_aggregation_solver.hpp
+        aggregation/par_smoothed_aggregation_solver_hybrid_T.tpp
         )
     set(par_aggregation_SOURCES
         aggregation/par_mis.cpp

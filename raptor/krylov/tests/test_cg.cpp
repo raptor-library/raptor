@@ -32,7 +32,7 @@ TEST(CGTest, TestsInKrylov)
     CG(A, x, b, residuals);
     printf("Residuals[0] = %e\n", residuals[0]);
 
-    FILE* f = fopen("../../../../test_data/cg_res.txt", "r");
+    FILE* f = fopen(RAPTOR_TEST_DATA_DIR "cg_res.txt", "r");
     double res;
     for (int i = 0; i < (int)residuals.size(); i++)
     {

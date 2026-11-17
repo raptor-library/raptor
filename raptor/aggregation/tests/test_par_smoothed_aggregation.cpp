@@ -46,20 +46,20 @@ TEST(TestParSmoothedAggregation, TestsInAggregation)
     std::vector<int> py_aggs;
     std::vector<double> weights;
 
-    const char* A0_fn = "../../../../test_data/sas_A0.pm";
-    const char* S0_fn = "../../../../test_data/sas_S0.pm";
-    const char* mis0_fn = "../../../../test_data/sas_mis0.txt";
-    const char* agg0_fn = "../../../../test_data/sas_agg0.txt";
-    const char* T0_fn = "../../../../test_data/sas_T0.pm";
-    const char* P0_fn = "../../../../test_data/sas_P0.pm";
-    const char* A1_fn = "../../../../test_data/sas_A1.pm";
-    const char* S1_fn = "../../../../test_data/sas_S1.pm";
-    const char* mis1_fn = "../../../../test_data/sas_mis1.txt";
-    const char* agg1_fn = "../../../../test_data/sas_agg1.txt";
-    const char* T1_fn = "../../../../test_data/sas_T1.pm";
-    const char* P1_fn = "../../../../test_data/sas_P1.pm";
+    const char* A0_fn = RAPTOR_TEST_DATA_DIR "sas_A0.pm";
+    const char* S0_fn = RAPTOR_TEST_DATA_DIR "sas_S0.pm";
+    const char* mis0_fn = RAPTOR_TEST_DATA_DIR "sas_mis0.txt";
+    const char* agg0_fn = RAPTOR_TEST_DATA_DIR "sas_agg0.txt";
+    const char* T0_fn = RAPTOR_TEST_DATA_DIR "sas_T0.pm";
+    const char* P0_fn = RAPTOR_TEST_DATA_DIR "sas_P0.pm";
+    const char* A1_fn = RAPTOR_TEST_DATA_DIR "sas_A1.pm";
+    const char* S1_fn = RAPTOR_TEST_DATA_DIR "sas_S1.pm";
+    const char* mis1_fn = RAPTOR_TEST_DATA_DIR "sas_mis1.txt";
+    const char* agg1_fn = RAPTOR_TEST_DATA_DIR "sas_agg1.txt";
+    const char* T1_fn = RAPTOR_TEST_DATA_DIR "sas_T1.pm";
+    const char* P1_fn = RAPTOR_TEST_DATA_DIR "sas_P1.pm";
 
-    const char* weights_fn = "../../../../test_data/weights.txt";    
+    const char* weights_fn = RAPTOR_TEST_DATA_DIR "weights.txt";    
 
     A = readParMatrix(A0_fn);
 

@@ -27,7 +27,7 @@ TEST(Repartition, TestsInUtil)
     int* proc_part;
     std::vector<int> new_local_rows;
 
-    const char* filename = "../../../../test_data/random.pm";
+    const char* filename = RAPTOR_TEST_DATA_DIR "random.pm";
     ParCSRMatrix* A_orig = readParMatrix(filename);
     ParVector x_orig(A_orig->global_num_rows, A_orig->local_num_rows);
     ParVector b_orig(A_orig->global_num_rows, A_orig->local_num_rows);

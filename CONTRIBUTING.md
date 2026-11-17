@@ -32,7 +32,7 @@ Register new tests in the associated
 
    ```cmake
    add_executable(test_par_example test_par_example.cpp)
-   target_link_libraries(test_par_example raptor ${MPI_LIBRARIES} googletest pthread)
+   target_link_libraries(test_par_example raptor ${MPI_LIBRARIES} googletest)
    add_test(ParExampleTest ${MPIRUN} -n 4 ${HOST} ./test_par_example)
    ```
 

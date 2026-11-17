@@ -31,7 +31,7 @@ TEST(Repartition, TestsInUtil)
     std::vector<int> row_sizes(num_procs);
     std::vector<int> row_displs(num_procs+1);
 
-    const char* filename = "../../../../test_data/random.pm";
+    const char* filename = RAPTOR_TEST_DATA_DIR "random.pm";
     ParCSRMatrix* A_orig = readParMatrix(filename);
     printf("A_orig %d, %d\n", A_orig->global_num_rows, A_orig->global_num_cols);
     ParVector x_orig(A_orig->global_num_rows, A_orig->local_num_rows);

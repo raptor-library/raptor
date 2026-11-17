@@ -51,7 +51,7 @@ CSRMatrix* stencil_grid(data_t* stencil, int* grid, int dim)
     }
 
     // Calculate indices of nonzeros in  stencil
-    int indices[N_s][dim];
+    std::vector<int> indices(N_s*dim);
     ctr = 0;
     for (int i = 0; i < stencil_len; i++)
     {
@@ -61,7 +61,7 @@ CSRMatrix* stencil_grid(data_t* stencil, int* grid, int dim)
             {
                 //int power = pow(3, j);
                 int idiv = i / pow(3, j);
-                indices[ctr][dim-j-1] = (idiv % 3) - (3 / 2);
+                indices[ctr*dim + dim-j-1] = (idiv % 3) - (3 / 2);
             }
             nonzero_stencil[ctr] = stencil[i];
             ctr++;
@@ -73,7 +73,7 @@ CSRMatrix* stencil_grid(data_t* stencil, int* grid, int dim)
     {
         for (int j = 0; j < N_s; j++)
         {
-            diags[j] += strides[i] * indices[j][dim-i-1];
+            diags[j] += strides[i] * indices[j*dim + dim-i-1];
         }
     }
 
@@ -93,7 +93,7 @@ CSRMatrix* stencil_grid(data_t* stencil, int* grid, int dim)
     {
         for (int j = 0; j < dim; j++)
         {
-            stack_indices[i*dim+j] = indices[i][j];
+            stack_indices[i*dim+j] = indices[i*dim+j];
         }
     }
 

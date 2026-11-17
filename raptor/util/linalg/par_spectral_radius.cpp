@@ -23,7 +23,7 @@ double power_iteration(ParBSRMatrix* A,
     const int block_col = A_on->b_cols;
     const int block_size = A_on->b_size;
 
-    if (block_diag_inv.size() != A->local_num_rows*block_size)
+    if (block_diag_inv.size() != static_cast<std::size_t>(A->local_num_rows)*block_size)
     {
         throw std::invalid_argument("D^-1 and A sizes do not match");
     }

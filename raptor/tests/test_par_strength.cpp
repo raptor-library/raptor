@@ -33,12 +33,12 @@ TEST(ParStrengthTest, TestsInTests)
     ParCSRMatrix* S;
     ParCSRMatrix* S_rap;
 
-    const char* A0_fn = "../../../test_data/aniso.pm";
-    const char* S0_fn = "../../../test_data/aniso_S.pm";
-    const char* SS0_fn = "../../../test_data/aniso_SS.pm";
-    const char* A1_fn = "../../../test_data/laplacian.pm";
-    const char* S1_fn = "../../../test_data/laplacian_S.pm";
-    const char* SS1_fn = "../../../test_data/laplacian_SS.pm";
+    const char* A0_fn = RAPTOR_TEST_DATA_DIR "aniso.pm";
+    const char* S0_fn = RAPTOR_TEST_DATA_DIR "aniso_S.pm";
+    const char* SS0_fn = RAPTOR_TEST_DATA_DIR "aniso_SS.pm";
+    const char* A1_fn = RAPTOR_TEST_DATA_DIR "laplacian.pm";
+    const char* S1_fn = RAPTOR_TEST_DATA_DIR "laplacian_S.pm";
+    const char* SS1_fn = RAPTOR_TEST_DATA_DIR "laplacian_SS.pm";
 
     A = readParMatrix(A0_fn);
     S = readParMatrix(S0_fn);
