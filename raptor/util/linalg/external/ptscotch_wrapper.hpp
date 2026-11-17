@@ -15,7 +15,7 @@
 
 using namespace raptor;
 
-int* ptscotch_partition(ParCSRMatrix* A)
+inline int* ptscotch_partition(ParCSRMatrix* A)
 {
     int rank, num_procs;
     RAPtor_MPI_Comm_rank(RAPtor_MPI_COMM_WORLD, &rank);

@@ -95,7 +95,7 @@ static void get_rigid_body_candidates(
 }
 
 // Create an MFEM Linear Elasticity Matrix and convert to Raptor format
-raptor::ParCSRMatrix* mfem_linear_elasticity(raptor::ParVector& x_raptor, 
+raptor::ParCSRMatrix* raptor::mfem_linear_elasticity(raptor::ParVector& x_raptor, 
         raptor::ParVector& b_raptor, int* num_variables,
         const char* mesh_file, int order, int seq_n_refines, 
         int par_n_refines, RAPtor_MPI_Comm comm,
