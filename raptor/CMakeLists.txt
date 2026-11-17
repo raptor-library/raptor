@@ -29,20 +29,55 @@ add_library(raptor ${core_SOURCES} ${core_HEADERS}
         ${external_SOURCES} ${external_HEADERS})
 add_library(raptor::raptor ALIAS raptor)
 
-target_link_libraries(raptor PUBLIC ${MFEM_LIBRARIES} ${METIS_LIBRARIES} ${HYPRE_LIBRARIES}
-    ${PETSC_LIBRARIES} ${PTSCOTCH_LIBRARIES} ${PARMETIS_LIBRARIES} ${EXTERNAL_LIBS})
+    target_compile_definitions(raptor PUBLIC USING_MFEM USING_METIS)
+    target_include_directories(raptor PUBLIC ${MFEM_INCLUDE_DIRS} ${METIS_INCLUDE_DIRS})
+    target_link_libraries(raptor PUBLIC ${MFEM_LIBRARIES} ${METIS_LIBRARIES})
+endif()
+
+if (WITH_HYPRE)
+    target_compile_definitions(raptor PUBLIC USING_HYPRE)
+    target_include_directories(raptor PUBLIC ${HYPRE_INCLUDE_DIRS})
+    target_link_libraries(raptor PUBLIC ${HYPRE_LIBRARIES})
+endif()
+
+if (WITH_PETSC)
+    target_compile_definitions(raptor PUBLIC USING_PETSC)
+    target_include_directories(raptor PUBLIC ${PETSC_INCLUDE_DIR} ${PETSC_INCLUDE_CONF})
+    target_link_libraries(raptor PUBLIC ${PETSC_LIBRARIES})
+endif()
+
+if (WITH_PTSCOTCH)
+    target_compile_definitions(raptor PUBLIC USING_PTSCOTCH)
+    target_include_directories(raptor PUBLIC ${PTSCOTCH_INCLUDE_DIRS})
+    target_link_libraries(raptor PUBLIC ${PTSCOTCH_LIBRARIES})
+endif()
+
+if (WITH_PARMETIS)
+    target_compile_definitions(raptor PUBLIC USING_PARMETIS)
+    target_include_directories(raptor PUBLIC ${PARMETIS_INCLUDE_DIRS})
+    target_link_libraries(raptor PUBLIC ${PARMETIS_LIBRARIES})
+endif()
+
+if (WITH_MUELU)
+    target_compile_definitions(raptor PUBLIC USING_MUELU)
+    target_link_libraries(raptor PUBLIC MueLu::all_libs)
+endif()
+
+if (WITH_AMPI)
+    target_compile_definitions(raptor PUBLIC USE_AMPI)
+endif()
+
+# BLAS and LAPACK
+target_link_libraries(raptor PUBLIC ${EXTERNAL_LIBS})
 
 if (WITH_MPI)
+    target_compile_definitions(raptor PUBLIC USING_MPI OMPI_SKIP_MPICXX MPICH_SKIP_MPICXX)
     target_link_libraries(raptor PUBLIC MPI::MPI_CXX)
 endif()
 
 if (ENABLE_COVERAGE)
     target_compile_options(raptor PRIVATE -O0 -g --coverage)
     target_link_options(raptor PRIVATE --coverage)
-endif()
-
-if (WITH_MUELU)
-    target_link_libraries(raptor PUBLIC MueLu::all_libs)
 endif()
 
 target_include_directories(raptor
