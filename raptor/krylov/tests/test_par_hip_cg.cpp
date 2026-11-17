@@ -65,7 +65,7 @@ TEST(ParHipCGTest, MFEMLinearElasticity2DMatchesCPU)
     ROCSPARSE_CHECK(rocsparse_create_handle(&sparse_handle));
     ROCBLAS_CHECK(rocblas_create_handle(&blas_handle));
     ParHipCSRMatrix device_A;
-    upload_hip_matrix(*A, device_A, sparse_handle);
+    upload_hip_matrix(*A, device_A);
 
     // allocate vector GPU storage
     double *device_x, *device_b;

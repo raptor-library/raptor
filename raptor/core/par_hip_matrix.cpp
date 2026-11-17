@@ -9,13 +9,12 @@
 
 namespace raptor
 {
-void upload_hip_matrix(ParCSRMatrix& host, ParHipCSRMatrix& device,
-        rocsparse_handle handle)
+void upload_hip_matrix(ParCSRMatrix& host, ParHipCSRMatrix& device)
 {
     device.global_num_rows = host.global_num_rows;
     device.global_num_cols = host.global_num_cols;
-    upload_hip_matrix(static_cast<CSRMatrix&>(*host.on_proc), device.on_proc, handle);
-    upload_hip_matrix(static_cast<CSRMatrix&>(*host.off_proc), device.off_proc, handle);
+    upload_hip_matrix(static_cast<CSRMatrix&>(*host.on_proc), device.on_proc);
+    upload_hip_matrix(static_cast<CSRMatrix&>(*host.off_proc), device.off_proc);
 
     auto& send = *host.comm->send_data;
     auto& recv = *host.comm->recv_data;
@@ -61,5 +60,6 @@ void free_hip_matrix(ParHipCSRMatrix& device)
     if (device.d_send_idx) HIP_CHECK(hipFree(device.d_send_idx));
     if (device.h_sendbuf) HIP_CHECK(hipHostFree(device.h_sendbuf));
     if (device.h_recvbuf) HIP_CHECK(hipHostFree(device.h_recvbuf));
+    device = {};
 }
 } // namespace raptor

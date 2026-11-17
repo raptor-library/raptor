@@ -20,6 +20,7 @@
 #ifdef USING_HIP
     #include "core/hip_matrix.hpp"
     #include "util/linalg/hip_spmv.hpp"
+    #include "util/linalg/hip_spmm.hpp"
     #include "util/linalg/hip_vector.hpp"
     #ifdef USING_MPI
         #include "core/par_hip_matrix.hpp"

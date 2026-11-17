@@ -62,8 +62,7 @@ struct ParHipCSRMatrix
 
 // Copies CPU matrix to GPU memory
 // Creates a rocSPARSE matrix descriptor
-void upload_hip_matrix(ParCSRMatrix& host, ParHipCSRMatrix& device,
-        rocsparse_handle handle);
+void upload_hip_matrix(ParCSRMatrix& host, ParHipCSRMatrix& device);
 
 // Release both blocks and halo buffers after GPU operations finish
 void free_hip_matrix(ParHipCSRMatrix& device);

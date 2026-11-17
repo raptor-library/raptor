@@ -37,6 +37,10 @@ class CSRMatrix;
  *****    Device workspace reused by rocSPARSE SpMV
  ***** spmv_buf_size : std::size_t
  *****    Size of the SpMV workspace in bytes
+ ***** d_spmm_buf : void*
+ *****    Device workspace reused by rocSPARSE SpMM
+ ***** spmm_buf_size : std::size_t
+ *****    Size of the SpMM workspace in bytes
  *****
  **************************************************************/
 struct HipCSRMatrix
@@ -53,14 +57,26 @@ struct HipCSRMatrix
 
     void* d_spmv_buf = nullptr;
     std::size_t spmv_buf_size = 0;
+    bool spmv_prepared = false;
+
+    void* d_spmm_buf = nullptr;
+    std::size_t spmm_buf_size = 0;
+    int spmm_nrhs = 0;
 };
 
 // Copies CPU matrix to GPU memory
 // Creates a rocSPARSE matrix descriptor
-void upload_hip_matrix(const CSRMatrix& host, HipCSRMatrix& device,
-        rocsparse_handle handle);
+void upload_hip_matrix(const CSRMatrix& host, HipCSRMatrix& device);
 
-// Release both blocks and halo buffers after GPU operations finish
+// Allocate workspace and preprocess for spmv
+void prepare_hip_spmv(HipCSRMatrix& device, rocsparse_const_dnvec_descr x,
+        rocsparse_dnvec_descr b, rocsparse_handle handle);
+
+// Allocate workspace and preprocess for spmm
+void prepare_hip_spmm(HipCSRMatrix& device, rocsparse_const_dnmat_descr X,
+        rocsparse_dnmat_descr B, int nrhs, rocsparse_handle handle);
+
+// Release the matrix and its workspaces after GPU operations finish
 void free_hip_matrix(HipCSRMatrix& device);
 
 } // namespace raptor

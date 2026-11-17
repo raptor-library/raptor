@@ -20,11 +20,13 @@ void hip_spmv(double alpha, HipCSRMatrix& A, const double* x,
 {
     if (A.nnz == 0) return;
 
-    rocsparse_dnvec_descr vec_x, vec_b;
-    ROCSPARSE_CHECK(rocsparse_create_dnvec_descr(&vec_x, A.n_cols,
-            const_cast<double*>(x), rocsparse_datatype_f64_r));
+    rocsparse_dnvec_descr vec_b;
+    rocsparse_const_dnvec_descr vec_x; // read only
+    ROCSPARSE_CHECK(rocsparse_create_const_dnvec_descr(&vec_x, A.n_cols,
+            x, rocsparse_datatype_f64_r));
     ROCSPARSE_CHECK(rocsparse_create_dnvec_descr(&vec_b, A.n_rows,
             b, rocsparse_datatype_f64_r));
+    prepare_hip_spmv(A, vec_x, vec_b, handle);
     ROCSPARSE_CHECK(rocsparse_spmv(handle, rocsparse_operation_none,
             &alpha, A.descr, vec_x, &beta, vec_b,
             rocsparse_datatype_f64_r, rocsparse_spmv_alg_default,
@@ -32,4 +34,5 @@ void hip_spmv(double alpha, HipCSRMatrix& A, const double* x,
     ROCSPARSE_CHECK(rocsparse_destroy_dnvec_descr(vec_x));
     ROCSPARSE_CHECK(rocsparse_destroy_dnvec_descr(vec_b));
 }
+
 } // namespace raptor

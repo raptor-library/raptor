@@ -29,8 +29,14 @@ else ()
 endif()
 
 if (WITH_HIP)
-    set(hip_linalg_HEADERS util/linalg/hip_spmv.hpp util/linalg/hip_vector.hpp)
-    set(hip_linalg_SOURCES util/linalg/hip_spmv.cpp util/linalg/hip_vector.cpp)
+    set(hip_linalg_HEADERS
+        util/linalg/hip_spmv.hpp
+        util/linalg/hip_spmm.hpp
+        util/linalg/hip_vector.hpp)
+    set(hip_linalg_SOURCES
+        util/linalg/hip_spmv.cpp
+        util/linalg/hip_spmm.cpp
+        util/linalg/hip_vector.cpp)
     if (WITH_MPI)
         list(APPEND hip_linalg_HEADERS util/linalg/par_hip_spmv.hpp)
         list(APPEND hip_linalg_SOURCES util/linalg/par_hip_spmv.cpp)
