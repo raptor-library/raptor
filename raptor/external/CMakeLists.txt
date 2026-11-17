@@ -1,28 +1,29 @@
 # Include the directory itself as a path to include directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
- 
-# Create a variable called gallery_SOURCES containing all .cpp files:
-if (WITH_MFEM)
-    set(mfem_HEADERS
-        external/mfem_wrapper.hpp
-        )
-    set(mfem_SOURCES 
-        external/mfem/mfem_linear_elasticity.cpp
-        external/mfem/mfem_laplacian.cpp
-        external/mfem/mfem_grad_div.cpp
-        external/mfem/mfem_adaptive_laplacian.cpp
-        external/mfem/mfem_dg_diffusion.cpp
-        external/mfem/mfem_dg_elasticity.cpp
-       )
+
+# hypre interface: raptor::hypre_wrapper
+if (WITH_HYPRE)
+    add_library(hypre_wrapper hypre_wrapper.cpp hypre_wrapper.hpp)
+    add_library(raptor::hypre_wrapper ALIAS hypre_wrapper)
+    set_target_properties(hypre_wrapper PROPERTIES OUTPUT_NAME raptor_hypre_wrapper)
+    target_compile_definitions(hypre_wrapper PUBLIC USING_HYPRE)
+    target_link_libraries(hypre_wrapper PUBLIC raptor raptor::hypre)
+    install(TARGETS hypre_wrapper EXPORT raptorTargets DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    install(FILES hypre_wrapper.hpp DESTINATION "include/raptor/external")
 endif()
 
-if (WITH_HYPRE)
-    set(hypre_HEADERS
-        external/hypre_wrapper.hpp
-        )
-    set(hypre_SOURCES
-        external/hypre_wrapper.cpp
-        )
+# MFEM test problems for RAPtor's tests and examples (not installed)
+if (WITH_MFEM)
+    add_library(raptor_mfem
+        mfem/mfem_linear_elasticity.cpp
+        mfem/mfem_laplacian.cpp
+        mfem/mfem_grad_div.cpp
+        mfem/mfem_adaptive_laplacian.cpp
+        mfem/mfem_dg_diffusion.cpp
+        mfem/mfem_dg_elasticity.cpp
+        mfem_wrapper.hpp)
+    target_compile_definitions(raptor_mfem PUBLIC USING_MFEM)
+    target_link_libraries(raptor_mfem PUBLIC raptor::hypre_wrapper mfem)
 endif()
 
 if (WITH_PETSC)
@@ -44,14 +45,10 @@ if (WITH_MUELU)
 endif()
 
 set(external_HEADERS
-    ${mfem_HEADERS}
-    ${hypre_HEADERS}
     ${petsc_HEADERS}
     ${trilinos_HEADERS}
     PARENT_SCOPE)
 set(external_SOURCES
-    ${mfem_SOURCES}
-    ${hypre_SOURCES}
     ${petsc_SOURCES}
     ${trilinos_SOURCES}
     PARENT_SCOPE)

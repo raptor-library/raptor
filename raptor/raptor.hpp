@@ -47,10 +47,7 @@
     #include "gallery/par_matrix_market.hpp"
 #endif
 
-// External 
-#ifdef USING_HYPRE
-    #include "external/hypre_wrapper.hpp"
-#endif
+// External
 #ifdef USING_MFEM
     #include "external/mfem_wrapper.hpp"
 #endif

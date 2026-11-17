@@ -10,6 +10,7 @@
 #include "clear_cache.hpp"
 
 #include "raptor/raptor.hpp"
+#include "raptor/external/hypre_wrapper.hpp"
 
 using namespace raptor;
 

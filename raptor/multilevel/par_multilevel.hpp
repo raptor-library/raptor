@@ -15,12 +15,6 @@
 #include "raptor/util/linalg/lapack_wrapper.hpp"
 #include <vector>
 
-#ifdef USING_HYPRE
-#include "_hypre_utilities.h"
-#include "HYPRE.h"
-#include "_hypre_parcsr_mv.h"
-#include "_hypre_parcsr_ls.h"
-#endif
 
 /**************************************************************
  *****   ParMultilevel Class

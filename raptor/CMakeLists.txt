@@ -1,3 +1,5 @@
+include(GNUInstallDirs)
+
 add_subdirectory(core)
 add_subdirectory(gallery)
 add_subdirectory(util)
@@ -28,16 +30,6 @@ add_library(raptor ${core_SOURCES} ${core_HEADERS}
         ${profile_SOURCES} ${profile_HEADERS}
         ${external_SOURCES} ${external_HEADERS})
 add_library(raptor::raptor ALIAS raptor)
-
-if (WITH_MFEM)
-    target_compile_definitions(raptor PUBLIC USING_MFEM)
-    target_link_libraries(raptor PUBLIC mfem)
-endif()
-
-if (WITH_HYPRE)
-    target_compile_definitions(raptor PUBLIC USING_HYPRE)
-    target_link_libraries(raptor PUBLIC raptor::hypre)
-endif()
 
 if (WITH_PETSC)
     target_compile_definitions(raptor PUBLIC USING_PETSC)
@@ -83,7 +75,6 @@ target_include_directories(raptor
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 )
 
-include(GNUInstallDirs)
 install(TARGETS raptor
   EXPORT raptorTargets
   DESTINATION ${CMAKE_INSTALL_LIBDIR})
