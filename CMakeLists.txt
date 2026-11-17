@@ -76,7 +76,9 @@ find_package(LAPACK REQUIRED)
 set(EXTERNAL_LIBS ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
 
 if (WITH_HOSTFILE)
-    find_file (FILE_OF_HOST, ${HOSTFILE})
+    if (NOT EXISTS "${HOSTFILE}")
+        message(FATAL_ERROR "WITH_HOSTFILE is set but HOSTFILE (\"${HOSTFILE}\") does not exist.")
+    endif()
     set(HOST "--hostfile" "${HOSTFILE}" "--bind-to" "none")
 endif()
 
