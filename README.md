@@ -30,7 +30,7 @@ RAPtor is a general, high performance algebraic multigrid solver.
 
 - A C++17 compiler
 - `MPI`
-- `cmake` (version 3.12 or newer)
+- `cmake` (version 3.18 or newer)
 - `BLAS` and `LAPACK`
   - GoogleTest (via Cmake)
 

@@ -6,6 +6,11 @@ if(@WITH_MPI@)
   find_dependency(MPI COMPONENTS CXX)
 endif()
 
+if(NOT DEFINED BLA_VENDOR AND NOT "@RAPTOR_BLA_VENDOR@" STREQUAL "")
+  set(BLA_VENDOR "@RAPTOR_BLA_VENDOR@")
+endif()
+find_dependency(LAPACK)
+
 if(@WITH_MUELU@)
   find_dependency(MueLu CONFIG)
 endif()

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12...3.20)
+cmake_minimum_required(VERSION 3.18...3.20)
 project(raptor VERSION 1.0)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
@@ -71,9 +71,10 @@ SET(PTSCOTCH_DIR "" CACHE STRING "Directory of Ptscotch")
 SET(PARMETIS_DIR "" CACHE STRING "Directory of ParMetis")
 SET(HOSTFILE "" CACHE STRING "Set Hostfile")
 
+set(RAPTOR_BLA_VENDOR "${BLA_VENDOR}")
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
-set(EXTERNAL_LIBS ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
+set(EXTERNAL_LIBS LAPACK::LAPACK BLAS::BLAS)
 
 if (WITH_HOSTFILE)
     if (NOT EXISTS "${HOSTFILE}")
