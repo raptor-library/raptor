@@ -32,13 +32,13 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
 
     ParCSRMatrix* S;
 
-    const char* S0_fn = "../../../../test_data/rss_S0.pm";
-    const char* S1_fn = "../../../../test_data/rss_S1.pm";
-    const char* cf0_fn = "../../../../test_data/rss_cf0.txt";
-    const char* cf0_pmis = "../../../../test_data/rss_cf0_pmis.txt";
-    const char* cf1_fn = "../../../../test_data/rss_cf1.txt";
-    const char* cf1_pmis = "../../../../test_data/rss_cf1_pmis.txt";
-    const char* weights_fn = "../../../../test_data/weights.txt";
+    const char* S0_fn = RAPTOR_TEST_DATA_DIR "rss_S0.pm";
+    const char* S1_fn = RAPTOR_TEST_DATA_DIR "rss_S1.pm";
+    const char* cf0_fn = RAPTOR_TEST_DATA_DIR "rss_cf0.txt";
+    const char* cf0_pmis = RAPTOR_TEST_DATA_DIR "rss_cf0_pmis.txt";
+    const char* cf1_fn = RAPTOR_TEST_DATA_DIR "rss_cf1.txt";
+    const char* cf1_pmis = RAPTOR_TEST_DATA_DIR "rss_cf1_pmis.txt";
+    const char* weights_fn = RAPTOR_TEST_DATA_DIR "weights.txt";
     int n_items_read;
 
     // TEST LEVEL 0

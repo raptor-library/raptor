@@ -24,11 +24,11 @@ TEST(TestCandidates, TestsInAggregation)
     CSRMatrix* A;
     CSRMatrix* S;
 
-    const char* A0_fn = "../../../../test_data/sas_A0.pm";
-    const char* S0_fn = "../../../../test_data/sas_S0.pm";
-    const char* mis0_fn = "../../../../test_data/sas_mis0.txt";
-    const char* T0_fn = "../../../../test_data/sas_T0.pm";
-    const char* weights_fn = "../../../../test_data/weights.txt";
+    const char* A0_fn = RAPTOR_TEST_DATA_DIR "sas_A0.pm";
+    const char* S0_fn = RAPTOR_TEST_DATA_DIR "sas_S0.pm";
+    const char* mis0_fn = RAPTOR_TEST_DATA_DIR "sas_mis0.txt";
+    const char* T0_fn = RAPTOR_TEST_DATA_DIR "sas_T0.pm";
+    const char* weights_fn = RAPTOR_TEST_DATA_DIR "weights.txt";
     int n_items_read;
 
     A = readMatrix(A0_fn);
@@ -72,10 +72,10 @@ TEST(TestCandidates, TestsInAggregation)
     delete A;
 
 
-    const char* A1_fn = "../../../../test_data/sas_A1.pm";
-    const char* S1_fn = "../../../../test_data/sas_S1.pm";
-    const char* mis1_fn = "../../../../test_data/sas_mis1.txt";
-    const char* T1_fn = "../../../../test_data/sas_T1.pm";
+    const char* A1_fn = RAPTOR_TEST_DATA_DIR "sas_A1.pm";
+    const char* S1_fn = RAPTOR_TEST_DATA_DIR "sas_S1.pm";
+    const char* mis1_fn = RAPTOR_TEST_DATA_DIR "sas_mis1.txt";
+    const char* T1_fn = RAPTOR_TEST_DATA_DIR "sas_T1.pm";
 
     A = readMatrix(A1_fn);
     S = readMatrix(S1_fn);

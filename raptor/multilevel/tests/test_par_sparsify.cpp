@@ -43,11 +43,11 @@ TEST(ParSparsifyTest, TestsInMultilevel)
     ParCSRMatrix* Ac;
     ParCSRMatrix* Ac_rap;
 
-    const char* A0_fn = "../../../../test_data/rss_A0.pm";
-    const char* weight_fn = "../../../../test_data/weights.txt";
-    const char* cf0_fn = "../../../../test_data/rss_cf0.txt";
-    const char* A1_fn = "../../../../test_data/rss_A1.pm";
-    const char* A1_hgal_fn = "../../../../test_data/rss_A1_hgal.pm";
+    const char* A0_fn = RAPTOR_TEST_DATA_DIR "rss_A0.pm";
+    const char* weight_fn = RAPTOR_TEST_DATA_DIR "weights.txt";
+    const char* cf0_fn = RAPTOR_TEST_DATA_DIR "rss_cf0.txt";
+    const char* A1_fn = RAPTOR_TEST_DATA_DIR "rss_A1.pm";
+    const char* A1_hgal_fn = RAPTOR_TEST_DATA_DIR "rss_A1_hgal.pm";
 
     A = readParMatrix(A0_fn);
     S = A->strength(Classical, 0.25);

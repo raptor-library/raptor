@@ -18,8 +18,8 @@ int main(int argc, char** argv)
 
 TEST(MatrixTest, TestsInCore)
 {
-    CSRMatrix* A = readMatrix("../../../../test_data/aniso.pm");
-    CSRMatrix* AT_py = readMatrix("../../../../test_data/aniso_T.pm");
+    CSRMatrix* A = readMatrix(RAPTOR_TEST_DATA_DIR "aniso.pm");
+    CSRMatrix* AT_py = readMatrix(RAPTOR_TEST_DATA_DIR "aniso_T.pm");
     CSRMatrix* AT = (CSRMatrix*) A->transpose();
     A->sort();
     AT->sort();
@@ -29,8 +29,8 @@ TEST(MatrixTest, TestsInCore)
     delete AT_py;
     delete AT;
 
-    A = readMatrix("../../../../test_data/laplacian.pm");
-    AT_py = readMatrix("../../../../test_data/laplacian_T.pm");
+    A = readMatrix(RAPTOR_TEST_DATA_DIR "laplacian.pm");
+    AT_py = readMatrix(RAPTOR_TEST_DATA_DIR "laplacian_T.pm");
     AT = (CSRMatrix*) A->transpose();
     A->sort();
     AT->sort();

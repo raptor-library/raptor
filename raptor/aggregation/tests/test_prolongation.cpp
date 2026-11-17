@@ -23,13 +23,13 @@ TEST(TestCandidates, TestsInAggregation)
     CSRMatrix* A;
     CSRMatrix* T;
 
-    const char* A0_fn = "../../../../test_data/sas_A0.pm";
-    const char* T0_fn = "../../../../test_data/sas_T0.pm";
-    const char* P0_fn = "../../../../test_data/sas_P0.pm";
+    const char* A0_fn = RAPTOR_TEST_DATA_DIR "sas_A0.pm";
+    const char* T0_fn = RAPTOR_TEST_DATA_DIR "sas_T0.pm";
+    const char* P0_fn = RAPTOR_TEST_DATA_DIR "sas_P0.pm";
 
-    const char* A1_fn = "../../../../test_data/sas_A1.pm";
-    const char* T1_fn = "../../../../test_data/sas_T1.pm";
-    const char* P1_fn = "../../../../test_data/sas_P1.pm";
+    const char* A1_fn = RAPTOR_TEST_DATA_DIR "sas_A1.pm";
+    const char* T1_fn = RAPTOR_TEST_DATA_DIR "sas_T1.pm";
+    const char* P1_fn = RAPTOR_TEST_DATA_DIR "sas_P1.pm";
 
     A = readMatrix(A0_fn);
     T = readMatrix(T0_fn);

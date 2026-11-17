@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
     printf("PyAMG SeqIn SeqNorm SeqBoth\n");
     // Just testing the first 10 residuals
     if(rank == 0){
-        FILE* f = fopen("../../../../test_data/bicgstab_res.txt", "r");
+        FILE* f = fopen(RAPTOR_TEST_DATA_DIR "bicgstab_res.txt", "r");
         double res;
         for (int i = 0; i < residuals.size(); i++)
         {

@@ -23,11 +23,11 @@ TEST(TestRAP, TestsInRuge_Stuben)
     CSCMatrix* P_csc;
     CSRMatrix* Ac_rap;
 
-    const char* A0_fn = "../../../../test_data/rss_A0.pm";
-    const char* A1_fn = "../../../../test_data/rss_A1.pm";
-    const char* A2_fn = "../../../../test_data/rss_A2.pm";
-    const char* P0_fn = "../../../../test_data/rss_P0.pm";
-    const char* P1_fn = "../../../../test_data/rss_P1.pm";
+    const char* A0_fn = RAPTOR_TEST_DATA_DIR "rss_A0.pm";
+    const char* A1_fn = RAPTOR_TEST_DATA_DIR "rss_A1.pm";
+    const char* A2_fn = RAPTOR_TEST_DATA_DIR "rss_A2.pm";
+    const char* P0_fn = RAPTOR_TEST_DATA_DIR "rss_P0.pm";
+    const char* P1_fn = RAPTOR_TEST_DATA_DIR "rss_P1.pm";
 
 
     // TEST LEVEL 0

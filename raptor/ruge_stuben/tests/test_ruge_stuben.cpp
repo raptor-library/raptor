@@ -25,10 +25,10 @@ TEST(TestRugeStuben, TestsInRuge_Stuben)
     CSRMatrix* Ac;
     std::vector<int> splitting;
 
-    const char* weight_fn = "../../../../test_data/weights.txt";
-    const char* A0_fn = "../../../../test_data/rss_A0.pm";
-    const char* A1_fn = "../../../../test_data/rss_A1.pm";
-    const char* A2_fn = "../../../../test_data/rss_A2.pm";
+    const char* weight_fn = RAPTOR_TEST_DATA_DIR "weights.txt";
+    const char* A0_fn = RAPTOR_TEST_DATA_DIR "rss_A0.pm";
+    const char* A1_fn = RAPTOR_TEST_DATA_DIR "rss_A1.pm";
+    const char* A2_fn = RAPTOR_TEST_DATA_DIR "rss_A2.pm";
 
     // Read in weights (for max num rows)
     FILE* f;

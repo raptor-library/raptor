@@ -25,7 +25,7 @@ TEST(ParMetisTest, TestsInUtil)
     int* proc_part;
     double bnorm_orig, bnorm_rr, bnorm_part;
 
-    const char* filename = "../../../../test_data/aniso.pm";
+    const char* filename = RAPTOR_TEST_DATA_DIR "aniso.pm";
     int n_tests = 100;
     std::vector<int> new_local_rows;
 

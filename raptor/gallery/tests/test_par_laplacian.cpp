@@ -29,7 +29,7 @@ TEST(ParLaplacianTest, TestsInGallery)
     double* stencil = laplace_stencil_27pt();
     ParCSRMatrix* A_sten = par_stencil_grid(stencil, grid, 3);
 
-    ParCSRMatrix* A_io = readParMatrix("../../../../test_data/laplacian27.pm");
+    ParCSRMatrix* A_io = readParMatrix(RAPTOR_TEST_DATA_DIR "laplacian27.pm");
 
     // Compare shapes
     ASSERT_EQ(A_io->global_num_rows, A_sten->global_num_rows);

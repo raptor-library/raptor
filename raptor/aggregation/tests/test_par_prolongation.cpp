@@ -32,9 +32,9 @@ TEST(TestParProlongation, TestsInAggregation)
     ParCSRMatrix* A;
     ParCSRMatrix* T;
 
-    const char* A0_fn = "../../../../test_data/sas_A0.pm";
-    const char* T0_fn = "../../../../test_data/sas_T0.pm";
-    const char* P0_fn = "../../../../test_data/sas_P0.pm";
+    const char* A0_fn = RAPTOR_TEST_DATA_DIR "sas_A0.pm";
+    const char* T0_fn = RAPTOR_TEST_DATA_DIR "sas_T0.pm";
+    const char* P0_fn = RAPTOR_TEST_DATA_DIR "sas_P0.pm";
 
     A = readParMatrix(A0_fn);
     T = readParMatrix(T0_fn);

@@ -31,7 +31,7 @@ TEST(BiCGStabTest, TestsInKrylov)
 
     BiCGStab(A, x, b, residuals);   
 
-    FILE* f = fopen("../../../../test_data/bicgstab_res.txt", "r");
+    FILE* f = fopen(RAPTOR_TEST_DATA_DIR "bicgstab_res.txt", "r");
     double res;
     for (int i = 0; i < 30; i++)
     {

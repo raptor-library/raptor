@@ -107,18 +107,18 @@ TEST(TestParInterpolation, TestsInRuge_Stuben)
     ParCSRMatrix* P;
     ParCSRMatrix* P_rap;
 
-    const char* Aniso_fn = "../../../../test_data/aniso.pm";
-    const char* Aniso_S_fn = "../../../../test_data/aniso_S.pm";
-    const char* Aniso_split_fn = "../../../../test_data/aniso_split.txt";
-    const char* Aniso_P_d_fn = "../../../../test_data/aniso_P_direct.pm";
-    const char* Aniso_P_mc_fn = "../../../../test_data/aniso_P_mod_class.pm";
-    const char* Aniso_P_e_fn = "../../../../test_data/aniso_P_extend.pm";
-    const char* Laplacian_fn = "../../../../test_data/laplacian.pm";
-    const char* Laplacian_S_fn = "../../../../test_data/laplacian_S.pm";
-    const char* Laplacian_split_fn = "../../../../test_data/laplacian_split.txt";
-    const char* Laplacian_P_d_fn = "../../../../test_data/laplacian_P_direct.pm";
-    const char* Laplacian_P_mc_fn = "../../../../test_data/laplacian_P_mod_class.pm";
-    const char* Laplacian_P_e_fn = "../../../../test_data/laplacian_P_extend.pm";
+    const char* Aniso_fn = RAPTOR_TEST_DATA_DIR "aniso.pm";
+    const char* Aniso_S_fn = RAPTOR_TEST_DATA_DIR "aniso_S.pm";
+    const char* Aniso_split_fn = RAPTOR_TEST_DATA_DIR "aniso_split.txt";
+    const char* Aniso_P_d_fn = RAPTOR_TEST_DATA_DIR "aniso_P_direct.pm";
+    const char* Aniso_P_mc_fn = RAPTOR_TEST_DATA_DIR "aniso_P_mod_class.pm";
+    const char* Aniso_P_e_fn = RAPTOR_TEST_DATA_DIR "aniso_P_extend.pm";
+    const char* Laplacian_fn = RAPTOR_TEST_DATA_DIR "laplacian.pm";
+    const char* Laplacian_S_fn = RAPTOR_TEST_DATA_DIR "laplacian_S.pm";
+    const char* Laplacian_split_fn = RAPTOR_TEST_DATA_DIR "laplacian_split.txt";
+    const char* Laplacian_P_d_fn = RAPTOR_TEST_DATA_DIR "laplacian_P_direct.pm";
+    const char* Laplacian_P_mc_fn = RAPTOR_TEST_DATA_DIR "laplacian_P_mod_class.pm";
+    const char* Laplacian_P_e_fn = RAPTOR_TEST_DATA_DIR "laplacian_P_extend.pm";
 
     // TEST LEVEL 0
     A = readParMatrix(Aniso_fn);

@@ -17,6 +17,8 @@ if (ENABLE_UNIT_TESTS)
   find_package(Threads REQUIRED)
   add_library(googletest INTERFACE IMPORTED)
   target_link_libraries(googletest INTERFACE gtest_main Threads::Threads)
+  target_compile_definitions(googletest INTERFACE
+    RAPTOR_TEST_DATA_DIR="${PROJECT_SOURCE_DIR}/test_data/")
 
   if(ENABLE_COVERAGE)
     target_compile_options(googletest INTERFACE -O0 -g -fprofile-arcs -ftest-coverage)

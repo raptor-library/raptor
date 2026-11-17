@@ -23,11 +23,11 @@ TEST(TAPRandomSpMVTest, TestsInUtil)
 
     FILE* f;
     double b_val;
-    const char* rand_fn = "../../../../test_data/random.pm";
-    const char* b_ones = "../../../../test_data/random_ones_b.txt";
-    const char* b_T_ones = "../../../../test_data/random_ones_b_T.txt";
-    const char* b_inc = "../../../../test_data/random_inc_b.txt";
-    const char* b_T_inc = "../../../../test_data/random_inc_b_T.txt";
+    const char* rand_fn = RAPTOR_TEST_DATA_DIR "random.pm";
+    const char* b_ones = RAPTOR_TEST_DATA_DIR "random_ones_b.txt";
+    const char* b_T_ones = RAPTOR_TEST_DATA_DIR "random_ones_b_T.txt";
+    const char* b_inc = RAPTOR_TEST_DATA_DIR "random_inc_b.txt";
+    const char* b_T_inc = RAPTOR_TEST_DATA_DIR "random_inc_b_T.txt";
     ParCSRMatrix* A = readParMatrix(rand_fn);
     setenv("PPN", "4", 1);
     A->tap_comm = new TAPComm(A->partition, A->off_proc_column_map,

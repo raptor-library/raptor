@@ -43,7 +43,7 @@ TEST(TestParRugeStuben, TestsInRuge_Stuben)
     // Read in weights
     int max_n = 5000;
     std::vector<double> weights(max_n);
-    const char* weights_fn = "../../../../test_data/weights.txt";
+    const char* weights_fn = RAPTOR_TEST_DATA_DIR "weights.txt";
     FILE* f = fopen(weights_fn, "r");
     for (int i = 0; i < max_n; i++)
     {
@@ -52,9 +52,9 @@ TEST(TestParRugeStuben, TestsInRuge_Stuben)
     }
     fclose(f);
 
-    const char* A0_fn = "../../../../test_data/rss_A0.pm";
-    const char* A1_fn = "../../../../test_data/rss_A1.pm";
-    const char* A2_fn = "../../../../test_data/rss_A2.pm";
+    const char* A0_fn = RAPTOR_TEST_DATA_DIR "rss_A0.pm";
+    const char* A1_fn = RAPTOR_TEST_DATA_DIR "rss_A1.pm";
+    const char* A2_fn = RAPTOR_TEST_DATA_DIR "rss_A2.pm";
 
     // Test Level 0
     A = readParMatrix(A0_fn);

@@ -23,7 +23,7 @@ TEST(AnisoTest, TestsInGallery)
     double theta = M_PI/8.0;
     double* stencil = diffusion_stencil_2d(eps, theta);
     CSRMatrix* A_sten = stencil_grid(stencil, grid, 2);
-    CSRMatrix* A_io = readMatrix("../../../../test_data/aniso.pm");
+    CSRMatrix* A_io = readMatrix(RAPTOR_TEST_DATA_DIR "aniso.pm");
 
     // Compare shapes
     ASSERT_EQ(A_io->n_rows, A_sten->n_rows);

@@ -27,10 +27,10 @@ TEST(ParMatrixAddTest, TestsInUtil)
     ParCSRMatrix* AS;
     ParCSRMatrix* AS_rap;
 
-    const char* A0_fn = "../../../../test_data/rss_A0.pm";
-    const char* S0_fn = "../../../../test_data/rss_S0.pm";
-    const char* AS0_fn = "../../../../test_data/rss_AS.pm";
-    const char* AmS0_fn = "../../../../test_data/rss_AmS.pm";
+    const char* A0_fn = RAPTOR_TEST_DATA_DIR "rss_A0.pm";
+    const char* S0_fn = RAPTOR_TEST_DATA_DIR "rss_S0.pm";
+    const char* AS0_fn = RAPTOR_TEST_DATA_DIR "rss_AS.pm";
+    const char* AmS0_fn = RAPTOR_TEST_DATA_DIR "rss_AmS.pm";
 
     // TEST LEVEL 0
     A = readParMatrix(A0_fn);

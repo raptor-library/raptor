@@ -68,9 +68,9 @@ TEST(TestParBSRSmoothedAggregation, MultilevelElasticity)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     const char* matrix_filename =
-            "../../../../test_data/linear_elasticity_3D_A_csr.pm";
+            RAPTOR_TEST_DATA_DIR "linear_elasticity_3D_A_csr.pm";
     const char* candidate_filename =
-            "../../../../test_data/linear_elasticity_3D_candidates.pm";
+            RAPTOR_TEST_DATA_DIR "linear_elasticity_3D_candidates.pm";
 
     ParCSRMatrix* A_csr = readParMatrix(matrix_filename);
     ASSERT_NE(A_csr, nullptr);

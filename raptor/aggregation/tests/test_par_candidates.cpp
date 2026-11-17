@@ -35,10 +35,10 @@ TEST(TestParCandidates, TestsInAggregation)
     ParCSRMatrix* S;
     int n_items_read;
 
-    const char* A0_fn = "../../../../test_data/sas_A0.pm";
-    const char* S0_fn = "../../../../test_data/sas_S0.pm";
-    const char* T0_fn = "../../../../test_data/sas_T0.pm";
-    const char* weights_fn = "../../../../test_data/weights.txt";
+    const char* A0_fn = RAPTOR_TEST_DATA_DIR "sas_A0.pm";
+    const char* S0_fn = RAPTOR_TEST_DATA_DIR "sas_S0.pm";
+    const char* T0_fn = RAPTOR_TEST_DATA_DIR "sas_T0.pm";
+    const char* weights_fn = RAPTOR_TEST_DATA_DIR "weights.txt";
 
     A = readParMatrix(A0_fn);
     S = readParMatrix(S0_fn);

@@ -94,8 +94,8 @@ TEST(TestParSplitting, TestsInRuge_Stuben)
     std::vector<int> off_proc_states;
     double* weights;
 
-    const char* A0_fn = "../../../../test_data/rss_A0.pm";
-    const char* A1_fn = "../../../../test_data/rss_A1.pm";
+    const char* A0_fn = RAPTOR_TEST_DATA_DIR "rss_A0.pm";
+    const char* A1_fn = RAPTOR_TEST_DATA_DIR "rss_A1.pm";
 
     int num_variables = 2;
     int* var;

@@ -84,8 +84,8 @@ int main(int argc, char* argv[])
     }
 
     /*if(rank == 0){
-        FILE* f = fopen("../../../../test_data/bicgstab_res.txt", "r");
-        //FILE* f = fopen("../../../../test_data/bicgstab_res_TEST.txt", "r");
+        FILE* f = fopen(RAPTOR_TEST_DATA_DIR "bicgstab_res.txt", "r");
+        //FILE* f = fopen(RAPTOR_TEST_DATA_DIR "bicgstab_res_TEST.txt", "r");
         double res;
         for (int i = 0; i < 20; i++)
         {

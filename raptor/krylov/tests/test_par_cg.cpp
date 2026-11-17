@@ -37,7 +37,7 @@ TEST(ParCGTest, TestsInKrylov)
     double b_norm = b.norm(2);
     CG(A, x, b, residuals);
 
-    FILE* f = fopen("../../../../test_data/cg_res.txt", "r");
+    FILE* f = fopen(RAPTOR_TEST_DATA_DIR "cg_res.txt", "r");
     double res;
     for (int i = 0; i < (int) residuals.size(); i++)
     {
