@@ -35,6 +35,11 @@ if (WITH_MPI)
     target_link_libraries(raptor PUBLIC MPI::MPI_CXX)
 endif()
 
+if (ENABLE_COVERAGE)
+    target_compile_options(raptor PRIVATE -O0 -g --coverage)
+    target_link_options(raptor PRIVATE --coverage)
+endif()
+
 if (WITH_MUELU)
     target_link_libraries(raptor PUBLIC MueLu::all_libs)
 endif()
