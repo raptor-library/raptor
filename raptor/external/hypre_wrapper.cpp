@@ -19,18 +19,18 @@ HYPRE_IJVector convert(raptor::ParVector& x_rap, RAPtor_MPI_Comm comm_mat)
     HYPRE_Int local_n = x_rap.local_n;
     std::vector<int> first_n(num_procs);
     RAPtor_MPI_Allgather(&local_n, 1, RAPtor_MPI_INT, first_n.data(), 1, RAPtor_MPI_INT, comm_mat);
-    HYPRE_Int first_local = 0;
+    HYPRE_BigInt first_local = 0;
     for (int i = 0; i < rank; i++)
     {
         first_local += first_n[i];
     }
-    HYPRE_Int last_local = first_local + local_n - 1;
+    HYPRE_BigInt last_local = first_local + local_n - 1;
 
     HYPRE_IJVectorCreate(comm_mat, first_local, last_local, &x);
     HYPRE_IJVectorSetObjectType(x, HYPRE_PARCSR);
     HYPRE_IJVectorInitialize(x);
 
-    HYPRE_Int* rows = new HYPRE_Int[local_n];
+    HYPRE_BigInt* rows = new HYPRE_BigInt[local_n];
     for (HYPRE_Int i = 0; i < local_n; i++)
     {
         rows[i] = i+first_local;
@@ -51,9 +51,9 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, RAPtor_MPI_Comm comm_mat)
 
     HYPRE_Int n_rows = 0;
     HYPRE_Int n_cols = 0;
-    HYPRE_Int local_row_start = 0;
-    HYPRE_Int local_col_start = 0;
-    HYPRE_Int rank, num_procs;
+    HYPRE_BigInt local_row_start = 0;
+    HYPRE_BigInt local_col_start = 0;
+    int rank, num_procs;
     HYPRE_Int one = 1;
 
     RAPtor_MPI_Comm_rank(comm_mat, &rank);
@@ -99,7 +99,7 @@ HYPRE_IJMatrix convert(raptor::ParCSRMatrix* A_rap, RAPtor_MPI_Comm comm_mat)
     HYPRE_IJMatrixInitialize(A);
 
     HYPRE_Int row_start, row_end;
-    HYPRE_Int global_row, global_col;
+    HYPRE_BigInt global_row, global_col;
     HYPRE_Real value;
 
     for (int i = 0; i < A_rap->on_proc->n_rows; i++)
@@ -155,11 +155,11 @@ raptor::ParCSRMatrix* convert(hypre_ParCSRMatrix* A_hypre, RAPtor_MPI_Comm comm_
         offd_data = hypre_CSRMatrixData(A_hypre_offd);
     }
 
-    HYPRE_Int first_local_row = hypre_ParCSRMatrixFirstRowIndex(A_hypre);
-    HYPRE_Int first_local_col = hypre_ParCSRMatrixFirstColDiag(A_hypre);
-    HYPRE_Int* col_map_offd = hypre_ParCSRMatrixColMapOffd(A_hypre);
-    HYPRE_Int global_rows = hypre_ParCSRMatrixGlobalNumRows(A_hypre);
-    HYPRE_Int global_cols = hypre_ParCSRMatrixGlobalNumCols(A_hypre);
+    HYPRE_BigInt first_local_row = hypre_ParCSRMatrixFirstRowIndex(A_hypre);
+    HYPRE_BigInt first_local_col = hypre_ParCSRMatrixFirstColDiag(A_hypre);
+    HYPRE_BigInt* col_map_offd = hypre_ParCSRMatrixColMapOffd(A_hypre);
+    HYPRE_BigInt global_rows = hypre_ParCSRMatrixGlobalNumRows(A_hypre);
+    HYPRE_BigInt global_cols = hypre_ParCSRMatrixGlobalNumCols(A_hypre);
 
     ParCSRMatrix* A = new ParCSRMatrix(global_rows, global_cols,
             diag_rows, diag_cols,
@@ -229,11 +229,11 @@ raptor::ParBSRMatrix* convert(hypre_ParCSRMatrix* A_hypre,
         offd_data = hypre_CSRMatrixData(A_hypre_offd);
     }
 
-    HYPRE_Int first_local_row = hypre_ParCSRMatrixFirstRowIndex(A_hypre);
-    HYPRE_Int first_local_col = hypre_ParCSRMatrixFirstColDiag(A_hypre);
-    HYPRE_Int* col_map_offd = hypre_ParCSRMatrixColMapOffd(A_hypre);
-    HYPRE_Int global_rows = hypre_ParCSRMatrixGlobalNumRows(A_hypre);
-    HYPRE_Int global_cols = hypre_ParCSRMatrixGlobalNumCols(A_hypre);
+    HYPRE_BigInt first_local_row = hypre_ParCSRMatrixFirstRowIndex(A_hypre);
+    HYPRE_BigInt first_local_col = hypre_ParCSRMatrixFirstColDiag(A_hypre);
+    HYPRE_BigInt* col_map_offd = hypre_ParCSRMatrixColMapOffd(A_hypre);
+    HYPRE_BigInt global_rows = hypre_ParCSRMatrixGlobalNumRows(A_hypre);
+    HYPRE_BigInt global_cols = hypre_ParCSRMatrixGlobalNumCols(A_hypre);
 
     { // check inputs
 	    // TODO: reduce on local check and check row_starts
