@@ -1,1 +1,1 @@
-cppcheck --enable=all --inconclusive --std=c++11 -I. ./raptor
+cppcheck --enable=all --inconclusive --std=c++17 -I. ./raptor

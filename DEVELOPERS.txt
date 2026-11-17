@@ -1,2 +1,9 @@
-Luke Olson
-Amanda Bienz
+Core Developers
+Amanda Bienz (University of New Mexico; University of Illinois Urbana-Champaign)
+Luke N. Olson (University of Illinois Urbana-Champaign)
+Shelby Lockhart (University of Illinois Urbana-Champaign)
+
+Contributors
+Andrew Reisner (Los Alamos National Laboratory)
+Ben Southworth (Los Alamos National Laboratory)
+Taoli Shen (Pennsylvania State University)

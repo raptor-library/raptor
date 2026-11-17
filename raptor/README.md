@@ -1,27 +1,60 @@
-main structure
+# Source layout
 
-- types.hpp
-  - defines the main typedefs
-    - int\_t: integer type (e.g. int)
-    - data\_t: data type (e.g. double)
+To use the library, include `raptor.hpp`.
 
-- mulilevel.hpp
-  - defines the multilevel hierarchy with A, P, methods
-
-- aggregation
-  - main SA routines
-    - aggregation
-    - aggregate
-    - smooth
-
-- core
-  - Vector, Matrix, interface, and partitioning headers
-    - sequential containers defined by Eigen3
-    - vector.hpp: defines ParVector
-    - matrix.hpp: defines ParCSRMatrix and SeqCSRMatrix
-    - interface.hpp: defines PETSc and Dolfin interfaces
-    - partition.hpp: describes the partitioning
-
-- util
-  - linalg: ParCSR and ParVector linear algebra
-  - utils: helper routines for funny operations
+- `core/`
+  - Basic types (`types.hpp`)
+  - Vectors (`Vector`, `ParVector`)
+  - Matrices (`Matrix`, `ParMatrix`) in COO/CSR/CSC and block BCOO/BSR/BSC formats
+  - Row partitions (`partition.hpp`)
+  - Node topology (`topology.hpp`)
+  - Communication packages (`comm_pkg.hpp`, `comm_data.hpp`), including
+    node-aware/TAP communication
+- `aggregation/`: smoothed aggregation AMG
+  - Aggregation and MIS(2)
+  - Candidate fitting (tentative prolongation)
+  - Jacobi prolongation smoothing
+  - `SmoothedAggregationSolver` / `ParSmoothedAggregationSolver` hierarchies
+- `ruge_stuben/`: classical AMG
+  - C/F splitting (RS, CLJP, Falgout, PMIS, HMIS)
+  - Interpolation
+  - `RugeStubenSolver` / `ParRugeStubenSolver` hierarchies
+  - AIR solver (`ParAIRSolver`)
+- `multilevel/`
+  - Multilevel hierarchy classes (`Multilevel`, `ParMultilevel`)
+  - Level classes (`Level`, `ParLevel`)
+  - Sparsification
+- `krylov/`
+  - CG and preconditioned CG
+  - BiCGStab and preconditioned BiCGStab
+  - Partial-inner-product variants
+- `gallery/`
+  - Test problems
+    - Stencils and 27-point Laplacian
+    - Rotated anisotropic diffusion
+    - Random matrices
+  - Matrix I/O
+    - Matrix Market
+    - Binary (`.pm`) format
+- `util/`
+  - Matrix file writer for CSR, BSR, ParCSR, and ParBSR matrices (`writer.hpp`)
+  - `linalg/`
+    - SpMV and SpGEMM
+    - Matrix addition
+    - Relaxation
+    - Diagonal scaling
+    - Spectral radius estimation
+    - Repartitioning
+    - LAPACK wrappers
+    - `external/`: ParMETIS and PT-Scotch wrappers
+- `external/`: optional wrappers
+  - hypre
+  - MFEM (with MFEM-based test problems in `external/mfem/`)
+  - PETSc
+  - Trilinos MueLu
+- `profiling/`
+  - Communication profiling
+- `tests/`
+  - Strength-of-connection tests
+  - Shared test comparison helpers
+- `strength.cpp`, `par_strength.cpp`: strength of connection

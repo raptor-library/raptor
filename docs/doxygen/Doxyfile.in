@@ -1,6 +1,6 @@
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "RAPtor"
-PROJECT_NUMBER         =
+PROJECT_NUMBER         = 1.0
 PROJECT_BRIEF          = "General, high performance algebraic multigrid solver"
 PROJECT_LOGO           = "@CMAKE_CURRENT_SOURCE_DIR@/docs/logo/raptor-logo2-small.png"
 OUTPUT_DIRECTORY       = "@CMAKE_CURRENT_BINARY_DIR@/docs/doxygen"
@@ -18,26 +18,19 @@ ABBREVIATE_BRIEF       = "The $name class" \
 EXTRACT_ALL            = YES
 EXTRACT_PRIVATE        = YES
 INPUT                  = "@CMAKE_CURRENT_SOURCE_DIR@/docs/doxygen/raptor_main.dox" \
-                         "@CMAKE_CURRENT_SOURCE_DIR@/raptor" \
-                         "@CMAKE_CURRENT_SOURCE_DIR@/raptor/aggregation/" \
-                         "@CMAKE_CURRENT_SOURCE_DIR@/raptor/core" \
-                         "@CMAKE_CURRENT_SOURCE_DIR@/raptor/external" \
-                         "@CMAKE_CURRENT_SOURCE_DIR@/raptor/gallery" \
-                         "@CMAKE_CURRENT_SOURCE_DIR@/raptor/krylov" \
-                         "@CMAKE_CURRENT_SOURCE_DIR@/raptor/multilevel" \
-                         "@CMAKE_CURRENT_SOURCE_DIR@/raptor/profiling" \
-                         "@CMAKE_CURRENT_SOURCE_DIR@/raptor/ruge_stuben" \
-                         "@CMAKE_CURRENT_SOURCE_DIR@/raptor/util"
-FILE_PATTERNS          = *.hpp
+                         "@CMAKE_CURRENT_SOURCE_DIR@/raptor"
+RECURSIVE              = YES
+FILE_PATTERNS          = *.hpp \
+                         *.tpp
+EXTENSION_MAPPING      = tpp=C++
+EXCLUDE_PATTERNS       = */tests/*
 VERBATIM_HEADERS       = NO
 GENERATE_HTML          = YES
 HTML_OUTPUT            = html
-HTMOL_FIL_EXTENSION    = .xhtml
 HTML_EXTRA_STYLESHEET  = @CMAKE_CURRENT_SOURCE_DIR@/docs/doxygen/doxygen-awesome/doxygen-awesome.css
 HTML_EXTRA_FILES       = @CMAKE_CURRENT_SOURCE_DIR@/docs/doxygen/doxygen-awesome/doxygen-awesome-darkmode-toggle.js \
                          @CMAKE_CURRENT_SOURCE_DIR@/docs/doxygen/doxygen-awesome/doxygen-awesome-fragment-copy-button.js \
                          @CMAKE_CURRENT_SOURCE_DIR@/docs/doxygen/doxygen-awesome/doxygen-awesome-paragraph-link.js \
-                         @CMAKE_CURRENT_SOURCE_DIR@/docs/doxygen/doxygen-awesome/doxygen-custom/toggle-alternative-theme.js \
                          @CMAKE_CURRENT_SOURCE_DIR@/docs/doxygen/doxygen-awesome/doxygen-awesome-interactive-toc.js
 HTML_COLORSTYLE        = LIGHT
 HIDE_UNDOC_RELATIONS   = YES
