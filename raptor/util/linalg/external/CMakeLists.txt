@@ -1,34 +1,19 @@
-# Include the directory itself as a path to include directories
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
-
-#Create a variable called linalg_SOURCES containing all .cpp files:
-
+# PT-Scotch interface (header only): raptor::ptscotch_wrapper
 if (WITH_PTSCOTCH)
-    set(ptscotch_linalg_HEADERS
-        util/linalg/external/ptscotch_wrapper.hpp
-        )
-else()
-    set(ptscotch_linalg_HEADERS
-        ""
-        )
+    add_library(ptscotch_wrapper INTERFACE)
+    add_library(raptor::ptscotch_wrapper ALIAS ptscotch_wrapper)
+    target_compile_definitions(ptscotch_wrapper INTERFACE USING_PTSCOTCH)
+    target_link_libraries(ptscotch_wrapper INTERFACE raptor raptor::ptscotch)
+    install(TARGETS ptscotch_wrapper EXPORT raptorTargets)
+    install(FILES ptscotch_wrapper.hpp DESTINATION "include/raptor/util/linalg/external")
 endif()
 
+# ParMETIS interface (header only): raptor::parmetis_wrapper
 if (WITH_PARMETIS)
-    set(parmetis_linalg_HEADERS
-        util/linalg/external/parmetis_wrapper.hpp
-        )
-else()
-    set(parmetis_linalg_HEADERS
-        ""
-        )
+    add_library(parmetis_wrapper INTERFACE)
+    add_library(raptor::parmetis_wrapper ALIAS parmetis_wrapper)
+    target_compile_definitions(parmetis_wrapper INTERFACE USING_PARMETIS)
+    target_link_libraries(parmetis_wrapper INTERFACE raptor raptor::parmetis)
+    install(TARGETS parmetis_wrapper EXPORT raptorTargets)
+    install(FILES parmetis_wrapper.hpp DESTINATION "include/raptor/util/linalg/external")
 endif()
-
-set(ext_linalg_HEADERS
-    ${ptscotch_linalg_HEADERS}
-    ${parmetis_linalg_HEADERS}
-    PARENT_SCOPE
-    )
-
-
-
-

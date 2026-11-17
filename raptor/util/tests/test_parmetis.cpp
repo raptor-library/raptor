@@ -4,6 +4,7 @@
 
 #include "gtest/gtest.h"
 #include "raptor/raptor.hpp"
+#include "raptor/util/linalg/external/parmetis_wrapper.hpp"
 
 using namespace raptor;
 
