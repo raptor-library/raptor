@@ -10,7 +10,10 @@ env:
     OMPI_MCA_rmaps_base_oversubscribe: "1"
 
 on:
+  pull_request:
   push:
+    branches: [ "main", "release-1.0" ]
+  workflow_dispatch:
 
 jobs:
   typos:
