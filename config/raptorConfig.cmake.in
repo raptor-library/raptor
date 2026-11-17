@@ -11,6 +11,10 @@ if(NOT DEFINED BLA_VENDOR AND NOT "@RAPTOR_BLA_VENDOR@" STREQUAL "")
 endif()
 find_dependency(LAPACK)
 
+if(@WITH_MFEM@)
+  find_dependency(MFEM CONFIG)
+endif()
+
 if(@WITH_MUELU@)
   find_dependency(MueLu CONFIG)
 endif()

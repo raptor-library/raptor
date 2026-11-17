@@ -60,8 +60,6 @@ set(raptor_INCDIR ${CMAKE_CURRENT_SOURCE_DIR}/raptor)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
 SET(HYPRE_DIR "" CACHE STRING "Directory of HYPRE")
-SET(METIS_DIR "" CACHE STRING "Directory of metis")
-SET(MFEM_DIR "" CACHE STRING "Directory of mfem")
 SET(MFEM_MESH_DIR "" CACHE STRING "Directory containing MFEM mesh files")
 SET(PETSC_DIR "" CACHE STRING "Directory of petsc")
 SET(PTSCOTCH_DIR "" CACHE STRING "Directory of Ptscotch")
@@ -114,16 +112,18 @@ if (WITH_MFEM)
         endif()
     endif()
 
-    find_package(Metis)
-    if (NOT METIS_FOUND)
-        message(FATAL_ERROR "Cannot find metis. Set METIS_DIR.")
-    endif()
+    find_package(MFEM CONFIG REQUIRED)
 
-    find_package(Mfem)
-    if (NOT MFEM_FOUND)
-        message(FATAL_ERROR "Cannot find mfem. Set MFEM_DIR.")
+    # Mesh files for the MFEM tests and examples
+    get_filename_component(MFEM_PREFIX "${MFEM_DIR}/../../.." ABSOLUTE)
+    find_path(MFEM_MESH_PATH beam-tet.mesh
+        HINTS ${MFEM_MESH_DIR} $ENV{MFEM_MESH_DIR}
+              ${MFEM_PREFIX}/share/mfem/data ${MFEM_PREFIX}/data)
+    if (MFEM_MESH_PATH)
+        message(STATUS "MFEM mesh directory: ${MFEM_MESH_PATH}")
+    else()
+        message(WARNING "Cannot find the MFEM mesh files. Set MFEM_MESH_DIR for the MFEM tests and examples.")
     endif()
-    message(STATUS "MFEM dir: " ${MFEM_MESH_PATH})
 
     # Mesh directory for the MFEM tests and examples
     file(GENERATE

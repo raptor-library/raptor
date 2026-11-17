@@ -29,9 +29,9 @@ add_library(raptor ${core_SOURCES} ${core_HEADERS}
         ${external_SOURCES} ${external_HEADERS})
 add_library(raptor::raptor ALIAS raptor)
 
-    target_compile_definitions(raptor PUBLIC USING_MFEM USING_METIS)
-    target_include_directories(raptor PUBLIC ${MFEM_INCLUDE_DIRS} ${METIS_INCLUDE_DIRS})
-    target_link_libraries(raptor PUBLIC ${MFEM_LIBRARIES} ${METIS_LIBRARIES})
+if (WITH_MFEM)
+    target_compile_definitions(raptor PUBLIC USING_MFEM)
+    target_link_libraries(raptor PUBLIC mfem)
 endif()
 
 if (WITH_HYPRE)
