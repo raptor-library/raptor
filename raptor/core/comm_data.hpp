@@ -197,7 +197,7 @@ public:
             {
                 recv_buffer.resize(count);
             }
-            RAPtor_MPI_Recv(&(recv_buffer[0]), count, RAPtor_MPI_PACKED, proc, key,
+            RAPtor_MPI_Recv(recv_buffer.data(), count, RAPtor_MPI_PACKED, proc, key,
                     mpi_comm, &recv_status);
 
             // Go through recv, adding indices to matrix recv_mat
@@ -209,7 +209,7 @@ public:
                 recv_mat->idx1[row_count + 1] = recv_size + row_size;
                 row_count++;
                 recv_mat->idx2.resize(recv_size + row_size);
-                RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr, &recv_mat->idx2[recv_size],
+                RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr, recv_mat->idx2.data() + recv_size,
                         row_size, RAPtor_MPI_INT, mpi_comm);
                 
                 if (vals)
@@ -229,7 +229,7 @@ public:
                     else
                     {
                         recv_mat->vals.resize(recv_size + row_size);
-                        RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr, &recv_mat->vals[recv_size],
+                        RAPtor_MPI_Unpack(recv_buffer.data(), count, &ctr, recv_mat->vals.data() + recv_size,
                                 row_size, RAPtor_MPI_DOUBLE, mpi_comm);
                     }
                 }

@@ -289,7 +289,7 @@ void TAPComm::init_mat_comm(std::vector<char>& send_buffer, const std::vector<in
                 S_mat->vals.data(), global_par_comm->mpi_comm, block_size);
         send_buffer.resize(l_bytes + g_bytes);
 
-        init_comm_helper(&(send_buffer[0]), S_mat->idx1.data(),
+        init_comm_helper(send_buffer.data(), S_mat->idx1.data(),
                 S_mat->idx2.data(), S_mat->vals.data(), global_par_comm->send_data,
                 global_par_comm->key, global_par_comm->mpi_comm, b_rows, b_cols);
         delete S_mat;
@@ -299,12 +299,12 @@ void TAPComm::init_mat_comm(std::vector<char>& send_buffer, const std::vector<in
         g_bytes = global_par_comm->send_data->get_msg_size(rowptr.data(),
                 values.data(), global_par_comm->mpi_comm, block_size);
         send_buffer.resize(l_bytes + g_bytes);
-        init_comm_helper(&(send_buffer[0]), rowptr.data(), col_indices.data(),
+        init_comm_helper(send_buffer.data(), rowptr.data(), col_indices.data(),
                 values.data(), global_par_comm->send_data, global_par_comm->key, 
                 global_par_comm->mpi_comm, b_rows, b_cols);
     }
 
-    init_comm_helper(&(send_buffer[g_bytes]), rowptr.data(), col_indices.data(),
+    init_comm_helper(send_buffer.data() + g_bytes, rowptr.data(), col_indices.data(),
             values.data(), local_L_par_comm->send_data, local_L_par_comm->key, 
             local_L_par_comm->mpi_comm, b_rows, b_cols);
 }
@@ -327,7 +327,7 @@ void TAPComm::init_mat_comm(std::vector<char>& send_buffer, const std::vector<in
                 S_mat->block_vals.data(), global_par_comm->mpi_comm, block_size);
         send_buffer.resize(l_bytes + g_bytes);
 
-        init_comm_helper(&(send_buffer[0]), S_mat->idx1.data(),
+        init_comm_helper(send_buffer.data(), S_mat->idx1.data(),
                 S_mat->idx2.data(), S_mat->block_vals.data(),
                 global_par_comm->send_data,
                 global_par_comm->key, global_par_comm->mpi_comm, b_rows, b_cols);
@@ -338,12 +338,12 @@ void TAPComm::init_mat_comm(std::vector<char>& send_buffer, const std::vector<in
         g_bytes = global_par_comm->send_data->get_msg_size(rowptr.data(),
                 values.data(), global_par_comm->mpi_comm, block_size);
         send_buffer.resize(l_bytes + g_bytes);
-        init_comm_helper(&(send_buffer[0]), rowptr.data(), col_indices.data(),
+        init_comm_helper(send_buffer.data(), rowptr.data(), col_indices.data(),
                 values.data(), global_par_comm->send_data, global_par_comm->key, 
                 global_par_comm->mpi_comm, b_rows, b_cols);
     }
 
-    init_comm_helper(&(send_buffer[g_bytes]), rowptr.data(), col_indices.data(),
+    init_comm_helper(send_buffer.data() + g_bytes, rowptr.data(), col_indices.data(),
             values.data(), local_L_par_comm->send_data, local_L_par_comm->key, 
             local_L_par_comm->mpi_comm, b_rows, b_cols);
 }
@@ -429,13 +429,13 @@ void TAPComm::init_mat_comm_T(std::vector<char>& send_buffer, const std::vector<
     send_buffer.resize(l_bytes + g_bytes);
 
     // Initialize global_par_comm
-    init_comm_helper(&(send_buffer[0]), R_mat->idx1.data(), R_mat->idx2.data(),
+    init_comm_helper(send_buffer.data(), R_mat->idx1.data(), R_mat->idx2.data(),
             R_mat->vals.data(), global_par_comm->recv_data, global_par_comm->key,
             global_par_comm->mpi_comm, b_rows, b_cols);
     delete R_mat;
 
     // Initialize local_L_par_comm
-    init_comm_helper(&(send_buffer[g_bytes]), rowptr.data(), col_indices.data(), 
+    init_comm_helper(send_buffer.data() + g_bytes, rowptr.data(), col_indices.data(), 
             values.data(), local_L_par_comm->recv_data, 
             local_L_par_comm->key, local_L_par_comm->mpi_comm, 
             b_rows, b_cols);
@@ -461,13 +461,13 @@ void TAPComm::init_mat_comm_T(std::vector<char>& send_buffer, const std::vector<
     send_buffer.resize(l_bytes + g_bytes);
 
     // Initialize global_par_comm
-    init_comm_helper(&(send_buffer[0]), R_mat->idx1.data(), R_mat->idx2.data(),
+    init_comm_helper(send_buffer.data(), R_mat->idx1.data(), R_mat->idx2.data(),
             R_mat->block_vals.data(), global_par_comm->recv_data, global_par_comm->key,
             global_par_comm->mpi_comm, b_rows, b_cols);
     delete R_mat;
 
     // Initialize local_L_par_comm
-    init_comm_helper(&(send_buffer[g_bytes]), rowptr.data(), col_indices.data(), 
+    init_comm_helper(send_buffer.data() + g_bytes, rowptr.data(), col_indices.data(), 
             values.data(), local_L_par_comm->recv_data, 
             local_L_par_comm->key, local_L_par_comm->mpi_comm, 
             b_rows, b_cols);
