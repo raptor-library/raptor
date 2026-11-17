@@ -46,8 +46,16 @@ set(PTSCOTCH_LIBRARIES ${PTSCOTCH_LIBRARY} ${PTSCOTCH_ERR_LIBRARY}
 set(PTSCOTCH_INCLUDE_DIRS ${PTSCOTCH_INCLUDE_DIR} )
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(PTScotch  DEFAULT_MSG
+find_package_handle_standard_args(Ptscotch DEFAULT_MSG
                                   PTSCOTCH_LIBRARY PTSCOTCH_INCLUDE_DIR)
 
 mark_as_advanced(PTSCOTCH_INCLUDE_DIR PTSCOTCH_LIBRARY)
 
+# Imported target for RAPtor in the raptor:: namespace
+# to avoid conflicts with targets using RAPtor
+if (PTSCOTCH_FOUND AND NOT TARGET raptor::ptscotch)
+    add_library(raptor::ptscotch INTERFACE IMPORTED)
+    set_target_properties(raptor::ptscotch PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${PTSCOTCH_INCLUDE_DIRS}"
+        INTERFACE_LINK_LIBRARIES "${PTSCOTCH_LIBRARIES}")
+endif()
