@@ -64,7 +64,7 @@ CSRMatrix* read_mm(const char *fname)
         return NULL;
     }
  
-    /* reseve memory for matrices */
+    /* reserve memory for matrices */
     COOMatrix* A = new COOMatrix(M, N, nz);
 
     /* NOTE: when reading in doubles, ANSI C requires the use of the "l"  */
@@ -160,7 +160,7 @@ int mm_read_banner(FILE *f, MM_typecode *matcode)
 
 
     /* second field describes whether this is a sparse matrix (in coordinate
-            storgae) or a dense array */
+            storage) or a dense array */
 
 
     if (strcmp(crd, MM_SPARSE_STR) == 0)

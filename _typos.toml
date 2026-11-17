@@ -3,6 +3,9 @@ preconditioner = "preconditioner"
 MIS = "MIS"
 Cleary = "Cleary"
 ser = "ser"
+indx = "indx"
+arange = "arange"
+nteger = "nteger"
 [default.extend-identifiers]
 hypre_BoomerAMGCoarseParms = "hypre_BoomerAMGCoarseParms"
 [default]

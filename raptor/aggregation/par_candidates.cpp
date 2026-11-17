@@ -114,7 +114,7 @@ static T* fit_candidates_helper(T* A,
             num_aggs_per_proc.data(), 1, RAPtor_MPI_INT,
             A->comm->mpi_comm);
     
-    // the compact global ID of the first agggregate owned by each rank
+    // the compact global ID of the first aggregate owned by each rank
     int first_local_agg = 0;
     for (int i = 0; i < rank; i++)
     {

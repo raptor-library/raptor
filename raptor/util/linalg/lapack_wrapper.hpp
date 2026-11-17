@@ -12,7 +12,7 @@ namespace raptor
 /**
  * Compute the Moore-Penrose pseudoinverse of a dense row-major matrix.
  *
- * The input and ouput martrix is row-major
+ * The input and output matrix is row-major
  * Singular values <= rcond * largest_singular_value are truncated.  
  * negative rcond selects max(rows, cols) * machine eps.
  */

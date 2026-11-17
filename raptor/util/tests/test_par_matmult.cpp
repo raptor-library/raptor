@@ -18,7 +18,7 @@ int main(int argc, char** argv)
 }
 
 
-void comparse_single_block(const ParCSRMatrix & A, const ParBSRMatrix & B) {
+void compare_single_block(const ParCSRMatrix & A, const ParBSRMatrix & B) {
 }
 
 void handler(int signum, siginfo_t *si, void *vcontext) {
