@@ -19,10 +19,18 @@ jobs:
         uses: crate-ci/typos@v1.52.2
 
   core:
+    name: ${{ matrix.os }} (${{ matrix.build_type }})
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            build_type: Release
+          # Debug build: asserts enabled, and used for code coverage
+          - os: ubuntu-latest
+            build_type: Debug
+          - os: macos-latest
+            build_type: Release
     runs-on: ${{ matrix.os }}
     steps:
       - name: Install Linux dependencies
@@ -44,19 +52,20 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         # set build and launch to openmpi
         run: >
-          cmake -Bbuild -DENABLE_COVERAGE=1
+          cmake -Bbuild -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          ${{ matrix.build_type == 'Debug' && '-DENABLE_COVERAGE=ON' || '' }}
           -DMPI_C_COMPILER=/usr/bin/mpicc.openmpi
           -DMPI_CXX_COMPILER=/usr/bin/mpicxx.openmpi
           -DMPIEXEC_EXECUTABLE=/usr/bin/mpiexec.openmpi
       - name: Configure code
         if: matrix.os == 'macos-latest'
-        run: cmake -Bbuild
+        run: cmake -Bbuild -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
       - name: Build code
         run: cmake --build build --parallel
       - name: Test code
-        run: ctest --test-dir build -V --build-config Debug
+        run: ctest --test-dir build -V
       - name: Code coverage
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && matrix.build_type == 'Debug'
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
