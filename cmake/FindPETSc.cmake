@@ -344,3 +344,12 @@ find_package_handle_standard_args (PETSc
   REQUIRED_VARS PETSC_INCLUDES PETSC_LIBRARIES PETSC_EXECUTABLE_RUNS
   VERSION_VAR PETSC_VERSION
   FAIL_MESSAGE "PETSc could not be found.  Be sure to set PETSC_DIR and PETSC_ARCH.")
+
+# Imported target for RAPtor in the raptor:: namespace
+# to avoid conflicts with targets using RAPtor
+if (PETSC_FOUND AND NOT TARGET raptor::petsc)
+    add_library(raptor::petsc INTERFACE IMPORTED)
+    set_target_properties(raptor::petsc PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${PETSC_INCLUDES}"
+        INTERFACE_LINK_LIBRARIES "${PETSC_LIBRARIES}")
+endif()

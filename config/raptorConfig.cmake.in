@@ -19,6 +19,9 @@ if(@WITH_MUELU@)
   find_dependency(MueLu CONFIG)
 endif()
 
+# hypre, PETSc, PT-Scotch, and ParMETIS
+include("${CMAKE_CURRENT_LIST_DIR}/raptorExternalTargets.cmake")
+
 if(NOT TARGET raptor::raptor)
   include("${CMAKE_CURRENT_LIST_DIR}/raptorTargets.cmake")
 endif()

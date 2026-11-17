@@ -26,4 +26,11 @@ set(PARMETIS_INCLUDE_DIRS ${PARMETIS_INCLUDE_DIR} ${METIS_INCLUDE_DIR} )
 
 mark_as_advanced(PARMETIS_INCLUDE_DIR PARMETIS_LIBRARY)
 
-
+# Imported target for RAPtor in the raptor:: namespace
+# to avoid conflicts with targets using RAPtor
+if (PARMETIS_FOUND AND NOT TARGET raptor::parmetis)
+    add_library(raptor::parmetis INTERFACE IMPORTED)
+    set_target_properties(raptor::parmetis PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${PARMETIS_INCLUDE_DIRS}"
+        INTERFACE_LINK_LIBRARIES "${PARMETIS_LIBRARIES}")
+endif()
