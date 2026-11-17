@@ -24,7 +24,9 @@ TEST(ParAnisoTest, TestsInGallery)
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     const char* f_in = "../../../../test_data/sas_P0.mtx";
-    const char* f_out = "../../../../test_data/sas_P0_out.mtx";
+    // avoid sharing a file name
+    std::string out_name = "par_matrix_market_out_n" + std::to_string(num_procs) + ".mtx";
+    const char* f_out = out_name.c_str();
 
     ParCSRMatrix* Amm = read_par_mm(f_in);
 
