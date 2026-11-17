@@ -71,6 +71,6 @@ if (WITH_MPI)
 
     if (WITH_MFEM)
         add_executable(benchmark_par_bsr_amg_linear_elasticity benchmark_par_bsr_amg_linear_elasticity.cpp)
-        target_link_libraries(benchmark_par_bsr_amg_linear_elasticity raptor_mfem ${MPI_LIBRARIES})
+        target_link_libraries(benchmark_par_bsr_amg_linear_elasticity raptor::mfem_wrapper ${MPI_LIBRARIES})
     endif()
 endif()

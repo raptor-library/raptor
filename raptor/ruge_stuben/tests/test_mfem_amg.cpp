@@ -8,8 +8,9 @@
 #include "gtest/gtest.h"
 #include "mpi.h"
 
-#include "raptor_mfem_config.hpp"
 #include "raptor/raptor.hpp"
+#include "raptor_mfem_config.hpp"
+#include "raptor/external/mfem_wrapper.hpp"
 #include "raptor/tests/hypre_compare.hpp"
 
 using namespace raptor;

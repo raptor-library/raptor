@@ -7,10 +7,11 @@
 
 #include "gtest/gtest.h"
 
+#include "raptor/raptor.hpp"
 #ifdef USING_MFEM
 #include "raptor_mfem_config.hpp"
+#include "raptor/external/mfem_wrapper.hpp"
 #endif
-#include "raptor/raptor.hpp"
 #include "raptor/tests/hypre_compare.hpp"
 
 using namespace raptor;

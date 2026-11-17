@@ -12,9 +12,9 @@ if (WITH_HYPRE)
     install(FILES hypre_wrapper.hpp DESTINATION "include/raptor/external")
 endif()
 
-# MFEM test problems for RAPtor's tests and examples (not installed)
+# MFEM interface: raptor::mfem_wrapper
 if (WITH_MFEM)
-    add_library(raptor_mfem
+    add_library(mfem_wrapper
         mfem/mfem_linear_elasticity.cpp
         mfem/mfem_laplacian.cpp
         mfem/mfem_grad_div.cpp
@@ -22,8 +22,12 @@ if (WITH_MFEM)
         mfem/mfem_dg_diffusion.cpp
         mfem/mfem_dg_elasticity.cpp
         mfem_wrapper.hpp)
-    target_compile_definitions(raptor_mfem PUBLIC USING_MFEM)
-    target_link_libraries(raptor_mfem PUBLIC raptor::hypre_wrapper mfem)
+    add_library(raptor::mfem_wrapper ALIAS mfem_wrapper)
+    set_target_properties(mfem_wrapper PROPERTIES OUTPUT_NAME raptor_mfem_wrapper)
+    target_compile_definitions(mfem_wrapper PUBLIC USING_MFEM)
+    target_link_libraries(mfem_wrapper PUBLIC raptor::hypre_wrapper mfem)
+    install(TARGETS mfem_wrapper EXPORT raptorTargets DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    install(FILES mfem_wrapper.hpp DESTINATION "include/raptor/external")
 endif()
 
 # PETSc interface: raptor::petsc_wrapper
