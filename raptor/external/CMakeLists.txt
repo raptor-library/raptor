@@ -26,13 +26,15 @@ if (WITH_MFEM)
     target_link_libraries(raptor_mfem PUBLIC raptor::hypre_wrapper mfem)
 endif()
 
+# PETSc interface: raptor::petsc_wrapper
 if (WITH_PETSC)
-    set(petsc_HEADERS
-        external/petsc_wrapper.hpp
-        )
-    set(petsc_SOURCES
-        external/petsc_wrapper.cpp
-        )
+    add_library(petsc_wrapper petsc_wrapper.cpp petsc_wrapper.hpp)
+    add_library(raptor::petsc_wrapper ALIAS petsc_wrapper)
+    set_target_properties(petsc_wrapper PROPERTIES OUTPUT_NAME raptor_petsc_wrapper)
+    target_compile_definitions(petsc_wrapper PUBLIC USING_PETSC)
+    target_link_libraries(petsc_wrapper PUBLIC raptor raptor::petsc)
+    install(TARGETS petsc_wrapper EXPORT raptorTargets DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    install(FILES petsc_wrapper.hpp DESTINATION "include/raptor/external")
 endif()
 
 if (WITH_MUELU)
@@ -45,10 +47,8 @@ if (WITH_MUELU)
 endif()
 
 set(external_HEADERS
-    ${petsc_HEADERS}
     ${trilinos_HEADERS}
     PARENT_SCOPE)
 set(external_SOURCES
-    ${petsc_SOURCES}
     ${trilinos_SOURCES}
     PARENT_SCOPE)

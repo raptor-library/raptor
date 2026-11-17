@@ -4,6 +4,7 @@
 
 #include "gtest/gtest.h"
 #include "raptor/raptor.hpp"
+#include "raptor/external/petsc_wrapper.hpp"
 #include "petscmat.h"
 
 using namespace raptor;

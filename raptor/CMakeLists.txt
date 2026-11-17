@@ -31,11 +31,6 @@ add_library(raptor ${core_SOURCES} ${core_HEADERS}
         ${external_SOURCES} ${external_HEADERS})
 add_library(raptor::raptor ALIAS raptor)
 
-if (WITH_PETSC)
-    target_compile_definitions(raptor PUBLIC USING_PETSC)
-    target_link_libraries(raptor PUBLIC raptor::petsc)
-endif()
-
 if (WITH_PTSCOTCH)
     target_compile_definitions(raptor PUBLIC USING_PTSCOTCH)
     target_link_libraries(raptor PUBLIC raptor::ptscotch)

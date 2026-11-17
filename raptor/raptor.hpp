@@ -51,9 +51,6 @@
 #ifdef USING_MFEM
     #include "external/mfem_wrapper.hpp"
 #endif
-#ifdef USING_PETSC
-    #include "external/petsc_wrapper.hpp"
-#endif
 
 // RugeStuben classes
 #include "ruge_stuben/cf_splitting.hpp"
