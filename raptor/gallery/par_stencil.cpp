@@ -79,7 +79,7 @@ ParCSRMatrix* par_stencil_grid(data_t* stencil, int* grid, int dim)
     }
 
     //Calculate indices of nonzeros in  stencil
-    index_t indices[N_s][dim];
+    std::vector<index_t> indices(N_s*dim);
     ctr = 0;
     for (index_t i = 0; i < stencil_len; i++)
     {
@@ -89,7 +89,7 @@ ParCSRMatrix* par_stencil_grid(data_t* stencil, int* grid, int dim)
             {
                 //index_t power = pow(3, j);
                 index_t idiv = i / pow(3, j);
-                indices[ctr][dim-j-1] = (idiv % 3) - (3 / 2);
+                indices[ctr*dim + dim-j-1] = (idiv % 3) - (3 / 2);
             }
             nonzero_stencil[ctr] = stencil[i];
             ctr++;
@@ -101,7 +101,7 @@ ParCSRMatrix* par_stencil_grid(data_t* stencil, int* grid, int dim)
     {
         for (index_t j = 0; j < N_s; j++)
         {
-            diags[j] += strides[i] * indices[j][dim-i-1];
+            diags[j] += strides[i] * indices[j*dim + dim-i-1];
         }
     }
 
@@ -121,7 +121,7 @@ ParCSRMatrix* par_stencil_grid(data_t* stencil, int* grid, int dim)
     {
         for (index_t j = 0; j < dim; j++)
         {
-            stack_indices[i*dim+j] = indices[i][j];
+            stack_indices[i*dim+j] = indices[i*dim+j];
         }
     }
 

@@ -131,11 +131,11 @@ namespace raptor
                     char trans = 'N'; //No transpose
                     int nhrs = 1; // Number of right hand sides
                     int info; // result
-                    double b_data[b.size()];
+                    std::vector<double> b_data(b.size());
                     for (int i = 0; i < b.size(); i++)
                         b_data[i] = b.data()[i];
                     dgetrs_(&trans, &coarse_n, &nhrs, A_coarse.data(), &coarse_n, 
-                            LU_permute.data(), b_data, &coarse_n, &info);
+                            LU_permute.data(), b_data.data(), &coarse_n, &info);
                     for (int i = 0; i < b.size(); i++)
                         x.data()[i] = b_data[i];
                 }
