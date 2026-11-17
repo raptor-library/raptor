@@ -102,9 +102,9 @@ elseif (BGQ)
     set(EXTERNAL_LIBS ${LAPACK_LIB} ${BLAS_LIB} ${ESSL_LIB} ${XLF_LIB}
         ${XLOPT_LIB} ${XLFMATH_LIB} ${XL_LIB} ${XLSMP_LIB})
 else()
-	find_library(LAPACK_LIB NAMES liblapack.so.3 lapack HINTS "/usr/lib/x86_64-linux-gnu/")
-	find_library(BLAS_LIB NAMES libblas.so.3 blas HINTS "/usr/lib/x86_64-linux-gnu/")
-	set(EXTERNAL_LIBS ${LAPACK_LIB} ${BLAS_LIB})
+    find_package(BLAS REQUIRED)
+    find_package(LAPACK REQUIRED)
+    set(EXTERNAL_LIBS ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
 endif()
 
 if (WITH_HOSTFILE)
