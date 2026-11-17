@@ -16,12 +16,9 @@ enable_language(CXX)
 set(CMAKE_CXX_STANDARD 17)
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wredundant-decls -Wcast-align -Wshadow")
-#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto -funroll-loops")
 
 include(FeatureSummary)
 
-option(CRAYXE "Running on Cray XE" OFF)
-option(BGQ "Running on BGQ" OFF)
 option(WITH_PTSCOTCH "Enable PTScotch Partitioning" OFF)
 option(WITH_PARMETIS "Enable ParMetis Partitioning" OFF)
 option(WITH_HYPRE "Add Hypre" OFF)
@@ -37,8 +34,6 @@ add_feature_info(ml WITH_MUELU "Trilinos MueLu preconditioner")
 add_feature_info(mfem WITH_MFEM "MFEM matrix gallery")
 add_feature_info(petsc WITH_PETSC "Petsc Interface")
 add_feature_info(ampi WITH_AMPI "Compile with AMPI")
-add_feature_info(crayxe CRAYXE "Compile on CrayXE")
-add_feature_info(bgq BGQ "Compile on BGQ")
 add_feature_info(ptscotch WITH_PTSCOTCH "Enable PTScotch Partitioning")
 add_feature_info(parmetis WITH_PARMETIS "Enable ParMetis Partitioning")
 add_feature_info(hostfile WITH_HOSTFILE "Enable Hostfile for MPIRUN")
@@ -76,36 +71,9 @@ SET(PTSCOTCH_DIR "" CACHE STRING "Directory of Ptscotch")
 SET(PARMETIS_DIR "" CACHE STRING "Directory of ParMetis")
 SET(HOSTFILE "" CACHE STRING "Set Hostfile")
 
-if (CRAYXE)
-    set(EXTERNAL_LIBS "")
-    set(MPIRUN aprun)
-    set(CMAKE_AR  "gcc-ar-4.7")
-    set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
-    set(CMAKE_CXX_ARCHIVE_FINISH   true)
-elseif (BGQ)
-    find_library(LAPACK_LIB NAMES liblapack lapack HINTS
-        "/soft/libraries/alcf/current/xl/LAPACK/lib")
-    find_library(BLAS_LIB NAMES libblas blas HINTS
-        "/soft/libraries/alcf/current/xl/BLAS/lib")
-    find_library(ESSL_LIB NAMES libesslbg esslbg HINTS
-        "/soft/libraries/essl/current/essl/5.1/lib64")
-    find_library(XLF_LIB NAMES libxlf90_r.a xlf90_r HINTS
-        "/soft/compilers/ibmcmp-may2016/xlf/bg/14.1/bglib64")
-    find_library(XLOPT_LIB NAMES libxlopt.a xlopt HINTS
-        "/soft/compilers/ibmcmp-may2016/xlf/bg/14.1/bglib64")
-    find_library(XLFMATH_LIB NAMES libxlfmath.a xlfmath HINTS
-        "/soft/compilers/ibmcmp-may2016/xlf/bg/14.1/bglib64")
-    find_library(XL_LIB NAMES libxl.a xl HINTS
-        "/soft/compilers/ibmcmp-may2016/xlf/bg/14.1/bglib64")
-    find_library(XLSMP_LIB NAMES libxlomp_ser.a xlomp_ser HINTS
-        "/soft/compilers/ibmcmp-may2016/xlsmp/bg/3.1/bglib64")
-    set(EXTERNAL_LIBS ${LAPACK_LIB} ${BLAS_LIB} ${ESSL_LIB} ${XLF_LIB}
-        ${XLOPT_LIB} ${XLFMATH_LIB} ${XL_LIB} ${XLSMP_LIB})
-else()
-    find_package(BLAS REQUIRED)
-    find_package(LAPACK REQUIRED)
-    set(EXTERNAL_LIBS ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
-endif()
+find_package(BLAS REQUIRED)
+find_package(LAPACK REQUIRED)
+set(EXTERNAL_LIBS ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
 
 if (WITH_HOSTFILE)
     find_file (FILE_OF_HOST, ${HOSTFILE})
