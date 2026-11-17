@@ -8,7 +8,7 @@
 using namespace mfem;
 
 // Create an MFEM Linear Elasticity Matrix and convert to Raptor format
-raptor::ParCSRMatrix* mfem_adaptive_laplacian(raptor::ParVector& x_raptor, 
+raptor::ParCSRMatrix* raptor::mfem_adaptive_laplacian(raptor::ParVector& x_raptor, 
         raptor::ParVector& b_raptor, const char* mesh_file, int order, 
         int max_dofs, RAPtor_MPI_Comm comm)
 {

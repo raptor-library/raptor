@@ -47,6 +47,8 @@ if (ENABLE_COVERAGE)
     target_link_options(raptor PRIVATE --coverage)
 endif()
 
+target_compile_features(raptor PUBLIC cxx_std_17)
+
 target_include_directories(raptor
   PUBLIC
   $<INSTALL_INTERFACE:include>

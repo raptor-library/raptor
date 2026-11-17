@@ -13,7 +13,7 @@ void sol_func(const mfem::Vector& p, mfem::Vector& sol);
 double freq, kappa;
 
 // Create an MFEM Grad Div system and convert to Raptor format
-raptor::ParCSRMatrix* mfem_grad_div(raptor::ParVector& x_raptor, 
+raptor::ParCSRMatrix* raptor::mfem_grad_div(raptor::ParVector& x_raptor, 
         raptor::ParVector& b_raptor,
         const char* mesh_file, int order, int seq_n_refines, 
         int par_n_refines, RAPtor_MPI_Comm comm)
