@@ -8,7 +8,7 @@ endif ()
 
 if (WITH_MUELU)
     add_executable(test_trilinos_wrapper test_trilinos_wrapper.cpp)
-    target_link_libraries(test_trilinos_wrapper raptor ${MPI_LIBRARIES} googletest )
+    target_link_libraries(test_trilinos_wrapper raptor::trilinos_wrapper ${MPI_LIBRARIES} googletest )
     add_test(TrilinosWrapperTest_n1 ${MPIRUN} -n 1 ${HOST} ./test_trilinos_wrapper)
     add_test(TrilinosWrapperTest_n4 ${MPIRUN} -n 4 ${HOST} ./test_trilinos_wrapper)
     add_test(TrilinosWrapperTest_n16 ${MPIRUN} -n 16 ${HOST} ./test_trilinos_wrapper)

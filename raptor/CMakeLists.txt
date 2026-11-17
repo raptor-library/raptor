@@ -27,8 +27,7 @@ add_library(raptor ${core_SOURCES} ${core_HEADERS}
         ${aggregation_SOURCES} ${aggregation_HEADERS}
         ${multilevel_SOURCES} ${multilevel_HEADERS}
         ${krylov_SOURCES} ${krylov_HEADERS}
-        ${profile_SOURCES} ${profile_HEADERS}
-        ${external_SOURCES} ${external_HEADERS})
+        ${profile_SOURCES} ${profile_HEADERS})
 add_library(raptor::raptor ALIAS raptor)
 
 if (WITH_PTSCOTCH)
@@ -39,11 +38,6 @@ endif()
 if (WITH_PARMETIS)
     target_compile_definitions(raptor PUBLIC USING_PARMETIS)
     target_link_libraries(raptor PUBLIC raptor::parmetis)
-endif()
-
-if (WITH_MUELU)
-    target_compile_definitions(raptor PUBLIC USING_MUELU)
-    target_link_libraries(raptor PUBLIC MueLu::all_libs)
 endif()
 
 if (WITH_AMPI)
@@ -85,7 +79,6 @@ install(FILES ${aggregation_HEADERS} DESTINATION "include/raptor/aggregation")
 install(FILES ${multilevel_HEADERS} DESTINATION "include/raptor/multilevel")
 install(FILES ${krylov_HEADERS} DESTINATION "include/raptor/krylov")
 install(FILES ${profile_HEADERS} DESTINATION "include/raptor/profiling")
-install(FILES ${external_HEADERS} DESTINATION "include/raptor/external")
 install(EXPORT raptorTargets
   FILE raptorTargets.cmake
   NAMESPACE "raptor::"

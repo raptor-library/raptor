@@ -37,18 +37,13 @@ if (WITH_PETSC)
     install(FILES petsc_wrapper.hpp DESTINATION "include/raptor/external")
 endif()
 
+# Trilinos MueLu interface: raptor::trilinos_wrapper
 if (WITH_MUELU)
-    set(trilinos_HEADERS
-        external/trilinos_wrapper.hpp
-        )
-    set(trilinos_SOURCES
-        external/trilinos_wrapper.cpp
-        )
+    add_library(trilinos_wrapper trilinos_wrapper.cpp trilinos_wrapper.hpp)
+    add_library(raptor::trilinos_wrapper ALIAS trilinos_wrapper)
+    set_target_properties(trilinos_wrapper PROPERTIES OUTPUT_NAME raptor_trilinos_wrapper)
+    target_compile_definitions(trilinos_wrapper PUBLIC USING_MUELU)
+    target_link_libraries(trilinos_wrapper PUBLIC raptor MueLu::all_libs)
+    install(TARGETS trilinos_wrapper EXPORT raptorTargets DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    install(FILES trilinos_wrapper.hpp DESTINATION "include/raptor/external")
 endif()
-
-set(external_HEADERS
-    ${trilinos_HEADERS}
-    PARENT_SCOPE)
-set(external_SOURCES
-    ${trilinos_SOURCES}
-    PARENT_SCOPE)
