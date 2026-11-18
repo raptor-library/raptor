@@ -38,7 +38,7 @@ void CG(ParHipCSRMatrix* A, double* x, const double* b, std::vector<double>& res
     HIP_CHECK(hipMalloc(&Ap, bytes));
 
     // r0 = b - A*x0; p0 = r0
-    par_hip_residual(*A, x, b, r, sparse_handle);
+    par_hip_residual(*A, x, b, r, sparse_handle, blas_handle);
     hip_copy(p, r, n);
 
 if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
@@ -59,7 +59,7 @@ if (comm_t) *comm_t += RAPtor_MPI_Wtime();
     while (norm_r > tol && iter < max_iter)
     {
         // alpha_i = (r_i, r_i) / (A*p_i, p_i)
-        par_hip_spmv(1.0, *A, p, 0.0, Ap, sparse_handle);
+        par_hip_spmv(1.0, *A, p, 0.0, Ap, sparse_handle, blas_handle);
 if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
         App_inner = par_hip_inner_product(Ap, p, n, blas_handle);
 if (comm_t) *comm_t += RAPtor_MPI_Wtime();
@@ -82,7 +82,7 @@ if (comm_t) *comm_t += RAPtor_MPI_Wtime();
         }
         else
         {
-            par_hip_residual(*A, x, b, r, sparse_handle);
+            par_hip_residual(*A, x, b, r, sparse_handle, blas_handle);
         }
 
         // beta_i = (r_{i+1}, r_{i+1}) / (r_i, r_i)

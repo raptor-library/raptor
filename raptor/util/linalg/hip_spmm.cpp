@@ -2,14 +2,35 @@
 // License: Simplified BSD, http://opensource.org/licenses/BSD-2-Clause
 
 #include "hip_spmm.hpp"
+#include "hip_vector.hpp"
 #include "raptor/core/hip_error.hpp"
 
 namespace raptor
 {
 void hip_spmm(double alpha, HipCSRMatrix& A, const double* X,
-        double beta, double* B, int nrhs, rocsparse_handle handle)
+        double beta, double* B, int nrhs, rocsparse_handle sparse_handle,
+        rocblas_handle blas_handle)
 {
-    if (nrhs == 0 || A.nnz == 0) return;
+    if (nrhs <= 0 || A.n_rows == 0) return;
+
+    // nonzero beta
+    if (A.nnz == 0)
+    {
+        if (beta == 1.0) return;
+
+        if (beta == 0.0)
+        {
+            hipStream_t stream;
+            ROCSPARSE_CHECK(rocsparse_get_stream(sparse_handle, &stream));
+            const std::size_t bytes = static_cast<std::size_t>(A.n_rows) * nrhs * sizeof(double);
+            HIP_CHECK(hipMemsetAsync(B, 0, bytes, stream));
+            return;
+        }
+
+        ROCBLAS_CHECK(rocblas_dscal_strided_batched(blas_handle, A.n_rows, &beta,
+                B, 1, A.n_rows, nrhs));
+        return;
+    }
 
     rocsparse_dnmat_descr mat_b;
     rocsparse_const_dnmat_descr mat_x; // read only
@@ -20,9 +41,9 @@ void hip_spmm(double alpha, HipCSRMatrix& A, const double* X,
             A.n_rows, nrhs, A.n_rows, B,
             rocsparse_datatype_f64_r, rocsparse_order_column));
 
-    prepare_hip_spmm(A, mat_x, mat_b, nrhs, handle);
+    prepare_hip_spmm(A, mat_x, mat_b, nrhs, sparse_handle);
     std::size_t buffer_size = A.spmm_buf_size;
-    ROCSPARSE_CHECK(rocsparse_spmm(handle,
+    ROCSPARSE_CHECK(rocsparse_spmm(sparse_handle,
             rocsparse_operation_none, rocsparse_operation_none,
             &alpha, A.descr, mat_x, &beta, mat_b,
             rocsparse_datatype_f64_r, rocsparse_spmm_alg_default,
@@ -33,11 +54,11 @@ void hip_spmm(double alpha, HipCSRMatrix& A, const double* X,
 }
 
 void hip_spmm_residual(HipCSRMatrix& A, const double* X, const double* B,
-        double* R, int nrhs, rocsparse_handle handle)
+        double* R, int nrhs, rocsparse_handle sparse_handle, rocblas_handle blas_handle)
 {
     if (nrhs <= 0 || A.n_rows == 0) return;
 
     hip_copy(R, B, A.n_rows * nrhs);
-    hip_spmm(-1.0, A, X, 1.0, R, nrhs, handle);
+    hip_spmm(-1.0, A, X, 1.0, R, nrhs, sparse_handle, blas_handle);
 }
 } // namespace raptor

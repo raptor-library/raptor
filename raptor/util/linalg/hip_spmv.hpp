@@ -6,15 +6,16 @@
 #define RAPTOR_UTIL_HIP_SPMV_HPP
 
 #include "raptor/core/hip_matrix.hpp"
+#include <rocblas/rocblas.h>
 
 namespace raptor
 {
-// b = alpha*A*x + beta*b 
+// b = alpha*A*x + beta*b
 void hip_spmv(double alpha, HipCSRMatrix& A, const double* x,
-        double beta, double* b, rocsparse_handle handle);
+        double beta, double* b, rocsparse_handle sparse_handle, rocblas_handle blas_handle);
 
 // r = b - A*x 
 void hip_residual(HipCSRMatrix& A, const double* x, const double* b,
-        double* r, rocsparse_handle handle);
+        double* r, rocsparse_handle sparse_handle, rocblas_handle blas_handle);
 } // namespace raptor
 #endif

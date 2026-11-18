@@ -10,12 +10,12 @@
 
 namespace raptor
 {
-// Parallel b = alpha*A*x + beta*b 
+// Parallel b = alpha*A*x + beta*b
 void par_hip_spmv(double alpha, ParHipCSRMatrix& A, const double* x,
-        double beta, double* b, rocsparse_handle handle);
+        double beta, double* b, rocsparse_handle sparse_handle, rocblas_handle blas_handle);
 
 // Parallel r = b - A*x 
 void par_hip_residual(ParHipCSRMatrix& A, const double* x, const double* b,
-        double* r, rocsparse_handle handle);
+        double* r, rocsparse_handle sparse_handle, rocblas_handle blas_handle);
 } // namespace raptor
 #endif
