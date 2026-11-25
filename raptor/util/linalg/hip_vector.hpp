@@ -5,13 +5,15 @@
 #ifndef RAPTOR_UTIL_HIP_VECTOR_HPP
 #define RAPTOR_UTIL_HIP_VECTOR_HPP
 
+#include <cstddef>
+#include <hip/hip_runtime_api.h>
 #include <rocblas/rocblas.h>
 
 namespace raptor
 {
 
-// Copy y to x
-void hip_copy(double* x, const double* y, int n);
+// Enqueue a device-to-device copy on stream
+void hip_copy(double* dst, const double* src, std::size_t n, hipStream_t stream);
 
 // Local 2-norm
 double hip_norm(const double* x, int n, rocblas_handle handle);

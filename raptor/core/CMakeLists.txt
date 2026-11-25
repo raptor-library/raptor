@@ -34,10 +34,10 @@ endif()
 
 if (WITH_HIP)
     set(hip_core_SOURCES core/hip_matrix.cpp)
-    set(hip_core_HEADERS core/hip_matrix.hpp core/hip_error.hpp)
+    set(hip_core_HEADERS core/hip_matrix.hpp core/hip_error.hpp core/hip_multivector.hpp)
     if (WITH_MPI)
         list(APPEND hip_core_SOURCES core/par_hip_matrix.cpp)
-        list(APPEND hip_core_HEADERS core/par_hip_matrix.hpp)
+        list(APPEND hip_core_HEADERS core/par_hip_matrix.hpp core/par_hip_multivector.hpp)
     endif()
 endif()
 

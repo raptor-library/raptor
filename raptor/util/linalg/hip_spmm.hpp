@@ -5,17 +5,19 @@
 #define RAPTOR_UTIL_HIP_SPMM_HPP
 
 #include "raptor/core/hip_matrix.hpp"
+#include "raptor/core/hip_multivector.hpp"
 #include <rocblas/rocblas.h>
 
 namespace raptor
 {
 // B = alpha*A*X + beta*B for nrhs packed column-major vectors
-void hip_spmm(double alpha, HipCSRMatrix& A, const double* X,
-        double beta, double* B, int nrhs, rocsparse_handle sparse_handle,
+void hip_spmm(double alpha, HipCSRMatrix& A, const HipMultiVectorView& X,
+        double beta, const HipMultiVectorView& B, rocsparse_handle sparse_handle,
         rocblas_handle blas_handle);
 
 // R = B - A*X for nrhs packed column-major vectors
-void hip_spmm_residual(HipCSRMatrix& A, const double* X, const double* B,
-        double* R, int nrhs, rocsparse_handle sparse_handle, rocblas_handle blas_handle);
+void hip_spmm_residual(HipCSRMatrix& A, const HipMultiVectorView& X,
+        const HipMultiVectorView& B, const HipMultiVectorView& R,
+        rocsparse_handle sparse_handle, rocblas_handle blas_handle);
 } // namespace raptor
 #endif

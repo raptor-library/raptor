@@ -8,12 +8,12 @@
 
 namespace raptor
 {
-// TODO: this copy doesn't specify a stream. Object copied may not be finished.
-void hip_copy(double* x, const double* y, int n)
+void hip_copy(double* dst, const double* src, std::size_t n, hipStream_t stream)
 {
-    if (n == 0) return;
-    HIP_CHECK(hipMemcpy(x, y, static_cast<std::size_t>(n) * sizeof(double),
-            hipMemcpyDeviceToDevice));
+    if (n == 0 || dst == src) return;
+
+    HIP_CHECK(hipMemcpyAsync(dst, src, n * sizeof(double),
+            hipMemcpyDeviceToDevice, stream));
 }
 
 double hip_norm(const double* x, int n, rocblas_handle handle)

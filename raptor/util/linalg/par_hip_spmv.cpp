@@ -13,7 +13,9 @@ namespace raptor
 void par_hip_residual(ParHipCSRMatrix& A, const double* x, const double* b,
         double* r, rocsparse_handle sparse_handle, rocblas_handle blas_handle)
 {
-    hip_copy(r, b, A.on_proc.n_rows);
+    hipStream_t stream;
+    ROCSPARSE_CHECK(rocsparse_get_stream(sparse_handle, &stream));
+    hip_copy(r, b, A.on_proc.n_rows, stream);
     par_hip_spmv(-1.0, A, x, 1.0, r, sparse_handle, blas_handle);
 }
 

@@ -38,8 +38,10 @@ void CG(ParHipCSRMatrix* A, double* x, const double* b, std::vector<double>& res
     HIP_CHECK(hipMalloc(&Ap, bytes));
 
     // r0 = b - A*x0; p0 = r0
+    hipStream_t stream;
+    ROCSPARSE_CHECK(rocsparse_get_stream(sparse_handle, &stream));
     par_hip_residual(*A, x, b, r, sparse_handle, blas_handle);
-    hip_copy(p, r, n);
+    hip_copy(p, r, n, stream);
 
 if (comm_t) *comm_t -= RAPtor_MPI_Wtime();
     rr_inner = par_hip_inner_product(r, r, n, blas_handle);

@@ -11,7 +11,11 @@ namespace raptor
 void hip_residual(HipCSRMatrix& A, const double* x, const double* b,
         double* r, rocsparse_handle sparse_handle, rocblas_handle blas_handle)
 {
-    hip_copy(r, b, A.n_rows);
+    if (A.n_rows == 0) return;
+
+    hipStream_t stream;
+    ROCSPARSE_CHECK(rocsparse_get_stream(sparse_handle, &stream));
+    hip_copy(r, b, A.n_rows, stream);
     hip_spmv(-1.0, A, x, 1.0, r, sparse_handle, blas_handle);
 }
 

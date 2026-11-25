@@ -3,6 +3,7 @@
 
 #include "par_hip_spmm.hpp"
 #include "hip_spmm.hpp"
+#include "hip_vector.hpp"
 #include "raptor/core/comm_pkg.hpp"
 #include "raptor/core/hip_error.hpp"
 #include <algorithm>
@@ -11,11 +12,29 @@
 
 namespace raptor
 {
-void par_hip_spmm(double alpha, ParHipCSRMatrix& A, const double* X,
-        double beta, double* B, int nrhs, rocsparse_handle sparse_handle,
+namespace
+{
+bool matches_shape(const ParHipMultiVectorView& v, int global_rows, int local_rows, int cols)
+{
+    return v.global_rows == global_rows && v.local.rows == local_rows &&
+            v.local.cols == cols && cols >= 0 &&
+            (local_rows == 0 || cols == 0 || v.local.data != nullptr);
+}
+}
+
+void par_hip_spmm(double alpha, ParHipCSRMatrix& A, const ParHipMultiVectorView& X,
+        double beta, const ParHipMultiVectorView& B, rocsparse_handle sparse_handle,
         rocblas_handle blas_handle)
 {
-    if (nrhs <= 0) return;
+    const int nrhs = X.local.cols;
+    if (!matches_shape(X, A.global_num_cols, A.on_proc.n_cols, nrhs) ||
+        !matches_shape(B, A.global_num_rows, A.on_proc.n_rows, nrhs))
+    {
+        std::fprintf(stderr, "Parallel HIP SpMM requires valid views matching the matrix dimensions\n");
+        RAPTOR_HIP_ABORT();
+        return;
+    }
+    if (nrhs == 0) return;
 
     auto& send = *A.comm->send_data;
     auto& recv = *A.comm->recv_data;
@@ -47,8 +66,8 @@ void par_hip_spmm(double alpha, ParHipCSRMatrix& A, const double* X,
     recv.recv<double>(A.comm->key, A.comm->mpi_comm, nrhs);
     if (send.num_msgs > 0)
     {
-        std::vector<double> h_X(A.on_proc.n_cols * nrhs);
-        HIP_CHECK(hipMemcpyWithStream(h_X.data(), X, h_X.size() * sizeof(double),
+        std::vector<double> h_X(static_cast<std::size_t>(X.local.rows) * nrhs);
+        HIP_CHECK(hipMemcpyWithStream(h_X.data(), X.local.data, h_X.size() * sizeof(double),
                 hipMemcpyDeviceToHost, stream));
 
         auto& packed = send.get_buffer<double>();
@@ -61,7 +80,7 @@ void par_hip_spmm(double alpha, ParHipCSRMatrix& A, const double* X,
             double* message = packed.data() + start * nrhs;
             for (int rhs = 0; rhs < nrhs; ++rhs)
             {
-                const double* column = h_X.data() + rhs * A.on_proc.n_cols;
+                const double* column = h_X.data() + static_cast<std::size_t>(rhs) * X.local.rows;
                 for (int row = 0; row < rows; ++row)
                     message[rhs * rows + row] = column[send.indices[start + row]];
             }
@@ -70,7 +89,7 @@ void par_hip_spmm(double alpha, ParHipCSRMatrix& A, const double* X,
         }
     }
 
-    hip_spmm(alpha, A.on_proc, X, beta, B, nrhs, sparse_handle, blas_handle);
+    hip_spmm(alpha, A.on_proc, X.local, beta, B.local, sparse_handle, blas_handle);
 
     recv.waitall();
     if (halo_size > 0)
@@ -87,7 +106,8 @@ void par_hip_spmm(double alpha, ParHipCSRMatrix& A, const double* X,
         }
         HIP_CHECK(hipMemcpyWithStream(A.d_recvbuf, A.h_recvbuf, halo_bytes,
                 hipMemcpyHostToDevice, stream));
-        hip_spmm(alpha, A.off_proc, A.d_recvbuf, 1.0, B, nrhs, sparse_handle, blas_handle);
+        hip_spmm(alpha, A.off_proc, {A.d_recvbuf, recv.size_msgs, nrhs}, 1.0, B.local,
+                sparse_handle, blas_handle);
     }
 
     send.waitall();
@@ -97,12 +117,24 @@ void par_hip_spmm(double alpha, ParHipCSRMatrix& A, const double* X,
     if (halo_size > 0) HIP_CHECK(hipStreamSynchronize(stream));
 }
 
-void par_hip_spmm_residual(ParHipCSRMatrix& A, const double* X, const double* B,
-        double* R, int nrhs, rocsparse_handle sparse_handle, rocblas_handle blas_handle)
+void par_hip_spmm_residual(ParHipCSRMatrix& A, const ParHipMultiVectorView& X,
+        const ParHipMultiVectorView& B, const ParHipMultiVectorView& R,
+        rocsparse_handle sparse_handle, rocblas_handle blas_handle)
 {
-    if (nrhs <= 0) return;
+    const int nrhs = X.local.cols;
+    if (!matches_shape(X, A.global_num_cols, A.on_proc.n_cols, nrhs) ||
+        !matches_shape(B, A.global_num_rows, A.on_proc.n_rows, nrhs) ||
+        !matches_shape(R, A.global_num_rows, A.on_proc.n_rows, nrhs))
+    {
+        std::fprintf(stderr, "Parallel HIP SpMM residual requires valid views matching the matrix dimensions\n");
+        RAPTOR_HIP_ABORT();
+        return;
+    }
+    if (nrhs == 0) return;
 
-    hip_copy(R, B, A.on_proc.n_rows * nrhs);
-    par_hip_spmm(-1.0, A, X, 1.0, R, nrhs, sparse_handle, blas_handle);
+    hipStream_t stream;
+    ROCSPARSE_CHECK(rocsparse_get_stream(sparse_handle, &stream));
+    hip_copy(R.local.data, B.local.data, static_cast<std::size_t>(R.local.rows) * nrhs, stream);
+    par_hip_spmm(-1.0, A, X, 1.0, R, sparse_handle, blas_handle);
 }
 } // namespace raptor
