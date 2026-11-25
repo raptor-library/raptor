@@ -5,6 +5,7 @@
 #ifndef RAPTOR_UTIL_HIP_VECTOR_HPP
 #define RAPTOR_UTIL_HIP_VECTOR_HPP
 
+#include "raptor/core/hip_multivector.hpp"
 #include <cstddef>
 #include <hip/hip_runtime_api.h>
 #include <rocblas/rocblas.h>
@@ -14,6 +15,9 @@ namespace raptor
 
 // Enqueue a device-to-device copy on stream
 void hip_copy(double* dst, const double* src, std::size_t n, hipStream_t stream);
+
+// Copy packed multivectors with matching dimensions
+void hip_copy(const HipMultiVectorView& dst, const HipMultiVectorView& src, hipStream_t stream);
 
 // Local 2-norm
 double hip_norm(const double* x, int n, rocblas_handle handle);

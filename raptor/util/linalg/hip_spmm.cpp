@@ -77,7 +77,7 @@ void hip_spmm_residual(HipCSRMatrix& A, const HipMultiVectorView& X,
 
     hipStream_t stream;
     ROCSPARSE_CHECK(rocsparse_get_stream(sparse_handle, &stream));
-    hip_copy(R.data, B.data, static_cast<std::size_t>(R.rows) * nrhs, stream);
+    hip_copy(R, B, stream);
     hip_spmm(-1.0, A, X, 1.0, R, sparse_handle, blas_handle);
 }
 } // namespace raptor

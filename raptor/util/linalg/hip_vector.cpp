@@ -5,6 +5,7 @@
 #include "hip_vector.hpp"
 #include "raptor/core/hip_error.hpp"
 #include <cmath>
+#include <stdexcept>
 
 namespace raptor
 {
@@ -14,6 +15,14 @@ void hip_copy(double* dst, const double* src, std::size_t n, hipStream_t stream)
 
     HIP_CHECK(hipMemcpyAsync(dst, src, n * sizeof(double),
             hipMemcpyDeviceToDevice, stream));
+}
+
+void hip_copy(const HipMultiVectorView& dst, const HipMultiVectorView& src, hipStream_t stream)
+{
+    if (dst.rows < 0 || dst.cols < 0 || dst.rows != src.rows || dst.cols != src.cols)
+        throw std::invalid_argument("HIP multivector copy requires matching dimensions");
+
+    hip_copy(dst.data, src.data, static_cast<std::size_t>(dst.rows) * dst.cols, stream);
 }
 
 double hip_norm(const double* x, int n, rocblas_handle handle)
