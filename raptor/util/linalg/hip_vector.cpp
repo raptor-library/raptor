@@ -8,6 +8,7 @@
 
 namespace raptor
 {
+// TODO: this copy doesn't specify a stream. Object copied may not be finished.
 void hip_copy(double* x, const double* y, int n)
 {
     if (n == 0) return;

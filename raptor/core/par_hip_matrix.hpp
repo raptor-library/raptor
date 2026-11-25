@@ -5,6 +5,7 @@
 #ifndef RAPTOR_CORE_PAR_HIP_MATRIX_HPP
 #define RAPTOR_CORE_PAR_HIP_MATRIX_HPP
 
+#include <cstddef>
 #include "hip_matrix.hpp"
 
 namespace raptor
@@ -16,7 +17,7 @@ class ParCSRMatrix;
  *****   Parallel HIP CSR Matrix
  **************************************************************
  ***** This struct stores the device CSR blocks and halo buffers
- ***** needed for distributed GPU SpMV with MPI.
+ ***** needed for distributed GPU SpMV and SpMM with MPI.
  *****
  ***** Attributes
  ***** -------------
@@ -31,13 +32,15 @@ class ParCSRMatrix;
  ***** d_sendbuf : double*
  *****    Device buffer containing packed outgoing vector values
  ***** d_recvbuf : double*
- *****    Device buffer containing incoming ghost vector values
+ *****    Device buffer containing incoming ghost values in column-major order
+ ***** d_recvbuf_size : std::size_t
+ *****    Number of doubles allocated in each of d_recvbuf and h_recvbuf
  ***** d_send_idx : int*
  *****    Device local-vector indices used to pack the send buffer
  ***** h_sendbuf : double*
  *****    Pinned host send buffer for staged MPI communication
  ***** h_recvbuf : double*
- *****    Pinned host receive buffer for staged MPI communication
+ *****    Pinned host buffer for staging incoming ghost values
  ***** comm : ParComm*
  *****    MPI communicator
  *****
@@ -52,6 +55,7 @@ struct ParHipCSRMatrix
 
     double* d_sendbuf = nullptr;
     double* d_recvbuf = nullptr;
+    std::size_t d_recvbuf_size = 0;
     int* d_send_idx = nullptr;
 
     double* h_sendbuf = nullptr;

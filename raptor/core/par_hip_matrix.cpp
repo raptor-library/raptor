@@ -32,22 +32,24 @@ void upload_hip_matrix(ParCSRMatrix& host, ParHipCSRMatrix& device)
         device.d_sendbuf = nullptr;
         device.d_send_idx = nullptr;
     }
-    if (recv.size_msgs > 0)
-        HIP_CHECK(hipMalloc(&device.d_recvbuf,
-                static_cast<std::size_t>(recv.size_msgs) * sizeof(double)));
+    device.d_recvbuf_size = recv.size_msgs;
+    if (device.d_recvbuf_size > 0)
+    {
+        const std::size_t recv_bytes = device.d_recvbuf_size * sizeof(double);
+        HIP_CHECK(hipMalloc(&device.d_recvbuf, recv_bytes));
+        HIP_CHECK(hipHostMalloc(&device.h_recvbuf, recv_bytes, hipHostMallocDefault));
+    }
     else
+    {
         device.d_recvbuf = nullptr;
+        device.h_recvbuf = nullptr;
+    }
 
     if (send.size_msgs > 0)
         HIP_CHECK(hipHostMalloc(&device.h_sendbuf,
                 static_cast<std::size_t>(send.size_msgs) * sizeof(double), hipHostMallocDefault));
     else
         device.h_sendbuf = nullptr;
-    if (recv.size_msgs > 0)
-        HIP_CHECK(hipHostMalloc(&device.h_recvbuf,
-                static_cast<std::size_t>(recv.size_msgs) * sizeof(double), hipHostMallocDefault));
-    else
-        device.h_recvbuf = nullptr;
     device.comm = host.comm;
 }
 

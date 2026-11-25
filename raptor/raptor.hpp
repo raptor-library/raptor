@@ -25,6 +25,7 @@
     #ifdef USING_MPI
         #include "core/par_hip_matrix.hpp"
         #include "util/linalg/par_hip_spmv.hpp"
+        #include "util/linalg/par_hip_spmm.hpp"
         #include "util/linalg/par_hip_vector.hpp"
     #endif
 #endif
