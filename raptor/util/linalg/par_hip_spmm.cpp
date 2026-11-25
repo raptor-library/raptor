@@ -102,7 +102,7 @@ void par_hip_spmm_residual(ParHipCSRMatrix& A, const double* X, const double* B,
 {
     if (nrhs <= 0) return;
 
-    hip_copy(R, B, A.n_rows * nrhs);
+    hip_copy(R, B, A.on_proc.n_rows * nrhs);
     par_hip_spmm(-1.0, A, X, 1.0, R, nrhs, sparse_handle, blas_handle);
 }
 } // namespace raptor
