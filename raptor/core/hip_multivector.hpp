@@ -5,6 +5,22 @@
 
 namespace raptor
 {
+/**************************************************************
+ *****   HIP Multivector View
+ **************************************************************
+ ***** This struct views caller-owned device storage in packed
+ ***** column-major order.
+ *****
+ ***** Attributes
+ ***** -------------
+ ***** data : double*
+ *****    Pointer to the first element of the device storage
+ ***** rows : int
+ *****    Number of scalar rows and the leading dimension
+ ***** cols : int
+ *****    Number of columns
+ *****
+ **************************************************************/
 struct HipMultiVectorView
 {
     double* data = nullptr;

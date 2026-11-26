@@ -19,6 +19,14 @@ void hip_copy(double* dst, const double* src, std::size_t n, hipStream_t stream)
 // Copy packed multivectors with matching dimensions
 void hip_copy(const HipMultiVectorView& dst, const HipMultiVectorView& src, hipStream_t stream);
 
+// Y = alpha*P*Q + beta*Y for packed column-major multivectors P, Q, Y
+void hip_mult(double alpha, const HipMultiVectorView& P,const HipMultiVectorView& Q, double beta,
+              HipMultiVectorView Y, rocblas_handle handle);
+
+// Y = alpha*P^T*Q + beta*Y for packed column-major multivectors P, Q, Y
+void hip_mult_T(double alpha, const HipMultiVectorView& P, const HipMultiVectorView& Q,
+        double beta, HipMultiVectorView Y, rocblas_handle handle);
+
 // Local 2-norm
 double hip_norm(const double* x, int n, rocblas_handle handle);
 
